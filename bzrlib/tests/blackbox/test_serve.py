@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ from bzrlib import (
     errors,
     osutils,
     revision as _mod_revision,
+    transport,
     urlutils,
     )
 from bzrlib.branch import Branch
@@ -43,7 +44,7 @@ from bzrlib.tests import (
     TestSkipped,
     )
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport, remote
+from bzrlib.transport import remote
 
 
 class TestBzrServeBase(TestCaseWithTransport):
@@ -192,8 +193,8 @@ class TestBzrServe(TestBzrServeBase):
     def test_bzr_serve_port_readonly(self):
         """bzr server should provide a read only filesystem by default."""
         process, url = self.start_server_port()
-        transport = get_transport(url)
-        self.assertRaises(errors.TransportNotPossible, transport.mkdir, 'adir')
+        t = transport.get_transport(url)
+        self.assertRaises(errors.TransportNotPossible, t.mkdir, 'adir')
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_port_readwrite(self):

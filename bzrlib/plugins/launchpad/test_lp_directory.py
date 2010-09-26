@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ import xmlrpclib
 from bzrlib import (
     errors,
     tests,
+    transport,
     )
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
@@ -29,14 +30,13 @@ from bzrlib.tests import (
     TestCaseInTempDir,
     TestCaseWithMemoryTransport
 )
-from bzrlib.transport import get_transport
 from bzrlib.plugins.launchpad import (
     _register_directory,
     lp_registration,
     )
 from bzrlib.plugins.launchpad.lp_directory import (
     LaunchpadDirectory)
-from bzrlib.plugins.launchpad.account import get_lp_login
+from bzrlib.plugins.launchpad.account import get_lp_login, set_lp_login
 from bzrlib.tests import (
     http_server,
     http_utils,
@@ -91,7 +91,7 @@ class DirectoryUrlTests(TestCaseInTempDir):
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:apt', factory))
         # Make sure that resolve went to the production server.
-        self.assertEquals('https://xmlrpc.edge.launchpad.net/bazaar/',
+        self.assertEquals('https://xmlrpc.launchpad.net/bazaar/',
                           factory._service_url)
 
     def test_staging(self):
@@ -199,6 +199,29 @@ class DirectoryUrlTests(TestCaseInTempDir):
         self.assertRaises(errors.InvalidURL,
             directory._resolve, 'lp://ratotehunoahu')
 
+    def test_resolve_tilde_to_user(self):
+        factory = FakeResolveFactory(
+            self, '~username/apt/test', dict(urls=[
+                    'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
+        directory = LaunchpadDirectory()
+        self.assertEquals(
+            'bzr+ssh://bazaar.launchpad.net/~username/apt/test',
+            directory._resolve('lp:~/apt/test', factory, _lp_login='username'))
+        # Should also happen when the login is just set by config
+        set_lp_login('username')
+        self.assertEquals(
+            'bzr+ssh://bazaar.launchpad.net/~username/apt/test',
+            directory._resolve('lp:~/apt/test', factory))
+
+    def test_tilde_fails_no_login(self):
+        factory = FakeResolveFactory(
+            self, '~username/apt/test', dict(urls=[
+                    'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
+        self.assertIs(None, get_lp_login())
+        directory = LaunchpadDirectory()
+        e = self.assertRaises(errors.InvalidURL,
+            directory._resolve, 'lp:~/apt/test', factory)
+
 
 class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
 
@@ -217,8 +240,8 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
         directories.register('lp:', FooService, 'Map lp URLs to local urls')
         self.addCleanup(_register_directory)
         self.addCleanup(directories.remove, 'lp:')
-        transport = get_transport('lp:///apt')
-        branch = Branch.open_from_transport(transport)
+        t = transport.get_transport('lp:///apt')
+        branch = Branch.open_from_transport(t)
         self.assertEqual(target_branch.base, branch.base)
 
 

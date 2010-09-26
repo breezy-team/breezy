@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -40,11 +40,17 @@ from bzrlib.tests import (
 
 # Files which are listed here will be skipped when testing for Copyright (or
 # GPL) statements.
-COPYRIGHT_EXCEPTIONS = ['bzrlib/lsprof.py', 'bzrlib/_bencode_py.py',
-    'bzrlib/doc_generate/sphinx_conf.py']
+COPYRIGHT_EXCEPTIONS = [
+    'bzrlib/_bencode_py.py',
+    'bzrlib/doc_generate/conf.py',
+    'bzrlib/lsprof.py',
+    ]
 
-LICENSE_EXCEPTIONS = ['bzrlib/lsprof.py', 'bzrlib/_bencode_py.py',
-    'bzrlib/doc_generate/sphinx_conf.py']
+LICENSE_EXCEPTIONS = [
+    'bzrlib/_bencode_py.py',
+    'bzrlib/doc_generate/conf.py',
+    'bzrlib/lsprof.py',
+    ]
 # Technically, 'bzrlib/lsprof.py' should be 'bzrlib/util/lsprof.py',
 # (we do not check bzrlib/util/, since that is code bundled from elsewhere)
 # but for compatibility with previous releases, we don't want to move it.
@@ -382,8 +388,10 @@ class TestSource(TestSourceHelper):
         """
         both_exc_and_no_exc = []
         missing_except = []
-        class_re = re.compile(r'^(cdef\s+)?(public\s+)?(api\s+)?class (\w+).*:',
-                              re.MULTILINE)
+        class_re = re.compile(r'^(cdef\s+)?(public\s+)?'
+                              r'(api\s+)?class (\w+).*:', re.MULTILINE)
+        extern_class_re = re.compile(r'## extern cdef class (\w+)',
+                                     re.MULTILINE)
         except_re = re.compile(r'cdef\s+' # start with cdef
                                r'([\w *]*?)\s*' # this is the return signature
                                r'(\w+)\s*\(' # the function name
@@ -394,6 +402,7 @@ class TestSource(TestSourceHelper):
         for fname, text in self.get_source_file_contents(
                 extensions=('.pyx',)):
             known_classes = set([m[-1] for m in class_re.findall(text)])
+            known_classes.update(extern_class_re.findall(text))
             cdefs = except_re.findall(text)
             for sig, func, exc_clause, no_exc_comment in cdefs:
                 if sig.startswith('api '):

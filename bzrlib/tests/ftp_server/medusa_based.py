@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -254,6 +254,9 @@ class FTPTestServer(test_server.TestServer):
         self._async_thread = threading.Thread(
                 target=FTPTestServer._asyncore_loop_ignore_EBADF,
                 kwargs={'timeout':0.1, 'count':10000})
+        if 'threads' in tests.selftest_debug_flags:
+            sys.stderr.write('Thread started: %s\n'
+                             % (self._async_thread.ident,))
         self._async_thread.setDaemon(True)
         self._async_thread.start()
 
@@ -261,6 +264,9 @@ class FTPTestServer(test_server.TestServer):
         self._ftp_server.close()
         asyncore.close_all()
         self._async_thread.join()
+        if 'threads' in tests.selftest_debug_flags:
+            sys.stderr.write('Thread  joined: %s\n'
+                             % (self._async_thread.ident,))
 
     @staticmethod
     def _asyncore_loop_ignore_EBADF(*args, **kwargs):

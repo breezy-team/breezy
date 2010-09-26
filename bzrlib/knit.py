@@ -68,6 +68,7 @@ from bzrlib import (
     index as _mod_index,
     lru_cache,
     pack,
+    patiencediff,
     progress,
     static_tuple,
     trace,
@@ -79,7 +80,6 @@ from bzrlib import (
 from bzrlib import (
     errors,
     osutils,
-    patiencediff,
     )
 from bzrlib.errors import (
     FileExists,
@@ -3415,10 +3415,6 @@ class _DirectPackAccess(object):
         if is_error:
             exc_class, exc_value, exc_traceback = retry_exc.exc_info
             raise exc_class, exc_value, exc_traceback
-
-
-# Deprecated, use PatienceSequenceMatcher instead
-KnitSequenceMatcher = patiencediff.PatienceSequenceMatcher
 
 
 def annotate_knit(knit, revision_id):

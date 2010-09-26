@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1631,6 +1631,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         keys_to_add = []
         def flush():
             bytes = self._compressor.flush().to_bytes()
+            self._compressor = GroupCompressor()
             index, start, length = self._access.add_raw_records(
                 [(None, len(bytes))], bytes)[0]
             nodes = []
@@ -1639,7 +1640,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
             self._index.add_records(nodes, random_id=random_id)
             self._unadded_refs = {}
             del keys_to_add[:]
-            self._compressor = GroupCompressor()
 
         last_prefix = None
         max_fulltext_len = 0
@@ -1807,6 +1807,54 @@ class GroupCompressVersionedFiles(VersionedFiles):
         for source in sources:
             result.update(source.keys())
         return result
+
+
+class _GCBuildDetails(object):
+    """A blob of data about the build details.
+
+    This stores the minimal data, which then allows compatibility with the old
+    api, without taking as much memory.
+    """
+
+    __slots__ = ('_index', '_group_start', '_group_end', '_basis_end',
+                 '_delta_end', '_parents')
+
+    method = 'group'
+    compression_parent = None
+
+    def __init__(self, parents, position_info):
+        self._parents = parents
+        (self._index, self._group_start, self._group_end, self._basis_end,
+         self._delta_end) = position_info
+
+    def __repr__(self):
+        return '%s(%s, %s)' % (self.__class__.__name__,
+            self.index_memo, self._parents)
+
+    @property
+    def index_memo(self):
+        return (self._index, self._group_start, self._group_end,
+                self._basis_end, self._delta_end)
+
+    @property
+    def record_details(self):
+        return static_tuple.StaticTuple(self.method, None)
+
+    def __getitem__(self, offset):
+        """Compatibility thunk to act like a tuple."""
+        if offset == 0:
+            return self.index_memo
+        elif offset == 1:
+            return self.compression_parent # Always None
+        elif offset == 2:
+            return self._parents
+        elif offset == 3:
+            return self.record_details
+        else:
+            raise IndexError('offset out of range')
+            
+    def __len__(self):
+        return 4
 
 
 class _GCGraphIndex(object):
@@ -2009,9 +2057,8 @@ class _GCGraphIndex(object):
                 parents = None
             else:
                 parents = entry[3][0]
-            method = 'group'
-            result[key] = (self._node_to_position(entry),
-                                  None, parents, (method, None))
+            details = _GCBuildDetails(parents, self._node_to_position(entry))
+            result[key] = details
         return result
 
     def keys(self):
@@ -2033,7 +2080,7 @@ class _GCGraphIndex(object):
         # each, or about 7MB. Note that it might be even more when you consider
         # how PyInt is allocated in separate slabs. And you can't return a slab
         # to the OS if even 1 int on it is in use. Note though that Python uses
-        # a LIFO when re-using PyInt slots, which probably causes more
+        # a LIFO when re-using PyInt slots, which might cause more
         # fragmentation.
         start = int(bits[0])
         start = self._int_cache.setdefault(start, start)

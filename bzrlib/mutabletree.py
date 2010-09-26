@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ from bzrlib import (
     hooks,
     osutils,
     revisiontree,
+    inventory,
     symbol_versioning,
     trace,
     tree,
@@ -182,39 +183,14 @@ class MutableTree(tree.Tree):
                **kwargs):
         # avoid circular imports
         from bzrlib import commit
-        if revprops is None:
-            revprops = {}
         possible_master_transports=[]
-        if not 'branch-nick' in revprops:
-            revprops['branch-nick'] = self.branch._get_nick(
+        revprops = commit.Commit.update_revprops(
+                revprops,
+                self.branch,
+                kwargs.pop('authors', None),
+                kwargs.pop('author', None),
                 kwargs.get('local', False),
                 possible_master_transports)
-        authors = kwargs.pop('authors', None)
-        author = kwargs.pop('author', None)
-        if authors is not None:
-            if author is not None:
-                raise AssertionError('Specifying both author and authors '
-                        'is not allowed. Specify just authors instead')
-            if 'author' in revprops or 'authors' in revprops:
-                # XXX: maybe we should just accept one of them?
-                raise AssertionError('author property given twice')
-            if authors:
-                for individual in authors:
-                    if '\n' in individual:
-                        raise AssertionError('\\n is not a valid character '
-                                'in an author identity')
-                revprops['authors'] = '\n'.join(authors)
-        if author is not None:
-            symbol_versioning.warn('The parameter author was deprecated'
-                   ' in version 1.13. Use authors instead',
-                   DeprecationWarning)
-            if 'author' in revprops or 'authors' in revprops:
-                # XXX: maybe we should just accept one of them?
-                raise AssertionError('author property given twice')
-            if '\n' in author:
-                raise AssertionError('\\n is not a valid character '
-                        'in an author identity')
-            revprops['authors'] = author
         # args for wt.commit start at message from the Commit.commit method,
         args = (message, ) + args
         for hook in MutableTree.hooks['start_commit']:
@@ -256,6 +232,44 @@ class MutableTree(tree.Tree):
         except StopIteration:
             # No changes
             return False
+
+    @needs_read_lock
+    def check_changed_or_out_of_date(self, strict, opt_name,
+                                     more_error, more_warning):
+        """Check the tree for uncommitted changes and branch synchronization.
+
+        If strict is None and not set in the config files, a warning is issued.
+        If strict is True, an error is raised.
+        If strict is False, no checks are done and no warning is issued.
+
+        :param strict: True, False or None, searched in branch config if None.
+
+        :param opt_name: strict option name to search in config file.
+
+        :param more_error: Details about how to avoid the check.
+
+        :param more_warning: Details about what is happening.
+        """
+        if strict is None:
+            strict = self.branch.get_config().get_user_option_as_bool(opt_name)
+        if strict is not False:
+            err_class = None
+            if (self.has_changes()):
+                err_class = errors.UncommittedChanges
+            elif self.last_revision() != self.branch.last_revision():
+                # The tree has lost sync with its branch, there is little
+                # chance that the user is aware of it but he can still force
+                # the action with --no-strict
+                err_class = errors.OutOfDateTree
+            if err_class is not None:
+                if strict is None:
+                    err = err_class(self, more=more_warning)
+                    # We don't want to interrupt the user if he expressed no
+                    # preference about strict.
+                    trace.warning('%s', err._format())
+                else:
+                    err = err_class(self, more=more_error)
+                    raise err
 
     @needs_read_lock
     def last_revision(self):
@@ -362,6 +376,10 @@ class MutableTree(tree.Tree):
         This is designed more towards DWIM for humans than API clarity.
         For the specific behaviour see the help for cmd_add().
 
+        :param file_list: List of zero or more paths.  *NB: these are 
+            interpreted relative to the process cwd, not relative to the 
+            tree.*  (Add and most other tree methods use tree-relative
+            paths.)
         :param action: A reporter to be called with the inventory, parent_ie,
             path and kind of the path being added. It may return a file_id if
             a specific one should be used.
@@ -397,6 +415,10 @@ class MutableTree(tree.Tree):
             # than trying to find the relevant conflict for each added file.
             for c in self.conflicts():
                 conflicts_related.update(c.associated_filenames())
+
+        # expand any symlinks in the directory part, while leaving the
+        # filename alone
+        file_list = map(osutils.normalizepath, file_list)
 
         # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
@@ -702,6 +724,17 @@ def _add_one(tree, inv, parent_ie, path, kind, file_id_callback):
         file_id or None to generate a new file id
     :returns: None
     """
+    # if the parent exists, but isn't a directory, we have to do the
+    # kind change now -- really the inventory shouldn't pretend to know
+    # the kind of wt files, but it does.
+    if parent_ie.kind != 'directory':
+        # nb: this relies on someone else checking that the path we're using
+        # doesn't contain symlinks.
+        new_parent_ie = inventory.make_entry('directory', parent_ie.name,
+            parent_ie.parent_id, parent_ie.file_id)
+        del inv[parent_ie.file_id]
+        inv.add(new_parent_ie)
+        parent_ie = new_parent_ie
     file_id = file_id_callback(inv, parent_ie, path, kind)
     entry = inv.make_entry(kind, path.base_path, parent_ie.file_id,
         file_id=file_id)

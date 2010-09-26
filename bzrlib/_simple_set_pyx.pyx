@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -114,6 +114,20 @@ cdef public api class SimpleSet [object SimpleSetObject, type SimpleSet_Type]:
         if self._table == NULL:
             raise MemoryError()
         memset(self._table, 0, n_bytes)
+
+    def __sizeof__(self):
+        # Note: Pyrex doesn't allow sizeof(class) so we re-implement it here.
+        # Bits are:
+        #   1: PyObject
+        #   2: vtable *
+        #   3: 3 Py_ssize_t
+        #   4: PyObject**
+        # Note that we might get alignment, etc, wrong, but at least this is
+        # better than no estimate at all
+        # return sizeof(SimpleSet) + (self._mask + 1) * (sizeof(PyObject*))
+        return (sizeof(PyObject) + sizeof(void*)
+                + 3*sizeof(Py_ssize_t) + sizeof(PyObject**)
+                + (self._mask + 1) * sizeof(PyObject*))
 
     def __dealloc__(self):
         if self._table != NULL:

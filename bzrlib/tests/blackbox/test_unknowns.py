@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,10 +18,10 @@
 
 """Black-box tests for 'bzr unknowns', which shows unknown files."""
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestUnknowns(ExternalBase):
+class TestUnknowns(TestCaseWithTransport):
 
     def test_unknowns(self):
         """Test that 'unknown' command reports unknown files"""
@@ -45,3 +45,10 @@ class TestUnknowns(ExternalBase):
         # after all added, none shown
         tree.add(['b', 'c'])
         self.assertEquals(self.run_bzr('unknowns')[0], '')
+
+    def test_unknowns_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('a')
+        self.build_tree(['a/README'])
+        out, err = self.run_bzr(['unknowns', '--directory=a'])
+        self.assertEquals('README\n', out)

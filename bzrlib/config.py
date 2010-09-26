@@ -65,6 +65,7 @@ up=pull
 import os
 import sys
 
+from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
@@ -74,13 +75,16 @@ from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
+    atomicfile,
     debug,
     errors,
+    lockdir,
     mail_client,
     osutils,
     registry,
     symbol_versioning,
     trace,
+    transport,
     ui,
     urlutils,
     win32utils,
@@ -193,7 +197,15 @@ class Config(object):
             interpreted as a boolean. Returns True or False otherwise.
         """
         s = self._get_user_option(option_name)
-        return ui.bool_from_string(s)
+        if s is None:
+            # The option doesn't exist
+            return None
+        val = ui.bool_from_string(s)
+        if val is None:
+            # The value can't be interpreted as a boolean
+            trace.warning('Value "%s" is not a boolean for "%s"',
+                          s, option_name)
+        return val
 
     def get_user_option_as_list(self, option_name):
         """Get a generic option as a list - no special process, no default.
@@ -249,12 +261,10 @@ class Config(object):
 
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
-        $BZR_EMAIL can be set to override this (as well as the
-        deprecated $BZREMAIL), then
+        $BZR_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
-        If none is found, a reasonable default is (hopefully)
-        created.
+        If no username can be found, errors.NoWhoami exception is raised.
 
         TODO: Check it's reasonably well-formed.
         """
@@ -270,11 +280,14 @@ class Config(object):
         if v:
             return v.decode(osutils.get_user_encoding())
 
-        name, email = _auto_user_id()
-        if name:
-            return '%s <%s>' % (name, email)
-        else:
-            return email
+        raise errors.NoWhoami()
+
+    def ensure_username(self):
+        """Raise errors.NoWhoami if username is not set.
+
+        This method relies on the username() function raising the error.
+        """
+        self.username()
 
     def signature_checking(self):
         """What is the current policy for signature checking?."""
@@ -342,23 +355,78 @@ class Config(object):
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
 
-    def __init__(self, get_filename):
+    def __init__(self, get_filename=symbol_versioning.DEPRECATED_PARAMETER,
+                 file_name=None):
+        """Base class for configuration files using an ini-like syntax.
+
+        :param file_name: The configuration file path.
+        """
         super(IniBasedConfig, self).__init__()
-        self._get_filename = get_filename
+        self.file_name = file_name
+        if symbol_versioning.deprecated_passed(get_filename):
+            symbol_versioning.warn(
+                'IniBasedConfig.__init__(get_filename) was deprecated in 2.3.'
+                ' Use file_name instead.',
+                DeprecationWarning,
+                stacklevel=2)
+            if get_filename is not None:
+                self.file_name = get_filename()
+        else:
+            self.file_name = file_name
+        self._content = None
         self._parser = None
 
-    def _get_parser(self, file=None):
+    @classmethod
+    def from_string(cls, str_or_unicode, file_name=None, save=False):
+        """Create a config object from a string.
+
+        :param str_or_unicode: A string representing the file content. This will
+            be utf-8 encoded.
+
+        :param file_name: The configuration file path.
+
+        :param _save: Whether the file should be saved upon creation.
+        """
+        conf = cls(file_name=file_name)
+        conf._create_from_string(str_or_unicode, save)
+        return conf
+
+    def _create_from_string(self, str_or_unicode, save):
+        self._content = StringIO(str_or_unicode.encode('utf-8'))
+        # Some tests use in-memory configs, some other always need the config
+        # file to exist on disk.
+        if save:
+            self._write_config_file()
+
+    def _get_parser(self, file=symbol_versioning.DEPRECATED_PARAMETER):
         if self._parser is not None:
             return self._parser
-        if file is None:
-            input = self._get_filename()
+        if symbol_versioning.deprecated_passed(file):
+            symbol_versioning.warn(
+                'IniBasedConfig._get_parser(file=xxx) was deprecated in 2.3.'
+                ' Use IniBasedConfig(_content=xxx) instead.',
+                DeprecationWarning,
+                stacklevel=2)
+        if self._content is not None:
+            co_input = self._content
+        elif self.file_name is None:
+            raise AssertionError('We have no content to create the config')
         else:
-            input = file
+            co_input = self.file_name
         try:
-            self._parser = ConfigObj(input, encoding='utf-8')
+            self._parser = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             raise errors.ParseConfigError(e.errors, e.config.filename)
+        # Make sure self.reload() will use the right file name
+        self._parser.filename = self.file_name
         return self._parser
+
+    def reload(self):
+        """Reload the config file from disk."""
+        if self.file_name is None:
+            raise AssertionError('We need a file name to reload the config')
+        if self._parser is not None:
+            self._parser.reload()
 
     def _get_matching_sections(self):
         """Return an ordered list of (section_name, extra_path) pairs.
@@ -468,16 +536,105 @@ class IniBasedConfig(Config):
     def _get_nickname(self):
         return self.get_user_option('nickname')
 
+    def _write_config_file(self):
+        if self.file_name is None:
+            raise AssertionError('We cannot save, self.file_name is None')
+        conf_dir = os.path.dirname(self.file_name)
+        ensure_config_dir_exists(conf_dir)
+        atomic_file = atomicfile.AtomicFile(self.file_name)
+        self._get_parser().write(atomic_file)
+        atomic_file.commit()
+        atomic_file.close()
+        osutils.copy_ownership_from_path(self.file_name)
 
-class GlobalConfig(IniBasedConfig):
+
+class LockableConfig(IniBasedConfig):
+    """A configuration needing explicit locking for access.
+
+    If several processes try to write the config file, the accesses need to be
+    serialized.
+
+    Daughter classes should decorate all methods that update a config with the
+    ``@needs_write_lock`` decorator (they call, directly or indirectly, the
+    ``_write_config_file()`` method. These methods (typically ``set_option()``
+    and variants must reload the config file from disk before calling
+    ``_write_config_file()``), this can be achieved by calling the
+    ``self.reload()`` method. Note that the lock scope should cover both the
+    reading and the writing of the config file which is why the decorator can't
+    be applied to ``_write_config_file()`` only.
+
+    This should be enough to implement the following logic:
+    - lock for exclusive write access,
+    - reload the config file from disk,
+    - set the new value
+    - unlock
+
+    This logic guarantees that a writer can update a value without erasing an
+    update made by another writer.
+    """
+
+    lock_name = 'lock'
+
+    def __init__(self, file_name):
+        super(LockableConfig, self).__init__(file_name=file_name)
+        self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
+        self.transport = transport.get_transport(self.dir)
+        self._lock = lockdir.LockDir(self.transport, 'lock')
+
+    def _create_from_string(self, unicode_bytes, save):
+        super(LockableConfig, self)._create_from_string(unicode_bytes, False)
+        if save:
+            # We need to handle the saving here (as opposed to IniBasedConfig)
+            # to be able to lock
+            self.lock_write()
+            self._write_config_file()
+            self.unlock()
+
+    def lock_write(self, token=None):
+        """Takes a write lock in the directory containing the config file.
+
+        If the directory doesn't exist it is created.
+        """
+        ensure_config_dir_exists(self.dir)
+        return self._lock.lock_write(token)
+
+    def unlock(self):
+        self._lock.unlock()
+
+    def break_lock(self):
+        self._lock.break_lock()
+
+    def _write_config_file(self):
+        if self._lock is None or not self._lock.is_held:
+            # NB: if the following exception is raised it probably means a
+            # missing @needs_write_lock decorator on one of the callers.
+            raise errors.ObjectNotLocked(self)
+        super(LockableConfig, self)._write_config_file()
+
+
+class GlobalConfig(LockableConfig):
     """The configuration that should be used for a specific location."""
+
+    def __init__(self):
+        super(GlobalConfig, self).__init__(file_name=config_filename())
+
+    @classmethod
+    def from_string(cls, str_or_unicode, save=False):
+        """Create a config object from a string.
+
+        :param str_or_unicode: A string representing the file content. This
+            will be utf-8 encoded.
+
+        :param save: Whether the file should be saved upon creation.
+        """
+        conf = cls()
+        conf._create_from_string(str_or_unicode, save)
+        return conf
 
     def get_editor(self):
         return self._get_user_option('editor')
 
-    def __init__(self):
-        super(GlobalConfig, self).__init__(config_filename)
-
+    @needs_write_lock
     def set_user_option(self, option, value):
         """Save option and its value in the configuration."""
         self._set_option(option, value, 'DEFAULT')
@@ -489,12 +646,15 @@ class GlobalConfig(IniBasedConfig):
         else:
             return {}
 
+    @needs_write_lock
     def set_alias(self, alias_name, alias_command):
         """Save the alias in the configuration."""
         self._set_option(alias_name, alias_command, 'ALIASES')
 
+    @needs_write_lock
     def unset_alias(self, alias_name):
         """Unset an existing alias."""
+        self.reload()
         aliases = self._get_parser().get('ALIASES')
         if not aliases or alias_name not in aliases:
             raise errors.NoSuchAlias(alias_name)
@@ -502,41 +662,38 @@ class GlobalConfig(IniBasedConfig):
         self._write_config_file()
 
     def _set_option(self, option, value, section):
-        # FIXME: RBC 20051029 This should refresh the parser and also take a
-        # file lock on bazaar.conf.
-        conf_dir = os.path.dirname(self._get_filename())
-        ensure_config_dir_exists(conf_dir)
+        self.reload()
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
 
-    def _write_config_file(self):
-        f = open(self._get_filename(), 'wb')
-        self._get_parser().write(f)
-        f.close()
 
-
-class LocationConfig(IniBasedConfig):
+class LocationConfig(LockableConfig):
     """A configuration object that gives the policy for a location."""
 
     def __init__(self, location):
-        name_generator = locations_config_filename
-        if (not os.path.exists(name_generator()) and
-                os.path.exists(branches_config_filename())):
-            if sys.platform == 'win32':
-                trace.warning('Please rename %s to %s'
-                              % (branches_config_filename(),
-                                 locations_config_filename()))
-            else:
-                trace.warning('Please rename ~/.bazaar/branches.conf'
-                              ' to ~/.bazaar/locations.conf')
-            name_generator = branches_config_filename
-        super(LocationConfig, self).__init__(name_generator)
+        super(LocationConfig, self).__init__(
+            file_name=locations_config_filename())
         # local file locations are looked up by local path, rather than
         # by file url. This is because the config file is a user
         # file, and we would rather not expose the user to file urls.
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
         self.location = location
+
+    @classmethod
+    def from_string(cls, str_or_unicode, location, save=False):
+        """Create a config object from a string.
+
+        :param str_or_unicode: A string representing the file content. This will
+            be utf-8 encoded.
+
+        :param location: The location url to filter the configuration.
+
+        :param save: Whether the file should be saved upon creation.
+        """
+        conf = cls(location)
+        conf._create_from_string(str_or_unicode, save)
+        return conf
 
     def _get_matching_sections(self):
         """Return an ordered list of section names matching this location."""
@@ -631,6 +788,7 @@ class LocationConfig(IniBasedConfig):
             if policy_key in self._get_parser()[section]:
                 del self._get_parser()[section][policy_key]
 
+    @needs_write_lock
     def set_user_option(self, option, value, store=STORE_LOCATION):
         """Save option and its value in the configuration."""
         if store not in [STORE_LOCATION,
@@ -638,26 +796,33 @@ class LocationConfig(IniBasedConfig):
                          STORE_LOCATION_APPENDPATH]:
             raise ValueError('bad storage policy %r for %r' %
                 (store, option))
-        # FIXME: RBC 20051029 This should refresh the parser and also take a
-        # file lock on locations.conf.
-        conf_dir = os.path.dirname(self._get_filename())
-        ensure_config_dir_exists(conf_dir)
+        self.reload()
         location = self.location
         if location.endswith('/'):
             location = location[:-1]
-        if (not location in self._get_parser() and
-            not location + '/' in self._get_parser()):
-            self._get_parser()[location]={}
-        elif location + '/' in self._get_parser():
+        parser = self._get_parser()
+        if not location in parser and not location + '/' in parser:
+            parser[location] = {}
+        elif location + '/' in parser:
             location = location + '/'
-        self._get_parser()[location][option]=value
+        parser[location][option]=value
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
-        self._get_parser().write(file(self._get_filename(), 'wb'))
+        self._write_config_file()
 
 
 class BranchConfig(Config):
     """A configuration object giving the policy for a branch."""
+
+    def __init__(self, branch):
+        super(BranchConfig, self).__init__()
+        self._location_config = None
+        self._branch_data_config = None
+        self._global_config = None
+        self.branch = branch
+        self.option_sources = (self._get_location_config,
+                               self._get_branch_data_config,
+                               self._get_global_config)
 
     def _get_branch_data_config(self):
         if self._branch_data_config is None:
@@ -762,16 +927,6 @@ class BranchConfig(Config):
         """See Config.gpg_signing_command."""
         return self._get_safe_value('_gpg_signing_command')
 
-    def __init__(self, branch):
-        super(BranchConfig, self).__init__()
-        self._location_config = None
-        self._branch_data_config = None
-        self._global_config = None
-        self.branch = branch
-        self.option_sources = (self._get_location_config,
-                               self._get_branch_data_config,
-                               self._get_global_config)
-
     def _post_commit(self):
         """See Config.post_commit."""
         return self._get_safe_value('_post_commit')
@@ -810,6 +965,7 @@ def ensure_config_dir_exists(path=None):
             os.mkdir(parent_dir)
         trace.mutter('creating config directory: %r', path)
         os.mkdir(path)
+        osutils.copy_ownership_from_path(path)
 
 
 def config_dir():
@@ -830,7 +986,6 @@ def config_dir():
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
     else:
-        # cygwin, linux, and darwin all have a $HOME directory
         if base is None:
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, ".bazaar")
@@ -839,11 +994,6 @@ def config_dir():
 def config_filename():
     """Return per-user configuration ini file filename."""
     return osutils.pathjoin(config_dir(), 'bazaar.conf')
-
-
-def branches_config_filename():
-    """Return per-user configuration ini file filename."""
-    return osutils.pathjoin(config_dir(), 'branches.conf')
 
 
 def locations_config_filename():
@@ -886,79 +1036,6 @@ def xdg_cache_dir():
         return e
     else:
         return os.path.expanduser('~/.cache')
-
-
-def _auto_user_id():
-    """Calculate automatic user identification.
-
-    Returns (realname, email).
-
-    Only used when none is set in the environment or the id file.
-
-    This previously used the FQDN as the default domain, but that can
-    be very slow on machines where DNS is broken.  So now we simply
-    use the hostname.
-    """
-    import socket
-
-    if sys.platform == 'win32':
-        name = win32utils.get_user_name_unicode()
-        if name is None:
-            raise errors.BzrError("Cannot autodetect user name.\n"
-                                  "Please, set your name with command like:\n"
-                                  'bzr whoami "Your Name <name@domain.com>"')
-        host = win32utils.get_host_name_unicode()
-        if host is None:
-            host = socket.gethostname()
-        return name, (name + '@' + host)
-
-    try:
-        import pwd
-        uid = os.getuid()
-        try:
-            w = pwd.getpwuid(uid)
-        except KeyError:
-            raise errors.BzrCommandError('Unable to determine your name.  '
-                'Please use "bzr whoami" to set it.')
-
-        # we try utf-8 first, because on many variants (like Linux),
-        # /etc/passwd "should" be in utf-8, and because it's unlikely to give
-        # false positives.  (many users will have their user encoding set to
-        # latin-1, which cannot raise UnicodeError.)
-        try:
-            gecos = w.pw_gecos.decode('utf-8')
-            encoding = 'utf-8'
-        except UnicodeError:
-            try:
-                encoding = osutils.get_user_encoding()
-                gecos = w.pw_gecos.decode(encoding)
-            except UnicodeError:
-                raise errors.BzrCommandError('Unable to determine your name.  '
-                   'Use "bzr whoami" to set it.')
-        try:
-            username = w.pw_name.decode(encoding)
-        except UnicodeError:
-            raise errors.BzrCommandError('Unable to determine your name.  '
-                'Use "bzr whoami" to set it.')
-
-        comma = gecos.find(',')
-        if comma == -1:
-            realname = gecos
-        else:
-            realname = gecos[:comma]
-        if not realname:
-            realname = username
-
-    except ImportError:
-        import getpass
-        try:
-            user_encoding = osutils.get_user_encoding()
-            realname = username = getpass.getuser().decode(user_encoding)
-        except UnicodeDecodeError:
-            raise errors.BzrError("Can't decode username as %s." % \
-                    user_encoding)
-
-    return realname, (username + '@' + socket.gethostname())
 
 
 def parse_username(username):
@@ -1052,7 +1129,11 @@ class AuthenticationConfig(object):
         """Save the config file, only tests should use it for now."""
         conf_dir = os.path.dirname(self._filename)
         ensure_config_dir_exists(conf_dir)
-        self._get_config().write(file(self._filename, 'wb'))
+        f = file(self._filename, 'wb')
+        try:
+            self._get_config().write(f)
+        finally:
+            f.close()
 
     def _set_option(self, section_name, option_name, value):
         """Set an authentication configuration option"""
@@ -1406,7 +1487,7 @@ class CredentialStore(object):
 
 
 class PlainTextCredentialStore(CredentialStore):
-    """Plain text credential store for the authentication.conf file."""
+    __doc__ = """Plain text credential store for the authentication.conf file"""
 
     def decode_password(self, credentials):
         """See CredentialStore.decode_password."""
@@ -1506,7 +1587,11 @@ class TransportConfig(object):
             return StringIO()
 
     def _get_configobj(self):
-        return ConfigObj(self._get_config_file(), encoding='utf-8')
+        f = self._get_config_file()
+        try:
+            return ConfigObj(f, encoding='utf-8')
+        finally:
+            f.close()
 
     def _set_configobj(self, configobj):
         out_file = StringIO()

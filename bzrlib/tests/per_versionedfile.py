@@ -31,6 +31,7 @@ from bzrlib import (
     knit as _mod_knit,
     osutils,
     progress,
+    transport,
     ui,
     )
 from bzrlib.errors import (
@@ -56,7 +57,6 @@ from bzrlib.tests import (
     )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.tsort import topo_sort
 from bzrlib.tuned_gzip import GzipFile
@@ -849,10 +849,10 @@ class VersionedFileTestMixIn(object):
         self.assertEquals(('references_ghost', 'line_c\n'), origins[2])
 
     def test_readonly_mode(self):
-        transport = get_transport(self.get_url('.'))
+        t = transport.get_transport(self.get_url('.'))
         factory = self.get_factory()
-        vf = factory('id', transport, 0777, create=True, access_mode='w')
-        vf = factory('id', transport, access_mode='r')
+        vf = factory('id', t, 0777, create=True, access_mode='w')
+        vf = factory('id', t, access_mode='r')
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'base', [], [])
         self.assertRaises(errors.ReadOnlyError,
                           vf.add_lines_with_ghosts,
@@ -880,12 +880,14 @@ class VersionedFileTestMixIn(object):
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, get_transport(self.get_url('.')), create=True,
-            get_scope=self.get_transaction)
+        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+                         create=True,
+                         get_scope=self.get_transaction)
 
     def get_file_corrupted_text(self):
-        w = WeaveFile('foo', get_transport(self.get_url('.')), create=True,
-            get_scope=self.get_transaction)
+        w = WeaveFile('foo', transport.get_transport(self.get_url('.')),
+                      create=True,
+                      get_scope=self.get_transaction)
         w.add_lines('v1', [], ['hello\n'])
         w.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
 
@@ -919,14 +921,15 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         return w
 
     def reopen_file(self, name='foo', create=False):
-        return WeaveFile(name, get_transport(self.get_url('.')), create=create,
-            get_scope=self.get_transaction)
+        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+                         create=create,
+                         get_scope=self.get_transaction)
 
     def test_no_implicit_create(self):
         self.assertRaises(errors.NoSuchFile,
                           WeaveFile,
                           'foo',
-                          get_transport(self.get_url('.')),
+                          transport.get_transport(self.get_url('.')),
                           get_scope=self.get_transaction)
 
     def get_factory(self):
@@ -999,13 +1002,20 @@ class TestReadonlyHttpMixin(object):
         # we should be able to read from http with a versioned file.
         vf = self.get_file()
         # try an empty file access
-        readonly_vf = self.get_factory()('foo', get_transport(self.get_readonly_url('.')))
+        readonly_vf = self.get_factory()('foo', transport.get_transport(
+                self.get_readonly_url('.')))
         self.assertEqual([], readonly_vf.versions())
+
+    def test_readonly_http_works_with_feeling(self):
+        # we should be able to read from http with a versioned file.
+        vf = self.get_file()
         # now with feeling.
         vf.add_lines('1', [], ['a\n'])
         vf.add_lines('2', ['1'], ['b\n', 'a\n'])
-        readonly_vf = self.get_factory()('foo', get_transport(self.get_readonly_url('.')))
+        readonly_vf = self.get_factory()('foo', transport.get_transport(
+                self.get_readonly_url('.')))
         self.assertEqual(['1', '2'], vf.versions())
+        self.assertEqual(['1', '2'], readonly_vf.versions())
         for version in readonly_vf.versions():
             readonly_vf.get_lines(version)
 
@@ -1013,8 +1023,9 @@ class TestReadonlyHttpMixin(object):
 class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_file(self):
-        return WeaveFile('foo', get_transport(self.get_url('.')), create=True,
-            get_scope=self.get_transaction)
+        return WeaveFile('foo', transport.get_transport(self.get_url('.')),
+                         create=True,
+                         get_scope=self.get_transaction)
 
     def get_factory(self):
         return WeaveFile
@@ -1264,7 +1275,8 @@ class MergeCasesMixin(object):
 class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, get_transport(self.get_url('.')), create=True)
+        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+                         create=True)
 
     def log_contents(self, w):
         self.log('weave is:')

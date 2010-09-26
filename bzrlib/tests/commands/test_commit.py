@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ class TestCommitWithBoundBranch(
         # commit do not provide a directory parameter, we have to change dir
         # manually
         os.chdir('local')
-        commit.run_direct(message=u'empty commit', unchanged=True)
+        commit.run(message=u'empty commit', unchanged=True)
         self.assertEquals(1, len(self.connections))
 
     def test_commit_both_modified(self):
@@ -53,8 +53,7 @@ class TestCommitWithBoundBranch(
         # commit do not provide a directory parameter, we have to change dir
         # manually
         os.chdir('local')
-        # cmd_commit translates BoundBranchOutOfDate into BzrCommandError
-        self.assertRaises(errors.BzrCommandError, commit.run,
+        self.assertRaises(errors.BoundBranchOutOfDate, commit.run,
                           message=u'empty commit', unchanged=True)
         self.assertEquals(1, len(self.connections))
 

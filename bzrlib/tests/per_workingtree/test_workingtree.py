@@ -236,7 +236,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         revid = b.revision_history()[0]
         self.log('first revision_id is {%s}' % revid)
 
-        inv = b.repository.get_revision_inventory(revid)
+        inv = b.repository.get_inventory(revid)
         self.log('contents of inventory: %r' % inv.entries())
 
         self.check_inventory_shape(inv,
@@ -423,7 +423,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         made_control = self.bzrdir_format.initialize('new')
         source.branch.repository.clone(made_control)
         source.branch.clone(made_control)
-        made_tree = self.workingtree_format.initialize(made_control, revision_id='a')
+        made_tree = self.workingtree_format.initialize(made_control,
+            revision_id='a')
         self.assertEqual(['a'], made_tree.get_parent_ids())
 
     def test_update_sets_last_revision(self):
@@ -447,7 +448,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        branch.BranchReferenceFormat().initialize(checkout,
+            target_branch=main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -514,7 +516,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # current format
         self.build_tree(['checkout/', 'tree/file'])
         checkout = bzrdir.BzrDirMetaFormat1().initialize('checkout')
-        branch.BranchReferenceFormat().initialize(checkout, main_branch)
+        branch.BranchReferenceFormat().initialize(checkout,
+            target_branch=main_branch)
         old_tree = self.workingtree_format.initialize(checkout)
         # now commit to 'tree'
         wt.add('file')
@@ -612,7 +615,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         rev1 = wt.commit('first master commit')
         self.build_tree_contents([('wt/a', 'new content')])
         rev2 = wt.commit('second master commit')
-        # https://bugs.edge.launchpad.net/bzr/+bug/45719/comments/20
+        # https://bugs.launchpad.net/bzr/+bug/45719/comments/20
         # when adding 'update -r' we should make sure all wt formats support
         # it
         conflicts = wt.update(revision=rev1)
@@ -1088,3 +1091,16 @@ class TestIllegalPaths(TestCaseWithWorkingTree):
         # We should display the relative path
         self.assertEqual('subdir/m\xb5', e.filename)
         self.assertEqual(osutils._fs_enc, e.fs_encoding)
+
+
+class TestControlComponent(TestCaseWithWorkingTree):
+    """WorkingTree implementations adequately implement ControlComponent."""
+    
+    def test_urls(self):
+        wt = self.make_branch_and_tree('wt')
+        self.assertIsInstance(wt.user_url, str)
+        self.assertEqual(wt.user_url, wt.user_transport.base)
+        # for all current bzrdir implementations the user dir must be 
+        # above the control dir but we might need to relax that?
+        self.assertEqual(wt.control_url.find(wt.user_url), 0)
+        self.assertEqual(wt.control_url, wt.control_transport.base)

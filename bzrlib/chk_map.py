@@ -90,8 +90,6 @@ def clear_cache():
 _INTERESTING_NEW_SIZE = 50
 # If a ChildNode shrinks by more than this amount, we check for a remap
 _INTERESTING_SHRINKAGE_LIMIT = 20
-# If we delete more than this many nodes applying a delta, we check for a remap
-_INTERESTING_DELETES_LIMIT = 5
 
 
 def _search_key_plain(key):
@@ -135,7 +133,7 @@ class CHKMap(object):
             into the map; if old_key is not None, then the old mapping
             of old_key is removed.
         """
-        delete_count = 0
+        has_deletes = False
         # Check preconditions first.
         as_st = StaticTuple.from_sequence
         new_items = set([as_st(key) for (old, key, value) in delta
@@ -148,12 +146,11 @@ class CHKMap(object):
         for old, new, value in delta:
             if old is not None and old != new:
                 self.unmap(old, check_remap=False)
-                delete_count += 1
+                has_deletes = True
         for old, new, value in delta:
             if new is not None:
                 self.map(new, value)
-        if delete_count > _INTERESTING_DELETES_LIMIT:
-            trace.mutter("checking remap as %d deletions", delete_count)
+        if has_deletes:
             self._check_remap()
         return self._save()
 
@@ -573,7 +570,7 @@ class CHKMap(object):
         """Check if nodes can be collapsed."""
         self._ensure_root()
         if type(self._root_node) is InternalNode:
-            self._root_node._check_remap(self._store)
+            self._root_node = self._root_node._check_remap(self._store)
 
     def _save(self):
         """Save the map completely.
@@ -692,13 +689,12 @@ class LeafNode(Node):
         the key/value pairs.
     """
 
-    __slots__ = ('_common_serialised_prefix', '_serialise_key')
+    __slots__ = ('_common_serialised_prefix',)
 
     def __init__(self, search_key_func=None):
         Node.__init__(self)
         # All of the keys in this leaf node share this common prefix
         self._common_serialised_prefix = None
-        self._serialise_key = '\x00'.join
         if search_key_func is None:
             self._search_key_func = _search_key_plain
         else:
@@ -887,6 +883,8 @@ class LeafNode(Node):
             if self._search_prefix is _unknown:
                 raise AssertionError('%r must be known' % self._search_prefix)
             return self._search_prefix, [("", self)]
+
+    _serialise_key = '\x00'.join
 
     def serialise(self, store):
         """Serialise the LeafNode to store.
@@ -1726,6 +1724,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
 
 try:
     from bzrlib._chk_map_pyx import (
+        _bytes_to_text_key,
         _search_key_16,
         _search_key_255,
         _deserialise_leaf_node,
@@ -1734,6 +1733,7 @@ try:
 except ImportError, e:
     osutils.failed_to_load_extension(e)
     from bzrlib._chk_map_py import (
+        _bytes_to_text_key,
         _search_key_16,
         _search_key_255,
         _deserialise_leaf_node,

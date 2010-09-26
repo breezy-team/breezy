@@ -171,3 +171,54 @@ class TestUnsupportedTags(per_branch.TestCaseWithBranch):
         b1 = self.make_branch('b1')
         b2 = self.make_branch('b2')
         b1.tags.merge_to(b2.tags)
+
+
+class AutomaticTagNameTests(per_branch.TestCaseWithBranch):
+
+    def setUp(self):
+        super(AutomaticTagNameTests, self).setUp()
+        if isinstance(self.branch_format, branch.BranchReferenceFormat):
+            # This test could in principle apply to BranchReferenceFormat, but
+            # make_branch_builder doesn't support it.
+            raise tests.TestSkipped(
+                "BranchBuilder can't make reference branches.")
+        self.builder = self.make_branch_builder('.')
+        self.builder.build_snapshot('foo', None,
+            [('add', ('', None, 'directory', None))],
+            message='foo')
+        self.branch = self.builder.get_branch()
+        if not self.branch._format.supports_tags():
+            raise tests.TestSkipped(
+                "format %s doesn't support tags" % self.branch._format)
+
+    def test_no_functions(self):
+        rev = self.branch.last_revision()
+        self.assertEquals(None, self.branch.automatic_tag_name(rev))
+
+    def test_returns_tag_name(self):
+        def get_tag_name(br, revid):
+            return "foo"
+        branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name, 'get tag name foo')
+        self.assertEquals("foo", self.branch.automatic_tag_name(
+            self.branch.last_revision()))
+    
+    def test_uses_first_return(self):
+        get_tag_name_1 = lambda br, revid: "foo1"
+        get_tag_name_2 = lambda br, revid: "foo2"
+        branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_1, 'tagname1')
+        branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_2, 'tagname2')
+        self.assertEquals("foo1", self.branch.automatic_tag_name(
+            self.branch.last_revision()))
+
+    def test_ignores_none(self):
+        get_tag_name_1 = lambda br, revid: None
+        get_tag_name_2 = lambda br, revid: "foo2"
+        branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_1, 'tagname1')
+        branch.Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name_2, 'tagname2')
+        self.assertEquals("foo2", self.branch.automatic_tag_name(
+            self.branch.last_revision()))

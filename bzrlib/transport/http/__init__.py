@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -628,6 +628,11 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
         activity that this medium would report.
         """
         pass
+
+    def disconnect(self):
+        """See SmartClientMedium.disconnect()."""
+        t = self._http_transport_ref()
+        t.disconnect()
 
 
 # TODO: May be better located in smart/medium.py with the other

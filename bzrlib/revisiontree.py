@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,9 +20,7 @@ from cStringIO import StringIO
 
 from bzrlib import (
     errors,
-    osutils,
     revision,
-    symbol_versioning,
     tree,
     )
 
@@ -176,8 +174,12 @@ class RevisionTree(tree.Tree):
         return set(self._repository.get_ancestry(self._revision_id,
                                                  topo_sorted=False))
 
+    def is_locked(self):
+        return self._repository.is_locked()
+
     def lock_read(self):
         self._repository.lock_read()
+        return self
 
     def __repr__(self):
         return '<%s instance at %x, rev_id=%r>' % (

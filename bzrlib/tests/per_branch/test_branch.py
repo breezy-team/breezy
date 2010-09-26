@@ -19,6 +19,7 @@
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
+    config,
     delta as _mod_delta,
     errors,
     gpg,
@@ -379,6 +380,23 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(committed.properties["branch-nick"],
                          "My happy branch")
 
+    def test_create_colocated(self):
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        self.assertEquals(0, len(repo.bzrdir.list_branches()))
+        try:
+            child_branch1 = self.branch_format.initialize(repo.bzrdir, 
+                name='branch1')
+        except (errors.UninitializableFormat, errors.NoColocatedBranchSupport):
+            # branch references are not default init'able and
+            # not all bzrdirs support colocated branches.
+            return
+        self.assertEquals(1, len(repo.bzrdir.list_branches()))
+        self.branch_format.initialize(repo.bzrdir, name='branch2')
+        self.assertEquals(2, len(repo.bzrdir.list_branches()))
+
     def test_create_open_branch_uses_repository(self):
         try:
             repo = self.make_repository('.', shared=True)
@@ -600,13 +618,9 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
         self.assertEqual(None, self.get_branch().get_push_location())
 
     def test_get_push_location_exact(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
-        open(fn, 'wt').write(("[%s]\n"
-                                  "push_location=foo\n" %
-                                  self.get_branch().base[:-1]))
+        b = self.get_branch()
+        config.LocationConfig.from_string(
+            '[%s]\npush_location=foo\n' % (b.base,), b.base, save=True)
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
@@ -651,7 +665,8 @@ class TestFormat(per_branch.TestCaseWithBranch):
         this_branch = self.make_branch('this')
         other_branch = self.make_branch('other')
         try:
-            this_branch._format.set_reference(this_branch.bzrdir, other_branch)
+            this_branch._format.set_reference(this_branch.bzrdir, None,
+                other_branch)
         except NotImplementedError:
             # that's ok
             pass
@@ -971,3 +986,16 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         merger.do_merge()
         self.assertEqual('../branch/reference',
                          tree.branch.get_reference_info('file-id')[1])
+
+
+class TestBranchControlComponent(per_branch.TestCaseWithBranch):
+    """Branch implementations adequately implement ControlComponent."""
+    
+    def test_urls(self):
+        br = self.make_branch('branch')
+        self.assertIsInstance(br.user_url, str)
+        self.assertEqual(br.user_url, br.user_transport.base)
+        # for all current bzrdir implementations the user dir must be 
+        # above the control dir but we might need to relax that?
+        self.assertEqual(br.control_url.find(br.user_url), 0)
+        self.assertEqual(br.control_url, br.control_transport.base)

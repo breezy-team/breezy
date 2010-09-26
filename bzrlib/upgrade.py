@@ -28,22 +28,29 @@ class Convert(object):
     def __init__(self, url, format=None):
         self.format = format
         self.bzrdir = BzrDir.open_unsupported(url)
+        # XXX: Change to cleanup
+        warning_id = 'cross_format_fetch'
+        saved_warning = warning_id in ui.ui_factory.suppressed_warnings
         if isinstance(self.bzrdir, RemoteBzrDir):
             self.bzrdir._ensure_real()
             self.bzrdir = self.bzrdir._real_bzrdir
         if self.bzrdir.root_transport.is_readonly():
             raise errors.UpgradeReadonly
         self.transport = self.bzrdir.root_transport
-        self.convert()
+        ui.ui_factory.suppressed_warnings.add(warning_id)
+        try:
+            self.convert()
+        finally:
+            if not saved_warning:
+                ui.ui_factory.suppressed_warnings.remove(warning_id)
 
     def convert(self):
         try:
             branch = self.bzrdir.open_branch()
-            if branch.bzrdir.root_transport.base != \
-                self.bzrdir.root_transport.base:
+            if branch.user_url != self.bzrdir.user_url:
                 ui.ui_factory.note("This is a checkout. The branch (%s) needs to be "
                              "upgraded separately." %
-                             branch.bzrdir.root_transport.base)
+                             branch.user_url)
             del branch
         except (errors.NotBranchError, errors.IncompatibleRepositories):
             # might not be a format we can open without upgrading; see e.g.

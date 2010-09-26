@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -737,7 +737,7 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
 
     def test_trailing_garbage(self):
         tree, state, expected = self.create_basic_dirstate()
-        # On Linux, we can write extra data as long as we haven't read yet, but
+        # On Unix, we can write extra data as long as we haven't read yet, but
         # on Win32, if you've opened the file with FILE_SHARE_READ, trying to
         # open it in append mode will fail.
         state.unlock()

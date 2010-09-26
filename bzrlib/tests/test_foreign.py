@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     foreign,
     lockable_files,
@@ -90,6 +91,7 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         self._format = _format
         self._base = a_bzrdir.transport.base
         self._ignore_fallbacks = False
+        self.bzrdir = a_bzrdir
         foreign.ForeignBranch.__init__(self, 
             DummyForeignVcsMapping(DummyForeignVcs()))
         branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir, 
@@ -171,11 +173,11 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
         super(DummyForeignVcsBranchFormat, self).__init__()
         self._matchingbzrdir = DummyForeignVcsDirFormat()
 
-    def open(self, a_bzrdir, _found=False):
+    def open(self, a_bzrdir, name=None, _found=False):
         if not _found:
             raise NotImplementedError
         try:
-            transport = a_bzrdir.get_branch_transport(None)
+            transport = a_bzrdir.get_branch_transport(None, name=name)
             control_files = lockable_files.LockableFiles(transport, 'lock',
                                                          lockdir.LockDir)
             return DummyForeignVcsBranch(_format=self,
@@ -203,13 +205,6 @@ class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
 
     def get_branch_format(self):
         return DummyForeignVcsBranchFormat()
-
-    @classmethod
-    def probe_transport(klass, transport):
-        """Return the .bzrdir style format present in a directory."""
-        if not transport.has('.dummy'):
-            raise errors.NotBranchError(path=transport.base)
-        return klass()
 
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
@@ -243,7 +238,9 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
         self._control_files = lockable_files.LockableFiles(self.transport,
             "lock", lockable_files.TransportLock)
 
-    def open_branch(self, ignore_fallbacks=True):
+    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True):
+        if name is not None:
+            raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().open(self, _found=True)
 
     def cloning_metadir(self, stacked=False):
@@ -263,14 +260,27 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
 
 def register_dummy_foreign_for_test(testcase):
-    bzrdir.BzrDirFormat.register_control_format(DummyForeignVcsDirFormat)
-    testcase.addCleanup(bzrdir.BzrDirFormat.unregister_control_format,
+    controldir.ControlDirFormat.register_format(DummyForeignVcsDirFormat)
+    testcase.addCleanup(controldir.ControlDirFormat.unregister_format,
                         DummyForeignVcsDirFormat)
+    controldir.ControlDirFormat.register_prober(DummyForeignProber)
+    testcase.addCleanup(controldir.ControlDirFormat.unregister_prober,
+        DummyForeignProber)
     # We need to register the optimiser to make the dummy appears really
     # different from a regular bzr repository.
     branch.InterBranch.register_optimiser(InterToDummyVcsBranch)
     testcase.addCleanup(branch.InterBranch.unregister_optimiser,
                         InterToDummyVcsBranch)
+
+
+class DummyForeignProber(controldir.Prober):
+
+    @classmethod
+    def probe_transport(klass, transport):
+        """Return the .bzrdir style format present in a directory."""
+        if not transport.has('.dummy'):
+            raise errors.NotBranchError(path=transport.base)
+        return DummyForeignVcsDirFormat()
 
 
 class ForeignVcsRegistryTests(tests.TestCase):

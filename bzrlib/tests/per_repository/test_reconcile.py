@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,10 @@
 
 
 import bzrlib
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    transport,
+    )
 from bzrlib.inventory import Inventory
 from bzrlib.reconcile import reconcile, Reconciler
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit
@@ -30,7 +33,6 @@ from bzrlib.tests.per_repository.helpers import (
 from bzrlib.tests.per_repository import (
     TestCaseWithRepository,
     )
-from bzrlib.transport import get_transport
 from bzrlib.uncommit import uncommit
 
 
@@ -59,7 +61,7 @@ class TestsNeedingReweave(TestReconcile):
     def setUp(self):
         super(TestsNeedingReweave, self).setUp()
 
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         # an empty inventory with no revision for testing with.
         repo = self.make_repository('inventory_without_revision')
         repo.lock_write()
@@ -310,7 +312,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         self.reduceLockdirTimeout()
         super(TestReconcileWithIncorrectRevisionCache, self).setUp()
 
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         # we need a revision with two parents in the wrong order
         # which should trigger reinsertion.
         # and another with the first one correct but the other two not
@@ -379,7 +381,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def test_reconcile_wrong_order(self):
         # a wrong order in primary parents is optionally correctable
-        t = get_transport(self.get_url()).clone('wrong-first-parent')
+        t = transport.get_transport(self.get_url()).clone('wrong-first-parent')
         d = bzrlib.bzrdir.BzrDir.open_from_transport(t)
         repo = d.open_repository()
         repo.lock_read()
@@ -408,7 +410,8 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def test_reconcile_wrong_order_secondary_inventory(self):
         # a wrong order in the parents for inventories is ignored.
-        t = get_transport(self.get_url()).clone('reversed-secondary-parents')
+        t = transport.get_transport(self.get_url()
+                                    ).clone('reversed-secondary-parents')
         d = bzrlib.bzrdir.BzrDir.open_from_transport(t)
         repo = d.open_repository()
         self.checkUnreconciled(d, repo.reconcile())

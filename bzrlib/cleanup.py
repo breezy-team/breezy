@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -78,7 +78,28 @@ def _run_cleanups(funcs):
         _run_cleanup(func, *args, **kwargs)
 
 
-class OperationWithCleanups(object):
+class ObjectWithCleanups(object):
+    """A mixin for objects that hold a cleanup list.
+
+    Subclass or client code can call add_cleanup and then later `cleanup_now`.
+    """
+    def __init__(self):
+        self.cleanups = deque()
+
+    def add_cleanup(self, cleanup_func, *args, **kwargs):
+        """Add a cleanup to run.
+
+        Cleanups may be added at any time.  
+        Cleanups will be executed in LIFO order.
+        """
+        self.cleanups.appendleft((cleanup_func, args, kwargs))
+
+    def cleanup_now(self):
+        _run_cleanups(self.cleanups)
+        self.cleanups.clear()
+
+
+class OperationWithCleanups(ObjectWithCleanups):
     """A way to run some code with a dynamic cleanup list.
 
     This provides a way to add cleanups while the function-with-cleanups is
@@ -102,16 +123,8 @@ class OperationWithCleanups(object):
     """
 
     def __init__(self, func):
+        super(OperationWithCleanups, self).__init__()
         self.func = func
-        self.cleanups = deque()
-
-    def add_cleanup(self, cleanup_func, *args, **kwargs):
-        """Add a cleanup to run.
-
-        Cleanups may be added at any time before or during the execution of
-        self.func.  Cleanups will be executed in LIFO order.
-        """
-        self.cleanups.appendleft((cleanup_func, args, kwargs))
 
     def run(self, *args, **kwargs):
         return _do_with_cleanups(
@@ -120,10 +133,6 @@ class OperationWithCleanups(object):
     def run_simple(self, *args, **kwargs):
         return _do_with_cleanups(
             self.cleanups, self.func, *args, **kwargs)
-
-    def cleanup_now(self):
-        _run_cleanups(self.cleanups)
-        self.cleanups.clear()
 
 
 def _do_with_cleanups(cleanup_funcs, func, *args, **kwargs):

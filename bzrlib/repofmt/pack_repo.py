@@ -49,6 +49,7 @@ from bzrlib import tsort
 """)
 from bzrlib import (
     bzrdir,
+    btree_index,
     errors,
     lockable_files,
     lockdir,
@@ -56,19 +57,17 @@ from bzrlib import (
     )
 
 from bzrlib.decorators import needs_write_lock, only_raises
-from bzrlib.btree_index import (
-    BTreeGraphIndex,
-    BTreeBuilder,
-    )
 from bzrlib.index import (
     GraphIndex,
     InMemoryGraphIndex,
     )
+from bzrlib.lock import LogicalLockResult
 from bzrlib.repofmt.knitrepo import KnitRepository
 from bzrlib.repository import (
     CommitBuilder,
     MetaDirRepositoryFormat,
     RepositoryFormat,
+    RepositoryWriteLockResult,
     RootCommitBuilder,
     StreamSource,
     )
@@ -229,11 +228,13 @@ class Pack(object):
         unlimited_cache = False
         if index_type == 'chk':
             unlimited_cache = True
-        setattr(self, index_type + '_index',
-            self.index_class(self.index_transport,
-                self.index_name(index_type, self.name),
-                self.index_sizes[self.index_offset(index_type)],
-                unlimited_cache=unlimited_cache))
+        index = self.index_class(self.index_transport,
+                    self.index_name(index_type, self.name),
+                    self.index_sizes[self.index_offset(index_type)],
+                    unlimited_cache=unlimited_cache)
+        if index_type == 'chk':
+            index._leaf_factory = btree_index._gcchk_factory
+        setattr(self, index_type + '_index', index)
 
 
 class ExistingPack(Pack):
@@ -587,26 +588,6 @@ class AggregateIndex(object):
                                              flush_func=flush_func)
         self.add_callback = None
 
-    def replace_indices(self, index_to_pack, indices):
-        """Replace the current mappings with fresh ones.
-
-        This should probably not be used eventually, rather incremental add and
-        removal of indices. It has been added during refactoring of existing
-        code.
-
-        :param index_to_pack: A mapping from index objects to
-            (transport, name) tuples for the pack file data.
-        :param indices: A list of indices.
-        """
-        # refresh the revision pack map dict without replacing the instance.
-        self.index_to_pack.clear()
-        self.index_to_pack.update(index_to_pack)
-        # XXX: API break - clearly a 'replace' method would be good?
-        self.combined_index._indices[:] = indices
-        # the current add nodes callback for the current writable index if
-        # there is one.
-        self.add_callback = None
-
     def add_index(self, index, pack):
         """Add index to the aggregate, which is an index for Pack pack.
 
@@ -619,7 +600,7 @@ class AggregateIndex(object):
         # expose it to the index map
         self.index_to_pack[index] = pack.access_tuple()
         # put it at the front of the linear index list
-        self.combined_index.insert_index(0, index)
+        self.combined_index.insert_index(0, index, pack.name)
 
     def add_writable_index(self, index, pack):
         """Add an index which is able to have data added to it.
@@ -645,6 +626,7 @@ class AggregateIndex(object):
         self.data_access.set_writer(None, None, (None, None))
         self.index_to_pack.clear()
         del self.combined_index._indices[:]
+        del self.combined_index._index_names[:]
         self.add_callback = None
 
     def remove_index(self, index):
@@ -653,7 +635,9 @@ class AggregateIndex(object):
         :param index: An index from the pack parameter.
         """
         del self.index_to_pack[index]
-        self.combined_index._indices.remove(index)
+        pos = self.combined_index._indices.index(index)
+        del self.combined_index._indices[pos]
+        del self.combined_index._index_names[pos]
         if (self.add_callback is not None and
             getattr(index, 'add_nodes', None) == self.add_callback):
             self.add_callback = None
@@ -1415,11 +1399,20 @@ class RepositoryPackCollection(object):
         self.inventory_index = AggregateIndex(self.reload_pack_names, flush)
         self.text_index = AggregateIndex(self.reload_pack_names, flush)
         self.signature_index = AggregateIndex(self.reload_pack_names, flush)
+        all_indices = [self.revision_index, self.inventory_index,
+                self.text_index, self.signature_index]
         if use_chk_index:
             self.chk_index = AggregateIndex(self.reload_pack_names, flush)
+            all_indices.append(self.chk_index)
         else:
             # used to determine if we're using a chk_index elsewhere.
             self.chk_index = None
+        # Tell all the CombinedGraphIndex objects about each other, so they can
+        # share hints about which pack names to search first.
+        all_combined = [agg_idx.combined_index for agg_idx in all_indices]
+        for combined_idx in all_combined:
+            combined_idx.set_sibling_indices(
+                set(all_combined).difference([combined_idx]))
         # resumed packs
         self._resumed_packs = []
 
@@ -1568,7 +1561,7 @@ class RepositoryPackCollection(object):
         """Is the collection already packed?"""
         return not (self.repo._format.pack_compresses or (len(self._names) > 1))
 
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Pack the pack collection totally."""
         self.ensure_loaded()
         total_packs = len(self._names)
@@ -1589,6 +1582,9 @@ class RepositoryPackCollection(object):
                 pack_operations[-1][0] += pack.get_revision_count()
                 pack_operations[-1][1].append(pack)
         self._execute_pack_operations(pack_operations, OptimisingPacker)
+
+        if clean_obsolete_packs:
+            self._clear_obsolete_packs()
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
         """Plan a pack operation.
@@ -1683,7 +1679,7 @@ class RepositoryPackCollection(object):
             txt_index = self._make_index(name, '.tix')
             sig_index = self._make_index(name, '.six')
             if self.chk_index is not None:
-                chk_index = self._make_index(name, '.cix', unlimited_cache=True)
+                chk_index = self._make_index(name, '.cix', is_chk=True)
             else:
                 chk_index = None
             result = ExistingPack(self._pack_transport, name, rev_index,
@@ -1709,7 +1705,7 @@ class RepositoryPackCollection(object):
             sig_index = self._make_index(name, '.six', resume=True)
             if self.chk_index is not None:
                 chk_index = self._make_index(name, '.cix', resume=True,
-                                             unlimited_cache=True)
+                                             is_chk=True)
             else:
                 chk_index = None
             result = self.resumed_pack_factory(name, rev_index, inv_index,
@@ -1745,7 +1741,7 @@ class RepositoryPackCollection(object):
         return self._index_class(self.transport, 'pack-names', None
                 ).iter_all_entries()
 
-    def _make_index(self, name, suffix, resume=False, unlimited_cache=False):
+    def _make_index(self, name, suffix, resume=False, is_chk=False):
         size_offset = self._suffix_offsets[suffix]
         index_name = name + suffix
         if resume:
@@ -1754,8 +1750,11 @@ class RepositoryPackCollection(object):
         else:
             transport = self._index_transport
             index_size = self._names[name][size_offset]
-        return self._index_class(transport, index_name, index_size,
-                                 unlimited_cache=unlimited_cache)
+        index = self._index_class(transport, index_name, index_size,
+                                  unlimited_cache=is_chk)
+        if is_chk and self._index_class is btree_index.BTreeGraphIndex: 
+            index._leaf_factory = btree_index._gcchk_factory
+        return index
 
     def _max_pack_count(self, total_revisions):
         """Return the maximum number of packs to use for total revisions.
@@ -2345,6 +2344,10 @@ class KnitPackRepository(KnitRepository):
         return self._write_lock_count
 
     def lock_write(self, token=None):
+        """Lock the repository for writes.
+
+        :return: A bzrlib.repository.RepositoryWriteLockResult.
+        """
         locked = self.is_locked()
         if not self._write_lock_count and locked:
             raise errors.ReadOnlyError(self)
@@ -2359,8 +2362,13 @@ class KnitPackRepository(KnitRepository):
                 # Writes don't affect fallback repos
                 repo.lock_read()
             self._refresh_data()
+        return RepositoryWriteLockResult(self.unlock, None)
 
     def lock_read(self):
+        """Lock the repository for reads.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         locked = self.is_locked()
         if self._write_lock_count:
             self._write_lock_count += 1
@@ -2373,6 +2381,7 @@ class KnitPackRepository(KnitRepository):
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
+        return LogicalLockResult(self.unlock)
 
     def leave_lock_in_place(self):
         # not supported - raise an error
@@ -2383,13 +2392,13 @@ class KnitPackRepository(KnitRepository):
         raise NotImplementedError(self.dont_leave_lock_in_place)
 
     @needs_write_lock
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
         This will pack all the data to a single pack. In future it may
         recompress deltas or do other such expensive operations.
         """
-        self._pack_collection.pack(hint=hint)
+        self._pack_collection.pack(hint=hint, clean_obsolete_packs=clean_obsolete_packs)
 
     @needs_write_lock
     def reconcile(self, other=None, thorough=False):
@@ -2551,7 +2560,9 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
         utf8_files = [('format', self.get_format_string())]
 
         self._upload_blank_content(a_bzrdir, dirs, files, utf8_files, shared)
-        return self.open(a_bzrdir=a_bzrdir, _found=True)
+        repository = self.open(a_bzrdir=a_bzrdir, _found=True)
+        self._run_post_repo_init_hooks(repository, a_bzrdir, shared)
+        return repository
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
         """See RepositoryFormat.open().
@@ -2820,8 +2831,8 @@ class RepositoryFormatKnitPack6(RepositoryFormatPack):
     _commit_builder_class = PackCommitBuilder
     supports_external_lookups = True
     # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
+    index_builder_class = btree_index.BTreeBuilder
+    index_class = btree_index.BTreeGraphIndex
 
     @property
     def _serializer(self):
@@ -2856,8 +2867,8 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
     supports_tree_reference = False # no subtrees
     supports_external_lookups = True
     # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
+    index_builder_class = btree_index.BTreeBuilder
+    index_class = btree_index.BTreeGraphIndex
 
     @property
     def _serializer(self):
@@ -2898,8 +2909,8 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     supports_tree_reference = True
     supports_external_lookups = True
     # What index classes to use
-    index_builder_class = BTreeBuilder
-    index_class = BTreeGraphIndex
+    index_builder_class = btree_index.BTreeBuilder
+    index_class = btree_index.BTreeGraphIndex
 
     @property
     def _serializer(self):
@@ -2907,7 +2918,7 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir(
-            'development-subtree')
+            'development5-subtree')
 
     def _ignore_setting_bzrdir(self, format):
         pass

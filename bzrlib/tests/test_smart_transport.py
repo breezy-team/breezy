@@ -40,12 +40,16 @@ from bzrlib.smart import (
         server,
         vfs,
 )
-from bzrlib.tests import test_smart
+from bzrlib.tests import (
+    test_smart,
+    test_server,
+    )
 from bzrlib.transport import (
         http,
         local,
         memory,
         remote,
+        ssh,
         )
 
 
@@ -63,7 +67,7 @@ class StringIOSSHVendor(object):
         return StringIOSSHConnection(self)
 
 
-class StringIOSSHConnection(object):
+class StringIOSSHConnection(ssh.SSHConnection):
     """A SSH connection that uses StringIO to buffer writes and answer reads."""
 
     def __init__(self, vendor):
@@ -71,9 +75,11 @@ class StringIOSSHConnection(object):
 
     def close(self):
         self.vendor.calls.append(('close', ))
+        self.vendor.read_from.close()
+        self.vendor.write_to.close()
 
-    def get_filelike_channels(self):
-        return self.vendor.read_from, self.vendor.write_to
+    def get_sock_or_pipes(self):
+        return 'pipes', (self.vendor.read_from, self.vendor.write_to)
 
 
 class _InvalidHostnameFeature(tests.Feature):
@@ -243,9 +249,9 @@ class SmartClientMediumTests(tests.TestCase):
         unopened_port = sock.getsockname()[1]
         # having vendor be invalid means that if it tries to connect via the
         # vendor it will blow up.
-        client_medium = medium.SmartSSHClientMedium('127.0.0.1', unopened_port,
-            username=None, password=None, base='base', vendor="not a vendor",
-            bzr_remote_path='bzr')
+        ssh_params = medium.SSHParams('127.0.0.1', unopened_port, None, None)
+        client_medium = medium.SmartSSHClientMedium(
+            'base', ssh_params, "not a vendor")
         sock.close()
 
     def test_ssh_client_connects_on_first_use(self):
@@ -253,9 +259,9 @@ class SmartClientMediumTests(tests.TestCase):
         # it bytes.
         output = StringIO()
         vendor = StringIOSSHVendor(StringIO(), output)
-        client_medium = medium.SmartSSHClientMedium(
-            'a hostname', 'a port', 'a username', 'a password', 'base', vendor,
-            'bzr')
+        ssh_params = medium.SSHParams(
+            'a hostname', 'a port', 'a username', 'a password', 'bzr')
+        client_medium = medium.SmartSSHClientMedium('base', ssh_params, vendor)
         client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
         self.assertEqual([('connect_ssh', 'a username', 'a password',
@@ -268,8 +274,10 @@ class SmartClientMediumTests(tests.TestCase):
         # it bytes.
         output = StringIO()
         vendor = StringIOSSHVendor(StringIO(), output)
-        client_medium = medium.SmartSSHClientMedium('a hostname', 'a port',
-            'a username', 'a password', 'base', vendor, bzr_remote_path='fugly')
+        ssh_params = medium.SSHParams(
+            'a hostname', 'a port', 'a username', 'a password',
+            bzr_remote_path='fugly')
+        client_medium = medium.SmartSSHClientMedium('base', ssh_params, vendor)
         client_medium._accept_bytes('abc')
         self.assertEqual('abc', output.getvalue())
         self.assertEqual([('connect_ssh', 'a username', 'a password',
@@ -284,7 +292,7 @@ class SmartClientMediumTests(tests.TestCase):
         output = StringIO()
         vendor = StringIOSSHVendor(input, output)
         client_medium = medium.SmartSSHClientMedium(
-            'a hostname', base='base', vendor=vendor, bzr_remote_path='bzr')
+            'base', medium.SSHParams('a hostname'), vendor)
         client_medium._accept_bytes('abc')
         client_medium.disconnect()
         self.assertTrue(input.closed)
@@ -305,7 +313,7 @@ class SmartClientMediumTests(tests.TestCase):
         output = StringIO()
         vendor = StringIOSSHVendor(input, output)
         client_medium = medium.SmartSSHClientMedium(
-            'a hostname', base='base', vendor=vendor, bzr_remote_path='bzr')
+            'base', medium.SSHParams('a hostname'), vendor)
         client_medium._accept_bytes('abc')
         client_medium.disconnect()
         # the disconnect has closed output, so we need a new output for the
@@ -334,14 +342,14 @@ class SmartClientMediumTests(tests.TestCase):
         # Doing a disconnect on a new (and thus unconnected) SSH medium
         # does not fail.  It's ok to disconnect an unconnected medium.
         client_medium = medium.SmartSSHClientMedium(
-            None, base='base', bzr_remote_path='bzr')
+            'base', medium.SSHParams(None))
         client_medium.disconnect()
 
     def test_ssh_client_raises_on_read_when_not_connected(self):
         # Doing a read on a new (and thus unconnected) SSH medium raises
         # MediumNotConnected.
         client_medium = medium.SmartSSHClientMedium(
-            None, base='base', bzr_remote_path='bzr')
+            'base', medium.SSHParams(None))
         self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes,
                           0)
         self.assertRaises(errors.MediumNotConnected, client_medium.read_bytes,
@@ -359,7 +367,7 @@ class SmartClientMediumTests(tests.TestCase):
         output.flush = logging_flush
         vendor = StringIOSSHVendor(input, output)
         client_medium = medium.SmartSSHClientMedium(
-            'a hostname', base='base', vendor=vendor, bzr_remote_path='bzr')
+            'base', medium.SSHParams('a hostname'), vendor=vendor)
         # this call is here to ensure we only flush once, not on every
         # _accept_bytes call.
         client_medium._accept_bytes('abc')
@@ -967,24 +975,27 @@ class TestSmartTCPServer(tests.TestCase):
             base = 'a_url'
             def external_url(self):
                 return self.base
-            def get_bytes(self, path):
+            def get(self, path):
                 raise Exception("some random exception from inside server")
-        smart_server = server.SmartTCPServer(backing_transport=FlakyTransport())
-        smart_server.start_background_thread('-' + self.id())
-        try:
-            transport = remote.RemoteTCPTransport(smart_server.get_url())
-            err = self.assertRaises(errors.UnknownErrorFromSmartServer,
-                transport.get, 'something')
-            self.assertContainsRe(str(err), 'some random exception')
-            transport.disconnect()
-        finally:
-            smart_server.stop_background_thread()
+
+        class FlakyServer(test_server.SmartTCPServer_for_testing):
+            def get_backing_transport(self, backing_transport_server):
+                return FlakyTransport()
+
+        smart_server = FlakyServer()
+        smart_server.start_server()
+        self.addCleanup(smart_server.stop_server)
+        t = remote.RemoteTCPTransport(smart_server.get_url())
+        self.addCleanup(t.disconnect)
+        err = self.assertRaises(errors.UnknownErrorFromSmartServer,
+                                t.get, 'something')
+        self.assertContainsRe(str(err), 'some random exception')
 
 
 class SmartTCPTests(tests.TestCase):
     """Tests for connection/end to end behaviour using the TCP server.
 
-    All of these tests are run with a server running on another thread serving
+    All of these tests are run with a server running in another thread serving
     a MemoryTransport, and a connection to it already open.
 
     the server is obtained by calling self.start_server(readonly=False).
@@ -998,7 +1009,7 @@ class SmartTCPTests(tests.TestCase):
         # NB: Tests using this fall into two categories: tests of the server,
         # tests wanting a server. The latter should be updated to use
         # self.vfs_transport_factory etc.
-        if not backing_transport:
+        if backing_transport is None:
             mem_server = memory.MemoryServer()
             mem_server.start_server()
             self.addCleanup(mem_server.stop_server)
@@ -1012,41 +1023,45 @@ class SmartTCPTests(tests.TestCase):
             self.backing_transport = transport.get_transport(
                 "readonly+" + self.backing_transport.abspath('.'))
         self.server = server.SmartTCPServer(self.backing_transport)
+        self.server.start_server('127.0.0.1', 0)
         self.server.start_background_thread('-' + self.id())
         self.transport = remote.RemoteTCPTransport(self.server.get_url())
-        self.addCleanup(self.tearDownServer)
+        self.addCleanup(self.stop_server)
         self.permit_url(self.server.get_url())
 
-    def tearDownServer(self):
+    def stop_server(self):
+        """Disconnect the client and stop the server.
+
+        This must be re-entrant as some tests will call it explicitly in
+        addition to the normal cleanup.
+        """
         if getattr(self, 'transport', None):
             self.transport.disconnect()
             del self.transport
         if getattr(self, 'server', None):
             self.server.stop_background_thread()
-            # XXX: why not .stop_server() -- mbp 20100106
             del self.server
 
 
 class TestServerSocketUsage(SmartTCPTests):
 
-    def test_server_setup_teardown(self):
-        """It should be safe to teardown the server with no requests."""
+    def test_server_start_stop(self):
+        """It should be safe to stop the server with no requests."""
         self.start_server()
-        server = self.server
-        transport = remote.RemoteTCPTransport(self.server.get_url())
-        self.tearDownServer()
-        self.assertRaises(errors.ConnectionError, transport.has, '.')
+        t = remote.RemoteTCPTransport(self.server.get_url())
+        self.stop_server()
+        self.assertRaises(errors.ConnectionError, t.has, '.')
 
     def test_server_closes_listening_sock_on_shutdown_after_request(self):
         """The server should close its listening socket when it's stopped."""
         self.start_server()
-        server = self.server
+        server_url = self.server.get_url()
         self.transport.has('.')
-        self.tearDownServer()
+        self.stop_server()
         # if the listening socket has closed, we should get a BADFD error
         # when connecting, rather than a hang.
-        transport = remote.RemoteTCPTransport(server.get_url())
-        self.assertRaises(errors.ConnectionError, transport.has, '.')
+        t = remote.RemoteTCPTransport(server_url)
+        self.assertRaises(errors.ConnectionError, t.has, '.')
 
 
 class WritableEndToEndTests(SmartTCPTests):
@@ -1187,7 +1202,7 @@ class TestServerHooks(SmartTCPTests):
         self.transport.has('.')
         self.assertEqual([], self.hook_calls)
         # clean up the server
-        self.tearDownServer()
+        self.stop_server()
         # now it should have fired.
         self.assertEqual(result, self.hook_calls)
 
@@ -1206,7 +1221,7 @@ class TestServerHooks(SmartTCPTests):
         self.transport.has('.')
         self.assertEqual([], self.hook_calls)
         # clean up the server
-        self.tearDownServer()
+        self.stop_server()
         # now it should have fired.
         self.assertEqual(result, self.hook_calls)
 
@@ -2859,9 +2874,10 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         self.responder = protocol.ProtocolThreeResponder(self.writes.append)
 
     def assertWriteCount(self, expected_count):
+        # self.writes can be quite large; don't show the whole thing
         self.assertEqual(
             expected_count, len(self.writes),
-            "Too many writes: %r" % (self.writes,))
+            "Too many writes: %d, expected %d" % (len(self.writes), expected_count))
 
     def test_send_error_writes_just_once(self):
         """An error response is written to the medium all at once."""
@@ -2890,22 +2906,9 @@ class TestResponseEncoderBufferingProtocolThree(tests.TestCase):
         response = _mod_request.SuccessfulSmartServerResponse(
             ('arg', 'arg'), body_stream=['chunk1', 'chunk2'])
         self.responder.send_response(response)
-        # We will write just once, despite the multiple chunks, due to
-        # buffering.
-        self.assertWriteCount(1)
-
-    def test_send_response_with_body_stream_flushes_buffers_sometimes(self):
-        """When there are many bytes (>1MB), multiple writes will occur rather
-        than buffering indefinitely.
-        """
-        # Construct a response with stream with ~1.5MB in it. This should
-        # trigger 2 writes, but not 3
-        onekib = '12345678' * 128
-        body_stream = [onekib] * (1024 + 512)
-        response = _mod_request.SuccessfulSmartServerResponse(
-            ('arg', 'arg'), body_stream=body_stream)
-        self.responder.send_response(response)
-        self.assertWriteCount(2)
+        # Per the discussion in bug 590638 we flush once after the header and
+        # then once after each chunk
+        self.assertWriteCount(3)
 
 
 class TestSmartClientUnicode(tests.TestCase):

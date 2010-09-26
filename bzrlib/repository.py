@@ -25,8 +25,8 @@ from bzrlib import (
     check,
     chk_map,
     config,
+    controldir,
     debug,
-    errors,
     fetch as _mod_fetch,
     fifo_cache,
     generate_ids,
@@ -40,10 +40,10 @@ from bzrlib import (
     lru_cache,
     osutils,
     revision as _mod_revision,
+    static_tuple,
     symbol_versioning,
     trace,
     tsort,
-    ui,
     versionedfile,
     )
 from bzrlib.bundle import serializer
@@ -52,6 +52,11 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
 
+from bzrlib import (
+    errors,
+    registry,
+    ui,
+    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.inter import InterObject
 from bzrlib.inventory import (
@@ -60,14 +65,22 @@ from bzrlib.inventory import (
     ROOT_ID,
     entry_factory,
     )
-from bzrlib.lock import _RelockDebugMixin
-from bzrlib import registry
+from bzrlib.recordcounter import RecordCounter
+from bzrlib.lock import _RelockDebugMixin, LogicalLockResult
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
 
 
 # Old formats display a warning, but only once
 _deprecation_warning_done = False
+
+
+class IsInWriteGroupError(errors.InternalBzrError):
+
+    _fmt = "May not refresh_data of repo %(repo)s while in a write group."
+
+    def __init__(self, repo):
+        errors.InternalBzrError.__init__(self, repo=repo)
 
 
 class CommitBuilder(object):
@@ -230,8 +243,7 @@ class CommitBuilder(object):
 
     def _gen_revision_id(self):
         """Return new revision-id."""
-        return generate_ids.gen_revision_id(self._config.username(),
-                                            self._timestamp)
+        return generate_ids.gen_revision_id(self._committer, self._timestamp)
 
     def _generate_revision_if_needed(self):
         """Create a revision id if None was supplied.
@@ -277,8 +289,8 @@ class CommitBuilder(object):
 
         :param tree: The tree which is being committed.
         """
-        # NB: if there are no parents then this method is not called, so no
-        # need to guard on parents having length.
+        if len(self.parents) == 0:
+            raise errors.RootMissing()
         entry = entry_factory['directory'](tree.path2id(''), '',
             None)
         entry.revision = self._new_revision_id
@@ -859,11 +871,28 @@ class RootCommitBuilder(CommitBuilder):
         # versioned roots do not change unless the tree found a change.
 
 
+class RepositoryWriteLockResult(LogicalLockResult):
+    """The result of write locking a repository.
+
+    :ivar repository_token: The token obtained from the underlying lock, or
+        None.
+    :ivar unlock: A callable which will unlock the lock.
+    """
+
+    def __init__(self, unlock, repository_token):
+        LogicalLockResult.__init__(self, unlock)
+        self.repository_token = repository_token
+
+    def __repr__(self):
+        return "RepositoryWriteLockResult(%s, %s)" % (self.repository_token,
+            self.unlock)
+
+
 ######################################################################
 # Repositories
 
 
-class Repository(_RelockDebugMixin):
+class Repository(_RelockDebugMixin, controldir.ControlComponent):
     """Repository holding history for one or more branches.
 
     The repository holds and retrieves historical information including
@@ -1017,7 +1046,7 @@ class Repository(_RelockDebugMixin):
                 " id and insertion revid (%r, %r)"
                 % (inv.revision_id, revision_id))
         if inv.root is None:
-            raise AssertionError()
+            raise errors.RootMissing()
         return self._add_inventory_checked(revision_id, inv, parents)
 
     def _add_inventory_checked(self, revision_id, inv, parents):
@@ -1027,7 +1056,7 @@ class Repository(_RelockDebugMixin):
 
         :seealso: add_inventory, for the contract.
         """
-        inv_lines = self._serialise_inventory_to_lines(inv)
+        inv_lines = self._serializer.write_inventory_to_lines(inv)
         return self._inventory_add_lines(revision_id, parents,
             inv_lines, check_content=False)
 
@@ -1290,11 +1319,10 @@ class Repository(_RelockDebugMixin):
 
         :param _format: The format of the repository on disk.
         :param a_bzrdir: The BzrDir of the repository.
-
-        In the future we will have a single api for all stores for
-        getting file texts, inventories and revisions, then
-        this construct will accept instances of those things.
         """
+        # In the future we will have a single api for all stores for
+        # getting file texts, inventories and revisions, then
+        # this construct will accept instances of those things.
         super(Repository, self).__init__()
         self._format = _format
         # the following are part of the public API for Repository:
@@ -1314,6 +1342,14 @@ class Repository(_RelockDebugMixin):
         # Is it safe to return inventory entries directly from the entry cache,
         # rather copying them?
         self._safe_to_return_from_cache = False
+
+    @property
+    def user_transport(self):
+        return self.bzrdir.user_transport
+
+    @property
+    def control_transport(self):
+        return self._transport
 
     def __repr__(self):
         if self._fallback_repositories:
@@ -1368,6 +1404,12 @@ class Repository(_RelockDebugMixin):
         data during reads, and allows a 'write_group' to be obtained. Write
         groups must be used for actual data insertion.
 
+        A token should be passed in if you know that you have locked the object
+        some other way, and need to synchronise this object's state with that
+        fact.
+
+        XXX: this docstring is duplicated in many places, e.g. lockable_files.py
+
         :param token: if this is already locked, then lock_write will fail
             unless the token matches the existing lock.
         :returns: a token if this instance supports tokens, otherwise None.
@@ -1376,15 +1418,10 @@ class Repository(_RelockDebugMixin):
         :raises MismatchedToken: if the specified token doesn't match the token
             of the existing lock.
         :seealso: start_write_group.
-
-        A token should be passed in if you know that you have locked the object
-        some other way, and need to synchronise this object's state with that
-        fact.
-
-        XXX: this docstring is duplicated in many places, e.g. lockable_files.py
+        :return: A RepositoryWriteLockResult.
         """
         locked = self.is_locked()
-        result = self.control_files.lock_write(token=token)
+        token = self.control_files.lock_write(token=token)
         if not locked:
             self._warn_if_deprecated()
             self._note_lock('w')
@@ -1392,9 +1429,14 @@ class Repository(_RelockDebugMixin):
                 # Writes don't affect fallback repos
                 repo.lock_read()
             self._refresh_data()
-        return result
+        return RepositoryWriteLockResult(self.unlock, token)
 
     def lock_read(self):
+        """Lock the repository for read operations.
+
+        :return: An object with an unlock method which will release the lock
+            obtained.
+        """
         locked = self.is_locked()
         self.control_files.lock_read()
         if not locked:
@@ -1403,6 +1445,7 @@ class Repository(_RelockDebugMixin):
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
+        return LogicalLockResult(self.unlock)
 
     def get_physical_lock_status(self):
         return self.control_files.get_physical_lock_status()
@@ -1468,7 +1511,7 @@ class Repository(_RelockDebugMixin):
 
         # now gather global repository information
         # XXX: This is available for many repos regardless of listability.
-        if self.bzrdir.root_transport.listable():
+        if self.user_transport.listable():
             # XXX: do we want to __define len__() ?
             # Maybe the versionedfiles object should provide a different
             # method to get the number of keys.
@@ -1506,7 +1549,7 @@ class Repository(_RelockDebugMixin):
 
         ret = []
         for branches, repository in bzrdir.BzrDir.find_bzrdirs(
-                self.bzrdir.root_transport, evaluate=Evaluator()):
+                self.user_transport, evaluate=Evaluator()):
             if branches is not None:
                 ret.extend(branches)
             if not using and repository is not None:
@@ -1626,16 +1669,16 @@ class Repository(_RelockDebugMixin):
         return missing_keys
 
     def refresh_data(self):
-        """Re-read any data needed to to synchronise with disk.
+        """Re-read any data needed to synchronise with disk.
 
         This method is intended to be called after another repository instance
         (such as one used by a smart server) has inserted data into the
-        repository. It may not be called during a write group, but may be
-        called at any other time.
+        repository. On all repositories this will work outside of write groups.
+        Some repository formats (pack and newer for bzrlib native formats)
+        support refresh_data inside write groups. If called inside a write
+        group on a repository that does not support refreshing in a write group
+        IsInWriteGroupError will be raised.
         """
-        if self.is_in_write_group():
-            raise errors.InternalBzrError(
-                "May not refresh_data while in a write group.")
         self._refresh_data()
 
     def resume_write_group(self, tokens):
@@ -1680,7 +1723,7 @@ class Repository(_RelockDebugMixin):
                 "May not fetch while in a write group.")
         # fast path same-url fetch operations
         # TODO: lift out to somewhere common with RemoteRepository
-        # <https://bugs.edge.launchpad.net/bzr/+bug/401646>
+        # <https://bugs.launchpad.net/bzr/+bug/401646>
         if (self.has_same_location(source)
             and fetch_spec is None
             and self._has_same_fallbacks(source)):
@@ -2413,12 +2456,6 @@ class Repository(_RelockDebugMixin):
                 result.revision_id, revision_id))
         return result
 
-    def _serialise_inventory(self, inv):
-        return self._serializer.write_inventory_to_string(inv)
-
-    def _serialise_inventory_to_lines(self, inv):
-        return self._serializer.write_inventory_to_lines(inv)
-
     def get_serializer_format(self):
         return self._serializer.format_num
 
@@ -2488,22 +2525,6 @@ class Repository(_RelockDebugMixin):
             else:
                 next_id = parents[0]
 
-    @needs_read_lock
-    def get_revision_inventory(self, revision_id):
-        """Return inventory of a past revision."""
-        # TODO: Unify this with get_inventory()
-        # bzr 0.0.6 and later imposes the constraint that the inventory_id
-        # must be the same as its revision, so this is trivial.
-        if revision_id is None:
-            # This does not make sense: if there is no revision,
-            # then it is the current tree inventory surely ?!
-            # and thus get_root_id() is something that looks at the last
-            # commit on the branch, and the get_root_id is an inventory check.
-            raise NotImplementedError
-            # return Inventory(self.get_root_id())
-        else:
-            return self.get_inventory(revision_id)
-
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
         raise NotImplementedError(self.is_shared)
@@ -2543,7 +2564,7 @@ class Repository(_RelockDebugMixin):
             return RevisionTree(self, Inventory(root_id=None),
                                 _mod_revision.NULL_REVISION)
         else:
-            inv = self.get_revision_inventory(revision_id)
+            inv = self.get_inventory(revision_id)
             return RevisionTree(self, inv, revision_id)
 
     def revision_trees(self, revision_ids):
@@ -2602,7 +2623,7 @@ class Repository(_RelockDebugMixin):
             keys = tsort.topo_sort(parent_map)
         return [None] + list(keys)
 
-    def pack(self, hint=None):
+    def pack(self, hint=None, clean_obsolete_packs=False):
         """Compress the data within the repository.
 
         This operation only makes sense for some repository types. For other
@@ -2618,6 +2639,9 @@ class Repository(_RelockDebugMixin):
             obtained from the result of commit_write_group(). Out of
             date hints are simply ignored, because concurrent operations
             can obsolete them rapidly.
+
+        :param clean_obsolete_packs: Clean obsolete packs immediately after
+            the pack operation.
         """
 
     def get_transaction(self):
@@ -2647,6 +2671,15 @@ class Repository(_RelockDebugMixin):
 
     def _make_parents_provider(self):
         return self
+
+    @needs_read_lock
+    def get_known_graph_ancestry(self, revision_ids):
+        """Return the known graph for a set of revision ids and their ancestors.
+        """
+        st = static_tuple.StaticTuple
+        revision_keys = [st(r_id).intern() for r_id in revision_ids]
+        known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
+        return graph.GraphThunkIdsToKeys(known_graph)
 
     def get_graph(self, other_repository=None):
         """Return the graph walker for this repository format"""
@@ -3055,8 +3088,8 @@ class RepositoryFormat(object):
     # Is the format experimental ?
     experimental = False
 
-    def __str__(self):
-        return "<%s>" % self.__class__.__name__
+    def __repr__(self):
+        return "%s()" % self.__class__.__name__
 
     def __eq__(self, other):
         # format objects are generally stateless
@@ -3179,6 +3212,15 @@ class RepositoryFormat(object):
         _found is a private parameter, do not use it.
         """
         raise NotImplementedError(self.open)
+
+    def _run_post_repo_init_hooks(self, repository, a_bzrdir, shared):
+        from bzrlib.bzrdir import BzrDir, RepoInitHookParams
+        hooks = BzrDir.hooks['post_repo_init']
+        if not hooks:
+            return
+        params = RepoInitHookParams(repository, self, a_bzrdir, shared)
+        for hook in hooks:
+            hook(params)
 
 
 class MetaDirRepositoryFormat(RepositoryFormat):
@@ -3347,6 +3389,11 @@ format_registry.register_lazy(
     'bzrlib.repofmt.groupcompress_repo',
     'RepositoryFormat2a',
     )
+format_registry.register_lazy(
+    'Bazaar development format 8\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormat2aSubtree',
+    )
 
 
 class InterRepository(InterObject):
@@ -3394,7 +3441,13 @@ class InterRepository(InterObject):
         :return: None.
         """
         ui.ui_factory.warn_experimental_format_fetch(self)
-        f = _mod_fetch.RepoFetcher(to_repository=self.target,
+        from bzrlib.fetch import RepoFetcher
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        if self.source._format.network_name() != self.target._format.network_name():
+            ui.ui_factory.show_user_warning('cross_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
+        f = RepoFetcher(to_repository=self.target,
                                from_repository=self.source,
                                last_revision=revision_id,
                                fetch_spec=fetch_spec,
@@ -3978,12 +4031,6 @@ class InterDifferingSerializer(InterRepository):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
             raise AssertionError("Not implemented yet...")
-        # See <https://launchpad.net/bugs/456077> asking for a warning here
-        #
-        # nb this is only active for local-local fetches; other things using
-        # streaming.
-        ui.ui_factory.warn_cross_format_fetch(self.source._format,
-            self.target._format)
         ui.ui_factory.warn_experimental_format_fetch(self)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
@@ -3991,6 +4038,11 @@ class InterDifferingSerializer(InterRepository):
             self._revision_id_to_root_id = {}
         else:
             self._converting_to_rich_root = False
+        # See <https://launchpad.net/bugs/456077> asking for a warning here
+        if self.source._format.network_name() != self.target._format.network_name():
+            ui.ui_factory.show_user_warning('cross_format_fetch',
+                from_format=self.source._format,
+                to_format=self.target._format)
         revision_ids = self.target.search_missing_revision_ids(self.source,
             revision_id, find_ghosts=find_ghosts).get_keys()
         if not revision_ids:
@@ -4237,7 +4289,8 @@ class StreamSink(object):
                 is_resume = False
             try:
                 # locked_insert_stream performs a commit|suspend.
-                return self._locked_insert_stream(stream, src_format, is_resume)
+                return self._locked_insert_stream(stream, src_format,
+                    is_resume)
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
@@ -4279,8 +4332,6 @@ class StreamSink(object):
                     self._extract_and_insert_inventories(
                         substream, src_serializer)
             elif substream_type == 'inventory-deltas':
-                ui.ui_factory.warn_cross_format_fetch(src_format,
-                    self.target_repo._format)
                 self._extract_and_insert_inventory_deltas(
                     substream, src_serializer)
             elif substream_type == 'chk_bytes':
@@ -4292,8 +4343,7 @@ class StreamSink(object):
                 # required if the serializers are different only in terms of
                 # the inventory.
                 if src_serializer == to_serializer:
-                    self.target_repo.revisions.insert_record_stream(
-                        substream)
+                    self.target_repo.revisions.insert_record_stream(substream)
                 else:
                     self._extract_and_insert_revisions(substream,
                         src_serializer)
@@ -4407,6 +4457,7 @@ class StreamSource(object):
         """Create a StreamSource streaming from from_repository."""
         self.from_repository = from_repository
         self.to_format = to_format
+        self._record_counter = RecordCounter()
 
     def delta_on_metadata(self):
         """Return True if delta's are permitted on metadata streams.

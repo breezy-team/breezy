@@ -98,17 +98,6 @@ class TestPull(per_branch.TestCaseWithBranch):
                           master_tree.branch.pull, other.branch, local = True)
         self.assertEqual([rev1], master_tree.branch.revision_history())
 
-    def test_pull_raises_specific_error_on_master_connection_error(self):
-        master_tree = self.make_branch_and_tree('master')
-        checkout = master_tree.branch.create_checkout('checkout')
-        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
-        # move the branch out of the way on disk to cause a connection
-        # error.
-        os.rename('master', 'master_gone')
-        # try to pull, which should raise a BoundBranchConnectionFailure.
-        self.assertRaises(errors.BoundBranchConnectionFailure,
-                checkout.branch.pull, other.branch)
-
     def test_pull_returns_result(self):
         parent = self.make_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1')

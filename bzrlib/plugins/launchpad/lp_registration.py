@@ -98,11 +98,8 @@ class LaunchpadService(object):
     for instance, domain in LAUNCHPAD_DOMAINS.iteritems():
         LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
 
-    # We use edge as the default because:
-    # Beta users get redirected to it
-    # All users can use it
-    # There is a bug in the launchpad side where redirection causes an OOPS.
-    DEFAULT_INSTANCE = 'edge'
+    # Previously 'edge' was used to avoid a launchpad bug with redirection
+    DEFAULT_INSTANCE = 'production'
     DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 
     transport = None

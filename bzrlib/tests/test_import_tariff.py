@@ -36,6 +36,14 @@ class TestImportTariffs(TestCaseWithTransport):
     """
 
     def run_command_check_imports(self, args, forbidden_imports):
+        """Run bzr ARGS in a subprocess and check its imports.
+
+        This is fairly expensive because we start a subprocess, so we aim to
+        cover representative rather than exhaustive cases.
+
+        :param forbidden_imports: List of fully-qualified Python module names
+            that should not be loaded while running this command.
+        """
         # We use PYTHON_VERBOSE rather than --profile-importts because in
         # experimentation the profile-imports output seems to not always show
         # the modules you'd expect; this can be debugged but python -v seems
@@ -47,13 +55,15 @@ class TestImportTariffs(TestCaseWithTransport):
         # explicitly do want to test against things installed there, therefore
         # we pass it through.
         env_changes = dict(PYTHONVERBOSE='1')
-        for name in ['BZR_HOME', 'BZR_PLUGIN_PATH', 'HOME',]:
+        for name in ['BZR_HOME', 'BZR_PLUGIN_PATH',
+                     'BZR_DISABLE_PLUGINS', 'BZR_PLUGINS_AT',
+                     'HOME',]:
             env_changes[name] = self._old_env.get(name)
         out, err = self.run_bzr_subprocess(args,
             allow_plugins=(not are_plugins_disabled()),
             env_changes=env_changes)
 
-        self.addDetail('subprocess_stderr', 
+        self.addDetail('subprocess_stderr',
             content.Content(content.ContentType("text", "plain"),
                 lambda:[err]))
 
@@ -63,7 +73,7 @@ class TestImportTariffs(TestCaseWithTransport):
                 bad_modules.append(module_name)
 
         if bad_modules:
-            self.fail("command %r loaded forbidden modules %r" 
+            self.fail("command %r loaded forbidden modules %r"
                 % (args, bad_modules))
         return out, err
 
@@ -82,8 +92,20 @@ class TestImportTariffs(TestCaseWithTransport):
         # 'st' in a working tree shouldn't need many modules
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'], [
+            'bzrlib.bundle.commands',
+            'bzrlib.cmd_version_info',
+            'bzrlib.foreign',
+            'bzrlib.merge3',
+            'bzrlib.patiencediff',
             'bzrlib.remote',
+            'bzrlib.sign_my_commits',
             'bzrlib.smart',
+            'bzrlib.transform',
+            'kerberos',
             'smtplib',
             'tarfile',
             ])
+        # TODO: similar test for repository-only operations, checking we avoid
+        # loading wt-specific stuff
+        #
+        # See https://bugs.launchpad.net/bzr/+bug/553017

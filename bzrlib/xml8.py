@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ from bzrlib.xml_serializer import (
     XMLSerializer,
     escape_invalid_chars,
     )
-from bzrlib.inventory import ROOT_ID, Inventory, InventoryEntry
+from bzrlib.inventory import InventoryEntry
 from bzrlib.revision import Revision
 from bzrlib.errors import BzrError
 

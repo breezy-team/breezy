@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2010 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -191,22 +191,21 @@ class TestLockDir(TestCaseWithTransport):
                     "took %f seconds to detect lock contention" % (after - before))
         finally:
             lf1.unlock()
-        lock_base = lf2.transport.abspath(lf2.path)
         self.assertEqual(1, len(self._logged_reports))
-        lock_url = lf2.transport.abspath(lf2.path)
-        self.assertEqual('%s %s\n'
-                         '%s\n%s\n'
-                         'Will continue to try until %s, unless '
-                         'you press Ctrl-C.\n'
-                         'See "bzr help break-lock" for more.',
-                         self._logged_reports[0][0])
-        args = self._logged_reports[0][1]
-        self.assertEqual('Unable to obtain', args[0])
-        self.assertEqual('lock %s' % (lock_base,), args[1])
-        self.assertStartsWith(args[2], 'held by ')
-        self.assertStartsWith(args[3], 'locked ')
-        self.assertEndsWith(args[3], ' ago')
-        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
+        self.assertEqual(self._logged_reports[0][0],
+            '%s lock %s held by %s\n'
+            'at %s [process #%s], acquired %s.\n'
+            'Will continue to try until %s, unless '
+            'you press Ctrl-C.\n'
+            'See "bzr help break-lock" for more.')
+        start, lock_url, user, hostname, pid, time_ago, deadline_str = \
+            self._logged_reports[0][1]
+        self.assertEqual(start, u'Unable to obtain')
+        self.assertEqual(user, u'jrandom@example.com')
+        # skip hostname
+        self.assertContainsRe(pid, r'\d+')
+        self.assertContainsRe(time_ago, r'.* ago')
+        self.assertContainsRe(deadline_str, r'\d{2}:\d{2}:\d{2}')
 
     def test_31_lock_wait_easy(self):
         """Succeed when waiting on a lock with no contention.
@@ -565,6 +564,62 @@ class TestLockDir(TestCaseWithTransport):
         finally:
             bzrlib.ui.ui_factory = orig_factory
 
+    def test_break_lock_corrupt_info(self):
+        """break_lock works even if the info file is corrupt (and tells the UI
+        that it is corrupt).
+        """
+        ld = self.get_lock()
+        ld2 = self.get_lock()
+        ld.create()
+        ld.lock_write()
+        ld.transport.put_bytes_non_atomic('test_lock/held/info', '\0')
+        class LoggingUIFactory(bzrlib.ui.SilentUIFactory):
+            def __init__(self):
+                self.prompts = []
+            def get_boolean(self, prompt):
+                self.prompts.append(('boolean', prompt))
+                return True
+        ui = LoggingUIFactory()
+        orig_factory = bzrlib.ui.ui_factory
+        bzrlib.ui.ui_factory = ui
+        try:
+            ld2.break_lock()
+            self.assertLength(1, ui.prompts)
+            self.assertEqual('boolean', ui.prompts[0][0])
+            self.assertStartsWith(ui.prompts[0][1], 'Break (corrupt LockDir')
+            self.assertRaises(LockBroken, ld.unlock)
+        finally:
+            bzrlib.ui.ui_factory = orig_factory
+
+    def test_break_lock_missing_info(self):
+        """break_lock works even if the info file is missing (and tells the UI
+        that it is corrupt).
+        """
+        ld = self.get_lock()
+        ld2 = self.get_lock()
+        ld.create()
+        ld.lock_write()
+        ld.transport.delete('test_lock/held/info')
+        class LoggingUIFactory(bzrlib.ui.SilentUIFactory):
+            def __init__(self):
+                self.prompts = []
+            def get_boolean(self, prompt):
+                self.prompts.append(('boolean', prompt))
+                return True
+        ui = LoggingUIFactory()
+        orig_factory = bzrlib.ui.ui_factory
+        bzrlib.ui.ui_factory = ui
+        try:
+            ld2.break_lock()
+            self.assertRaises(LockBroken, ld.unlock)
+            self.assertLength(0, ui.prompts)
+        finally:
+            bzrlib.ui.ui_factory = orig_factory
+        # Suppress warnings due to ld not being unlocked
+        # XXX: if lock_broken hook was invoked in this case, this hack would
+        # not be necessary.  - Andrew Bennetts, 2010-09-06.
+        del self._lock_actions[:]
+
     def test_create_missing_base_directory(self):
         """If LockDir.path doesn't exist, it can be created
 
@@ -597,11 +652,10 @@ class TestLockDir(TestCaseWithTransport):
             info_list = ld1._format_lock_info(ld1.peek())
         finally:
             ld1.unlock()
-        self.assertEqual('lock %s' % (ld1.transport.abspath(ld1.path),),
-                         info_list[0])
-        self.assertContainsRe(info_list[1],
-                              r'^held by .* on host .* \[process #\d*\]$')
-        self.assertContainsRe(info_list[2], r'locked \d+ seconds? ago$')
+        self.assertEqual(info_list[0], u'jrandom@example.com')
+        # info_list[1] is hostname. we skip this.
+        self.assertContainsRe(info_list[2], '^\d+$') # pid
+        self.assertContainsRe(info_list[3], r'^\d+ seconds? ago$') # time_ago
 
     def test_lock_without_email(self):
         global_config = config.GlobalConfig()
@@ -665,6 +719,68 @@ class TestLockDir(TestCaseWithTransport):
         self.assertRaises(errors.LockContention, ld2.attempt_lock)
         # no kibble
         check_dir(['held'])
+
+    def test_no_lockdir_info(self):
+        """We can cope with empty info files."""
+        # This seems like a fairly common failure case - see
+        # <https://bugs.launchpad.net/bzr/+bug/185103> and all its dupes.
+        # Processes are often interrupted after opening the file
+        # before the actual contents are committed.
+        t = self.get_transport()
+        t.mkdir('test_lock')
+        t.mkdir('test_lock/held')
+        t.put_bytes('test_lock/held/info', '')
+        lf = LockDir(t, 'test_lock')
+        info = lf.peek()
+        formatted_info = lf._format_lock_info(info)
+        self.assertEquals(
+            ['<unknown>', '<unknown>', '<unknown>', '(unknown)'],
+            formatted_info)
+
+    def test_corrupt_lockdir_info(self):
+        """We can cope with corrupt (and thus unparseable) info files."""
+        # This seems like a fairly common failure case too - see
+        # <https://bugs.edge.launchpad.net/bzr/+bug/619872> for instance.
+        # In particular some systems tend to fill recently created files with
+        # nul bytes after recovering from a system crash.
+        t = self.get_transport()
+        t.mkdir('test_lock')
+        t.mkdir('test_lock/held')
+        t.put_bytes('test_lock/held/info', '\0')
+        lf = LockDir(t, 'test_lock')
+        self.assertRaises(errors.LockCorrupt, lf.peek)
+        # Currently attempt_lock gives LockContention, but LockCorrupt would be
+        # a reasonable result too.
+        self.assertRaises(
+            (errors.LockCorrupt, errors.LockContention), lf.attempt_lock)
+        self.assertRaises(errors.LockCorrupt, lf.validate_token, 'fake token')
+
+    def test_missing_lockdir_info(self):
+        """We can cope with absent info files."""
+        t = self.get_transport()
+        t.mkdir('test_lock')
+        t.mkdir('test_lock/held')
+        lf = LockDir(t, 'test_lock')
+        # In this case we expect the 'not held' result from peek, because peek
+        # cannot be expected to notice that there is a 'held' directory with no
+        # 'info' file.
+        self.assertEqual(None, lf.peek())
+        # And lock/unlock may work or give LockContention (but not any other
+        # error).
+        try:
+            lf.attempt_lock()
+        except LockContention:
+            # LockContention is ok, and expected on Windows
+            pass
+        else:
+            # no error is ok, and expected on POSIX (because POSIX allows
+            # os.rename over an empty directory).
+            lf.unlock()
+        # Currently raises TokenMismatch, but LockCorrupt would be reasonable
+        # too.
+        self.assertRaises(
+            (errors.TokenMismatch, errors.LockCorrupt),
+            lf.validate_token, 'fake token')
 
 
 class TestLockDirHooks(TestCaseWithTransport):

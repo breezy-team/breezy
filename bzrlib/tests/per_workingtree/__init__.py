@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 
 """WorkingTree implementation tests for bzr.
 
-These test the conformance of all the workingtre variations to the expected API.
+This test the conformance of all the workingtre variations to the expected API.
 Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/per_workingtree/*.py.
 """
@@ -27,7 +27,7 @@ from bzrlib import (
     tests,
     workingtree,
     )
-from bzrlib.tests import per_bzrdir
+from bzrlib.tests import per_controldir
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -50,7 +50,7 @@ def make_scenario(transport_server, transport_readonly_server,
         }
 
 
-class TestCaseWithWorkingTree(per_bzrdir.TestCaseWithBzrDir):
+class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath, format=None):
         made_control = self.make_bzrdir(relpath, format=format)
@@ -101,6 +101,7 @@ def load_tests(standard_tests, module, loader):
         'revision_tree',
         'set_root_id',
         'smart_add',
+        'symlinks',
         'uncommit',
         'unversion',
         'views',

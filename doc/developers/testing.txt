@@ -6,7 +6,7 @@ Bazaar Testing Guide
 The Importance of Testing
 =========================
 
-Reliability is a critical success factor for any Version Control System.
+Reliability is a critical success factor for any version control system.
 We want Bazaar to be highly reliable across multiple platforms while
 evolving over time to meet the needs of its community.
 
@@ -144,10 +144,88 @@ Using subunit
 -------------
 
 Bazaar can optionally produce output in the machine-readable subunit_
-format, so that test output can be post-processed by various tools.
+format, so that test output can be post-processed by various tools. To
+generate a subunit test stream::
+
+ $ ./bzr selftest --subunit
+
+Processing such a stream can be done using a variety of tools including:
+
+* The builtin ``subunit2pyunit``, ``subunit-filter``, ``subunit-ls``,
+  ``subunit2junitxml`` from the subunit project.
+
+* tribunal_, a GUI for showing test results.
+
+* testrepository_, a tool for gathering and managing test runs.
 
 .. _subunit: https://launchpad.net/subunit/
+.. _tribunal: https://launchpad.net/tribunal/
 
+
+Using testrepository
+--------------------
+
+Bazaar ships with a config file for testrepository_. This can be very
+useful for keeping track of failing tests and doing general workflow
+support. To run tests using testrepository::
+
+  $ testr run
+
+To run only failing tests::
+
+  $ testr run --failing
+
+To run only some tests, without plugins::
+
+  $ test run test_selftest -- --no-plugins
+
+See the testrepository documentation for more details.
+
+.. _testrepository: https://launchpad.net/testrepository
+
+
+Babune continuous integration
+-----------------------------
+
+We have a Hudson continuous-integration system that automatically runs 
+tests across various platforms.  In the future we plan to add more 
+combinations including testing plugins.  See 
+<http://babune.ladeuil.net:24842/>.  (Babune = Bazaar Buildbot Network.)
+
+
+Running tests in parallel
+-------------------------
+
+Bazaar can use subunit to spawn multiple test processes.  There is
+slightly more chance you will hit ordering or timing-dependent bugs but
+it's much faster::
+
+  $ ./bzr selftest --parallel=fork
+
+Note that you will need the Subunit library
+<https://launchpad.net/subunit/> to use this, which is in
+``python-subunit`` on Ubuntu.
+
+
+Running tests from a ramdisk
+----------------------------
+
+The tests create and delete a lot of temporary files.  In some cases you
+can make the test suite run much faster by running it on a ramdisk.  For
+example::
+
+  $ sudo mkdir /ram
+  $ sudo mount -t tmpfs none /ram
+  $ TMPDIR=/ram ./bzr selftest ...
+
+You could also change ``/tmp`` in ``/etc/fstab`` to have type ``tmpfs``,
+if you don't mind possibly losing other files in there when the machine
+restarts.  Add this line (if there is none for ``/tmp`` already)::
+
+  none           /tmp            tmpfs  defaults        0       0
+
+With a 6-core machine and ``--parallel=fork`` using a tmpfs doubles the
+test execution speed.
 
 
 Writing Tests
@@ -352,21 +430,34 @@ the file doesn't exist::
 The actual use of ScriptRunner within a TestCase looks something like
 this::
 
-        def test_unshelve_keep(self):
-                # some setup here
-                sr = ScriptRunner()
-                sr.run_script(self, '''
-        $ bzr add file
-        $ bzr shelve --all -m Foo
-        $ bzr shelve --list
-        1: Foo
-        $ bzr unshelve --keep
-        $ bzr shelve --list
-        1: Foo
-        $ cat file
-        contents of file
-        ''')
+    from bzrlib.tests import script
 
+    def test_unshelve_keep(self):
+        # some setup here
+        script.run_script(self, '''
+            $ bzr add file
+            $ bzr shelve --all -m Foo
+            $ bzr shelve --list
+            1: Foo
+            $ bzr unshelve --keep
+            $ bzr shelve --list
+            1: Foo
+            $ cat file
+            contents of file
+            ''')
+
+You can also test commands that read user interaction::
+
+    def test_confirm_action(self):
+        """You can write tests that demonstrate user confirmation"""
+        commands.builtin_command_registry.register(cmd_test_confirm)
+        self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
+        self.run_script("""
+            $ bzr test-confirm
+            2>Really do it? [y/n]: 
+            <yes
+            yes
+            """)
 
 Import tariff tests
 -------------------
@@ -387,7 +478,7 @@ We want to avoid loading code unnecessarily, for reasons including:
   dependencies and only needed for particular cases.  If they're loaded in
   other cases then bzr may break for people who don't have those modules.
   
-`test_import_tarrif` allows us to check that removal of imports doesn't
+`test_import_tariff` allows us to check that removal of imports doesn't
 regress.
 
 This is done by running the command in a subprocess with
@@ -420,6 +511,44 @@ Some things to check:
 
 * particularly expensive Python built-in modules shouldn't be loaded
   unless there is a good reason
+
+
+Testing locking behaviour
+-------------------------
+
+In order to test the locking behaviour of commands, it is possible to install
+a hook that is called when a write lock is: acquired, released or broken.
+(Read locks also exist, they cannot be discovered in this way.)
+
+A hook can be installed by calling bzrlib.lock.Lock.hooks.install_named_hook.
+The three valid hooks are: `lock_acquired`, `lock_released` and `lock_broken`.
+
+Example::
+
+    locks_acquired = []
+    locks_released = []
+
+    lock.Lock.hooks.install_named_hook('lock_acquired',
+        locks_acquired.append, None)
+    lock.Lock.hooks.install_named_hook('lock_released',
+        locks_released.append, None)
+
+`locks_acquired` will now receive a LockResult instance for all locks acquired
+since the time the hook is installed.
+
+The last part of the `lock_url` allows you to identify the type of object that is locked.
+
+- BzrDir: `/branch-lock`
+- Working tree: `/checkout/lock`
+- Branch: `/branch/lock`
+- Repository: `/repository/lock`
+
+To test if a lock is a write lock on a working tree, one can do the following::
+
+    self.assertEndsWith(locks_acquired[0].lock_url, "/checkout/lock")
+
+See bzrlib/tests/commands/test_revert.py for an example of how to use this for
+testing locks.
 
 
 Skipping tests
@@ -543,6 +672,10 @@ include:
  - UnicodeFilenameFeature
  - FTPServerFeature
  - CaseInsensitiveFilesystemFeature.
+ - chown_feature: The test can rely on OS being POSIX and python
+   supporting os.chown.
+ - posix_permissions_feature: The test can use POSIX-style
+   user/group/other permission bits.
 
 
 Defining a new feature that tests can require
@@ -697,12 +830,15 @@ write your tests.
 
 TestCase
     A base TestCase that extends the Python standard library's
-    TestCase in several ways.  It adds more assertion methods (e.g.
-    ``assertContainsRe``), ``addCleanup``, and other features (see its API
-    docs for details).  It also has a ``setUp`` that makes sure that
-    global state like registered hooks and loggers won't interfere with
-    your test.  All tests should use this base class (whether directly or
-    via a subclass).
+    TestCase in several ways.  TestCase is build on
+    ``testtools.TestCase``, which gives it support for more assertion
+    methods (e.g.  ``assertContainsRe``), ``addCleanup``, and other
+    features (see its API docs for details).  It also has a ``setUp`` that
+    makes sure that global state like registered hooks and loggers won't
+    interfere with your test.  All tests should use this base class
+    (whether directly or via a subclass).  Note that we are trying not to
+    add more assertions at this point, and instead to build up a library
+    of ``bzrlib.tests.matchers``.
 
 TestCaseWithMemoryTransport
     Extends TestCase and adds methods like ``get_transport``,
@@ -781,7 +917,64 @@ method of ``TestCaseWithTransport``).
 Please see bzrlib.treebuilder for more details.
 
 
+Temporarily changing state
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If your test needs to temporarily mutate some global state, and you need
+it restored at the end, you can say for example::
+
+    self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
+
+Cleaning up
+~~~~~~~~~~~
+
+Our base ``TestCase`` class provides an ``addCleanup`` method, which
+should be used instead of ``tearDown``.  All the cleanups are run when the
+test finishes, regardless of whether it passes or fails.  If one cleanup
+fails, later cleanups are still run.
+
+(The same facility is available outside of tests through
+``bzrlib.cleanup``.)
+
+
+Manual testing
+==============
+
+Generally we prefer automated testing but sometimes a manual test is the
+right thing, especially for performance tests that want to measure elapsed
+time rather than effort.
+
+Simulating slow networks
+------------------------
+
+To get realistically slow network performance for manually measuring
+performance, we can simulate 500ms latency (thus 1000ms round trips)::
+
+  $ sudo tc qdisc add dev lo root netem delay 500ms
+
+Normal system behaviour is restored with ::
+
+  $ sudo tc qdisc del dev lo root
+
+A more precise version that only filters traffic to port 4155 is::
+
+    tc qdisc add dev lo root handle 1: prio
+    tc qdisc add dev lo parent 1:3 handle 30: netem delay 500ms 
+    tc qdisc add dev lo parent 30:1 handle 40: prio
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip dport 4155 0xffff flowid 1:3 handle 800::800
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip sport 4155 0xffff flowid 1:3 handle 800::801
+
+and to remove this::
+
+    tc filter del dev lo protocol ip parent 1: pref 3 u32
+    tc qdisc del dev lo root handle 1:
+
+You can use similar code to add additional delay to a real network
+interface, perhaps only when talking to a particular server or pointing at
+a VM.  For more information see <http://lartc.org/>.
+
+
 .. |--| unicode:: U+2014
 
 ..
-   vim: ft=rst tw=74 ai
+   vim: ft=rst tw=74 ai et sw=4

@@ -212,8 +212,8 @@ In the working tree:
          0 added
          0 removed
          0 renamed
-         1 unknown
-         0 ignored
+         0 unknown
+         1 ignored
          0 versioned subdirectories
 
 Branch history:
@@ -380,8 +380,8 @@ In the working tree:
          0 added
          0 removed
          0 renamed
-         1 unknown
-         0 ignored
+         0 unknown
+         1 ignored
          0 versioned subdirectories
 
 Branch history:
@@ -1228,7 +1228,8 @@ Repository:
         # Do a light checkout of the heavy one
         transport.mkdir('tree/lightcheckout')
         lco_dir = bzrdir.BzrDirMetaFormat1().initialize('tree/lightcheckout')
-        branch.BranchReferenceFormat().initialize(lco_dir, co_branch)
+        branch.BranchReferenceFormat().initialize(lco_dir,
+            target_branch=co_branch)
         lco_dir.create_workingtree()
         lco_tree = lco_dir.open_workingtree()
 
@@ -1324,7 +1325,7 @@ Repository:
 
     def test_info_locking_oslocks(self):
         if sys.platform == "win32":
-            raise TestSkipped("don't use oslocks on win32 in unix manner")
+            self.skip("don't use oslocks on win32 in unix manner")
         # This test tests old (all-in-one, OS lock using) behaviour which
         # simply cannot work on windows (and is indeed why we changed our
         # design. As such, don't try to remove the thisFailsStrictLockCheck

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -98,6 +98,11 @@ class HttpTransport_urllib(http.HttpTransportBase):
                                                          request.redirected_to))
 
         return response
+
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
 
     def _get(self, relpath, offsets, tail_amount=0):
         """See HttpTransport._get"""

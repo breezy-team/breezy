@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -813,8 +813,14 @@ class RevisionSpec_branch(RevisionSpec):
         revision_b = other_branch.last_revision()
         if revision_b in (None, revision.NULL_REVISION):
             raise errors.NoCommits(other_branch)
-        # pull in the remote revisions so we can diff
-        branch.fetch(other_branch, revision_b)
+        if branch is None:
+            branch = other_branch
+        else:
+            try:
+                # pull in the remote revisions so we can diff
+                branch.fetch(other_branch, revision_b)
+            except errors.ReadOnlyError:
+                branch = other_branch
         try:
             revno = branch.revision_id_to_revno(revision_b)
         except errors.NoSuchRevision:
@@ -839,6 +845,12 @@ class RevisionSpec_branch(RevisionSpec):
         if last_revision == revision.NULL_REVISION:
             raise errors.NoCommits(other_branch)
         return other_branch.repository.revision_tree(last_revision)
+
+    def needs_branch(self):
+        return False
+
+    def get_branch(self):
+        return self.spec
 
 
 

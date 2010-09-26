@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -106,15 +106,22 @@ cdef extern from 'dirent.h':
     int closedir(DIR * dir)
     dirent *readdir(DIR *dir)
 
+cdef object _directory
 _directory = 'directory'
+cdef object _chardev
 _chardev = 'chardev'
+cdef object _block
 _block = 'block'
+cdef object _file
 _file = 'file'
+cdef object _fifo
 _fifo = 'fifo'
+cdef object _symlink
 _symlink = 'symlink'
+cdef object _socket
 _socket = 'socket'
+cdef object _unknown
 _unknown = 'unknown'
-_missing = 'missing'
 
 # add a typedef struct dirent dirent to workaround pyrex
 cdef extern from 'readdir.h':
@@ -161,24 +168,11 @@ cdef class _Stat:
 
 from bzrlib import osutils
 
+cdef object _safe_utf8
+_safe_utf8 = osutils.safe_utf8
 
 cdef class UTF8DirReader:
     """A dir reader for utf8 file systems."""
-
-    cdef readonly object _safe_utf8
-    cdef _directory, _chardev, _block, _file, _fifo, _symlink
-    cdef _socket, _unknown
-
-    def __init__(self):
-        self._safe_utf8 = osutils.safe_utf8
-        self._directory = _directory
-        self._chardev = _chardev
-        self._block = _block
-        self._file = _file
-        self._fifo = _fifo
-        self._symlink = _symlink
-        self._socket = _socket
-        self._unknown = _unknown
 
     def kind_from_mode(self, int mode):
         """Get the kind of a path from a mode status."""
@@ -187,25 +181,24 @@ cdef class UTF8DirReader:
     cdef _kind_from_mode(self, int mode):
         # Files and directories are the most common - check them first.
         if S_ISREG(mode):
-            return self._file
+            return _file
         if S_ISDIR(mode):
-            return self._directory
+            return _directory
         if S_ISCHR(mode):
-            return self._chardev
+            return _chardev
         if S_ISBLK(mode):
-            return self._block
+            return _block
         if S_ISLNK(mode):
-            return self._symlink
+            return _symlink
         if S_ISFIFO(mode):
-            return self._fifo
+            return _fifo
         if S_ISSOCK(mode):
-            return self._socket
-        return self._unknown
+            return _socket
+        return _unknown
 
     def top_prefix_to_starting_dir(self, top, prefix=""):
         """See DirReader.top_prefix_to_starting_dir."""
-        return (self._safe_utf8(prefix), None, None, None,
-            self._safe_utf8(top))
+        return (_safe_utf8(prefix), None, None, None, _safe_utf8(top))
 
     def read_dir(self, prefix, top):
         """Read a single directory from a utf8 file system.
@@ -307,6 +300,9 @@ cdef _read_dir(path):
         if orig_dir_fd == -1:
             raise_os_error(errno, "open: ", ".")
         if -1 == chdir(path):
+            # Ignore the return value, because we are already raising an
+            # exception
+            close(orig_dir_fd)
             raise_os_error(errno, "chdir: ", path)
     else:
         orig_dir_fd = -1

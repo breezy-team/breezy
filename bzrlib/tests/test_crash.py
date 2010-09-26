@@ -67,6 +67,8 @@ class TestApportReporting(tests.TestCaseInTempDir):
             '(?m)^BzrVersion:') # should be in the traceback
         self.assertContainsRe(report, 'my error')
         self.assertContainsRe(report, 'AssertionError')
+        # see https://bugs.launchpad.net/bzr/+bug/528114
+        self.assertContainsRe(report, 'ExecutablePath')
         self.assertContainsRe(report, 'test_apport_report')
         # should also be in there
         self.assertContainsRe(report, '(?m)^CommandLine:')

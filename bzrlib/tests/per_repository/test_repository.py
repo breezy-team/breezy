@@ -47,6 +47,7 @@ from bzrlib.tests import (
     per_repository,
     test_server,
     )
+from bzrlib.tests.matchers import *
 
 
 class TestRepositoryMakeBranchAndTree(per_repository.TestCaseWithRepository):
@@ -724,6 +725,25 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertTrue('ghost' not in parents)
         self.assertEqual(parents['rev2'], ('rev1', 'ghost'))
 
+    def test_get_known_graph_ancestry(self):
+        tree = self.make_branch_and_tree('here')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        # A
+        # |\
+        # | B
+        # |/
+        # C
+        tree.commit('initial commit', rev_id='A')
+        tree_other = tree.bzrdir.sprout('there').open_workingtree()
+        tree_other.commit('another', rev_id='B')
+        tree.merge_from_branch(tree_other.branch)
+        tree.commit('another', rev_id='C')
+        kg = tree.branch.repository.get_known_graph_ancestry(
+            ['C'])
+        self.assertEqual(['C'], list(kg.heads(['A', 'B', 'C'])))
+        self.assertEqual(['A', 'B', 'C'], list(kg.topo_sort()))
+
     def test_parent_map_type(self):
         tree = self.make_branch_and_tree('here')
         tree.lock_write()
@@ -1068,7 +1088,7 @@ class TestRepositoryLocking(per_repository.TestCaseWithRepository):
         repo = self.make_repository('r')
         # Lock the repository, then use leave_lock_in_place so that when we
         # unlock the repository the lock is still held on disk.
-        token = repo.lock_write()
+        token = repo.lock_write().repository_token
         try:
             if token is None:
                 # This test does not apply, because this repository refuses lock
@@ -1088,7 +1108,7 @@ class TestRepositoryLocking(per_repository.TestCaseWithRepository):
     def test_dont_leave_lock_in_place(self):
         repo = self.make_repository('r')
         # Create a lock on disk.
-        token = repo.lock_write()
+        token = repo.lock_write().repository_token
         try:
             if token is None:
                 # This test does not apply, because this repository refuses lock
@@ -1121,6 +1141,14 @@ class TestRepositoryLocking(per_repository.TestCaseWithRepository):
         repo = self.make_repository('r')
         repo.lock_read()
         repo.unlock()
+
+    def test_lock_read_returns_unlockable(self):
+        repo = self.make_repository('r')
+        self.assertThat(repo.lock_read, ReturnsUnlockable(repo))
+
+    def test_lock_write_returns_unlockable(self):
+        repo = self.make_repository('r')
+        self.assertThat(repo.lock_write, ReturnsUnlockable(repo))
 
 
 class TestCaseWithComplexRepository(per_repository.TestCaseWithRepository):
@@ -1323,3 +1351,18 @@ class TestEscaping(tests.TestCaseWithTransport):
         fileobj = StringIO()
         wt.branch.repository.create_bundle(
             'rev1', _mod_revision.NULL_REVISION, fileobj)
+
+
+
+
+class TestRepositoryControlComponent(per_repository.TestCaseWithRepository):
+    """Repository implementations adequately implement ControlComponent."""
+    
+    def test_urls(self):
+        repo = self.make_repository('repo')
+        self.assertIsInstance(repo.user_url, str)
+        self.assertEqual(repo.user_url, repo.user_transport.base)
+        # for all current bzrdir implementations the user dir must be 
+        # above the control dir but we might need to relax that?
+        self.assertEqual(repo.control_url.find(repo.user_url), 0)
+        self.assertEqual(repo.control_url, repo.control_transport.base)

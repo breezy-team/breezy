@@ -21,6 +21,7 @@ from doctest import ELLIPSIS
 import os
 import signal
 import sys
+import threading
 import time
 import unittest
 import warnings
@@ -62,7 +63,6 @@ from bzrlib.symbol_versioning import (
     )
 from bzrlib.tests import (
     features,
-    stub_sftp,
     test_lsprof,
     test_server,
     test_sftp_transport,
@@ -121,6 +121,19 @@ class TestTreeShape(tests.TestCaseInTempDir):
         filename = u'hell\u00d8'
         self.build_tree_contents([(filename, 'contents of hello')])
         self.failUnlessExists(filename)
+
+
+class TestClassesAvailable(tests.TestCase):
+    """As a convenience we expose Test* classes from bzrlib.tests"""
+
+    def test_test_case(self):
+        from bzrlib.tests import TestCase
+
+    def test_test_loader(self):
+        from bzrlib.tests import TestLoader
+
+    def test_test_suite(self):
+        from bzrlib.tests import TestSuite
 
 
 class TestTransportScenarios(tests.TestCase):
@@ -209,7 +222,7 @@ class TestBzrDirScenarios(tests.TestCase):
     def test_scenarios(self):
         # check that constructor parameters are passed through to the adapted
         # test.
-        from bzrlib.tests.per_bzrdir import make_scenarios
+        from bzrlib.tests.per_controldir import make_scenarios
         vfs_factory = "v"
         server1 = "a"
         server2 = "b"
@@ -610,19 +623,19 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
                 l.attempt_lock()
         test = TestDanglingLock('test_function')
         result = test.run()
+        total_failures = result.errors + result.failures
         if self._lock_check_thorough:
-            self.assertEqual(1, len(result.errors))
+            self.assertLength(1, total_failures)
         else:
             # When _lock_check_thorough is disabled, then we don't trigger a
             # failure
-            self.assertEqual(0, len(result.errors))
+            self.assertLength(0, total_failures)
 
 
 class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     """Tests for the convenience functions TestCaseWithTransport introduces."""
 
     def test_get_readonly_url_none(self):
-        from bzrlib.transport import get_transport
         from bzrlib.transport.readonly import ReadonlyTransportDecorator
         self.vfs_transport_factory = memory.MemoryServer
         self.transport_readonly_server = None
@@ -630,15 +643,14 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         # for the server
         url = self.get_readonly_url()
         url2 = self.get_readonly_url('foo/bar')
-        t = get_transport(url)
-        t2 = get_transport(url2)
+        t = transport.get_transport(url)
+        t2 = transport.get_transport(url2)
         self.failUnless(isinstance(t, ReadonlyTransportDecorator))
         self.failUnless(isinstance(t2, ReadonlyTransportDecorator))
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
 
     def test_get_readonly_url_http(self):
         from bzrlib.tests.http_server import HttpServer
-        from bzrlib.transport import get_transport
         from bzrlib.transport.http import HttpTransportBase
         self.transport_server = test_server.LocalURLServer
         self.transport_readonly_server = HttpServer
@@ -646,8 +658,8 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
         url = self.get_readonly_url()
         url2 = self.get_readonly_url('foo/bar')
         # the transport returned may be any HttpTransportBase subclass
-        t = get_transport(url)
-        t2 = get_transport(url2)
+        t = transport.get_transport(url)
+        t2 = transport.get_transport(url2)
         self.failUnless(isinstance(t, HttpTransportBase))
         self.failUnless(isinstance(t2, HttpTransportBase))
         self.assertEqual(t2.base[:-1], t.abspath('foo/bar'))
@@ -691,8 +703,7 @@ class TestTestCaseTransports(tests.TestCaseWithTransport):
 class TestChrootedTest(tests.ChrootedTestCase):
 
     def test_root_is_root(self):
-        from bzrlib.transport import get_transport
-        t = get_transport(self.get_readonly_url())
+        t = transport.get_transport(self.get_readonly_url())
         url = t.base
         self.assertEqual(url, t.clone('..').base)
 
@@ -804,7 +815,7 @@ class TestTestResult(tests.TestCase):
         self.requireFeature(test_lsprof.LSProfFeature)
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
-            unittest._WritelnDecorator(result_stream),
+            result_stream,
             descriptions=0,
             verbosity=2,
             )
@@ -840,8 +851,7 @@ class TestTestResult(tests.TestCase):
         """A KnownFailure being raised should trigger several result actions."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
             def stopTestRun(self): pass
-            def startTests(self): pass
-            def report_test_start(self, test): pass
+            def report_tests_starting(self): pass
             def report_known_failure(self, test, err=None, details=None):
                 self._call = test, 'known failure'
         result = InstrumentedTestResult(None, None, None, None)
@@ -865,7 +875,7 @@ class TestTestResult(tests.TestCase):
         # verbose test output formatting
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
-            unittest._WritelnDecorator(result_stream),
+            result_stream,
             descriptions=0,
             verbosity=2,
             )
@@ -881,6 +891,9 @@ class TestTestResult(tests.TestCase):
         output = result_stream.getvalue()[prefix:]
         lines = output.splitlines()
         self.assertContainsRe(lines[0], r'XFAIL *\d+ms$')
+        if sys.version_info > (2, 7):
+            self.expectFailure("_ExpectedFailure on 2.7 loses the message",
+                self.assertNotEqual, lines[1], '    ')
         self.assertEqual(lines[1], '    foo')
         self.assertEqual(2, len(lines))
 
@@ -894,8 +907,7 @@ class TestTestResult(tests.TestCase):
         """Test the behaviour of invoking addNotSupported."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
             def stopTestRun(self): pass
-            def startTests(self): pass
-            def report_test_start(self, test): pass
+            def report_tests_starting(self): pass
             def report_unsupported(self, test, feature):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
@@ -920,7 +932,7 @@ class TestTestResult(tests.TestCase):
         # verbose test output formatting
         result_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
-            unittest._WritelnDecorator(result_stream),
+            result_stream,
             descriptions=0,
             verbosity=2,
             )
@@ -940,8 +952,7 @@ class TestTestResult(tests.TestCase):
         """An UnavailableFeature being raised should invoke addNotSupported."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
             def stopTestRun(self): pass
-            def startTests(self): pass
-            def report_test_start(self, test): pass
+            def report_tests_starting(self): pass
             def addNotSupported(self, test, feature):
                 self._call = test, feature
         result = InstrumentedTestResult(None, None, None, None)
@@ -989,13 +1000,25 @@ class TestTestResult(tests.TestCase):
         class InstrumentedTestResult(tests.ExtendedTestResult):
             calls = 0
             def startTests(self): self.calls += 1
-            def report_test_start(self, test): pass
         result = InstrumentedTestResult(None, None, None, None)
         def test_function():
             pass
         test = unittest.FunctionTestCase(test_function)
         test.run(result)
         self.assertEquals(1, result.calls)
+
+    def test_startTests_only_once(self):
+        """With multiple tests startTests should still only be called once"""
+        class InstrumentedTestResult(tests.ExtendedTestResult):
+            calls = 0
+            def startTests(self): self.calls += 1
+        result = InstrumentedTestResult(None, None, None, None)
+        suite = unittest.TestSuite([
+            unittest.FunctionTestCase(lambda: None),
+            unittest.FunctionTestCase(lambda: None)])
+        suite.run(result)
+        self.assertEquals(1, result.calls)
+        self.assertEquals(2, result.count)
 
 
 class TestUnicodeFilenameFeature(tests.TestCase):
@@ -1023,14 +1046,11 @@ class TestRunner(tests.TestCase):
         because of our use of global state.
         """
         old_root = tests.TestCaseInTempDir.TEST_ROOT
-        old_leak = tests.TestCase._first_thread_leaker_id
         try:
             tests.TestCaseInTempDir.TEST_ROOT = None
-            tests.TestCase._first_thread_leaker_id = None
             return testrunner.run(test)
         finally:
             tests.TestCaseInTempDir.TEST_ROOT = old_root
-            tests.TestCase._first_thread_leaker_id = old_leak
 
     def test_known_failure_failed_run(self):
         # run a test that generates a known failure which should be printed in
@@ -1422,7 +1442,7 @@ class TestTestCase(tests.TestCase):
         sample_test = TestTestCase("method_that_times_a_bit_twice")
         output_stream = StringIO()
         result = bzrlib.tests.VerboseTestResult(
-            unittest._WritelnDecorator(output_stream),
+            output_stream,
             descriptions=0,
             verbosity=2)
         sample_test.run(result)
@@ -1947,6 +1967,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_transport_sftp(self):
         self.requireFeature(features.paramiko)
+        from bzrlib.tests import stub_sftp
         self.check_transport_set(stub_sftp.SFTPAbsoluteServer)
 
     def test_transport_memory(self):
@@ -2338,6 +2359,11 @@ class TestStartBzrSubProcess(tests.TestCase):
         finally:
             os.chdir = orig_chdir
         self.assertEqual(['foo', 'current'], chdirs)
+
+    def test_get_bzr_path_with_cwd_bzrlib(self):
+        self.get_source_path = lambda: ""
+        self.overrideAttr(os.path, "isfile", lambda path: True)
+        self.assertEqual(self.get_bzr_path(), "bzr")
 
 
 class TestActuallyStartBzrSubprocess(tests.TestCaseWithTransport):
@@ -2773,6 +2799,10 @@ class TestTestSuite(tests.TestCase):
         # Test that a plausible list of modules to doctest is returned
         # by _test_suite_modules_to_doctest.
         test_list = tests._test_suite_modules_to_doctest()
+        if __doc__ is None:
+            # When docstrings are stripped, there are no modules to doctest
+            self.assertEqual([], test_list)
+            return
         self.assertSubset([
             'bzrlib.timestamp',
             ],
@@ -2795,6 +2825,8 @@ class TestTestSuite(tests.TestCase):
         self.overrideAttr(tests, '_test_suite_testmod_names', testmod_names)
         def doctests():
             calls.append("modules_to_doctest")
+            if __doc__ is None:
+                return []
             return ['bzrlib.timestamp']
         self.overrideAttr(tests, '_test_suite_modules_to_doctest', doctests)
         expected_test_list = [
@@ -2803,11 +2835,14 @@ class TestTestSuite(tests.TestCase):
             ('bzrlib.tests.per_transport.TransportTests'
              '.test_abspath(LocalTransport,LocalURLServer)'),
             'bzrlib.tests.test_selftest.TestTestSuite.test_test_suite',
-            # modules_to_doctest
-            'bzrlib.timestamp.format_highres_date',
             # plugins can't be tested that way since selftest may be run with
             # --no-plugins
             ]
+        if __doc__ is not None:
+            expected_test_list.extend([
+                # modules_to_doctest
+                'bzrlib.timestamp.format_highres_date',
+                ])
         suite = tests.test_suite()
         self.assertEqual(set(["testmod_names", "modules_to_doctest"]),
             set(calls))
@@ -2949,6 +2984,94 @@ class TestTestPrefixRegistry(tests.TestCase):
         self.assertEquals('bzrlib.tests', tpr.resolve_alias('bt'))
         self.assertEquals('bzrlib.tests.blackbox', tpr.resolve_alias('bb'))
         self.assertEquals('bzrlib.plugins', tpr.resolve_alias('bp'))
+
+
+class TestThreadLeakDetection(tests.TestCase):
+    """Ensure when tests leak threads we detect and report it"""
+
+    class LeakRecordingResult(tests.ExtendedTestResult):
+        def __init__(self):
+            tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
+            self.leaks = []
+        def _report_thread_leak(self, test, leaks, alive):
+            self.leaks.append((test, leaks))
+
+    def test_testcase_without_addCleanups(self):
+        """Check old TestCase instances don't break with leak detection"""
+        class Test(unittest.TestCase):
+            def runTest(self):
+                pass
+            addCleanup = None # for when on Python 2.7 with native addCleanup
+        result = self.LeakRecordingResult()
+        test = Test()
+        self.assertIs(getattr(test, "addCleanup", None), None)
+        result.startTestRun()
+        test.run(result)
+        result.stopTestRun()
+        self.assertEqual(result._tests_leaking_threads_count, 0)
+        self.assertEqual(result.leaks, [])
+        
+    def test_thread_leak(self):
+        """Ensure a thread that outlives the running of a test is reported
+
+        Uses a thread that blocks on an event, and is started by the inner
+        test case. As the thread outlives the inner case's run, it should be
+        detected as a leak, but the event is then set so that the thread can
+        be safely joined in cleanup so it's not leaked for real.
+        """
+        event = threading.Event()
+        thread = threading.Thread(name="Leaker", target=event.wait)
+        class Test(tests.TestCase):
+            def test_leak(self):
+                thread.start()
+        result = self.LeakRecordingResult()
+        test = Test("test_leak")
+        self.addCleanup(thread.join)
+        self.addCleanup(event.set)
+        result.startTestRun()
+        test.run(result)
+        result.stopTestRun()
+        self.assertEqual(result._tests_leaking_threads_count, 1)
+        self.assertEqual(result._first_thread_leaker_id, test.id())
+        self.assertEqual(result.leaks, [(test, set([thread]))])
+        self.assertContainsString(result.stream.getvalue(), "leaking threads")
+
+    def test_multiple_leaks(self):
+        """Check multiple leaks are blamed on the test cases at fault
+
+        Same concept as the previous test, but has one inner test method that
+        leaks two threads, and one that doesn't leak at all.
+        """
+        event = threading.Event()
+        thread_a = threading.Thread(name="LeakerA", target=event.wait)
+        thread_b = threading.Thread(name="LeakerB", target=event.wait)
+        thread_c = threading.Thread(name="LeakerC", target=event.wait)
+        class Test(tests.TestCase):
+            def test_first_leak(self):
+                thread_b.start()
+            def test_second_no_leak(self):
+                pass
+            def test_third_leak(self):
+                thread_c.start()
+                thread_a.start()
+        result = self.LeakRecordingResult()
+        first_test = Test("test_first_leak")
+        third_test = Test("test_third_leak")
+        self.addCleanup(thread_a.join)
+        self.addCleanup(thread_b.join)
+        self.addCleanup(thread_c.join)
+        self.addCleanup(event.set)
+        result.startTestRun()
+        unittest.TestSuite(
+            [first_test, Test("test_second_no_leak"), third_test]
+            ).run(result)
+        result.stopTestRun()
+        self.assertEqual(result._tests_leaking_threads_count, 2)
+        self.assertEqual(result._first_thread_leaker_id, first_test.id())
+        self.assertEqual(result.leaks, [
+            (first_test, set([thread_b])),
+            (third_test, set([thread_a, thread_c]))])
+        self.assertContainsString(result.stream.getvalue(), "leaking threads")
 
 
 class TestRunSuite(tests.TestCase):

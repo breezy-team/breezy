@@ -17,8 +17,6 @@
 """UI helper for the push command."""
 
 from bzrlib import (
-    builtins,
-    branch,
     bzrdir,
     errors,
     revision as _mod_revision,

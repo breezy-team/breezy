@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -223,7 +223,7 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def test_path_content_summary(self):
         """path_content_summary should always talk about the canonical form."""
-        # see https://bugs.edge.launchpad.net/bzr/+bug/415508
+        # see https://bugs.launchpad.net/bzr/+bug/415508
         #
         # set up a tree where the canonical form has a string added to the
         # end

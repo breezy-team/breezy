@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,15 +15,19 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
+import ftplib
 import getpass
 import sys
 
 from bzrlib import (
     config,
+    errors,
     tests,
     transport,
     ui,
     )
+
+from bzrlib.transport import ftp
 
 from bzrlib.tests import ftp_server
 
@@ -130,3 +134,17 @@ class TestFTPTestServerUI(TestCaseWithFTPServer):
         # stdin should be empty (the provided password have been consumed),
         # even if the password is empty, it's followed by a newline.
         ui.ui_factory.assert_all_input_consumed()
+
+
+class TestFTPErrorTranslation(tests.TestCase):
+
+    def test_translate_directory_not_empty(self):
+        # https://bugs.launchpad.net/bugs/528722
+        
+        t = ftp.FtpTransport("ftp://none/")
+
+        try:
+            raise ftplib.error_temp("Rename/move failure: Directory not empty")
+        except Exception, e:
+            e = self.assertRaises(errors.DirectoryNotEmpty,
+                t._translate_ftp_error, e, "/path")

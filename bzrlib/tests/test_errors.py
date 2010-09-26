@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
 
 """Tests for the formatting and construction of errors."""
 
+import inspect
+import re
 import socket
 import sys
 
@@ -26,10 +28,35 @@ from bzrlib import (
     symbol_versioning,
     urlutils,
     )
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 
 
 class TestErrors(TestCaseWithTransport):
+
+    def test_no_arg_named_message(self):
+        """Ensure the __init__ and _fmt in errors do not have "message" arg.
+
+        This test fails if __init__ or _fmt in errors has an argument
+        named "message" as this can cause errors in some Python versions.
+        Python 2.5 uses a slot for StandardError.message.
+        See bug #603461
+        """
+        fmt_pattern = re.compile("%\(message\)[sir]")
+        subclasses_present = getattr(errors.BzrError, '__subclasses__', None)
+        if not subclasses_present:
+            raise TestSkipped('__subclasses__ attribute required for classes. '
+                'Requires Python 2.5 or later.')
+        for c in errors.BzrError.__subclasses__():
+            init = getattr(c, '__init__', None)
+            fmt = getattr(c, '_fmt', None)
+            if init:
+                args = inspect.getargspec(init)[0]
+                self.assertFalse('message' in args,
+                    ('Argument name "message" not allowed for '
+                    '"errors.%s.__init__"' % c.__name__))
+            if fmt and fmt_pattern.search(fmt):
+                self.assertFalse(True, ('"message" not allowed in '
+                    '"errors.%s._fmt"' % c.__name__))
 
     def test_bad_filename_encoding(self):
         error = errors.BadFilenameEncoding('bad/filen\xe5me', 'UTF-8')
@@ -130,6 +157,13 @@ class TestErrors(TestCaseWithTransport):
         error = errors.LockActive("lock description")
         self.assertEqualDiff("The lock for 'lock description' is in use and "
             "cannot be broken.",
+            str(error))
+
+    def test_lock_corrupt(self):
+        error = errors.LockCorrupt("corruption info")
+        self.assertEqualDiff("Lock is apparently held, but corrupted: "
+            "corruption info\n"
+            "Use 'bzr break-lock' to clear it",
             str(error))
 
     def test_knit_data_stream_incompatible(self):
@@ -655,6 +689,17 @@ class TestErrors(TestCaseWithTransport):
         str(err)
         self.assertEqual(['open_repository'], fake_bzrdir.calls)
 
+    def test_invalid_pattern(self):
+        error = errors.InvalidPattern('Bad pattern msg.')
+        self.assertEqualDiff("Invalid pattern(s) found. Bad pattern msg.",
+            str(error))
+
+    def test_recursive_bind(self):
+        error = errors.RecursiveBind('foo_bar_branch')
+        msg = ('Branch "foo_bar_branch" appears to be bound to itself. '
+            'Please use `bzr unbind` to fix.')
+        self.assertEqualDiff(msg, str(error))
+
 
 class PassThroughError(errors.BzrError):
 
@@ -670,7 +715,7 @@ class ErrorWithBadFormat(errors.BzrError):
 
 
 class ErrorWithNoFormat(errors.BzrError):
-    """This class has a docstring but no format string."""
+    __doc__ = """This class has a docstring but no format string."""
 
 
 class TestErrorFormatting(TestCase):
@@ -703,7 +748,7 @@ class TestErrorFormatting(TestCase):
             str(e), 'Unprintable exception ErrorWithBadFormat')
 
     def test_cannot_bind_address(self):
-        # see <https://bugs.edge.launchpad.net/bzr/+bug/286871>
+        # see <https://bugs.launchpad.net/bzr/+bug/286871>
         e = errors.CannotBindAddress('example.com', 22,
             socket.error(13, 'Permission denied'))
         self.assertContainsRe(str(e),
@@ -712,4 +757,10 @@ class TestErrorFormatting(TestCase):
     def test_file_timestamp_unavailable(self):            
         e = errors.FileTimestampUnavailable("/path/foo")
         self.assertEquals("The filestamp for /path/foo is not available.",
+            str(e))
+            
+    def test_transform_rename_failed(self):
+        e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)
+        self.assertEquals(
+            u"Failed to rename from to to: readonly file",
             str(e))

@@ -1,4 +1,4 @@
-/* Copyright (C) 2009 Canonical Ltd
+/* Copyright (C) 2009, 2010 Canonical Ltd
  * 
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -140,10 +140,6 @@ static StaticTuple *
 StaticTuple_New(Py_ssize_t size)
 {
     StaticTuple *stuple;
-    if (size < 0) {
-        PyErr_BadInternalCall();
-        return NULL;
-    }
 
     if (size < 0 || size > 255) {
         /* Too big or too small */
@@ -280,6 +276,14 @@ StaticTuple_new_constructor(PyTypeObject *type, PyObject *args, PyObject *kwds)
         return NULL;
     }
     len = PyTuple_GET_SIZE(args);
+    if (len < 0 || len > 255) {
+        /* Check the length here so we can raise a TypeError instead of
+         * StaticTuple_New's ValueError.
+         */
+        PyErr_SetString(PyExc_TypeError, "StaticTuple(...)"
+            " takes from 0 to 255 items");
+        return NULL;
+    }
     self = (StaticTuple *)StaticTuple_New(len);
     if (self == NULL) {
         return NULL;
@@ -699,6 +703,18 @@ StaticTuple_traverse(StaticTuple *self, visitproc visit, void *arg)
     return 0;
 }
 
+
+static PyObject *
+StaticTuple_sizeof(StaticTuple *self)
+{
+	Py_ssize_t res;
+
+	res = _PyObject_SIZE(&StaticTuple_Type) + (int)self->size * sizeof(void*);
+	return PyInt_FromSsize_t(res);
+}
+
+
+
 static char StaticTuple_doc[] =
     "C implementation of a StaticTuple structure."
     "\n This is used as StaticTuple(item1, item2, item3)"
@@ -718,6 +734,7 @@ static PyMethodDef StaticTuple_methods[] = {
      "Create a StaticTuple from a given sequence. This functions"
      " the same as the tuple() constructor."},
     {"__reduce__", (PyCFunction)StaticTuple_reduce, METH_NOARGS, StaticTuple_reduce_doc},
+    {"__sizeof__",  (PyCFunction)StaticTuple_sizeof, METH_NOARGS}, 
     {NULL, NULL} /* sentinel */
 };
 

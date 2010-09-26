@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ import errno
 import glob
 import os
 import shlex
+import textwrap
 from cStringIO import StringIO
 
 from bzrlib import (
@@ -55,6 +56,10 @@ def _script_to_commands(text, file_name=None):
     Input lines start with '<'.
     Output lines start with nothing.
     Error lines start with '2>'.
+
+    :return: A sequence of ([args], input, output, errors), where the args are
+        split in to words, and the input, output, and errors are just strings,
+        typically containing newlines.
     """
 
     commands = []
@@ -73,18 +78,27 @@ def _script_to_commands(text, file_name=None):
     cmd_line = 1
     lineno = 0
     input, output, error = None, None, None
-    for line in text.split('\n'):
+    text = textwrap.dedent(text)
+    lines = text.split('\n')
+    # to make use of triple-quoted strings easier, we ignore a blank line
+    # right at the start and right at the end; the rest are meaningful
+    if lines and lines[0] == '':
+        del lines[0]
+    if lines and lines[-1] == '':
+        del lines[-1]
+    for line in lines:
         lineno += 1
         # Keep a copy for error reporting
         orig = line
         comment =  line.find('#')
         if comment >= 0:
             # Delete comments
+            # NB: this syntax means comments are allowed inside output, which
+            # may be confusing...
             line = line[0:comment]
             line = line.rstrip()
-        if line == '':
-            # Ignore empty lines
-            continue
+            if line == '':
+                continue
         if line.startswith('$'):
             # Time to output the current command
             add_command(cmd_cur, input, output, error)
@@ -230,7 +244,15 @@ class ScriptRunner(object):
             # 'expected' parameter. So we just fallback to our good old
             # assertEqualDiff since we know there *are* differences and the
             # output should be decently readable.
-            test_case.assertEqualDiff(expected, actual)
+            #
+            # As a special case, we allow output that's missing a final
+            # newline to match an expected string that does have one, so that
+            # we can match a prompt printed on one line, then input given on
+            # the next line.
+            if expected == actual + '\n':
+                pass
+            else:
+                test_case.assertEqualDiff(expected, actual)
 
     def _pre_process_args(self, args):
         new_args = []
@@ -475,3 +497,7 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
     def run_command(self, cmd, input, output, error):
         return self.script_runner.run_command(self, cmd, input, output, error)
 
+
+def run_script(test_case, script_string):
+    """Run the given script within a testcase"""
+    return ScriptRunner().run_script(test_case, script_string)

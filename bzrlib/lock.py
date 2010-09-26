@@ -84,8 +84,22 @@ class LockResult(object):
         return self.lock_url == other.lock_url and self.details == other.details
 
     def __repr__(self):
-        return '%s(%s%s)' % (self.__class__.__name__,
+        return '%s(%s, %s)' % (self.__class__.__name__,
                              self.lock_url, self.details)
+
+
+class LogicalLockResult(object):
+    """The result of a lock_read/lock_write/lock_tree_write call on lockables.
+
+    :ivar unlock: A callable which will unlock the lock.
+    """
+
+    def __init__(self, unlock):
+        self.unlock = unlock
+
+    def __repr__(self):
+        return "LogicalLockResult(%s)" % (self.unlock)
+
 
 
 def cant_unlock_not_held(locked_object):

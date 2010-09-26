@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -38,55 +38,7 @@ from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
                                 WorkingTree)
-
-
-class CapturingUIFactory(ui.UIFactory):
-    """A UI Factory for testing - capture the updates made through it."""
-
-    def __init__(self):
-        super(CapturingUIFactory, self).__init__()
-        self._calls = []
-        self.depth = 0
-
-    def clear(self):
-        """See progress.ProgressTask.clear()."""
-
-    def clear_term(self):
-        """See progress.ProgressTask.clear_term()."""
-
-    def finished(self):
-        """See progress.ProgressTask.finished()."""
-        self.depth -= 1
-
-    def note(self, fmt_string, *args, **kwargs):
-        """See progress.ProgressTask.note()."""
-
-    def progress_bar(self):
-        return self
-
-    def nested_progress_bar(self):
-        self.depth += 1
-        return self
-
-    def update(self, message, count=None, total=None):
-        """See progress.ProgressTask.update()."""
-        if self.depth == 1:
-            self._calls.append(("update", count, total, message))
-
-
-class TestCapturingUI(TestCase):
-
-    def test_nested_ignore_depth_beyond_one(self):
-        # we only want to capture the first level out progress, not
-        # want sub-components might do. So we have nested bars ignored.
-        factory = CapturingUIFactory()
-        pb1 = factory.nested_progress_bar()
-        pb1.update('foo', 0, 1)
-        pb2 = factory.nested_progress_bar()
-        pb2.update('foo', 0, 1)
-        pb2.finished()
-        pb1.finished()
-        self.assertEqual([("update", 0, 1, 'foo')], factory._calls)
+from bzrlib.tests.testui import ProgressRecordingUIFactory
 
 
 class TestCommit(TestCaseWithWorkingTree):
@@ -168,7 +120,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree_a.commit('change n in A')
 
         # Merging from A should introduce conflicts because 'n' was modified
-        # and removed, so 'a' needs to be restored.
+        # (in A) and removed (in B), so 'a' needs to be restored.
         num_conflicts = tree_b.merge_from_branch(tree_a.branch)
         self.assertEqual(3, num_conflicts)
         paths = [(path, ie.file_id)
@@ -507,7 +459,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
 
     def setUp(self):
         super(TestCommitProgress, self).setUp()
-        ui.ui_factory = CapturingUIFactory()
+        ui.ui_factory = ProgressRecordingUIFactory()
 
     def test_commit_progress_steps(self):
         # during commit we one progress update for every entry in the
@@ -526,7 +478,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         f.close()
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        factory = CapturingUIFactory()
+        factory = ProgressRecordingUIFactory()
         ui.ui_factory = factory
         # TODO RBC 20060421 it would be nice to merge the reporter output
         # into the factory for this test - just make the test ui factory
@@ -547,7 +499,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        factory = CapturingUIFactory()
+        factory = ProgressRecordingUIFactory()
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6):
             pass
@@ -570,7 +522,7 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        factory = CapturingUIFactory()
+        factory = ProgressRecordingUIFactory()
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
             pass

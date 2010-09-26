@@ -60,7 +60,7 @@ class TextUIFactory(UIFactory):
         self.stderr = stderr
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
-        
+
     def be_quiet(self, state):
         if state and not self._quiet:
             self.clear_term()
@@ -153,7 +153,7 @@ class TextUIFactory(UIFactory):
         """Construct and return a new ProgressView subclass for this UI.
         """
         # with --quiet, never any progress view
-        # <https://bugs.edge.launchpad.net/bzr/+bug/320035>.  Otherwise if the
+        # <https://bugs.launchpad.net/bzr/+bug/320035>.  Otherwise if the
         # user specifically requests either text or no progress bars, always
         # do that.  otherwise, guess based on $TERM and tty presence.
         if self.is_quiet():
@@ -229,6 +229,9 @@ class TextUIFactory(UIFactory):
 
     def show_warning(self, msg):
         self.clear_term()
+        if isinstance(msg, unicode):
+            te = osutils.get_terminal_encoding()
+            msg = msg.encode(te, 'replace')
         self.stderr.write("bzr: warning: %s\n" % msg)
 
     def _progress_updated(self, task):
@@ -248,6 +251,18 @@ class TextUIFactory(UIFactory):
 
     def _progress_all_finished(self):
         self._progress_view.clear()
+
+    def show_user_warning(self, warning_id, **message_args):
+        """Show a text message to the user.
+
+        Explicitly not for warnings about bzr apis, deprecations or internals.
+        """
+        # eventually trace.warning should migrate here, to avoid logging and
+        # be easier to test; that has a lot of test fallout so for now just
+        # new code can call this
+        if warning_id not in self.suppressed_warnings:
+            self.stderr.write(self.format_user_warning(warning_id, message_args) +
+                '\n')
 
 
 class TextProgressView(object):
@@ -285,12 +300,18 @@ class TextProgressView(object):
         # correspond reliably to overall command progress
         self.enable_bar = False
 
+    def _avail_width(self):
+        # we need one extra space for terminals that wrap on last char
+        w = osutils.terminal_width() 
+        if w is None:
+            return None
+        else:
+            return w - 1
+
     def _show_line(self, s):
         # sys.stderr.write("progress %r\n" % s)
-        width = osutils.terminal_width()
+        width = self._avail_width()
         if width is not None:
-            # we need one extra space for terminals that wrap on last char
-            width = width - 1
             s = '%-*.*s' % (width, width, s)
         self._term_file.write('\r' + s + '\r')
 
@@ -333,6 +354,10 @@ class TextProgressView(object):
             return ''
 
     def _format_task(self, task):
+        """Format task-specific parts of progress bar.
+
+        :returns: (text_part, counter_part) both unicode strings.
+        """
         if not task.show_count:
             s = ''
         elif task.current_cnt is not None and task.total_cnt is not None:
@@ -348,21 +373,39 @@ class TextProgressView(object):
             t = t._parent_task
             if t.msg:
                 m = t.msg + ':' + m
-        return m + s
+        return m, s
 
     def _render_line(self):
         bar_string = self._render_bar()
         if self._last_task:
-            task_msg = self._format_task(self._last_task)
+            task_part, counter_part = self._format_task(self._last_task)
         else:
-            task_msg = ''
+            task_part = counter_part = ''
         if self._last_task and not self._last_task.show_transport_activity:
             trans = ''
         else:
             trans = self._last_transport_msg
-            if trans:
-                trans += ' | '
-        return (bar_string + trans + task_msg)
+        # the bar separates the transport activity from the message, so even
+        # if there's no bar or spinner, we must show something if both those
+        # fields are present
+        if (task_part or trans) and not bar_string:
+            bar_string = '| '
+        # preferentially truncate the task message if we don't have enough
+        # space
+        avail_width = self._avail_width()
+        if avail_width is not None:
+            # if terminal avail_width is unknown, don't truncate
+            current_len = len(bar_string) + len(trans) + len(task_part) + len(counter_part)
+            gap = current_len - avail_width
+            if gap > 0:
+                task_part = task_part[:-gap-2] + '..'
+        s = trans + bar_string + task_part + counter_part
+        if avail_width is not None:
+            if len(s) < avail_width:
+                s = s.ljust(avail_width)
+            elif len(s) > avail_width:
+                s = s[:avail_width]
+        return s
 
     def _repaint(self):
         s = self._render_line()
@@ -424,7 +467,7 @@ class TextProgressView(object):
             rate = (self._bytes_since_update
                     / (now - self._transport_update_time))
             # using base-10 units (see HACKING.txt).
-            msg = ("%6dkB %5dkB/s" %
+            msg = ("%6dkB %5dkB/s " %
                     (self._total_byte_count / 1000, int(rate) / 1000,))
             self._transport_update_time = now
             self._last_repaint = now

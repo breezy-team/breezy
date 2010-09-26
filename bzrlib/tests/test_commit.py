@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -274,7 +274,7 @@ class TestCommit(TestCaseWithTransport):
         try:
             self.check_inventory_shape(wt.read_working_inventory(),
                                        ['a/', 'a/hello', 'a/b/'])
-            self.check_inventory_shape(b.repository.get_revision_inventory(r3),
+            self.check_inventory_shape(b.repository.get_inventory(r3),
                                        ['a/', 'a/hello', 'a/b/'])
         finally:
             wt.unlock()
@@ -289,7 +289,7 @@ class TestCommit(TestCaseWithTransport):
         finally:
             wt.unlock()
 
-        inv = b.repository.get_revision_inventory(r4)
+        inv = b.repository.get_inventory(r4)
         eq(inv['hello-id'].revision, r4)
         eq(inv['a-id'].revision, r1)
         eq(inv['b-id'].revision, r3)

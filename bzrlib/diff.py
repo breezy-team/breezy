@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd.
+# Copyright (C) 2005-2010 Canonical Ltd.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 import difflib
 import os
 import re
-import shutil
 import string
 import sys
 
@@ -31,7 +30,8 @@ import time
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
-    commands,
+    cmdline,
+    cleanup,
     errors,
     osutils,
     patiencediff,
@@ -43,8 +43,12 @@ from bzrlib import (
 from bzrlib.workingtree import WorkingTree
 """)
 
+from bzrlib.registry import (
+    Registry,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_function,
+    deprecated_in,
     )
 from bzrlib.trace import mutter, note, warning
 
@@ -95,8 +99,8 @@ def internal_diff(old_filename, oldlines, new_filename, newlines, to_file,
     if sequence_matcher is None:
         sequence_matcher = patiencediff.PatienceSequenceMatcher
     ud = patiencediff.unified_diff(oldlines, newlines,
-                      fromfile=old_filename.encode(path_encoding),
-                      tofile=new_filename.encode(path_encoding),
+                      fromfile=old_filename.encode(path_encoding, 'replace'),
+                      tofile=new_filename.encode(path_encoding, 'replace'),
                       sequencematcher=sequence_matcher)
 
     ud = list(ud)
@@ -286,6 +290,7 @@ def external_diff(old_filename, oldlines, new_filename, newlines, to_file,
                         new_abspath, e)
 
 
+@deprecated_function(deprecated_in((2, 2, 0)))
 def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
                                    apply_view=True):
     """Get the trees and specific files to diff given a list of paths.
@@ -310,7 +315,44 @@ def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
     :returns:
         a tuple of (old_tree, new_tree, old_branch, new_branch,
         specific_files, extra_trees) where extra_trees is a sequence of
-        additional trees to search in for file-ids.
+        additional trees to search in for file-ids.  The trees and branches
+        are not locked.
+    """
+    op = cleanup.OperationWithCleanups(get_trees_and_branches_to_diff_locked)
+    return op.run_simple(path_list, revision_specs, old_url, new_url,
+            op.add_cleanup, apply_view=apply_view)
+    
+
+def get_trees_and_branches_to_diff_locked(
+    path_list, revision_specs, old_url, new_url, add_cleanup, apply_view=True):
+    """Get the trees and specific files to diff given a list of paths.
+
+    This method works out the trees to be diff'ed and the files of
+    interest within those trees.
+
+    :param path_list:
+        the list of arguments passed to the diff command
+    :param revision_specs:
+        Zero, one or two RevisionSpecs from the diff command line,
+        saying what revisions to compare.
+    :param old_url:
+        The url of the old branch or tree. If None, the tree to use is
+        taken from the first path, if any, or the current working tree.
+    :param new_url:
+        The url of the new branch or tree. If None, the tree to use is
+        taken from the first path, if any, or the current working tree.
+    :param add_cleanup:
+        a callable like Command.add_cleanup.  get_trees_and_branches_to_diff
+        will register cleanups that must be run to unlock the trees, etc.
+    :param apply_view:
+        if True and a view is set, apply the view or check that the paths
+        are within it
+    :returns:
+        a tuple of (old_tree, new_tree, old_branch, new_branch,
+        specific_files, extra_trees) where extra_trees is a sequence of
+        additional trees to search in for file-ids.  The trees and branches
+        will be read-locked until the cleanups registered via the add_cleanup
+        param are run.
     """
     # Get the old and new revision specs
     old_revision_spec = None
@@ -339,12 +381,21 @@ def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
         default_location = path_list[0]
         other_paths = path_list[1:]
 
+    def lock_tree_or_branch(wt, br):
+        if wt is not None:
+            wt.lock_read()
+            add_cleanup(wt.unlock)
+        elif br is not None:
+            br.lock_read()
+            add_cleanup(br.unlock)
+
     # Get the old location
     specific_files = []
     if old_url is None:
         old_url = default_location
     working_tree, branch, relpath = \
         bzrdir.BzrDir.open_containing_tree_or_branch(old_url)
+    lock_tree_or_branch(working_tree, branch)
     if consider_relpath and relpath != '':
         if working_tree is not None and apply_view:
             views.check_path_in_view(working_tree, relpath)
@@ -358,6 +409,7 @@ def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
     if new_url != old_url:
         working_tree, branch, relpath = \
             bzrdir.BzrDir.open_containing_tree_or_branch(new_url)
+        lock_tree_or_branch(working_tree, branch)
         if consider_relpath and relpath != '':
             if working_tree is not None and apply_view:
                 views.check_path_in_view(working_tree, relpath)
@@ -368,12 +420,9 @@ def get_trees_and_branches_to_diff(path_list, revision_specs, old_url, new_url,
 
     # Get the specific files (all files is None, no files is [])
     if make_paths_wt_relative and working_tree is not None:
-        try:
-            from bzrlib.builtins import safe_relpath_files
-            other_paths = safe_relpath_files(working_tree, other_paths,
+        other_paths = working_tree.safe_relpath_files(
+            other_paths,
             apply_view=apply_view)
-        except errors.FileInWrongBranch:
-            raise errors.BzrCommandError("Files are in different branches")
     specific_files.extend(other_paths)
     if len(specific_files) == 0:
         specific_files = None
@@ -411,25 +460,22 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                     old_label='a/', new_label='b/',
                     extra_trees=None,
                     path_encoding='utf8',
-                    using=None):
+                    using=None,
+                    format_cls=None):
     """Show in text form the changes from one tree to another.
 
-    to_file
-        The output stream.
-
-    specific_files
-        Include only changes to these files - None for all changes.
-
-    external_diff_options
-        If set, use an external GNU diff and pass these options.
-
-    extra_trees
-        If set, more Trees to use for looking up file ids
-
-    path_encoding
-        If set, the path will be encoded as specified, otherwise is supposed
-        to be utf8
+    :param to_file: The output stream.
+    :param specific_files:Include only changes to these files - None for all
+        changes.
+    :param external_diff_options: If set, use an external GNU diff and pass 
+        these options.
+    :param extra_trees: If set, more Trees to use for looking up file ids
+    :param path_encoding: If set, the path will be encoded as specified, 
+        otherwise is supposed to be utf8
+    :param format_cls: Formatter class (DiffTree subclass)
     """
+    if format_cls is None:
+        format_cls = DiffTree
     old_tree.lock_read()
     try:
         if extra_trees is not None:
@@ -437,10 +483,10 @@ def show_diff_trees(old_tree, new_tree, to_file, specific_files=None,
                 tree.lock_read()
         new_tree.lock_read()
         try:
-            differ = DiffTree.from_trees_options(old_tree, new_tree, to_file,
-                                                 path_encoding,
-                                                 external_diff_options,
-                                                 old_label, new_label, using)
+            differ = format_cls.from_trees_options(old_tree, new_tree, to_file,
+                                                   path_encoding,
+                                                   external_diff_options,
+                                                   old_label, new_label, using)
             return differ.show_diff(specific_files, extra_trees)
         finally:
             new_tree.unlock()
@@ -657,18 +703,18 @@ class DiffText(DiffPath):
         """
         def _get_text(tree, file_id, path):
             if file_id is not None:
-                return tree.get_file(file_id, path).readlines()
+                return tree.get_file_lines(file_id, path)
             else:
                 return []
         try:
             from_text = _get_text(self.old_tree, from_file_id, from_path)
             to_text = _get_text(self.new_tree, to_file_id, to_path)
             self.text_differ(from_label, from_text, to_label, to_text,
-                             self.to_file)
+                             self.to_file, path_encoding=self.path_encoding)
         except errors.BinaryFile:
             self.to_file.write(
                   ("Binary files %s and %s differ\n" %
-                  (from_label, to_label)).encode(self.path_encoding))
+                  (from_label, to_label)).encode(self.path_encoding,'replace'))
         return self.CHANGED
 
 
@@ -683,16 +729,19 @@ class DiffFromTool(DiffPath):
     @classmethod
     def from_string(klass, command_string, old_tree, new_tree, to_file,
                     path_encoding='utf-8'):
-        command_template = commands.shlex_split_unicode(command_string)
+        command_template = cmdline.split(command_string)
         if '@' not in command_string:
             command_template.extend(['@old_path', '@new_path'])
         return klass(command_template, old_tree, new_tree, to_file,
                      path_encoding)
 
     @classmethod
-    def make_from_diff_tree(klass, command_string):
+    def make_from_diff_tree(klass, command_string, external_diff_options=None):
         def from_diff_tree(diff_tree):
-            return klass.from_string(command_string, diff_tree.old_tree,
+            full_command_string = [command_string]
+            if external_diff_options is not None:
+                full_command_string += ' ' + external_diff_options
+            return klass.from_string(full_command_string, diff_tree.old_tree,
                                      diff_tree.new_tree, diff_tree.to_file)
         return from_diff_tree
 
@@ -748,13 +797,14 @@ class DiffFromTool(DiffPath):
                 target.close()
         finally:
             source.close()
-        if not allow_write:
-            osutils.make_readonly(full_path)
         try:
             mtime = tree.get_file_mtime(file_id)
         except errors.FileTimestampUnavailable:
-            mtime = 0
-        os.utime(full_path, (mtime, mtime))
+            pass
+        else:
+            os.utime(full_path, (mtime, mtime))
+        if not allow_write:
+            osutils.make_readonly(full_path)
         return full_path
 
     def _prepare_files(self, file_id, old_path, new_path, force_temp=False,
@@ -865,12 +915,15 @@ class DiffTree(object):
         :param using: Commandline to use to invoke an external diff tool
         """
         if using is not None:
-            extra_factories = [DiffFromTool.make_from_diff_tree(using)]
+            extra_factories = [DiffFromTool.make_from_diff_tree(using, external_diff_options)]
         else:
             extra_factories = []
         if external_diff_options:
             opts = external_diff_options.split()
-            def diff_file(olab, olines, nlab, nlines, to_file):
+            def diff_file(olab, olines, nlab, nlines, to_file, path_encoding=None):
+                """:param path_encoding: not used but required
+                        to match the signature of internal_diff.
+                """
                 external_diff(olab, olines, nlab, nlines, to_file, opts)
         else:
             diff_file = internal_diff
@@ -882,7 +935,7 @@ class DiffTree(object):
     def show_diff(self, specific_files, extra_trees=None):
         """Write tree diff to self.to_file
 
-        :param sepecific_files: the specific files to compare (recursive)
+        :param specific_files: the specific files to compare (recursive)
         :param extra_trees: extra trees to use for mapping paths to file_ids
         """
         try:
@@ -978,3 +1031,7 @@ class DiffTree(object):
             if error_path is None:
                 error_path = old_path
             raise errors.NoDiffFound(error_path)
+
+
+format_registry = Registry()
+format_registry.register('default', DiffTree)

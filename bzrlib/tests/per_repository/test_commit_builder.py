@@ -193,6 +193,23 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertEqual(revision_id,
             tree.branch.repository.get_inventory(revision_id).revision_id)
 
+    def test_commit_without_root_errors(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            def do_commit():
+                try:
+                    list(builder.record_iter_changes(
+                        tree, tree.last_revision(), []))
+                    builder.finish_inventory()
+                except:
+                    builder.abort()
+                    raise
+            self.assertRaises(errors.RootMissing, do_commit)
+        finally:
+            tree.unlock()
+
     def test_commit_without_root_or_record_iter_changes_errors(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
@@ -1286,3 +1303,27 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.addCleanup(repo_local.unlock)
         self.assertRaises(errors.BzrError, repo_local.get_commit_builder,
             branch, [], branch.get_config())
+
+    def test_committer_no_username(self):
+        # Ensure that when no username is available but a committer is
+        # supplied, commit works.
+        del os.environ['EMAIL']
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            # Make sure no username is available.
+            self.assertRaises(errors.NoWhoami, tree.branch.get_commit_builder,
+                              [])
+            builder = tree.branch.get_commit_builder(
+                [], committer='me@example.com')
+            try:
+                list(builder.record_iter_changes(tree, tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree())))
+                builder.finish_inventory()
+            except:
+                builder.abort()
+                raise
+            repo = tree.branch.repository
+            repo.commit_write_group()
+        finally:
+            tree.unlock()

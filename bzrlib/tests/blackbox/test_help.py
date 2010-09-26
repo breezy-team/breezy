@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,11 +20,11 @@
 
 
 import bzrlib
-from bzrlib.tests.blackbox import ExternalBase
-from bzrlib.config import (ensure_config_dir_exists, config_filename)
+from bzrlib import config
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestHelp(ExternalBase):
+class TestHelp(TestCaseWithTransport):
 
     def test_help_basic(self):
         for cmd in ['--help', 'help', '-h', '-?']:
@@ -161,12 +161,10 @@ class TestHelp(ExternalBase):
     def test_help_with_aliases(self):
         original = self.run_bzr('help cat')[0]
 
-        ensure_config_dir_exists()
-        CONFIG=("[ALIASES]\n"
-        "c=cat\n"
-        "cat=cat\n")
-
-        open(config_filename(),'wb').write(CONFIG)
+        conf = config.GlobalConfig.from_string('''[ALIASES]
+c=cat
+cat=cat
+''', save=True)
 
         expected = original + "'bzr cat' is an alias for 'bzr cat'.\n"
         self.assertEqual(expected, self.run_bzr('help cat')[0])

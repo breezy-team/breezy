@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -251,7 +251,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_get_bytes_unknown_file(self):
         t = self.get_transport()
-
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
 
     def test_get_with_open_write_stream_sees_all_content(self):
@@ -1083,6 +1082,53 @@ class TransportTests(TestTransportImplementation):
         subdir.stat('./file')
         subdir.stat('.')
 
+    def test_hardlink(self):
+        from stat import ST_NLINK
+
+        t = self.get_transport()
+
+        source_name = "original_target"
+        link_name = "target_link"
+
+        self.build_tree([source_name], transport=t)
+
+        try:
+            t.hardlink(source_name, link_name)
+
+            self.failUnless(t.has(source_name))
+            self.failUnless(t.has(link_name))
+
+            st = t.stat(link_name)
+            self.failUnlessEqual(st[ST_NLINK], 2)
+        except TransportNotPossible:
+            raise TestSkipped("Transport %s does not support hardlinks." %
+                              self._server.__class__)
+
+    def test_symlink(self):
+        from stat import S_ISLNK
+
+        t = self.get_transport()
+
+        source_name = "original_target"
+        link_name = "target_link"
+
+        self.build_tree([source_name], transport=t)
+
+        try:
+            t.symlink(source_name, link_name)
+
+            self.failUnless(t.has(source_name))
+            self.failUnless(t.has(link_name))
+
+            st = t.stat(link_name)
+            self.failUnless(S_ISLNK(st.st_mode),
+                "expected symlink, got mode %o" % st.st_mode)
+        except TransportNotPossible:
+            raise TestSkipped("Transport %s does not support symlinks." %
+                              self._server.__class__)
+        except IOError:
+            raise tests.KnownFailure("Paramiko fails to create symlinks during tests")
+
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
         t = self.get_transport()
@@ -1219,7 +1265,7 @@ class TransportTests(TestTransportImplementation):
         self.assertIs(t._get_connection(), c._get_connection())
 
         # Temporary failure, we need to create a new dummy connection
-        new_connection = object()
+        new_connection = None
         t._set_connection(new_connection)
         # Check that both transports use the same connection
         self.assertIs(new_connection, t._get_connection())
@@ -1719,3 +1765,15 @@ class TransportTests(TestTransportImplementation):
         # also raise a special error
         self.assertListRaises((errors.ShortReadvError, errors.InvalidRange),
                               transport.readv, 'a', [(12,2)])
+
+    def test_stat_symlink(self):
+        # if a transport points directly to a symlink (and supports symlinks
+        # at all) you can tell this.  helps with bug 32669.
+        t = self.get_transport()
+        try:
+            t.symlink('target', 'link')
+        except TransportNotPossible:
+            raise TestSkipped("symlinks not supported")
+        t2 = t.clone('link')
+        st = t2.stat('')
+        self.assertTrue(stat.S_ISLNK(st.st_mode))

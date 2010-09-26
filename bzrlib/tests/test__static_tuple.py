@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -77,9 +77,9 @@ class TestStaticTuple(tests.TestCase):
     def test_create_bad_args(self):
         args_256 = ['a']*256
         # too many args
-        self.assertRaises(ValueError, self.module.StaticTuple, *args_256)
+        self.assertRaises(TypeError, self.module.StaticTuple, *args_256)
         args_300 = ['a']*300
-        self.assertRaises(ValueError, self.module.StaticTuple, *args_300)
+        self.assertRaises(TypeError, self.module.StaticTuple, *args_300)
         # not a string
         self.assertRaises(TypeError, self.module.StaticTuple, object())
 

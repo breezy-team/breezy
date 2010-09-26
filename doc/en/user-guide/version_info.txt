@@ -25,7 +25,7 @@ about the latest version like this::
   branch-nick: bzr.dev
 
 You can easily filter that output using operating system tools or
-scripts. For example (on Linux/Unix)::
+scripts. For example::
 
   $ bzr version-info | grep ^date
   date: 2007-12-11 17:51:18 +0000

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -278,7 +278,11 @@ class BundleInfo(object):
         if rev.revision_id != revision_id:
             raise AssertionError()
         if sha1 != rev.inventory_sha1:
-            open(',,bogus-inv', 'wb').write(s)
+            f = open(',,bogus-inv', 'wb')
+            try:
+                f.write(s)
+            finally:
+                f.close()
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
@@ -327,7 +331,7 @@ class BundleInfo(object):
                 try:
                     name, value = info_item.split(':', 1)
                 except ValueError:
-                    raise 'Value %r has no colon' % info_item
+                    raise ValueError('Value %r has no colon' % info_item)
                 if name == 'last-changed':
                     last_changed = value
                 elif name == 'executable':
@@ -711,12 +715,11 @@ class BundleTree(Tree):
                 ie.symlink_target = self.get_symlink_target(file_id)
             ie.revision = revision_id
 
-            if kind in ('directory', 'symlink'):
-                ie.text_size, ie.text_sha1 = None, None
-            else:
+            if kind == 'file':
                 ie.text_size, ie.text_sha1 = self.get_size_and_sha1(file_id)
-            if (ie.text_size is None) and (kind == 'file'):
-                raise BzrError('Got a text_size of None for file_id %r' % file_id)
+                if ie.text_size is None:
+                    raise BzrError(
+                        'Got a text_size of None for file_id %r' % file_id)
             inv.add(ie)
 
         sorted_entries = self.sorted_path_id()

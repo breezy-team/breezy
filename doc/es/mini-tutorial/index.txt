@@ -30,10 +30,10 @@ sencillo. Puede encontrar intrucciones de instalación en:
 Para otras plataformas y para instalar desde el código fuente, vea las
 páginas de Descarga_ e Instalación_.
 
-.. _instrucciones de instalación para Windows: http://bazaar-vcs.org/WindowsDownloads
-.. _instrucciones de instalación para Mac OS X: http://bazaar-vcs.org/MacOSXBundle
-.. _Descarga: http://bazaar-vcs.org/Download
-.. _Instalación: http://bazaar-vcs.org/InstallationFaq
+.. _instrucciones de instalación para Windows: http://wiki.bazaar.canonical.com/WindowsDownloads
+.. _instrucciones de instalación para Mac OS X: http://wiki.bazaar.canonical.com/MacOSXBundle
+.. _Descarga: http://wiki.bazaar.canonical.com/Download
+.. _Instalación: http://wiki.bazaar.canonical.com/InstallationFaq
 
 
 Preséntese
@@ -77,7 +77,7 @@ Ahora vamos a hacer que Bazaar se inicialize en el directorio de su proyecto::
 Si parece que no ha ocurrido nada no se preocupe. Bazaar ha creado un
 branch_ dónde guardará sus archivos y su histórico de revisiones.
 
-.. _branch: http://bazaar-vcs.org/Branch
+.. _branch: http://wiki.bazaar.canonical.com/Branch
 
 El siguiente paso es decirle a Bazaar a que archivos desea seguirles la pista.
 Ejecutando ``bzr add`` agregará recursivamente todos los elementos dentro del
@@ -167,7 +167,7 @@ Ahora cualquiera podrá crear su propia copia de su branch tecleando::
  $ bzr branch http://www.example.com/miproyecto
 
 **Nota:** para utilizar sftp deberá instalar ``paramiko`` y
-``pyCrypto``. Vea http://bazaar-vcs.org/InstallationFaq para más información.
+``pyCrypto``. Vea http://wiki.bazaar.canonical.com/InstallationFaq para más información.
 
 
 Publicando su branch con Launchpad

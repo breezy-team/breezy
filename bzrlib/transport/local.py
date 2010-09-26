@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,8 +42,8 @@ from bzrlib.transport import LateReadError
 from bzrlib import transport
 
 
-_append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY
-_put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY
+_append_flags = os.O_CREAT | os.O_APPEND | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
+_put_non_atomic_flags = os.O_CREAT | os.O_TRUNC | os.O_WRONLY | osutils.O_BINARY | osutils.O_NOINHERIT
 
 
 class LocalTransport(transport.Transport):
@@ -99,7 +99,10 @@ class LocalTransport(transport.Transport):
          - relative_reference is url escaped.
         """
         if relative_reference in ('.', ''):
-            return self._local_base
+            # _local_base normally has a trailing slash; strip it so that stat
+            # on a transport pointing to a symlink reads the link not the
+            # referent but be careful of / and c:\
+            return osutils.split(self._local_base)[0]
         return self._local_base + urlutils.unescape(relative_reference)
 
     def abspath(self, relpath):
@@ -160,7 +163,7 @@ class LocalTransport(transport.Transport):
             transport._file_streams[canonical_url].flush()
         try:
             path = self._abspath(relpath)
-            return open(path, 'rb')
+            return osutils.open_file(path, 'rb')
         except (IOError, OSError),e:
             if e.errno == errno.EISDIR:
                 return LateReadError(relpath)
@@ -329,7 +332,7 @@ class LocalTransport(transport.Transport):
         # initialise the file
         self.put_bytes_non_atomic(relpath, "", mode=mode)
         abspath = self._abspath(relpath)
-        handle = open(abspath, 'wb')
+        handle = osutils.open_file(abspath, 'wb')
         if mode is not None:
             self._check_mode_and_size(abspath, handle.fileno(), mode)
         transport._file_streams[self.abspath(relpath)] = handle
@@ -399,10 +402,12 @@ class LocalTransport(transport.Transport):
 
     def rename(self, rel_from, rel_to):
         path_from = self._abspath(rel_from)
+        path_to = self._abspath(rel_to)
         try:
             # *don't* call bzrlib.osutils.rename, because we want to
-            # detect errors on rename
-            os.rename(path_from, self._abspath(rel_to))
+            # detect conflicting names on rename, and osutils.rename tries to
+            # mask cross-platform differences there
+            os.rename(path_from, path_to)
         except (IOError, OSError),e:
             # TODO: What about path_to?
             self._translate_error(e, path_from)
@@ -481,7 +486,7 @@ class LocalTransport(transport.Transport):
         path = relpath
         try:
             path = self._abspath(relpath)
-            return os.stat(path)
+            return os.lstat(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
 
@@ -514,6 +519,33 @@ class LocalTransport(transport.Transport):
             os.rmdir(path)
         except (IOError, OSError),e:
             self._translate_error(e, path)
+
+    if osutils.host_os_dereferences_symlinks():
+        def readlink(self, relpath):
+            """See Transport.readlink."""
+            return osutils.readlink(self._abspath(relpath))
+
+    if osutils.hardlinks_good():
+        def hardlink(self, source, link_name):
+            """See Transport.link."""
+            try:
+                os.link(self._abspath(source), self._abspath(link_name))
+            except (IOError, OSError), e:
+                self._translate_error(e, source)
+
+    if osutils.has_symlinks():
+        def symlink(self, source, link_name):
+            """See Transport.symlink."""
+            abs_link_dirpath = urlutils.dirname(self.abspath(link_name))
+            source_rel = urlutils.file_relpath(
+                urlutils.strip_trailing_slash(abs_link_dirpath),
+                urlutils.strip_trailing_slash(self.abspath(source))
+            )
+
+            try:
+                os.symlink(source_rel, self._abspath(link_name))
+            except (IOError, OSError), e:
+                self._translate_error(e, source_rel)
 
     def _can_roundtrip_unix_modebits(self):
         if sys.platform == 'win32':

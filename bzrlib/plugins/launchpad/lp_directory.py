@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,14 +17,13 @@
 
 """Directory lookup that uses Launchpad."""
 
-from urlparse import urlsplit, urlunsplit
+from urlparse import urlsplit
 import xmlrpclib
 
 from bzrlib import (
     debug,
     errors,
     trace,
-    urlutils,
     )
 from bzrlib.transport import (
     get_transport,
@@ -65,7 +64,16 @@ class LaunchpadDirectory(object):
         """Resolve the base URL for this transport."""
         service = LaunchpadService.for_url(url)
         result = urlsplit(url)
-        resolve = _request_factory(result[2].strip('/'))
+        if _lp_login is None:
+            _lp_login = get_lp_login()
+        path = result[2].strip('/')
+        if path.startswith('~/'):
+            if _lp_login is None:
+                raise errors.InvalidURL(path=url,
+                    extra='Cannot resolve "~" to your username.'
+                          ' See "bzr help launchpad-login"')
+            path = '~' + _lp_login + path[1:]
+        resolve = _request_factory(path)
         try:
             result = resolve.submit(service)
         except xmlrpclib.Fault, fault:
@@ -75,8 +83,6 @@ class LaunchpadDirectory(object):
         if 'launchpad' in debug.debug_flags:
             trace.mutter("resolve_lp_path(%r) == %r", url, result)
 
-        if _lp_login is None:
-            _lp_login = get_lp_login()
         _warned_login = False
         for url in result['urls']:
             scheme, netloc, path, query, fragment = urlsplit(url)

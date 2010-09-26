@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@ import threading
 
 from bzrlib import (
     osutils,
+    tests,
     trace,
     )
 from bzrlib.tests import test_server
@@ -183,6 +184,9 @@ class FTPTestServer(test_server.TestServer):
         self._ftpd_starting.acquire() # So it can be released by the server
         self._ftpd_thread = threading.Thread(target=self._run_server,)
         self._ftpd_thread.start()
+        if 'threads' in tests.selftest_debug_flags:
+            sys.stderr.write('Thread started: %s\n'
+                             % (self._ftpd_thread.ident,))
         # Wait for the server thread to start (i.e release the lock)
         self._ftpd_starting.acquire()
         self._ftpd_starting.release()
@@ -195,6 +199,9 @@ class FTPTestServer(test_server.TestServer):
         self._ftp_server.close()
         self._ftpd_running = False
         self._ftpd_thread.join()
+        if 'threads' in tests.selftest_debug_flags:
+            sys.stderr.write('Thread  joined: %s\n'
+                             % (self._ftpd_thread.ident,))
 
     def _run_server(self):
         """Run the server until stop_server is called, shut it down properly then.

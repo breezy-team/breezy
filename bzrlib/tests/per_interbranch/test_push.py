@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007, 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,11 @@
 from cStringIO import StringIO
 import os
 
+from testtools.matchers import (
+    Equals,
+    MatchesAny,
+    )
+
 from bzrlib import (
     branch,
     builtins,
@@ -28,6 +33,7 @@ from bzrlib import (
     errors,
     push,
     repository,
+    symbol_versioning,
     tests,
     )
 from bzrlib.branch import Branch
@@ -39,7 +45,6 @@ from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests.per_interbranch import (
     TestCaseWithInterBranch,
     )
-from bzrlib.transport import get_transport
 from bzrlib.tests import test_server
 
 
@@ -64,7 +69,10 @@ class TestPush(TestCaseWithInterBranch):
         self.assertEqual(result.old_revid, 'M1')
         self.assertEqual(result.new_revid, 'P2')
         # and it can be treated as an integer for compatibility
-        self.assertEqual(int(result), 0)
+        self.assertEqual(self.applyDeprecated(
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            result.__int__),
+            0)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another
@@ -145,7 +153,7 @@ class TestPush(TestCaseWithInterBranch):
         except (errors.IncompatibleFormat, errors.UninitializableFormat):
             # This Branch format cannot create shared repositories
             return
-        # This is a little bit trickier because make_branch_and_tree will not
+        # This is a little bit trickier because make_from_branch_and_tree will not
         # re-use a shared repository.
         try:
             a_branch = self.make_from_branch('repo/tree')
@@ -272,10 +280,14 @@ class TestPush(TestCaseWithInterBranch):
         calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
         # After inserting the stream the client has no reason to query the
         # remote graph any further.
-        self.assertEqual(
+        bzr_core_trace = Equals(
             ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
-             'get', 'Branch.set_last_revision_info', 'Branch.unlock'],
-            calls_after_insert_stream)
+             'get', 'Branch.set_last_revision_info', 'Branch.unlock'])
+        bzr_loom_trace = Equals(
+            ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
+             'get', 'Branch.set_last_revision_info', 'get', 'Branch.unlock'])
+        self.assertThat(calls_after_insert_stream,
+            MatchesAny(bzr_core_trace, bzr_loom_trace))
 
     def disableOptimisticGetParentMap(self):
         # Tweak some class variables to stop remote get_parent_map calls asking
