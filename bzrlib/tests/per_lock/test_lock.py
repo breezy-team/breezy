@@ -21,7 +21,7 @@ from bzrlib import (
     osutils,
     )
 
-from bzrlib.tests import UnicodeFilenameFeature
+from bzrlib.tests import (features, UnicodeFilenameFeature)
 from bzrlib.tests.per_lock import TestCaseWithLock
 
 
@@ -63,6 +63,7 @@ class TestLock(TestCaseWithLock):
 
         But we shouldn't be able to take a write lock.
         """
+        self.requireFeature(features.not_running_as_root)
         osutils.make_readonly('a-file')
         # Make sure the file is read-only (on all platforms)
         self.assertRaises(IOError, open, 'a-file', 'rb+')

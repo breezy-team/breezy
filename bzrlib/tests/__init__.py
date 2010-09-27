@@ -984,7 +984,7 @@ class TestCase(testtools.TestCase):
             try:
                 workingtree.WorkingTree.open(path)
             except (errors.NotBranchError, errors.NoWorkingTree):
-                return
+                raise TestSkipped('Needs a working tree of bzr sources')
         finally:
             self.enable_directory_isolation()
 
