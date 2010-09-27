@@ -365,17 +365,25 @@ $ bzr update -r revid:m2
         see https://bugs.launchpad.net/bzr/+bug/202374"""
 
         tree=self.make_branch_and_tree('.')
-        open('hello','wt').write('foo')
+
+        f = open('hello','wt')
+        f.write('foo')
+        f.close()
         tree.add('hello')
         tree.commit('fie')
-        open('hello','wt').write('fee')
+
+        f = open('hello','wt')
+        f.write('fee')
+        f.close()
         tree.commit('fee')
 
         #tree.update() gives no such revision, so ...
         self.run_bzr(['update','-r1'])
 
         #create conflict
-        open('hello','wt').write('fie')
+        f = open('hello','wt')
+        f.write('fie')
+        f.close()
 
         out, err = self.run_bzr(['update','--show-base'],retcode=1)
 

@@ -89,6 +89,10 @@ New Features
 * New development format ``development8-subtree`` which is similar to the 
   ``2a`` format and adds subtree support. (Jelmer Vernooij)
 
+* The ``pull`` and ``update`` commands now take a ``-show-base``
+  option that, in the case of conflicts, shows the base revision text.
+  (Rory Yorke,  #202374)
+
 Bug Fixes
 *********
 
@@ -276,6 +280,11 @@ API Changes
 * The ``get_filename`` parameter in the ``config.IniBaseConfig``
   constructor has been deprecated, use the ``file_name`` parameter instead.
   (Vincent Ladeuil)
+
+* ``WorkingTree`` methods ``pull``, ``update``, and ``_update_tree``
+  now have an optional argument, ``show_base``, which is by default
+  False.  This is flag is ultimately passed to ``merge.merge_inner``
+  in each case. (Rory Yorke, #202374)
 
 Internals
 *********

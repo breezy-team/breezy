@@ -1373,7 +1373,7 @@ class cmd_update(Command):
                      ]
     aliases = ['up']
 
-    def run(self, dir='.', revision=None,show_base=None):
+    def run(self, dir='.', revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError(
                         "bzr update --revision takes exactly one revision")

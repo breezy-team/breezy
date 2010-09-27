@@ -463,9 +463,14 @@ class TestPull(TestCaseWithTransport):
         a_tree = self.example_branch('a')
         b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
 
-        open(pathjoin('a', 'hello'),'wt').write('fee')
+        f = open(pathjoin('a', 'hello'),'wt')
+        f.write('fee')
+        f.close()
         a_tree.commit('fee')
-        open(pathjoin('b', 'hello'),'wt').write('fie')
+
+        f = open(pathjoin('b', 'hello'),'wt')
+        f.write('fie')
+        f.close()
 
         out,err=self.run_bzr(['pull','-d','b','a','--show-base'])
 
