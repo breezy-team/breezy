@@ -20,7 +20,7 @@ class NewsParser(object):
 
     release_re = re.compile("bzr[ -]")
     release_prefix_length = len('bzr ')
-    bug_pattern = re.compile("(#(?:[0-9]+)(?:,\s)?)+")
+    bug_pattern = re.compile("(#(?:[0-9]+)(?:,\s)?)+?")
 
     def __init__(self, news):
         self.news = news
