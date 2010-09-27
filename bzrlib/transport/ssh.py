@@ -439,6 +439,27 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
 register_ssh_vendor('sshcorp', SSHCorpSubprocessVendor())
 
 
+class LSHSubprocessVendor(SubprocessVendor):
+    """SSH vendor that uses the 'lsh' executable from GNU"""
+
+    executable_path = 'lsh'
+
+    def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
+                                  command=None):
+        args = [self.executable_path]
+        if port is not None:
+            args.extend(['-p', str(port)])
+        if username is not None:
+            args.extend(['-l', username])
+        if subsystem is not None:
+            args.extend(['--subsystem', subsystem, host])
+        else:
+            args.extend([host] + command)
+        return args
+
+register_ssh_vendor('lsh', LSHSubprocessVendor())
+
+
 class PLinkSubprocessVendor(SubprocessVendor):
     """SSH vendor that uses the 'plink' executable from Putty."""
 
