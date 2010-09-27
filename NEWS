@@ -326,6 +326,65 @@ API Changes
   (Andrew Bennetts, #496813)
 
 
+bzr 2.0.5
+#########
+
+:2.0.5: 2010-03-23
+
+This fifth release in our 2.0 series addresses several user-inconvenience
+bugs.  None are critical, but upgrading is recommended for all users on
+earlier 2.0 releases.
+
+Bug Fixes
+*********
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
+  (John Arbash Meinel, Gareth White, #507557)
+
+* Cope with the lockdir ``held/info`` file being empty, which seems to
+  happen fairly often if the process is suddenly interrupted while taking
+  a lock.
+  (Martin Pool, #185103)
+
+* Give the warning about potentially slow cross-format fetches much
+  earlier on in the fetch operation.  Don't show this message during
+  upgrades, and show the correct format indication for remote
+  repositories.
+  (Martin Pool, #456077, #515356, #513157)
+
+* Handle renames correctly when there are files or directories that 
+  differ only in case.  (Chris Jones, Martin Pool, #368931)
+
+* If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
+  error, report that error rather than failing with an unhelpful
+  ``UnboundLocalError``.
+  (Andrew Bennetts, #423563)
+
+* Running ``bzr`` command without any arguments now shows bzr
+  version number along with rest of the help text.
+  (Parth Malwankar, #369501)
+
+* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
+  errors.
+  (Inada Naoki, #524560)
+
+Documentation
+*************
+
+* Added ``location-alias`` help topic.
+  (Andrew Bennetts, #337834)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
+
+
 bzr 2.1.0
 #########
 
@@ -647,65 +706,6 @@ Testing
 * The test progress bar no longer distinguishes tests that 'errored' from
   tests that 'failed' - they're all just failures.
   (Martin Pool)
-
-bzr 2.0.5
-#########
-
-:2.0.5: 2010-03-23
-
-This fifth release in our 2.0 series addresses several user-inconvenience
-bugs.  None are critical, but upgrading is recommended for all users on
-earlier 2.0 releases.
-
-Bug Fixes
-*********
-
-* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
-  (Martin Pool, #331095)
-
-* Concurrent autopacking is more resilient to already-renamed pack files.
-  If we find that a file we are about to obsolete is already obsoleted, we
-  do not try to rename it, and we leave the file in ``obsolete_packs``.
-  The code is also fault tolerant if a file goes missing, assuming that
-  another process already removed the file.
-  (John Arbash Meinel, Gareth White, #507557)
-
-* Cope with the lockdir ``held/info`` file being empty, which seems to
-  happen fairly often if the process is suddenly interrupted while taking
-  a lock.
-  (Martin Pool, #185103)
-
-* Give the warning about potentially slow cross-format fetches much
-  earlier on in the fetch operation.  Don't show this message during
-  upgrades, and show the correct format indication for remote
-  repositories.
-  (Martin Pool, #456077, #515356, #513157)
-
-* Handle renames correctly when there are files or directories that 
-  differ only in case.  (Chris Jones, Martin Pool, #368931)
-
-* If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
-  error, report that error rather than failing with an unhelpful
-  ``UnboundLocalError``.
-  (Andrew Bennetts, #423563)
-
-* Running ``bzr`` command without any arguments now shows bzr
-  version number along with rest of the help text.
-  (Parth Malwankar, #369501)
-
-* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
-  errors.
-  (Inada Naoki, #524560)
-
-Documentation
-*************
-
-* Added ``location-alias`` help topic.
-  (Andrew Bennetts, #337834)
-
-* Fixed CHM generation by moving the NEWS section template into
-  a separate file. (Ian Clatworthy, #524184)
-
 
 bzr 2.0.4
 #########
