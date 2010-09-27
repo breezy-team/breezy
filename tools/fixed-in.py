@@ -20,6 +20,7 @@ class NewsParser(object):
 
     release_re = re.compile("bzr[ -]")
     release_prefix_length = len('bzr ')
+    bug_pattern = re.compile("(#(?:[0-9]+)(?:,\s)?)+")
 
     def __init__(self, news):
         self.news = news
@@ -52,6 +53,22 @@ class NewsParser(object):
             return True
         return False
 
+    def add_line_to_entry(self):
+        if self.lrs == '':
+            return False
+        self.entry += self.line
+        return True
+
+    def extract_bugs_from_entry(self):
+        # Not all entries will contain bugs and some entries are even garbage
+        # that is not parsed (yet).
+        # FIXME: Malone entries are different
+        for bug_number in self.bug_pattern.findall(self.entry):
+#            import pdb; pdb.set_trace()
+            yield (bug_number, self.release, self.entry)
+        # We've consumed the entry
+        self.entry = ''
+
     def parse_bugs(self):
         for line in self.news:
             self.set_line(line)
@@ -59,11 +76,13 @@ class NewsParser(object):
                 continue
             try:
                 if self.confirm_release():
-                    yield (self.release,)
                     continue
             finally:
                 self.may_be_release = None
-
+            if self.add_line_to_entry():
+                continue
+            for b in self.extract_bugs_from_entry():
+                yield b
 
 def main():
     (opts, args) = opt_parser.parse_args(sys.argv[1:])
@@ -75,17 +94,19 @@ def main():
     news = open(opts.news_file)
     parser = NewsParser(news)
     try:
+        seen = 0
         for b in parser.parse_bugs():
             #(number, release, date, author, entry) = b
-            (release,) = b
-            (number, date, author, entry) = (123, '2010-01-01', 'joe',
-                                             '(joe, #123)')
+            (number, release, entry,) = b
+            (date, author) = ('2010-01-01', 'joe',)
             # indent entry
             entry = '\n'.join(['    ' + l for l in entry.splitlines()])
-            if number == bug:
-                print 'Bug #%s was fixed in bzr-%s:' % (number, release)
-                print entry
+#            if number == bug[1:]: # Strip the leading '#'
+            print 'Bug %s was fixed in bzr-%s:' % (number, release)
+            print entry
+            seen += 1
     finally:
+        print '%s bugs seen' % (seen,)
         news.close()
 
 
