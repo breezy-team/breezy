@@ -627,11 +627,11 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         result = test.run()
         total_failures = result.errors + result.failures
         if self._lock_check_thorough:
-            self.assertLength(1, total_failures)
+            self.assertEqual(1, len(total_failures))
         else:
             # When _lock_check_thorough is disabled, then we don't trigger a
             # failure
-            self.assertLength(0, total_failures)
+            self.assertEqual(0, len(total_failures))
 
 
 class TestTestCaseWithTransport(tests.TestCaseWithTransport):
