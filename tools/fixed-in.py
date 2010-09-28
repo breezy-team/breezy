@@ -18,7 +18,8 @@ class NewsParser(object):
     def __init__(self, news):
         self.news = news
         # Temporary attributes used by the parser
-        self.relese = None
+        self.release = None
+        self.date = None
         self.may_be_release = None
         self.release_markup = None
         self.entry = ''
@@ -42,6 +43,25 @@ class NewsParser(object):
         if self.may_be_release is not None and self.lrs == self.release_markup:
             # The release is followed by the right markup
             self.release = self.may_be_release[self.release_prefix_length:]
+            # Wait for the associated date
+            self.date = None
+            return True
+        return False
+
+    def try_date(self):
+        if self.release is None:
+            return False
+        date_re = re.compile(':%s: (NOT RELEASED YET|\d{4}-\d{2}-\d{2})'
+                             % (self.release,))
+        match = date_re.match(self.lrs)
+        if  match is not None:
+            self.date = match.group(1)
+            return True
+        # The old fashion way
+        released_re = re.compile(':Released:\s+(\d{4}-\d{2}-\d{2})')
+        match = released_re.match(self.lrs)
+        if  match is not None:
+            self.date = match.group(1)
             return True
         return False
 
@@ -80,7 +100,8 @@ class NewsParser(object):
                          authors = par[:start]
                     for bug_match in bugs:
                         bug_number = bug_match.group(0)
-                        yield (bug_number, authors, self.release, self.entry)
+                        yield (bug_number, authors,
+                               self.release, self.date, self.entry)
         # We've consumed the entry
         self.entry = ''
 
@@ -94,6 +115,8 @@ class NewsParser(object):
                     continue
             finally:
                 self.may_be_release = None
+            if self.try_date():
+                continue
             if self.add_line_to_entry():
                 continue
             for b in self.extract_bugs_from_entry():
@@ -118,14 +141,12 @@ def main():
     try:
         seen = 0
         for b in parser.parse_bugs():
-            #(number, release, date, author, entry) = b
-            (number, authors, release, entry,) = b
-            (date,) = ('2010-01-01',)
+            (number, authors, release, date, entry,) = b
             # indent entry
             entry = '\n'.join(['    ' + l for l in entry.splitlines()])
             if number[1:] == bug: # Strip the leading '#'
-                print 'Bug %s was fixed in bzr-%s by %s:' % (
-                    number, release, authors)
+                print 'Bug %s was fixed in bzr-%s/%s by %s:' % (
+                    number, release, date, authors)
                 print entry
             seen += 1
     finally:
