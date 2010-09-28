@@ -15,8 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Some convenience functions for general Python, such as a wrapper around
-``_import__``.
-"""
+``_import__``."""
 
 
 import sys
@@ -32,8 +31,9 @@ def get_named_object(module_name, member_name=None):
         >>> doc.splitlines()[0]
         'Get the Python object named by a given module and member name.'
 
-    :param module_name: a module name, as found in sys.module.  It may contain
-        dots.  e.g. 'sys' or 'os.path'.
+    :param module_name: a module name, as would be found in sys.modules if
+        the module is already imported.  It may contain dots.  e.g. 'sys' or
+        'os.path'.
     :param member_name: (optional) a name of an attribute in that module to
         return.  It may contain dots.  e.g. 'MyClass.some_method'.  If not
         given, the named module will be returned instead.
