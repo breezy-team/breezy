@@ -8,14 +8,6 @@ import re
 import sys
 
 
-opt_parser = optparse.OptionParser(
-    usage="""Usage: %prog [options] <bug_number>
-""")
-opt_parser.add_option('-f', '--file', type='str', dest='news_file',
-                      help='NEWS file (defaults to ./NEWS)')
-opt_parser.set_defaults(news_file='./NEWS')
-
-
 class NewsParser(object):
 
     paren_exp_re = re.compile('\(([^)]+)\)')
@@ -50,7 +42,6 @@ class NewsParser(object):
         if self.may_be_release is not None and self.lrs == self.release_markup:
             # The release is followed by the right markup
             self.release = self.may_be_release[self.release_prefix_length:]
-            print 'Release: [%s]' % (self.release,)
             return True
         return False
 
@@ -82,7 +73,6 @@ class NewsParser(object):
                          authors = par[:start]
                     for bug_match in bugs:
                         bug_number = bug_match.group(0)
-                        print 'bug_number: [%r]' % (bug_number[1:],)
                         yield (bug_number, authors, self.release, self.entry)
         # We've consumed the entry
         self.entry = ''
@@ -103,6 +93,13 @@ class NewsParser(object):
                 yield b
 
 def main():
+    opt_parser = optparse.OptionParser(
+        usage="""Usage: %prog [options] <bug_number>
+    """)
+    opt_parser.add_option('-f', '--file', type='str', dest='news_file',
+                          help='NEWS file (defaults to ./NEWS)')
+    opt_parser.set_defaults(news_file='./NEWS')
+
     (opts, args) = opt_parser.parse_args(sys.argv[1:])
     if len(args) != 1:
         opt_parser.error('Expected a single bug number, got %r' % args)
@@ -119,10 +116,10 @@ def main():
             (date,) = ('2010-01-01',)
             # indent entry
             entry = '\n'.join(['    ' + l for l in entry.splitlines()])
-#            if number == bug[1:]: # Strip the leading '#'
-            print 'Bug %s was fixed in bzr-%s by %s:' % (
-                number, release, authors)
-            print entry
+            if number[1:] == bug: # Strip the leading '#'
+                print 'Bug %s was fixed in bzr-%s by %s:' % (
+                    number, release, authors)
+                print entry
             seen += 1
     finally:
         print '%s bugs seen' % (seen,)
