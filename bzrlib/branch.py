@@ -1819,7 +1819,7 @@ class BranchHooks(Hooks):
             "with a bzrlib.branch.PullResult object and only runs in the "
             "bzr client.", (0, 15), None))
         self.create_hook(HookPoint('pre_commit',
-            "Called after a commit is calculated but before it is is "
+            "Called after a commit is calculated but before it is "
             "completed. pre_commit is called with (local, master, old_revno, "
             "old_revid, future_revno, future_revid, tree_delta, future_tree"
             "). old_revid is NULL_REVISION for the first commit to a branch, "

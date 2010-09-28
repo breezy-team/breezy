@@ -2513,19 +2513,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             ancestors will be traversed.
         """
         graph = self.get_graph()
-        next_id = revision_id
-        while True:
-            if next_id in (None, _mod_revision.NULL_REVISION):
-                return
-            try:
-                parents = graph.get_parent_map([next_id])[next_id]
-            except KeyError:
-                raise errors.RevisionNotPresent(next_id, self)
-            yield next_id
-            if len(parents) == 0:
-                return
-            else:
-                next_id = parents[0]
+        stop_revisions = (None, _mod_revision.NULL_REVISION)
+        return graph.iter_lefthand_ancestry(revision_id, stop_revisions)
 
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
