@@ -45,6 +45,10 @@ Documentation
 API Changes
 ***********
 
+* Add ``bzrlib.pyutils`` module with helper functions for some Python
+  tasks such as resolving a dotted name to a Python object
+  (``get_named_object``).  (Andrew Bennetts)
+
 * ``known_hooks_key_to_parent_and_attribute`` in ``bzrlib.hooks`` has been
   deprecated in favour of ``known_hooks.key_to_parent_and_attribute`` in
   the same module.  (Andrew Bennetts)
