@@ -126,6 +126,9 @@ class SSHVendorManager(object):
         elif 'SSH Secure Shell' in version:
             trace.mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
+        elif 'lsh' in version:
+            trace.mutter('ssh implementation is GNU lsh.')
+            vendor = LSHSubprocessVendor()
         # As plink user prompts are not handled currently, don't auto-detect
         # it by inspection below, but keep this vendor detection for if a path
         # is given in BZR_SSH. See https://bugs.launchpad.net/bugs/414743
