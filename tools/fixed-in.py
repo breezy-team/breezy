@@ -124,17 +124,26 @@ class NewsParser(object):
 
 def main():
     opt_parser = optparse.OptionParser(
-        usage="""Usage: %prog [options] <bug_number>
+        usage="""Usage: %prog [options] BUG_NUMBER
     """)
-    opt_parser.add_option('-f', '--file', type='str', dest='news_file',
-                          help='NEWS file (defaults to ./NEWS)')
+    opt_parser.add_option(
+        '-f', '--file', type='str', dest='news_file',
+        help='NEWS file (defaults to ./NEWS)')
+    opt_parser.add_option(
+        '-m', '--message', type='str', dest='msg_re',
+        help='A regexp to search for in the news entry '
+        '(BUG_NUMBER should not be specified in this case)')
     opt_parser.set_defaults(news_file='./NEWS')
-
     (opts, args) = opt_parser.parse_args(sys.argv[1:])
-    if len(args) != 1:
+    if opts.msg_re is not None:
+        if len(args) != 0:
+            opt_parser.error('BUG_NUMBER and -m are mutually exclusive')
+        bug = None
+        msg_re = re.compile(opts.msg_re)
+    elif len(args) != 1:
         opt_parser.error('Expected a single bug number, got %r' % args)
-
-    bug = args[0]
+    else:
+        bug = args[0]
 
     news = open(opts.news_file)
     parser = NewsParser(news)
@@ -144,7 +153,13 @@ def main():
             (number, authors, release, date, entry,) = b
             # indent entry
             entry = '\n'.join(['    ' + l for l in entry.splitlines()])
-            if number[1:] == bug: # Strip the leading '#'
+            found = False
+            if bug is not None:
+                if number[1:] == bug: # Strip the leading '#'
+                    found = True
+            elif msg_re.search(entry) is not None:
+                found = True
+            if found:
                 print 'Bug %s was fixed in bzr-%s/%s by %s:' % (
                     number, release, date, authors)
                 print entry
