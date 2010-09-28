@@ -109,18 +109,18 @@ class NewsParser(object):
         for line in self.news:
             self.set_line(line)
             if self.try_release():
-                continue
+                continue # line may a be release
             try:
                 if self.confirm_release():
-                    continue
+                    continue # previous line was indeed a release
             finally:
                 self.may_be_release = None
             if self.try_date():
-                continue
+                continue # The release date has been seen
             if self.add_line_to_entry():
-                continue
+                continue # accumulate in self.enrty
             for b in self.extract_bugs_from_entry():
-                yield b
+                yield b # all bugs in the news entry
 
 def main():
     opt_parser = optparse.OptionParser(
