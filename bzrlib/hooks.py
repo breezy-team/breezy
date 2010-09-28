@@ -68,29 +68,28 @@ class KnownHooksRegistry(registry.Registry):
         return pyutils.get_named_object(parent_mod, parent_member), attr
 
 
+_builtin_known_hooks = (
+    ('bzrlib.branch', 'Branch.hooks', 'BranchHooks'),
+    ('bzrlib.bzrdir', 'BzrDir.hooks', 'BzrDirHooks'),
+    ('bzrlib.commands', 'Command.hooks', 'CommandHooks'),
+    ('bzrlib.info', 'hooks', 'InfoHooks'),
+    ('bzrlib.lock', 'Lock.hooks', 'LockHooks'),
+    ('bzrlib.merge', 'Merger.hooks', 'MergeHooks'),
+    ('bzrlib.msgeditor', 'hooks', 'MessageEditorHooks'),
+    ('bzrlib.mutabletree', 'MutableTree.hooks', 'MutableTreeHooks'),
+    ('bzrlib.smart.client', '_SmartClient.hooks', 'SmartClientHooks'),
+    ('bzrlib.smart.server', 'SmartTCPServer.hooks', 'SmartServerHooks'),
+    ('bzrlib.status', 'hooks', 'StatusHooks'),
+    ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks',
+        'RioVersionInfoBuilderHooks'),
+    ('bzrlib.merge_directive', 'BaseMergeDirective.hooks',
+        'MergeDirectiveHooks'),
+    )
+
 known_hooks = KnownHooksRegistry()
-known_hooks.register_lazy_hook('bzrlib.branch', 'Branch.hooks', 'BranchHooks')
-known_hooks.register_lazy_hook('bzrlib.bzrdir', 'BzrDir.hooks', 'BzrDirHooks')
-known_hooks.register_lazy_hook(
-    'bzrlib.commands', 'Command.hooks', 'CommandHooks')
-known_hooks.register_lazy_hook('bzrlib.info', 'hooks', 'InfoHooks')
-known_hooks.register_lazy_hook('bzrlib.lock', 'Lock.hooks', 'LockHooks')
-known_hooks.register_lazy_hook('bzrlib.merge', 'Merger.hooks', 'MergeHooks')
-known_hooks.register_lazy_hook(
-    'bzrlib.msgeditor', 'hooks', 'MessageEditorHooks')
-known_hooks.register_lazy_hook(
-    'bzrlib.mutabletree', 'MutableTree.hooks', 'MutableTreeHooks')
-known_hooks.register_lazy_hook(
-    'bzrlib.smart.client', '_SmartClient.hooks', 'SmartClientHooks')
-known_hooks.register_lazy_hook(
-    'bzrlib.smart.server', 'SmartTCPServer.hooks', 'SmartServerHooks')
-known_hooks.register_lazy_hook(
-    'bzrlib.status', 'hooks', 'StatusHooks')
-known_hooks.register_lazy_hook(
-    'bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks',
-    'RioVersionInfoBuilderHooks')
-known_hooks.register_lazy_hook(
-    'bzrlib.merge_directive', 'BaseMergeDirective.hooks', 'MergeDirectiveHooks')
+for (_hook_module, _hook_attribute, _hook_class) in _builtin_known_hooks:
+    known_hooks.register_lazy_hook(_hook_module, _hook_attribute, _hook_class)
+del _builtin_known_hooks, _hook_module, _hook_attribute, _hook_class
 
 
 def known_hooks_key_to_object((module_name, member_name)):
