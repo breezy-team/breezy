@@ -52,8 +52,13 @@ class NewsParser(object):
         return True
 
     def extract_bugs_from_entry(self):
-        # Not all entries will contain bugs and some entries are even garbage
-        # that is not parsed (yet).
+        """Possibly extract bugs from a NEWS entry and yield them.
+
+        Not all entries will contain bugs and some entries are even garbage and
+        we don't try to parse them (yet). The trigger is a '#' and what looks
+        like a bug number inside parens to start with. From that we extract
+        authors (when present) and multiple bugs if needed.
+        """
         # FIXME: Malone entries are different
         # Join all entry lines to simplify multiple line matching
         flat_entry = ' '.join(self.entry.splitlines())
@@ -61,8 +66,10 @@ class NewsParser(object):
         for par in self.paren_exp_re.findall(flat_entry):
             sharp = par.find('#')
             if sharp is not None:
+                # We have at least one bug inside parens.
                 bugs = list(self.bugs_re.finditer(par))
                 if bugs:
+                    # See where the first bug is mentioned
                     start = bugs[0].start()
                     end = bugs[-1].end()
                     if start == 0:
