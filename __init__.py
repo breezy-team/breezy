@@ -16,14 +16,20 @@
 
 __doc__ = """Merge hook for GNU-format ChangeLog files
 
-To enable this plugin, add a section to your branch.conf or location.conf
+To enable this plugin, add a section to your location.conf
 like::
 
     [/home/user/proj]
     changelog_merge_files = ChangeLog
 
-The changelog_merge_files config option takes a list of file paths, separated
-by commas.
+Or add an entry to your branch.conf like::
+
+    changelog_merge_files = ChangeLog
+
+The changelog_merge_files config option takes a list of file names (not paths),
+separated by commas.  (This is unlike the news_merge plugin, which matches
+paths.)  e.g. the above config examples would match both
+``src/foolib/ChangeLog`` and ``docs/ChangeLog``.
 
 The algorithm this implements is very simple: it emits all the entries in OTHER
 that are new compared to the common base version, followed by all the entries

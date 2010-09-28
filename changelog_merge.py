@@ -53,6 +53,19 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
 
     name_prefix = "changelog"
 
+    def get_filepath(self, params, tree):
+        """Calculate the path to the file in a tree.
+
+        This is overridden to return just the basename, rather than full path,
+        so that e.g. if the config says ``changelog_merge_files = ChangeLog``,
+        then all ChangeLog files in the tree will match (not just one in the
+        root of the tree).
+        
+        :param params: A MergeHookParams describing the file to merge
+        :param tree: a Tree, e.g. self.merger.this_tree.
+        """
+        return tree.inventory[params.file_id].name
+
     def merge_text(self, params):
         """Float new changelog sections from other to the top of the changelog.
 
