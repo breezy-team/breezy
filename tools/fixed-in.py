@@ -64,18 +64,25 @@ class NewsParser(object):
         # Not all entries will contain bugs and some entries are even garbage
         # that is not parsed (yet).
         # FIXME: Malone entries are different
-        # FIXME: instead of authors, #bugs we used to use #bugs, authors
-        # Allow multiple line matches without the need to tweak regexps
+        # Join all entry lines to simplify multiple line matching
         flat_entry = ' '.join(self.entry.splitlines())
         # Fixed bugs are always inside parens
         for par in self.paren_exp_re.findall(flat_entry):
             sharp = par.find('#')
-            if sharp:
-                bugs = self.bugs_re.findall(par[sharp:])
-                authors = par[:sharp].rstrip(', ')
-                for bug_number in bugs:
-                    if bug_number:
-                        print 'bug_number: [%r]' % (bug_number,)
+            if sharp is not None:
+                bugs = list(self.bugs_re.finditer(par))
+                if bugs:
+                    start = bugs[0].start()
+                    end = bugs[-1].end()
+                    if start == 0:
+                        # (bugs/authors)
+                        authors = par[end:]
+                    else:
+                        # (authors/bugs)
+                         authors = par[:start]
+                    for bug_match in bugs:
+                        bug_number = bug_match.group(0)
+                        print 'bug_number: [%r]' % (bug_number[1:],)
                         yield (bug_number, authors, self.release, self.entry)
         # We've consumed the entry
         self.entry = ''
