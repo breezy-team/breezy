@@ -58,6 +58,8 @@ Testing
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
 
+* Use tests.TestCaseInTempDir for tests that requires disk resources.
+  (Vincent Ladeuil, #650001)
 
 bzr 2.3b1
 #########
