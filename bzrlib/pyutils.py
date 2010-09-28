@@ -26,7 +26,11 @@ def get_named_object(module_name, member_name=None):
     """Get the Python object named by a given module and member name.
 
     This is usually much more convenient than dealing with ``__import__``
-    directly.
+    directly::
+
+        >>> doc = get_named_object('bzrlib.pyutils', 'get_named_object.__doc__')
+        >>> doc.splitlines()[0]
+        'Get the Python object named by a given module and member name.'
 
     :param module_name: a module name, as found in sys.module.  It may contain
         dots.  e.g. 'sys' or 'os.path'.
@@ -63,8 +67,9 @@ def calc_parent_name(module_name, member_name=None):
     Typical use is::
 
         >>> parent_mod, parent_member, final_attr = calc_parent_name(
-        ...     module_name, member_name)
+        ...     module_name, member_name) # doctest: +SKIP
         >>> parent_obj = get_named_object(parent_mod, parent_member)
+        ... # doctest: +SKIP
 
     The idea is that ``getattr(parent_obj, final_attr)`` will equal
     get_named_object(module_name, member_name).

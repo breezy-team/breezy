@@ -3858,6 +3858,7 @@ def _test_suite_modules_to_doctest():
         'bzrlib.lockdir',
         'bzrlib.merge3',
         'bzrlib.option',
+        'bzrlib.pyutils',
         'bzrlib.symbol_versioning',
         'bzrlib.tests',
         'bzrlib.tests.fixtures',
