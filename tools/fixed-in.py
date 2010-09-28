@@ -18,9 +18,10 @@ opt_parser.set_defaults(news_file='./NEWS')
 
 class NewsParser(object):
 
+    paren_exp_re = re.compile('\(([^)]+)\)')
     release_re = re.compile("bzr[ -]")
     release_prefix_length = len('bzr ')
-    bug_pattern = re.compile("(#(?:[0-9]+)(?:,\s)?)+?")
+    bugs_re = re.compile('#([0-9]+)')
 
     def __init__(self, news):
         self.news = news
@@ -63,9 +64,19 @@ class NewsParser(object):
         # Not all entries will contain bugs and some entries are even garbage
         # that is not parsed (yet).
         # FIXME: Malone entries are different
-        for bug_number in self.bug_pattern.findall(self.entry):
-#            import pdb; pdb.set_trace()
-            yield (bug_number, self.release, self.entry)
+        # FIXME: instead of authors, #bugs we used to use #bugs, authors
+        # Allow multiple line matches without the need to tweak regexps
+        flat_entry = ' '.join(self.entry.splitlines())
+        # Fixed bugs are always inside parens
+        for par in self.paren_exp_re.findall(flat_entry):
+            sharp = par.find('#')
+            if sharp:
+                bugs = self.bugs_re.findall(par[sharp:])
+                authors = par[:sharp].rstrip(', ')
+                for bug_number in bugs:
+                    if bug_number:
+                        print 'bug_number: [%r]' % (bug_number,)
+                        yield (bug_number, authors, self.release, self.entry)
         # We've consumed the entry
         self.entry = ''
 
@@ -97,12 +108,13 @@ def main():
         seen = 0
         for b in parser.parse_bugs():
             #(number, release, date, author, entry) = b
-            (number, release, entry,) = b
-            (date, author) = ('2010-01-01', 'joe',)
+            (number, authors, release, entry,) = b
+            (date,) = ('2010-01-01',)
             # indent entry
             entry = '\n'.join(['    ' + l for l in entry.splitlines()])
 #            if number == bug[1:]: # Strip the leading '#'
-            print 'Bug %s was fixed in bzr-%s:' % (number, release)
+            print 'Bug %s was fixed in bzr-%s by %s:' % (
+                number, release, authors)
             print entry
             seen += 1
     finally:
