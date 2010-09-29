@@ -36,7 +36,6 @@ import doctest
 import errno
 import itertools
 import logging
-import math
 import os
 import platform
 import pprint
@@ -72,7 +71,6 @@ from bzrlib import (
     lock as _mod_lock,
     memorytree,
     osutils,
-    progress,
     ui,
     urlutils,
     registry,
@@ -319,13 +317,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         """Record that a test has started."""
         self._start_time = time.time()
 
-    def _cleanupLogFile(self, test):
-        # We can only do this if we have one of our TestCases, not if
-        # we have a doctest.
-        setKeepLogfile = getattr(test, 'setKeepLogfile', None)
-        if setKeepLogfile is not None:
-            setKeepLogfile()
-
     def addError(self, test, err):
         """Tell result that test finished with an error.
 
@@ -338,7 +329,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_error(test, err)
         if self.stop_early:
             self.stop()
-        self._cleanupLogFile(test)
 
     def addFailure(self, test, err):
         """Tell result that test failed.
@@ -352,7 +342,6 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_failure(test, err)
         if self.stop_early:
             self.stop()
-        self._cleanupLogFile(test)
 
     def addSuccess(self, test, details=None):
         """Tell result that test completed successfully.
@@ -366,7 +355,6 @@ class ExtendedTestResult(testtools.TextTestResult):
                     self._formatTime(benchmark_time),
                     test.id()))
         self.report_success(test)
-        self._cleanupLogFile(test)
         super(ExtendedTestResult, self).addSuccess(test)
         test._log_contents = ''
 
@@ -483,14 +471,9 @@ class TextTestResult(ExtendedTestResult):
         self.pb.finished()
         super(TextTestResult, self).stopTestRun()
 
-    def startTestRun(self):
-        super(TextTestResult, self).startTestRun()
+    def report_tests_starting(self):
+        super(TextTestResult, self).report_tests_starting()
         self.pb.update('[test 0/%d] Starting' % (self.num_tests))
-
-    def printErrors(self):
-        # clear the pb to make room for the error listing
-        self.pb.clear()
-        super(TextTestResult, self).printErrors()
 
     def _progress_prefix_text(self):
         # the longer this text, the less space we have to show the test
@@ -563,9 +546,9 @@ class VerboseTestResult(ExtendedTestResult):
             result = a_string
         return result.ljust(final_width)
 
-    def startTestRun(self):
-        super(VerboseTestResult, self).startTestRun()
+    def report_tests_starting(self):
         self.stream.write('running %d tests...\n' % self.num_tests)
+        super(VerboseTestResult, self).report_tests_starting()
 
     def report_test_start(self, test):
         name = self._shortened_test_description(test)
@@ -823,7 +806,7 @@ class TestCase(testtools.TestCase):
     routine, and to build and check bzr trees.
 
     In addition to the usual method of overriding tearDown(), this class also
-    allows subclasses to register functions into the _cleanups list, which is
+    allows subclasses to register cleanup functions via addCleanup, which are
     run in order as the object is torn down.  It's less likely this will be
     accidentally overlooked.
     """
@@ -834,7 +817,6 @@ class TestCase(testtools.TestCase):
 
     def __init__(self, methodName='testMethod'):
         super(TestCase, self).__init__(methodName)
-        self._cleanups = []
         self._directory_isolation = True
         self.exception_handlers.insert(0,
             (UnavailableFeature, self._do_unsupported_or_skip))
@@ -863,6 +845,22 @@ class TestCase(testtools.TestCase):
         # debug a frame up.
         import pdb
         pdb.Pdb().set_trace(sys._getframe().f_back)
+
+    def discardDetail(self, name):
+        """Extend the addDetail, getDetails api so we can remove a detail.
+
+        eg. bzr always adds the 'log' detail at startup, but we don't want to
+        include it for skipped, xfail, etc tests.
+
+        It is safe to call this for a detail that doesn't exist, in case this
+        gets called multiple times.
+        """
+        # We cheat. details is stored in __details which means we shouldn't
+        # touch it. but getDetails() returns the dict directly, so we can
+        # mutate it.
+        details = self.getDetails()
+        if name in details:
+            del details[name]
 
     def _clear_debug_flags(self):
         """Prevent externally set debug flags affecting tests.
@@ -986,7 +984,7 @@ class TestCase(testtools.TestCase):
             try:
                 workingtree.WorkingTree.open(path)
             except (errors.NotBranchError, errors.NoWorkingTree):
-                return
+                raise TestSkipped('Needs a working tree of bzr sources')
         finally:
             self.enable_directory_isolation()
 
@@ -1498,14 +1496,6 @@ class TestCase(testtools.TestCase):
         """
         debug.debug_flags.discard('strict_locks')
 
-    def addCleanup(self, callable, *args, **kwargs):
-        """Arrange to run a callable when this case is torn down.
-
-        Callables are run in the reverse of the order they are registered,
-        ie last-in first-out.
-        """
-        self._cleanups.append((callable, args, kwargs))
-
     def overrideAttr(self, obj, attr_name, new=_unitialized_attr):
         """Overrides an object attribute restoring it after the test.
 
@@ -1595,7 +1585,12 @@ class TestCase(testtools.TestCase):
         """This test has failed for some known reason."""
         raise KnownFailure(reason)
 
+    def _suppress_log(self):
+        """Remove the log info from details."""
+        self.discardDetail('log')
+
     def _do_skip(self, result, reason):
+        self._suppress_log()
         addSkip = getattr(result, 'addSkip', None)
         if not callable(addSkip):
             result.addSuccess(result)
@@ -1604,6 +1599,7 @@ class TestCase(testtools.TestCase):
 
     @staticmethod
     def _do_known_failure(self, result, e):
+        self._suppress_log()
         err = sys.exc_info()
         addExpectedFailure = getattr(result, 'addExpectedFailure', None)
         if addExpectedFailure is not None:
@@ -1617,6 +1613,7 @@ class TestCase(testtools.TestCase):
             reason = 'No reason given'
         else:
             reason = e.args[0]
+        self._suppress_log ()
         addNotApplicable = getattr(result, 'addNotApplicable', None)
         if addNotApplicable is not None:
             result.addNotApplicable(self, reason)
@@ -1624,8 +1621,29 @@ class TestCase(testtools.TestCase):
             self._do_skip(result, reason)
 
     @staticmethod
+    def _report_skip(self, result, err):
+        """Override the default _report_skip.
+
+        We want to strip the 'log' detail. If we waint until _do_skip, it has
+        already been formatted into the 'reason' string, and we can't pull it
+        out again.
+        """
+        self._suppress_log()
+        super(TestCase, self)._report_skip(self, result, err)
+
+    @staticmethod
+    def _report_expected_failure(self, result, err):
+        """Strip the log.
+
+        See _report_skip for motivation.
+        """
+        self._suppress_log()
+        super(TestCase, self)._report_expected_failure(self, result, err)
+
+    @staticmethod
     def _do_unsupported_or_skip(self, result, e):
         reason = e.args[0]
+        self._suppress_log()
         addNotSupported = getattr(result, 'addNotSupported', None)
         if addNotSupported is not None:
             result.addNotSupported(self, reason)
@@ -4042,6 +4060,18 @@ def clone_test(test, new_id):
     """
     new_test = copy.copy(test)
     new_test.id = lambda: new_id
+    # XXX: Workaround <https://bugs.launchpad.net/testtools/+bug/637725>, which
+    # causes cloned tests to share the 'details' dict.  This makes it hard to
+    # read the test output for parameterized tests, because tracebacks will be
+    # associated with irrelevant tests.
+    try:
+        details = new_test._TestCase__details
+    except AttributeError:
+        # must be a different version of testtools than expected.  Do nothing.
+        pass
+    else:
+        # Reset the '__details' dict.
+        new_test._TestCase__details = {}
     return new_test
 
 
@@ -4473,10 +4503,20 @@ SubUnitFeature = _CompatabilityThunkFeature(
 try:
     from subunit import TestProtocolClient
     from subunit.test_results import AutoTimingTestResultDecorator
+    class SubUnitBzrProtocolClient(TestProtocolClient):
+
+        def addSuccess(self, test, details=None):
+            # The subunit client always includes the details in the subunit
+            # stream, but we don't want to include it in ours.
+            if details is not None and 'log' in details:
+                del details['log']
+            return super(SubUnitBzrProtocolClient, self).addSuccess(
+                test, details)
+
     class SubUnitBzrRunner(TextTestRunner):
         def run(self, test):
             result = AutoTimingTestResultDecorator(
-                TestProtocolClient(self.stream))
+                SubUnitBzrProtocolClient(self.stream))
             test.run(result)
             return result
 except ImportError:

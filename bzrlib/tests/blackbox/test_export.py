@@ -66,15 +66,13 @@ class TestExport(TestCaseWithTransport):
         self.assertEqual(['test/a'], sorted(ball.getnames()))
 
     def test_tar_export_unicode(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tar')
         # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
         # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
         # export itself --vila 20090406
         fname = u'\N{Euro Sign}.txt'
-        try:
-            self.build_tree(['tar/' + fname])
-        except UnicodeError:
-            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
+        self.build_tree(['tar/' + fname])
         tree.add([fname])
         tree.commit('first')
 
@@ -87,6 +85,7 @@ class TestExport(TestCaseWithTransport):
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""
+        self.requireFeature(tests.UnicodeFilenameFeature)
         basedir = u'\N{euro sign}'
         os.mkdir(basedir)
         os.chdir(basedir)
@@ -119,12 +118,10 @@ class TestExport(TestCaseWithTransport):
         self.assertEqual(['test/a'], sorted(zfile.namelist()))
 
     def test_zip_export_unicode(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('zip')
         fname = u'\N{Euro Sign}.txt'
-        try:
-            self.build_tree(['zip/' + fname])
-        except UnicodeError:
-            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
+        self.build_tree(['zip/' + fname])
         tree.add([fname])
         tree.commit('first')
 

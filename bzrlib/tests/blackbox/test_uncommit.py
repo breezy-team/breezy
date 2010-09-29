@@ -70,9 +70,7 @@ class TestUncommit(TestCaseWithTransport):
         os.chdir('tree')
         run_script(self, """    
         $ bzr uncommit
-            2 jrandom@example.com\t...
-              second commit
-        
+        ...
         The above revision(s) will be removed.
         2>Uncommit these revisions? [y/n]: 
         <n

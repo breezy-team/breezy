@@ -131,7 +131,7 @@ class SSHVendorManager(object):
         # is given in BZR_SSH. See https://bugs.launchpad.net/bugs/414743
         elif 'plink' in version and progname == 'plink':
             # Checking if "plink" was the executed argument as Windows
-            # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
+            # sometimes reports 'ssh -V' incorrectly with 'plink' in its
             # version.  See https://bugs.launchpad.net/bzr/+bug/107155
             trace.mutter("ssh implementation is Putty's plink.")
             vendor = PLinkSubprocessVendor()
@@ -336,15 +336,14 @@ class ParamikoVendor(SSHVendor):
             self._raise_connection_error(host, port=port, orig_error=e,
                                          msg='Unable to invoke remote bzr')
 
+_ssh_connection_errors = (EOFError, OSError, IOError, socket.error)
 if paramiko is not None:
     vendor = ParamikoVendor()
     register_ssh_vendor('paramiko', vendor)
     register_ssh_vendor('none', vendor)
     register_default_ssh_vendor(vendor)
-    _sftp_connection_errors = (EOFError, paramiko.SSHException)
+    _ssh_connection_errors += (paramiko.SSHException,)
     del vendor
-else:
-    _sftp_connection_errors = (EOFError,)
 
 
 class SubprocessVendor(SSHVendor):
@@ -375,14 +374,7 @@ class SubprocessVendor(SSHVendor):
                                                   subsystem='sftp')
             sock = self._connect(argv)
             return SFTPClient(SocketAsChannelAdapter(sock))
-        except _sftp_connection_errors, e:
-            self._raise_connection_error(host, port=port, orig_error=e)
-        except (OSError, IOError), e:
-            # If the machine is fast enough, ssh can actually exit
-            # before we try and send it the sftp request, which
-            # raises a Broken Pipe
-            if e.errno not in (errno.EPIPE,):
-                raise
+        except _ssh_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
     def connect_ssh(self, username, password, host, port, command):
@@ -390,14 +382,7 @@ class SubprocessVendor(SSHVendor):
             argv = self._get_vendor_specific_argv(username, host, port,
                                                   command=command)
             return self._connect(argv)
-        except (EOFError), e:
-            self._raise_connection_error(host, port=port, orig_error=e)
-        except (OSError, IOError), e:
-            # If the machine is fast enough, ssh can actually exit
-            # before we try and send it the sftp request, which
-            # raises a Broken Pipe
-            if e.errno not in (errno.EPIPE,):
-                raise
+        except _ssh_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,

@@ -27,6 +27,7 @@ import unittest
 import warnings
 
 from testtools import MultiTestResult
+from testtools.content import Content
 from testtools.content_type import ContentType
 from testtools.matchers import (
     DocTestMatches,
@@ -43,7 +44,6 @@ from bzrlib import (
     lockdir,
     memorytree,
     osutils,
-    progress,
     remote,
     repository,
     symbol_versioning,
@@ -68,7 +68,7 @@ from bzrlib.tests import (
     test_sftp_transport,
     TestUtil,
     )
-from bzrlib.trace import note
+from bzrlib.trace import note, mutter
 from bzrlib.transport import memory
 from bzrlib.version import _get_bzr_source_tree
 
@@ -326,19 +326,21 @@ class TestInterRepositoryScenarios(tests.TestCase):
         from bzrlib.tests.per_interrepository import make_scenarios
         server1 = "a"
         server2 = "b"
-        formats = [("C0", "C1", "C2"), ("D0", "D1", "D2")]
+        formats = [("C0", "C1", "C2", "C3"), ("D0", "D1", "D2", "D3")]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
             ('C0,str,str',
              {'repository_format': 'C1',
               'repository_format_to': 'C2',
               'transport_readonly_server': 'b',
-              'transport_server': 'a'}),
+              'transport_server': 'a',
+              'extra_setup': 'C3'}),
             ('D0,str,str',
              {'repository_format': 'D1',
               'repository_format_to': 'D2',
               'transport_readonly_server': 'b',
-              'transport_server': 'a'})],
+              'transport_server': 'a',
+              'extra_setup': 'D3'})],
             scenarios)
 
 
@@ -625,11 +627,11 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         result = test.run()
         total_failures = result.errors + result.failures
         if self._lock_check_thorough:
-            self.assertLength(1, total_failures)
+            self.assertEqual(1, len(total_failures))
         else:
             # When _lock_check_thorough is disabled, then we don't trigger a
             # failure
-            self.assertLength(0, total_failures)
+            self.assertEqual(0, len(total_failures))
 
 
 class TestTestCaseWithTransport(tests.TestCaseWithTransport):
@@ -1234,6 +1236,18 @@ class TestRunner(tests.TestCase):
         self.assertContainsRe(output_string, "--date [0-9.]+")
         self.assertLength(1, self._get_source_tree_calls)
 
+    def test_verbose_test_count(self):
+        """A verbose test run reports the right test count at the start"""
+        suite = TestUtil.TestSuite([
+            unittest.FunctionTestCase(lambda:None),
+            unittest.FunctionTestCase(lambda:None)])
+        self.assertEqual(suite.countTestCases(), 2)
+        stream = StringIO()
+        runner = tests.TextTestRunner(stream=stream, verbosity=2)
+        # Need to use the CountingDecorator as that's what sets num_tests
+        result = self.run_test_runner(runner, tests.CountingDecorator(suite))
+        self.assertStartsWith(stream.getvalue(), "running 2 tests")
+
     def test_startTestRun(self):
         """run should call result.startTestRun()"""
         calls = []
@@ -1676,6 +1690,142 @@ class TestTestCase(tests.TestCase):
         self.assertEqual('original', obj.test_attr)
 
 
+class _MissingFeature(tests.Feature):
+    def _probe(self):
+        return False
+missing_feature = _MissingFeature()
+
+
+def _get_test(name):
+    """Get an instance of a specific example test.
+
+    We protect this in a function so that they don't auto-run in the test
+    suite.
+    """
+
+    class ExampleTests(tests.TestCase):
+
+        def test_fail(self):
+            mutter('this was a failing test')
+            self.fail('this test will fail')
+
+        def test_error(self):
+            mutter('this test errored')
+            raise RuntimeError('gotcha')
+
+        def test_missing_feature(self):
+            mutter('missing the feature')
+            self.requireFeature(missing_feature)
+
+        def test_skip(self):
+            mutter('this test will be skipped')
+            raise tests.TestSkipped('reason')
+
+        def test_success(self):
+            mutter('this test succeeds')
+
+        def test_xfail(self):
+            mutter('test with expected failure')
+            self.knownFailure('this_fails')
+
+        def test_unexpected_success(self):
+            mutter('test with unexpected success')
+            self.expectFailure('should_fail', lambda: None)
+
+    return ExampleTests(name)
+
+
+class TestTestCaseLogDetails(tests.TestCase):
+
+    def _run_test(self, test_name):
+        test = _get_test(test_name)
+        result = testtools.TestResult()
+        test.run(result)
+        return result
+
+    def test_fail_has_log(self):
+        result = self._run_test('test_fail')
+        self.assertEqual(1, len(result.failures))
+        result_content = result.failures[0][1]
+        self.assertContainsRe(result_content, 'Text attachment: log')
+        self.assertContainsRe(result_content, 'this was a failing test')
+
+    def test_error_has_log(self):
+        result = self._run_test('test_error')
+        self.assertEqual(1, len(result.errors))
+        result_content = result.errors[0][1]
+        self.assertContainsRe(result_content, 'Text attachment: log')
+        self.assertContainsRe(result_content, 'this test errored')
+
+    def test_skip_has_no_log(self):
+        result = self._run_test('test_skip')
+        self.assertEqual(['reason'], result.skip_reasons.keys())
+        skips = result.skip_reasons['reason']
+        self.assertEqual(1, len(skips))
+        test = skips[0]
+        self.assertFalse('log' in test.getDetails())
+
+    def test_missing_feature_has_no_log(self):
+        # testtools doesn't know about addNotSupported, so it just gets
+        # considered as a skip
+        result = self._run_test('test_missing_feature')
+        self.assertEqual([missing_feature], result.skip_reasons.keys())
+        skips = result.skip_reasons[missing_feature]
+        self.assertEqual(1, len(skips))
+        test = skips[0]
+        self.assertFalse('log' in test.getDetails())
+
+    def test_xfail_has_no_log(self):
+        result = self._run_test('test_xfail')
+        self.assertEqual(1, len(result.expectedFailures))
+        result_content = result.expectedFailures[0][1]
+        self.assertNotContainsRe(result_content, 'Text attachment: log')
+        self.assertNotContainsRe(result_content, 'test with expected failure')
+
+    def test_unexpected_success_has_log(self):
+        result = self._run_test('test_unexpected_success')
+        self.assertEqual(1, len(result.unexpectedSuccesses))
+        # Inconsistency, unexpectedSuccesses is a list of tests,
+        # expectedFailures is a list of reasons?
+        test = result.unexpectedSuccesses[0]
+        details = test.getDetails()
+        self.assertTrue('log' in details)
+
+
+class TestTestCloning(tests.TestCase):
+    """Tests that test cloning of TestCases (as used by multiply_tests)."""
+
+    def test_cloned_testcase_does_not_share_details(self):
+        """A TestCase cloned with clone_test does not share mutable attributes
+        such as details or cleanups.
+        """
+        class Test(tests.TestCase):
+            def test_foo(self):
+                self.addDetail('foo', Content('text/plain', lambda: 'foo'))
+        orig_test = Test('test_foo')
+        cloned_test = tests.clone_test(orig_test, orig_test.id() + '(cloned)')
+        orig_test.run(unittest.TestResult())
+        self.assertEqual('foo', orig_test.getDetails()['foo'].iter_bytes())
+        self.assertEqual(None, cloned_test.getDetails().get('foo'))
+
+    def test_double_apply_scenario_preserves_first_scenario(self):
+        """Applying two levels of scenarios to a test preserves the attributes
+        added by both scenarios.
+        """
+        class Test(tests.TestCase):
+            def test_foo(self):
+                pass
+        test = Test('test_foo')
+        scenarios_x = [('x=1', {'x': 1}), ('x=2', {'x': 2})]
+        scenarios_y = [('y=1', {'y': 1}), ('y=2', {'y': 2})]
+        suite = tests.multiply_tests(test, scenarios_x, unittest.TestSuite())
+        suite = tests.multiply_tests(suite, scenarios_y, unittest.TestSuite())
+        all_tests = list(tests.iter_suite_tests(suite))
+        self.assertLength(4, all_tests)
+        all_xys = sorted((t.x, t.y) for t in all_tests)
+        self.assertEqual([(1, 1), (1, 2), (2, 1), (2, 2)], all_xys)
+
+
 # NB: Don't delete this; it's not actually from 0.11!
 @deprecated_function(deprecated_in((0, 11, 0)))
 def sample_deprecated_function():
@@ -1835,7 +1985,7 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
                 tree.branch.repository.bzrdir.root_transport)
 
 
-class SelfTestHelper:
+class SelfTestHelper(object):
 
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
@@ -1990,6 +2140,83 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
         # And generate a list of the tests in  the suite.
         err = self.assertRaises(errors.NoSuchFile, self.run_selftest,
             load_list='missing file name', list_only=True)
+
+
+class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
+
+    _test_needs_features = [features.subunit]
+
+    def run_subunit_stream(self, test_name):
+        from subunit import ProtocolTestCase
+        def factory():
+            return TestUtil.TestSuite([_get_test(test_name)])
+        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+            test_suite_factory=factory)
+        test = ProtocolTestCase(stream)
+        result = testtools.TestResult()
+        test.run(result)
+        content = stream.getvalue()
+        return content, result
+
+    def test_fail_has_log(self):
+        content, result = self.run_subunit_stream('test_fail')
+        self.assertEqual(1, len(result.failures))
+        self.assertContainsRe(content, '(?m)^log$')
+        self.assertContainsRe(content, 'this test will fail')
+
+    def test_error_has_log(self):
+        content, result = self.run_subunit_stream('test_error')
+        self.assertContainsRe(content, '(?m)^log$')
+        self.assertContainsRe(content, 'this test errored')
+
+    def test_skip_has_no_log(self):
+        content, result = self.run_subunit_stream('test_skip')
+        self.assertNotContainsRe(content, '(?m)^log$')
+        self.assertNotContainsRe(content, 'this test will be skipped')
+        self.assertEqual(['reason'], result.skip_reasons.keys())
+        skips = result.skip_reasons['reason']
+        self.assertEqual(1, len(skips))
+        test = skips[0]
+        # RemotedTestCase doesn't preserve the "details"
+        ## self.assertFalse('log' in test.getDetails())
+
+    def test_missing_feature_has_no_log(self):
+        content, result = self.run_subunit_stream('test_missing_feature')
+        self.assertNotContainsRe(content, '(?m)^log$')
+        self.assertNotContainsRe(content, 'missing the feature')
+        self.assertEqual(['_MissingFeature\n'], result.skip_reasons.keys())
+        skips = result.skip_reasons['_MissingFeature\n']
+        self.assertEqual(1, len(skips))
+        test = skips[0]
+        # RemotedTestCase doesn't preserve the "details"
+        ## self.assertFalse('log' in test.getDetails())
+
+    def test_xfail_has_no_log(self):
+        content, result = self.run_subunit_stream('test_xfail')
+        self.assertNotContainsRe(content, '(?m)^log$')
+        self.assertNotContainsRe(content, 'test with expected failure')
+        self.assertEqual(1, len(result.expectedFailures))
+        result_content = result.expectedFailures[0][1]
+        self.assertNotContainsRe(result_content, 'Text attachment: log')
+        self.assertNotContainsRe(result_content, 'test with expected failure')
+
+    def test_unexpected_success_has_log(self):
+        content, result = self.run_subunit_stream('test_unexpected_success')
+        self.assertContainsRe(content, '(?m)^log$')
+        self.assertContainsRe(content, 'test with unexpected success')
+        self.expectFailure('subunit treats "unexpectedSuccess"'
+                           ' as a plain success',
+            self.assertEqual, 1, len(result.unexpectedSuccesses))
+        self.assertEqual(1, len(result.unexpectedSuccesses))
+        test = result.unexpectedSuccesses[0]
+        # RemotedTestCase doesn't preserve the "details"
+        ## self.assertTrue('log' in test.getDetails())
+
+    def test_success_has_no_log(self):
+        content, result = self.run_subunit_stream('test_success')
+        self.assertEqual(1, result.testsRun)
+        self.assertNotContainsRe(content, '(?m)^log$')
+        self.assertNotContainsRe(content, 'this test succeeds')
 
 
 class TestRunBzr(tests.TestCase):

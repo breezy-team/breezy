@@ -21,7 +21,6 @@ import errno
 import os
 import re
 import socket
-import stat
 import sys
 import time
 
@@ -1072,6 +1071,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         if sys.platform == 'win32':
             raise tests.TestNotApplicable(
                 "readdir IOError not tested on win32")
+        self.requireFeature(features.not_running_as_root)
         os.mkdir("test-unreadable")
         os.chmod("test-unreadable", 0000)
         # must chmod it back so that it can be removed
@@ -2076,5 +2076,12 @@ class TestGetuserUnicode(tests.TestCase):
 
     def test_unicode_user(self):
         ue = osutils.get_user_encoding()
-        osutils.set_or_unset_env('LOGNAME', u'jrandom\xb6'.encode(ue))
-        self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
+        uni_val, env_val = tests.probe_unicode_in_user_encoding()
+        if uni_val is None:
+            raise tests.TestSkipped(
+                'Cannot find a unicode character that works in encoding %s'
+                % (osutils.get_user_encoding(),))
+        uni_username = u'jrandom' + uni_val
+        encoded_username = uni_username.encode(ue)
+        osutils.set_or_unset_env('LOGNAME', encoded_username)
+        self.assertEqual(uni_username, osutils.getuser_unicode())

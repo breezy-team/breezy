@@ -434,7 +434,7 @@ class CommitBuilder(object):
             else:
                 # we don't need to commit this, because the caller already
                 # determined that an existing revision of this file is
-                # appropriate. If its not being considered for committing then
+                # appropriate. If it's not being considered for committing then
                 # it and all its parents to the root must be unaltered so
                 # no-change against the basis.
                 if ie.revision == self._new_revision_id:
@@ -756,7 +756,7 @@ class CommitBuilder(object):
                     # after iter_changes examines and decides it has changed,
                     # we will unconditionally record a new version even if some
                     # other process reverts it while commit is running (with
-                    # the revert happening after iter_changes did it's
+                    # the revert happening after iter_changes did its
                     # examination).
                     if change[7][1]:
                         entry.executable = True
@@ -945,7 +945,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         pointing to .bzr/repository.
     """
 
-    # What class to use for a CommitBuilder. Often its simpler to change this
+    # What class to use for a CommitBuilder. Often it's simpler to change this
     # in a Repository class subclass rather than to override
     # get_commit_builder.
     _commit_builder_class = CommitBuilder
@@ -2511,19 +2511,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             ancestors will be traversed.
         """
         graph = self.get_graph()
-        next_id = revision_id
-        while True:
-            if next_id in (None, _mod_revision.NULL_REVISION):
-                return
-            try:
-                parents = graph.get_parent_map([next_id])[next_id]
-            except KeyError:
-                raise errors.RevisionNotPresent(next_id, self)
-            yield next_id
-            if len(parents) == 0:
-                return
-            else:
-                next_id = parents[0]
+        stop_revisions = (None, _mod_revision.NULL_REVISION)
+        return graph.iter_lefthand_ancestry(revision_id, stop_revisions)
 
     def is_shared(self):
         """Return True if this repository is flagged as a shared repository."""
@@ -2630,7 +2619,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         types it should be a no-op that just returns.
 
         This stub method does not require a lock, but subclasses should use
-        @needs_write_lock as this is a long running call its reasonable to
+        @needs_write_lock as this is a long running call it's reasonable to
         implicitly lock for the user.
 
         :param hint: If not supplied, the whole repository is packed.
@@ -3853,15 +3842,13 @@ class InterDifferingSerializer(InterRepository):
                 basis_id, delta, current_revision_id, parents_parents)
             cache[current_revision_id] = parent_tree
 
-    def _fetch_batch(self, revision_ids, basis_id, cache, a_graph=None):
+    def _fetch_batch(self, revision_ids, basis_id, cache):
         """Fetch across a few revisions.
 
         :param revision_ids: The revisions to copy
         :param basis_id: The revision_id of a tree that must be in cache, used
             as a basis for delta when no other base is available
         :param cache: A cache of RevisionTrees that we can use.
-        :param a_graph: A Graph object to determine the heads() of the
-            rich-root data stream.
         :return: The revision_id of the last converted tree. The RevisionTree
             for it will be in cache
         """
@@ -3935,7 +3922,7 @@ class InterDifferingSerializer(InterRepository):
         if root_keys_to_create:
             root_stream = _mod_fetch._new_root_data_stream(
                 root_keys_to_create, self._revision_id_to_root_id, parent_map,
-                self.source, graph=a_graph)
+                self.source)
             to_texts.insert_record_stream(root_stream)
         to_texts.insert_record_stream(from_texts.get_record_stream(
             text_keys, self.target._format._fetch_order,
@@ -3998,11 +3985,7 @@ class InterDifferingSerializer(InterRepository):
         cache[basis_id] = basis_tree
         del basis_tree # We don't want to hang on to it here
         hints = []
-        if self._converting_to_rich_root and len(revision_ids) > 100:
-            a_graph = _mod_fetch._get_rich_root_heads_graph(self.source,
-                                                            revision_ids)
-        else:
-            a_graph = None
+        a_graph = None
 
         for offset in range(0, len(revision_ids), batch_size):
             self.target.start_write_group()
@@ -4010,8 +3993,7 @@ class InterDifferingSerializer(InterRepository):
                 pb.update('Transferring revisions', offset,
                           len(revision_ids))
                 batch = revision_ids[offset:offset+batch_size]
-                basis_id = self._fetch_batch(batch, basis_id, cache,
-                                             a_graph=a_graph)
+                basis_id = self._fetch_batch(batch, basis_id, cache)
             except:
                 self.source._safe_to_return_from_cache = False
                 self.target.abort_write_group()
@@ -4083,7 +4065,7 @@ class InterDifferingSerializer(InterRepository):
             basis_id = first_rev.parent_ids[0]
             # only valid as a basis if the target has it
             self.target.get_revision(basis_id)
-            # Try to get a basis tree - if its a ghost it will hit the
+            # Try to get a basis tree - if it's a ghost it will hit the
             # NoSuchRevision case.
             basis_tree = self.source.revision_tree(basis_id)
         except (IndexError, errors.NoSuchRevision):
