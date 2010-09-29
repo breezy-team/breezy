@@ -1056,6 +1056,9 @@ class cmd_push(Command):
         Option('strict',
                help='Refuse to push if there are uncommitted changes in'
                ' the working tree, --no-strict disables the check.'),
+        Option('no-tree',
+               help='TODO: Looks like the help push is out of date,'
+               ' since it seems to say that this is the default behaviour.'),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1115,7 +1118,7 @@ class cmd_push(Command):
         _show_push_branch(br_from, revision_id, location, self.outf,
             verbose=verbose, overwrite=overwrite, remember=remember,
             stacked_on=stacked_on, create_prefix=create_prefix,
-            use_existing_dir=use_existing_dir)
+            use_existing_dir=use_existing_dir, no_tree=no_tree)
 
 
 class cmd_branch(Command):
