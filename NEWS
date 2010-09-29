@@ -16,8 +16,30 @@ Compatibility Breaks
 New Features
 ************
 
+* Add ``mainline`` revision specifier, which selects the revision that
+  merged a specified revision into the mainline.  (Aaron Bentley)
+
+* Add ``annotate`` revision specifier, which selects the revision that
+  introduced a specified line of a file.  (Aaron Bentley)
+
+* ``bzr status`` now displays a summary of existing shelves after
+  the other status information. This is done using a ``post_status``
+  hook.
+  (Parth Malwankar, #403687)
+
 Bug Fixes
 *********
+
+* ``bzr break-lock --force`` breaks the lock without prompting.  (Before
+  using this, make sure the process holding the lock really is dead.)
+  (Martin Pool, #392315)
+
+* Skip tests that needs a bzr source tree when there isn't one. This is
+  needed to succesfully run the test suite for installed versions.
+  (Vincent Ladeuil, #644855).
+
+* Skip the tests that requires respecting the chmod bits when running as root.
+  (Vincent Ladeuil, #646133)
 
 Improvements
 ************
@@ -31,10 +53,21 @@ API Changes
 Internals
 *********
 
+* Small change to GroupCompressBlock to work more in terms of 'chunks'
+  rather than 'content' for its compressed storage. (John Arbash Meinel)
+
+* When running ``bzr selftest --subunit`` the subunit stream will no
+  longer include the "log" information for tests which are considered to
+  be 'successes' (success, xfail, skip, etc) (John Arbash Meinel)
+
 Testing
 *******
 
+* Fix tests that failed when run under ``LANG=C``.
+  (Andrew Bennetts, #632387)
 
+* Use tests.TestCaseInTempDir for tests that requires disk resources.
+  (Vincent Ladeuil, #650001)
 
 bzr 2.3b1
 #########
@@ -220,6 +253,9 @@ New Features
 Bug Fixes
 *********
 
+* Fix traceback with python-2.7's xmlrpclib
+  (Toshio Kuratomi, #612096)
+
 * Allow using both --using and --diff-options. 
   (Matthäus G. Chajdas, #234708)
 
@@ -310,6 +346,9 @@ Bug Fixes
 * Test classes like ``TestCase``, ``TestLoader``, and ``TestSuite`` should
   be available from ``bzrlib.tests.*``. They used to be, but were
   accidentally removed. (John Arbash Meinel, #627438)
+
+* Treat all IO, OS, and socket errors consistently when establishing
+  SSH/SFTP connections via a subprocess.  (Andrew Bennetts)
 
 * ``Transport.stat`` on a symlink, including a transport pointing directly
   to a symlink, now returns information about the symlink.
@@ -436,7 +475,7 @@ Testing
   when ``bzr selftest --parallel=fork`` is used. (Martin [gz], #528730)
 
 * Rearrange thread leak detection code to eliminate global state and make it
-  possible to extend the reporting. (Marting [gz], #633462)
+  possible to extend the reporting. (Martin [gz], #633462)
 
 * Suppress the "maximum recursion depth exceeded in __subclasscheck__"
   warning on stderr emitted during ``test_dict_deepnested`` in
@@ -459,6 +498,46 @@ Testing
   ``bzrlib.tests.clone_test`` so that it no longer causes
   testtools.TestCase instances to share a details dict.
   (Andrew Bennetts, #625574)
+
+
+bzr 2.2.2
+#########
+
+:2.2.2: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* Skip tests that needs a bzr source tree when there isn't one. This is
+  needed to succesfully run the test suite for installed versions.
+  (Vincent Ladeuil, #644855).
+
+* Skip the tests that requires respecting the chmod bits when running as root.
+  (Vincent Ladeuil, #646133)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+* Fix tests that failed when run under ``LANG=C``.
+  (Andrew Bennetts, #632387)
 
 
 bzr 2.2.1
@@ -583,6 +662,205 @@ Testing
   (Andrew Bennetts, #625574)
 
 
+bzr 2.1.4
+#########
+
+:2.1.4: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* Skip tests that needs a bzr source tree when there isn't one. This is
+  needed to succesfully run the test suite for installed versions.
+  (Vincent Ladeuil, #644855).
+
+* Skip the tests that requires respecting the chmod bits when running as root.
+  (Vincent Ladeuil, #646133)
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
+bzr 2.1.3
+#########
+
+:Codename: Do run run
+:2.1.3: 2010-09-17
+
+The third release in our 2.1 series addresses several user-inconvenience bugs
+(and includes the fixes done in 2.0.6).  None are critical, but upgrading is
+recommended for all users on earlier 2.1 releases.
+
+Bug Fixes
+*********
+
+* Additional merges after an unrelated branch has been merged with its
+  history no longer crash when deleted files are involved.
+  (Vincent Ladeuil, John Arbash Meinel, #375898)
+
+* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
+  previously-unversioned directory within the tree: the directory is
+  marked versioned too.  
+  (Martin Pool, #192859)
+
+* ``bzr commit SYMLINK`` now works, rather than trying to commit the
+  target of the symlink.
+  (Martin Pool, John Arbash Meinel, #128562)
+
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
+
+* Configuration files in ``${BZR_HOME}`` are now written in an atomic
+  way which should help avoid problems with concurrent writers.
+  (Vincent Ladeuil, #525571)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
+
+* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
+  contains only NUL bytes).  Instead warn the user, and allow ``bzr
+  break-lock`` to remove it.  (Andrew Bennetts, #619872)
+  
+* Fix ``AttributeError on parent.children`` when adding a file under a 
+  directory that was a symlink in the previous commit.
+  (Martin Pool, #192859)
+
+* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
+  which can result in "missing referenced chk root keys" errors when
+  fetching from repositories with affected revisions.
+  (Andrew Bennetts, #522637)
+
+* Raise ValueError instead of a string exception.
+  (John Arbash Meinel, #586926)
+
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
+
+* Selftest with versions of subunit that support ``stopTestRun`` will no longer
+  error. This error was caused by 2.0 not being updated when upstream
+  python merged the end of run patch, which chose ``stopTestRun`` rather than
+  ``done``. (Robert Collins, #571437)
+
+* Stop ``AttributeError: 'module' object has no attribute 'ElementTree'``
+  being thrown from ``xml_serializer`` on certain cElementTree setups.
+  (Martin [gz], #254278)
+
+* When passing a file to ``UTF8DirReader`` make sure to close the current
+  directory file handle after the chdir fails. Otherwise when passing many
+  filenames into a command line ``bzr status`` we would leak descriptors.
+  (John Arbash Meinel, #583486)
+
+Testing
+*******
+
+* ``build_tree_contents`` can create symlinks.
+  (Martin Pool, John Arbash Meinel)
+
+
+bzr 2.0.6
+#########
+
+:2.0.6: 2010-09-17
+
+The sixth release in our 2.0 series addresses several user-inconvenience
+bugs.  None are critical, but upgrading is recommended for all users on
+earlier 2.0 releases.
+
+Bug Fixes
+*********
+
+* Additional merges after an unrelated branch has been merged with its
+  history no longer crash when deleted files are involved.
+  (Vincent Ladeuil, John Arbash Meinel, #375898)
+
+* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
+  previously-unversioned directory within the tree: the directory is
+  marked versioned too.  
+  (Martin Pool, #192859)
+
+* ``bzr commit SYMLINK`` now works, rather than trying to commit the
+  target of the symlink.
+  (Martin Pool, John Arbash Meinel, #128562)
+
+* ``bzr revert`` now only takes write lock on working tree, instead of on 
+  both working tree and branch.
+  (Danny van Heumen, #498409)
+
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
+
+* Don't traceback trying to unversion children files of an already
+  unversioned directory.  (Vincent Ladeuil, #494221)
+
+* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
+  contains only NUL bytes).  Instead warn the user, and allow ``bzr
+  break-lock`` to remove it.  (Andrew Bennetts, #619872)
+  
+* Fix ``AttributeError on parent.children`` when adding a file under a 
+  directory that was a symlink in the previous commit.
+  (Martin Pool, #192859)
+
+* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
+  which can result in "missing referenced chk root keys" errors when
+  fetching from repositories with affected revisions.
+  (Andrew Bennetts, #522637)
+
+* Raise ValueError instead of a string exception.
+  (John Arbash Meinel, #586926)
+
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
+
+* Selftest with versions of subunit that support ``stopTestRun`` will no longer
+  error. This error was caused by 2.0 not being updated when upstream
+  python merged the end of run patch, which chose ``stopTestRun`` rather than
+  ``done``. (Robert Collins, #571437)
+
+* When passing a file to ``UTF8DirReader`` make sure to close the current
+  directory file handle after the chdir fails. Otherwise when passing many
+  filenames into a command line ``bzr status`` we would leak descriptors.
+  (John Arbash Meinel, #583486)
+
+
+Testing
+*******
+
+* ``build_tree_contents`` can create symlinks.
+  (Martin Pool, John Arbash Meinel)
+
+
 bzr 2.2
 #######
 
@@ -680,7 +958,7 @@ bzr 2.2b4
 #########
 
 :Codename: Monkey Magic
-:2.2b4: 2004-07-09
+:2.2b4: 2010-07-10
 
 
 This fourth and final beta in the 2.2 series now stabilizes the internal
@@ -1187,6 +1465,63 @@ Testing
   executables on the ``PATH``. Migrated from bash_completion plugin.
   (Martin von Gagern)
 
+bzr 2.1.2
+#########
+
+:2.1.2: 2010-05-28
+
+This release fixes two critical networking issues with older servers and
+with interrupted system call errors when pushing or pulling.  We recommend
+upgrading to anyone running a 2.1.x version of bzr.
+
+Bug Fixes
+*********
+
+* ``bzr clean-tree`` should not delete nested bzrdirs. Required for proper
+  support of bzr-externals and scmproj plugins.
+  (Alexander Belchenko, bug #572098)
+
+* ``bzr switch`` does not die if a ConfigurableFileMerger is used.
+  (Aaron Bentley, #559436)
+
+* Do not register a SIGWINCH signal handler, instead just poll for the
+  terminal width as needed.  This avoids the "Interrupted System Call"
+  problems that occur on POSIX with all currently released versions of
+  Python.
+  (Andrew Bennetts, #583941)
+
+* Fixed ``AssertionError`` when accessing smart servers running Bazaar
+  versions before 1.6.
+  (Andrew Bennetts, #528041)
+
+* Reset ``siginterrupt`` flag to False every time we handle a signal
+  installed with ``set_signal_handler(..., restart_syscall=True)`` (from
+  ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
+  errors compared to registering ``signal.signal`` directly.
+  (Andrew Bennetts)
+
+* Reduce peak memory by one copy of compressed text.
+  (John Arbash Meinel, #566940)
+
+* Support Pyrex 0.9.9, required changing how we handle exceptions in Pyrex.
+  (John Arbash Meinel, #582656)
+
+* When passing a file to ``UTF8DirReader`` make sure to close the current
+  directory file handle after the chdir fails. Otherwise when passing many
+  filenames into a command line ``bzr status`` we would leak descriptors.
+  (John Arbash Meinel, #583486)
+
+Internals
+*********
+
+* ``_remember_remote_is_before`` no longer raises AssertionError when
+  suboptimal network behaviour is noticed; instead it just mutters to the
+  log file (and warns the user if they have set the ``hpss`` debug flag).
+  This was causing unnecessary aborts for performance bugs that are minor
+  at worst.
+  (Andrew Bennetts, #528041)
+
+
 bzr 2.2b2
 #########
 
@@ -1610,149 +1945,6 @@ Testing
   happens, and another warning will be written if the log file could not
   be closed after retrying 100 times.  (Andrew Bennetts, #531746)
 
-bzr 2.1.3
-#########
-
-:Codename: Do run run
-:2.1.3: 2010-09-17
-
-The third release in our 2.1 series addresses several user-inconvenience bugs
-(and includes the fixes done in 2.0.6).  None are critical, but upgrading is
-recommended for all users on earlier 2.1 releases.
-
-Bug Fixes
-*********
-
-* Additional merges after an unrelated branch has been merged with its
-  history no longer crash when deleted files are involved.
-  (Vincent Ladeuil, John Arbash Meinel, #375898)
-
-* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
-  previously-unversioned directory within the tree: the directory is
-  marked versioned too.  
-  (Martin Pool, #192859)
-
-* ``bzr commit SYMLINK`` now works, rather than trying to commit the
-  target of the symlink.
-  (Martin Pool, John Arbash Meinel, #128562)
-
-* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
-  permissions as ``.bzr`` directory on a POSIX OS.
-  (Parth Malwankar, #262450)
-
-* Configuration files in ``${BZR_HOME}`` are now written in an atomic
-  way which should help avoid problems with concurrent writers.
-  (Vincent Ladeuil, #525571)
-
-* Don't traceback trying to unversion children files of an already
-  unversioned directory.  (Vincent Ladeuil, #494221)
-
-* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
-  contains only NUL bytes).  Instead warn the user, and allow ``bzr
-  break-lock`` to remove it.  (Andrew Bennetts, #619872)
-  
-* Fix ``AttributeError on parent.children`` when adding a file under a 
-  directory that was a symlink in the previous commit.
-  (Martin Pool, #192859)
-
-* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
-  which can result in "missing referenced chk root keys" errors when
-  fetching from repositories with affected revisions.
-  (Andrew Bennetts, #522637)
-
-* Progress bars prefer to truncate the text message rather than the
-  counters.  The spinner is shown between the network transfer indicator
-  and the progress message.  (Martin Pool)
-
-* Raise ValueError instead of a string exception.
-  (John Arbash Meinel, #586926)
-
-* Reduce peak memory by one copy of compressed text.
-  (John Arbash Meinel, #566940)
-
-* Repositories accessed via a smart server now reject being stacked on a
-  repository in an incompatible format, as is the case when accessing them
-  via other methods.  This was causing fetches from those repositories via
-  a smart server (e.g. using ``bzr branch``) to receive invalid data.
-  (Andrew Bennetts, #562380)
-
-* Selftest with versions of subunit that support ``stopTestRun`` will no longer
-  error. This error was caused by 2.0 not being updated when upstream
-  python merged the end of run patch, which chose ``stopTestRun`` rather than
-  ``done``. (Robert Collins, #571437)
-
-* Stop ``AttributeError: 'module' object has no attribute 'ElementTree'``
-  being thrown from ``xml_serializer`` on certain cElementTree setups.
-  (Martin [gz], #254278)
-
-* When passing a file to ``UTF8DirReader`` make sure to close the current
-  directory file handle after the chdir fails. Otherwise when passing many
-  filenames into a command line ``bzr status`` we would leak descriptors.
-  (John Arbash Meinel, #583486)
-
-Testing
-*******
-
-* ``build_tree_contents`` can create symlinks.
-  (Martin Pool, John Arbash Meinel)
-
-bzr 2.1.2
-#########
-
-:2.1.2: 2010-05-28
-
-This release fixes two critical networking issues with older servers and
-with interrupted system call errors when pushing or pulling.  We recommend
-upgrading to anyone running a 2.1.x version of bzr.
-
-Bug Fixes
-*********
-
-* ``bzr clean-tree`` should not delete nested bzrdirs. Required for proper
-  support of bzr-externals and scmproj plugins.
-  (Alexander Belchenko, bug #572098)
-
-* ``bzr switch`` does not die if a ConfigurableFileMerger is used.
-  (Aaron Bentley, #559436)
-
-* Do not register a SIGWINCH signal handler, instead just poll for the
-  terminal width as needed.  This avoids the "Interrupted System Call"
-  problems that occur on POSIX with all currently released versions of
-  Python.
-  (Andrew Bennetts, #583941)
-
-* Fixed ``AssertionError`` when accessing smart servers running Bazaar
-  versions before 1.6.
-  (Andrew Bennetts, #528041)
-
-* Reset ``siginterrupt`` flag to False every time we handle a signal
-  installed with ``set_signal_handler(..., restart_syscall=True)`` (from
-  ``bzrlib.osutils``.  Reduces the likelihood of "Interrupted System Call"
-  errors compared to registering ``signal.signal`` directly.
-  (Andrew Bennetts)
-
-* Reduce peak memory by one copy of compressed text.
-  (John Arbash Meinel, #566940)
-
-* Support Pyrex 0.9.9, required changing how we handle exceptions in Pyrex.
-  (John Arbash Meinel, #582656)
-
-* When passing a file to ``UTF8DirReader`` make sure to close the current
-  directory file handle after the chdir fails. Otherwise when passing many
-  filenames into a command line ``bzr status`` we would leak descriptors.
-  (John Arbash Meinel, #583486)
-
-Internals
-*********
-
-* ``_remember_remote_is_before`` no longer raises AssertionError when
-  suboptimal network behaviour is noticed; instead it just mutters to the
-  log file (and warns the user if they have set the ``hpss`` debug flag).
-  This was causing unnecessary aborts for performance bugs that are minor
-  at worst.
-  (Andrew Bennetts, #528041)
-
-
 bzr 2.1.1
 #########
 
@@ -1816,6 +2008,65 @@ API Changes
   can set a signal handler and call ``signal.siginterrupt(signum,
   False)`` for it, if the platform and Python version supports it.
   (Andrew Bennetts, #496813)
+
+
+bzr 2.0.5
+#########
+
+:2.0.5: 2010-03-23
+
+This fifth release in our 2.0 series addresses several user-inconvenience
+bugs.  None are critical, but upgrading is recommended for all users on
+earlier 2.0 releases.
+
+Bug Fixes
+*********
+
+* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
+  (Martin Pool, #331095)
+
+* Concurrent autopacking is more resilient to already-renamed pack files.
+  If we find that a file we are about to obsolete is already obsoleted, we
+  do not try to rename it, and we leave the file in ``obsolete_packs``.
+  The code is also fault tolerant if a file goes missing, assuming that
+  another process already removed the file.
+  (John Arbash Meinel, Gareth White, #507557)
+
+* Cope with the lockdir ``held/info`` file being empty, which seems to
+  happen fairly often if the process is suddenly interrupted while taking
+  a lock.
+  (Martin Pool, #185103)
+
+* Give the warning about potentially slow cross-format fetches much
+  earlier on in the fetch operation.  Don't show this message during
+  upgrades, and show the correct format indication for remote
+  repositories.
+  (Martin Pool, #456077, #515356, #513157)
+
+* Handle renames correctly when there are files or directories that 
+  differ only in case.  (Chris Jones, Martin Pool, #368931)
+
+* If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
+  error, report that error rather than failing with an unhelpful
+  ``UnboundLocalError``.
+  (Andrew Bennetts, #423563)
+
+* Running ``bzr`` command without any arguments now shows bzr
+  version number along with rest of the help text.
+  (Parth Malwankar, #369501)
+
+* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
+  errors.
+  (Inada Naoki, #524560)
+
+Documentation
+*************
+
+* Added ``location-alias`` help topic.
+  (Andrew Bennetts, #337834)
+
+* Fixed CHM generation by moving the NEWS section template into
+  a separate file. (Ian Clatworthy, #524184)
 
 
 bzr 2.1.0
@@ -2170,144 +2421,6 @@ Testing
 * The test progress bar no longer distinguishes tests that 'errored' from
   tests that 'failed' - they're all just failures.
   (Martin Pool)
-
-bzr 2.0.6
-#########
-
-:2.0.6: 2010-09-17
-
-The sixth release in our 2.0 series addresses several user-inconvenience
-bugs.  None are critical, but upgrading is recommended for all users on
-earlier 2.0 releases.
-
-Bug Fixes
-*********
-
-* Additional merges after an unrelated branch has been merged with its
-  history no longer crash when deleted files are involved.
-  (Vincent Ladeuil, John Arbash Meinel, #375898)
-
-* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
-  previously-unversioned directory within the tree: the directory is
-  marked versioned too.  
-  (Martin Pool, #192859)
-
-* ``bzr commit SYMLINK`` now works, rather than trying to commit the
-  target of the symlink.
-  (Martin Pool, John Arbash Meinel, #128562)
-
-* ``bzr revert`` now only takes write lock on working tree, instead of on 
-  both working tree and branch.
-  (Danny van Heumen, #498409)
-
-* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
-  permissions as ``.bzr`` directory on a POSIX OS.
-  (Parth Malwankar, #262450)
-
-* Don't traceback trying to unversion children files of an already
-  unversioned directory.  (Vincent Ladeuil, #494221)
-
-* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
-  contains only NUL bytes).  Instead warn the user, and allow ``bzr
-  break-lock`` to remove it.  (Andrew Bennetts, #619872)
-  
-* Fix ``AttributeError on parent.children`` when adding a file under a 
-  directory that was a symlink in the previous commit.
-  (Martin Pool, #192859)
-
-* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
-  which can result in "missing referenced chk root keys" errors when
-  fetching from repositories with affected revisions.
-  (Andrew Bennetts, #522637)
-
-* Raise ValueError instead of a string exception.
-  (John Arbash Meinel, #586926)
-
-* Reduce peak memory by one copy of compressed text.
-  (John Arbash Meinel, #566940)
-
-* Repositories accessed via a smart server now reject being stacked on a
-  repository in an incompatible format, as is the case when accessing them
-  via other methods.  This was causing fetches from those repositories via
-  a smart server (e.g. using ``bzr branch``) to receive invalid data.
-  (Andrew Bennetts, #562380)
-
-* Selftest with versions of subunit that support ``stopTestRun`` will no longer
-  error. This error was caused by 2.0 not being updated when upstream
-  python merged the end of run patch, which chose ``stopTestRun`` rather than
-  ``done``. (Robert Collins, #571437)
-
-* When passing a file to ``UTF8DirReader`` make sure to close the current
-  directory file handle after the chdir fails. Otherwise when passing many
-  filenames into a command line ``bzr status`` we would leak descriptors.
-  (John Arbash Meinel, #583486)
-
-
-Testing
-*******
-
-* ``build_tree_contents`` can create symlinks.
-  (Martin Pool, John Arbash Meinel)
-
-
-bzr 2.0.5
-#########
-
-:2.0.5: 2010-03-23
-
-This fifth release in our 2.0 series addresses several user-inconvenience
-bugs.  None are critical, but upgrading is recommended for all users on
-earlier 2.0 releases.
-
-Bug Fixes
-*********
-
-* Avoid ``malloc(0)`` in ``patiencediff``, which is non-portable.
-  (Martin Pool, #331095)
-
-* Concurrent autopacking is more resilient to already-renamed pack files.
-  If we find that a file we are about to obsolete is already obsoleted, we
-  do not try to rename it, and we leave the file in ``obsolete_packs``.
-  The code is also fault tolerant if a file goes missing, assuming that
-  another process already removed the file.
-  (John Arbash Meinel, Gareth White, #507557)
-
-* Cope with the lockdir ``held/info`` file being empty, which seems to
-  happen fairly often if the process is suddenly interrupted while taking
-  a lock.
-  (Martin Pool, #185103)
-
-* Give the warning about potentially slow cross-format fetches much
-  earlier on in the fetch operation.  Don't show this message during
-  upgrades, and show the correct format indication for remote
-  repositories.
-  (Martin Pool, #456077, #515356, #513157)
-
-* Handle renames correctly when there are files or directories that 
-  differ only in case.  (Chris Jones, Martin Pool, #368931)
-
-* If ``bzr push --create-prefix`` triggers an unexpected ``NoSuchFile``
-  error, report that error rather than failing with an unhelpful
-  ``UnboundLocalError``.
-  (Andrew Bennetts, #423563)
-
-* Running ``bzr`` command without any arguments now shows bzr
-  version number along with rest of the help text.
-  (Parth Malwankar, #369501)
-
-* Use osutils.O_NOINHERIT for some files on win32 to avoid PermissionDenied
-  errors.
-  (Inada Naoki, #524560)
-
-Documentation
-*************
-
-* Added ``location-alias`` help topic.
-  (Andrew Bennetts, #337834)
-
-* Fixed CHM generation by moving the NEWS section template into
-  a separate file. (Ian Clatworthy, #524184)
-
 
 bzr 2.0.4
 #########

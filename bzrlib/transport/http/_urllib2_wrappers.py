@@ -75,6 +75,26 @@ from bzrlib import (
     )
 
 
+class addinfourl(urllib2.addinfourl):
+    '''Replacement addinfourl class compatible with python-2.7's xmlrpclib
+
+    In python-2.7, xmlrpclib expects that the response object that it receives
+    has a getheader method.  httplib.HTTPResponse provides this but
+    urllib2.addinfourl does not.  Add the necessary functions here, ported to
+    use the internal data structures of addinfourl.
+    '''
+
+    def getheader(self, name, default=None):
+        if self.headers is None:
+            raise httplib.ResponseNotReady()
+        return self.headers.getheader(name, default)
+
+    def getheaders(self):
+        if self.headers is None:
+            raise httplib.ResponseNotReady()
+        return self.headers.items()
+
+
 class _ReportingFileSocket(object):
 
     def __init__(self, filesock, report_activity=None):
@@ -656,7 +676,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             r = response
             r.recv = r.read
             fp = socket._fileobject(r, bufsize=65536)
-            resp = urllib2.addinfourl(fp, r.msg, req.get_full_url())
+            resp = addinfourl(fp, r.msg, req.get_full_url())
             resp.code = r.status
             resp.msg = r.reason
             resp.version = r.version
