@@ -1057,8 +1057,8 @@ class cmd_push(Command):
                help='Refuse to push if there are uncommitted changes in'
                ' the working tree, --no-strict disables the check.'),
         Option('no-tree',
-               help='TODO: Looks like the help push is out of date,'
-               ' since it seems to say that this is the default behaviour.'),
+               help="Don't populate the working tree, even for protocols"
+               " that support it."),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
