@@ -157,8 +157,7 @@ class TestVersionInfo(TestCaseWithTransport):
         
         commit_message = u'Non-ascii message with character not in latin-1: \u1234'
         
-        tree = self.make_branch_and_tree('branch')
-        os.chdir('branch')
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['a_file'])
         tree.add('a_file')
         tree.commit(commit_message)
