@@ -22,6 +22,7 @@ import re
 
 from bzrlib import (
     branch as _mod_branch,
+    config as _mod_config,
     osutils,
     urlutils,
     )
@@ -162,6 +163,15 @@ Using shared repository: %s
                             'init ../new/tree', working_dir='tree')
         self.run_bzr('init ../new/tree --create-prefix', working_dir='tree')
         self.failUnlessExists('new/tree/.bzr')
+
+    def test_init_default_format_option(self):
+        """bzr init should read default format from option default_format"""
+        conf = _mod_config.GlobalConfig.from_string('''
+[DEFAULT]
+default_format = 1.9
+''', save=True)
+        out, err = self.run_bzr('init')
+        self.assertContainsRe(out, '1.9')
 
 
 class TestSFTPInit(TestCaseWithSFTPServer):
