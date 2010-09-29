@@ -29,6 +29,11 @@ New Features
 
 Bug Fixes
 *********
+
+* ``bzr break-lock --force`` breaks the lock without prompting.  (Before
+  using this, make sure the process holding the lock really is dead.)
+  (Martin Pool, #392315)
+
 * Skip tests that needs a bzr source tree when there isn't one. This is
   needed to succesfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).

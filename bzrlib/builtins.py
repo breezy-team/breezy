@@ -4841,11 +4841,17 @@ class cmd_break_lock(Command):
     takes_options = [
         Option('config',
                help='LOCATION is the directory where the config lock is.'),
+        Option('force',
+            help='Do not ask for confirmation before breaking the lock.'),
         ]
 
-    def run(self, location=None, config=False):
+    def run(self, location=None, config=False, force=False):
         if location is None:
             location = u'.'
+        if force:
+            ui.ui_factory = ui.ConfirmationUserInterfacePolicy(ui.ui_factory,
+                None,
+                {'bzrlib.lockdir.break': True})
         if config:
             conf = _mod_config.LockableConfig(file_name=location)
             conf.break_lock()
