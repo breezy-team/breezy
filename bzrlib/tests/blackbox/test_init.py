@@ -15,7 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Test "bzr init"""
+"""Test 'bzr init'"""
 
 import os
 import re
@@ -163,6 +163,11 @@ Using shared repository: %s
         self.run_bzr('init ../new/tree --create-prefix', working_dir='tree')
         self.failUnlessExists('new/tree/.bzr')
 
+    def test_init_no_tree(self):
+        """'bzr init --no-tree' creates a branch with no working tree."""
+        out, err = self.run_bzr('init --no-tree')
+        self.assertStartsWith(out, 'Created a standalone branch')
+
 
 class TestSFTPInit(TestCaseWithSFTPServer):
 
@@ -216,3 +221,4 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         out, err = self.run_bzr(['init', 'foo'])
         self.assertEqual(err, '')
         self.assertTrue(os.path.exists('foo'))
+        
