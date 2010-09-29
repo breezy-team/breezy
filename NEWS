@@ -150,7 +150,7 @@ Bug Fixes
   stderr in some other circumstances.  (Andrew Bennetts, #633745)
 
 * Fix signature of RemoteBzrDir.create_workingtree to match that of its
-  superclass.  (Neil Martinsen-Burrell, #524627)
+  superclass.  (Neil Martinsen-Burrell, Martin Pool, #524627)
 
 * Fix spurious paramiko warning on hardy by ensuring that ``selftest``
   properly remove its warning filter. (Vincent Ladeuil, #625686)
