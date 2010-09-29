@@ -512,7 +512,7 @@ Useful commands::
 
   checkout     Create a working tree when a branch does not have one.
   remove-tree  Removes the working tree from a branch when it is safe to do so.
-  update       When a working tree is out of sync with it's associated branch
+  update       When a working tree is out of sync with its associated branch
                this will update the tree to match the branch.
 """
 
