@@ -116,4 +116,4 @@ class cmd_version_info(Command):
                 include_revision_history=include_history,
                 include_file_revisions=include_file_revisions,
                 template=template)
-        builder.generate(ui.ui_factory.make_output_stream(encoding_type=self.encoding_type))
+        builder.generate(self.outf)
