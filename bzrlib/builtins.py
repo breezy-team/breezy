@@ -1066,7 +1066,7 @@ class cmd_push(Command):
     def run(self, location=None, remember=False, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
-        stacked=False, strict=None):
+        stacked=False, strict=None, no_tree=False):
         from bzrlib.push import _show_push_branch
 
         if directory is None:

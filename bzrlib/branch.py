@@ -1393,7 +1393,7 @@ class Branch(controldir.ControlComponent):
         dir_to = self.bzrdir.clone_on_transport(to_transport,
             revision_id=revision_id, stacked_on=stacked_on,
             create_prefix=create_prefix, use_existing_dir=use_existing_dir,
-            no_trees=no_tree)
+            no_tree=no_tree)
         return dir_to.open_branch()
 
     def create_checkout(self, to_location, revision_id=None,
