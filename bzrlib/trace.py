@@ -469,6 +469,16 @@ def _debug_memory_proc(message='', short=True):
                     note(line)
                     break
 
+def _dump_memory_usage():
+    try:
+        from meliae import scanner
+        scanner.dump_all_objects('bzr_memory_reference_dump.json')
+        mutter("Dumped memory to bzr_memory_reference_dump.json")
+    except ImportError:
+        mutter("Unable to dump memory.  Please install the meliae module.")
+        return
+    except:
+        mutter("Exception while dumping memory to bzr_memory_reference_dump.json")
 
 def report_exception(exc_info, err_file):
     """Report an exception to err_file (typically stderr) and to .bzr.log.
@@ -491,6 +501,7 @@ def report_exception(exc_info, err_file):
         err_file.write("bzr: interrupted\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, MemoryError):
+        _dump_memory_usage()
         err_file.write("bzr: out of memory\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, ImportError) \
