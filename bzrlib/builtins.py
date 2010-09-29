@@ -1693,13 +1693,7 @@ class cmd_init(Command):
     def run(self, location=None, format=None, append_revisions_only=False,
             create_prefix=False):
         if format is None:
-            config = _mod_config.GlobalConfig()
-            format_name = config.get_user_option('default_format')
-            if format_name is None:
-                format = bzrdir.format_registry.make_bzrdir('default')
-            else:
-                format = bzrdir.format_registry.make_bzrdir(format_name)
-
+            format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
             location = u'.'
 

@@ -164,13 +164,17 @@ Using shared repository: %s
         self.run_bzr('init ../new/tree --create-prefix', working_dir='tree')
         self.failUnlessExists('new/tree/.bzr')
 
+    def _restore_config(self):
+        conf = _mod_config.GlobalConfig.from_string('', save=True)
+
     def test_init_default_format_option(self):
         """bzr init should read default format from option default_format"""
         conf = _mod_config.GlobalConfig.from_string('''
 [DEFAULT]
 default_format = 1.9
 ''', save=True)
-        out, err = self.run_bzr('init')
+        self.addCleanup(self._restore_config)
+        out, err = self.run_bzr_subprocess('init')
         self.assertContainsRe(out, '1.9')
 
 

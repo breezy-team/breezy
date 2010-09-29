@@ -27,8 +27,13 @@ New Features
   hook.
   (Parth Malwankar, #403687)
 
+* Provide a configuration option "default_format" that controls the
+  default format for new branches created with ``bzr init``.
+  (Neil Martinsen-Burrell, #484101)
+
 Bug Fixes
 *********
+  
 * Skip tests that needs a bzr source tree when there isn't one. This is
   needed to succesfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).
