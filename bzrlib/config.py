@@ -69,7 +69,7 @@ from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import errno
-from fnmatch import fnmatch
+import fnmatch
 import re
 from cStringIO import StringIO
 
@@ -444,6 +444,57 @@ class IniBasedConfig(Config):
         """Override this to define the section used by the config."""
         return "DEFAULT"
 
+    def get_options_matching_glob(self, name_glob, sections=None,
+                                  file_name=None):
+        """Return an ordered list of (name, value, section, file_name) tuples.
+
+        This is a convenience on top of ``get_options_matching_regexp``
+        accepting a glob.
+        """
+        name_re = re.compile(fnmatch.translate(name_glob))
+        return self.get_options_matching_regexp(name_re, sections=sections,
+                                                file_name=file_name)
+
+    def get_options_matching_regexp(self, name_re, sections=None,
+                                    file_name=None):
+        """Return an ordered list of (name, value, section, file_name) tuples.
+
+        All variables whose name match ``name_re`` are returned with their
+        associated value and the section they appeared in.
+
+        :param sections: Default to ``_get_matching_sections`` if not
+            specified. This gives a better control to daughter classes about
+            which sections should be searched.
+
+        :param file_name: Which file path should be used in the returned list.
+        """
+        # FIXME: file_name isn't very user friendly, the basename should
+        # probably be displayed (by higher levels) but that won't fly for
+        # branch.conf if several branches are involved (bound branches or heady
+        # checkouts will want to distinguish the master branch). Using the
+        # absolute path should be good enough for a first implementation.
+        # -- vila 20100930
+        matches = []
+        if sections is None:
+            parser = self._get_parser()
+            sections = []
+            for (section_name, _) in self._get_matching_sections():
+                try:
+                    section = parser[section_name]
+                except KeyError:
+                    # This could happen for an empty file for which we define a
+                    # DEFAULT section. FIXME: Force callers to provide sections
+                    # instead ? -- vila 20100930
+                    continue
+                sections.append((section_name, section))
+        if file_name is None:
+            file_name = self.file_name
+        for (section_name, section) in sections:
+            for (name, value) in section.iteritems():
+                if name_re.search(name):
+                    matches.append((name, value, section_name, file_name))
+        return matches
+
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
         return POLICY_NONE
@@ -717,7 +768,7 @@ class LocationConfig(LockableConfig):
             names = zip(location_names, section_names)
             matched = True
             for name in names:
-                if not fnmatch(name[0], name[1]):
+                if not fnmatch.fnmatch(name[0], name[1]):
                     matched = False
                     break
             if not matched:
@@ -728,6 +779,7 @@ class LocationConfig(LockableConfig):
                 continue
             matches.append((len(section_names), section,
                             '/'.join(location_names[len(section_names):])))
+        # put the longest (aka more specific) locations first
         matches.sort(reverse=True)
         sections = []
         for (length, section, extra_path) in matches:
@@ -899,6 +951,35 @@ class BranchConfig(Config):
             if value is not None:
                 return value
         return None
+
+    def get_options_matching_glob(self, name_glob, sections=None,
+                                  file_name=None):
+        name_re = re.compile(fnmatch.translate(name_glob))
+        return self.get_options_matching_regexp(name_re, sections=sections,
+                                                file_name=file_name)
+
+    def get_options_matching_regexp(self, name_re, sections=None,
+                                    file_name=None):
+        matches = []
+        location_config = self._get_location_config()
+        matches.extend(location_config.get_options_matching_regexp(name_re))
+        # FIXME: The following is rather convoluted but
+        # BranchConfig/TreeConfig/TransportConfig separation doesn't provide an
+        # easier access. Now that GlobalConfig and Location_Config are
+        # LockableConfig objects that already requires a transport, we may want
+        # to refactor BranchConfig to get a simpler implementation
+        # -- vila 20100930
+        branch_config = self._get_branch_data_config()
+        if sections is None:
+            sections = [('DEFAULT', branch_config._get_parser())]
+        if file_name is None:
+            file_name = branch_config._config._transport.abspath(
+                branch_config._config._filename)
+        matches.extend(branch_config.get_options_matching_regexp(
+                name_re, sections, file_name))
+        global_config = self._get_global_config()
+        matches.extend(global_config.get_options_matching_regexp(name_re))
+        return matches
 
     def set_user_option(self, name, value, store=STORE_BRANCH,
         warn_masked=False):

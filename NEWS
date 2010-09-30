@@ -39,6 +39,11 @@ Documentation
 API Changes
 ***********
 
+* ``bzrlib.config.IniBasedConfig`` objects now implement
+  ``get_options_matching_glob`` and ``get_options_matching_regexp`` that
+  permit querying them for matching variables, their values and which
+  configuration file define them. (Vincent Ladeuil)
+
 Internals
 *********
 
