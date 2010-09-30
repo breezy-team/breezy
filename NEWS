@@ -63,6 +63,10 @@ Internals
 Testing
 *******
 
+* Blank output section in scriptrunner tests no longer match any output.
+  Instead, use '...' as a wildcard if you don't care about the output.
+  (Martin Pool, #637830)
+
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
 
@@ -460,10 +464,6 @@ Internals
 
 Testing
 *******
-
-* Blank output section in scriptrunner tests no longer match any output.
-  Instead, use '...' as a wildcard if you don't care about the output.
-  (Martin Pool, #637830)
 
 * ``build_tree_contents`` can create symlinks.
   (Martin Pool, John Arbash Meinel)
