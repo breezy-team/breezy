@@ -43,8 +43,9 @@ tilde like so: ``sftp://example.com/~/public_html`` should map to
 ``public_html`` within your home directory.
 
 .. note:: Access over HTTP or HTTPS is read-only by default.
-   See :ref:`http_smart_server_write_access` for details on configuring
-   read-write access.
+   See `Pushing over the http smart server
+   <http_smart_server.html#Pushing_over_the_http_smart_server`_ for
+   details on configuring read-write access.
 
 A reminder about shared repositories
 ------------------------------------
