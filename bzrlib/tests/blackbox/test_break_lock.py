@@ -16,17 +16,17 @@
 
 """Tests for lock-breaking user interface"""
 
-import os
-
-import bzrlib
 from bzrlib import (
     branch,
     bzrdir,
     config,
     errors,
-    lockdir,
     osutils,
     tests,
+    )
+from bzrlib.tests.script import (
+    ScriptRunner,
+    run_script,
     )
 
 
@@ -69,6 +69,16 @@ class TestBreakLock(tests.TestCaseWithTransport):
         out, err = self.run_bzr('break-lock --help')
         # shouldn't fail and should not produce error output
         self.assertEqual('', err)
+
+    def test_break_lock_no_interaction(self):
+        """With --force, the user isn't asked for confirmation"""
+        self.master_branch.lock_write()
+        run_script(self, """
+        $ bzr break-lock --force master-repo/master-branch
+        Broke lock ...master-branch/.bzr/...
+        """)
+        # lock should now be dead
+        self.assertRaises(errors.LockBroken, self.master_branch.unlock)
 
     def test_break_lock_everything_locked(self):
         ### if everything is locked, we should be able to unlock the lot.

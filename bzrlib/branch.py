@@ -1522,7 +1522,7 @@ class BranchFormat(object):
      * an open routine.
 
     Formats are placed in an dict by their format string for reference
-    during branch opening. Its not required that these be instances, they
+    during branch opening. It's not required that these be instances, they
     can be classes themselves with class methods - it simply depends on
     whether state is needed for a given format or not.
 
@@ -1819,7 +1819,7 @@ class BranchHooks(Hooks):
             "with a bzrlib.branch.PullResult object and only runs in the "
             "bzr client.", (0, 15), None))
         self.create_hook(HookPoint('pre_commit',
-            "Called after a commit is calculated but before it is is "
+            "Called after a commit is calculated but before it is "
             "completed. pre_commit is called with (local, master, old_revno, "
             "old_revid, future_revno, future_revid, tree_delta, future_tree"
             "). old_revid is NULL_REVISION for the first commit to a branch, "
@@ -3480,7 +3480,7 @@ class GenericInterBranch(InterBranch):
                 # push into the master from the source branch.
                 self.source._basic_push(master_branch, overwrite, stop_revision)
                 # and push into the target branch from the source. Note that we
-                # push from the source branch again, because its considered the
+                # push from the source branch again, because it's considered the
                 # highest bandwidth repository.
                 result = self.source._basic_push(self.target, overwrite,
                     stop_revision)
