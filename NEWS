@@ -41,6 +41,10 @@ Internals
 Testing
 *******
 
+* Add ``tests/ssl_certs/ca.crt`` to the required test files list. Test
+  involving the pycurl https test server fail otherwise when running
+  selftest from an installed version. (Vincent Ladeuil, #651706)
+
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
 
