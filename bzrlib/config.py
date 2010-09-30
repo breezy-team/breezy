@@ -65,6 +65,7 @@ up=pull
 import os
 import sys
 
+from bzrlib import commands
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -76,6 +77,7 @@ from cStringIO import StringIO
 import bzrlib
 from bzrlib import (
     atomicfile,
+    bzrdir,
     debug,
     errors,
     lockdir,
@@ -973,8 +975,17 @@ class BranchConfig(Config):
         if sections is None:
             sections = [('DEFAULT', branch_config._get_parser())]
         if file_name is None:
-            file_name = branch_config._config._transport.abspath(
-                branch_config._config._filename)
+            try:
+                file_name = self.file_name
+            except AttributeError:
+                # FIXME: Let's stop the horror right now, neither BranchConfig
+                # nor RemoteBranchConfig provides an easy way to get the file
+                # name which would be an url or an absolute path anyway. Let's
+                # punt for now until we decide how we want to report this piece
+                # of into to the user (preferably in a short form so 'bzr
+                # config var=value --in bazaar|location|branch remains easy to
+                # use) --vila 20100930
+                file_name = 'branch.conf'
         matches.extend(branch_config.get_options_matching_regexp(
                 name_re, sections, file_name))
         global_config = self._get_global_config()
@@ -1679,3 +1690,36 @@ class TransportConfig(object):
         configobj.write(out_file)
         out_file.seek(0)
         self._transport.put_file(self._filename, out_file)
+
+
+class cmd_config(commands.Command):
+    __doc__ = """Display informations about configuration options.
+    """
+
+    aliases = ['conf']
+    takes_args = ['options?']
+
+    takes_options = [
+        'directory',
+        ]
+
+    @commands.display_command
+    def run(self, options=None, directory=None):
+        if options is None:
+            options = '*'
+        if directory is None:
+            directory = '.'
+        try:
+            (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
+            confs = [br.get_config()]
+        except errors.NotBranchError:
+            confs = [LocationConfig(directory), GlobalConfig()]
+        for c in confs:
+            matches = c.get_options_matching_glob(options)
+            cur_file_name = None
+            for (option_name, value, section, file_name) in matches:
+                if cur_file_name != file_name:
+                    self.outf.write('%s:\n' % (file_name,))
+                    cur_file_name = file_name
+                self.outf.write('  %s = %s\n' % (option_name, value))
+

@@ -54,6 +54,7 @@ def load_tests(basic_tests, module, loader):
                      'bzrlib.tests.blackbox.test_clean_tree',
                      'bzrlib.tests.blackbox.test_command_encoding',
                      'bzrlib.tests.blackbox.test_commit',
+                     'bzrlib.tests.blackbox.test_config',
                      'bzrlib.tests.blackbox.test_conflicts',
                      'bzrlib.tests.blackbox.test_debug',
                      'bzrlib.tests.blackbox.test_deleted',
