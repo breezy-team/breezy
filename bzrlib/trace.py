@@ -59,6 +59,7 @@ import logging
 import os
 import sys
 import time
+import tempfile
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -469,16 +470,21 @@ def _debug_memory_proc(message='', short=True):
                     note(line)
                     break
 
-def _dump_memory_usage():
+def _dump_memory_usage(err_file):
     try:
+        fd, name = tempfile.mkstemp(prefix="bzr_memdump", suffix=".json")
+        dump_file = os.fdopen(fd, 'w')
         from meliae import scanner
-        scanner.dump_all_objects('bzr_memory_reference_dump.json')
-        mutter("Dumped memory to bzr_memory_reference_dump.json")
+        scanner.dump_all_objects(dump_file)
+        err_file.write("Memory dumped to %s\n" % name)
     except ImportError:
-        mutter("Unable to dump memory.  Please install the meliae module.")
-        return
+        err_file.write("Dumping memory requires meliae module.\n")
+        log_exception_quietly()
     except:
-        mutter("Exception while dumping memory to bzr_memory_reference_dump.json")
+        err_file.write("Exception while dumping memory.\n")
+        log_exception_quietly()
+    finally:
+        dump_file.close()
 
 def report_exception(exc_info, err_file):
     """Report an exception to err_file (typically stderr) and to .bzr.log.
@@ -501,8 +507,11 @@ def report_exception(exc_info, err_file):
         err_file.write("bzr: interrupted\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, MemoryError):
-        _dump_memory_usage()
         err_file.write("bzr: out of memory\n")
+        if 'mem_dump' in debug.debug_flags:
+            _dump_memory_usage(err_file)
+        else:
+            err_file.write("Use -Dmem_dump to dump memory to a file.\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, ImportError) \
         and str(exc_object).startswith("No module named "):
