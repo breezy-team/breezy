@@ -34,6 +34,7 @@ _samples = [
     ('$Foo$$Bar$',      '$Foo: FOO! $$Bar: bar $'),
     ('abc $Foo$ xyz $Bar$ qwe', 'abc $Foo: FOO! $ xyz $Bar: bar $ qwe'),
     ('$Unknown$$Bar$',  '$Unknown$$Bar: bar $'),
+    ('$Unknown: unkn $$Bar$',  '$Unknown: unkn $$Bar: bar $'),
     ('$Foo$$Unknown$',  '$Foo: FOO! $$Unknown$'),
     ('$CallMe$',        '$CallMe: now! $'),
     ]
@@ -44,7 +45,7 @@ class TestKeywordsConversion(tests.TestCase):
     def test_compression(self):
         # Test keyword expansion
         for raw, cooked in _samples:
-            self.assertEqual(raw, compress_keywords(cooked))
+            self.assertEqual(raw, compress_keywords(cooked, [_keywords]))
 
     def test_expansion(self):
         # Test keyword expansion
