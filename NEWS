@@ -41,6 +41,9 @@ Bug Fixes
 * Skip the tests that requires respecting the chmod bits when running as root.
   (Vincent Ladeuil, #646133)
 
+* ``unshelve --preview`` now can show diff in a non-ascii encoding.
+  (Andrej A Antonov, #518916)
+
 Improvements
 ************
 
