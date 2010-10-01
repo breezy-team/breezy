@@ -923,13 +923,16 @@ class cmd_pull(Command):
                  "branch.  Local pulls are not applied to "
                  "the master branch."
             ),
+        Option('show-base',
+            help="Show base revision text in conflicts.")
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
             revision=None, verbose=False,
-            directory=None, local=False):
+            directory=None, local=False,
+            show_base=False):
         # FIXME: too much stuff is in the command class
         revision_id = None
         mergeable = None
@@ -943,6 +946,9 @@ class cmd_pull(Command):
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
             self.add_cleanup(branch_to.lock_write().unlock)
+
+        if tree_to is None and show_base:
+            raise errors.BzrCommandError("Need working tree for --show-base.")
 
         if local and not branch_to.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -994,7 +1000,8 @@ class cmd_pull(Command):
                 view_info=view_info)
             result = tree_to.pull(
                 branch_from, overwrite, revision_id, change_reporter,
-                possible_transports=possible_transports, local=local)
+                possible_transports=possible_transports, local=local,
+                show_base=show_base)
         else:
             result = branch_to.pull(
                 branch_from, overwrite, revision_id, local=local)
@@ -1363,10 +1370,13 @@ class cmd_update(Command):
 
     _see_also = ['pull', 'working-trees', 'status-flags']
     takes_args = ['dir?']
-    takes_options = ['revision']
+    takes_options = ['revision',
+                     Option('show-base',
+                            help="Show base revision text in conflicts."),
+                     ]
     aliases = ['up']
 
-    def run(self, dir='.', revision=None):
+    def run(self, dir='.', revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError(
                         "bzr update --revision takes exactly one revision")
@@ -1412,7 +1422,8 @@ class cmd_update(Command):
                 change_reporter,
                 possible_transports=possible_transports,
                 revision=revision_id,
-                old_tip=old_tip)
+                old_tip=old_tip,
+                show_base=show_base)
         except errors.NoSuchRevision, e:
             raise errors.BzrCommandError(
                                   "branch has no revision %s\n"
