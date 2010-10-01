@@ -44,7 +44,7 @@ tilde like so: ``sftp://example.com/~/public_html`` should map to
 
 .. note:: Access over HTTP or HTTPS is read-only by default.
    See `Pushing over the http smart server
-   <http_smart_server.html#Pushing_over_the_http_smart_server`_ for
+   <http_smart_server.html#pushing-over-the-http-smart-server>`_ for
    details on configuring read-write access.
 
 A reminder about shared repositories
