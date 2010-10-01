@@ -1471,71 +1471,65 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
-class TestConfigDisplay(tests.TestCaseWithTransport):
+class TestConfigGetOptions(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestConfigDisplay, self).setUp()
+        super(TestConfigGetOptions, self).setUp()
         self.global_config = config.GlobalConfig()
         self.tree = self.make_branch_and_tree('.')
         self.branch_config = config.BranchConfig(self.tree.branch)
         self.locations_config = config.LocationConfig(self.tree.basedir)
 
-    def assertMatchingVars(self, expected, conf, name_glob):
-        actual = conf.get_options_matching_glob(name_glob)
-        # Filter the config file name as we don't care here
-        filtered = [(name, value, section)
-                    for name, value, section, file_name in actual]
-        self.assertEqual(expected, filtered)
+    def assertOptions(self, expected, conf):
+        actual = list(conf.get_options())
+        self.assertEqual(expected, actual)
 
     # One variable in non of the above
     def test_no_variable(self):
         # Using branch should query branch, locations and bazaar
-        self.assertMatchingVars([], self.branch_config, 'file')
+        self.assertOptions([], self.branch_config)
 
-    def test_no_matches(self):
+    def test_option_in_bazaar(self):
         self.global_config.set_user_option('file', 'bazaar')
+        self.assertOptions([('file', 'bazaar', 'DEFAULT', 'bazaar')],
+                           self.global_config)
+
+    def test_option_in_locations(self):
         self.locations_config.set_user_option('file', 'locations')
+        self.assertOptions(
+            [('file', 'locations', self.tree.basedir, 'locations')],
+            self.locations_config)
+
+    def test_option_in_branch(self):
         self.branch_config.set_user_option('file', 'branch')
-        self.assertMatchingVars([], self.branch_config, 'not_file')
+        self.assertOptions([('file', 'branch', 'DEFAULT', 'branch')],
+                           self.branch_config)
 
-    def test_variable_in_bazaar(self):
-        self.global_config.set_user_option('file', 'bazaar')
-        self.assertMatchingVars([('file', 'bazaar', 'DEFAULT')],
-                                 self.global_config, 'file')
-
-    def test_variable_in_locations(self):
-        self.locations_config.set_user_option('file', 'locations')
-        self.assertMatchingVars([('file', 'locations', self.tree.basedir)],
-                                 self.locations_config, 'file')
-
-    def test_variable_in_branch(self):
-        self.branch_config.set_user_option('file', 'branch')
-        self.assertMatchingVars([('file', 'branch', 'DEFAULT')],
-                                 self.branch_config, 'file')
-
-    def test_variable_in_bazaar_and_branch(self):
+    def test_option_in_bazaar_and_branch(self):
         self.global_config.set_user_option('file', 'bazaar')
         self.branch_config.set_user_option('file', 'branch')
-        self.assertMatchingVars([('file', 'branch', 'DEFAULT'),
-                                 ('file', 'bazaar', 'DEFAULT'),],
-                                self.branch_config, 'file')
+        self.assertOptions([('file', 'branch', 'DEFAULT', 'branch'),
+                            ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+                           self.branch_config)
 
-    def test_variable_in_branch_and_locations(self):
+    def test_option_in_branch_and_locations(self):
         # Hmm, locations override branch :-/
         self.locations_config.set_user_option('file', 'locations')
         self.branch_config.set_user_option('file', 'branch')
-        self.assertMatchingVars([('file', 'locations', self.tree.basedir),
-                                 ('file', 'branch', 'DEFAULT'),],
-                                self.branch_config, 'file')
+        self.assertOptions(
+            [('file', 'locations', self.tree.basedir, 'locations'),
+             ('file', 'branch', 'DEFAULT', 'branch'),],
+            self.branch_config)
 
-    def test_variable_in_bazaar_locations_and_branch(self):
+    def test_option_in_bazaar_locations_and_branch(self):
         self.global_config.set_user_option('file', 'bazaar')
         self.locations_config.set_user_option('file', 'locations')
         self.branch_config.set_user_option('file', 'branch')
-        self.assertMatchingVars([('file', 'locations', self.tree.basedir),
-                                 ('file', 'branch', 'DEFAULT'),
-                                 ('file', 'bazaar', 'DEFAULT'),],
-                                self.branch_config, 'file')
+        self.assertOptions(
+            [('file', 'locations', self.tree.basedir, 'locations'),
+             ('file', 'branch', 'DEFAULT', 'branch'),
+             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+            self.branch_config)
 
 
 class TestAuthenticationConfigFile(tests.TestCase):

@@ -55,7 +55,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         self.global_config.set_user_option('hello', 'world')
         script.run_script(self, '''
 $ bzr config -d tree
-...bazaar.conf:
+bazaar:
   hello = world
 ''')
 
@@ -64,9 +64,9 @@ $ bzr config -d tree
         self.branch_config.set_user_option('hello', 'you')
         script.run_script(self, '''
 $ bzr config -d tree
-...locations.conf:
+locations:
   hello = world
-...branch.conf:
+branch:
   hello = you
 ''')
 
@@ -75,6 +75,6 @@ $ bzr config -d tree
         self.locations_config.set_user_option('hello', 'world')
         script.run_script(self, '''
 $ bzr config
-...bazaar.conf:
+bazaar:
   hello = world
 ''')

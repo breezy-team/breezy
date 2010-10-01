@@ -155,6 +155,10 @@ class Config(object):
     def __init__(self):
         super(Config, self).__init__()
 
+    def id(self):
+        """Returns a unique ID for the config."""
+        raise NotImplementedError(self.id)
+
     def get_editor(self):
         """Get the users pop up editor."""
         raise NotImplementedError
@@ -446,37 +450,19 @@ class IniBasedConfig(Config):
         """Override this to define the section used by the config."""
         return "DEFAULT"
 
-    def get_options_matching_glob(self, name_glob, sections=None,
-                                  file_name=None):
-        """Return an ordered list of (name, value, section, file_name) tuples.
+    def get_options(self, sections=None):
+        """Return an ordered list of (name, value, section, config_id) tuples.
 
-        This is a convenience on top of ``get_options_matching_regexp``
-        accepting a glob.
-        """
-        name_re = re.compile(fnmatch.translate(name_glob))
-        return self.get_options_matching_regexp(name_re, sections=sections,
-                                                file_name=file_name)
-
-    def get_options_matching_regexp(self, name_re, sections=None,
-                                    file_name=None):
-        """Return an ordered list of (name, value, section, file_name) tuples.
-
-        All variables whose name match ``name_re`` are returned with their
-        associated value and the section they appeared in.
+        All options are returned with their associated value and the section
+        they appeared in. ``config_id`` is a unique identifier for the
+        configuration file the option is defined in.
 
         :param sections: Default to ``_get_matching_sections`` if not
             specified. This gives a better control to daughter classes about
-            which sections should be searched.
-
-        :param file_name: Which file path should be used in the returned list.
+            which sections should be searched. This is a list of (name,
+            configobj) tuples.
         """
-        # FIXME: file_name isn't very user friendly, the basename should
-        # probably be displayed (by higher levels) but that won't fly for
-        # branch.conf if several branches are involved (bound branches or heady
-        # checkouts will want to distinguish the master branch). Using the
-        # absolute path should be good enough for a first implementation.
-        # -- vila 20100930
-        matches = []
+        opts = []
         if sections is None:
             parser = self._get_parser()
             sections = []
@@ -489,13 +475,10 @@ class IniBasedConfig(Config):
                     # instead ? -- vila 20100930
                     continue
                 sections.append((section_name, section))
-        if file_name is None:
-            file_name = self.file_name
+        config_id = self.id()
         for (section_name, section) in sections:
             for (name, value) in section.iteritems():
-                if name_re.search(name):
-                    matches.append((name, value, section_name, file_name))
-        return matches
+                yield (name, value, section_name, config_id)
 
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
@@ -671,6 +654,9 @@ class GlobalConfig(LockableConfig):
     def __init__(self):
         super(GlobalConfig, self).__init__(file_name=config_filename())
 
+    def id(self):
+        return 'bazaar'
+
     @classmethod
     def from_string(cls, str_or_unicode, save=False):
         """Create a config object from a string.
@@ -732,6 +718,9 @@ class LocationConfig(LockableConfig):
         if location.startswith('file://'):
             location = urlutils.local_path_from_url(location)
         self.location = location
+
+    def id(self):
+        return 'locations'
 
     @classmethod
     def from_string(cls, str_or_unicode, location, save=False):
@@ -878,6 +867,9 @@ class BranchConfig(Config):
                                self._get_branch_data_config,
                                self._get_global_config)
 
+    def id(self):
+        return 'branch'
+
     def _get_branch_data_config(self):
         if self._branch_data_config is None:
             self._branch_data_config = TreeConfig(self.branch)
@@ -954,43 +946,24 @@ class BranchConfig(Config):
                 return value
         return None
 
-    def get_options_matching_glob(self, name_glob, sections=None,
-                                  file_name=None):
-        name_re = re.compile(fnmatch.translate(name_glob))
-        return self.get_options_matching_regexp(name_re, sections=sections,
-                                                file_name=file_name)
-
-    def get_options_matching_regexp(self, name_re, sections=None,
-                                    file_name=None):
-        matches = []
-        location_config = self._get_location_config()
-        matches.extend(location_config.get_options_matching_regexp(name_re))
-        # FIXME: The following is rather convoluted but
-        # BranchConfig/TreeConfig/TransportConfig separation doesn't provide an
-        # easier access. Now that GlobalConfig and Location_Config are
-        # LockableConfig objects that already requires a transport, we may want
-        # to refactor BranchConfig to get a simpler implementation
-        # -- vila 20100930
+    def get_options(self, sections=None):
+        opts = []
+        # First the locations options
+        for option in self._get_location_config().get_options():
+            yield option
+        # Then the branch options
         branch_config = self._get_branch_data_config()
         if sections is None:
             sections = [('DEFAULT', branch_config._get_parser())]
-        if file_name is None:
-            try:
-                file_name = self.file_name
-            except AttributeError:
-                # FIXME: Let's stop the horror right now, neither BranchConfig
-                # nor RemoteBranchConfig provides an easy way to get the file
-                # name which would be an url or an absolute path anyway. Let's
-                # punt for now until we decide how we want to report this piece
-                # of into to the user (preferably in a short form so 'bzr
-                # config var=value --in bazaar|location|branch remains easy to
-                # use) --vila 20100930
-                file_name = 'branch.conf'
-        matches.extend(branch_config.get_options_matching_regexp(
-                name_re, sections, file_name))
-        global_config = self._get_global_config()
-        matches.extend(global_config.get_options_matching_regexp(name_re))
-        return matches
+        # FIXME: We shouldn't have to duplicate the code in IniBasedConfig but
+        # Config itself has no notion of sections :( -- vila 20101001
+        config_id = self.id()
+        for (section_name, section) in sections:
+            for (name, value) in section.iteritems():
+                yield (name, value, section_name, config_id)
+        # Then the global options
+        for option in self._get_global_config().get_options():
+            yield option
 
     def set_user_option(self, name, value, store=STORE_BRANCH,
         warn_masked=False):
@@ -1697,16 +1670,16 @@ class cmd_config(commands.Command):
     """
 
     aliases = ['conf']
-    takes_args = ['options?']
+    takes_args = ['matching?']
 
     takes_options = [
         'directory',
         ]
 
     @commands.display_command
-    def run(self, options=None, directory=None):
-        if options is None:
-            options = '*'
+    def run(self, matching=None, directory=None):
+        if matching is None:
+            matching = '*'
         if directory is None:
             directory = '.'
         try:
@@ -1714,12 +1687,14 @@ class cmd_config(commands.Command):
             confs = [br.get_config()]
         except errors.NotBranchError:
             confs = [LocationConfig(directory), GlobalConfig()]
+        # Turn the glob into a regexp
+        matching_re = re.compile(fnmatch.translate(matching))
+        cur_conf_id = None
         for c in confs:
-            matches = c.get_options_matching_glob(options)
-            cur_file_name = None
-            for (option_name, value, section, file_name) in matches:
-                if cur_file_name != file_name:
-                    self.outf.write('%s:\n' % (file_name,))
-                    cur_file_name = file_name
-                self.outf.write('  %s = %s\n' % (option_name, value))
+            for (name, value, section, conf_id) in c.get_options():
+                if matching_re.search(name):
+                    if cur_conf_id != conf_id:
+                        self.outf.write('%s:\n' % (conf_id,))
+                        cur_conf_id = conf_id
+                    self.outf.write('  %s = %s\n' % (name, value))
 
