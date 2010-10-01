@@ -73,6 +73,9 @@ Testing
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
 
+* ``bzr test-script script`` is a new command that runs a shell-like script
+  from an the ``script`` file. (Vincent Ladeuil)
+
 * Use tests.TestCaseInTempDir for tests that requires disk resources.
   (Vincent Ladeuil, #650001)
 

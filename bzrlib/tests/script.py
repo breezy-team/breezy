@@ -28,6 +28,8 @@ import textwrap
 from cStringIO import StringIO
 
 from bzrlib import (
+    commands,
+    errors,
     osutils,
     tests,
     )
@@ -501,3 +503,32 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
 def run_script(test_case, script_string):
     """Run the given script within a testcase"""
     return ScriptRunner().run_script(test_case, script_string)
+
+
+class cmd_test_script(commands.Command):
+    """Run a shell-like test from a file."""
+
+    hidden = True
+    takes_args = ['infile']
+
+    @commands.display_command
+    def run(self, infile):
+
+        f = open(infile)
+        try:
+            script = f.read()
+        finally:
+            f.close()
+
+        class Test(TestCaseWithTransportAndScript):
+
+            script = None # Set before running
+
+            def test_it(self):
+                self.run_script(script)
+
+        runner = tests.TextTestRunner(stream=self.outf)
+        test = Test('test_it')
+        test.path = os.path.realpath(infile)
+        res = runner.run(test)
+        return len(res.errors) + len(res.failures)
