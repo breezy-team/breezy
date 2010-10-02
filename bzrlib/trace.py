@@ -475,7 +475,7 @@ def _dump_memory_usage(err_file):
         fd, name = tempfile.mkstemp(prefix="bzr_memdump", suffix=".json")
         dump_file = os.fdopen(fd, 'w')
         from meliae import scanner
-        scanner.dump_all_objects(dump_file)
+        scanner.dump_gc_objects(dump_file)
         err_file.write("Memory dumped to %s\n" % name)
     except ImportError:
         err_file.write("Dumping memory requires meliae module.\n")
