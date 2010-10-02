@@ -347,6 +347,30 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual(z_content, block._z_content)
         self.assertEqual(content, block._content)
 
+    def test_to_chunks(self):
+        content_chunks = ['this is some content\n',
+                          'this content will be compressed\n']
+        content_len = sum(map(len, content_chunks))
+        content = ''.join(content_chunks)
+        gcb = groupcompress.GroupCompressBlock()
+        gcb.set_chunked_content(content_chunks, content_len)
+        total_len, block_chunks = gcb.to_chunks()
+        block_bytes = ''.join(block_chunks)
+        self.assertEqual(gcb._z_content_length, len(gcb._z_content))
+        self.assertEqual(total_len, len(block_bytes))
+        self.assertEqual(gcb._content_length, content_len)
+        expected_header =('gcb1z\n' # group compress block v1 zlib
+                          '%d\n' # Length of compressed content
+                          '%d\n' # Length of uncompressed content
+                         ) % (gcb._z_content_length, gcb._content_length)
+        # The first chunk should be the header chunk. It is small, fixed size,
+        # and there is no compelling reason to split it up
+        self.assertEqual(expected_header, block_chunks[0])
+        self.assertStartsWith(block_bytes, expected_header)
+        remaining_bytes = block_bytes[len(expected_header):]
+        raw_bytes = zlib.decompress(remaining_bytes)
+        self.assertEqual(content, raw_bytes)
+
     def test_to_bytes(self):
         content = ('this is some content\n'
                    'this content will be compressed\n')
@@ -389,7 +413,7 @@ class TestGroupCompressBlock(tests.TestCase):
         z_content = zlib.compress(content)
         self.assertEqual(57182, len(z_content))
         block = groupcompress.GroupCompressBlock()
-        block._z_content = z_content
+        block._z_content_chunks = (z_content,)
         block._z_content_length = len(z_content)
         block._compressor_name = 'zlib'
         block._content_length = 158634
@@ -434,7 +458,7 @@ class TestGroupCompressBlock(tests.TestCase):
         z_content = zlib.compress(content)
         self.assertEqual(57182, len(z_content))
         block = groupcompress.GroupCompressBlock()
-        block._z_content = z_content
+        block._z_content_chunks = (z_content,)
         block._z_content_length = len(z_content)
         block._compressor_name = 'zlib'
         block._content_length = 158634

@@ -32,6 +32,11 @@ New Features
 
 Bug Fixes
 *********
+
+* ``bzr break-lock --force`` breaks the lock without prompting.  (Before
+  using this, make sure the process holding the lock really is dead.)
+  (Martin Pool, #392315)
+
 * Skip tests that needs a bzr source tree when there isn't one. This is
   needed to succesfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).
@@ -51,6 +56,9 @@ API Changes
 Internals
 *********
 
+* Small change to GroupCompressBlock to work more in terms of 'chunks'
+  rather than 'content' for its compressed storage. (John Arbash Meinel)
+
 * When running ``bzr selftest --subunit`` the subunit stream will no
   longer include the "log" information for tests which are considered to
   be 'successes' (success, xfail, skip, etc) (John Arbash Meinel)
@@ -61,6 +69,8 @@ Testing
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
 
+* Use tests.TestCaseInTempDir for tests that requires disk resources.
+  (Vincent Ladeuil, #650001)
 
 bzr 2.3b1
 #########
@@ -468,7 +478,7 @@ Testing
   when ``bzr selftest --parallel=fork`` is used. (Martin [gz], #528730)
 
 * Rearrange thread leak detection code to eliminate global state and make it
-  possible to extend the reporting. (Marting [gz], #633462)
+  possible to extend the reporting. (Martin [gz], #633462)
 
 * Suppress the "maximum recursion depth exceeded in __subclasscheck__"
   warning on stderr emitted during ``test_dict_deepnested`` in
