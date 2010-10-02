@@ -27,6 +27,10 @@ New Features
   hook.
   (Parth Malwankar, #403687)
 
+* Add --no-tree option to 'bzr push' and 'bzr init' for creating a
+  new or mirrored branch without working trees.
+  (Matthew Gordon, #506730)
+
 Bug Fixes
 *********
 * Skip tests that needs a bzr source tree when there isn't one. This is
