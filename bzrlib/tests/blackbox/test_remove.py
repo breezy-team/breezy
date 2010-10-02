@@ -18,8 +18,12 @@
 import os
 import sys
 
-from bzrlib.tests import SymlinkFeature, TestSkipped
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    script,
+    SymlinkFeature,
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 from bzrlib.workingtree import WorkingTree
 from bzrlib import osutils
 
@@ -203,18 +207,26 @@ class TestRemove(TestCaseWithTransport):
     def test_remove_no_backup_unversioned_files(self):
         self.build_tree(files)
         tree = self.make_branch_and_tree('.')
-        self.run_bzr(['remove', '--no-backup'] + list(files),
-                     error_regexes=["deleted a", "deleted b",
-                                    "removed b/c", "deleted d"])
+        script.ScriptRunner().run_script(self, '''
+        $ bzr remove --no-backup a b/ b/c d/
+        2>deleted d
+        2>removed b/c (but kept a copy: b/c.~1~)
+        2>deleted b
+        2>deleted a
+        ''')
         self.assertFilesDeleted(files)
 
     def test_remove_force_unversioned_files(self):
         self.build_tree(files)
         tree = self.make_branch_and_tree('.')
-        self.run_bzr(['remove', '--force'] + list(files),
-             error_regexes=["deleted a", "deleted b",
-                "removed b/c", "deleted d",
-                "The --force option is deprecated, rather use --no-backup."])
+        script.ScriptRunner().run_script(self, '''
+        $ bzr remove --force a b/ b/c d/
+        2>(The --force option is deprecated, rather use --no-backup in future.)
+        2>deleted d
+        2>removed b/c (but kept a copy: b/c.~1~)
+        2>deleted b
+        2>deleted a
+        ''')
         self.assertFilesDeleted(files)
 
     def test_remove_deleted_files(self):
