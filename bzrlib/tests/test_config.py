@@ -1471,14 +1471,17 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
-class TestConfigGetOptions(tests.TestCaseWithTransport):
+class TestWithConfigs(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestConfigGetOptions, self).setUp()
+        super(TestWithConfigs, self).setUp()
         self.global_config = config.GlobalConfig()
-        self.tree = self.make_branch_and_tree('.')
+        self.tree = self.make_branch_and_tree('tree')
         self.branch_config = config.BranchConfig(self.tree.branch)
         self.locations_config = config.LocationConfig(self.tree.basedir)
+
+
+class TestConfigGetOptions(TestWithConfigs):
 
     def assertOptions(self, expected, conf):
         actual = list(conf.get_options())
@@ -1530,6 +1533,72 @@ class TestConfigGetOptions(tests.TestCaseWithTransport):
              ('file', 'branch', 'DEFAULT', 'branch'),
              ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
             self.branch_config)
+
+
+class TestConfigGetSections(TestWithConfigs):
+
+    def assertSectionNames(self, expected, conf, name=None):
+        """Check which sections are returned for a given config.
+
+        If fallback configurations exist their sections can be included.
+
+        :param expected: A list of section names.
+
+        :param conf: The configuration that will be queried.
+
+        :param name: An optional section name that will be passed to
+            get_sections().
+        """
+        sections = list(conf.get_sections(name))
+        self.assertLength(len(expected), sections)
+        self.assertEqual(expected, [name for name, section in sections])
+
+    def test_global_default_section(self):
+        self.assertSectionNames(['DEFAULT'], self.global_config)
+
+    def test_locations_default_section(self):
+        # No sections are defined in an empty file
+        self.assertSectionNames([], self.locations_config)
+
+    def test_locations_named_section(self):
+        self.locations_config.set_user_option('file', 'locations')
+        self.assertSectionNames([self.tree.basedir], self.locations_config)
+
+    def test_locations_matching_sections(self):
+        loc_config = self.locations_config
+        loc_config.set_user_option('file', 'locations')
+        # We need to cheat a bit here to create an option in sections above and
+        # below the 'location' one.
+        parser = loc_config._get_parser()
+        # locations.cong deals with '/' ignoring native os.sep
+        location_names = self.tree.basedir.split('/')
+        parent = '/'.join(location_names[:-1])
+        child = '/'.join(location_names + ['child'])
+        parser[parent] = {}
+        parser[parent]['file'] = 'parent'
+        parser[child] = {}
+        parser[child]['file'] = 'child'
+        self.assertSectionNames([self.tree.basedir, parent], loc_config)
+
+    def test_branch_data_default_section(self):
+        self.assertSectionNames([None],
+                                self.branch_config._get_branch_data_config())
+
+    def test_branch_default_sections(self):
+        # No sections are defined in an empty locations file
+        self.assertSectionNames([None, 'DEFAULT'],
+                                self.branch_config)
+        # Unless we define an option
+        self.branch_config._get_location_config().set_user_option(
+            'file', 'locations')
+        self.assertSectionNames([self.tree.basedir, None, 'DEFAULT'],
+                                self.branch_config)
+
+    def test_global_named_section(self):
+        # We need to cheat as the API doesn't give direct access to sections
+        # other than DEFAULT.
+        self.global_config.set_alias('bazaar', 'bzr')
+        self.assertSectionNames(['ALIASES'], self.global_config, 'ALIASES')
 
 
 class TestAuthenticationConfigFile(tests.TestCase):

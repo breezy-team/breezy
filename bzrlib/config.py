@@ -450,6 +450,24 @@ class IniBasedConfig(Config):
         """Override this to define the section used by the config."""
         return "DEFAULT"
 
+    def get_sections(self, name=None):
+        """Returns an iterator of the sections specified by ``name``.
+
+        :param name: The section name. If None is supplied, the default
+            configurations are yielded.
+
+        :return: A tuple (name, section) for all sections that will we walked
+            by user_get_option() in the 'right' order. The first one is where
+            set_user_option() will update the value.
+        """
+        parser = self._get_parser()
+        if name is not None:
+            yield (name, parser[name])
+        else:
+            # No section name has been given so we fallback to the configobj
+            # itself which holds the variables defined outside of any section.
+            yield (None, parser)
+
     def get_options(self, sections=None):
         """Return an ordered list of (name, value, section, config_id) tuples.
 
@@ -706,6 +724,19 @@ class GlobalConfig(LockableConfig):
         self._write_config_file()
 
 
+    def get_sections(self, name=None):
+        """See IniBasedConfig.get_sections()."""
+        parser = self._get_parser()
+        # We don't give access to options defined outside of any section, we
+        # used the DEFAULT section by... default.
+        if name in (None, 'DEFAULT'):
+            # This could happen for an empty file where the DEFAULT section
+            # doesn't exist yet. So we force DEFAULT when yielding
+            name = 'DEFAULT'
+            parser[name]= {}
+        yield (name, parser[name])
+
+
 class LocationConfig(LockableConfig):
     """A configuration object that gives the policy for a location."""
 
@@ -782,6 +813,14 @@ class LocationConfig(LockableConfig):
             except KeyError:
                 pass
         return sections
+
+    def get_sections(self, name=None):
+        """See IniBasedConfig.get_sections()."""
+        # We ignore the name here as the only sections handled are named with
+        # the location path and we don't expose embedded sections either.
+        parser = self._get_parser()
+        for name, extra_path in self._get_matching_sections():
+            yield (name, parser[name])
 
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
@@ -945,6 +984,12 @@ class BranchConfig(Config):
             if value is not None:
                 return value
         return None
+
+    def get_sections(self, name=None):
+        """See IniBasedConfig.get_sections()."""
+        for source in self.option_sources:
+            for section in source().get_sections(name):
+                yield section
 
     def get_options(self, sections=None):
         opts = []
@@ -1605,8 +1650,8 @@ class TransportConfig(object):
     """A Config that reads/writes a config file on a Transport.
 
     It is a low-level object that considers config data to be name/value pairs
-    that may be associated with a section.  Assigning meaning to the these
-    values is done at higher levels like TreeConfig.
+    that may be associated with a section.  Assigning meaning to these values
+    is done at higher levels like TreeConfig.
     """
 
     def __init__(self, transport, filename):

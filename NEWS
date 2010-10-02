@@ -43,16 +43,18 @@ Documentation
 API Changes
 ***********
 
-* ``bzrlib.config.IniBasedConfig`` objects now implement ``get_options`` that
-  permit querying them for the options defined and their values.
- (Vincent Ladeuil)
-
 Internals
 *********
 
 * When running ``bzr selftest --subunit`` the subunit stream will no
   longer include the "log" information for tests which are considered to
   be 'successes' (success, xfail, skip, etc) (John Arbash Meinel)
+
+* ``bzrlib.config.IniBasedConfig`` objects now implement ``get_options`` that
+  permit querying them for the options defined and their values and
+  ``get_sections()`` that return a list of (name, section) for the sections
+  walked by get_user_option() and used by set_user_option().
+  (Vincent Ladeuil)
 
 Testing
 *******
