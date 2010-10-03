@@ -13,6 +13,11 @@ bzr 2.3b2
 Compatibility Breaks
 ********************
 
+* The ``bzr tags`` command sorts tag names using a natural sort by
+  default (so tag2 sorts before tag10).  The previous default was
+  strictly alphabetical.  That behavior is still available as ``bzr tags
+  --sort=alpha``. (Neil Martinsen-Burrell, #640760)
+
 New Features
 ************
 
