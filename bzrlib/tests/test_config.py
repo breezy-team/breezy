@@ -1475,10 +1475,10 @@ class TestWithConfigs(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestWithConfigs, self).setUp()
-        self.global_config = config.GlobalConfig()
         self.tree = self.make_branch_and_tree('tree')
-        self.branch_config = config.BranchConfig(self.tree.branch)
         self.locations_config = config.LocationConfig(self.tree.basedir)
+        self.branch_config = config.BranchConfig(self.tree.branch)
+        self.global_config = config.GlobalConfig()
 
 
 class TestConfigGetOptions(TestWithConfigs):

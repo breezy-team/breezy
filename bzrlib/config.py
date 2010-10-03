@@ -1719,16 +1719,33 @@ class cmd_config(commands.Command):
 
     takes_options = [
         'directory',
+        # FIXME: This should be a registry option so that plugins can register
+        # their own config files (or not) -- vila 20101002
+        commands.Option('force', help='Force the configuration file',
+                        short_name='f', type=unicode),
         ]
 
     @commands.display_command
-    def run(self, matching=None, directory=None):
-        if matching is None:
-            matching = '*'
+    def run(self, matching=None, directory=None, force=None):
         if directory is None:
             directory = '.'
+        directory = urlutils.normalize_url(directory)
+        if matching is None:
+            matching = '*'
+            self._show_config('*', directory, force)
+        else:
+            pos = matching.find('=')
+            if pos == -1:
+                self._show_config(matching, directory, force)
+            else:
+                self._set_config_option(matching[:pos], matching[pos+1:],
+                                        directory, force)
+
+    def _show_config(self, matching, directory, force):
+        # FIXME: force must be None
         try:
-            (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
+            (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
+                directory)
             confs = [br.get_config()]
         except errors.NotBranchError:
             confs = [LocationConfig(directory), GlobalConfig()]
@@ -1742,4 +1759,29 @@ class cmd_config(commands.Command):
                         self.outf.write('%s:\n' % (conf_id,))
                         cur_conf_id = conf_id
                     self.outf.write('  %s = %s\n' % (name, value))
+
+    def _set_config_option(self, name, value, directory, force):
+        confs = []
+        if force is not None:
+            if force == 'bazaar':
+                confs = [GlobalConfig()]
+            elif force == 'locations':
+                confs = [LocationConfig(directory)]
+            elif force == 'branch':
+                (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
+                    directory)
+                confs = [br.get_config()]
+        else:
+            try:
+                (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
+                    directory)
+                confs = [br.get_config()]
+            except errors.NotBranchError:
+                confs = [LocationConfig(directory), GlobalConfig()]
+        trace.mutter('confs: %r' % (confs,))
+        if not confs:
+            raise errors.BzrError('%s is not a known configuration'
+                                  % (force,))
+        # We use the first config to set the option
+        confs[0].set_user_option(name, value)
 

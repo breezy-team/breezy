@@ -21,10 +21,15 @@ import os
 
 from bzrlib import (
     config,
+    errors,
     tests,
     )
-from bzrlib.tests import script
-
+from bzrlib.tests import (
+    script,
+    # FIXME: Importing the 'other' test_config to use TestWithConfigs hints
+    # that we really need a fixture here -- vila 20101002
+    test_config as _t_config,
+    )
 
 class TestEmptyConfig(tests.TestCaseWithTransport):
 
@@ -39,17 +44,7 @@ class TestEmptyConfig(tests.TestCaseWithTransport):
         self.assertEquals('', err)
 
 
-class TestConfigDisplay(tests.TestCaseWithTransport):
-
-    def setUp(self):
-        super(TestConfigDisplay, self).setUp()
-        # All the test can chose to test in a branch or outside of it
-        # (defaulting to location='.' by using '-d tree'. We create the 3
-        # canonnical configs and each test can set whatever option it sees fit.
-        self.tree = self.make_branch_and_tree('tree')
-        self.branch_config = config.BranchConfig(self.tree.branch)
-        self.locations_config = config.LocationConfig(self.tree.basedir)
-        self.global_config = config.GlobalConfig()
+class TestConfigDisplay(_t_config.TestWithConfigs):
 
     def test_global_config(self):
         self.global_config.set_user_option('hello', 'world')
@@ -76,5 +71,51 @@ branch:
         script.run_script(self, '''
 $ bzr config
 bazaar:
+  hello = world
+''')
+
+
+class TestConfigSet(_t_config.TestWithConfigs):
+
+    def test_unknown_config(self):
+        self.run_bzr(['config', '--force', 'moon', 'hello=world'], retcode=3)
+
+    def test_global_config_outside_branch(self):
+        script.run_script(self, '''
+$ bzr config --force bazaar hello=world
+$ bzr config -d tree hello
+bazaar:
+  hello = world
+''')
+
+    def test_global_config_inside_branch(self):
+        script.run_script(self, '''
+$ bzr config -d tree --force bazaar hello=world
+$ bzr config -d tree hello
+bazaar:
+  hello = world
+''')
+
+    def test_locations_config_inside_branch(self):
+        script.run_script(self, '''
+$ bzr config -d tree --force locations hello=world
+$ bzr config -d tree hello
+locations:
+  hello = world
+''')
+
+    def test_branch_config_default(self):
+        script.run_script(self, '''
+$ bzr config -d tree hello=world
+$ bzr config -d tree hello
+branch:
+  hello = world
+''')
+
+    def test_branch_config_forcing_branch(self):
+        script.run_script(self, '''
+$ bzr config -d tree --force branch hello=world
+$ bzr config -d tree hello
+branch:
   hello = world
 ''')
