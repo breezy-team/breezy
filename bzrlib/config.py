@@ -1869,33 +1869,3 @@ class cmd_config(commands.Command):
             raise errors.NoSuchConfig(force)
         if not removed:
             raise errors.NoSuchConfigOption(name)
-
-    def x_remove_config_option(self, name, directory, force):
-        removed = False
-        for conf in self._get_configs(directory, force):
-            trace.mutter('conf: %r' % (conf,))
-            # We use the first config to remove the option
-            conf.remove_user_option(name)
-            break
-        else:
-            raise errors.NoSuchConfig(force)
-        if not removed:
-            raise errors.NoSuchConfigOption(name)
-
-    def xx_remove_config_option(self, name, directory, force):
-        removed = False
-        for conf in self._get_configs(directory, force):
-            trace.mutter('conf: %r' % (conf,))
-            for (section_name, section, conf_id) in conf._get_sections():
-                trace.mutter('section: %s, %r' % (section_name, section))
-                if name in section:
-                    # We use the first section in the first config where the
-                    # option is defined to remove it
-                    conf.remove_user_option(name, section_name)
-                    removed = True
-                    break
-            break
-        else:
-            raise errors.NoSuchConfig(force)
-        if not removed:
-            raise errors.NoSuchConfigOption(name)
