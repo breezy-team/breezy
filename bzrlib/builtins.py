@@ -21,6 +21,8 @@ import os
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
+import itertools
+import re
 import sys
 import time
 
@@ -5427,11 +5429,11 @@ class cmd_tags(Command):
             tags = [(tag, revid) for tag, revid in tags if
                 graph.is_between(revid, revid1, revid2)]
         if sort == 'natural':
-            import re
-            def key_func(tag):
-                intify = lambda chunk: int(chunk) if chunk.isdigit() else chunk
-                return [intify(chunk) for chunk in re.split('([0-9]+)', tag[0])]
-            tags.sort(key=key_func)
+            def natural_sort_key(tag):
+                return [f(s) for f,s in 
+                        zip(itertools.cycle((unicode.lower,int)),
+                                            re.split('([0-9]+)', tag[0]))]
+            tags.sort(key=natural_sort_key)
         elif sort == 'alpha':
             tags.sort()
         elif sort == 'time':
