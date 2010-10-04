@@ -1723,25 +1723,30 @@ class cmd_config(commands.Command):
         # their own config files (or not) -- vila 20101002
         commands.Option('force', help='Force the configuration file',
                         short_name='f', type=unicode),
+        commands.Option('remove', help='Remove the option from'
+                        ' the configuration file'),
         ]
 
     @commands.display_command
-    def run(self, matching=None, directory=None, force=None):
+    def run(self, matching=None, directory=None, force=None, remove=False):
         if directory is None:
             directory = '.'
         directory = urlutils.normalize_url(directory)
         if matching is None:
             matching = '*'
-            self._show_config('*', directory, force)
+            self._show_config('*', directory)
         else:
-            pos = matching.find('=')
-            if pos == -1:
-                self._show_config(matching, directory, force)
+            if remove:
+                self._remove_config_option(matching, directory, force)
             else:
-                self._set_config_option(matching[:pos], matching[pos+1:],
-                                        directory, force)
+                pos = matching.find('=')
+                if pos == -1:
+                    self._show_config(matching, directory)
+                else:
+                    self._set_config_option(matching[:pos], matching[pos+1:],
+                                            directory, force)
 
-    def _show_config(self, matching, directory, force_meaningless):
+    def _show_config(self, matching, directory):
         try:
             (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
                 directory)
@@ -1777,10 +1782,39 @@ class cmd_config(commands.Command):
                 confs = [br.get_config()]
             except errors.NotBranchError:
                 confs = [LocationConfig(directory), GlobalConfig()]
-        trace.mutter('confs: %r' % (confs,))
         if not confs:
             raise errors.BzrError('%s is not a known configuration'
                                   % (force,))
         # We use the first config to set the option
         confs[0].set_user_option(name, value)
 
+    def _remove_config_option(self, name, directory, force):
+        confs = []
+        if force is not None:
+            if force == 'bazaar':
+                confs = [GlobalConfig()]
+            elif force == 'locations':
+                confs = [LocationConfig(directory)]
+            elif force == 'branch':
+                (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
+                    directory)
+                confs = [br.get_config()]
+        else:
+            try:
+                (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
+                    directory)
+                confs = [br.get_config()]
+            except errors.NotBranchError:
+                confs = [LocationConfig(directory), GlobalConfig()]
+        if not confs:
+            raise errors.BzrError('%s is not a known configuration'
+                                  % (force,))
+        # We use the first config to set the option
+        sections = confs[0].get_sections()
+        if sections:
+            section = sections.next()[1]
+        if not sections or name not in section:
+            raise errors.BzrError('%s is not a known option' % (name,))
+        raise NotImplementeErro(self._remove_config_option)
+        del section[name]
+        confs[0]._write_config_file()

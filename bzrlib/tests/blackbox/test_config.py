@@ -135,5 +135,5 @@ class TestConfigRemove(tests.TestCaseWithTransport):
         _t_config.create_configs_with_file_option(self)
 
     def test_unknown_option(self):
-        self.run_bzr_error(['file option is unknown',],
+        self.run_bzr_error(['file is not a known option',],
                            ['config', '--remove', 'file'])
