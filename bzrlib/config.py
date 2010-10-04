@@ -1788,7 +1788,7 @@ class cmd_config(commands.Command):
             conf.set_user_option(name, value)
             break
         else:
-            raise errors.BzrError('%s is not a known configuration' % (force,))
+            raise errors.NoSuchConfig(force)
 
     def _remove_config_option(self, name, directory, force):
         removed = False
@@ -1803,6 +1803,6 @@ class cmd_config(commands.Command):
                     break
             break
         else:
-            raise errors.BzrError('%s is not a known configuration' % (force,))
+            raise errors.NoSuchConfig(force)
         if not removed:
-            raise errors.BzrError('%s is not a known option' % (name,))
+            raise errors.NoSuchConfigOption(name)
