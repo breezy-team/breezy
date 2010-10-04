@@ -3301,6 +3301,70 @@ class TestThreadLeakDetection(tests.TestCase):
         self.assertContainsString(result.stream.getvalue(), "leaking threads")
 
 
+class TestPostMortemDebugging(tests.TestCase):
+    """Check post mortem debugging works when tests fail or error"""
+
+    class TracebackRecordingResult(tests.ExtendedTestResult):
+        def __init__(self):
+            tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
+            self.postcode = None
+        def _post_mortem(self):
+            """Record the code object at the end of the current traceback"""
+            tb = sys.exc_info()[2]
+            if tb is not None:
+                next = tb.tb_next
+                while next is not None:
+                    tb = next
+                    next = next.tb_next
+                self.postcode = tb.tb_frame.f_code
+        def report_error(self, test, err):
+            pass
+        def report_failure(self, test, err):
+            pass
+
+    def test_location_unittest_error(self):
+        """Needs right post mortem traceback with erroring unittest case"""
+        class Test(unittest.TestCase):
+            def runTest(self):
+                raise RuntimeError
+        result = self.TracebackRecordingResult()
+        Test().run(result)
+        self.assertEqual(result.postcode, Test.runTest.func_code)
+
+    def test_location_unittest_failure(self):
+        """Needs right post mortem traceback with failing unittest case"""
+        class Test(unittest.TestCase):
+            def runTest(self):
+                raise self.failureException
+        result = self.TracebackRecordingResult()
+        Test().run(result)
+        self.assertEqual(result.postcode, Test.runTest.func_code)
+
+    def test_location_bt_error(self):
+        """Needs right post mortem traceback with erroring bzrlib.tests case"""
+        class Test(tests.TestCase):
+            def test_error(self):
+                raise RuntimeError
+        result = self.TracebackRecordingResult()
+        Test("test_error").run(result)
+        self.expectFailure("testtools api adapter creates new traceback",
+            self.assertNotEqual, result.postcode,
+            testtools.ExtendedToOriginalDecorator.addError.func_code)
+        self.assertEqual(result.postcode, Test.test_error.func_code)
+
+    def test_location_bt_failure(self):
+        """Needs right post mortem traceback with failing bzrlib.tests case"""
+        class Test(tests.TestCase):
+            def test_failure(self):
+                raise self.failureException
+        result = self.TracebackRecordingResult()
+        Test("test_failure").run(result)
+        self.expectFailure("testtools api adapter creates new traceback",
+            self.assertNotEqual, result.postcode,
+            testtools.ExtendedToOriginalDecorator.addFailure.func_code)
+        self.assertEqual(result.postcode, Test.test_failure.func_code)
+
+
 class TestRunSuite(tests.TestCase):
 
     def test_runner_class(self):
