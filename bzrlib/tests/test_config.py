@@ -1569,6 +1569,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
         super(TestConfigRemoveOption, self).setUp()
         create_configs_with_file_option(self)
 
+
 class TestConfigGetSections(tests.TestCaseWithTransport):
 
     def setUp(self):

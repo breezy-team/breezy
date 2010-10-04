@@ -84,7 +84,8 @@ class TestConfigSet(tests.TestCaseWithTransport):
         _t_config.create_configs(self)
 
     def test_unknown_config(self):
-        self.run_bzr(['config', '--force', 'moon', 'hello=world'], retcode=3)
+        self.run_bzr_error(['moon is not a known configuration'],
+                           ['config', '--force', 'moon', 'hello=world'])
 
     def test_bazaar_config_outside_branch(self):
         script.run_script(self, '''
@@ -134,4 +135,5 @@ class TestConfigRemove(tests.TestCaseWithTransport):
         _t_config.create_configs_with_file_option(self)
 
     def test_unknown_option(self):
-        self.run_bzr(['config', '--remove', 'file'], retcode=3)
+        self.run_bzr_error(['file option is unknown',],
+                           ['config', '--remove', 'file'])
