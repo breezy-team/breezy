@@ -1512,7 +1512,7 @@ class TestConfigGetOptions(tests.TestCaseWithTransport):
         create_configs(self)
 
     def assertOptions(self, expected, conf):
-        actual = list(conf.get_options())
+        actual = list(conf._get_options())
         self.assertEqual(expected, actual)
 
     # One variable in none of the above
@@ -1570,7 +1570,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
         create_configs_with_file_option(self)
 
     def assertOptions(self, expected, conf):
-        actual = list(conf.get_options())
+        actual = list(conf._get_options())
         self.assertEqual(expected, actual)
 
     def test_remove_in_locations(self):
@@ -1613,9 +1613,9 @@ class TestConfigGetSections(tests.TestCaseWithTransport):
         :param name: An optional section name that will be passed to
             get_sections().
         """
-        sections = list(conf.get_sections(name))
+        sections = list(conf._get_sections(name))
         self.assertLength(len(expected), sections)
-        self.assertEqual(expected, [name for name, section in sections])
+        self.assertEqual(expected, [name for name, _, _ in sections])
 
     def test_bazaar_default_section(self):
         self.assertSectionNames(['DEFAULT'], self.bazaar_config)

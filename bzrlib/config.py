@@ -450,7 +450,7 @@ class IniBasedConfig(Config):
         """Override this to define the section used by the config."""
         return "DEFAULT"
 
-    def get_sections(self, name=None):
+    def _get_sections(self, name=None):
         """Returns an iterator of the sections specified by ``name``.
 
         :param name: The section name. If None is supplied, the default
@@ -468,7 +468,7 @@ class IniBasedConfig(Config):
             # itself which holds the variables defined outside of any section.
             yield (None, parser, self.id())
 
-    def get_options(self, sections=None):
+    def _get_options(self, sections=None):
         """Return an ordered list of (name, value, section, config_id) tuples.
 
         All options are returned with their associated value and the section
@@ -749,8 +749,8 @@ class GlobalConfig(LockableConfig):
         self._write_config_file()
 
 
-    def get_sections(self, name=None):
-        """See IniBasedConfig.get_sections()."""
+    def _get_sections(self, name=None):
+        """See IniBasedConfig._get_sections()."""
         parser = self._get_parser()
         # We don't give access to options defined outside of any section, we
         # used the DEFAULT section by... default.
@@ -850,8 +850,8 @@ class LocationConfig(LockableConfig):
                 pass
         return sections
 
-    def get_sections(self, name=None):
-        """See IniBasedConfig.get_sections()."""
+    def _get_sections(self, name=None):
+        """See IniBasedConfig._get_sections()."""
         # We ignore the name here as the only sections handled are named with
         # the location path and we don't expose embedded sections either.
         parser = self._get_parser()
@@ -1022,16 +1022,16 @@ class BranchConfig(Config):
                 return value
         return None
 
-    def get_sections(self, name=None):
+    def _get_sections(self, name=None):
         """See IniBasedConfig.get_sections()."""
         for source in self.option_sources:
-            for section in source().get_sections(name):
+            for section in source()._get_sections(name):
                 yield section
 
-    def get_options(self, sections=None):
+    def _get_options(self, sections=None):
         opts = []
         # First the locations options
-        for option in self._get_location_config().get_options():
+        for option in self._get_location_config()._get_options():
             yield option
         # Then the branch options
         branch_config = self._get_branch_data_config()
@@ -1044,7 +1044,7 @@ class BranchConfig(Config):
             for (name, value) in section.iteritems():
                 yield (name, value, section_name, config_id)
         # Then the global options
-        for option in self._get_global_config().get_options():
+        for option in self._get_global_config()._get_options():
             yield option
 
     def set_user_option(self, name, value, store=STORE_BRANCH,
@@ -1835,7 +1835,7 @@ class cmd_config(commands.Command):
         matching_re = re.compile(fnmatch.translate(matching))
         cur_conf_id = None
         for c in self._get_configs(directory):
-            for (name, value, section, conf_id) in c.get_options():
+            for (name, value, section, conf_id) in c._get_options():
                 if matching_re.search(name):
                     if cur_conf_id != conf_id:
                         self.outf.write('%s:\n' % (conf_id,))
@@ -1852,7 +1852,7 @@ class cmd_config(commands.Command):
     def _remove_config_option(self, name, directory, force):
         removed = False
         for conf in self._get_configs(directory, force):
-            for (section_name, section, conf_id) in conf.get_sections():
+            for (section_name, section, conf_id) in conf._get_sections():
                 if force is not None and conf_id != force:
                     # Not the right configuration file
                     continue
@@ -1886,7 +1886,7 @@ class cmd_config(commands.Command):
         removed = False
         for conf in self._get_configs(directory, force):
             trace.mutter('conf: %r' % (conf,))
-            for (section_name, section, conf_id) in conf.get_sections():
+            for (section_name, section, conf_id) in conf._get_sections():
                 trace.mutter('section: %s, %r' % (section_name, section))
                 if name in section:
                     # We use the first section in the first config where the
