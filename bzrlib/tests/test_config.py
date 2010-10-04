@@ -1471,17 +1471,45 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
-class TestWithConfigs(tests.TestCaseWithTransport):
+def create_configs(test):
+    """Create configuration files for a given test.
+
+    This requires creating a tree (and populate the ``test.tree`` attribute and
+    its associated branch and will populate the following attributes:
+
+    - branch_config: A BranchConfig for the associated branch.
+
+    - locations_config : A LocationConfig for the associated branch
+
+    - bazaar_config: A GlobalConfig.
+
+    The tree and branch are created in a 'tree' subdirectory so the tests can
+    still use the test directory to stay outside of the branch.
+    """
+    tree = test.make_branch_and_tree('tree')
+    test.tree = tree
+    test.branch_config = config.BranchConfig(tree.branch)
+    test.locations_config = config.LocationConfig(tree.basedir)
+    test.bazaar_config = config.GlobalConfig()
+
+
+def create_configs_with_file_option(test):
+    """Create configuration files with a ``file`` option set in each.
+
+    This builds on ``create_configs`` and add one ``file`` option in each
+    configuration with a value which allows identifying the configuration file.
+    """
+    create_configs(test)
+    test.bazaar_config.set_user_option('file', 'bazaar')
+    test.locations_config.set_user_option('file', 'locations')
+    test.branch_config.set_user_option('file', 'branch')
+
+
+class TestConfigGetOptions(tests.TestCaseWithTransport):
 
     def setUp(self):
-        super(TestWithConfigs, self).setUp()
-        self.tree = self.make_branch_and_tree('tree')
-        self.locations_config = config.LocationConfig(self.tree.basedir)
-        self.branch_config = config.BranchConfig(self.tree.branch)
-        self.global_config = config.GlobalConfig()
-
-
-class TestConfigGetOptions(TestWithConfigs):
+        super(TestConfigGetOptions, self).setUp()
+        create_configs(self)
 
     def assertOptions(self, expected, conf):
         actual = list(conf.get_options())
@@ -1493,9 +1521,9 @@ class TestConfigGetOptions(TestWithConfigs):
         self.assertOptions([], self.branch_config)
 
     def test_option_in_bazaar(self):
-        self.global_config.set_user_option('file', 'bazaar')
+        self.bazaar_config.set_user_option('file', 'bazaar')
         self.assertOptions([('file', 'bazaar', 'DEFAULT', 'bazaar')],
-                           self.global_config)
+                           self.bazaar_config)
 
     def test_option_in_locations(self):
         self.locations_config.set_user_option('file', 'locations')
@@ -1509,7 +1537,7 @@ class TestConfigGetOptions(TestWithConfigs):
                            self.branch_config)
 
     def test_option_in_bazaar_and_branch(self):
-        self.global_config.set_user_option('file', 'bazaar')
+        self.bazaar_config.set_user_option('file', 'bazaar')
         self.branch_config.set_user_option('file', 'branch')
         self.assertOptions([('file', 'branch', 'DEFAULT', 'branch'),
                             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
@@ -1525,7 +1553,7 @@ class TestConfigGetOptions(TestWithConfigs):
             self.branch_config)
 
     def test_option_in_bazaar_locations_and_branch(self):
-        self.global_config.set_user_option('file', 'bazaar')
+        self.bazaar_config.set_user_option('file', 'bazaar')
         self.locations_config.set_user_option('file', 'locations')
         self.branch_config.set_user_option('file', 'branch')
         self.assertOptions(
@@ -1535,7 +1563,17 @@ class TestConfigGetOptions(TestWithConfigs):
             self.branch_config)
 
 
-class TestConfigGetSections(TestWithConfigs):
+class TestConfigRemoveOption(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestConfigRemoveOption, self).setUp()
+        create_configs_with_file_option(self)
+
+class TestConfigGetSections(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestConfigGetSections, self).setUp()
+        create_configs(self)
 
     def assertSectionNames(self, expected, conf, name=None):
         """Check which sections are returned for a given config.
@@ -1553,8 +1591,8 @@ class TestConfigGetSections(TestWithConfigs):
         self.assertLength(len(expected), sections)
         self.assertEqual(expected, [name for name, section in sections])
 
-    def test_global_default_section(self):
-        self.assertSectionNames(['DEFAULT'], self.global_config)
+    def test_bazaar_default_section(self):
+        self.assertSectionNames(['DEFAULT'], self.bazaar_config)
 
     def test_locations_default_section(self):
         # No sections are defined in an empty file
@@ -1594,11 +1632,11 @@ class TestConfigGetSections(TestWithConfigs):
         self.assertSectionNames([self.tree.basedir, None, 'DEFAULT'],
                                 self.branch_config)
 
-    def test_global_named_section(self):
+    def test_bazaar_named_section(self):
         # We need to cheat as the API doesn't give direct access to sections
         # other than DEFAULT.
-        self.global_config.set_alias('bazaar', 'bzr')
-        self.assertSectionNames(['ALIASES'], self.global_config, 'ALIASES')
+        self.bazaar_config.set_alias('bazaar', 'bzr')
+        self.assertSectionNames(['ALIASES'], self.bazaar_config, 'ALIASES')
 
 
 class TestAuthenticationConfigFile(tests.TestCase):

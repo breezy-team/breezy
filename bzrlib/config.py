@@ -1741,8 +1741,7 @@ class cmd_config(commands.Command):
                 self._set_config_option(matching[:pos], matching[pos+1:],
                                         directory, force)
 
-    def _show_config(self, matching, directory, force):
-        # FIXME: force must be None
+    def _show_config(self, matching, directory, force_meaningless):
         try:
             (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
                 directory)

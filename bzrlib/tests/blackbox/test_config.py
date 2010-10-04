@@ -26,12 +26,10 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     script,
-    # FIXME: Importing the 'other' test_config to use TestWithConfigs hints
-    # that we really need a fixture here -- vila 20101002
     test_config as _t_config,
     )
 
-class TestEmptyConfig(tests.TestCaseWithTransport):
+class TestWithoutConfig(tests.TestCaseWithTransport):
 
     def test_no_config(self):
         out, err = self.run_bzr(['config'])
@@ -44,10 +42,14 @@ class TestEmptyConfig(tests.TestCaseWithTransport):
         self.assertEquals('', err)
 
 
-class TestConfigDisplay(_t_config.TestWithConfigs):
+class TestConfigDisplay(tests.TestCaseWithTransport):
 
-    def test_global_config(self):
-        self.global_config.set_user_option('hello', 'world')
+    def setUp(self):
+        super(TestConfigDisplay, self).setUp()
+        _t_config.create_configs(self)
+
+    def test_bazaar_config(self):
+        self.bazaar_config.set_user_option('hello', 'world')
         script.run_script(self, '''
 $ bzr config -d tree
 bazaar:
@@ -66,7 +68,7 @@ branch:
 ''')
 
     def test_locations_config_outside_branch(self):
-        self.global_config.set_user_option('hello', 'world')
+        self.bazaar_config.set_user_option('hello', 'world')
         self.locations_config.set_user_option('hello', 'world')
         script.run_script(self, '''
 $ bzr config
@@ -75,12 +77,16 @@ bazaar:
 ''')
 
 
-class TestConfigSet(_t_config.TestWithConfigs):
+class TestConfigSet(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestConfigSet, self).setUp()
+        _t_config.create_configs(self)
 
     def test_unknown_config(self):
         self.run_bzr(['config', '--force', 'moon', 'hello=world'], retcode=3)
 
-    def test_global_config_outside_branch(self):
+    def test_bazaar_config_outside_branch(self):
         script.run_script(self, '''
 $ bzr config --force bazaar hello=world
 $ bzr config -d tree hello
@@ -88,7 +94,7 @@ bazaar:
   hello = world
 ''')
 
-    def test_global_config_inside_branch(self):
+    def test_bazaar_config_inside_branch(self):
         script.run_script(self, '''
 $ bzr config -d tree --force bazaar hello=world
 $ bzr config -d tree hello
@@ -119,3 +125,13 @@ $ bzr config -d tree hello
 branch:
   hello = world
 ''')
+
+
+class TestConfigRemove(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestConfigRemove, self).setUp()
+        _t_config.create_configs_with_file_option(self)
+
+    def test_unknown_option(self):
+        self.run_bzr(['config', '--remove', 'file'], retcode=3)
