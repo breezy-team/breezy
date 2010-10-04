@@ -3358,6 +3358,19 @@ class TestPostMortemDebugging(tests.TestCase):
         Test("test_failure").run(result)
         self.assertEqual(result.postcode, Test.test_failure.func_code)
 
+    def test_env_var_triggers_post_mortem(self):
+        """Check pdb.post_mortem is called iff BZR_TEST_PDB is set"""
+        import pdb
+        result = tests.ExtendedTestResult(StringIO(), 0, 1)
+        post_mortem_calls = []
+        self.overrideAttr(pdb, "post_mortem", post_mortem_calls.append)
+        self.addCleanup(osutils.set_or_unset_env, "BZR_TEST_PDB",
+            osutils.set_or_unset_env("BZR_TEST_PDB", None))
+        result._post_mortem(1)
+        os.environ["BZR_TEST_PDB"] = "on"
+        result._post_mortem(2)
+        self.assertEqual([2], post_mortem_calls)
+
 
 class TestRunSuite(tests.TestCase):
 
