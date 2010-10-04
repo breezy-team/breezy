@@ -3308,9 +3308,9 @@ class TestPostMortemDebugging(tests.TestCase):
         def __init__(self):
             tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
             self.postcode = None
-        def _post_mortem(self):
+        def _post_mortem(self, tb=None):
             """Record the code object at the end of the current traceback"""
-            tb = sys.exc_info()[2]
+            tb = tb or sys.exc_info()[2]
             if tb is not None:
                 next = tb.tb_next
                 while next is not None:
@@ -3347,9 +3347,6 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise RuntimeError
         result = self.TracebackRecordingResult()
         Test("test_error").run(result)
-        self.expectFailure("testtools api adapter creates new traceback",
-            self.assertNotEqual, result.postcode,
-            testtools.ExtendedToOriginalDecorator.addError.func_code)
         self.assertEqual(result.postcode, Test.test_error.func_code)
 
     def test_location_bt_failure(self):
@@ -3359,9 +3356,6 @@ class TestPostMortemDebugging(tests.TestCase):
                 raise self.failureException
         result = self.TracebackRecordingResult()
         Test("test_failure").run(result)
-        self.expectFailure("testtools api adapter creates new traceback",
-            self.assertNotEqual, result.postcode,
-            testtools.ExtendedToOriginalDecorator.addFailure.func_code)
         self.assertEqual(result.postcode, Test.test_failure.func_code)
 
 
