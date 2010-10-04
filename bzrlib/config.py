@@ -456,17 +456,17 @@ class IniBasedConfig(Config):
         :param name: The section name. If None is supplied, the default
             configurations are yielded.
 
-        :return: A tuple (name, section) for all sections that will we walked
-            by user_get_option() in the 'right' order. The first one is where
-            set_user_option() will update the value.
+        :return: A tuple (name, section, config_id) for all sections that will
+            be walked by user_get_option() in the 'right' order. The first one
+            is where set_user_option() will update the value.
         """
         parser = self._get_parser()
         if name is not None:
-            yield (name, parser[name])
+            yield (name, parser[name], self.id())
         else:
             # No section name has been given so we fallback to the configobj
             # itself which holds the variables defined outside of any section.
-            yield (None, parser)
+            yield (None, parser, self.id())
 
     def get_options(self, sections=None):
         """Return an ordered list of (name, value, section, config_id) tuples.
@@ -590,6 +590,26 @@ class IniBasedConfig(Config):
     def _get_nickname(self):
         return self.get_user_option('nickname')
 
+    def remove_user_option(self, option_name, section_name=None):
+        """Remove a user option and save the configuration file.
+
+        :param option_name: The option to be removed.
+
+        :param section_name: The section the option is defined in, default to
+            the default section.
+        """
+        self.reload()
+        parser = self._get_parser()
+        if section_name is None:
+            section = parser
+        else:
+            section = parser[section_name]
+        try:
+            del section[option_name]
+        except KeyError:
+            raise errors.NoSuchConfigOption(option_name)
+        self._write_config_file()
+
     def _write_config_file(self):
         if self.file_name is None:
             raise AssertionError('We cannot save, self.file_name is None')
@@ -657,6 +677,11 @@ class LockableConfig(IniBasedConfig):
 
     def break_lock(self):
         self._lock.break_lock()
+
+    @needs_write_lock
+    def remove_user_option(self, option_name, section_name=None):
+        super(LockableConfig, self).remove_user_option(option_name,
+                                                       section_name)
 
     def _write_config_file(self):
         if self._lock is None or not self._lock.is_held:
@@ -733,8 +758,19 @@ class GlobalConfig(LockableConfig):
             # This could happen for an empty file where the DEFAULT section
             # doesn't exist yet. So we force DEFAULT when yielding
             name = 'DEFAULT'
-            parser[name]= {}
-        yield (name, parser[name])
+            if 'DEFAULT' not in parser:
+               parser['DEFAULT']= {}
+        yield (name, parser[name], self.id())
+
+    @needs_write_lock
+    def remove_user_option(self, option_name, section_name=None):
+        if section_name is None:
+            # We need to force the default section.
+            section_name = 'DEFAULT'
+        # We need to avoid the LockableConfig implementation or we'll lock
+        # twice
+        super(LockableConfig, self).remove_user_option(option_name,
+                                                       section_name)
 
 
 class LocationConfig(LockableConfig):
@@ -820,7 +856,7 @@ class LocationConfig(LockableConfig):
         # the location path and we don't expose embedded sections either.
         parser = self._get_parser()
         for name, extra_path in self._get_matching_sections():
-            yield (name, parser[name])
+            yield (name, parser[name], self.id())
 
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
@@ -912,6 +948,7 @@ class BranchConfig(Config):
     def _get_branch_data_config(self):
         if self._branch_data_config is None:
             self._branch_data_config = TreeConfig(self.branch)
+            self._branch_data_config.id = self.id
         return self._branch_data_config
 
     def _get_location_config(self):
@@ -1032,6 +1069,9 @@ class BranchConfig(Config):
                     if mask_value is not None:
                         trace.warning('Value "%s" is masked by "%s" from'
                                       ' branch.conf', value, mask_value)
+
+    def remove_user_option(self, option_name, section_name=None):
+        self._get_branch_data_config().remove_option(option_name, section_name)
 
     def _gpg_signing_command(self):
         """See Config.gpg_signing_command."""
@@ -1196,9 +1236,20 @@ class TreeConfig(IniBasedConfig):
 
     def set_option(self, value, name, section=None):
         """Set a per-branch configuration option"""
+        # FIXME: We shouldn't need to lock explicitly here but rather rely on
+        # higher levels providing the right lock -- vila 20101004
         self.branch.lock_write()
         try:
             self._config.set_option(value, name, section)
+        finally:
+            self.branch.unlock()
+
+    def remove_option(self, option_name, section_name=None):
+        # FIXME: We shouldn't need to lock explicitly here but rather rely on
+        # higher levels providing the right lock -- vila 20101004
+        self.branch.lock_write()
+        try:
+            self._config.remove_option(option_name, section_name)
         finally:
             self.branch.unlock()
 
@@ -1690,6 +1741,14 @@ class TransportConfig(object):
             configobj.setdefault(section, {})[name] = value
         self._set_configobj(configobj)
 
+    def remove_option(self, option_name, section_name=None):
+        configobj = self._get_configobj()
+        if section_name is None:
+            del configobj[option_name]
+        else:
+            del configobj[section_name][option_name]
+        self._set_configobj(configobj)
+
     def _get_config_file(self):
         try:
             return StringIO(self._transport.get_bytes(self._filename))
@@ -1793,12 +1852,46 @@ class cmd_config(commands.Command):
     def _remove_config_option(self, name, directory, force):
         removed = False
         for conf in self._get_configs(directory, force):
-            # We use the first section in the first config to remove the option
-            for section in conf.get_sections():
+            for (section_name, section, conf_id) in conf.get_sections():
+                if force is not None and conf_id != force:
+                    # Not the right configuration file
+                    continue
                 if name in section:
-                    raise NotImplementeErro(self._remove_config_option)
-                    del section[name]
-                    conf._write_config_file()
+                    if conf_id != conf.id():
+                        conf = self._get_configs(directory, conf_id).next()
+                    # We use the first section in the first config where the
+                    # option is defined to remove it
+                    conf.remove_user_option(name, section_name)
+                    removed = True
+                    break
+            break
+        else:
+            raise errors.NoSuchConfig(force)
+        if not removed:
+            raise errors.NoSuchConfigOption(name)
+
+    def x_remove_config_option(self, name, directory, force):
+        removed = False
+        for conf in self._get_configs(directory, force):
+            trace.mutter('conf: %r' % (conf,))
+            # We use the first config to remove the option
+            conf.remove_user_option(name)
+            break
+        else:
+            raise errors.NoSuchConfig(force)
+        if not removed:
+            raise errors.NoSuchConfigOption(name)
+
+    def xx_remove_config_option(self, name, directory, force):
+        removed = False
+        for conf in self._get_configs(directory, force):
+            trace.mutter('conf: %r' % (conf,))
+            for (section_name, section, conf_id) in conf.get_sections():
+                trace.mutter('section: %s, %r' % (section_name, section))
+                if name in section:
+                    # We use the first section in the first config where the
+                    # option is defined to remove it
+                    conf.remove_user_option(name, section_name)
                     removed = True
                     break
             break

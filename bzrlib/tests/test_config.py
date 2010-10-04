@@ -1515,7 +1515,7 @@ class TestConfigGetOptions(tests.TestCaseWithTransport):
         actual = list(conf.get_options())
         self.assertEqual(expected, actual)
 
-    # One variable in non of the above
+    # One variable in none of the above
     def test_no_variable(self):
         # Using branch should query branch, locations and bazaar
         self.assertOptions([], self.branch_config)
@@ -1568,6 +1568,31 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
     def setUp(self):
         super(TestConfigRemoveOption, self).setUp()
         create_configs_with_file_option(self)
+
+    def assertOptions(self, expected, conf):
+        actual = list(conf.get_options())
+        self.assertEqual(expected, actual)
+
+    def test_remove_in_locations(self):
+        self.locations_config.remove_user_option('file', self.tree.basedir)
+        self.assertOptions(
+            [('file', 'branch', 'DEFAULT', 'branch'),
+             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+            self.branch_config)
+
+    def test_remove_in_branch(self):
+        self.branch_config.remove_user_option('file')
+        self.assertOptions(
+            [('file', 'locations', self.tree.basedir, 'locations'),
+             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+            self.branch_config)
+
+    def test_remove_in_bazaar(self):
+        self.bazaar_config.remove_user_option('file')
+        self.assertOptions(
+            [('file', 'locations', self.tree.basedir, 'locations'),
+             ('file', 'branch', 'DEFAULT', 'branch'),],
+            self.branch_config)
 
 
 class TestConfigGetSections(tests.TestCaseWithTransport):
