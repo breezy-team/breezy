@@ -622,7 +622,7 @@ class BazaarObjectStore(BaseObjectStore):
         ret = self.lookup_git_shas(have + want)
         for commit_sha in have:
             try:
-                (type, (revid, tree_sha)) = ret[commit_sha]
+                (type, (revid, tree_sha, verifiers)) = ret[commit_sha]
             except KeyError:
                 pass
             else:
@@ -633,7 +633,7 @@ class BazaarObjectStore(BaseObjectStore):
             if commit_sha in have:
                 continue
             try:
-                (type, (revid, tree_sha)) = ret[commit_sha]
+                (type, (revid, tree_sha, verifiers)) = ret[commit_sha]
             except KeyError:
                 pass
             else:
