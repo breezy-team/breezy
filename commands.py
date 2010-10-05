@@ -214,11 +214,14 @@ class cmd_git_apply(Command):
                   message=c.message)
 
     def run(self, patches_list=None):
+        from bzrlib.errors import UncommittedChanges
         from bzrlib.workingtree import WorkingTree
         if patches_list is None:
             patches_list = []
-        
+
         tree, _ = WorkingTree.open_containing(".")
+        if tree.basis_tree().changes_from(tree).has_changed():
+            raise UncommittedChanges(tree)
         tree.lock_write()
         try:
             for patch in patches_list:
