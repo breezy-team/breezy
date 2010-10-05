@@ -14,7 +14,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Launchpad.net integration plugin for Bazaar."""
+"""Launchpad.net integration plugin for Bazaar.
+
+This plugin provides facilities for working with Bazaar branches that are
+hosted on Launchpad (http://launchpad.net).  It provides a directory service 
+for referring to Launchpad branches using the "lp:" prefix.  It also 
+provides the following commands:
+
+    register-branch: Register a branch with launchpad.net
+    launchpad-open: Open a Launchpad branch page in your web browser
+    launchpad-login: Show or set the Launchpad user ID
+    launchpad-mirror: Ask Launchpad to mirror a branch now
+    lp-propose-merge: Propose merging a branch on Launchpad
+
+"""
 
 # The XMLRPC server address can be overridden by setting the environment
 # variable $BZR_LP_XMLRPC_URL
