@@ -5364,7 +5364,7 @@ class cmd_tag(Command):
             if tag_name is None:
                 raise errors.BzrCommandError("No tag specified to delete.")
             branch.tags.delete_tag(tag_name)
-            self.outf.write('Deleted tag %s.\n' % tag_name)
+            note('Deleted tag %s.' % tag_name)
         else:
             if revision:
                 if len(revision) != 1:
@@ -5382,7 +5382,7 @@ class cmd_tag(Command):
             if (not force) and branch.tags.has_tag(tag_name):
                 raise errors.TagAlreadyExists(tag_name)
             branch.tags.set_tag(tag_name, revision_id)
-            self.outf.write('Created tag %s.\n' % tag_name)
+            note('Created tag %s.' % tag_name)
 
 
 class cmd_tags(Command):

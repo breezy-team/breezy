@@ -25,6 +25,7 @@ from bzrlib.branch import (
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests.script import TestCaseWithTransportAndScript
 from bzrlib.repository import (
     Repository,
     )
@@ -60,7 +61,7 @@ class TestTagging(TestCaseWithTransport):
         Branch.hooks.install_named_hook('automatic_tag_name',
             get_tag_name, 'get tag name')
         out, err = self.run_bzr('tag -d branch')
-        self.assertContainsRe(out, 'Created tag mytag.')
+        self.assertContainsRe(err, 'Created tag mytag.')
 
     def test_tag_current_rev(self):
         t = self.make_branch_and_tree('branch')
@@ -68,7 +69,7 @@ class TestTagging(TestCaseWithTransport):
             rev_id='first-revid')
         # make a tag through the command line
         out, err = self.run_bzr('tag -d branch NEWTAG')
-        self.assertContainsRe(out, 'Created tag NEWTAG.')
+        self.assertContainsRe(err, 'Created tag NEWTAG.')
         # tag should be observable through the api
         self.assertEquals(t.branch.tags.get_tag_dict(),
                 dict(NEWTAG='first-revid'))
@@ -238,3 +239,22 @@ class TestTagging(TestCaseWithTransport):
         ## out, err = self.run_bzr('merge -d one two', encoding='utf-8')
         ## self.assertContainsRe(out,
         ##         'Conflicting tags:\n.*' + tagname.encode('utf-8'))
+
+
+class TestTagScript(TestCaseWithTransportAndScript):
+
+    def test_tag_quiet(self):
+        self.run_script("""
+$ bzr init
+$ bzr tag --quiet test1
+2>
+""")
+
+    def test_tag_delete_quiet(self):
+        self.run_script("""
+$ bzr init
+$ bzr tag test1
+2>Created tag test1.
+$ bzr tag --delete --quiet test1
+2>
+""")

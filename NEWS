@@ -34,6 +34,9 @@ Bug Fixes
   using this, make sure the process holding the lock really is dead.)
   (Martin Pool, #392315)
 
+* Make ``bzr tag --quiet`` really quiet.  
+  (Neil Martinsen-Burrell, #239523)
+
 * Print junk rather than throwing a UnicodeDecodeError from ``bzr version-info``
   when using the rio format (with non-ascii information) on a non-utf-8 terminal.
   (Andrej A Antonov, #518609)
