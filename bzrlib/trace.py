@@ -472,19 +472,23 @@ def _debug_memory_proc(message='', short=True):
 
 def _dump_memory_usage(err_file):
     try:
-        fd, name = tempfile.mkstemp(prefix="bzr_memdump", suffix=".json")
-        dump_file = os.fdopen(fd, 'w')
-        from meliae import scanner
-        scanner.dump_gc_objects(dump_file)
-        err_file.write("Memory dumped to %s\n" % name)
-    except ImportError:
-        err_file.write("Dumping memory requires meliae module.\n")
-        log_exception_quietly()
-    except:
-        err_file.write("Exception while dumping memory.\n")
-        log_exception_quietly()
+        try:
+            fd, name = tempfile.mkstemp(prefix="bzr_memdump", suffix=".json")
+            dump_file = os.fdopen(fd, 'w')
+            from meliae import scanner
+            scanner.dump_gc_objects(dump_file)
+            err_file.write("Memory dumped to %s\n" % name)
+        except ImportError:
+            err_file.write("Dumping memory requires meliae module.\n")
+            log_exception_quietly()
+        except:
+            err_file.write("Exception while dumping memory.\n")
+            log_exception_quietly()
     finally:
-        dump_file.close()
+        if dump_file is not None:
+            dump_file.close()
+        elif fd is not None:
+            os.close(fd)
 
 def report_exception(exc_info, err_file):
     """Report an exception to err_file (typically stderr) and to .bzr.log.
