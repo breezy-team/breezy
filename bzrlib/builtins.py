@@ -5399,7 +5399,7 @@ class cmd_tags(Command):
             help='Branch whose tags should be displayed.'),
         RegistryOption.from_kwargs('sort',
             'Sort tags by different criteria.', title='Sorting',
-            natural='Sort tags alphabetically (default).',
+            natural='Use a natural sort order (alpha + numbers) (default).',
             alpha='Sort tags lexicographically.',
             time='Sort tags chronologically.',
             ),
