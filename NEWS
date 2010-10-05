@@ -27,6 +27,10 @@ New Features
   hook.
   (Parth Malwankar, #403687)
 
+* GNU lsh is now a supported lsh client; just set BZR_SSH to 'lsh'.
+  Also, bzr will recognize if the 'ssh' comand is a symlink to lsh.
+  (Matthew Gordon, #374700)
+
 Bug Fixes
 *********
 

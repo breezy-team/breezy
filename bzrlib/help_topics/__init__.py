@@ -606,7 +606,7 @@ BZR_HOME (Win32)    Directory holding bazaar config dir. Overrides APPDATA and
                     HOME.
 BZR_REMOTE_PATH     Full name of remote 'bzr' command (for bzr+ssh:// URLs).
 BZR_SSH             Path to SSH client, or one of paramiko, openssh, sshcorp,
-                    plink.
+                    plink or lsh.
 BZR_LOG             Location of .bzr.log (use '/dev/null' to suppress log).
 BZR_LOG (Win32)     Location of .bzr.log (use 'NUL' to suppress log).
 BZR_COLUMNS         Override implicit terminal width.
