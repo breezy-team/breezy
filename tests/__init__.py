@@ -27,6 +27,9 @@ from bzrlib import (
 from bzrlib.plugins.git import (
     import_dulwich,
     )
+from fastimport import (
+    commands,
+    )
 
 TestCase = tests.TestCase
 TestCaseInTempDir = tests.TestCaseInTempDir
@@ -73,11 +76,8 @@ class GitBranchBuilder(object):
 
     def _create_blob(self, content):
         self._counter += 1
-        self._write('blob\n')
-        self._write('mark :%d\n' % (self._counter,))
-        self._write('data %d\n' % (len(content),))
-        self._write(content)
-        self._write('\n')
+        blob = commands.BlobCommand(str(self._counter), content)
+        self._write(str(blob)+"\n")
         return self._counter
 
     def set_symlink(self, path, content):
@@ -136,11 +136,11 @@ class GitBranchBuilder(object):
             commit.
         """
         self._counter += 1
-        mark = self._counter
+        mark = str(self._counter)
         if timestamp is None:
             timestamp = int(time.time())
         self._write('commit %s\n' % (self._branch,))
-        self._write('mark :%d\n' % (mark,))
+        self._write('mark :%s\n' % (mark,))
         self._write('committer %s %s %s\n'
                     % (committer, timestamp, timezone))
         message = message.encode('UTF-8')
@@ -148,10 +148,10 @@ class GitBranchBuilder(object):
         self._write(message)
         self._write('\n')
         if base is not None:
-            self._write('from :%d\n' % (base,))
+            self._write('from :%s\n' % (base,))
         if merge is not None:
             for m in merge:
-                self._write('merge :%d\n' % (m,))
+                self._write('merge :%s\n' % (m,))
         self._writelines(self.commit_info)
         self._write('\n')
         self.commit_info = []
@@ -167,7 +167,7 @@ class GitBranchBuilder(object):
             ref = self._branch
         self._write('reset %s\n' % (ref,))
         if mark is not None:
-            self._write('from :%d\n' % mark)
+            self._write('from :%s\n' % mark)
         self._write('\n')
 
     def finish(self):

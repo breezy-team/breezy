@@ -112,7 +112,7 @@ class TestGitBranchBuilder(tests.TestCase):
         builder = tests.GitBranchBuilder(stream)
 
         builder.set_file(u'f\xb5/bar', 'contents\nbar\n', False)
-        self.assertEqual(2, builder.commit('Joe Foo <joe@foo.com>',
+        self.assertEqual('2', builder.commit('Joe Foo <joe@foo.com>',
                                            u'committing f\xb5/bar',
                                            timestamp=1194586400,
                                            timezone='+0100'))
@@ -253,6 +253,6 @@ class TestGitBranchBuilderReal(tests.TestCaseInTempDir):
         r1 = builder.commit('Joe Foo <joe@foo.com>', u'first',
                             timestamp=1194586400)
         mapping = builder.finish()
-        self.assertEqual({1:'44411e8e9202177dd19b6599d7a7991059fa3cb4',
-                          2: 'b0b62e674f67306fddcf72fa888c3b56df100d64',
+        self.assertEqual({'1':'44411e8e9202177dd19b6599d7a7991059fa3cb4',
+                          '2': 'b0b62e674f67306fddcf72fa888c3b56df100d64',
                          }, mapping)
