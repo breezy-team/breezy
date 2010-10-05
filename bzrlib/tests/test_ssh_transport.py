@@ -160,7 +160,7 @@ class SubprocessVendorsTests(TestCase):
             vendor._get_vendor_specific_argv(
                 "user", "host", 100, command=["bzr"]),
             ["ssh", "-oForwardX11=no", "-oForwardAgent=no",
-                "-oClearAllForwardings=yes", "-oProtocol=2",
+                "-oClearAllForwardings=yes",
                 "-oNoHostAuthenticationForLocalhost=yes",
                 "-p", "100",
                 "-l", "user",
@@ -173,7 +173,7 @@ class SubprocessVendorsTests(TestCase):
             vendor._get_vendor_specific_argv(
                 "user", "host", 100, subsystem="sftp"),
             ["ssh", "-oForwardX11=no", "-oForwardAgent=no",
-                "-oClearAllForwardings=yes", "-oProtocol=2",
+                "-oClearAllForwardings=yes",
                 "-oNoHostAuthenticationForLocalhost=yes",
                 "-p", "100",
                 "-l", "user",

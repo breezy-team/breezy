@@ -403,7 +403,7 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
                                   command=None):
         args = [self.executable_path,
                 '-oForwardX11=no', '-oForwardAgent=no',
-                '-oClearAllForwardings=yes', '-oProtocol=2',
+                '-oClearAllForwardings=yes',
                 '-oNoHostAuthenticationForLocalhost=yes']
         if port is not None:
             args.extend(['-p', str(port)])
