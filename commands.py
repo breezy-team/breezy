@@ -207,11 +207,17 @@ class cmd_git_apply(Command):
     takes_args = ["patches*"]
 
     def _apply_patch(self, wt, f):
+        from bzrlib.errors import BzrCommandError
         from dulwich.patch import git_am_patch_split
+        import subprocess
         (c, diff, version) = git_am_patch_split(f)
-        # FIXME: Process diff
-        wt.commit(committer=c.committer,
-                  message=c.message)
+        # FIXME: Cope with git-specific bits in patch
+        p = subprocess.Popen(["patch", "-p1"], stdin=subprocess.PIPE, cwd=wt.basedir)
+        p.communicate(diff)
+        exitcode = p.wait()
+        if exitcode != 0:
+            raise BzrCommandError("error running patch")
+        wt.commit(authors=[c.author], message=c.message)
 
     def run(self, patches_list=None):
         from bzrlib.errors import UncommittedChanges
