@@ -54,6 +54,9 @@ Improvements
 Documentation
 *************
 
+* Correct the documentation for setting up the smart server with Apache.
+  (Neil Martinsen-Burrell, #311518)
+
 API Changes
 ***********
 
