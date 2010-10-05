@@ -18,14 +18,20 @@
 
 This plugin provides facilities for working with Bazaar branches that are
 hosted on Launchpad (http://launchpad.net).  It provides a directory service 
-for referring to Launchpad branches using the "lp:" prefix.  It also 
-provides the following commands:
+for referring to Launchpad branches using the "lp:" prefix.  For example,
+lp:bzr refers to the Bazaar's main development branch and
+lp:~username/project/branch-name can be used to refer to a specific branch.
 
-    register-branch: Register a branch with launchpad.net
-    launchpad-open: Open a Launchpad branch page in your web browser
+This plugin provides a bug tracker so that "bzr commit --fixes lp:1234" will
+record that revision as fixing Launchpad's bug 1234.
+
+The plugin also provides the following commands:
+
     launchpad-login: Show or set the Launchpad user ID
-    launchpad-mirror: Ask Launchpad to mirror a branch now
+    launchpad-open: Open a Launchpad branch page in your web browser
     lp-propose-merge: Propose merging a branch on Launchpad
+    register-branch: Register a branch with launchpad.net
+    launchpad-mirror: Ask Launchpad to mirror a branch now
 
 """
 
