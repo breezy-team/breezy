@@ -31,6 +31,10 @@ New Features
   Also, bzr will recognize if the 'ssh' comand is a symlink to lsh.
   (Matthew Gordon, #374700)
 
+* Add ``-Dmem_dump`` debug flag, which uses meliae to dump memory to 
+  a file upon an out of memory error.
+  (Karl Bielefeldt, #551391)
+
 Bug Fixes
 *********
 
