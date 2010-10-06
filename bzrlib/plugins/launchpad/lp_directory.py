@@ -40,6 +40,19 @@ from bzrlib.plugins.launchpad.account import get_lp_login
 register_urlparse_netloc_protocol('bzr+ssh')
 register_urlparse_netloc_protocol('lp')
 
+_ubuntu_series = {
+    'maverick': 'maverick',
+    'lucid': 'lucid',
+    'karmic': 'karmic',
+    'jaunty': 'jaunty',
+    'hardy': 'hardy',
+    'dapper': 'dapper',
+    }
+
+_debian_series = {
+    'lenny': 'lenny',
+    'squeeze': 'squeeze',
+    }
 
 class LaunchpadDirectory(object):
 
@@ -62,8 +75,37 @@ class LaunchpadDirectory(object):
                  _request_factory=ResolveLaunchpadPathRequest,
                  _lp_login=None):
         """Resolve the base URL for this transport."""
-        service = LaunchpadService.for_url(url)
+        # Do ubuntu: and debianlp: expansions.
         result = urlsplit(url)
+        if result.scheme in ('ubuntu', 'debianlp'):
+            if result.scheme == 'ubuntu':
+                distro = 'ubuntu'
+                distro_series = _ubuntu_series
+            elif result.scheme == 'debianlp':
+                distro = 'debian'
+                distro_series = _debian_series
+            else:
+                raise AssertionError('scheme should be ubuntu: or debianlp:')
+            # Check first part of path to see if it's a known series.  We
+            # should probably ask Launchpad instead of hard-coding these.
+            path_parts = result.path.split('/')
+            series = distro_series.get(path_parts[0])
+            # If there's a series, then the project name is the second part of
+            # the path.  Otherwise, it's the latest series as defined by
+            # Launchpad.
+            if series is None:
+                lp_url_template = 'lp:%(distro)s/%(project)s'
+                project = path_parts[0]
+            else:
+                lp_url_template = 'lp:%(distro)s/%(series)s/%(project)s'
+                project = path_parts[1]
+            # Hack the url and let the following do the final resolution.
+            url = lp_url_template % dict(
+                distro=distro,
+                series=series,
+                project=project)
+            result = urlsplit(url)
+        service = LaunchpadService.for_url(url)
         if _lp_login is None:
             _lp_login = get_lp_login()
         path = result[2].strip('/')

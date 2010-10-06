@@ -352,6 +352,15 @@ def _register_directory():
     directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_directory',
                               'LaunchpadDirectory',
                               'Launchpad-based directory service',)
+    directories.register_lazy(
+        'debianlp:', 'bzrlib.plugins.launchpad.lp_directory',
+        'LaunchpadDirectory',
+        'debianlp: shortcut')
+    directories.register_lazy(
+        'ubuntu:', 'bzrlib.plugins.launchpad.lp_directory',
+        'LaunchpadDirectory',
+        'ubuntu: shortcut')
+
 _register_directory()
 
 

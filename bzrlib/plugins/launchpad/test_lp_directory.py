@@ -237,6 +237,8 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
                 return '!unexpected look_up value!'
 
         directories.remove('lp:')
+        directories.remove('ubuntu:')
+        directories.remove('debianlp:')
         directories.register('lp:', FooService, 'Map lp URLs to local urls')
         self.addCleanup(_register_directory)
         self.addCleanup(directories.remove, 'lp:')
@@ -356,3 +358,117 @@ Content-Type: text/plain; charset=UTF-8\r
     # FIXME: we need to test with a real proxy, I can't find a way so simulate
     # CONNECT without leaving one server hanging the test :-/ Since that maybe
     # related to the leaking tests problems, I'll punt for now -- vila 20091030
+
+
+class TestDebuntuExpansions(TestCaseInTempDir):
+    """Test expansions for ubuntu: and debianlp: schemes."""
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        self.directory = LaunchpadDirectory()
+
+    def _make_factory(self, package='foo', distro='ubuntu', series=None):
+        if series is None:
+            path = '%s/%s' % (distro, package)
+            url_suffix = '~branch/%s/%s' % (distro, package)
+        else:
+            path = '%s/%s/%s' % (distro, series, package)
+            url_suffix = '~branch/%s/%s/%s' % (distro, series, package)
+        return FakeResolveFactory(
+            self, path, dict(urls=[
+                'http://bazaar.launchpad.net/' + url_suffix]))
+
+    # Bogus distro.
+
+    def test_bogus_distro(self):
+        self.assertRaises(errors.InvalidURL,
+                          self.directory._resolve, 'gentoo:foo')
+
+    def test_trick_bogus_distro_u(self):
+        self.assertRaises(errors.InvalidURL,
+                          self.directory._resolve, 'utube:foo')
+
+    def test_trick_bogus_distro_d(self):
+        self.assertRaises(errors.InvalidURL,
+                          self.directory._resolve, 'debuntu:foo')
+
+    def test_missing_ubuntu_distroseries(self):
+        # Launchpad does not hold source packages for Intrepid.  Missing or
+        # bogus distroseries is treated like a project.
+        factory = self._make_factory(package='intrepid')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/ubuntu/intrepid',
+            self.directory._resolve('ubuntu:intrepid', factory))
+
+    def test_missing_debian_distroseries(self):
+        # Launchpad does not hold source packages for unstable.  Missing or
+        # bogus distroseries is treated like a project.
+        factory = self._make_factory(package='sid', distro='debian')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/debian/sid',
+            self.directory._resolve('debianlp:sid', factory))
+
+    # Ubuntu Default distro series.
+
+    def test_ubuntu_default_distroseries_expansion(self):
+        factory = self._make_factory(package='foo')
+        self.assertEqual('http://bazaar.launchpad.net/~branch/ubuntu/foo',
+                         self.directory._resolve('ubuntu:foo', factory)),
+
+    def test_ubuntu_maverick_distroseries_expansion(self):
+        factory = self._make_factory(package='foo', series='maverick')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/ubuntu/maverick/foo',
+            self.directory._resolve('ubuntu:maverick/foo', factory)),
+
+    def test_ubuntu_lucid_distroseries_expansion(self):
+        factory = self._make_factory(package='foo', series='lucid')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/ubuntu/lucid/foo',
+            self.directory._resolve('ubuntu:lucid/foo', factory)),
+
+    def test_ubuntu_karmic_distroseries_expansion(self):
+        factory = self._make_factory(package='foo', series='karmic')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/ubuntu/karmic/foo',
+            self.directory._resolve('ubuntu:karmic/foo', factory)),
+
+    def test_ubuntu_jaunty_distroseries_expansion(self):
+        factory = self._make_factory(package='foo', series='jaunty')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/ubuntu/jaunty/foo',
+            self.directory._resolve('ubuntu:jaunty/foo', factory)),
+
+    def test_ubuntu_hardy_distroseries_expansion(self):
+        factory = self._make_factory(package='foo', series='hardy')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/ubuntu/hardy/foo',
+            self.directory._resolve('ubuntu:hardy/foo', factory)),
+
+    def test_ubuntu_dapper_distroseries_expansion(self):
+        factory = self._make_factory(package='foo', series='dapper')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/ubuntu/dapper/foo',
+            self.directory._resolve('ubuntu:dapper/foo', factory)),
+
+    # Debian default distro series.
+
+    def test_debian_default_distroseries_expansion(self):
+        factory = self._make_factory(package='foo', distro='debian')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/debian/foo',
+            self.directory._resolve('debianlp:foo', factory))
+
+    def test_debian_squeeze_distroseries_expansion(self):
+        factory = self._make_factory(
+            package='foo', distro='debian', series='squeeze')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/debian/squeeze/foo',
+            self.directory._resolve('debianlp:squeeze/foo', factory)),
+
+    def test_debian_lenny_distroseries_expansion(self):
+        factory = self._make_factory(
+            package='foo', distro='debian', series='lenny')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/debian/lenny/foo',
+            self.directory._resolve('debianlp:lenny/foo', factory)),
