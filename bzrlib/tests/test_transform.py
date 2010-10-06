@@ -853,6 +853,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         rename.apply()
 
     def test_rename_fails(self):
+        self.requireFeature(features.not_running_as_root)
         # see https://bugs.launchpad.net/bzr/+bug/491763
         create, root_id = self.get_transform()
         first_dir = create.new_directory('first-dir', root_id, 'first-id')
