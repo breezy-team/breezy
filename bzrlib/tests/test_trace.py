@@ -26,6 +26,7 @@ import sys
 import tempfile
 
 from bzrlib import (
+    debug,
     errors,
     trace,
     )
@@ -82,6 +83,16 @@ class TestTrace(TestCase):
         msg = _format_exception()
         self.assertEquals(msg,
             "bzr: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
+
+    def test_format_mem_dump(self):
+        debug.debug_flags.add('mem_dump')
+        try:
+            raise MemoryError()
+        except MemoryError:
+            pass
+        msg = _format_exception()
+        self.assertStartsWith(msg,
+            "bzr: out of memory\nMemory dumped to ")
 
     def test_format_os_error(self):
         try:
