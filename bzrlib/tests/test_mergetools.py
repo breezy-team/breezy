@@ -82,3 +82,37 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertTrue(mt.is_available())
         mt.set_executable("ThisExecutableShouldReallyNotExist")
         self.assertFalse(mt.is_available())
+        
+    def test_empty_commandline(self):
+        mt = mergetools.MergeTool('')
+        self.assertEquals('', mt.get_executable())
+        self.assertEquals('', mt.get_arguments())
+        
+    def test_no_arguments(self):
+        mt = mergetools.MergeTool('tool')
+        self.assertEquals('tool', mt.get_executable())
+        self.assertEquals('', mt.get_arguments())
+        
+    def test_get_merge_tools(self):
+        config = FakeConfig()
+        config.set_mergetools(['kdiff3 %b %t %o -o %r', 'winmergeu %r', ''])
+        tools = mergetools.get_merge_tools(config)
+        self.assertEquals(3, len(tools))
+        self.assertEquals('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
+        self.assertEquals('winmergeu %r', tools[1].get_commandline())
+        self.assertEquals('', tools[2].get_commandline())
+
+
+class FakeConfig(object):
+    """
+    Just enough of the Config interface to fool the mergetools module.
+    """
+    def set_mergetools(self, value):
+        self.mergetools = value
+    
+    def get_user_option_as_list(self, option):
+        if option == 'mergetools':
+            return self.mergetools
+        else:
+            raise AssertionError('unknown option "%s"' % option)
+    

@@ -79,10 +79,16 @@ class MergeTool(object):
         return self._commandline
     
     def get_executable(self):
-        return cmdline.split(self._commandline)[0]
+        parts = cmdline.split(self._commandline)
+        if len(parts) < 1:
+            return ''
+        return parts[0]
     
     def get_arguments(self):
-        return ' '.join(cmdline.split(self._commandline)[1:])
+        parts = cmdline.split(self._commandline)
+        if len(parts) < 2:
+            return ''
+        return ' '.join(parts[1:])
         
     def set_executable(self, executable):
         split_cmdline = cmdline.split(self._commandline)
