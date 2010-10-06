@@ -81,7 +81,7 @@ class TestTrace(TestCase):
             pass
         msg = _format_exception()
         self.assertEquals(msg,
-            "bzr: out of memory\n")
+            "bzr: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
 
     def test_format_os_error(self):
         try:
