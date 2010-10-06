@@ -1663,7 +1663,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             change_reporter=None, possible_transports=None, local=False):
+             change_reporter=None, possible_transports=None, local=False,
+             show_base=False):
         source.lock_read()
         try:
             old_revision_info = self.branch.last_revision_info()
@@ -1683,7 +1684,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                 basis_tree,
                                 this_tree=self,
                                 pb=None,
-                                change_reporter=change_reporter)
+                                change_reporter=change_reporter,
+                                show_base=show_base)
                     basis_root_id = basis_tree.get_root_id()
                     new_root_id = new_basis_tree.get_root_id()
                     if basis_root_id != new_root_id:
@@ -2261,7 +2263,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     _marker = object()
 
     def update(self, change_reporter=None, possible_transports=None,
-               revision=None, old_tip=_marker):
+               revision=None, old_tip=_marker, show_base=False):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -2304,12 +2306,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             else:
                 if old_tip is self._marker:
                     old_tip = None
-            return self._update_tree(old_tip, change_reporter, revision)
+            return self._update_tree(old_tip, change_reporter, revision, show_base)
         finally:
             self.unlock()
 
     @needs_tree_write_lock
-    def _update_tree(self, old_tip=None, change_reporter=None, revision=None):
+    def _update_tree(self, old_tip=None, change_reporter=None, revision=None,
+                     show_base=False):
         """Update a tree to the master branch.
 
         :param old_tip: if supplied, the previous tip revision the branch,
@@ -2342,7 +2345,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             other_tree = self.branch.repository.revision_tree(old_tip)
             nb_conflicts = merge.merge_inner(self.branch, other_tree,
                                              base_tree, this_tree=self,
-                                             change_reporter=change_reporter)
+                                             change_reporter=change_reporter,
+                                             show_base=show_base)
             if nb_conflicts:
                 self.add_parent_tree((old_tip, other_tree))
                 trace.note('Rerun update after fixing the conflicts.')
@@ -2372,7 +2376,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
             nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
                                              this_tree=self,
-                                             change_reporter=change_reporter)
+                                             change_reporter=change_reporter,
+                                             show_base=show_base)
             self.set_last_revision(revision)
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:

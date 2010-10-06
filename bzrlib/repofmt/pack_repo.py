@@ -722,7 +722,7 @@ class Packer(object):
         :return: A Pack object, or None if nothing was copied.
         """
         # open a pack - using the same name as the last temporary file
-        # - which has already been flushed, so its safe.
+        # - which has already been flushed, so it's safe.
         # XXX: - duplicate code warning with start_write_group; fix before
         #      considering 'done'.
         if self._pack_collection._new_pack is not None:
@@ -1292,7 +1292,7 @@ class ReconcilePacker(Packer):
         # reinserted, and if d3 has incorrect parents it will also be
         # reinserted. If we insert d3 first, d2 is present (as it was bulk
         # copied), so we will try to delta, but d2 is not currently able to be
-        # extracted because it's basis d1 is not present. Topologically sorting
+        # extracted because its basis d1 is not present. Topologically sorting
         # addresses this. The following generates a sort for all the texts that
         # are being inserted without having to reference the entire text key
         # space (we only topo sort the revisions, which is smaller).
@@ -1600,9 +1600,9 @@ class RepositoryPackCollection(object):
         pack_operations = [[0, []]]
         # plan out what packs to keep, and what to reorganise
         while len(existing_packs):
-            # take the largest pack, and if its less than the head of the
+            # take the largest pack, and if it's less than the head of the
             # distribution chart we will include its contents in the new pack
-            # for that position. If its larger, we remove its size from the
+            # for that position. If it's larger, we remove its size from the
             # distribution chart
             next_pack_rev_count, next_pack = existing_packs.pop(0)
             if next_pack_rev_count >= pack_distribution[0]:
@@ -1643,7 +1643,7 @@ class RepositoryPackCollection(object):
 
         :return: True if the disk names had not been previously read.
         """
-        # NB: if you see an assertion error here, its probably access against
+        # NB: if you see an assertion error here, it's probably access against
         # an unlocked repo. Naughty.
         if not self.repo.is_locked():
             raise errors.ObjectNotLocked(self.repo)
@@ -1946,7 +1946,7 @@ class RepositoryPackCollection(object):
                     # disk index because the set values are the same, unless
                     # the only index shows up as deleted by the set difference
                     # - which it may. Until there is a specific test for this,
-                    # assume its broken. RBC 20071017.
+                    # assume it's broken. RBC 20071017.
                     self._remove_pack_from_memory(self.get_pack_by_name(name))
                     self._names[name] = sizes
                     self.get_pack_by_name(name)
@@ -2017,9 +2017,9 @@ class RepositoryPackCollection(object):
         """
         # The ensure_loaded call is to handle the case where the first call
         # made involving the collection was to reload_pack_names, where we 
-        # don't have a view of disk contents. Its a bit of a bandaid, and
-        # causes two reads of pack-names, but its a rare corner case not struck
-        # with regular push/pull etc.
+        # don't have a view of disk contents. It's a bit of a bandaid, and
+        # causes two reads of pack-names, but it's a rare corner case not
+        # struck with regular push/pull etc.
         first_read = self.ensure_loaded()
         if first_read:
             return True
