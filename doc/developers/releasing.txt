@@ -24,6 +24,122 @@ Preconditions
 
      bzr branch lp:bzr-pqm ~/.bazaar/plugins/pqm
 
+Release provisional planning
+============================
+
+We currently maintain four series. Concurrently releasing them all at the
+same time makes it harder to shorten the delay between the source
+availability and the package building longer than necessary (we delay the
+official announcement until most of our users can install the new release).
+
+In order to continue to do time-based releases, we need to plan the
+releases by series to minimize the collisions.
+
+We want to respect the following rules::
+
+ * the most recent series should release once a month,
+
+ * the most recent stable series should release every other month (based
+   on the amount of bug fixes, this can be shorter or longer depending
+   on the bugs importance),
+
+ * previous series should relesase on a a regular basis without
+   interfering with the most recent series with a decreasing order of
+   priority (again this should be based on bugs importance and user
+   feedback,
+
+ * the death of a series should be planned ahead of time. 6 months
+   should give enough time to our users to migrate to a more recent
+   series,
+
+ * there should not be more than 2 releases in the same week (but the
+   Release Manager is free to ignore this (get in touch with packagers
+   though),
+
+ * the series are aligned with Ubuntu releases for convenience since we
+   create a new series every 6 months. This means that we support the
+   stable series for 2 years. Note that we also propose the most recent
+   stable series via the ppa, so whether we keep supporting LTS directly
+   or via the ppa is still an open question.
+
+
+2.3 series
+----------
+
+The 2.3 series has entered the beta phase and 2.3.0 should be released soon
+enough to be included into Natty Narwhal. This gives the following expected
+releases::
+
+ * 2.3.0: 2011-02-03
+
+ * 2.3rc2: 2011-01-06
+
+ * 2.3rc1: 2010-12-02
+
+ * 2.3b3: 2010-11-04
+
+ * 2.3b2: 2010-10-08
+
+ * 2.3.b1: 2010-09-19
+
+2.2 series
+----------
+
+The 2.2 series is the current stable release and is included in Maverick
+Meerkat. The planned releases are::
+
+ * 2.2.3: 2010-12-16
+
+ * 2.2.2: 2010-11-18
+
+ * 2.2.1: 2010-09-17
+
+ * 2.2.0: 2010-08-06
+
+
+2.1 series
+----------
+
+The 2.1 series is the stable release included in Lucid Lynx. The planned
+releases are::
+
+ * 2.1.6: 2011-01
+
+ * 2.1.5: 2010-12
+
+ * 2.1.4: 2010-11
+
+ * 2.1.3: 2010-09-16
+
+ * 2.1.2: 2010-05-27
+
+ * 2.1.1: 2010-03-02
+
+ * 2.1.0: 2010-02-11
+
+
+2.0 series
+----------
+
+The 2.0 series is the stable release included in Karmic Koala. The planned
+release are::
+
+ * 2.0.7: 2011-03 will be the last release for the 2.0 series.
+
+ * 2.0.6: 2010-09-16
+
+ * 2.0.5: 2010-03-22
+
+ * 2.0.4: 2010-01-21
+
+ * 2.0.3: 2009-12-14
+
+ * 2.0.2: 2009-11-02
+
+ * 2.0.1: 2009-10-14
+
+ * 2.0.0: 2009-09-21
+
 
 At the start of a release cycle
 ===============================
@@ -180,6 +296,9 @@ Update the source code
 
       # API compatibility version: bzrlib is currently API compatible with 1.7.
 
+   Note that the NEWS file formatting has evolved, this example needs to
+   be updated.
+
 #. Tag the new release::
 
      bzr tag bzr-1.14
@@ -235,16 +354,18 @@ Publishing the source tarball
    this changes what the download widget on the Launchpad bzr home
    page shows, so don't stop the release process yet, or platform binary
    installers won't be made and the download list will stay very small!
-   <https://bugs.edge.launchpad.net/launchpad/+bug/586445>
+   <https://bugs.launchpad.net/launchpad/+bug/586445>
 
 
 Announcing the source freeze
 ----------------------------
 
-#. Post to the ``bazaar`` list, saying that the source has been frozen.
-   This is the cue for platform maintainers and plugin authors to update
-   their code.  This is done before the general public announcement of the
-   release.
+#. Post to the ``bazaar`` list, saying that the source has been frozen
+   (gone gold). Be extra clear that this is only a *source* release
+   targeted at packagers and installer builders (see
+   <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue
+   for platform maintainers and plugin authors to update their code.  This
+   is done before the general public announcement of the release.
 
 
 Kick off the next cycle
@@ -300,11 +421,11 @@ Now that the release is publicly available, tell people about it.
 
       Subject: bzr x.y.z released!
 
-      <<Summary paragraph from news>>
-
       The Bazaar team is happy to announce availability of a new
       release of the bzr adaptive version control system.
       Bazaar is part of the GNU system <http://gnu.org/>.
+
+      <<Summary paragraph from news>>
 
       Thanks to everyone who contributed patches, suggestions, and
       feedback.
