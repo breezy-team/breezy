@@ -68,6 +68,9 @@ Improvements
 Documentation
 *************
 
+* Provide more detailed help on the Launchpad plugin at "bzr help
+  plugins/launchpad".  (Neil Martinsen-Burrell, #589379)
+
 API Changes
 ***********
 
