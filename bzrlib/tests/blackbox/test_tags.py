@@ -25,7 +25,6 @@ from bzrlib.branch import (
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.tests.script import TestCaseWithTransportAndScript
 from bzrlib.repository import (
     Repository,
     )
@@ -240,21 +239,16 @@ class TestTagging(TestCaseWithTransport):
         ## self.assertContainsRe(out,
         ##         'Conflicting tags:\n.*' + tagname.encode('utf-8'))
 
-
-class TestTagScript(TestCaseWithTransportAndScript):
-
     def test_tag_quiet(self):
-        self.run_script("""
-$ bzr init
-$ bzr tag --quiet test1
-2>
-""")
+        t1 = self.make_branch_and_tree('')
+        out, err = self.run_bzr('tag --quiet test1')
+        self.assertEqual('', out)
+        self.assertEqual('', err)
 
     def test_tag_delete_quiet(self):
-        self.run_script("""
-$ bzr init
-$ bzr tag test1
-2>Created tag test1.
-$ bzr tag --delete --quiet test1
-2>
-""")
+        t1 = self.make_branch_and_tree('')
+        self.run_bzr('tag test1')
+        out, err = self.run_bzr('tag --delete --quiet test1')
+        self.assertEqual('', out)
+        self.assertEqual('', err)
+
