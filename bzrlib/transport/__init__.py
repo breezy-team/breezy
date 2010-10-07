@@ -1565,6 +1565,9 @@ class ConnectedTransport(Transport):
 
 
 def get_transport(base, possible_transports=None):
+    return _get_transport(base, possible_transports)
+
+def _get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
     :param base: either a URL or a directory name.

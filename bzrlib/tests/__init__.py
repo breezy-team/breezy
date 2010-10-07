@@ -2430,7 +2430,7 @@ class TestCaseWithMemoryTransport(TestCase):
                 self.addCleanup(t.disconnect)
             return t
 
-        orig_get_transport = self.overrideAttr(_mod_transport, 'get_transport',
+        orig_get_transport = self.overrideAttr(_mod_transport, '_get_transport',
                                                get_transport_with_cleanup)
         self._make_test_root()
         self.addCleanup(os.chdir, os.getcwdu())
