@@ -48,6 +48,13 @@ _ubuntu_series = {
     'jaunty': 'jaunty',
     'hardy': 'hardy',
     'dapper': 'dapper',
+    'n': 'natty',
+    'm': 'maverick',
+    'l': 'lucid',
+    'k': 'karmic',
+    'j': 'jaunty',
+    'h': 'hardy',
+    'd': 'dapper',
     }
 
 _debian_series = {
@@ -87,19 +94,25 @@ class LaunchpadDirectory(object):
                 distro_series = _debian_series
             else:
                 raise AssertionError('scheme should be ubuntu: or debianlp:')
-            # Check first part of path to see if it's a known series.  We
-            # should probably ask Launchpad instead of hard-coding these.
+            # Split the path.  It's either going to be 'project' or
+            # 'series/project', but recognize that it may be a series we don't
+            # know about.
             path_parts = result.path.split('/')
-            series = distro_series.get(path_parts[0])
-            # If there's a series, then the project name is the second part of
-            # the path.  Otherwise, it's the latest series as defined by
-            # Launchpad.
-            if series is None:
+            if len(path_parts) == 1:
+                # It's just a project name.
                 lp_url_template = 'lp:%(distro)s/%(project)s'
                 project = path_parts[0]
-            else:
+                series = None
+            elif len(path_parts) == 2:
+                # It's a series and project.
                 lp_url_template = 'lp:%(distro)s/%(series)s/%(project)s'
-                project = path_parts[1]
+                series, project = path_parts
+            else:
+                # There are either 0 or > 2 path parts, neither of which is
+                # supported for these schemes.
+                raise errors.InvalidURL('Bad path: %s' % result.path)
+            # Expand any series shortcuts, but keep unknown series.
+            series = distro_series.get(series, series)
             # Hack the url and let the following do the final resolution.
             url = lp_url_template % dict(
                 distro=distro,
