@@ -5,9 +5,16 @@
 import getopt, re, sys
 try:
     from launchpadlib.launchpad import Launchpad
+    from lazr.restfulclient import errors
 except ImportError:
     print "Please install launchpadlib from lp:launchpadlib"
     sys.exit(1)
+try:
+    import hydrazine
+except ImportError:
+    print "Please install hydrazine from lp:launchpadlib"
+    sys.exit(1)
+
 
 options, args = getopt.gnu_getopt(sys.argv, "l", ["launchpad"])
 options = dict(options)
@@ -61,16 +68,42 @@ def read_news_bugnos(path):
         f.close()
 
 
-lp = Launchpad.login_anonymously('bzr-check-newsbugs', 'edge', version='1.0')
+def print_bug_url(bugno):
+    print '<URL:http://pad.lv/%s>' % (bugno,)
 
+launchpad = hydrazine.create_session()
 bugnos = read_news_bugnos(args[1])
 for bugno, section in bugnos:
-    bug = lp.bugs[bugno]
+    try:
+        bug = launchpad.bugs[bugno]
+    except errors.HTTPError, e:
+        if e.response.status == 401:
+            print_bug_url(bugno)
+            # Private, we can't access the bug content
+            print '%s is private and cannot be accessed' % (bugno,)
+            continue
+        raise
+     
     found_bzr = False
+    fix_released = False
     for task in bug.bug_tasks:
-        if task.bug_target_name == "bzr":
+        parts = task.bug_target_name.split('/')
+        if len(parts) == 1:
+            project = parts[0]
+            distribution = None
+        else:
+            project = parts[0]
+            distribution = parts[1]
+        if project == "bzr":
             found_bzr = True
-            if task.status != "Fix Released":
-                report_notmarked(bug, task, section)
+            if not fix_released and task.status == "Fix Released":
+                # We could check that the NEWS section and task_status are in
+                # sync, but that would be overkill. (case at hand: bug #416732)
+                fix_released = True
+
     if not found_bzr:
+        print_bug_url(bugno)
         print "Bug %d was mentioned in NEWS but is not marked as affecting bzr" % bugno
+    elif not fix_released:
+        print_bug_url(bugno)
+        report_notmarked(bug, task, section)

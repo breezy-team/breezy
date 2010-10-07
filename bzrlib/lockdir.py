@@ -347,6 +347,8 @@ class LockDir(lock.Lock):
         This is a UI centric function: it uses the bzrlib.ui.ui_factory to
         prompt for input if a lock is detected and there is any doubt about
         it possibly being still active.
+
+        :returns: LockResult for the broken lock.
         """
         self._check_not_locked()
         try:
@@ -361,7 +363,9 @@ class LockDir(lock.Lock):
             if bzrlib.ui.ui_factory.confirm_action(
                 "Break %(lock_info)s", 'bzrlib.lockdir.break', 
                 dict(lock_info=lock_info)):
-                self.force_break(holder_info)
+                result = self.force_break(holder_info)
+                bzrlib.ui.ui_factory.show_message(
+                    "Broke lock %s" % result.lock_url)
 
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
@@ -378,6 +382,8 @@ class LockDir(lock.Lock):
         After the lock is broken it will not be held by any process.
         It is possible that another process may sneak in and take the
         lock before the breaking process acquires it.
+
+        :returns: LockResult for the broken lock.
         """
         if not isinstance(dead_holder_info, dict):
             raise ValueError("dead_holder_info: %r" % dead_holder_info)
@@ -403,6 +409,7 @@ class LockDir(lock.Lock):
                                  current_info.get('nonce'))
         for hook in self.hooks['lock_broken']:
             hook(result)
+        return result
 
     def force_break_corrupt(self, corrupt_info_lines):
         """Release a lock that has been corrupted.

@@ -7,13 +7,13 @@ See also: `Bazaar Developer Document Catalog <index.html>`_.
 Background
 ----------
 
-We build Ubuntu ``.deb`` packages for Bazaar as an important part of the release
-process.  These packages are hosted in a few `Personal Package Archives (PPA)`__ on
-Launchpad.
+We build Ubuntu ``.deb`` packages for Bazaar as an important part of the
+release process.  These packages are hosted in a few `Personal Package
+Archives (PPA)`__ on Launchpad.
 
   __ https://help.launchpad.net/PPAQuickStart
 
-As of June 2010, there are three PPAs:
+As of September 2010, there are four PPAs:
 
 <https://launchpad.net/~bzr/+archive/ppa>
     Final released versions and updates.

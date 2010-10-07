@@ -923,13 +923,16 @@ class cmd_pull(Command):
                  "branch.  Local pulls are not applied to "
                  "the master branch."
             ),
+        Option('show-base',
+            help="Show base revision text in conflicts.")
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
             revision=None, verbose=False,
-            directory=None, local=False):
+            directory=None, local=False,
+            show_base=False):
         # FIXME: too much stuff is in the command class
         revision_id = None
         mergeable = None
@@ -943,6 +946,9 @@ class cmd_pull(Command):
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
             self.add_cleanup(branch_to.lock_write().unlock)
+
+        if tree_to is None and show_base:
+            raise errors.BzrCommandError("Need working tree for --show-base.")
 
         if local and not branch_to.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -994,7 +1000,8 @@ class cmd_pull(Command):
                 view_info=view_info)
             result = tree_to.pull(
                 branch_from, overwrite, revision_id, change_reporter,
-                possible_transports=possible_transports, local=local)
+                possible_transports=possible_transports, local=local,
+                show_base=show_base)
         else:
             result = branch_to.pull(
                 branch_from, overwrite, revision_id, local=local)
@@ -1354,16 +1361,22 @@ class cmd_update(Command):
     If you want to discard your local changes, you can just do a
     'bzr revert' instead of 'bzr commit' after the update.
 
+    If you want to restore a file that has been removed locally, use
+    'bzr revert' instead of 'bzr update'.
+
     If the tree's branch is bound to a master branch, it will also update
     the branch from the master.
     """
 
     _see_also = ['pull', 'working-trees', 'status-flags']
     takes_args = ['dir?']
-    takes_options = ['revision']
+    takes_options = ['revision',
+                     Option('show-base',
+                            help="Show base revision text in conflicts."),
+                     ]
     aliases = ['up']
 
-    def run(self, dir='.', revision=None):
+    def run(self, dir='.', revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError(
                         "bzr update --revision takes exactly one revision")
@@ -1409,7 +1422,8 @@ class cmd_update(Command):
                 change_reporter,
                 possible_transports=possible_transports,
                 revision=revision_id,
-                old_tip=old_tip)
+                old_tip=old_tip,
+                show_base=show_base)
         except errors.NoSuchRevision, e:
             raise errors.BzrCommandError(
                                   "branch has no revision %s\n"
@@ -4838,11 +4852,17 @@ class cmd_break_lock(Command):
     takes_options = [
         Option('config',
                help='LOCATION is the directory where the config lock is.'),
+        Option('force',
+            help='Do not ask for confirmation before breaking the lock.'),
         ]
 
-    def run(self, location=None, config=False):
+    def run(self, location=None, config=False, force=False):
         if location is None:
             location = u'.'
+        if force:
+            ui.ui_factory = ui.ConfirmationUserInterfacePolicy(ui.ui_factory,
+                None,
+                {'bzrlib.lockdir.break': True})
         if config:
             conf = _mod_config.LockableConfig(file_name=location)
             conf.break_lock()
@@ -4942,7 +4962,7 @@ class cmd_join(Command):
     not part of it.  (Such trees can be produced by "bzr split", but also by
     running "bzr branch" with the target inside a tree.)
 
-    The result is a combined tree, with the subtree no longer an independant
+    The result is a combined tree, with the subtree no longer an independent
     part.  This is marked as a merge of the subtree into the containing tree,
     and all history is preserved.
     """
