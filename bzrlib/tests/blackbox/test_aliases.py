@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,10 +18,10 @@
 
 import os
 
+from bzrlib import config
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
-from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
 class TestAliases(TestCaseWithTransport):
@@ -35,18 +35,11 @@ class TestAliases(TestCaseWithTransport):
             return self.run_bzr(args, **kwargs)[1]
 
 
-        if os.path.isfile(config_filename()):
-            # Something is wrong in environment,
-            # we risk overwriting users config
-            self.assert_(config_filename() + "exists, abort")
-
-        ensure_config_dir_exists()
-        CONFIG=("[ALIASES]\n"
-                "c=cat\n"
-                "c1=cat -r 1\n"
-                "c2=cat -r 1 -r2\n")
-
-        open(config_filename(),'wb').write(CONFIG)
+        conf = config.GlobalConfig.from_string('''[ALIASES]
+c=cat
+c1=cat -r 1
+c2=cat -r 1 -r2
+''', save=True)
 
         str1 = 'foo\n'
         str2 = 'bar\n'

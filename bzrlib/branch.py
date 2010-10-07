@@ -25,6 +25,7 @@ from bzrlib import (
         bzrdir,
         cache_utf8,
         config as _mod_config,
+        controldir,
         debug,
         errors,
         lockdir,
@@ -64,7 +65,7 @@ BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
 BZR_BRANCH_FORMAT_6 = "Bazaar Branch Format 6 (bzr 0.15)\n"
 
 
-class Branch(bzrdir.ControlComponent):
+class Branch(controldir.ControlComponent):
     """Branch holding a history of revisions.
 
     :ivar base:
@@ -246,9 +247,13 @@ class Branch(bzrdir.ControlComponent):
         if not local and not config.has_explicit_nickname():
             try:
                 master = self.get_master_branch(possible_transports)
+                if master and self.user_url == master.user_url:
+                    raise errors.RecursiveBind(self.user_url)
                 if master is not None:
                     # return the master branch value
                     return master.nick
+            except errors.RecursiveBind, e:
+                raise e
             except errors.BzrError, e:
                 # Silently fall back to local implicit nick if the master is
                 # unavailable
@@ -801,28 +806,56 @@ class Branch(bzrdir.ControlComponent):
             if len(old_repository._fallback_repositories) != 1:
                 raise AssertionError("can't cope with fallback repositories "
                     "of %r" % (self.repository,))
-            # unlock it, including unlocking the fallback
+            # Open the new repository object.
+            # Repositories don't offer an interface to remove fallback
+            # repositories today; take the conceptually simpler option and just
+            # reopen it.  We reopen it starting from the URL so that we
+            # get a separate connection for RemoteRepositories and can
+            # stream from one of them to the other.  This does mean doing
+            # separate SSH connection setup, but unstacking is not a
+            # common operation so it's tolerable.
+            new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
+            new_repository = new_bzrdir.find_repository()
+            if new_repository._fallback_repositories:
+                raise AssertionError("didn't expect %r to have "
+                    "fallback_repositories"
+                    % (self.repository,))
+            # Replace self.repository with the new repository.
+            # Do our best to transfer the lock state (i.e. lock-tokens and
+            # lock count) of self.repository to the new repository.
+            lock_token = old_repository.lock_write().repository_token
+            self.repository = new_repository
+            if isinstance(self, remote.RemoteBranch):
+                # Remote branches can have a second reference to the old
+                # repository that need to be replaced.
+                if self._real_branch is not None:
+                    self._real_branch.repository = new_repository
+            self.repository.lock_write(token=lock_token)
+            if lock_token is not None:
+                old_repository.leave_lock_in_place()
             old_repository.unlock()
+            if lock_token is not None:
+                # XXX: self.repository.leave_lock_in_place() before this
+                # function will not be preserved.  Fortunately that doesn't
+                # affect the current default format (2a), and would be a
+                # corner-case anyway.
+                #  - Andrew Bennetts, 2010/06/30
+                self.repository.dont_leave_lock_in_place()
+            old_lock_count = 0
+            while True:
+                try:
+                    old_repository.unlock()
+                except errors.LockNotHeld:
+                    break
+                old_lock_count += 1
+            if old_lock_count == 0:
+                raise AssertionError(
+                    'old_repository should have been locked at least once.')
+            for i in range(old_lock_count-1):
+                self.repository.lock_write()
+            # Fetch from the old repository into the new.
             old_repository.lock_read()
             try:
-                # Repositories don't offer an interface to remove fallback
-                # repositories today; take the conceptually simpler option and just
-                # reopen it.  We reopen it starting from the URL so that we
-                # get a separate connection for RemoteRepositories and can
-                # stream from one of them to the other.  This does mean doing
-                # separate SSH connection setup, but unstacking is not a
-                # common operation so it's tolerable.
-                new_bzrdir = bzrdir.BzrDir.open(self.bzrdir.root_transport.base)
-                new_repository = new_bzrdir.find_repository()
-                self.repository = new_repository
-                if self.repository._fallback_repositories:
-                    raise AssertionError("didn't expect %r to have "
-                        "fallback_repositories"
-                        % (self.repository,))
-                # this is not paired with an unlock because it's just restoring
-                # the previous state; the lock's released when set_stacked_on_url
-                # returns
-                self.repository.lock_write()
                 # XXX: If you unstack a branch while it has a working tree
                 # with a pending merge, the pending-merged revisions will no
                 # longer be present.  You can (probably) revert and remerge.
@@ -1489,7 +1522,7 @@ class BranchFormat(object):
      * an open routine.
 
     Formats are placed in an dict by their format string for reference
-    during branch opening. Its not required that these be instances, they
+    during branch opening. It's not required that these be instances, they
     can be classes themselves with class methods - it simply depends on
     whether state is needed for a given format or not.
 
@@ -1786,7 +1819,7 @@ class BranchHooks(Hooks):
             "with a bzrlib.branch.PullResult object and only runs in the "
             "bzr client.", (0, 15), None))
         self.create_hook(HookPoint('pre_commit',
-            "Called after a commit is calculated but before it is is "
+            "Called after a commit is calculated but before it is "
             "completed. pre_commit is called with (local, master, old_revno, "
             "old_revid, future_revno, future_revid, tree_delta, future_tree"
             "). old_revid is NULL_REVISION for the first commit to a branch, "
@@ -1829,7 +1862,7 @@ class BranchHooks(Hooks):
             "all are called with the url returned from the previous hook."
             "The order is however undefined.", (1, 9), None))
         self.create_hook(HookPoint('automatic_tag_name',
-            "Called to determine an automatic tag name for a revision."
+            "Called to determine an automatic tag name for a revision. "
             "automatic_tag_name is called with (branch, revision_id) and "
             "should return a tag name or None if no tag name could be "
             "determined. The first non-None tag name returned will be used.",
@@ -1926,12 +1959,7 @@ class BranchInitHookParams(object):
         return self.__dict__ == other.__dict__
 
     def __repr__(self):
-        if self.branch:
-            return "<%s of %s>" % (self.__class__.__name__, self.branch)
-        else:
-            return "<%s of format:%s bzrdir:%s>" % (
-                self.__class__.__name__, self.branch,
-                self.format, self.bzrdir)
+        return "<%s of %s>" % (self.__class__.__name__, self.branch)
 
 
 class SwitchHookParams(object):
@@ -3075,8 +3103,12 @@ class PullResult(_Result):
     :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
     """
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def __int__(self):
-        # DEPRECATED: pull used to return the change in revno
+        """Return the relative change in revno.
+
+        :deprecated: Use `new_revno` and `old_revno` instead.
+        """
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
@@ -3107,8 +3139,12 @@ class BranchPushResult(_Result):
         target, otherwise it will be None.
     """
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def __int__(self):
-        # DEPRECATED: push used to return the change in revno
+        """Return the relative change in revno.
+
+        :deprecated: Use `new_revno` and `old_revno` instead.
+        """
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
@@ -3281,6 +3317,15 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.push)
 
+    @needs_write_lock
+    def copy_content_into(self, revision_id=None):
+        """Copy the content of source into target
+
+        revision_id: if not None, the revision history in the new branch will
+                     be truncated to end with revision_id.
+        """
+        raise NotImplementedError(self.copy_content_into)
+
 
 class GenericInterBranch(InterBranch):
     """InterBranch implementation that uses public Branch functions."""
@@ -3435,7 +3480,7 @@ class GenericInterBranch(InterBranch):
                 # push into the master from the source branch.
                 self.source._basic_push(master_branch, overwrite, stop_revision)
                 # and push into the target branch from the source. Note that we
-                # push from the source branch again, because its considered the
+                # push from the source branch again, because it's considered the
                 # highest bandwidth repository.
                 result = self.source._basic_push(self.target, overwrite,
                     stop_revision)

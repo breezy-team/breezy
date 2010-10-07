@@ -21,13 +21,14 @@ import errno
 import os
 import re
 import socket
-import stat
 import sys
 import time
 
 from bzrlib import (
     errors,
+    lazy_regex,
     osutils,
+    symbol_versioning,
     tests,
     trace,
     win32utils,
@@ -861,7 +862,7 @@ class TestWin32Funcs(tests.TestCase):
         self.assertEqual('//HOST/path', osutils._win98_abspath('//HOST/path'))
         # relative path
         cwd = osutils.getcwd().rstrip('/')
-        drive = osutils._nt_splitdrive(cwd)[0]
+        drive = osutils.ntpath.splitdrive(cwd)[0]
         self.assertEqual(cwd+'/path', osutils._win98_abspath('path'))
         self.assertEqual(drive+'/path', osutils._win98_abspath('/path'))
         # unicode path
@@ -1070,6 +1071,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         if sys.platform == 'win32':
             raise tests.TestNotApplicable(
                 "readdir IOError not tested on win32")
+        self.requireFeature(features.not_running_as_root)
         os.mkdir("test-unreadable")
         os.chmod("test-unreadable", 0000)
         # must chmod it back so that it can be removed
@@ -1705,19 +1707,27 @@ class TestResourceLoading(tests.TestCaseInTempDir):
 
 class TestReCompile(tests.TestCase):
 
+    def _deprecated_re_compile_checked(self, *args, **kwargs):
+        return self.applyDeprecated(symbol_versioning.deprecated_in((2, 2, 0)),
+            osutils.re_compile_checked, *args, **kwargs)
+
     def test_re_compile_checked(self):
-        r = osutils.re_compile_checked(r'A*', re.IGNORECASE)
+        r = self._deprecated_re_compile_checked(r'A*', re.IGNORECASE)
         self.assertTrue(r.match('aaaa'))
         self.assertTrue(r.match('aAaA'))
 
     def test_re_compile_checked_error(self):
         # like https://bugs.launchpad.net/bzr/+bug/251352
+
+        # Due to possible test isolation error, re.compile is not lazy at
+        # this point. We re-install lazy compile.
+        lazy_regex.install_lazy_compile()
         err = self.assertRaises(
             errors.BzrCommandError,
-            osutils.re_compile_checked, '*', re.IGNORECASE, 'test case')
+            self._deprecated_re_compile_checked, '*', re.IGNORECASE, 'test case')
         self.assertEqual(
-            "Invalid regular expression in test case: '*': "
-            "nothing to repeat",
+            'Invalid regular expression in test case: '
+            '"*" nothing to repeat',
             str(err))
 
 
@@ -2066,5 +2076,12 @@ class TestGetuserUnicode(tests.TestCase):
 
     def test_unicode_user(self):
         ue = osutils.get_user_encoding()
-        osutils.set_or_unset_env('LOGNAME', u'jrandom\xb6'.encode(ue))
-        self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
+        uni_val, env_val = tests.probe_unicode_in_user_encoding()
+        if uni_val is None:
+            raise tests.TestSkipped(
+                'Cannot find a unicode character that works in encoding %s'
+                % (osutils.get_user_encoding(),))
+        uni_username = u'jrandom' + uni_val
+        encoded_username = uni_username.encode(ue)
+        osutils.set_or_unset_env('LOGNAME', encoded_username)
+        self.assertEqual(uni_username, osutils.getuser_unicode())

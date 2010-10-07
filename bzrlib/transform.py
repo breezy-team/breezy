@@ -315,10 +315,9 @@ class TreeTransformBase(object):
 
     def delete_contents(self, trans_id):
         """Schedule the contents of a path entry for deletion"""
-        # Ensure that the object exists in the WorkingTree, this will raise an
-        # exception if there is a problem
-        self.tree_kind(trans_id)
-        self._removed_contents.add(trans_id)
+        kind = self.tree_kind(trans_id)
+        if kind is not None:
+            self._removed_contents.add(trans_id)
 
     def cancel_deletion(self, trans_id):
         """Cancel a scheduled deletion"""
@@ -389,22 +388,22 @@ class TreeTransformBase(object):
         changed_kind = set(self._removed_contents)
         changed_kind.intersection_update(self._new_contents)
         changed_kind.difference_update(new_ids)
-        changed_kind = (t for t in changed_kind if self.tree_kind(t) !=
-                        self.final_kind(t))
+        changed_kind = (t for t in changed_kind
+                        if self.tree_kind(t) != self.final_kind(t))
         new_ids.update(changed_kind)
         return sorted(FinalPaths(self).get_paths(new_ids))
 
     def final_kind(self, trans_id):
         """Determine the final file kind, after any changes applied.
 
-        Raises NoSuchFile if the file does not exist/has no contents.
-        (It is conceivable that a path would be created without the
-        corresponding contents insertion command)
+        :return: None if the file does not exist/has no contents.  (It is
+            conceivable that a path would be created without the corresponding
+            contents insertion command)
         """
         if trans_id in self._new_contents:
             return self._new_contents[trans_id]
         elif trans_id in self._removed_contents:
-            raise NoSuchFile(None)
+            return None
         else:
             return self.tree_kind(trans_id)
 
@@ -596,9 +595,8 @@ class TreeTransformBase(object):
         """
         conflicts = []
         for trans_id in self._new_id.iterkeys():
-            try:
-                kind = self.final_kind(trans_id)
-            except NoSuchFile:
+            kind = self.final_kind(trans_id)
+            if kind is None:
                 conflicts.append(('versioning no contents', trans_id))
                 continue
             if not InventoryEntry.versionable_kind(kind):
@@ -618,11 +616,7 @@ class TreeTransformBase(object):
             if self.final_file_id(trans_id) is None:
                 conflicts.append(('unversioned executability', trans_id))
             else:
-                try:
-                    non_file = self.final_kind(trans_id) != "file"
-                except NoSuchFile:
-                    non_file = True
-                if non_file is True:
+                if self.final_kind(trans_id) != "file":
                     conflicts.append(('non-file executability', trans_id))
         return conflicts
 
@@ -630,9 +624,7 @@ class TreeTransformBase(object):
         """Check for overwrites (not permitted on Win32)"""
         conflicts = []
         for trans_id in self._new_contents:
-            try:
-                self.tree_kind(trans_id)
-            except NoSuchFile:
+            if self.tree_kind(trans_id) is None:
                 continue
             if trans_id not in self._removed_contents:
                 conflicts.append(('overwrite', trans_id,
@@ -652,10 +644,7 @@ class TreeTransformBase(object):
             last_name = None
             last_trans_id = None
             for name, trans_id in name_ids:
-                try:
-                    kind = self.final_kind(trans_id)
-                except NoSuchFile:
-                    kind = None
+                kind = self.final_kind(trans_id)
                 file_id = self.final_file_id(trans_id)
                 if kind is None and file_id is None:
                     continue
@@ -687,15 +676,7 @@ class TreeTransformBase(object):
                 continue
             if not self._any_contents(children):
                 continue
-            for child in children:
-                try:
-                    self.final_kind(child)
-                except NoSuchFile:
-                    continue
-            try:
-                kind = self.final_kind(parent_id)
-            except NoSuchFile:
-                kind = None
+            kind = self.final_kind(parent_id)
             if kind is None:
                 conflicts.append(('missing parent', parent_id))
             elif kind != "directory":
@@ -705,11 +686,8 @@ class TreeTransformBase(object):
     def _any_contents(self, trans_ids):
         """Return true if any of the trans_ids, will have contents."""
         for trans_id in trans_ids:
-            try:
-                kind = self.final_kind(trans_id)
-            except NoSuchFile:
-                continue
-            return True
+            if self.final_kind(trans_id) is not None:
+                return True
         return False
 
     def _set_executability(self, path, trans_id):
@@ -845,10 +823,7 @@ class TreeTransformBase(object):
         Return a (name, parent, kind, executable) tuple
         """
         to_name = self.final_name(to_trans_id)
-        try:
-            to_kind = self.final_kind(to_trans_id)
-        except NoSuchFile:
-            to_kind = None
+        to_kind = self.final_kind(to_trans_id)
         to_parent = self.final_file_id(self.final_parent(to_trans_id))
         if to_trans_id in self._new_executability:
             to_executable = self._new_executability[to_trans_id]
@@ -1182,7 +1157,7 @@ class DiskTreeTransform(TreeTransformBase):
             if trans_id not in self._new_contents:
                 continue
             new_path = self._limbo_name(trans_id)
-            osutils.rename(old_path, new_path)
+            os.rename(old_path, new_path)
             for descendant in self._limbo_descendants(trans_id):
                 desc_path = self._limbo_files[descendant]
                 desc_path = new_path + desc_path[len(old_path):]
@@ -1419,18 +1394,15 @@ class TreeTransform(DiskTreeTransform):
     def tree_kind(self, trans_id):
         """Determine the file kind in the working tree.
 
-        Raises NoSuchFile if the file does not exist
+        :returns: The file kind or None if the file does not exist
         """
         path = self._tree_id_paths.get(trans_id)
         if path is None:
-            raise NoSuchFile(None)
+            return None
         try:
             return file_kind(self._tree.abspath(path))
-        except OSError, e:
-            if e.errno != errno.ENOENT:
-                raise
-            else:
-                raise NoSuchFile(path)
+        except errors.NoSuchFile:
+            return None
 
     def _set_mode(self, trans_id, mode_id, typefunc):
         """Set the mode of new file contents.
@@ -1605,9 +1577,8 @@ class TreeTransform(DiskTreeTransform):
                 if file_id is None:
                     continue
                 needs_entry = False
-                try:
-                    kind = self.final_kind(trans_id)
-                except NoSuchFile:
+                kind = self.final_kind(trans_id)
+                if kind is None:
                     kind = self._tree.stored_kind(file_id)
                 parent_trans_id = self.final_parent(trans_id)
                 parent_file_id = new_path_file_ids.get(parent_trans_id)
@@ -1725,9 +1696,12 @@ class TransformPreview(DiskTreeTransform):
     def tree_kind(self, trans_id):
         path = self._tree_id_paths.get(trans_id)
         if path is None:
-            raise NoSuchFile(None)
+            return None
         file_id = self._tree.path2id(path)
-        return self._tree.kind(file_id)
+        try:
+            return self._tree.kind(file_id)
+        except errors.NoSuchFile:
+            return None
 
     def _set_mode(self, trans_id, mode_id, typefunc):
         """Set the mode of new file contents.
@@ -1929,9 +1903,8 @@ class _PreviewTree(tree.Tree):
             if (specific_file_ids is not None
                 and file_id not in specific_file_ids):
                 continue
-            try:
-                kind = self._transform.final_kind(trans_id)
-            except NoSuchFile:
+            kind = self._transform.final_kind(trans_id)
+            if kind is None:
                 kind = self._transform._tree.stored_kind(file_id)
             new_entry = inventory.make_entry(
                 kind,
@@ -2169,10 +2142,10 @@ class _PreviewTree(tree.Tree):
                 path_from_root = self._final_paths.get_path(child_id)
                 basename = self._transform.final_name(child_id)
                 file_id = self._transform.final_file_id(child_id)
-                try:
-                    kind = self._transform.final_kind(child_id)
+                kind  = self._transform.final_kind(child_id)
+                if kind is not None:
                     versioned_kind = kind
-                except NoSuchFile:
+                else:
                     kind = 'unknown'
                     versioned_kind = self._transform._tree.stored_kind(file_id)
                 if versioned_kind == 'directory':
@@ -2527,22 +2500,6 @@ def new_by_entry(tt, entry, parent_id, tree):
         return tt.new_symlink(name, parent_id, target, entry.file_id)
     else:
         raise errors.BadFileKindError(name, kind)
-
-
-@deprecated_function(deprecated_in((1, 9, 0)))
-def create_by_entry(tt, entry, tree, trans_id, lines=None, mode_id=None):
-    """Create new file contents according to an inventory entry.
-
-    DEPRECATED.  Use create_from_tree instead.
-    """
-    if entry.kind == "file":
-        if lines is None:
-            lines = tree.get_file(entry.file_id).readlines()
-        tt.create_file(lines, trans_id, mode_id=mode_id)
-    elif entry.kind == "symlink":
-        tt.create_symlink(tree.get_symlink_target(entry.file_id), trans_id)
-    elif entry.kind == "directory":
-        tt.create_directory(trans_id)
 
 
 def create_from_tree(tt, trans_id, tree, file_id, bytes=None,
@@ -2935,8 +2892,8 @@ class _FileMover(object):
     def rename(self, from_, to):
         """Rename a file from one path to another."""
         try:
-            osutils.rename(from_, to)
-        except (IOError, OSError), e:
+            os.rename(from_, to)
+        except OSError, e:
             if e.errno in (errno.EEXIST, errno.ENOTEMPTY):
                 raise errors.FileExists(to, str(e))
             # normal OSError doesn't include filenames so it's hard to see where
@@ -2958,8 +2915,8 @@ class _FileMover(object):
         """Reverse all renames that have been performed"""
         for from_, to in reversed(self.past_renames):
             try:
-                osutils.rename(to, from_)
-            except (OSError, IOError), e:
+                os.rename(to, from_)
+            except OSError, e:
                 raise errors.TransformRenameFailed(to, from_, str(e), e.errno)                
         # after rollback, don't reuse _FileMover
         past_renames = None

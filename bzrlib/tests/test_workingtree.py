@@ -22,6 +22,7 @@ from bzrlib import (
     bzrdir,
     conflicts,
     errors,
+    transport,
     workingtree,
     )
 from bzrlib.branch import Branch
@@ -29,7 +30,6 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.transport import get_transport
 from bzrlib.workingtree import (
     TreeEntry,
     TreeDirectory,
@@ -138,7 +138,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             dir.create_repository()
             dir.create_branch()
             format.initialize(dir)
-            t = get_transport(url)
+            t = transport.get_transport(url)
             found_format = workingtree.WorkingTreeFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(workingtree.WorkingTreeFormat3(), "bar")

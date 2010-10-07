@@ -78,9 +78,9 @@ Python versions
 ===============
 
 Bazaar supports Python from 2.4 through 2.6, and in the future we want to
-support Python 3.0.  Avoid using language features added in 2.5 or 2.6, or
-features deprecated in Python 3.0.  (You can check v3 compatibility using
-the ``-3`` option of Python2.6.)
+support Python 2.7 and 3.0.  Avoid using language features added in 2.5,
+2.6 or 2.7, or features deprecated in Python 3.0.  (You can check v3
+compatibility using the ``-3`` option of Python2.6.)
 
 Specifically:
 
@@ -99,6 +99,38 @@ hasattr and getattr
 ``KeyboardInterrupt``.  Instead, say something like ::
 
   if getattr(thing, 'name', None) is None
+
+
+kwargs
+======
+
+``**kwargs`` in the prototype of a function should be used sparingly.
+It can be good on higher-order functions that decorate other functions,
+such as ``addCleanup`` or ``assertRaises``, or on functions that take only
+(or almost only) kwargs, where any kwargs can be passed.  
+
+Otherwise, be careful: if the parameters to a function are a bit complex
+and might vary over time (e.g.  the ``commit`` API) then we prefer to pass an
+object rather than a bag of positional and/or keyword args.  If you have
+an arbitrary set of keys and values that are different with each use (e.g.
+string interpolation inputs) then again that should not be mixed in with
+the regular positional/keyword args, it seems like a different category of
+thing.
+
+
+Imitating standard objects
+==========================
+
+Don't provide methods that imitate built-in classes (eg ``__in__``,
+``__call__``, ``__int__``, ``__getitem__``) unless the class you're
+implementing really does act like the builtin class, in semantics and
+performance.
+
+For example, old code lets you say ``file_id in inv`` but we no longer
+consider this good style.  Instead, say more explicitly
+``inv.has_id(file_id)``.
+
+``__repr__``, ``__cmp__``, ``__str__`` are usually fine.
 
 
 Module Imports

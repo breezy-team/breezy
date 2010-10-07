@@ -30,25 +30,28 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    controldir,
     errors,
     graph,
     inventory,
     inventory_delta,
-    pack,
     remote,
     repository,
     tests,
+    transport,
     treebuilder,
-    urlutils,
     versionedfile,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir, BzrDirFormat
+from bzrlib.bzrdir import (
+    BzrDir,
+    BzrDirFormat,
+    RemoteBzrProber,
+    )
 from bzrlib.remote import (
     RemoteBranch,
     RemoteBranchFormat,
     RemoteBzrDir,
-    RemoteBzrDirFormat,
     RemoteRepository,
     RemoteRepositoryFormat,
     )
@@ -63,7 +66,6 @@ from bzrlib.tests import (
     multiply_tests,
     test_server,
     )
-from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import (
     RemoteTransport,
@@ -89,10 +91,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.transport = self.get_transport()
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')
-
-    def tearDown(self):
-        self.transport.disconnect()
-        tests.TestCaseWithTransport.tearDown(self)
+        self.addCleanup(self.transport.disconnect)
 
     def test_create_remote_bzrdir(self):
         b = remote.RemoteBzrDir(self.transport, remote.RemoteBzrDirFormat())
@@ -122,8 +121,8 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)
-        self.assertTrue(RemoteBzrDirFormat
-                        in BzrDirFormat._control_server_formats)
+        self.assertTrue(bzrdir.RemoteBzrProber
+                        in controldir.ControlDirFormat._server_probers)
         self.assertIsInstance(fmt, remote.RemoteBzrDirFormat)
 
     def test_open_detected_smart_format(self):
@@ -359,8 +358,8 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given client_base and transport_base.
         """
         client_medium = medium.SmartClientMedium(client_base)
-        transport = get_transport(transport_base)
-        result = client_medium.remote_path_from_transport(transport)
+        t = transport.get_transport(transport_base)
+        result = client_medium.remote_path_from_transport(t)
         self.assertEqual(expected, result)
 
     def test_remote_path_from_transport(self):
@@ -377,7 +376,7 @@ class Test_ClientMedium_remote_path_from_transport(tests.TestCase):
         a given transport_base and relpath of that transport.  (Note that
         HttpTransportBase is a subclass of SmartClientMedium)
         """
-        base_transport = get_transport(transport_base)
+        base_transport = transport.get_transport(transport_base)
         client_medium = base_transport.get_smart_medium()
         cloned_transport = base_transport.clone(relpath)
         result = client_medium.remote_path_from_transport(cloned_transport)
@@ -686,7 +685,7 @@ class TestBzrDirOpenBranch(TestRemote):
         old.
         """
         self.assertRaises(errors.NotBranchError,
-            RemoteBzrDirFormat.probe_transport, OldServerTransport())
+            RemoteBzrProber.probe_transport, OldServerTransport())
 
 
 class TestBzrDirCreateBranch(TestRemote):

@@ -955,8 +955,12 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         ssh_server = stub_sftp.SFTPFullAbsoluteServer(StubSSHServer)
         # We *don't* want to override the default SSH vendor: the detected one
         # is the one to use.
+
+        # FIXME: I don't understand the above comment, SFTPFullAbsoluteServer
+        # inherits from SFTPServer which forces the SSH vendor to
+        # ssh.ParamikoVendor(). So it's forced, not detected. --vila 20100623
         self.start_server(ssh_server)
-        port = ssh_server._listener.port
+        port = ssh_server.port
 
         if sys.platform == 'win32':
             bzr_remote_path = sys.executable + ' ' + self.get_bzr_path()

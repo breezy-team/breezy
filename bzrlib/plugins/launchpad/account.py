@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,9 +20,12 @@ This allows the user to configure their Launchpad user ID once, rather
 than once for each place that needs to take it into account.
 """
 
-from bzrlib import errors, trace
+from bzrlib import (
+    errors,
+    trace,
+    transport,
+    )
 from bzrlib.config import AuthenticationConfig, GlobalConfig
-from bzrlib.transport import get_transport
 
 
 LAUNCHPAD_BASE = 'https://launchpad.net/'
@@ -97,7 +100,7 @@ def check_lp_login(username, _transport=None):
     uploaded SSH keys.
     """
     if _transport is None:
-        _transport = get_transport(LAUNCHPAD_BASE)
+        _transport = transport.get_transport(LAUNCHPAD_BASE)
 
     try:
         data = _transport.get_bytes('~%s/+sshkeys' % username)

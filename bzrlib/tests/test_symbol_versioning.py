@@ -241,6 +241,11 @@ class TestSuppressAndActivate(TestCase):
         symbol_versioning.suppress_deprecation_warnings()
         self.assertFirstWarning('ignore', DeprecationWarning)
 
+    def test_set_restore_filters(self):
+        original_filters = warnings.filters[:]
+        symbol_versioning.suppress_deprecation_warnings()()
+        self.assertEqual(original_filters, warnings.filters)
+
     def test_suppress_deprecation_with_warning_filter(self):
         """don't suppress if we already have a filter"""
         warnings.filterwarnings('error', category=Warning)

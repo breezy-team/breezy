@@ -16,7 +16,6 @@
 
 from cStringIO import StringIO
 
-from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
@@ -31,11 +30,6 @@ from bzrlib.transport import (
     )
 """)
 from bzrlib.trace import note
-
-
-@deprecated_function(deprecated_in((1, 12, 0)))
-def read_bundle_from_url(url):
-    return read_mergeable_from_url(url, _do_directive=False)
 
 
 def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):

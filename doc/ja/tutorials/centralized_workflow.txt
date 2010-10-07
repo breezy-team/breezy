@@ -18,7 +18,7 @@ Bazaar_ は、非常にフレキシブルに設計されており、完全な分
 お互いの作業の同期をとることになります。 
 また、このワークフローは、一人の開発者が複数のマシーン上で作業をする場合にも適用できます。
 
-.. _Bazaar: http://bazaar-vcs.org
+.. _Bazaar: http://bazaar.canonical.com
 
 
 初期セットアップ
@@ -86,7 +86,7 @@ Bazaar_ のブランチは、通常は履歴のコピーを持っています。
 しかしながら、それについてはここでは説明しません。詳しくは、 `Tracking Upstream`_ の\
 "Converting and keeping history"セクションを見てください。
 
-.. _Tracking Upstream: http://bazaar-vcs.org/TrackingUpstream
+.. _Tracking Upstream: http://wiki.bazaar.canonical.com/TrackingUpstream
 
 .. 
    XXX: プロジェクトの変換について話をするための別の文書が必要なのですが、\
@@ -203,7 +203,7 @@ Bazaar_ は、何がマージ済みかを記憶し、たとえファイルが変
 
    % bzr cbranch dev my-feature-branch
 
-.. _bzrtools: http://bazaar-vcs.org/BzrTools
+.. _bzrtools: http://wiki.bazaar.canonical.com/BzrTools
 
 
 変更内容をマージする

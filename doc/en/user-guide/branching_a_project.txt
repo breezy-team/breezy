@@ -20,14 +20,15 @@ lots of protocols some of which are given below.
   \sftp://            Access using SFTP (most SSH servers provide SFTP).
   \bzr://             Fast access using the Bazaar smart server.
   \ftp://             Access using passive FTP.
-  \http://            Read-only access to branches exported by a web server.
+  \http://            Access to branches exported by a web server.
+  \https://           Encrypted access to branches exported by a web server.
   ===========         ======================================================
 
 As indicated above, branches are identified using URLs with the
 prefix indicating the transfer technology. If no prefix is given,
 normal filenames are assumed. For a complete list of supported
 protocols, see the ``urlspec`` online help topic or the
-`URL Identifiers <../user-reference/bzr_man.html#url-identifiers>`_
+`URL Identifiers <../user-reference/urlspec-help.html>`_
 section of the Bazaar User Reference.
 
 URLs are normally resolved relative to the root directory of the server,
@@ -40,6 +41,11 @@ which directory.)
 To address a path relative to your home directory on the server, use a
 tilde like so: ``sftp://example.com/~/public_html`` should map to
 ``public_html`` within your home directory.
+
+.. note:: Access over HTTP or HTTPS is read-only by default.
+   See `Pushing over the http smart server
+   <http_smart_server.html#pushing-over-the-http-smart-server>`_ for
+   details on configuring read-write access.
 
 A reminder about shared repositories
 ------------------------------------

@@ -10,6 +10,7 @@ import thread
 import threading
 from _lsprof import Profiler, profiler_entry
 
+from bzrlib import errors
 
 __all__ = ['profile', 'Stats']
 
@@ -19,6 +20,9 @@ def profile(f, *args, **kwds):
     Exceptions are not caught: If you need stats even when exceptions are to be
     raised, pass in a closure that will catch the exceptions and transform them
     appropriately for your driver function.
+
+    Important caveat: only one profile can execute at a time. See BzrProfiler
+    for details.
 
     :return: The functions return value and a stats object.
     """
@@ -41,7 +45,20 @@ class BzrProfiler(object):
     To use it, create a BzrProfiler and call start() on it. Some arbitrary
     time later call stop() to stop profiling and retrieve the statistics
     from the code executed in the interim.
+
+    Note that profiling involves a threading.Lock around the actual profiling.
+    This is needed because profiling involves global manipulation of the python
+    interpreter state. As such you cannot perform multiple profiles at once.
+    Trying to do so will lock out the second profiler unless the global 
+    bzrlib.lsprof.BzrProfiler.profiler_block is set to 0. Setting it to 0 will
+    cause profiling to fail rather than blocking.
     """
+
+    profiler_block = 1
+    """Serialise rather than failing to profile concurrent profile requests."""
+
+    profiler_lock = threading.Lock()
+    """Global lock used to serialise profiles."""
 
     def start(self):
         """Start profiling.
@@ -51,8 +68,16 @@ class BzrProfiler(object):
         """
         self._g_threadmap = {}
         self.p = Profiler()
-        self.p.enable(subcalls=True)
-        threading.setprofile(self._thread_profile)
+        permitted = self.__class__.profiler_lock.acquire(
+            self.__class__.profiler_block)
+        if not permitted:
+            raise errors.InternalBzrError(msg="Already profiling something")
+        try:
+            self.p.enable(subcalls=True)
+            threading.setprofile(self._thread_profile)
+        except:
+            self.__class__.profiler_lock.release()
+            raise
 
     def stop(self):
         """Stop profiling.
@@ -62,17 +87,20 @@ class BzrProfiler(object):
 
         :return: A bzrlib.lsprof.Stats object.
         """
-        self.p.disable()
-        for pp in self._g_threadmap.values():
-            pp.disable()
-        threading.setprofile(None)
-        p = self.p
-        self.p = None
-        threads = {}
-        for tid, pp in self._g_threadmap.items():
-            threads[tid] = Stats(pp.getstats(), {})
-        self._g_threadmap = None
-        return Stats(p.getstats(), threads)
+        try:
+            self.p.disable()
+            for pp in self._g_threadmap.values():
+                pp.disable()
+            threading.setprofile(None)
+            p = self.p
+            self.p = None
+            threads = {}
+            for tid, pp in self._g_threadmap.items():
+                threads[tid] = Stats(pp.getstats(), {})
+            self._g_threadmap = None
+            return Stats(p.getstats(), threads)
+        finally:
+            self.__class__.profiler_lock.release()
 
     def _thread_profile(self, f, *args, **kwds):
         # we lose the first profile point for a new thread in order to
@@ -84,14 +112,21 @@ class BzrProfiler(object):
 
 
 class Stats(object):
-    """XXX docstring"""
+    """Wrapper around the collected data.
+
+    A Stats instance is created when the profiler finishes. Normal
+    usage is to use save() to write out the data to a file, or pprint()
+    to write human-readable information to the command line.
+    """
 
     def __init__(self, data, threads):
         self.data = data
         self.threads = threads
 
     def sort(self, crit="inlinetime"):
-        """XXX docstring"""
+        """Sort the data by the supplied critera.
+
+        :param crit: the data attribute used as the sort key."""
         if crit not in profiler_entry.__dict__:
             raise ValueError, "Can't sort by %s" % crit
         self.data.sort(lambda b, a: cmp(getattr(a, crit),
@@ -102,7 +137,12 @@ class Stats(object):
                                               getattr(b, crit)))
 
     def pprint(self, top=None, file=None):
-        """XXX docstring"""
+        """Pretty-print the data as plain text for human consumption.
+
+        :param top: only output the top n entries.
+            The default value of None means output all data.
+        :param file: the output file; if None, output will
+            default to stdout."""
         if file is None:
             file = sys.stdout
         d = self.data

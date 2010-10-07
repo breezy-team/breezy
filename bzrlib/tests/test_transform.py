@@ -123,12 +123,12 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         imaginary_id = transform.trans_id_tree_path('imaginary')
         imaginary_id2 = transform.trans_id_tree_path('imaginary/')
         self.assertEqual(imaginary_id, imaginary_id2)
-        self.assertEqual(transform.get_tree_parent(imaginary_id), root)
-        self.assertEqual(transform.final_kind(root), 'directory')
-        self.assertEqual(transform.final_file_id(root), self.wt.get_root_id())
+        self.assertEqual(root, transform.get_tree_parent(imaginary_id))
+        self.assertEqual('directory', transform.final_kind(root))
+        self.assertEqual(self.wt.get_root_id(), transform.final_file_id(root))
         trans_id = transform.create_path('name', root)
         self.assertIs(transform.final_file_id(trans_id), None)
-        self.assertRaises(NoSuchFile, transform.final_kind, trans_id)
+        self.assertIs(None, transform.final_kind(trans_id))
         transform.create_file('contents', trans_id)
         transform.set_executability(True, trans_id)
         transform.version_file('my_pretties', trans_id)
@@ -859,10 +859,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         myfile = create.new_file('myfile', root_id, 'myfile-text',
                                  'myfile-id')
         create.apply()
-        # make the file and directory readonly in the hope this will prevent
-        # renames
-        osutils.make_readonly(self.wt.abspath('first-dir'))
-        osutils.make_readonly(self.wt.abspath('myfile'))
+        if os.name == "posix" and sys.platform != "cygwin":
+            # posix filesystems fail on renaming if the readonly bit is set
+            osutils.make_readonly(self.wt.abspath('first-dir'))
+        elif os.name == "nt":
+            # windows filesystems fail on renaming open files
+            self.addCleanup(file(self.wt.abspath('myfile')).close)
+        else:
+            self.skip("Don't know how to force a permissions error on rename")
         # now transform to rename
         rename_transform, root_id = self.get_transform()
         file_trans_id = rename_transform.trans_id_file_id('myfile-id')
@@ -870,13 +874,15 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         rename_transform.adjust_path('newname', dir_id, file_trans_id)
         e = self.assertRaises(errors.TransformRenameFailed,
             rename_transform.apply)
-        # Looks like: 
+        # On nix looks like: 
         # "Failed to rename .../work/.bzr/checkout/limbo/new-1
         # to .../first-dir/newname: [Errno 13] Permission denied"
-        # so the first filename is not visible in it; we expect a strerror but
-        # it may vary per OS and language so it's not checked here
+        # On windows looks like:
+        # "Failed to rename .../work/myfile to 
+        # .../work/.bzr/checkout/limbo/new-1: [Errno 13] Permission denied"
+        # The strerror will vary per OS and language so it's not checked here
         self.assertContainsRe(str(e),
-            "Failed to rename .*first-dir.newname:")
+            "Failed to rename .*(first-dir.newname:|myfile)")
 
     def test_set_executability_order(self):
         """Ensure that executability behaves the same, no matter what order.

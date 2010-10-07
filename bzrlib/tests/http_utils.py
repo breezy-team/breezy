@@ -28,13 +28,14 @@ from bzrlib import (
     errors,
     osutils,
     tests,
+    transport,
     )
-from bzrlib.smart import medium, protocol
+from bzrlib.smart import (
+    medium,
+    protocol,
+    )
 from bzrlib.tests import http_server
-from bzrlib.transport import (
-    chroot,
-    get_transport,
-    )
+from bzrlib.transport import chroot
 
 
 class HTTPServerWithSmarts(http_server.HttpServer):
@@ -56,11 +57,12 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
 
     def do_POST(self):
         """Hand the request off to a smart server instance."""
-        backing = get_transport(self.server.test_case_server._home_dir)
+        backing = transport.get_transport(
+            self.server.test_case_server._home_dir)
         chroot_server = chroot.ChrootServer(backing)
         chroot_server.start_server()
         try:
-            t = get_transport(chroot_server.get_url())
+            t = transport.get_transport(chroot_server.get_url())
             self.do_POST_inner(t)
         finally:
             chroot_server.stop_server()
@@ -106,9 +108,22 @@ class TestCaseWithWebserver(tests.TestCaseWithTransport):
     one. This will currently fail if the primary transport is not
     backed by regular disk files.
     """
+
+    # These attributes can be overriden or parametrized by daughter clasess if
+    # needed, but must exist so that the create_transport_readonly_server()
+    # method (or any method creating an http(s) server) can propagate it.
+    _protocol_version = None
+    _url_protocol = 'http'
+
     def setUp(self):
         super(TestCaseWithWebserver, self).setUp()
         self.transport_readonly_server = http_server.HttpServer
+
+    def create_transport_readonly_server(self):
+        server = self.transport_readonly_server(
+            protocol_version=self._protocol_version)
+        server._url_protocol = self._url_protocol
+        return server
 
 
 class TestCaseWithTwoWebservers(TestCaseWithWebserver):
@@ -127,7 +142,10 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
 
         This is mostly a hook for daughter classes.
         """
-        return self.transport_secondary_server()
+        server = self.transport_secondary_server(
+            protocol_version=self._protocol_version)
+        server._url_protocol = self._url_protocol
+        return server
 
     def get_secondary_server(self):
         """Get the server instance for the secondary transport."""
@@ -135,6 +153,15 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
             self.__secondary_server = self.create_transport_secondary_server()
             self.start_server(self.__secondary_server)
         return self.__secondary_server
+
+    def get_secondary_url(self, relpath=None):
+        base = self.get_secondary_server().get_url()
+        return self._adjust_url(base, relpath)
+
+    def get_secondary_transport(self, relpath=None):
+        t = transport.get_transport(self.get_secondary_url(relpath))
+        self.assertTrue(t.is_readonly())
+        return t
 
 
 class ProxyServer(http_server.HttpServer):
@@ -215,19 +242,39 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
    The 'old' server is redirected to the 'new' server.
    """
 
-   def create_transport_secondary_server(self):
-       """Create the secondary server redirecting to the primary server"""
-       new = self.get_readonly_server()
-       redirecting = HTTPServerRedirecting()
-       redirecting.redirect_to(new.host, new.port)
-       return redirecting
-
    def setUp(self):
        super(TestCaseWithRedirectedWebserver, self).setUp()
        # The redirections will point to the new server
        self.new_server = self.get_readonly_server()
-       # The requests to the old server will be redirected
+       # The requests to the old server will be redirected to the new server
        self.old_server = self.get_secondary_server()
+
+   def create_transport_secondary_server(self):
+       """Create the secondary server redirecting to the primary server"""
+       new = self.get_readonly_server()
+       redirecting = HTTPServerRedirecting(
+           protocol_version=self._protocol_version)
+       redirecting.redirect_to(new.host, new.port)
+       redirecting._url_protocol = self._url_protocol
+       return redirecting
+
+   def get_old_url(self, relpath=None):
+        base = self.old_server.get_url()
+        return self._adjust_url(base, relpath)
+
+   def get_old_transport(self, relpath=None):
+        t = transport.get_transport(self.get_old_url(relpath))
+        self.assertTrue(t.is_readonly())
+        return t
+
+   def get_new_url(self, relpath=None):
+        base = self.new_server.get_url()
+        return self._adjust_url(base, relpath)
+
+   def get_new_transport(self, relpath=None):
+        t = transport.get_transport(self.get_new_url(relpath))
+        self.assertTrue(t.is_readonly())
+        return t
 
 
 class AuthRequestHandler(http_server.TestingHTTPRequestHandler):

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ import re
 from bzrlib import (
     bzrdir,
     commands,
+    controldir,
     errors,
     option,
     )
@@ -107,10 +108,10 @@ class OptionTests(TestCase):
         self.assertFalse(option.Option('foo', hidden=False).is_hidden('foo'))
 
     def test_registry_conversion(self):
-        registry = bzrdir.BzrDirFormatRegistry()
-        registry.register_metadir('one', 'RepositoryFormat7', 'one help')
-        registry.register_metadir('two', 'RepositoryFormatKnit1', 'two help')
-        registry.register_metadir('hidden', 'RepositoryFormatKnit1',
+        registry = controldir.ControlDirFormatRegistry()
+        bzrdir.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
+        bzrdir.register_metadir(registry, 'two', 'RepositoryFormatKnit1', 'two help')
+        bzrdir.register_metadir(registry, 'hidden', 'RepositoryFormatKnit1',
             'two help', hidden=True)
         registry.set_default('one')
         options = [option.RegistryOption('format', '', registry, str)]
@@ -177,13 +178,13 @@ class OptionTests(TestCase):
         self.assertEqual('test option', my_option.help)
 
     def test_help(self):
-        registry = bzrdir.BzrDirFormatRegistry()
-        registry.register_metadir('one', 'RepositoryFormat7', 'one help')
-        registry.register_metadir('two',
+        registry = controldir.ControlDirFormatRegistry()
+        bzrdir.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
+        bzrdir.register_metadir(registry, 'two',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
             'two help',
             )
-        registry.register_metadir('hidden', 'RepositoryFormat7', 'hidden help',
+        bzrdir.register_metadir(registry, 'hidden', 'RepositoryFormat7', 'hidden help',
             hidden=True)
         registry.set_default('one')
         options = [option.RegistryOption('format', 'format help', registry,
@@ -205,9 +206,9 @@ class OptionTests(TestCase):
         opt = option.Option('hello', help='fg', type=int, argname='gar')
         self.assertEqual(list(opt.iter_switches()),
                          [('hello', None, 'GAR', 'fg')])
-        registry = bzrdir.BzrDirFormatRegistry()
-        registry.register_metadir('one', 'RepositoryFormat7', 'one help')
-        registry.register_metadir('two',
+        registry = controldir.ControlDirFormatRegistry()
+        bzrdir.register_metadir(registry, 'one', 'RepositoryFormat7', 'one help')
+        bzrdir.register_metadir(registry, 'two',
                 'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
                 'two help',
                 )
@@ -386,10 +387,10 @@ class TestOptionDefinitions(TestCase):
                     + '\n'.join(msgs))
 
     def test_is_hidden(self):
-        registry = bzrdir.BzrDirFormatRegistry()
-        registry.register_metadir('hidden', 'HiddenFormat',
+        registry = controldir.ControlDirFormatRegistry()
+        bzrdir.register_metadir(registry, 'hidden', 'HiddenFormat',
             'hidden help text', hidden=True)
-        registry.register_metadir('visible', 'VisibleFormat',
+        bzrdir.register_metadir(registry, 'visible', 'VisibleFormat',
             'visible help text', hidden=False)
         format = option.RegistryOption('format', '', registry, str)
         self.assertTrue(format.is_hidden('hidden'))

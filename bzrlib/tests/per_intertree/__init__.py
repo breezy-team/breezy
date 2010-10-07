@@ -28,7 +28,6 @@ from bzrlib import (
     revisiontree,
     tests,
     )
-from bzrlib.transport import get_transport
 from bzrlib.transform import TransformPreview
 from bzrlib.tests import (
     default_transport,

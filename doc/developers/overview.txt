@@ -5,7 +5,7 @@ Bazaar Architectural Overview
 This document describes the key classes and concepts within Bazaar.  It is
 intended to be useful to people working on the Bazaar codebase, or to
 people writing plugins.  People writing plugins may also like to read the 
-guide to `Integrating with Bazaar <integrating.html>`_ for some specific
+guide to `Integrating with Bazaar <integration.html>`_ for some specific
 recipes.
 
 If you have any questions, or if something seems to be incorrect, unclear
@@ -147,6 +147,7 @@ and graph relationships between them.  A repository holds a bag of
 revision data that can be pointed to by various branches:
 
  * Maintains storage of various history data at a URL:
+
    * Revisions (Must have a matching inventory)
    * Digital Signatures
    * Inventories for each Revision. (Must have all the file texts available).

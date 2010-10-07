@@ -33,9 +33,9 @@ from bzrlib import (
     osutils,
     static_tuple,
     trace,
+    transport,
     )
 from bzrlib.index import _OPTION_NODE_REFS, _OPTION_KEY_ELEMENTS, _OPTION_LEN
-from bzrlib.transport import get_transport
 
 
 _BTSIGNATURE = "B+Tree Graph Index 2\n"
@@ -193,7 +193,8 @@ class BTreeBuilder(index.GraphIndexBuilder):
             new_backing_file, size = self._spill_mem_keys_without_combining()
         # Note: The transport here isn't strictly needed, because we will use
         #       direct access to the new_backing._file object
-        new_backing = BTreeGraphIndex(get_transport('.'), '<temp>', size)
+        new_backing = BTreeGraphIndex(transport.get_transport('.'),
+                                      '<temp>', size)
         # GC will clean up the file
         new_backing._file = new_backing_file
         if self._combine_backing_indices:
@@ -601,10 +602,10 @@ class BTreeBuilder(index.GraphIndexBuilder):
         """In memory index's have no known corruption at the moment."""
 
 
-class _LeafNode(object):
+class _LeafNode(dict):
     """A leaf node for a serialised B+Tree index."""
 
-    __slots__ = ('keys', 'min_key', 'max_key')
+    __slots__ = ('min_key', 'max_key', '_keys')
 
     def __init__(self, bytes, key_length, ref_list_length):
         """Parse bytes to create a leaf node object."""
@@ -616,7 +617,20 @@ class _LeafNode(object):
             self.max_key = key_list[-1][0]
         else:
             self.min_key = self.max_key = None
-        self.keys = dict(key_list)
+        super(_LeafNode, self).__init__(key_list)
+        self._keys = dict(self)
+
+    def all_items(self):
+        """Return a sorted list of (key, (value, refs)) items"""
+        items = self.items()
+        items.sort()
+        return items
+
+    def all_keys(self):
+        """Return a sorted list of all keys."""
+        keys = self.keys()
+        keys.sort()
+        return keys
 
 
 class _InternalNode(object):
@@ -671,6 +685,7 @@ class BTreeGraphIndex(object):
         self._recommended_pages = self._compute_recommended_pages()
         self._root_node = None
         self._base_offset = offset
+        self._leaf_factory = _LeafNode
         # Default max size is 100,000 leave values
         self._leaf_value_cache = None # lru_cache.LRUCache(100*1000)
         if unlimited_cache:
@@ -949,7 +964,7 @@ class BTreeGraphIndex(object):
         """Cache directly from key => value, skipping the btree."""
         if self._leaf_value_cache is not None:
             for node in nodes.itervalues():
-                for key, value in node.keys.iteritems():
+                for key, value in node.all_items():
                     if key in self._leaf_value_cache:
                         # Don't add the rest of the keys, we've seen this node
                         # before.
@@ -979,10 +994,10 @@ class BTreeGraphIndex(object):
         if self._row_offsets[-1] == 1:
             # There is only the root node, and we read that via key_count()
             if self.node_ref_lists:
-                for key, (value, refs) in sorted(self._root_node.keys.items()):
+                for key, (value, refs) in self._root_node.all_items():
                     yield (self, key, value, refs)
             else:
-                for key, (value, refs) in sorted(self._root_node.keys.items()):
+                for key, (value, refs) in self._root_node.all_items():
                     yield (self, key, value)
             return
         start_of_leaves = self._row_offsets[-2]
@@ -998,11 +1013,11 @@ class BTreeGraphIndex(object):
         # for spilling index builds to disk.
         if self.node_ref_lists:
             for _, node in nodes:
-                for key, (value, refs) in sorted(node.keys.items()):
+                for key, (value, refs) in node.all_items():
                     yield (self, key, value, refs)
         else:
             for _, node in nodes:
-                for key, (value, refs) in sorted(node.keys.items()):
+                for key, (value, refs) in node.all_items():
                     yield (self, key, value)
 
     @staticmethod
@@ -1169,8 +1184,8 @@ class BTreeGraphIndex(object):
                 continue
             node = nodes[node_index]
             for next_sub_key in sub_keys:
-                if next_sub_key in node.keys:
-                    value, refs = node.keys[next_sub_key]
+                if next_sub_key in node:
+                    value, refs = node[next_sub_key]
                     if self.node_ref_lists:
                         yield (self, next_sub_key, value, refs)
                     else:
@@ -1244,14 +1259,13 @@ class BTreeGraphIndex(object):
             # sub_keys is all of the keys we are looking for that should exist
             # on this page, if they aren't here, then they won't be found
             node = nodes[node_index]
-            node_keys = node.keys
             parents_to_check = set()
             for next_sub_key in sub_keys:
-                if next_sub_key not in node_keys:
+                if next_sub_key not in node:
                     # This one is just not present in the index at all
                     missing_keys.add(next_sub_key)
                 else:
-                    value, refs = node_keys[next_sub_key]
+                    value, refs = node[next_sub_key]
                     parent_keys = refs[ref_list_num]
                     parent_map[next_sub_key] = parent_keys
                     parents_to_check.update(parent_keys)
@@ -1264,8 +1278,8 @@ class BTreeGraphIndex(object):
             while parents_to_check:
                 next_parents_to_check = set()
                 for key in parents_to_check:
-                    if key in node_keys:
-                        value, refs = node_keys[key]
+                    if key in node:
+                        value, refs = node[key]
                         parent_keys = refs[ref_list_num]
                         parent_map[key] = parent_keys
                         next_parents_to_check.update(parent_keys)
@@ -1545,7 +1559,8 @@ class BTreeGraphIndex(object):
                     continue
             bytes = zlib.decompress(data)
             if bytes.startswith(_LEAF_FLAG):
-                node = _LeafNode(bytes, self._key_length, self.node_ref_lists)
+                node = self._leaf_factory(bytes, self._key_length,
+                                          self.node_ref_lists)
             elif bytes.startswith(_INTERNAL_FLAG):
                 node = _InternalNode(bytes)
             else:
@@ -1570,8 +1585,11 @@ class BTreeGraphIndex(object):
             pass
 
 
+_gcchk_factory = _LeafNode
+
 try:
     from bzrlib import _btree_serializer_pyx as _btree_serializer
+    _gcchk_factory = _btree_serializer._parse_into_chk
 except ImportError, e:
     osutils.failed_to_load_extension(e)
     from bzrlib import _btree_serializer_py as _btree_serializer

@@ -24,7 +24,6 @@ lazy_import(globals(), """
 import errno
 
 from bzrlib import (
-    builtins,
     cleanup,
     commands,
     errors,
@@ -135,7 +134,8 @@ class cmd_resolve(commands.Command):
             if action is None:
                 action = 'done'
         else:
-            tree, file_list = builtins.tree_files(file_list)
+            tree, file_list = workingtree.WorkingTree.open_containing_paths(
+                file_list)
             if file_list is None:
                 if action is None:
                     # FIXME: There is a special case here related to the option

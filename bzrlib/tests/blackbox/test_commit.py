@@ -22,6 +22,7 @@ import re
 import sys
 
 from bzrlib import (
+    bzrdir,
     osutils,
     ignores,
     msgeditor,
@@ -32,6 +33,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
     probe_bad_non_ascii,
     TestSkipped,
+    UnicodeFilenameFeature,
     )
 from bzrlib.tests import TestCaseWithTransport
 
@@ -111,6 +113,7 @@ class TestCommit(TestCaseWithTransport):
     def test_unicode_commit_message_is_filename(self):
         """Unicode commit message same as a filename (Bug #563646).
         """
+        self.requireFeature(UnicodeFilenameFeature)
         file_name = u'\N{euro sign}'
         self.run_bzr(['init'])
         open(file_name, 'w').write('hello world')
@@ -129,7 +132,7 @@ class TestCommit(TestCaseWithTransport):
         # by ui.text.show_warning
         default_get_terminal_enc = osutils.get_terminal_encoding
         try:
-            osutils.get_terminal_encoding = lambda: 'ascii'
+            osutils.get_terminal_encoding = lambda trace=None: 'ascii'
             file_name = u'foo\u1234'
             open(file_name, 'w').write('hello world')
             self.run_bzr(['add'])
@@ -757,3 +760,18 @@ altered in u2
         osutils.set_or_unset_env('BZR_EMAIL', None)
         out, err = self.run_bzr(['commit', '-m', 'initial'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
+
+    def test_commit_recursive_checkout(self):
+        """Ensure that a commit to a recursive checkout fails cleanly.
+        """
+        self.run_bzr(['init', 'test_branch'])
+        self.run_bzr(['checkout', 'test_branch', 'test_checkout'])
+        os.chdir('test_checkout')
+        self.run_bzr(['bind', '.']) # bind to self
+        open('foo.txt', 'w').write('hello')
+        self.run_bzr(['add'])
+        out, err = self.run_bzr(['commit', '-m', 'addedfoo'], 3)
+        self.assertEqual(out, '')
+        self.assertContainsRe(err,
+            'Branch.*test_checkout.*appears to be bound to itself')
+
