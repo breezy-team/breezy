@@ -36,7 +36,7 @@ Bug Fixes
 
 * ``bzr break-lock --force`` breaks the lock without prompting.  (Before
   using this, make sure the process holding the lock really is dead.)
-  (Martin Pool, #392315)
+  (Martin Pool, #397315)
 
 * Print junk rather than throwing a UnicodeDecodeError from ``bzr version-info``
   when using the rio format (with non-ascii information) on a non-utf-8 terminal.
