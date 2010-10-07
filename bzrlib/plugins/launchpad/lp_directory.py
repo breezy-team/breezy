@@ -41,6 +41,7 @@ register_urlparse_netloc_protocol('bzr+ssh')
 register_urlparse_netloc_protocol('lp')
 
 _ubuntu_series = {
+    'natty': 'natty',
     'maverick': 'maverick',
     'lucid': 'lucid',
     'karmic': 'karmic',

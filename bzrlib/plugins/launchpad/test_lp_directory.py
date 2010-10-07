@@ -415,6 +415,12 @@ class TestDebuntuExpansions(TestCaseInTempDir):
         self.assertEqual('http://bazaar.launchpad.net/~branch/ubuntu/foo',
                          self.directory._resolve('ubuntu:foo', factory)),
 
+    def test_ubuntu_natty_distroseries_expansion(self):
+        factory = self._make_factory(package='foo', series='natty')
+        self.assertEqual(
+            'http://bazaar.launchpad.net/~branch/ubuntu/natty/foo',
+            self.directory._resolve('ubuntu:natty/foo', factory)),
+
     def test_ubuntu_maverick_distroseries_expansion(self):
         factory = self._make_factory(package='foo', series='maverick')
         self.assertEqual(
