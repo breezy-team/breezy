@@ -259,6 +259,11 @@ Lucid), use this::
 
   bzr branch ubuntu:maverick/package
 
+Ubuntu distroseries can also be abbreviated to just their first letter.  For
+example, the above could also be written::
+
+  bzr branch ubuntu:m/package
+
 You can also download the package source branch from Launchpad for several
 Debian series.  The default series can be downloaded like this::
 
