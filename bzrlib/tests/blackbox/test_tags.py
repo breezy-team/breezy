@@ -132,33 +132,42 @@ class TestTagging(TestCaseWithTransport):
 
         b1 = tree1.branch
         # note how the tag for revid-1 sorts after the one for revid-2
-        b1.tags.set_tag(u'tagA\u30d0', 'revid-2')
-        b1.tags.set_tag(u'tagB\u30d0', 'missing') # not present in repository
-        b1.tags.set_tag(u'tagC\u30d0', 'revid-1')
+        b1.tags.set_tag(u'tag1\u30d0', 'revid-2')
+        b1.tags.set_tag(u'tag10\u30d0', 'missing') # not present in repository
+        b1.tags.set_tag(u'tag2\u30d0', 'revid-1')
+
+        # natural order
+        out, err = self.run_bzr('tags -d branch1',
+                                encoding='utf-8')
+        self.assertEquals(err, '')
+        self.assertContainsRe(out, (u'^tag1\u30d0  *2\ntag2\u30d0  *1\n' +
+            u'tag10\u30d0 *\\?\n').encode('utf-8'))
 
         # lexicographical order
-        out, err = self.run_bzr('tags -d branch1', encoding='utf-8')
+        out, err = self.run_bzr('tags --sort=alpha -d branch1',
+                                encoding='utf-8')
         self.assertEquals(err, '')
-        self.assertContainsRe(out, (u'^tagA\u30d0  *2\ntagB\u30d0  *\\?\n' +
-            u'tagC\u30d0 *1\n').encode('utf-8'))
+        self.assertContainsRe(out, (u'^tag10\u30d0  *\\?\ntag1\u30d0  *2\n' +
+            u'tag2\u30d0 *1\n').encode('utf-8'))
 
-        out, err = self.run_bzr('tags --show-ids -d branch1', encoding='utf-8')
+        out, err = self.run_bzr('tags --sort=alpha --show-ids -d branch1',
+                                encoding='utf-8')
         self.assertEquals(err, '')
-        self.assertContainsRe(out, (u'^tagA\u30d0  *revid-2\n' +
-            u'tagB\u30d0  *missing\ntagC\u30d0 *revid-1\n').encode('utf-8'))
+        self.assertContainsRe(out, (u'^tag10\u30d0  *missing\n' +
+            u'tag1\u30d0  *revid-2\ntag2\u30d0 *revid-1\n').encode('utf-8'))
 
         # chronological order
         out, err = self.run_bzr('tags --sort=time -d branch1',
                 encoding='utf-8')
         self.assertEquals(err, '')
-        self.assertContainsRe(out, (u'^tagC\u30d0  *1\ntagA\u30d0  *2\n' +
-            u'tagB\u30d0 *\\?\n').encode('utf-8'))
+        self.assertContainsRe(out, (u'^tag2\u30d0  *1\ntag1\u30d0  *2\n' +
+            u'tag10\u30d0 *\\?\n').encode('utf-8'))
 
         out, err = self.run_bzr('tags --sort=time --show-ids -d branch1',
                 encoding='utf-8')
         self.assertEquals(err, '')
-        self.assertContainsRe(out, (u'^tagC\u30d0  *revid-1\n' +
-            u'tagA\u30d0  *revid-2\ntagB\u30d0 *missing\n').encode('utf-8'))
+        self.assertContainsRe(out, (u'^tag2\u30d0  *revid-1\n' +
+            u'tag1\u30d0  *revid-2\ntag10\u30d0 *missing\n').encode('utf-8'))
 
         # now test dotted revnos
         tree2 = tree1.bzrdir.sprout('branch2').open_workingtree()

@@ -21,6 +21,8 @@ import os
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
+import itertools
+import re
 import sys
 import time
 
@@ -5397,7 +5399,9 @@ class cmd_tags(Command):
             help='Branch whose tags should be displayed.'),
         RegistryOption.from_kwargs('sort',
             'Sort tags by different criteria.', title='Sorting',
-            alpha='Sort tags lexicographically (default).',
+            natural='Sort numeric substrings as numbers:'
+                    ' suitable for version numbers. (default)',
+            alpha='Sort tags lexicographically.',
             time='Sort tags chronologically.',
             ),
         'show-ids',
@@ -5407,7 +5411,7 @@ class cmd_tags(Command):
     @display_command
     def run(self,
             directory='.',
-            sort='alpha',
+            sort='natural',
             show_ids=False,
             revision=None,
             ):
@@ -5425,7 +5429,13 @@ class cmd_tags(Command):
             # only show revisions between revid1 and revid2 (inclusive)
             tags = [(tag, revid) for tag, revid in tags if
                 graph.is_between(revid, revid1, revid2)]
-        if sort == 'alpha':
+        if sort == 'natural':
+            def natural_sort_key(tag):
+                return [f(s) for f,s in 
+                        zip(itertools.cycle((unicode.lower,int)),
+                                            re.split('([0-9]+)', tag[0]))]
+            tags.sort(key=natural_sort_key)
+        elif sort == 'alpha':
             tags.sort()
         elif sort == 'time':
             timestamps = {}
