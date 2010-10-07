@@ -40,14 +40,7 @@ from bzrlib.plugins.launchpad.account import get_lp_login
 register_urlparse_netloc_protocol('bzr+ssh')
 register_urlparse_netloc_protocol('lp')
 
-_ubuntu_series = {
-    'natty': 'natty',
-    'maverick': 'maverick',
-    'lucid': 'lucid',
-    'karmic': 'karmic',
-    'jaunty': 'jaunty',
-    'hardy': 'hardy',
-    'dapper': 'dapper',
+_ubuntu_series_shortcuts = {
     'n': 'natty',
     'm': 'maverick',
     'l': 'lucid',
@@ -57,10 +50,6 @@ _ubuntu_series = {
     'd': 'dapper',
     }
 
-_debian_series = {
-    'lenny': 'lenny',
-    'squeeze': 'squeeze',
-    }
 
 class LaunchpadDirectory(object):
 
@@ -88,10 +77,11 @@ class LaunchpadDirectory(object):
         if result.scheme in ('ubuntu', 'debianlp'):
             if result.scheme == 'ubuntu':
                 distro = 'ubuntu'
-                distro_series = _ubuntu_series
+                distro_series = _ubuntu_series_shortcuts
             elif result.scheme == 'debianlp':
                 distro = 'debian'
-                distro_series = _debian_series
+                # No shortcuts for Debian distroseries.
+                distro_series = {}
             else:
                 raise AssertionError('scheme should be ubuntu: or debianlp:')
             # Split the path.  It's either going to be 'project' or
