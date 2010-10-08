@@ -64,6 +64,105 @@ if features.pycurl.available():
     from bzrlib.transport.http._pycurl import PyCurlTransport
 
 
+class TestVariation(object):
+    """Variations that can be applied to tests"""
+
+    def scenarios(self):
+        """Return a list of (name, params) tuples.
+
+        All the tests subject to this varation will be repeated once per
+        scenario.
+        """
+        raise NotImplementedError(self.scenarios)
+
+
+class VaryByHttpClientImplementation(TestVariation):
+    """Test the two libraries we can use, pycurl and urllib."""
+
+    def scenarios(self):
+        transport_scenarios = [
+            ('urllib', dict(_transport=_urllib.HttpTransport_urllib,
+                            _server=http_server.HttpServer_urllib,
+                            _url_protocol='http+urllib',)),
+            ]
+        if features.pycurl.available():
+            transport_scenarios.append(
+                ('pycurl', dict(_transport=PyCurlTransport,
+                                _server=http_server.HttpServer_PyCurl,
+                                _url_protocol='http+pycurl',)))
+        return transport_scenarios
+
+
+class VaryByHttpProtocolVersion(TestVariation):
+    """Test on http/1.0 and 1.1"""
+
+    def scenarios(self):
+        return [
+            ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
+            ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
+            ]
+
+
+class VaryByHttpProxyAuthScheme(TestVariation):
+
+    def scenarios(self):
+        return [
+            ('basic', dict(_auth_server=http_utils.ProxyBasicAuthServer)),
+            ('digest', dict(_auth_server=http_utils.ProxyDigestAuthServer)),
+            ('basicdigest',
+                dict(_auth_server=http_utils.ProxyBasicAndDigestAuthServer)),
+            ]
+
+
+class VaryByHttpAuthScheme(TestVariation):
+
+    def scenarios(self):
+        return [
+            ('basic', dict(_auth_server=http_utils.HTTPBasicAuthServer)),
+            ('digest', dict(_auth_server=http_utils.HTTPDigestAuthServer)),
+            ('basicdigest',
+                dict(_auth_server=http_utils.HTTPBasicAndDigestAuthServer)),
+            ]
+
+
+class VaryByHttpActivity(TestVariation):
+
+    def scenarios(self):
+        activity_scenarios = [
+            ('urllib,http', dict(_activity_server=ActivityHTTPServer,
+                                _transport=_urllib.HttpTransport_urllib,)),
+            ]
+        if tests.HTTPSServerFeature.available():
+            activity_scenarios.append(
+                ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
+                                    _transport=_urllib.HttpTransport_urllib,)),)
+        if features.pycurl.available():
+            activity_scenarios.append(
+                ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
+                                    _transport=PyCurlTransport,)),)
+            if tests.HTTPSServerFeature.available():
+                from bzrlib.tests import (
+                    ssl_certs,
+                    )
+                # FIXME: Until we have a better way to handle self-signed
+                # certificates (like allowing them in a test specific
+                # authentication.conf for example), we need some specialized pycurl
+                # transport for tests.
+                class HTTPS_pycurl_transport(PyCurlTransport):
+
+                    def __init__(self, base, _from_transport=None):
+                        super(HTTPS_pycurl_transport, self).__init__(
+                            base, _from_transport)
+                        self.cabundle = str(ssl_certs.build_path('ca.crt'))
+
+                activity_scenarios.append(
+                    ('pycurl,https', dict(_activity_server=ActivityHTTPSServer,
+                                        _transport=HTTPS_pycurl_transport,)),)
+        return activity_scenarios
+
+
+
+
 def load_tests(standard_tests, module, loader):
     """Multiply tests for http clients and protocol versions."""
     result = loader.suiteClass()
@@ -75,29 +174,16 @@ def load_tests(standard_tests, module, loader):
                 TestHttpTransportUrls,
                 Test_redirected_to,
                 )))
-    transport_scenarios = [
-        ('urllib', dict(_transport=_urllib.HttpTransport_urllib,
-                        _server=http_server.HttpServer_urllib,
-                        _url_protocol='http+urllib',)),
-        ]
-    if features.pycurl.available():
-        transport_scenarios.append(
-            ('pycurl', dict(_transport=PyCurlTransport,
-                            _server=http_server.HttpServer_PyCurl,
-                            _url_protocol='http+pycurl',)))
-    tests.multiply_tests(t_tests, transport_scenarios, result)
-
-    protocol_scenarios = [
-            ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
-            ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
-            ]
+    tests.multiply_tests(
+        t_tests, VaryByHttpClientImplementation().scenarios(), result)
 
     # some tests are parametrized by the protocol version only
     p_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestAuthOnRedirected,
                 )))
-    tests.multiply_tests(p_tests, protocol_scenarios, result)
+    tests.multiply_tests(
+        p_tests, VaryByHttpProtocolVersion().scenarios(), result)
 
     # each implementation tested with each HTTP version
     tp_tests, remaining_tests = tests.split_suite_by_condition(
@@ -113,8 +199,9 @@ def load_tests(standard_tests, module, loader):
                 TestRanges,
                 TestSpecificRequestHandler,
                 )))
-    tp_scenarios = tests.multiply_scenarios(transport_scenarios,
-                                            protocol_scenarios)
+    tp_scenarios = tests.multiply_scenarios(
+        VaryByHttpClientImplementation().scenarios(),
+        VaryByHttpProtocolVersion().scenarios())
     tests.multiply_tests(tp_tests, tp_scenarios, result)
 
     # proxy auth: each auth scheme on all http versions on all implementations.
@@ -122,14 +209,9 @@ def load_tests(standard_tests, module, loader):
         remaining_tests, tests.condition_isinstance((
                 TestProxyAuth,
                 )))
-    proxy_auth_scheme_scenarios = [
-        ('basic', dict(_auth_server=http_utils.ProxyBasicAuthServer)),
-        ('digest', dict(_auth_server=http_utils.ProxyDigestAuthServer)),
-        ('basicdigest',
-         dict(_auth_server=http_utils.ProxyBasicAndDigestAuthServer)),
-        ]
-    tppa_scenarios = tests.multiply_scenarios(tp_scenarios,
-                                              proxy_auth_scheme_scenarios)
+    tppa_scenarios = tests.multiply_scenarios(
+        tp_scenarios,
+        VaryByHttpProxyAuthScheme().scenarios())
     tests.multiply_tests(tppa_tests, tppa_scenarios, result)
 
     # auth: each auth scheme on all http versions on all implementations.
@@ -137,14 +219,9 @@ def load_tests(standard_tests, module, loader):
         remaining_tests, tests.condition_isinstance((
                 TestAuth,
                 )))
-    auth_scheme_scenarios = [
-        ('basic', dict(_auth_server=http_utils.HTTPBasicAuthServer)),
-        ('digest', dict(_auth_server=http_utils.HTTPDigestAuthServer)),
-        ('basicdigest',
-         dict(_auth_server=http_utils.HTTPBasicAndDigestAuthServer)),
-        ]
-    tpa_scenarios = tests.multiply_scenarios(tp_scenarios,
-                                             auth_scheme_scenarios)
+    tpa_scenarios = tests.multiply_scenarios(
+        tp_scenarios,
+        VaryByHttpAuthScheme().scenarios())
     tests.multiply_tests(tpa_tests, tpa_scenarios, result)
 
     # activity: on all http[s] versions on all implementations
@@ -152,39 +229,9 @@ def load_tests(standard_tests, module, loader):
         remaining_tests, tests.condition_isinstance((
                 TestActivity,
                 )))
-    activity_scenarios = [
-        ('urllib,http', dict(_activity_server=ActivityHTTPServer,
-                             _transport=_urllib.HttpTransport_urllib,)),
-        ]
-    if tests.HTTPSServerFeature.available():
-        activity_scenarios.append(
-            ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
-                                  _transport=_urllib.HttpTransport_urllib,)),)
-    if features.pycurl.available():
-        activity_scenarios.append(
-            ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
-                                 _transport=PyCurlTransport,)),)
-        if tests.HTTPSServerFeature.available():
-            from bzrlib.tests import (
-                ssl_certs,
-                )
-            # FIXME: Until we have a better way to handle self-signed
-            # certificates (like allowing them in a test specific
-            # authentication.conf for example), we need some specialized pycurl
-            # transport for tests.
-            class HTTPS_pycurl_transport(PyCurlTransport):
-
-                def __init__(self, base, _from_transport=None):
-                    super(HTTPS_pycurl_transport, self).__init__(
-                        base, _from_transport)
-                    self.cabundle = str(ssl_certs.build_path('ca.crt'))
-
-            activity_scenarios.append(
-                ('pycurl,https', dict(_activity_server=ActivityHTTPSServer,
-                                      _transport=HTTPS_pycurl_transport,)),)
-
-    tpact_scenarios = tests.multiply_scenarios(activity_scenarios,
-                                               protocol_scenarios)
+    tpact_scenarios = tests.multiply_scenarios(
+        VaryByHttpActivity().scenarios(),
+        VaryByHttpProtocolVersion().scenarios())
     tests.multiply_tests(tpact_tests, tpact_scenarios, result)
 
     # No parametrization for the remaining tests
