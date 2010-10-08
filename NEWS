@@ -111,6 +111,10 @@ Internals
 Testing
 *******
 
+* Add ``tests/ssl_certs/ca.crt`` to the required test files list. Test
+  involving the pycurl https test server fail otherwise when running
+  selftest from an installed version. (Vincent Ladeuil, #651706)
+
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
 
@@ -557,8 +561,12 @@ Bug Fixes
   needed to succesfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).
 
-* Skip the tests that requires respecting the chmod bits when running as root.
+* Skip the tests that requires respecting the chmod bits when running as
+  root. Including the one that wasn't present in 2.1.
   (Vincent Ladeuil, #646133)
+
+* Using bzr with `lp:` urls behind an http proxy should work.
+  (Robert Collins, #558343)
 
 Improvements
 ************
@@ -574,6 +582,10 @@ Internals
 
 Testing
 *******
+
+* Add ``tests/ssl_certs/ca.crt`` to the required test files list. Test
+  involving the pycurl https test server fail otherwise when running
+  selftest from an installed version. (Vincent Ladeuil, #651706)
 
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
@@ -721,6 +733,9 @@ Bug Fixes
 
 * Skip the tests that requires respecting the chmod bits when running as root.
   (Vincent Ladeuil, #646133)
+
+* Using bzr with `lp:` urls behind an http proxy should work.
+  (Robert Collins, #558343)
 
 Improvements
 ************
