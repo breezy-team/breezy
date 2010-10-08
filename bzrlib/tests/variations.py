@@ -59,4 +59,8 @@ def multiply_tests_by_their_variations(some_tests, into_suite):
         inserted.
     """
     for test in iter_suite_tests(some_tests):
-        multiply_tests_by_variations(test, test.variations, into_suite)
+        variations = getattr(test, 'variations', None)
+        if variations is None:
+            into_suite.addTest(test)
+        else:
+            multiply_tests_by_variations(test, test.variations, into_suite)

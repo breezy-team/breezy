@@ -29,10 +29,16 @@ from bzrlib.tests.variations import (
 
 class SimpleVariation(TestVariation):
 
+    def __init__(self, attr_name):
+        # this variation is unusual in having constructor parameters -- most
+        # will be static -- but this lets us test having multiply variations
+        # of a single test
+        self.attr_name = attr_name
+        
     def scenarios(self):
         return [
-            ('a', {'value': 'a'}),
-            ('b', {'value': 'b'})
+            ('a', {self.attr_name: 'a'}),
+            ('b', {self.attr_name: 'b'})
         ]
 
 
@@ -48,7 +54,7 @@ class TestTestVariations(TestCase):
         suite = loader.suiteClass()
         multiply_tests_by_variations(
             self,
-            [SimpleVariation()],
+            [SimpleVariation('value')],
             suite)
         self.assertEquals(
             get_generated_test_attributes(suite, 'value'),
@@ -61,12 +67,22 @@ class TestTestVariations(TestCase):
             suite)
         self.assertEquals(
             get_generated_test_attributes(suite, 'value'),
-            ['a', 'b'])
+            ['a', 'a', 'b', 'b'])
 
+    def test_multiply_tests_no_variations(self):
+        """Tests with no variations attribute aren't multiplied"""
+        suite = TestLoader().suiteClass()
+        multiply_tests_by_their_variations(self,
+            suite)
+        self.assertEquals(
+            len(list(iter_suite_tests(suite))), 1)
 
 class PretendVaryingTest(TestCase):
     
-    variations = [SimpleVariation()]
+    variations = [
+        SimpleVariation('value'), 
+        SimpleVariation('other'),
+        ]
 
     def test_nothing(self):
         """This test exists just so it can be multiplied"""
