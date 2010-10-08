@@ -33,6 +33,7 @@ from bzrlib.tests.variations import (
 # and so that we check everything hooks up properly.
 load_tests = load_tests_from_their_variations
 
+
 class SimpleVariation(TestVariation):
 
     def __init__(self, attr_name):

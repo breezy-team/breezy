@@ -53,6 +53,7 @@ from bzrlib.tests import (
 from bzrlib.tests.variations import (
     TestVariation,
     multiply_tests_by_variations,
+    multiply_tests_by_their_variations,
     )
 from bzrlib.transport import (
     http,
@@ -164,16 +165,14 @@ def load_tests(standard_tests, module, loader):
                 TestHttpTransportUrls,
                 Test_redirected_to,
                 )))
-    multiply_tests_by_variations(
-        t_tests, [VaryByHttpClientImplementation()], result)
+    multiply_tests_by_their_variations(t_tests, result)
 
     # some tests are parametrized by the protocol version only
     p_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestAuthOnRedirected,
                 )))
-    multiply_tests_by_variations(
-        p_tests, [VaryByHttpProtocolVersion()], result)
+    multiply_tests_by_their_variations(p_tests, result)
 
     # each implementation tested with each HTTP version
     tp_tests, remaining_tests = tests.split_suite_by_condition(
@@ -189,47 +188,28 @@ def load_tests(standard_tests, module, loader):
                 TestRanges,
                 TestSpecificRequestHandler,
                 )))
-    multiply_tests_by_variations(
-        tp_tests, [
-            VaryByHttpClientImplementation(),
-            VaryByHttpProtocolVersion(),
-        ],
-        result)
+    multiply_tests_by_their_variations(tp_tests, result) 
 
     # proxy auth: each auth scheme on all http versions on all implementations.
     tppa_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestProxyAuth,
                 )))
-    multiply_tests_by_variations(
-        tppa_tests, [
-            VaryByHttpClientImplementation(),
-            VaryByHttpProtocolVersion(),
-            VaryByHttpProxyAuthScheme(),
-        ], result)
+    multiply_tests_by_their_variations(tppa_tests, result)
 
     # auth: each auth scheme on all http versions on all implementations.
     tpa_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestAuth,
                 )))
-    multiply_tests_by_variations(
-        tpa_tests, [
-            VaryByHttpClientImplementation(),
-            VaryByHttpProtocolVersion(),
-            VaryByHttpAuthScheme(),
-        ], result)
+    multiply_tests_by_their_variations(tpa_tests, result)
 
     # activity: on all http[s] versions on all implementations
     tpact_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestActivity,
                 )))
-    multiply_tests_by_variations(
-        tpact_tests, [
-            VaryByHttpActivity(),
-            VaryByHttpProtocolVersion(),
-        ], result)
+    multiply_tests_by_their_variations(tpact_tests, result) 
 
     # No parametrization for the remaining tests
     result.addTests(remaining_tests)
@@ -443,7 +423,10 @@ class TestHttpUrls(tests.TestCase):
 
 
 class TestHttpTransportUrls(tests.TestCase):
+
     """Test the http urls."""
+
+    variations = [VaryByHttpClientImplementation()]
 
     def test_abs_url(self):
         """Construction of absolute http URLs"""
@@ -519,6 +502,11 @@ class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
 class TestHTTPConnections(http_utils.TestCaseWithWebserver):
     """Test the http connections."""
 
+    variations = [
+        VaryByHttpClientImplementation(), 
+        VaryByHttpProtocolVersion(),
+        ]
+
     def setUp(self):
         http_utils.TestCaseWithWebserver.setUp(self)
         self.build_tree(['foo/', 'foo/bar'], line_endings='binary',
@@ -569,6 +557,8 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
 class TestHttpTransportRegistration(tests.TestCase):
     """Test registrations of various http implementations"""
 
+    variations = [VaryByHttpClientImplementation()]
+
     def test_http_registered(self):
         t = transport.get_transport('%s://foo.com/' % self._url_protocol)
         self.assertIsInstance(t, transport.Transport)
@@ -576,6 +566,11 @@ class TestHttpTransportRegistration(tests.TestCase):
 
 
 class TestPost(tests.TestCase):
+
+    variations = [
+        VaryByHttpClientImplementation(), 
+        VaryByHttpProtocolVersion(),
+        ]
 
     def test_post_body_is_received(self):
         server = RecordingServer(expect_body_tail='end-of-body',
@@ -628,6 +623,11 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
 
     Daughter classes are expected to override _req_handler_class
     """
+
+    variations = [
+        VaryByHttpClientImplementation(), 
+        VaryByHttpProtocolVersion(),
+        ]
 
     # Provide a useful default
     _req_handler_class = http_server.TestingHTTPRequestHandler
@@ -1099,6 +1099,11 @@ class LimitedRangeHTTPServer(http_server.HttpServer):
 class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
     """Tests readv requests against a server erroring out on too much ranges."""
 
+    variations = [
+        VaryByHttpClientImplementation(), 
+        VaryByHttpProtocolVersion(),
+        ]
+
     # Requests with more range specifiers will error out
     range_limit = 3
 
@@ -1177,6 +1182,11 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
     different content (the faked proxy server append '-proxied'
     to the file names).
     """
+
+    variations = [
+        VaryByHttpClientImplementation(), 
+        VaryByHttpProtocolVersion(),
+        ]
 
     # FIXME: We don't have an https server available, so we don't
     # test https connections. --vila toolongago
@@ -1280,6 +1290,11 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
 class TestRanges(http_utils.TestCaseWithWebserver):
     """Test the Range header in GET methods."""
 
+    variations = [
+        VaryByHttpClientImplementation(), 
+        VaryByHttpProtocolVersion(),
+        ]
+
     def setUp(self):
         http_utils.TestCaseWithWebserver.setUp(self)
         self.build_tree_contents([('a', '0123456789')],)
@@ -1324,6 +1339,11 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
 class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test redirection between http servers."""
+
+    variations = [
+        VaryByHttpClientImplementation(), 
+        VaryByHttpProtocolVersion(),
+        ]
 
     def setUp(self):
         super(TestHTTPRedirections, self).setUp()
@@ -1393,6 +1413,11 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     -- vila 20070212
     """
 
+    variations = [
+        VaryByHttpClientImplementation(), 
+        VaryByHttpProtocolVersion(),
+        ]
+
     def setUp(self):
         if (features.pycurl.available()
             and self._transport == PyCurlTransport):
@@ -1443,6 +1468,11 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
 class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test transport.do_catching_redirections."""
 
+    variations = [
+        VaryByHttpClientImplementation(), 
+        VaryByHttpProtocolVersion(),
+        ]
+
     def setUp(self):
         super(TestDoCatchRedirections, self).setUp()
         self.build_tree_contents([('a', '0123456789'),],)
@@ -1489,6 +1519,12 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
 class TestAuth(http_utils.TestCaseWithWebserver):
     """Test authentication scheme"""
+
+    variations = [
+        VaryByHttpClientImplementation(),
+        VaryByHttpProtocolVersion(),
+        VaryByHttpAuthScheme(),
+        ]
 
     _auth_header = 'Authorization'
     _password_prompt_prefix = ''
@@ -1699,6 +1735,12 @@ class TestAuth(http_utils.TestCaseWithWebserver):
 class TestProxyAuth(TestAuth):
     """Test proxy authentication schemes."""
 
+    variations = [
+        VaryByHttpClientImplementation(),
+        VaryByHttpProtocolVersion(),
+        VaryByHttpProxyAuthScheme(),
+        ]
+
     _auth_header = 'Proxy-authorization'
     _password_prompt_prefix = 'Proxy '
     _username_prompt_prefix = 'Proxy '
@@ -1759,6 +1801,11 @@ class SampleSocket(object):
 
 
 class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
+
+    variations = [
+        VaryByHttpClientImplementation(), 
+        VaryByHttpProtocolVersion(),
+        ]
 
     def setUp(self):
         super(SmartHTTPTunnellingTest, self).setUp()
@@ -1853,6 +1900,8 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
 
 
 class Test_redirected_to(tests.TestCase):
+
+    variations = [VaryByHttpClientImplementation()]
 
     def test_redirected_to_subdir(self):
         t = self._transport('http://www.example.com/foo')
@@ -1966,6 +2015,11 @@ class TestActivityMixin(object):
     We use a special purpose server to control the bytes sent and received and
     be able to predict the activity on the client socket.
     """
+
+    variations = [
+        VaryByHttpActivity(),
+        VaryByHttpProtocolVersion(),
+        ]
 
     def setUp(self):
         tests.TestCase.setUp(self)
@@ -2130,6 +2184,8 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
 
 class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
     """Test authentication on the redirected http server."""
+
+    variations = [VaryByHttpProtocolVersion()]
 
     _auth_header = 'Authorization'
     _password_prompt_prefix = ''
