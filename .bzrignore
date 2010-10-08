@@ -19,7 +19,7 @@ bzr.1
 ./doc/**/*.html
 ./doc/developers/performance.png
 ./doc/en/user-reference/*.txt
-./doc/en/release-notes/*.txt
+./doc/en/release-notes/index.txt
 BRANCH-INFO
 # setup.py working directory
 ./build
