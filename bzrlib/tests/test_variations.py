@@ -22,22 +22,16 @@ from bzrlib.tests import (
 
 from bzrlib.tests.variations import (
     TestVariation,
+    load_tests_from_their_variations,
     multiply_tests_by_their_variations,
     multiply_tests_by_variations,
     )
 
 
-def load_tests(standard_tests, module, loader):
-    """Multiply tests
-    
-    There aren't any actually parameterized tests here, but this exists as a
-    demonstration; so that you can interactively observe them being
-    multiplied; and so that we check everything hooks up properly.
-    """
-    result = loader.suiteClass()
-    multiply_tests_by_their_variations(standard_tests, result)
-    return result
-
+# There aren't any actually parameterized tests here, but this exists as a
+# demonstration; so that you can interactively observe them being multiplied;
+# and so that we check everything hooks up properly.
+load_tests = load_tests_from_their_variations
 
 class SimpleVariation(TestVariation):
 

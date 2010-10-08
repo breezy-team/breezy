@@ -34,6 +34,17 @@ class TestVariation(object):
         raise NotImplementedError(self.scenarios)
 
 
+def load_tests_from_their_variations(standard_tests, module, loader):
+    """Multiply tests depending on their 'variations' attribute.
+
+    This can be assigned to 'load_tests' in any test module to make this
+    automatically work across tests in the module.
+    """
+    result = loader.suiteClass()
+    multiply_tests_by_their_variations(standard_tests, result)
+    return result
+
+
 def multiply_tests_by_variations(multiplicand, variations, into_suite):
     """Given a test, multiply it by the full expansion of variations.
     
