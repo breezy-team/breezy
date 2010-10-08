@@ -176,8 +176,8 @@ class GitBranchBuilder(object):
         if self.orig_stream is None:
             from dulwich.repo import Repo
             r = Repo(".")
-            from dulwich.fastexport import FastImporter
-            importer = FastImporter(r)
+            from dulwich.fastexport import GitImportProcessor
+            importer = GitImportProcessor(r)
             return importer.import_stream(self.stream)
 
 
