@@ -74,6 +74,11 @@ Internals
 Testing
 *******
 
+* Add a new simpler way to give declarative test variations, by setting
+  the `variations` attribute to a list of `TestVariation` objects.  (See
+  the testing guide.)  Simplify `test_http` using this.
+  (Martin Pool, #597791)
+
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
 
