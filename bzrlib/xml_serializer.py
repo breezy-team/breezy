@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,8 +22,10 @@
 # importing this module is fairly slow because it has to load several
 # ElementTree bits
 
+import re
+
 from bzrlib.serializer import Serializer
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter
 
 try:
     try:
@@ -31,6 +33,8 @@ try:
         from xml.etree.cElementTree import (ElementTree, SubElement, Element,
             XMLTreeBuilder, fromstring, tostring)
         import xml.etree as elementtree
+        # Also import ElementTree module so monkey-patching below always works
+        import xml.etree.ElementTree
     except ImportError:
         from cElementTree import (ElementTree, SubElement, Element,
                                   XMLTreeBuilder, fromstring, tostring)
@@ -83,8 +87,11 @@ class XMLSerializer(Serializer):
 
     def read_inventory(self, f, revision_id=None):
         try:
-            return self._unpack_inventory(self._read_element(f),
-                revision_id=None)
+            try:
+                return self._unpack_inventory(self._read_element(f),
+                    revision_id=None)
+            finally:
+                f.close()
         except ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 
@@ -106,73 +113,6 @@ class XMLSerializer(Serializer):
 
     def _read_element(self, f):
         return ElementTree().parse(f)
-
-
-# performance tuning for elementree's serialiser. This should be
-# sent upstream - RBC 20060523.
-# the functions here are patched into elementtree at runtime.
-import re
-escape_re = re.compile("[&'\"<>]")
-escape_map = {
-    "&":'&amp;',
-    "'":"&apos;", # FIXME: overkill
-    "\"":"&quot;",
-    "<":"&lt;",
-    ">":"&gt;",
-    }
-def _escape_replace(match, map=escape_map):
-    return map[match.group()]
-
-def _escape_attrib(text, encoding=None, replace=None):
-    # escape attribute value
-    try:
-        if encoding:
-            try:
-                text = elementtree.ElementTree._encode(text, encoding)
-            except UnicodeError:
-                return elementtree.ElementTree._encode_entity(text)
-        if replace is None:
-            return escape_re.sub(_escape_replace, text)
-        else:
-            text = replace(text, "&", "&amp;")
-            text = replace(text, "'", "&apos;") # FIXME: overkill
-            text = replace(text, "\"", "&quot;")
-            text = replace(text, "<", "&lt;")
-            text = replace(text, ">", "&gt;")
-            return text
-    except (TypeError, AttributeError):
-        elementtree.ElementTree._raise_serialization_error(text)
-
-elementtree.ElementTree._escape_attrib = _escape_attrib
-
-escape_cdata_re = re.compile("[&<>]")
-escape_cdata_map = {
-    "&":'&amp;',
-    "<":"&lt;",
-    ">":"&gt;",
-    }
-def _escape_cdata_replace(match, map=escape_cdata_map):
-    return map[match.group()]
-
-def _escape_cdata(text, encoding=None, replace=None):
-    # escape character data
-    try:
-        if encoding:
-            try:
-                text = elementtree.ElementTree._encode(text, encoding)
-            except UnicodeError:
-                return elementtree.ElementTree._encode_entity(text)
-        if replace is None:
-            return escape_cdata_re.sub(_escape_cdata_replace, text)
-        else:
-            text = replace(text, "&", "&amp;")
-            text = replace(text, "<", "&lt;")
-            text = replace(text, ">", "&gt;")
-            return text
-    except (TypeError, AttributeError):
-        elementtree.ElementTree._raise_serialization_error(text)
-
-elementtree.ElementTree._escape_cdata = _escape_cdata
 
 
 def escape_invalid_chars(message):

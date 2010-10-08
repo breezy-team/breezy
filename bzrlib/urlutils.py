@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -101,7 +101,12 @@ def _find_scheme_and_separator(url):
     first_path_slash = path.find('/')
     if first_path_slash == -1:
         return len(scheme), None
-    return len(scheme), first_path_slash+len(scheme)+3
+    return len(scheme), first_path_slash+m.start('path')
+
+
+def is_url(url):
+    """Tests whether a URL is in actual fact a URL."""
+    return _url_scheme_re.match(url) is not None
 
 
 def join(base, *args):
@@ -118,67 +123,26 @@ def join(base, *args):
     """
     if not args:
         return base
-    match = _url_scheme_re.match(base)
-    scheme = None
-    if match:
-        scheme = match.group('scheme')
-        path = match.group('path').split('/')
-        if path[-1:] == ['']:
-            # Strip off a trailing slash
-            # This helps both when we are at the root, and when
-            # 'base' has an extra slash at the end
-            path = path[:-1]
-    else:
-        path = base.split('/')
-
-    if scheme is not None and len(path) >= 1:
-        host = path[:1]
-        # the path should be represented as an abs path.
-        # we know this must be absolute because of the presence of a URL scheme.
-        remove_root = True
-        path = [''] + path[1:]
-    else:
-        # create an empty host, but dont alter the path - this might be a
-        # relative url fragment.
-        host = []
-        remove_root = False
-
+    scheme_end, path_start = _find_scheme_and_separator(base)
+    if scheme_end is None and path_start is None:
+        path_start = 0
+    elif path_start is None:
+        path_start = len(base)
+    path = base[path_start:]
     for arg in args:
-        match = _url_scheme_re.match(arg)
-        if match:
-            # Absolute URL
-            scheme = match.group('scheme')
-            # this skips .. normalisation, making http://host/../../..
-            # be rather strange.
-            path = match.group('path').split('/')
-            # set the host and path according to new absolute URL, discarding
-            # any previous values.
-            # XXX: duplicates mess from earlier in this function.  This URL
-            # manipulation code needs some cleaning up.
-            if scheme is not None and len(path) >= 1:
-                host = path[:1]
-                path = path[1:]
-                # url scheme implies absolute path.
-                path = [''] + path
-            else:
-                # no url scheme we take the path as is.
-                host = []
+        arg_scheme_end, arg_path_start = _find_scheme_and_separator(arg)
+        if arg_scheme_end is None and arg_path_start is None:
+            arg_path_start = 0
+        elif arg_path_start is None:
+            arg_path_start = len(arg)
+        if arg_scheme_end is not None:
+            base = arg
+            path = arg[arg_path_start:]
+            scheme_end = arg_scheme_end
+            path_start = arg_path_start
         else:
-            path = '/'.join(path)
             path = joinpath(path, arg)
-            path = path.split('/')
-    if remove_root and path[0:1] == ['']:
-        del path[0]
-    if host:
-        # Remove the leading slash from the path, so long as it isn't also the
-        # trailing slash, which we want to keep if present.
-        if path and path[0] == '' and len(path) > 1:
-            del path[0]
-        path = host + path
-
-    if scheme is None:
-        return '/'.join(path)
-    return scheme + '://' + '/'.join(path)
+    return base[:path_start] + path
 
 
 def joinpath(base, *args):
@@ -278,7 +242,7 @@ def _win32_local_path_to_url(path):
     # on non-win32 platform
     # FIXME: It turns out that on nt, ntpath.abspath uses nt._getfullpathname
     #       which actually strips trailing space characters.
-    #       The worst part is that under linux ntpath.abspath has different
+    #       The worst part is that on linux ntpath.abspath has different
     #       semantics, since 'nt' is not an available module.
     if path == '/':
         return 'file:///'
@@ -303,7 +267,7 @@ if sys.platform == 'win32':
     MIN_ABS_FILEURL_LENGTH = WIN32_MIN_ABS_FILEURL_LENGTH
 
 
-_url_scheme_re = re.compile(r'^(?P<scheme>[^:/]{2,})://(?P<path>.*)$')
+_url_scheme_re = re.compile(r'^(?P<scheme>[^:/]{2,}):(//)?(?P<path>.*)$')
 _url_hex_escapes_re = re.compile(r'(%[0-9a-fA-F]{2})')
 
 
@@ -339,18 +303,18 @@ def normalize_url(url):
     :param url: Either a hybrid URL or a local path
     :return: A normalized URL which only includes 7-bit ASCII characters.
     """
-    m = _url_scheme_re.match(url)
-    if not m:
+    scheme_end, path_start = _find_scheme_and_separator(url)
+    if scheme_end is None:
         return local_path_to_url(url)
-    scheme = m.group('scheme')
-    path = m.group('path')
+    prefix = url[:path_start]
+    path = url[path_start:]
     if not isinstance(url, unicode):
         for c in url:
             if c not in _url_safe_characters:
                 raise errors.InvalidURL(url, 'URLs can only contain specific'
                                             ' safe characters (not %r)' % c)
         path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
-        return str(scheme + '://' + ''.join(path))
+        return str(prefix + ''.join(path))
 
     # We have a unicode (hybrid) url
     path_chars = list(path)
@@ -362,7 +326,7 @@ def normalize_url(url):
                 ['%%%02X' % ord(c) for c in path_chars[i].encode('utf-8')])
     path = ''.join(path_chars)
     path = _url_hex_escapes_re.sub(_unescape_safe_chars, path)
-    return str(scheme + '://' + path)
+    return str(prefix + path)
 
 
 def relative_url(base, other):
@@ -467,6 +431,78 @@ def split(url, exclude_trailing_slash=True):
         path = path[:-1]
     head, tail = _posix_split(path)
     return url_base + head, tail
+
+
+def split_segment_parameters_raw(url):
+    """Split the subsegment of the last segment of a URL.
+
+    :param url: A relative or absolute URL
+    :return: (url, subsegments)
+    """
+    (parent_url, child_dir) = split(url)
+    subsegments = child_dir.split(",")
+    if len(subsegments) == 1:
+        return (url, [])
+    return (join(parent_url, subsegments[0]), subsegments[1:])
+
+
+def split_segment_parameters(url):
+    """Split the segment parameters of the last segment of a URL.
+
+    :param url: A relative or absolute URL
+    :return: (url, segment_parameters)
+    """
+    (base_url, subsegments) = split_segment_parameters_raw(url)
+    parameters = {}
+    for subsegment in subsegments:
+        (key, value) = subsegment.split("=", 1)
+        parameters[key] = value
+    return (base_url, parameters)
+
+
+def join_segment_parameters_raw(base, *subsegments):
+    """Create a new URL by adding subsegments to an existing one. 
+
+    This adds the specified subsegments to the last path in the specified
+    base URL. The subsegments should be bytestrings.
+
+    :note: You probably want to use join_segment_parameters instead.
+    """
+    if not subsegments:
+        return base
+    for subsegment in subsegments:
+        if type(subsegment) is not str:
+            raise TypeError("Subsegment %r is not a bytestring" % subsegment)
+        if "," in subsegment:
+            raise errors.InvalidURLJoin(", exists in subsegments",
+                                        base, subsegments)
+    return ",".join((base,) + subsegments)
+
+
+def join_segment_parameters(url, parameters):
+    """Create a new URL by adding segment parameters to an existing one.
+
+    The parameters of the last segment in the URL will be updated; if a
+    parameter with the same key already exists it will be overwritten.
+
+    :param url: A URL, as string
+    :param parameters: Dictionary of parameters, keys and values as bytestrings
+    """
+    (base, existing_parameters) = split_segment_parameters(url)
+    new_parameters = {}
+    new_parameters.update(existing_parameters)
+    for key, value in parameters.iteritems():
+        if type(key) is not str:
+            raise TypeError("parameter key %r is not a bytestring" % key)
+        if type(value) is not str:
+            raise TypeError("parameter value %r for %s is not a bytestring" %
+                (key, value))
+        if "=" in key:
+            raise errors.InvalidURLJoin("= exists in parameter key", url,
+                parameters)
+        new_parameters[key] = value
+    return join_segment_parameters_raw(base, 
+        *["%s=%s" % item for item in sorted(new_parameters.items())])
 
 
 def _win32_strip_local_trailing_slash(url):

@@ -21,49 +21,6 @@ See also:
 * `Releasing Bazaar <releasing.html>`_ -- the process for actually making
   a release or release candidate.
 
-The Problem Situation
-*********************
-
-Bazaar makes a release every month, preceded by a one-week
-release-candidate test.
-
-In any release we may fix bugs, add formats, change the default format,
-improve performance, add new commands or change command line behaviour,
-change the network protocol, or deprecate APIs.  We sometimes also
-introduce new bugs, regress existing behaviour or performance, remove
-existing features or formats, or break behaviour or APIs depended upon by
-plugins, external programs or users.
-
-Some users are happy upgrading every month and consider the overall
-positive balance of changes is worth some amount of churn.  But there are
-some serious problems:
-
-* You cannot get bug fixes without also getting disruptive changes.
-
-* Bazaar is seen as unstable.
-
-* Many releases cause some plugin breakage.
-
-* One month is not a very long window for dependent programs or systems
-  to catch up to changes in Bazaar before the release goes out of date.
-
-* There's no clear indication to distributions which version they should
-  package.
-
-* If people (or their distributions) just pick an arbitrary version, they
-  may all be on different arbitrary versions, therefore they will have
-  different behaviour and different bugs, and sometimes interoperation
-  problems.
-
-* Any effort we, or distributors, wanted to put into backporting fixes
-  would be dissipated across many possible backport target releases.
-
-* When in the past we've tried either stalling releases for particular
-  features, or having trunk frozen for some weeks, it causes churn and
-  waste.  People rush features in, or already landed features wait a long
-  time to be released, or branches go out of date because they cannot
-  land.
-
 
 The Process
 ************
@@ -421,9 +378,14 @@ don't occur, we'll think again:
 
 * Users like it.
 
+After doing this for the 2.0 cycle (September 2009 through to early
+2010), it seems to be going well.
+
 
 Reviewing for the Stable Branch
 *******************************
+
+These are guidelines and can be interpreted case-by-case.
 
 * All changes to the stable branch should fix a bug, even if you would not
   normally file a bug for the change.  The bug description should if at
@@ -431,15 +393,37 @@ Reviewing for the Stable Branch
   fail before and pass after the change.  (These are requirements for the
   SRU process.)
 
-* The change should be reasonably small and conservative.  Be extra
-  careful of things that could break on other platforms or locales.
+* The change should be reasonably small and conservative.  
+
+* Remember that the patch will be read during the SRU
+  process and so keeping the patch small is useful even beyond keeping the
+  logical changes small.  Avoid doing mechanical bulk changes on the
+  stable branch.
+
+* Use particular care for things that may behave differently across
+  platforms, encodings or locales.  It's harder to thoroughly test these
+  things before a release.
+
+* Generally speaking, just cleaning things up is not a sufficient reason
+  to make changes to the stable branch.  It has to actually fix a bug.
+
+* Changes to the stable branch should include tests as usual.  
+
+* Don't change or remove existing APIs that might be used by plugins, even
+  if they are underscore-prefixed.  Adding APIs that are also being added
+  to the trunk branch may make sense.
+
+* Keeping consistency with trunk is useful, but less important than
+  keeping the stable branch stable.
 
 * (more items welcome)
 
 References
 **********
 
-#. List thread "[rfc] six-month stable release cycles", July 2009.
+#. List thread "`[rfc] six-month stable release cycles`__", July 2009.
+
+.. __: https://lists.ubuntu.com/archives/bazaar/2009q3/060882.html
 
 ..
    vim: filetype=rst textwidth=74 ai shiftwidth=4

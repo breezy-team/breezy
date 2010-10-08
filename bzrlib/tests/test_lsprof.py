@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,9 +19,10 @@
 
 import cPickle
 import os
+import threading
 
 import bzrlib
-from bzrlib import tests
+from bzrlib import errors, tests
 
 
 class _LSProfFeature(tests.Feature):
@@ -111,3 +112,40 @@ class TestBzrProfiler(tests.TestCase):
         lines = [str(data) for data in stats.data]
         lines = [line for line in lines if 'a_function' in line]
         self.assertLength(1, lines)
+
+    def test_block_0(self):
+        # When profiler_block is 0, reentrant profile requests fail.
+        self.overrideAttr(bzrlib.lsprof.BzrProfiler, 'profiler_block', 0)
+        inner_calls = []
+        def inner():
+            profiler = bzrlib.lsprof.BzrProfiler()
+            self.assertRaises(errors.BzrError, profiler.start)
+            inner_calls.append(True)
+        bzrlib.lsprof.profile(inner)
+        self.assertLength(1, inner_calls)
+
+    def test_block_1(self):
+        # When profiler_block is 1, concurrent profiles serialise.
+        # This is tested by manually acquiring the profiler lock, then
+        # starting a thread that tries to profile, and releasing the lock. 
+        # We know due to test_block_0 that two profiles at once hit the lock,
+        # so while this isn't perfect (we'd want a callback on the lock being
+        # entered to allow lockstep evaluation of the actions), its good enough
+        # to be confident regressions would be caught. Alternatively, if this
+        # is flakey, a fake Lock object can be used to trace the calls made.
+        calls = []
+        def profiled():
+            calls.append('profiled')
+        def do_profile():
+            bzrlib.lsprof.profile(profiled)
+            calls.append('after_profiled')
+        thread = threading.Thread(target=do_profile)
+        bzrlib.lsprof.BzrProfiler.profiler_lock.acquire()
+        try:
+            try:
+                thread.start()
+            finally:
+                bzrlib.lsprof.BzrProfiler.profiler_lock.release()
+        finally:
+            thread.join()
+        self.assertLength(2, calls)

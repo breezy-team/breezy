@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -22,6 +22,16 @@ from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 class TestIsIgnored(TestCaseWithWorkingTree):
 
+    def _set_user_ignore_content(self, ignores):
+        """Create user ignore file and set its content to ignores."""
+        config.ensure_config_dir_exists()
+        user_ignore_file = config.user_ignore_config_filename()
+        f = open(user_ignore_file, 'wb')
+        try:
+            f.write(ignores)
+        finally:
+            f.close()
+
     def test_is_ignored(self):
         tree = self.make_branch_and_tree('.')
         # this will break if a tree changes the ignored format. That is fine
@@ -31,17 +41,26 @@ class TestIsIgnored(TestCaseWithWorkingTree):
             ('.bzrignore', './rootdir\n'
                            'randomfile*\n'
                            '*bar\n'
+                           '!bazbar\n'
                            '?foo\n'
                            '*.~*\n'
                            'dir1/*f1\n'
                            'dir1/?f2\n'
+                           'RE:dir2/.*\.wombat\n'
                            'path/from/ro?t\n'
+                           '**/piffle.py\n'
+                           '!b/piffle.py\n'
                            'unicode\xc2\xb5\n' # u'\xb5'.encode('utf8')
                            'dos\r\n'
                            '\n' # empty line
                            '#comment\n'
                            ' xx \n' # whitespace
             )])
+        # We set user ignore file to contain '' to avoid patterns from
+        # user ignore being used instead of bzrignore. For .e.g. If we
+        # don't do this 'foo.~1~' will match '*~' default user ignore
+        # pattern instead of '*.~*' from bzr ignore as we expect below.
+        self._set_user_ignore_content('')
         # is_ignored returns the matching ignore regex when a path is ignored.
         # we check some expected matches for each rule, and one or more
         # relevant not-matches that look plausible as cases for bugs.
@@ -58,6 +77,12 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual("path/from/ro?t", tree.is_ignored('path/from/root'))
         self.assertEqual("path/from/ro?t", tree.is_ignored('path/from/roat'))
         self.assertEqual(None, tree.is_ignored('roat'))
+        
+        self.assertEqual('**/piffle.py', tree.is_ignored('piffle.py'))
+        self.assertEqual('**/piffle.py', tree.is_ignored('a/piffle.py'))
+        self.assertEqual(None, tree.is_ignored('b/piffle.py')) # exclusion
+        self.assertEqual('**/piffle.py', tree.is_ignored('foo/bar/piffle.py'))
+        self.assertEqual(None, tree.is_ignored('p/iffle.py'))
 
         self.assertEqual(u'unicode\xb5', tree.is_ignored(u'unicode\xb5'))
         self.assertEqual(u'unicode\xb5', tree.is_ignored(u'subdir/unicode\xb5'))
@@ -72,6 +97,8 @@ class TestIsIgnored(TestCaseWithWorkingTree):
         self.assertEqual('*bar', tree.is_ignored(r'foo\nbar'))
         self.assertEqual('*bar', tree.is_ignored('bar'))
         self.assertEqual('*bar', tree.is_ignored('.bar'))
+        
+        self.assertEqual(None, tree.is_ignored('bazbar')) # exclusion
 
         self.assertEqual('?foo', tree.is_ignored('afoo'))
         self.assertEqual('?foo', tree.is_ignored('.foo'))
@@ -84,6 +111,9 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
         self.assertEqual('dir1/?f2', tree.is_ignored('dir1/ff2'))
         self.assertEqual('dir1/?f2', tree.is_ignored('dir1/.f2'))
+        
+        self.assertEqual('RE:dir2/.*\.wombat', tree.is_ignored('dir2/foo.wombat'))
+        self.assertEqual(None, tree.is_ignored('dir2/foo'))
 
         # Blank lines and comments should be ignored
         self.assertEqual(None, tree.is_ignored(''))
@@ -104,19 +134,16 @@ class TestIsIgnored(TestCaseWithWorkingTree):
 
         config.ensure_config_dir_exists()
         user_ignore_file = config.user_ignore_config_filename()
-        f = open(user_ignore_file, 'wb')
-        try:
-            f.write('*.py[co]\n'
-                    './.shelf\n'
-                    '# comment line\n'
-                    '\n' #Blank line
-                    '\r\n' #Blank dos line
-                    ' * \n' #Trailing and suffix spaces
-                    'crlf\r\n' # dos style line
-                    '*\xc3\xa5*\n' # u'\xe5'.encode('utf8')
-                    )
-        finally:
-            f.close()
+        self._set_user_ignore_content(
+            '*.py[co]\n'
+            './.shelf\n'
+            '# comment line\n'
+            '\n' #Blank line
+            '\r\n' #Blank dos line
+            ' * \n' #Trailing and suffix spaces
+            'crlf\r\n' # dos style line
+            '*\xc3\xa5*\n' # u'\xe5'.encode('utf8')
+            )
 
         # Rooted
         self.assertEqual('./.shelf', tree.is_ignored('.shelf'))

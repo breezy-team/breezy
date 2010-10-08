@@ -27,7 +27,6 @@ from bzrlib import (
     repository,
     remote,
     )
-from bzrlib.bzrdir import BzrDir
 from bzrlib.repofmt.pack_repo import (
     RepositoryFormatKnitPack5,
     )
@@ -36,7 +35,6 @@ from bzrlib.repofmt.groupcompress_repo import (
     )
 from bzrlib.tests import (
     multiply_tests,
-    TestSuite,
     )
 from bzrlib.tests.per_repository import (
     all_repository_format_scenarios,

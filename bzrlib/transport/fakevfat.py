@@ -41,7 +41,7 @@ Some other restrictions are not implemented yet, but possibly could be:
 import re
 
 from bzrlib.errors import TransportNotPossible
-from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+from bzrlib.transport import decorator
 
 
 # TODO: It might be nice if these hooks were available in a more general way
@@ -52,7 +52,7 @@ from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
 # which are not implemented here fail by default?
 
 
-class FakeVFATTransportDecorator(TransportDecorator):
+class FakeVFATTransportDecorator(decorator.TransportDecorator):
     """A decorator that can convert any transport to be readonly.
 
     This is requested via the 'vfat+' prefix to get_transport().
@@ -99,17 +99,7 @@ class FakeVFATTransportDecorator(TransportDecorator):
         return self._decorated.put_file(self._squash_name(relpath), f, mode)
 
 
-class FakeVFATServer(DecoratorServer):
-    """A server that suggests connections through FakeVFATTransportDecorator
-
-    For use in testing.
-    """
-
-    def get_decorator_class(self):
-        return FakeVFATTransportDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(FakeVFATTransportDecorator, FakeVFATServer),
-            ]
+    from bzrlib.tests import test_server
+    return [(FakeVFATTransportDecorator, test_server.FakeVFATServer),]

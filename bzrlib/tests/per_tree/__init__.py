@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,22 +27,18 @@ Specific tests for individual variations are in other places such as:
 
 from bzrlib import (
     errors,
-    osutils,
-    progress,
     tests,
     transform,
     )
-from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from bzrlib.tests.per_workingtree import (
     make_scenarios as wt_make_scenarios,
     make_scenario as wt_make_scenario,
     )
-from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.transform import TransformPreview
 from bzrlib.workingtree import (
     WorkingTreeFormat,
-    WorkingTreeFormat3,
     _legacy_formats,
     )
 from bzrlib.workingtree_4 import (
@@ -80,10 +76,10 @@ def preview_tree_post(testcase, tree):
     basis = tree.basis_tree()
     tt = TransformPreview(basis)
     testcase.addCleanup(tt.finalize)
-    pp = progress.ProgressPhase('', 1, progress.DummyProgress())
     tree.lock_read()
     testcase.addCleanup(tree.unlock)
-    transform._prepare_revert_transform(basis, tree, tt, None, False, pp,
+    pp = None
+    transform._prepare_revert_transform(basis, tree, tt, None, False, None,
                                         basis, {})
     preview_tree = tt.get_preview_tree()
     preview_tree.set_parent_ids(tree.get_parent_ids())
@@ -98,7 +94,7 @@ class TestTreeImplementationSupport(tests.TestCaseWithTransport):
         self.assertIsInstance(tree, RevisionTree)
 
 
-class TestCaseWithTree(TestCaseWithBzrDir):
+class TestCaseWithTree(TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath):
         made_control = self.make_bzrdir(relpath, format=
@@ -386,6 +382,7 @@ def load_tests(standard_tests, module, loader):
         'inv',
         'iter_search_rules',
         'list_files',
+        'locking',
         'path_content_summary',
         'revision_tree',
         'test_trees',

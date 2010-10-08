@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #       Author: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -72,6 +72,18 @@ class TestSuite(unittest.TestSuite):
         visitor.visitSuite(self)
         visitTests(self, visitor)
 
+    def run(self, result):
+        """Run the tests in the suite, discarding references after running."""
+        tests = list(self)
+        tests.reverse()
+        self._tests = []
+        while tests:
+            if result.shouldStop:
+                self._tests = reversed(tests)
+                break
+            tests.pop().run(result)
+        return result
+
 
 class TestLoader(unittest.TestLoader):
     """Custom TestLoader to extend the stock python one."""
@@ -123,7 +135,13 @@ class TestLoader(unittest.TestLoader):
         >>>         result.addTests([test, test])
         >>>     return result
         """
-        basic_tests = super(TestLoader, self).loadTestsFromModule(module)
+        if sys.version_info < (2, 7):
+            basic_tests = super(TestLoader, self).loadTestsFromModule(module)
+        else:
+            # GZ 2010-07-19: Python 2.7 unittest also uses load_tests but with
+            #                a different and incompatible signature
+            basic_tests = super(TestLoader, self).loadTestsFromModule(module,
+                use_load_tests=False)
         load_tests = getattr(module, "load_tests", None)
         if load_tests is not None:
             return load_tests(basic_tests, module, self)

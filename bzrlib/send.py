@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,12 +15,12 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import os
 import time
 
 from bzrlib import (
     bzrdir,
     errors,
-    merge_directive,
     osutils,
     registry,
     trace,
@@ -110,20 +110,11 @@ def send(submit_branch, revision, public_branch, remember, format,
             if len(revision) == 2:
                 base_revision_id = revision[0].as_revision_id(branch)
         if revision_id is None:
-            if strict is None:
-                strict = branch.get_config(
-                    ).get_user_option_as_bool('send_strict')
-            if strict is None: strict = True # default value
-            if strict and tree is not None:
-                if (tree.has_changes()):
-                    raise errors.UncommittedChanges(
-                        tree, more='Use --no-strict to force the send.')
-                if tree.last_revision() != tree.branch.last_revision():
-                    # The tree has lost sync with its branch, there is little
-                    # chance that the user is aware of it but he can still force
-                    # the send with --no-strict
-                    raise errors.OutOfDateTree(
-                        tree, more='Use --no-strict to force the send.')
+            if tree is not None:
+                tree.check_changed_or_out_of_date(
+                    strict, 'send_strict',
+                    more_error='Use --no-strict to force the send.',
+                    more_warning='Uncommitted changes will not be sent.')
             revision_id = branch.last_revision()
         if revision_id == NULL_REVISION:
             raise errors.BzrCommandError('No revisions to submit.')
@@ -135,21 +126,36 @@ def send(submit_branch, revision, public_branch, remember, format,
             directive.compose_merge_request(mail_client, mail_to, body,
                                             branch, tree)
         else:
-            if output == '-':
-                outfile = to_file
+            if directive.multiple_output_files:
+                if output == '-':
+                    raise errors.BzrCommandError('- not supported for '
+                        'merge directives that use more than one output file.')
+                if not os.path.exists(output):
+                    os.mkdir(output, 0755)
+                for (filename, lines) in directive.to_files():
+                    path = os.path.join(output, filename)
+                    outfile = open(path, 'wb')
+                    try:
+                        outfile.writelines(lines)
+                    finally:
+                        outfile.close()
             else:
-                outfile = open(output, 'wb')
-            try:
-                outfile.writelines(directive.to_lines())
-            finally:
-                if outfile is not to_file:
-                    outfile.close()
+                if output == '-':
+                    outfile = to_file
+                else:
+                    outfile = open(output, 'wb')
+                try:
+                    outfile.writelines(directive.to_lines())
+                finally:
+                    if outfile is not to_file:
+                        outfile.close()
     finally:
         branch.unlock()
 
 
 def _send_4(branch, revision_id, submit_branch, public_branch,
             no_patch, no_bundle, message, base_revision_id):
+    from bzrlib import merge_directive
     return merge_directive.MergeDirective2.from_objects(
         branch.repository, revision_id, time.time(),
         osutils.local_time_offset(), submit_branch,
@@ -171,6 +177,7 @@ def _send_0_9(branch, revision_id, submit_branch, public_branch,
             patch_type = 'diff'
         else:
             patch_type = None
+    from bzrlib import merge_directive
     return merge_directive.MergeDirective.from_objects(
         branch.repository, revision_id, time.time(),
         osutils.local_time_offset(), submit_branch,

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ Interesting module attributes:
 
 
 import tempfile
+import thread
 import threading
 
 from bzrlib import (
@@ -291,10 +292,7 @@ class SmartServerRequestHandler(object):
         self._command = None
         if 'hpss' in debug.debug_flags:
             self._request_start_time = osutils.timer_func()
-            cur_thread = threading.currentThread()
-            self._thread_id = getattr(cur_thread, 'ident', None)
-            if self._thread_id is None:
-                self._thread_id = cur_thread.getName()
+            self._thread_id = thread.get_ident()
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
         # It is a bit of a shame that this functionality overlaps with that of 
@@ -512,6 +510,8 @@ request_handlers.register_lazy( 'Branch.revision_history',
     'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
 request_handlers.register_lazy( 'Branch.set_config_option',
     'bzrlib.smart.branch', 'SmartServerBranchRequestSetConfigOption')
+request_handlers.register_lazy( 'Branch.set_config_option_dict',
+    'bzrlib.smart.branch', 'SmartServerBranchRequestSetConfigOptionDict')
 request_handlers.register_lazy( 'Branch.set_last_revision',
     'bzrlib.smart.branch', 'SmartServerBranchRequestSetLastRevision')
 request_handlers.register_lazy(
@@ -562,6 +562,9 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'BzrDir.open_branchV2', 'bzrlib.smart.bzrdir',
     'SmartServerRequestOpenBranchV2')
+request_handlers.register_lazy(
+    'BzrDir.open_branchV3', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestOpenBranchV3')
 request_handlers.register_lazy(
     'delete', 'bzrlib.smart.vfs', 'DeleteRequest')
 request_handlers.register_lazy(

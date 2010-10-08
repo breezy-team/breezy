@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.osutils import sha_string
-from bzrlib.tests.test__groupcompress import CompiledGroupCompressFeature
+from bzrlib.tests.test__groupcompress import compiled_groupcompress_feature
 
 
 def load_tests(standard_tests, module, loader):
@@ -39,7 +39,7 @@ def load_tests(standard_tests, module, loader):
     scenarios = [
         ('python', {'compressor': groupcompress.PythonGroupCompressor}),
         ]
-    if CompiledGroupCompressFeature.available():
+    if compiled_groupcompress_feature.available():
         scenarios.append(('C',
             {'compressor': groupcompress.PyrexGroupCompressor}))
     return tests.multiply_tests(to_adapt, scenarios, result)
@@ -135,7 +135,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
 
 class TestPyrexGroupCompressor(TestGroupCompressor):
 
-    _test_needs_features = [CompiledGroupCompressFeature]
+    _test_needs_features = [compiled_groupcompress_feature]
     compressor = groupcompress.PyrexGroupCompressor
 
     def test_stats(self):
@@ -347,6 +347,30 @@ class TestGroupCompressBlock(tests.TestCase):
         self.assertEqual(z_content, block._z_content)
         self.assertEqual(content, block._content)
 
+    def test_to_chunks(self):
+        content_chunks = ['this is some content\n',
+                          'this content will be compressed\n']
+        content_len = sum(map(len, content_chunks))
+        content = ''.join(content_chunks)
+        gcb = groupcompress.GroupCompressBlock()
+        gcb.set_chunked_content(content_chunks, content_len)
+        total_len, block_chunks = gcb.to_chunks()
+        block_bytes = ''.join(block_chunks)
+        self.assertEqual(gcb._z_content_length, len(gcb._z_content))
+        self.assertEqual(total_len, len(block_bytes))
+        self.assertEqual(gcb._content_length, content_len)
+        expected_header =('gcb1z\n' # group compress block v1 zlib
+                          '%d\n' # Length of compressed content
+                          '%d\n' # Length of uncompressed content
+                         ) % (gcb._z_content_length, gcb._content_length)
+        # The first chunk should be the header chunk. It is small, fixed size,
+        # and there is no compelling reason to split it up
+        self.assertEqual(expected_header, block_chunks[0])
+        self.assertStartsWith(block_bytes, expected_header)
+        remaining_bytes = block_bytes[len(expected_header):]
+        raw_bytes = zlib.decompress(remaining_bytes)
+        self.assertEqual(content, raw_bytes)
+
     def test_to_bytes(self):
         content = ('this is some content\n'
                    'this content will be compressed\n')
@@ -389,7 +413,7 @@ class TestGroupCompressBlock(tests.TestCase):
         z_content = zlib.compress(content)
         self.assertEqual(57182, len(z_content))
         block = groupcompress.GroupCompressBlock()
-        block._z_content = z_content
+        block._z_content_chunks = (z_content,)
         block._z_content_length = len(z_content)
         block._compressor_name = 'zlib'
         block._content_length = 158634
@@ -434,7 +458,7 @@ class TestGroupCompressBlock(tests.TestCase):
         z_content = zlib.compress(content)
         self.assertEqual(57182, len(z_content))
         block = groupcompress.GroupCompressBlock()
-        block._z_content = z_content
+        block._z_content_chunks = (z_content,)
         block._z_content_length = len(z_content)
         block._compressor_name = 'zlib'
         block._content_length = 158634
@@ -1066,3 +1090,25 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         # consumption
         self.add_key_to_manager(('key4',), locations, block, manager)
         self.assertTrue(manager.check_is_well_utilized())
+
+
+class Test_GCBuildDetails(tests.TestCase):
+
+    def test_acts_like_tuple(self):
+        # _GCBuildDetails inlines some of the data that used to be spread out
+        # across a bunch of tuples
+        bd = groupcompress._GCBuildDetails((('parent1',), ('parent2',)),
+            ('INDEX', 10, 20, 0, 5))
+        self.assertEqual(4, len(bd))
+        self.assertEqual(('INDEX', 10, 20, 0, 5), bd[0])
+        self.assertEqual(None, bd[1]) # Compression Parent is always None
+        self.assertEqual((('parent1',), ('parent2',)), bd[2])
+        self.assertEqual(('group', None), bd[3]) # Record details
+
+    def test__repr__(self):
+        bd = groupcompress._GCBuildDetails((('parent1',), ('parent2',)),
+            ('INDEX', 10, 20, 0, 5))
+        self.assertEqual("_GCBuildDetails(('INDEX', 10, 20, 0, 5),"
+                         " (('parent1',), ('parent2',)))",
+                         repr(bd))
+                    

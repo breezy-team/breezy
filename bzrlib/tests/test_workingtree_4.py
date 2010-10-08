@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -176,7 +176,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         repo = tree.branch.repository
         repo.get_revision = self.fail
         repo.get_inventory = self.fail
-        repo.get_inventory_xml = self.fail
+        repo._get_inventory_xml = self.fail
         # try to set the parent trees.
         tree.set_parent_trees([(rev1, rev1_tree)])
 
@@ -215,7 +215,7 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         # cache the parents of a parent tree at this point.
         #repo.get_revision = self.fail
         repo.get_inventory = self.fail
-        repo.get_inventory_xml = self.fail
+        repo._get_inventory_xml = self.fail
         # set the parent trees.
         tree.set_parent_trees([(rev1, rev1_tree), (rev2, rev2_tree)])
         # read the first tree
@@ -555,15 +555,11 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         tree.commit('one', rev_id='rev-1')
         # Trap osutils._walkdirs_utf8 to spy on what dirs have been accessed.
         returned = []
-        orig_walkdirs = osutils._walkdirs_utf8
-        def reset():
-            osutils._walkdirs_utf8 = orig_walkdirs
-        self.addCleanup(reset)
         def walkdirs_spy(*args, **kwargs):
-            for val in orig_walkdirs(*args, **kwargs):
+            for val in orig(*args, **kwargs):
                 returned.append(val[0][0])
                 yield val
-        osutils._walkdirs_utf8 = walkdirs_spy
+        orig = self.overrideAttr(osutils, '_walkdirs_utf8', walkdirs_spy)
 
         basis = tree.basis_tree()
         tree.lock_read()
@@ -761,3 +757,23 @@ class TestCorruptDirstate(TestCaseWithTransport):
             ('', [(('', 'dir', 'dir-id'), ['d', 'd'])]),
             ('dir', [(('dir', 'file', 'file-id'), ['a', 'f'])]),
         ],  self.get_simple_dirblocks(state))
+
+
+class TestInventoryCoherency(TestCaseWithTransport):
+
+    def test_inventory_is_synced_when_unversioning_a_dir(self):
+        """Unversioning the root of a subtree unversions the entire subtree."""
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a/', 'a/b', 'c/'])
+        tree.add(['a', 'a/b', 'c'], ['a-id', 'b-id', 'c-id'])
+        # within a lock unversion should take effect
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        # Force access to the in memory inventory to trigger bug #494221: try
+        # maintaining the in-memory inventory
+        inv = tree.inventory
+        self.assertTrue(inv.has_id('a-id'))
+        self.assertTrue(inv.has_id('b-id'))
+        tree.unversion(['a-id', 'b-id'])
+        self.assertFalse(inv.has_id('a-id'))
+        self.assertFalse(inv.has_id('b-id'))

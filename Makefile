@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,7 +39,16 @@ extensions:
 check: docs check-nodocs
 
 check-nodocs: extensions
-	$(PYTHON) -Werror -O ./bzr selftest -1v $(tests)
+	set -e
+	# Generate a stream for PQM to watch.
+	-$(RM) -f selftest.log
+	$(PYTHON) -Werror -O ./bzr selftest --subunit $(tests) | tee selftest.log
+	# An empty log file should catch errors in the $(PYTHON)
+	# command above (the '|' swallow any errors since 'make'
+	# sees the 'tee' exit code for the whole line
+	if [ ! -s selftest.log ] ; then exit 1 ; fi
+	# Check that there were no errors reported.
+	subunit-stats < selftest.log
 
 # Run Python style checker (apt-get install pyflakes)
 #
@@ -199,7 +208,6 @@ rst2html = $(PYTHON) tools/rst2html.py --link-stylesheet --footnote-references=s
 
 # translate txt docs to html
 derived_txt_files = \
-	doc/en/user-reference/bzr_man.txt \
 	doc/en/release-notes/NEWS.txt
 txt_all = \
 	doc/en/tutorials/tutorial.txt \
@@ -295,9 +303,6 @@ doc/index.%.html: doc/index.%.txt
 
 %.html: %.txt
 	$(rst2html) --stylesheet=../../default.css $< $@
-
-doc/en/user-reference/bzr_man.txt: $(MAN_DEPENDENCIES)
-	$(PYTHON) tools/generate_docs.py -o $@ rstx
 
 doc/en/release-notes/NEWS.txt: NEWS
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
@@ -410,7 +415,7 @@ clean-win32: clean-docs
 
 ### Packaging Targets ###
 
-.PHONY: dist dist-upload-escudero check-dist-tarball
+.PHONY: dist check-dist-tarball
 
 # build a distribution source tarball
 #
@@ -438,18 +443,3 @@ check-dist-tarball:
 	tar Cxz $$tmpdir -f $$tarball && \
 	$(MAKE) -C $$tmpdir/bzr-$$version check && \
 	rm -rf $$tmpdir
-
-
-# upload previously built tarball to the download directory on bazaar-vcs.org,
-# and verify that it can be downloaded ok.
-dist-upload-escudero:
-	version=`./bzr version --short` && \
-	tarball=../bzr-$$version.tar.gz && \
-	scp $$tarball $$tarball.sig \
-	    escudero.ubuntu.com:/srv/bazaar.canonical.com/www/releases/src \
-		&& \
-	echo verifying over http... && \
-	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz \
-		| diff -s - $$tarball && \
-	curl http://bazaar-vcs.org/releases/src/bzr-$$version.tar.gz.sig \
-		| diff -s - $$tarball.sig 

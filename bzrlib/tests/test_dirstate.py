@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -64,14 +64,8 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
 
-        # Save platform specific info and reset it
-        cur_dir_reader = osutils._selected_dir_reader
-
-        def restore():
-            osutils._selected_dir_reader = cur_dir_reader
-        self.addCleanup(restore)
-
-        osutils._selected_dir_reader = self._dir_reader_class()
+        self.overrideAttr(osutils,
+                          '_selected_dir_reader', self._dir_reader_class())
 
     def create_empty_dirstate(self):
         """Return a locked but empty dirstate"""
@@ -736,6 +730,22 @@ class TestDirStateInitialize(TestCaseWithDirState):
 
 class TestDirStateManipulations(TestCaseWithDirState):
 
+    def test_update_minimal_updates_id_index(self):
+        state = self.create_dirstate_with_root_and_subdir()
+        self.addCleanup(state.unlock)
+        id_index = state._get_id_index()
+        self.assertEqual(['a-root-value', 'subdir-id'], sorted(id_index))
+        state.add('file-name', 'file-id', 'file', None, '')
+        self.assertEqual(['a-root-value', 'file-id', 'subdir-id'],
+                         sorted(id_index))
+        state.update_minimal(('', 'new-name', 'file-id'), 'f',
+                             path_utf8='new-name')
+        self.assertEqual(['a-root-value', 'file-id', 'subdir-id'],
+                         sorted(id_index))
+        self.assertEqual([('', 'new-name', 'file-id')],
+                         sorted(id_index['file-id']))
+        state._validate()
+
     def test_set_state_from_inventory_no_content_no_parents(self):
         # setting the current inventory is a slow but important api to support.
         tree1 = self.make_branch_and_memory_tree('tree1')
@@ -873,15 +883,23 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state = dirstate.DirState.initialize('dirstate')
         try:
             # check precondition to be sure the state does change appropriately.
-            self.assertEqual(
-                [(('', '', 'TREE_ROOT'), [('d', '', 0, False,
-                   'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])],
-                list(state._iter_entries()))
-            state.set_path_id('', 'foobarbaz')
-            expected_rows = [
-                (('', '', 'foobarbaz'), [('d', '', 0, False,
-                   'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx')])]
+            root_entry = (('', '', 'TREE_ROOT'), [('d', '', 0, False, 'x'*32)])
+            self.assertEqual([root_entry], list(state._iter_entries()))
+            self.assertEqual(root_entry, state._get_entry(0, path_utf8=''))
+            self.assertEqual(root_entry,
+                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
+            self.assertEqual((None, None),
+                             state._get_entry(0, fileid_utf8='second-root-id'))
+            state.set_path_id('', 'second-root-id')
+            new_root_entry = (('', '', 'second-root-id'),
+                              [('d', '', 0, False, 'x'*32)])
+            expected_rows = [new_root_entry]
             self.assertEqual(expected_rows, list(state._iter_entries()))
+            self.assertEqual(new_root_entry, state._get_entry(0, path_utf8=''))
+            self.assertEqual(new_root_entry, 
+                             state._get_entry(0, fileid_utf8='second-root-id'))
+            self.assertEqual((None, None),
+                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
             # should work across save too
             state.save()
         finally:
@@ -905,21 +923,36 @@ class TestDirStateManipulations(TestCaseWithDirState):
         state._validate()
         try:
             state.set_parent_trees([('parent-revid', rt)], ghosts=[])
-            state.set_path_id('', 'foobarbaz')
+            root_entry = (('', '', 'TREE_ROOT'),
+                          [('d', '', 0, False, 'x'*32),
+                           ('d', '', 0, False, 'parent-revid')])
+            self.assertEqual(root_entry, state._get_entry(0, path_utf8=''))
+            self.assertEqual(root_entry,
+                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
+            self.assertEqual((None, None),
+                             state._get_entry(0, fileid_utf8='Asecond-root-id'))
+            state.set_path_id('', 'Asecond-root-id')
             state._validate()
             # now see that it is what we expected
-            expected_rows = [
-                (('', '', 'TREE_ROOT'),
-                    [('a', '', 0, False, ''),
-                     ('d', '', 0, False, 'parent-revid'),
-                     ]),
-                (('', '', 'foobarbaz'),
-                    [('d', '', 0, False, ''),
-                     ('a', '', 0, False, ''),
-                     ]),
-                ]
+            old_root_entry = (('', '', 'TREE_ROOT'),
+                              [('a', '', 0, False, ''),
+                               ('d', '', 0, False, 'parent-revid')])
+            new_root_entry = (('', '', 'Asecond-root-id'),
+                              [('d', '', 0, False, ''),
+                               ('a', '', 0, False, '')])
+            expected_rows = [new_root_entry, old_root_entry]
             state._validate()
             self.assertEqual(expected_rows, list(state._iter_entries()))
+            self.assertEqual(new_root_entry, state._get_entry(0, path_utf8=''))
+            self.assertEqual(old_root_entry, state._get_entry(1, path_utf8=''))
+            self.assertEqual((None, None),
+                             state._get_entry(0, fileid_utf8='TREE_ROOT'))
+            self.assertEqual(old_root_entry,
+                             state._get_entry(1, fileid_utf8='TREE_ROOT'))
+            self.assertEqual(new_root_entry,
+                             state._get_entry(0, fileid_utf8='Asecond-root-id'))
+            self.assertEqual((None, None),
+                             state._get_entry(1, fileid_utf8='Asecond-root-id'))
             # should work across save too
             state.save()
         finally:

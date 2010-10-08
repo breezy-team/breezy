@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1422,6 +1422,61 @@ class TestFindMergeOrder(TestGraphBase):
     def test_shortcut_after_one_ancestor(self):
         graph = self.make_breaking_graph(ancestry_1, ['rev2a', 'rev2b'])
         self.assertMergeOrder(['rev3', 'rev1'], graph, 'rev4', ['rev1', 'rev3'])
+
+
+class TestFindDescendants(TestGraphBase):
+
+    def test_find_descendants_rev1_rev3(self):
+        graph = self.make_graph(ancestry_1)
+        descendants = graph.find_descendants('rev1', 'rev3')
+        self.assertEqual(set(['rev1', 'rev2a', 'rev3']), descendants)
+
+    def test_find_descendants_rev1_rev4(self):
+        graph = self.make_graph(ancestry_1)
+        descendants = graph.find_descendants('rev1', 'rev4')
+        self.assertEqual(set(['rev1', 'rev2a', 'rev2b', 'rev3', 'rev4']),
+                         descendants)
+
+    def test_find_descendants_rev2a_rev4(self):
+        graph = self.make_graph(ancestry_1)
+        descendants = graph.find_descendants('rev2a', 'rev4')
+        self.assertEqual(set(['rev2a', 'rev3', 'rev4']), descendants)
+
+class TestFindLefthandMerger(TestGraphBase):
+
+    def check_merger(self, result, ancestry, merged, tip):
+        graph = self.make_graph(ancestry)
+        self.assertEqual(result, graph.find_lefthand_merger(merged, tip))
+
+    def test_find_lefthand_merger_rev2b(self):
+        self.check_merger('rev4', ancestry_1, 'rev2b', 'rev4')
+
+    def test_find_lefthand_merger_rev2a(self):
+        self.check_merger('rev2a', ancestry_1, 'rev2a', 'rev4')
+
+    def test_find_lefthand_merger_rev4(self):
+        self.check_merger(None, ancestry_1, 'rev4', 'rev2a')
+
+    def test_find_lefthand_merger_f(self):
+        self.check_merger('i', complex_shortcut, 'f', 'm')
+
+    def test_find_lefthand_merger_g(self):
+        self.check_merger('i', complex_shortcut, 'g', 'm')
+
+    def test_find_lefthand_merger_h(self):
+        self.check_merger('n', complex_shortcut, 'h', 'n')
+
+
+class TestGetChildMap(TestGraphBase):
+
+    def test_get_child_map(self):
+        graph = self.make_graph(ancestry_1)
+        child_map = graph.get_child_map(['rev4', 'rev3', 'rev2a', 'rev2b'])
+        self.assertEqual({'rev1': ['rev2a', 'rev2b'],
+                          'rev2a': ['rev3'],
+                          'rev2b': ['rev4'],
+                          'rev3': ['rev4']},
+                          child_map)
 
 
 class TestCachingParentsProvider(tests.TestCase):

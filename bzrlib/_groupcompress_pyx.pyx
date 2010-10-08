@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,8 @@ cdef extern from "python-compat.h":
 
 
 cdef extern from "Python.h":
+    ctypedef struct PyObject:
+        pass
     ctypedef int Py_ssize_t # Required for older pyrex versions
     int PyString_CheckExact(object)
     char * PyString_AS_STRING(object)
@@ -53,6 +55,7 @@ cdef extern from "delta.h":
              unsigned long *delta_size, unsigned long max_delta_size) nogil
     unsigned long get_delta_hdr_size(unsigned char **datap,
                                      unsigned char *top) nogil
+    unsigned long sizeof_delta_index(delta_index *index)
     Py_ssize_t DELTA_SIZE_MIN
 
 
@@ -91,8 +94,8 @@ cdef class DeltaIndex:
     cdef readonly object _sources
     cdef source_info *_source_infos
     cdef delta_index *_index
-    cdef readonly unsigned int _max_num_sources
     cdef public unsigned long _source_offset
+    cdef readonly unsigned int _max_num_sources
 
     def __init__(self, source=None):
         self._sources = []
@@ -104,6 +107,22 @@ cdef class DeltaIndex:
 
         if source is not None:
             self.add_source(source, 0)
+
+    def __sizeof__(self):
+        # We want to track the _source_infos allocations, but the referenced
+        # void* are actually tracked in _sources itself.
+        # XXX: Cython is capable of doing sizeof(class) and returning the size
+        #      of the underlying struct. Pyrex (<= 0.9.9) refuses, so we need
+        #      to do it manually. *sigh* Note that we might get it wrong
+        #      because of alignment issues.
+        cdef Py_ssize_t size
+        # PyObject start, vtable *, 3 object pointers, 2 C ints
+        size = ((sizeof(PyObject) + sizeof(void*) + 3*sizeof(PyObject*)
+                 + sizeof(unsigned long)
+                 + sizeof(unsigned int))
+                + (sizeof(source_info) * self._max_num_sources)
+                + sizeof_delta_index(self._index))
+        return size
 
     def __repr__(self):
         return '%s(%d, %d)' % (self.__class__.__name__,
@@ -279,7 +298,8 @@ def apply_delta(source_bytes, delta_bytes):
 
 
 cdef unsigned char *_decode_copy_instruction(unsigned char *bytes,
-    unsigned char cmd, unsigned int *offset, unsigned int *length) nogil:
+    unsigned char cmd, unsigned int *offset,
+    unsigned int *length) nogil: # cannot_raise
     """Decode a copy instruction from the next few bytes.
 
     A copy instruction is a variable number of bytes, so we will parse the

@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -118,8 +118,13 @@ cdef extern from "string.h":
     # ??? memrchr is a GNU extension :(
     # void *memrchr(void *s, int c, size_t len)
 
+# cimport all of the definitions we will need to access
+from _static_tuple_c cimport import_static_tuple_c, StaticTuple, \
+    StaticTuple_New, StaticTuple_SET_ITEM
 
-cdef void* _my_memrchr(void *s, int c, size_t n):
+import_static_tuple_c()
+
+cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
     cdef char *pos
     cdef char *start
@@ -156,16 +161,16 @@ def _py_memrchr(s, c):
         return None
     return <char*>found - <char*>_s
 
+
 cdef object safe_string_from_size(char *s, Py_ssize_t size):
     if size < 0:
-        # XXX: On 64-bit machines the <int> cast causes a C compiler warning.
         raise AssertionError(
-            'tried to create a string with an invalid size: %d @0x%x'
-            % (size, <int>s))
+            'tried to create a string with an invalid size: %d'
+            % (size))
     return PyString_FromStringAndSize(s, size)
 
 
-cdef int _is_aligned(void *ptr):
+cdef int _is_aligned(void *ptr): # cannot_raise
     """Is this pointer aligned to an integer size offset?
 
     :return: 1 if this pointer is aligned, 0 otherwise.
@@ -173,7 +178,7 @@ cdef int _is_aligned(void *ptr):
     return ((<intptr_t>ptr) & ((sizeof(int))-1)) == 0
 
 
-cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2):
+cdef int _cmp_by_dirs(char *path1, int size1, char *path2, int size2): # cannot_raise
     cdef unsigned char *cur1
     cdef unsigned char *cur2
     cdef unsigned char *end1
@@ -295,7 +300,7 @@ def _cmp_path_by_dirblock(path1, path2):
 
 
 cdef int _cmp_path_by_dirblock_intern(char *path1, int path1_len,
-                                      char *path2, int path2_len):
+                                      char *path2, int path2_len): # cannot_raise
     """Compare two paths by what directory they are in.
 
     see ``_cmp_path_by_dirblock`` for details.
@@ -610,7 +615,8 @@ cdef class Reader:
         :param new_block: This is to let the caller know that it needs to
             create a new directory block to store the next entry.
         """
-        cdef object path_name_file_id_key
+        cdef StaticTuple path_name_file_id_key
+        cdef StaticTuple tmp
         cdef char *entry_size_cstr
         cdef unsigned long int entry_size
         cdef char* executable_cstr
@@ -650,10 +656,20 @@ cdef class Reader:
         # Build up the key that will be used.
         # By using <object>(void *) Pyrex will automatically handle the
         # Py_INCREF that we need.
-        path_name_file_id_key = (<object>p_current_dirname[0],
-                                 self.get_next_str(),
-                                 self.get_next_str(),
-                                )
+        cur_dirname = <object>p_current_dirname[0]
+        # Use StaticTuple_New to pre-allocate, rather than creating a regular
+        # tuple and passing it to the StaticTuple constructor.
+        # path_name_file_id_key = StaticTuple(<object>p_current_dirname[0],
+        #                          self.get_next_str(),
+        #                          self.get_next_str(),
+        #                         )
+        tmp = StaticTuple_New(3)
+        Py_INCREF(cur_dirname); StaticTuple_SET_ITEM(tmp, 0, cur_dirname)
+        cur_basename = self.get_next_str()
+        cur_file_id = self.get_next_str()
+        Py_INCREF(cur_basename); StaticTuple_SET_ITEM(tmp, 1, cur_basename)
+        Py_INCREF(cur_file_id); StaticTuple_SET_ITEM(tmp, 2, cur_file_id)
+        path_name_file_id_key = tmp
 
         # Parse all of the per-tree information. current has the information in
         # the same location as parent trees. The only difference is that 'info'
@@ -677,7 +693,20 @@ cdef class Reader:
             executable_cstr = self.get_next(&cur_size)
             is_executable = (executable_cstr[0] == c'y')
             info = self.get_next_str()
-            PyList_Append(trees, (
+            # TODO: If we want to use StaticTuple_New here we need to be pretty
+            #       careful. We are relying on a bit of Pyrex
+            #       automatic-conversion from 'int' to PyInt, and that doesn't
+            #       play well with the StaticTuple_SET_ITEM macro.
+            #       Timing doesn't (yet) show a worthwile improvement in speed
+            #       versus complexity and maintainability.
+            # tmp = StaticTuple_New(5)
+            # Py_INCREF(minikind); StaticTuple_SET_ITEM(tmp, 0, minikind)
+            # Py_INCREF(fingerprint); StaticTuple_SET_ITEM(tmp, 1, fingerprint)
+            # Py_INCREF(entry_size); StaticTuple_SET_ITEM(tmp, 2, entry_size)
+            # Py_INCREF(is_executable); StaticTuple_SET_ITEM(tmp, 3, is_executable)
+            # Py_INCREF(info); StaticTuple_SET_ITEM(tmp, 4, info)
+            # PyList_Append(trees, tmp)
+            PyList_Append(trees, StaticTuple(
                 minikind,     # minikind
                 fingerprint,  # fingerprint
                 entry_size,   # size
@@ -768,7 +797,7 @@ def _read_dirblocks(state):
     state._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
 
 
-cdef int minikind_from_mode(int mode):
+cdef int minikind_from_mode(int mode): # cannot_raise
     # in order of frequency:
     if S_ISREG(mode):
         return c"f"
@@ -915,7 +944,8 @@ cdef _update_entry(self, entry, abspath, stat_value):
     return link_or_sha1
 
 
-cdef char _minikind_from_string(object string):
+# TODO: Do we want to worry about exceptions here?
+cdef char _minikind_from_string(object string) except? -1:
     """Convert a python string to a char."""
     return PyString_AsString(string)[0]
 
@@ -953,7 +983,7 @@ cdef object _minikind_to_kind(char minikind):
     raise KeyError(PyString_FromStringAndSize(_minikind, 1))
 
 
-cdef int _versioned_minikind(char minikind):
+cdef int _versioned_minikind(char minikind): # cannot_raise
     """Return non-zero if minikind is in fltd"""
     return (minikind == c'f' or
             minikind == c'd' or
@@ -1218,7 +1248,7 @@ cdef class ProcessEntryC:
             else:
                 try:
                     source_parent_id = self.old_dirname_to_file_id[old_dirname]
-                except KeyError:
+                except KeyError, _:
                     source_parent_entry = self.state._get_entry(self.source_index,
                                                            path_utf8=old_dirname)
                     source_parent_id = source_parent_entry[0][2]
@@ -1235,7 +1265,7 @@ cdef class ProcessEntryC:
             else:
                 try:
                     target_parent_id = self.new_dirname_to_file_id[new_dirname]
-                except KeyError:
+                except KeyError, _:
                     # TODO: We don't always need to do the lookup, because the
                     #       parent entry will be the same as the source entry.
                     target_parent_entry = self.state._get_entry(self.target_index,
@@ -1373,7 +1403,7 @@ cdef class ProcessEntryC:
     def iter_changes(self):
         return self
 
-    cdef void _gather_result_for_consistency(self, result):
+    cdef int _gather_result_for_consistency(self, result) except -1:
         """Check a result we will yield to make sure we are consistent later.
         
         This gathers result's parents into a set to output later.
@@ -1381,7 +1411,7 @@ cdef class ProcessEntryC:
         :param result: A result tuple.
         """
         if not self.partial or not result[0]:
-            return
+            return 0
         self.seen_ids.add(result[0])
         new_path = result[1][1]
         if new_path:
@@ -1391,8 +1421,9 @@ cdef class ProcessEntryC:
             # Add the root directory which parent_directories does not
             # provide.
             self.search_specific_file_parents.add('')
+        return 0
 
-    cdef void _update_current_block(self):
+    cdef int _update_current_block(self) except -1:
         if (self.block_index < len(self.state._dirblocks) and
             osutils.is_inside(self.current_root, self.state._dirblocks[self.block_index][0])):
             self.current_block = self.state._dirblocks[self.block_index]
@@ -1401,6 +1432,7 @@ cdef class ProcessEntryC:
         else:
             self.current_block = None
             self.current_block_list = None
+        return 0
 
     def __next__(self):
         # Simple thunk to allow tail recursion without pyrex confusion
@@ -1475,7 +1507,7 @@ cdef class ProcessEntryC:
             # interface doesn't require it.
             try:
                 self.current_root = self.search_specific_files.pop()
-            except KeyError:
+            except KeyError, _:
                 raise StopIteration()
             self.searched_specific_files.add(self.current_root)
             # process the entries for this containing directory: the rest will be
@@ -1564,7 +1596,7 @@ cdef class ProcessEntryC:
                         #            and e.winerror == ERROR_DIRECTORY
                         try:
                             e_winerror = e.winerror
-                        except AttributeError:
+                        except AttributeError, _:
                             e_winerror = None
                         win_errors = (ERROR_DIRECTORY, ERROR_PATH_NOT_FOUND)
                         if (e.errno in win_errors or e_winerror in win_errors):
@@ -1653,7 +1685,7 @@ cdef class ProcessEntryC:
                     try:
                         self.current_dir_info = self.dir_iterator.next()
                         self.current_dir_list = self.current_dir_info[1]
-                    except StopIteration:
+                    except StopIteration, _:
                         self.current_dir_info = None
                 else: #(dircmp > 0)
                     # We have a dirblock entry for this location, but there
@@ -1800,7 +1832,7 @@ cdef class ProcessEntryC:
                                 and stat.S_IEXEC & current_path_info[3].st_mode)
                             try:
                                 relpath_unicode = self.utf8_decode(current_path_info[0])[0]
-                            except UnicodeDecodeError:
+                            except UnicodeDecodeError, _:
                                 raise errors.BadFilenameEncoding(
                                     current_path_info[0], osutils._fs_enc)
                             if changed is not None:
@@ -1848,7 +1880,7 @@ cdef class ProcessEntryC:
                 try:
                     self.current_dir_info = self.dir_iterator.next()
                     self.current_dir_list = self.current_dir_info[1]
-                except StopIteration:
+                except StopIteration, _:
                     self.current_dir_info = None
 
     cdef object _next_consistent_entries(self):

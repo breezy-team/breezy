@@ -18,8 +18,6 @@
 
 from bzrlib import (
     log,
-    repository as _mod_repository,
-    tsort,
     )
 import bzrlib.revision as _mod_revision
 

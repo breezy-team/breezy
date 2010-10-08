@@ -28,6 +28,8 @@ Links
 * `Open bugs most recently changed first
   <https://bugs.edge.launchpad.net/bzr/+bugs?field.searchtext=&orderby=-date_last_updated&search=Search&field.status%3Alist=NEW&field.status%3Alist=INCOMPLETE_WITH_RESPONSE&field.status%3Alist=INCOMPLETE_WITHOUT_RESPONSE&field.status%3Alist=CONFIRMED&field.status%3Alist=TRIAGED&field.status%3Alist=INPROGRESS&field.status%3Alist=FIXCOMMITTED&field.assignee=&field.bug_reporter=&field.omit_dupes=on&field.has_patch=&field.has_no_package=>`_.
 
+* `Most commonly duplicated bugs <http://tinyurl.com/bzr-bugs-by-dupes>`_.
+
 
 Generalities
 ************
@@ -136,16 +138,26 @@ New
     yet.
 Incomplete
     The bug requires more information from the reporter to make progress.
+
+    Only set this state if it's impossible or uneconomical to make
+    progress on the bug without that information.  The bug will expire if
+    it remains in this state for two months.
 Confirmed
     The bug report has been seen by a developer and we agree it's a bug.
-    You don't have to reproduce the bug to mark it confirmed.  (Generally
+    You don't have to reproduce the bug to mark it Confirmed.  (Generally
     it's not a good idea for a developer to spend time reproducing the bug
     until they're going to work on it.)
 Triaged
     We don't use this status.  If it is set, it means the same as
     Confirmed.
 In Progress
-    Someone has started working on this.
+    Someone has started working on this.  We can deliver the value of the
+    work already done by finishing and shipping the fix.  
+    
+    The bug keeps this state from the time someone does non-trivial
+    analysis, until the fix is merged to a release or trunk branch (when
+    it is Fix Released), or until they give up on it (back to New or
+    Confirmed) or decide it is Invalid or Incomplete.
 Won't Fix
     The behaviour complained about is intentional and we won't fix it.
     Needless to say, be thoughtful before using this status, and consider if
@@ -154,20 +166,25 @@ Invalid
     The reporter was confused, and this is not actually a bug.
     Again, be sensitive in explaining this to the user.
 Fix Committed
-    A fix for this bug exists in a branch somewhere.  Ideally the bug will
-    be linked to the branch.
+    Don't use this.  If set on old bug, it probably means In Progress,
+    with the fix waiting for review.  See Launchpad `bug 163694`_.
 Fix Released
     The fix for this bug is now in the bzr branch that this task is for.
-    The branch for the default task on a bug is bzr.dev.  We use this value
-    even though the fix may not have been been included in a release yet
-    because all the developer activity around it is complete and we want to
-    both avoid bug spam when releases happen, and keep the list of bugs that
-    developers see when they look at the bug tracker trimmed to those that
-    require action. When setting a bug task to fix released, the bug target
-    milestone should be set to the release the fix will be included in (or
-    was included in, if you are updating an old bug). Don't spend too much time
-    updating this if you don't immediately know: its not critical that it be
-    set.
+    The branch for the default task on a bug is bzr.dev.  
+    
+    We use this value even though the fix may not have been been included
+    in a release yet because all the developer activity around it is
+    complete and we want to both avoid bug spam when releases happen, and
+    keep the list of bugs that developers see when they look at the bug
+    tracker trimmed to those that require action. 
+    
+    When setting a bug task to fix released, the bug target milestone
+    should be set to the release the fix will be included in (or was
+    included in, if you are updating an old bug). Don't spend too much
+    time updating this if you don't immediately know: its not critical
+    that it be set.
+
+.. _`bug 163694`: https://bugs.launchpad.net/malone/+bug/163694
 
 
 Bug Importance
@@ -285,6 +302,9 @@ newformat
 
 performance
     bugs about performance problems.
+
+regression
+    bugs which represent an aspect of bzr becoming accidentally less good than it was.
 
 test
     needs changes to the test framework

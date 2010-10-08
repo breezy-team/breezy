@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,9 +28,10 @@ import threading
 
 from bzrlib import (
     osutils,
+    tests,
     trace,
-    transport,
     )
+from bzrlib.tests import test_server
 
 
 class AnonymousWithWriteAccessAuthorizer(ftpserver.DummyAuthorizer):
@@ -50,14 +51,15 @@ class BzrConformingFS(ftpserver.AbstractedFS):
 
     def listdir(self, path):
         """List the content of a directory."""
-        # FIXME: need tests with unicode paths
         return [osutils.safe_utf8(s) for s in os.listdir(path)]
 
     def fs2ftp(self, fspath):
-        p = ftpserver.AbstractedFS.fs2ftp(self, fspath)
-        # FIXME: need tests with unicode paths
+        p = ftpserver.AbstractedFS.fs2ftp(self, osutils.safe_unicode(fspath))
         return osutils.safe_utf8(p)
 
+    def ftp2fs(self, ftppath):
+        p = osutils.safe_unicode(ftppath)
+        return ftpserver.AbstractedFS.ftp2fs(self, p)
 
 class BzrConformingFTPHandler(ftpserver.FTPHandler):
 
@@ -132,7 +134,7 @@ class ftp_server(ftpserver.FTPServer):
         self.addr = self.socket.getsockname()
 
 
-class FTPTestServer(transport.Server):
+class FTPTestServer(test_server.TestServer):
     """Common code for FTP server facilities."""
 
     def __init__(self):
@@ -156,9 +158,9 @@ class FTPTestServer(transport.Server):
         """This is used by ftp_server to log connections, etc."""
         self.logs.append(message)
 
-    def setUp(self, vfs_server=None):
-        from bzrlib.transport.local import LocalURLServer
-        if not (vfs_server is None or isinstance(vfs_server, LocalURLServer)):
+    def start_server(self, vfs_server=None):
+        if not (vfs_server is None or isinstance(vfs_server,
+                                                 test_server.LocalURLServer)):
             raise AssertionError(
                 "FTPServer currently assumes local transport, got %s"
                 % vfs_server)
@@ -182,21 +184,27 @@ class FTPTestServer(transport.Server):
         self._ftpd_starting.acquire() # So it can be released by the server
         self._ftpd_thread = threading.Thread(target=self._run_server,)
         self._ftpd_thread.start()
+        if 'threads' in tests.selftest_debug_flags:
+            sys.stderr.write('Thread started: %s\n'
+                             % (self._ftpd_thread.ident,))
         # Wait for the server thread to start (i.e release the lock)
         self._ftpd_starting.acquire()
         self._ftpd_starting.release()
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
+    def stop_server(self):
+        """See bzrlib.transport.Server.stop_server."""
         # Tell the server to stop, but also close the server socket for tests
         # that start the server but never initiate a connection. Closing the
         # socket should be done first though, to avoid further connections.
         self._ftp_server.close()
         self._ftpd_running = False
         self._ftpd_thread.join()
+        if 'threads' in tests.selftest_debug_flags:
+            sys.stderr.write('Thread  joined: %s\n'
+                             % (self._ftpd_thread.ident,))
 
     def _run_server(self):
-        """Run the server until tearDown is called, shut it down properly then.
+        """Run the server until stop_server is called, shut it down properly then.
         """
         self._ftpd_running = True
         self._ftpd_starting.release()

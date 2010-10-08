@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ from bzrlib.transport.ssh import (
     OpenSSHSubprocessVendor,
     PLinkSubprocessVendor,
     SSHCorpSubprocessVendor,
+    LSHSubprocessVendor,
     SSHVendorManager,
     )
 
@@ -71,6 +72,12 @@ class SSHVendorManagerTests(TestCase):
         self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
         manager.set_ssh_version_string("SSH Secure Shell")
         self.assertIsInstance(manager.get_vendor({}), SSHCorpSubprocessVendor)
+
+    def test_get_vendor_by_inspection_lsh(self):
+        manager = TestSSHVendorManager()
+        self.assertRaises(SSHVendorNotFound, manager.get_vendor, {})
+        manager.set_ssh_version_string("lsh")
+        self.assertIsInstance(manager.get_vendor({}), LSHSubprocessVendor)
 
     def test_get_vendor_by_inspection_plink(self):
         manager = TestSSHVendorManager()
@@ -200,6 +207,28 @@ class SubprocessVendorsTests(TestCase):
                 "-p", "100",
                 "-l", "user",
                 "-s", "sftp", "host"]
+            )
+
+    def test_lsh_command_arguments(self):
+        vendor = LSHSubprocessVendor()
+        self.assertEqual(
+            vendor._get_vendor_specific_argv(
+                "user", "host", 100, command=["bzr"]),
+            ["lsh",
+                "-p", "100",
+                "-l", "user",
+                "host", "bzr"]
+            )
+
+    def test_lsh_subsystem_arguments(self):
+        vendor = LSHSubprocessVendor()
+        self.assertEqual(
+            vendor._get_vendor_specific_argv(
+                "user", "host", 100, subsystem="sftp"),
+            ["lsh",
+                "-p", "100",
+                "-l", "user",
+                "--subsystem", "sftp", "host"]
             )
 
     def test_plink_command_arguments(self):

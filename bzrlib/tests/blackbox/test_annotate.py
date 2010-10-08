@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,6 +29,7 @@ import os
 from bzrlib.branch import Branch
 from bzrlib.config import extract_email_address
 from bzrlib.tests import TestCaseWithTransport
+from bzrlib.urlutils import joinpath
 
 
 class TestAnnotate(TestCaseWithTransport):
@@ -139,7 +140,7 @@ class TestAnnotate(TestCaseWithTransport):
         out, err = self.run_bzr('annotate hello.txt -r 10',
                                 retcode=3)
         self.assertEqual('', out)
-        self.assertContainsRe(err, 'Requested revision: \'10\' does not exist')
+        self.assertContainsRe(err, "Requested revision: '10' does not exist")
 
     def test_annotate_cmd_two_revisions(self):
         out, err = self.run_bzr('annotate hello.txt -r1..2',
@@ -153,14 +154,27 @@ class TestAnnotate(TestCaseWithTransport):
 class TestSimpleAnnotate(TestCaseWithTransport):
     """Annotate tests with no complex setup."""
 
-    def _setup_edited_file(self):
+    def _setup_edited_file(self, relpath='.'):
         """Create a tree with a locally edited file."""
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('file', 'foo\ngam\n')])
+        tree = self.make_branch_and_tree(relpath)
+        file_relpath = joinpath(relpath, 'file')
+        self.build_tree_contents([(file_relpath, 'foo\ngam\n')])
         tree.add('file')
         tree.commit('add file', committer="test@host", rev_id="rev1")
-        self.build_tree_contents([('file', 'foo\nbar\ngam\n')])
+        self.build_tree_contents([(file_relpath, 'foo\nbar\ngam\n')])
         tree.branch.get_config().set_user_option('email', 'current@host2')
+        return tree
+
+    def test_annotate_cmd_revspec_branch(self):
+        tree = self._setup_edited_file('trunk')
+        tree.branch.create_checkout(self.get_url('work'), lightweight=True)
+        os.chdir('work')
+        out, err = self.run_bzr('annotate file -r branch:../trunk')
+        self.assertEqual('', err)
+        self.assertEqual(
+            '1   test@ho | foo\n'
+            '            | gam\n',
+            out)
 
     def test_annotate_edited_file(self):
         tree = self._setup_edited_file()
@@ -264,3 +278,12 @@ class TestSimpleAnnotate(TestCaseWithTransport):
         os.chdir('branch')
         out, err = self.run_bzr('annotate empty')
         self.assertEqual('', out)
+
+    def test_annotate_directory(self):
+        """Test --directory option"""
+        wt = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/hello.txt', 'my helicopter\n')])
+        wt.add(['hello.txt'])
+        wt.commit('commit', committer='test@user')
+        out, err = self.run_bzr('annotate -d a hello.txt')
+        self.assertEqualDiff('1   test@us | my helicopter\n', out)

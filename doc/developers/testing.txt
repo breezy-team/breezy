@@ -6,7 +6,7 @@ Bazaar Testing Guide
 The Importance of Testing
 =========================
 
-Reliability is a critical success factor for any Version Control System.
+Reliability is a critical success factor for any version control system.
 We want Bazaar to be highly reliable across multiple platforms while
 evolving over time to meet the needs of its community.
 
@@ -38,6 +38,24 @@ on your project to a product *without* a test suite like Bazaar has?
 
 Running the Test Suite
 ======================
+
+As of Bazaar 2.1, you must have the testtools_ library installed to run
+the bzr test suite.
+
+.. _testtools: https://launchpad.net/testtools/
+
+To test all of Bazaar, just run::
+
+  bzr selftest 
+
+With ``--verbose`` bzr will print the name of every test as it is run.
+
+This should always pass, whether run from a source tree or an installed
+copy of Bazaar.  Please investigate and/or report any failures.
+
+
+Running particular tests
+------------------------
 
 Currently, bzr selftest is used to invoke tests.
 You can provide a pattern argument to run a subset. For example,
@@ -86,6 +104,27 @@ This option can be combined with all the other selftest options including
 --load-list. The later is rarely used but allows to run a subset of a list of
 failing tests for example.
 
+Disabling plugins
+-----------------
+
+To test only the bzr core, ignoring any plugins you may have installed,
+use::
+
+  ./bzr --no-plugins selftest 
+
+Disabling crash reporting
+-------------------------
+
+By default Bazaar uses apport_ to report program crashes.  In developing
+Bazaar it's normal and expected to have it crash from time to time, at
+least because a test failed if for no other reason.
+
+Therefore you should probably add ``debug_flags = no_apport`` to your
+``bazaar.conf`` file (in ``~/.bazaar/`` on Unix), so that failures just
+print a traceback rather than writing a crash file.
+
+.. _apport: https://launchpad.net/apport/
+
 
 Test suite debug flags
 ----------------------
@@ -97,9 +136,104 @@ Similar to the global ``-Dfoo`` debug options, bzr selftest accepts
   This can provide useful logging to help debug test failures when used
   with e.g. ``bzr -Dhpss selftest -E=allow_debug``
 
+  Note that this will probably cause some tests to fail, because they
+  don't expect to run with any debug flags on.
+
+
+Using subunit
+-------------
+
+Bazaar can optionally produce output in the machine-readable subunit_
+format, so that test output can be post-processed by various tools. To
+generate a subunit test stream::
+
+ $ ./bzr selftest --subunit
+
+Processing such a stream can be done using a variety of tools including:
+
+* The builtin ``subunit2pyunit``, ``subunit-filter``, ``subunit-ls``,
+  ``subunit2junitxml`` from the subunit project.
+
+* tribunal_, a GUI for showing test results.
+
+* testrepository_, a tool for gathering and managing test runs.
+
+.. _subunit: https://launchpad.net/subunit/
+.. _tribunal: https://launchpad.net/tribunal/
+
+
+Using testrepository
+--------------------
+
+Bazaar ships with a config file for testrepository_. This can be very
+useful for keeping track of failing tests and doing general workflow
+support. To run tests using testrepository::
+
+  $ testr run
+
+To run only failing tests::
+
+  $ testr run --failing
+
+To run only some tests, without plugins::
+
+  $ test run test_selftest -- --no-plugins
+
+See the testrepository documentation for more details.
+
+.. _testrepository: https://launchpad.net/testrepository
+
+
+Babune continuous integration
+-----------------------------
+
+We have a Hudson continuous-integration system that automatically runs 
+tests across various platforms.  In the future we plan to add more 
+combinations including testing plugins.  See 
+<http://babune.ladeuil.net:24842/>.  (Babune = Bazaar Buildbot Network.)
+
+
+Running tests in parallel
+-------------------------
+
+Bazaar can use subunit to spawn multiple test processes.  There is
+slightly more chance you will hit ordering or timing-dependent bugs but
+it's much faster::
+
+  $ ./bzr selftest --parallel=fork
+
+Note that you will need the Subunit library
+<https://launchpad.net/subunit/> to use this, which is in
+``python-subunit`` on Ubuntu.
+
+
+Running tests from a ramdisk
+----------------------------
+
+The tests create and delete a lot of temporary files.  In some cases you
+can make the test suite run much faster by running it on a ramdisk.  For
+example::
+
+  $ sudo mkdir /ram
+  $ sudo mount -t tmpfs none /ram
+  $ TMPDIR=/ram ./bzr selftest ...
+
+You could also change ``/tmp`` in ``/etc/fstab`` to have type ``tmpfs``,
+if you don't mind possibly losing other files in there when the machine
+restarts.  Add this line (if there is none for ``/tmp`` already)::
+
+  none           /tmp            tmpfs  defaults        0       0
+
+With a 6-core machine and ``--parallel=fork`` using a tmpfs doubles the
+test execution speed.
+
 
 Writing Tests
 =============
+
+Normally you should add or update a test for all bug fixes or new features
+in Bazaar.
+
 
 Where should I put a new test?
 ------------------------------
@@ -173,14 +307,20 @@ Per-implementation tests
 
 Per-implementation tests are tests that are defined once and then run
 against multiple implementations of an interface.  For example,
-``test_transport_implementations.py`` defines tests that all Transport
-implementations (local filesystem, HTTP, and so on) must pass.
-
-They are found in ``bzrlib/tests/*_implementations/test_*.py``,
-``bzrlib/tests/per_*/*.py``, and
-``bzrlib/tests/test_*_implementations.py``.
+``per_transport.py`` defines tests that all Transport implementations
+(local filesystem, HTTP, and so on) must pass. They are found in
+``bzrlib/tests/per_*/*.py``, and ``bzrlib/tests/per_*.py``.
 
 These are really a sub-category of unit tests, but an important one.
+
+Along the same lines are tests for extension modules. We generally have
+both a pure-python and a compiled implementation for each module. As such,
+we want to run the same tests against both implementations. These can
+generally be found in ``bzrlib/tests/*__*.py`` since extension modules are
+usually prefixed with an underscore. Since there are only two
+implementations, we have a helper function
+``bzrlib.tests.permute_for_extension``, which can simplify the
+``load_tests`` implementation.
 
 
 Doctests
@@ -198,7 +338,7 @@ Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 
 
 Shell-like tests
-~~~~~~~~~~~~~~~~
+----------------
 
 ``bzrlib/tests/script.py`` allows users to write tests in a syntax very close to a shell session,
 using a restricted and limited set of commands that should be enough to mimic
@@ -287,11 +427,128 @@ the file doesn't exist::
 
   $ cat file
 
+The actual use of ScriptRunner within a TestCase looks something like
+this::
+
+    from bzrlib.tests import script
+
+    def test_unshelve_keep(self):
+        # some setup here
+        script.run_script(self, '''
+            $ bzr add file
+            $ bzr shelve --all -m Foo
+            $ bzr shelve --list
+            1: Foo
+            $ bzr unshelve --keep
+            $ bzr shelve --list
+            1: Foo
+            $ cat file
+            contents of file
+            ''')
+
+You can also test commands that read user interaction::
+
+    def test_confirm_action(self):
+        """You can write tests that demonstrate user confirmation"""
+        commands.builtin_command_registry.register(cmd_test_confirm)
+        self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
+        self.run_script("""
+            $ bzr test-confirm
+            2>Really do it? [y/n]: 
+            <yes
+            yes
+            """)
+
+Import tariff tests
+-------------------
+
+`bzrlib.tests.test_import_tariff` has some tests that measure how many
+Python modules are loaded to run some representative commands.
+
+We want to avoid loading code unnecessarily, for reasons including:
+
+* Python modules are interpreted when they're loaded, either to define
+  classes or modules or perhaps to initialize some structures.
+
+* With a cold cache we may incur blocking real disk IO for each module.
+
+* Some modules depend on many others.
+
+* Some optional modules such as `testtools` are meant to be soft
+  dependencies and only needed for particular cases.  If they're loaded in
+  other cases then bzr may break for people who don't have those modules.
+  
+`test_import_tariff` allows us to check that removal of imports doesn't
+regress.
+
+This is done by running the command in a subprocess with
+``--profile-imports``.  Starting a whole Python interpreter is pretty
+slow, so we don't want exhaustive testing here, but just enough to guard
+against distinct fixed problems.
+
+Assertions about precisely what is loaded tend to be brittle so we instead
+make assertions that particular things aren't loaded.
+
+Unless selftest is run with ``--no-plugins``, modules will be loaded in
+the usual way and checks made on what they cause to be loaded.  This is
+probably worth checking into, because many bzr users have at least some
+plugins installed (and they're included in binary installers).
+
+In theory, plugins might have a good reason to load almost anything:
+someone might write a plugin that opens a network connection or pops up a
+gui window every time you run 'bzr status'.  However, it's more likely
+that the code to do these things is just being loaded accidentally.  We
+might eventually need to have a way to make exceptions for particular
+plugins.
+
+Some things to check:
+
+* non-GUI commands shouldn't load GUI libraries
+
+* operations on bzr native formats sholudn't load foreign branch libraries
+
+* network code shouldn't be loaded for purely local operations
+
+* particularly expensive Python built-in modules shouldn't be loaded
+  unless there is a good reason
 
 
-.. Effort tests
-.. ~~~~~~~~~~~~
+Testing locking behaviour
+-------------------------
 
+In order to test the locking behaviour of commands, it is possible to install
+a hook that is called when a write lock is: acquired, released or broken.
+(Read locks also exist, they cannot be discovered in this way.)
+
+A hook can be installed by calling bzrlib.lock.Lock.hooks.install_named_hook.
+The three valid hooks are: `lock_acquired`, `lock_released` and `lock_broken`.
+
+Example::
+
+    locks_acquired = []
+    locks_released = []
+
+    lock.Lock.hooks.install_named_hook('lock_acquired',
+        locks_acquired.append, None)
+    lock.Lock.hooks.install_named_hook('lock_released',
+        locks_released.append, None)
+
+`locks_acquired` will now receive a LockResult instance for all locks acquired
+since the time the hook is installed.
+
+The last part of the `lock_url` allows you to identify the type of object that is locked.
+
+- BzrDir: `/branch-lock`
+- Working tree: `/checkout/lock`
+- Branch: `/branch/lock`
+- Repository: `/repository/lock`
+
+To test if a lock is a write lock on a working tree, one can do the following::
+
+    self.assertEndsWith(locks_acquired[0].lock_url, "/checkout/lock")
+
+See bzrlib/tests/commands/test_revert.py for an example of how to use this for
+testing locks.
 
 
 Skipping tests
@@ -353,19 +610,6 @@ KnownFailure
         KnownFailure should be used with care as we don't want a
         proliferation of quietly broken tests.
 
-ModuleAvailableFeature
-        A helper for handling running tests based on whether a python
-        module is available. This can handle 3rd-party dependencies (is
-        ``paramiko`` available?) as well as stdlib (``termios``) or
-        extension modules (``bzrlib._groupcompress_pyx``). You create a
-        new feature instance with::
-
-            MyModuleFeature = ModuleAvailableFeature('bzrlib.something')
-
-            ...
-            def test_something(self):
-                self.requireFeature(MyModuleFeature)
-                something = MyModuleFeature.module
 
 
 We plan to support three modes for running the test suite to control the
@@ -413,14 +657,25 @@ method::
 
     self.requireFeature(StraceFeature)
 
-Features already defined in bzrlib.tests include:
+The old naming style for features is CamelCase, but because they're
+actually instances not classses they're now given instance-style names
+like ``apport``.
 
- - SymlinkFeature,
- - HardlinkFeature,
- - OsFifoFeature,
- - UnicodeFilenameFeature,
- - FTPServerFeature, and
+Features already defined in ``bzrlib.tests`` and ``bzrlib.tests.features``
+include:
+
+ - apport
+ - paramiko
+ - SymlinkFeature
+ - HardlinkFeature
+ - OsFifoFeature
+ - UnicodeFilenameFeature
+ - FTPServerFeature
  - CaseInsensitiveFilesystemFeature.
+ - chown_feature: The test can rely on OS being POSIX and python
+   supporting os.chown.
+ - posix_permissions_feature: The test can use POSIX-style
+   user/group/other permission bits.
 
 
 Defining a new feature that tests can require
@@ -439,6 +694,37 @@ are defined by subclassing ``bzrlib.tests.Feature`` and overriding the
             return 'symlinks'
 
     SymlinkFeature = _SymlinkFeature()
+
+A helper for handling running tests based on whether a python
+module is available. This can handle 3rd-party dependencies (is
+``paramiko`` available?) as well as stdlib (``termios``) or
+extension modules (``bzrlib._groupcompress_pyx``). You create a
+new feature instance with::
+
+    # in bzrlib/tests/features.py
+    apport = tests.ModuleAvailableFeature('apport')
+
+
+    # then in bzrlib/tests/test_apport.py
+    class TestApportReporting(TestCaseInTempDir):
+
+        _test_needs_features = [features.apport]
+
+
+Testing deprecated code
+-----------------------
+
+When code is deprecated, it is still supported for some length of time,
+usually until the next major version. The ``applyDeprecated`` helper
+wraps calls to deprecated code to verify that it is correctly issuing the
+deprecation warning, and also prevents the warnings from being printed
+during test runs.
+
+Typically patches that apply the ``@deprecated_function`` decorator should
+update the accompanying tests to use the ``applyDeprecated`` wrapper.
+
+``applyDeprecated`` is defined in ``bzrlib.tests.TestCase``. See the API
+docs for more details.
 
 
 Testing exceptions and errors
@@ -560,12 +846,15 @@ write your tests.
 
 TestCase
     A base TestCase that extends the Python standard library's
-    TestCase in several ways.  It adds more assertion methods (e.g.
-    ``assertContainsRe``), ``addCleanup``, and other features (see its API
-    docs for details).  It also has a ``setUp`` that makes sure that
-    global state like registered hooks and loggers won't interfere with
-    your test.  All tests should use this base class (whether directly or
-    via a subclass).
+    TestCase in several ways.  TestCase is build on
+    ``testtools.TestCase``, which gives it support for more assertion
+    methods (e.g.  ``assertContainsRe``), ``addCleanup``, and other
+    features (see its API docs for details).  It also has a ``setUp`` that
+    makes sure that global state like registered hooks and loggers won't
+    interfere with your test.  All tests should use this base class
+    (whether directly or via a subclass).  Note that we are trying not to
+    add more assertions at this point, and instead to build up a library
+    of ``bzrlib.tests.matchers``.
 
 TestCaseWithMemoryTransport
     Extends TestCase and adds methods like ``get_transport``,
@@ -644,7 +933,64 @@ method of ``TestCaseWithTransport``).
 Please see bzrlib.treebuilder for more details.
 
 
+Temporarily changing state
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If your test needs to temporarily mutate some global state, and you need
+it restored at the end, you can say for example::
+
+    self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
+
+Cleaning up
+~~~~~~~~~~~
+
+Our base ``TestCase`` class provides an ``addCleanup`` method, which
+should be used instead of ``tearDown``.  All the cleanups are run when the
+test finishes, regardless of whether it passes or fails.  If one cleanup
+fails, later cleanups are still run.
+
+(The same facility is available outside of tests through
+``bzrlib.cleanup``.)
+
+
+Manual testing
+==============
+
+Generally we prefer automated testing but sometimes a manual test is the
+right thing, especially for performance tests that want to measure elapsed
+time rather than effort.
+
+Simulating slow networks
+------------------------
+
+To get realistically slow network performance for manually measuring
+performance, we can simulate 500ms latency (thus 1000ms round trips)::
+
+  $ sudo tc qdisc add dev lo root netem delay 500ms
+
+Normal system behaviour is restored with ::
+
+  $ sudo tc qdisc del dev lo root
+
+A more precise version that only filters traffic to port 4155 is::
+
+    tc qdisc add dev lo root handle 1: prio
+    tc qdisc add dev lo parent 1:3 handle 30: netem delay 500ms 
+    tc qdisc add dev lo parent 30:1 handle 40: prio
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip dport 4155 0xffff flowid 1:3 handle 800::800
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip sport 4155 0xffff flowid 1:3 handle 800::801
+
+and to remove this::
+
+    tc filter del dev lo protocol ip parent 1: pref 3 u32
+    tc qdisc del dev lo root handle 1:
+
+You can use similar code to add additional delay to a real network
+interface, perhaps only when talking to a particular server or pointing at
+a VM.  For more information see <http://lartc.org/>.
+
+
 .. |--| unicode:: U+2014
 
 ..
-   vim: ft=rst tw=74 ai
+   vim: ft=rst tw=74 ai et sw=4

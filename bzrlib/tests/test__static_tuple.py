@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,36 +32,11 @@ from bzrlib import (
 
 def load_tests(standard_tests, module, loader):
     """Parameterize tests for all versions of groupcompress."""
-    scenarios = [
-        ('python', {'module': _static_tuple_py}),
-    ]
-    suite = loader.suiteClass()
-    if CompiledStaticTuple.available():
-        from bzrlib import _static_tuple_c
-        scenarios.append(('C', {'module': _static_tuple_c}))
-    else:
-        # the compiled module isn't available, so we add a failing test
-        class FailWithoutFeature(tests.TestCase):
-            def test_fail(self):
-                self.requireFeature(CompiledStaticTuple)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    result = tests.multiply_tests(standard_tests, scenarios, suite)
-    return result
-
-
-class _CompiledStaticTuple(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._static_tuple_c
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._static_tuple_c'
-
-CompiledStaticTuple = _CompiledStaticTuple()
+    global compiled_static_tuple_feature
+    suite, compiled_static_tuple_feature = tests.permute_tests_for_extension(
+        standard_tests, loader, 'bzrlib._static_tuple_py',
+        'bzrlib._static_tuple_c')
+    return suite
 
 
 class _Meliae(tests.Feature):
@@ -102,9 +77,9 @@ class TestStaticTuple(tests.TestCase):
     def test_create_bad_args(self):
         args_256 = ['a']*256
         # too many args
-        self.assertRaises(ValueError, self.module.StaticTuple, *args_256)
+        self.assertRaises(TypeError, self.module.StaticTuple, *args_256)
         args_300 = ['a']*300
-        self.assertRaises(ValueError, self.module.StaticTuple, *args_300)
+        self.assertRaises(TypeError, self.module.StaticTuple, *args_300)
         # not a string
         self.assertRaises(TypeError, self.module.StaticTuple, object())
 
@@ -641,7 +616,7 @@ class TestStaticTuple(tests.TestCase):
         # Make sure the right implementation is available from
         # bzrlib.static_tuple.StaticTuple.
         if self.module is _static_tuple_py:
-            if CompiledStaticTuple.available():
+            if compiled_static_tuple_feature.available():
                 # We will be using the C version
                 return
         self.assertIs(static_tuple.StaticTuple,

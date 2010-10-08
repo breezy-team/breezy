@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -73,6 +73,26 @@ from bzrlib import (
     ui,
     urlutils,
     )
+
+
+class addinfourl(urllib2.addinfourl):
+    '''Replacement addinfourl class compatible with python-2.7's xmlrpclib
+
+    In python-2.7, xmlrpclib expects that the response object that it receives
+    has a getheader method.  httplib.HTTPResponse provides this but
+    urllib2.addinfourl does not.  Add the necessary functions here, ported to
+    use the internal data structures of addinfourl.
+    '''
+
+    def getheader(self, name, default=None):
+        if self.headers is None:
+            raise httplib.ResponseNotReady()
+        return self.headers.getheader(name, default)
+
+    def getheaders(self):
+        if self.headers is None:
+            raise httplib.ResponseNotReady()
+        return self.headers.items()
 
 
 class _ReportingFileSocket(object):
@@ -378,6 +398,11 @@ class Request(urllib2.Request):
             port = conn_class.default_port
         self.proxied_host = '%s:%s' % (host, port)
         urllib2.Request.set_proxy(self, proxy, type)
+        # When urllib2 makes a https request with our wrapper code and a proxy,
+        # it sets Host to the https proxy, not the host we want to talk to.
+        # I'm fairly sure this is our fault, but what is the cause is an open
+        # question. -- Robert Collins May 8 2010.
+        self.add_unredirected_header('Host', self.proxied_host)
 
 
 class _ConnectRequest(Request):
@@ -651,7 +676,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             r = response
             r.recv = r.read
             fp = socket._fileobject(r, bufsize=65536)
-            resp = urllib2.addinfourl(fp, r.msg, req.get_full_url())
+            resp = addinfourl(fp, r.msg, req.get_full_url())
             resp.code = r.status
             resp.msg = r.reason
             resp.version = r.version
@@ -711,7 +736,7 @@ class HTTPSHandler(AbstractHTTPHandler):
             connect = _ConnectRequest(request)
             response = self.parent.open(connect)
             if response.code != 200:
-                raise ConnectionError("Can't connect to %s via proxy %s" % (
+                raise errors.ConnectionError("Can't connect to %s via proxy %s" % (
                         connect.proxied_host, self.host))
             # Housekeeping
             connection.cleanup_pipe()
@@ -868,21 +893,19 @@ class ProxyHandler(urllib2.ProxyHandler):
                 print 'Will unbind %s_open for %r' % (type, proxy)
             delattr(self, '%s_open' % type)
 
+        def bind_scheme_request(proxy, scheme):
+            if proxy is None:
+                return
+            scheme_request = scheme + '_request'
+            if self._debuglevel >= 3:
+                print 'Will bind %s for %r' % (scheme_request, proxy)
+            setattr(self, scheme_request,
+                lambda request: self.set_proxy(request, scheme))
         # We are interested only by the http[s] proxies
         http_proxy = self.get_proxy_env_var('http')
+        bind_scheme_request(http_proxy, 'http')
         https_proxy = self.get_proxy_env_var('https')
-
-        if http_proxy is not None:
-            if self._debuglevel >= 3:
-                print 'Will bind http_request for %r' % http_proxy
-            setattr(self, 'http_request',
-                    lambda request: self.set_proxy(request, 'http'))
-
-        if https_proxy is not None:
-            if self._debuglevel >= 3:
-                print 'Will bind http_request for %r' % https_proxy
-            setattr(self, 'https_request',
-                    lambda request: self.set_proxy(request, 'https'))
+        bind_scheme_request(https_proxy, 'https')
 
     def get_proxy_env_var(self, name, default_to='all'):
         """Get a proxy env var.

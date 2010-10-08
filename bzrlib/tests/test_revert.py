@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -157,3 +157,14 @@ class TestRevert(tests.TestCaseWithTransport):
         self.failUnlessExists('dir/file1')
         self.failIfExists('dir/file2')
         self.assertEqual('dir-id', tree.path2id('dir'))
+
+    def test_revert_root_id_change(self):
+        tree = self.make_branch_and_tree('.')
+        tree.set_root_id('initial-root-id')
+        self.build_tree(['file1'])
+        tree.add(['file1'])
+        tree.commit('first')
+        tree.set_root_id('temp-root-id')
+        self.assertEqual('temp-root-id', tree.get_root_id())
+        tree.revert()
+        self.assertEqual('initial-root-id', tree.get_root_id())

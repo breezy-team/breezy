@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,10 +30,10 @@ from bzrlib import (
     export,
     tests,
     )
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestExport(ExternalBase):
+class TestExport(TestCaseWithTransport):
 
     def test_tar_export(self):
         tree = self.make_branch_and_tree('tar')
@@ -66,15 +66,13 @@ class TestExport(ExternalBase):
         self.assertEqual(['test/a'], sorted(ball.getnames()))
 
     def test_tar_export_unicode(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tar')
         # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
         # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
         # export itself --vila 20090406
         fname = u'\N{Euro Sign}.txt'
-        try:
-            self.build_tree(['tar/' + fname])
-        except UnicodeError:
-            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
+        self.build_tree(['tar/' + fname])
         tree.add([fname])
         tree.commit('first')
 
@@ -84,6 +82,16 @@ class TestExport(ExternalBase):
         # all paths are prefixed with the base name of the tarball
         self.assertEqual(['test/' + fname.encode('utf8')],
                          sorted(ball.getnames()))
+
+    def test_tar_export_unicode_basedir(self):
+        """Test for bug #413406"""
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        basedir = u'\N{euro sign}'
+        os.mkdir(basedir)
+        os.chdir(basedir)
+        self.run_bzr(['init', 'branch'])
+        os.chdir('branch')
+        self.run_bzr(['export', '--format', 'tgz', u'test.tar.gz'])
 
     def test_zip_export(self):
         tree = self.make_branch_and_tree('zip')
@@ -110,12 +118,10 @@ class TestExport(ExternalBase):
         self.assertEqual(['test/a'], sorted(zfile.namelist()))
 
     def test_zip_export_unicode(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('zip')
         fname = u'\N{Euro Sign}.txt'
-        try:
-            self.build_tree(['zip/' + fname])
-        except UnicodeError:
-            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
+        self.build_tree(['zip/' + fname])
         tree.add([fname])
         tree.commit('first')
 
@@ -293,3 +299,20 @@ class TestExport(ExternalBase):
         tree.commit('more setup')
         out, err = self.run_bzr('export exported branch/subdir')
         self.assertEqual(['foo.txt'], os.listdir('exported'))
+
+    def test_dir_export_per_file_timestamps(self):
+        tree = self.example_branch()
+        self.build_tree_contents([('branch/har', 'foo')])
+        tree.add('har')
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        tree.commit('setup', timestamp=315532800)
+        self.run_bzr('export --per-file-timestamps t branch')
+        har_st = os.stat('t/har')
+        self.assertEquals(315532800, har_st.st_mtime)
+
+    def test_export_directory(self):
+        """Test --directory option"""
+        self.example_branch()
+        self.run_bzr(['export', '--directory=branch', 'latest'])
+        self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('latest')))
+        self.check_file_contents('latest/goodbye', 'baz')

@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -257,6 +257,40 @@ class Graph(object):
         left = searchers[0].seen
         right = searchers[1].seen
         return (left.difference(right), right.difference(left))
+
+    def find_descendants(self, old_key, new_key):
+        """Find descendants of old_key that are ancestors of new_key."""
+        child_map = self.get_child_map(self._find_descendant_ancestors(
+            old_key, new_key))
+        graph = Graph(DictParentsProvider(child_map))
+        searcher = graph._make_breadth_first_searcher([old_key])
+        list(searcher)
+        return searcher.seen
+
+    def _find_descendant_ancestors(self, old_key, new_key):
+        """Find ancestors of new_key that may be descendants of old_key."""
+        stop = self._make_breadth_first_searcher([old_key])
+        descendants = self._make_breadth_first_searcher([new_key])
+        for revisions in descendants:
+            old_stop = stop.seen.intersection(revisions)
+            descendants.stop_searching_any(old_stop)
+            seen_stop = descendants.find_seen_ancestors(stop.step())
+            descendants.stop_searching_any(seen_stop)
+        return descendants.seen.difference(stop.seen)
+
+    def get_child_map(self, keys):
+        """Get a mapping from parents to children of the specified keys.
+
+        This is simply the inversion of get_parent_map.  Only supplied keys
+        will be discovered as children.
+        :return: a dict of key:child_list for keys.
+        """
+        parent_map = self._parents_provider.get_parent_map(keys)
+        parent_child = {}
+        for child, parents in sorted(parent_map.items()):
+            for parent in parents:
+                parent_child.setdefault(parent, []).append(child)
+        return parent_child
 
     def find_distance_to_null(self, target_revision_id, known_revision_ids):
         """Find the left-hand distance to the NULL_REVISION.
@@ -862,6 +896,26 @@ class Graph(object):
                 stop.add(parent_id)
         return found
 
+    def find_lefthand_merger(self, merged_key, tip_key):
+        """Find the first lefthand ancestor of tip_key that merged merged_key.
+
+        We do this by first finding the descendants of merged_key, then
+        walking through the lefthand ancestry of tip_key until we find a key
+        that doesn't descend from merged_key.  Its child is the key that
+        merged merged_key.
+
+        :return: The first lefthand ancestor of tip_key to merge merged_key.
+            merged_key if it is a lefthand ancestor of tip_key.
+            None if no ancestor of tip_key merged merged_key.
+        """
+        descendants = self.find_descendants(merged_key, tip_key)
+        candidate_iterator = self.iter_lefthand_ancestry(tip_key)
+        last_candidate = None
+        for candidate in candidate_iterator:
+            if candidate not in descendants:
+                return last_candidate
+            last_candidate = candidate
+
     def find_unique_lca(self, left_revision, right_revision,
                         count_steps=False):
         """Find a unique LCA.
@@ -918,6 +972,25 @@ class Graph(object):
             for ghost in ghosts:
                 yield (ghost, None)
             pending = next_pending
+
+    def iter_lefthand_ancestry(self, start_key, stop_keys=None):
+        if stop_keys is None:
+            stop_keys = ()
+        next_key = start_key
+        def get_parents(key):
+            try:
+                return self._parents_provider.get_parent_map([key])[key]
+            except KeyError:
+                raise errors.RevisionNotPresent(next_key, self)
+        while True:
+            if next_key in stop_keys:
+                return
+            parents = get_parents(next_key)
+            yield next_key
+            if len(parents) == 0:
+                return
+            else:
+                next_key = parents[0]
 
     def iter_topo_order(self, revisions):
         """Iterate through the input revisions in topological order.
@@ -1685,11 +1758,17 @@ class GraphThunkIdsToKeys(object):
     def __init__(self, graph):
         self._graph = graph
 
+    def topo_sort(self):
+        return [r for (r,) in self._graph.topo_sort()]
+
     def heads(self, ids):
         """See Graph.heads()"""
         as_keys = [(i,) for i in ids]
         head_keys = self._graph.heads(as_keys)
         return set([h[0] for h in head_keys])
+
+    def merge_sort(self, tip_revision):
+        return self._graph.merge_sort((tip_revision,))
 
 
 _counters = [0,0,0,0,0,0,0]

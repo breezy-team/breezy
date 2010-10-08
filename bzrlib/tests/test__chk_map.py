@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 
 from bzrlib import (
     chk_map,
+    inventory,
     tests,
     )
 from bzrlib.static_tuple import StaticTuple
@@ -25,36 +26,9 @@ stuple = StaticTuple
 
 
 def load_tests(standard_tests, module, loader):
-    # parameterize all tests in this module
-    suite = loader.suiteClass()
-    import bzrlib._chk_map_py as py_module
-    scenarios = [('python', {'module': py_module})]
-    if CompiledChkMapFeature.available():
-        import bzrlib._chk_map_pyx as c_module
-        scenarios.append(('C', {'module': c_module}))
-    else:
-        # the compiled module isn't available, so we add a failing test
-        class FailWithoutFeature(tests.TestCase):
-            def test_fail(self):
-                self.requireFeature(CompiledChkMapFeature)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    tests.multiply_tests(standard_tests, scenarios, suite)
+    suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
+        'bzrlib._chk_map_py', 'bzrlib._chk_map_pyx')
     return suite
-
-
-class _CompiledChkMapFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._chk_map_pyx
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._chk_map_pyx'
-
-CompiledChkMapFeature = _CompiledChkMapFeature()
 
 
 class TestSearchKeys(tests.TestCase):
@@ -263,3 +237,44 @@ class TestDeserialiseInternalNode(tests.TestCase):
         self.assertEqual(("sha1:1234",), node.key())
         self.assertEqual('pref\x00fo', node._search_prefix)
         self.assertEqual({'pref\x00fo\x00': ('sha1:abcd',)}, node._items)
+
+
+class Test_BytesToTextKey(tests.TestCase):
+
+    def assertBytesToTextKey(self, key, bytes):
+        self.assertEqual(key,
+                         self.module._bytes_to_text_key(bytes))
+
+    def assertBytesToTextKeyRaises(self, bytes):
+        # These are invalid bytes, and we want to make sure the code under test
+        # raises an exception rather than segfaults, etc. We don't particularly
+        # care what exception.
+        self.assertRaises(Exception, self.module._bytes_to_text_key, bytes)
+
+    def test_file(self):
+        self.assertBytesToTextKey(('file-id', 'revision-id'),
+                 'file: file-id\nparent-id\nname\nrevision-id\n'
+                 'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
+
+    def test_invalid_no_kind(self):
+        self.assertBytesToTextKeyRaises(
+                 'file  file-id\nparent-id\nname\nrevision-id\n'
+                 'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
+
+    def test_invalid_no_space(self):
+        self.assertBytesToTextKeyRaises(
+                 'file:file-id\nparent-id\nname\nrevision-id\n'
+                 'da39a3ee5e6b4b0d3255bfef95601890afd80709\n100\nN')
+
+    def test_invalid_too_short_file_id(self):
+        self.assertBytesToTextKeyRaises('file:file-id')
+
+    def test_invalid_too_short_parent_id(self):
+        self.assertBytesToTextKeyRaises('file:file-id\nparent-id')
+
+    def test_invalid_too_short_name(self):
+        self.assertBytesToTextKeyRaises('file:file-id\nparent-id\nname')
+
+    def test_dir(self):
+        self.assertBytesToTextKey(('dir-id', 'revision-id'),
+                 'dir: dir-id\nparent-id\nname\nrevision-id')

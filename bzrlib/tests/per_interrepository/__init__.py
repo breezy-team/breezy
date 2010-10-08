@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
 # -*- coding: utf-8 -*-
 #
@@ -26,6 +26,7 @@ rather than in tests/per_interrepository/*.py.
 """
 
 
+from bzrlib import transport
 from bzrlib.errors import (
     FileExists,
     UninitializableFormat,
@@ -38,8 +39,7 @@ from bzrlib.tests import (
                           default_transport,
                           multiply_tests,
                           )
-from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
-from bzrlib.transport import get_transport
+from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -49,7 +49,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
         (label, repository_format, repository_format_to).
     """
     result = []
-    for label, repository_format, repository_format_to in formats:
+    for label, repository_format, repository_format_to, extra_setup in formats:
         id = '%s,%s,%s' % (label, repository_format.__class__.__name__,
                            repository_format_to.__class__.__name__)
         scenario = (id,
@@ -57,6 +57,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
              "transport_readonly_server": transport_readonly_server,
              "repository_format": repository_format,
              "repository_format_to": repository_format_to,
+             "extra_setup": extra_setup,
              })
         result.append(scenario)
     return result
@@ -71,8 +72,8 @@ def default_test_list():
         weaverepo,
         )
     result = []
-    def add_combo(label, from_format, to_format):
-        result.append((label, from_format, to_format))
+    def add_combo(label, from_format, to_format, extra_setup=None):
+        result.append((label, from_format, to_format, extra_setup))
     # test the default InterRepository between format 6 and the current
     # default format.
     # XXX: robertc 20060220 reinstate this when there are two supported
@@ -89,6 +90,9 @@ def default_test_list():
     # XXX: although we attach InterRepository class names to these scenarios,
     # there's nothing asserting that these labels correspond to what is
     # actually used.
+    def force_known_graph(testcase):
+        from bzrlib.fetch import Inter1and2Helper
+        testcase.overrideAttr(Inter1and2Helper, 'known_graph_threshold', -1)
     add_combo('InterRepository',
               weaverepo.RepositoryFormat5(),
               knitrepo.RepositoryFormatKnit3())
@@ -113,6 +117,11 @@ def default_test_list():
     add_combo('InterDifferingSerializer',
               pack_repo.RepositoryFormatKnitPack1(),
               pack_repo.RepositoryFormatKnitPack6RichRoot())
+    add_combo('InterDifferingSerializer+get_known_graph_ancestry',
+              pack_repo.RepositoryFormatKnitPack1(),
+              pack_repo.RepositoryFormatKnitPack6RichRoot(),
+              force_known_graph,
+              )
     add_combo('InterDifferingSerializer',
               pack_repo.RepositoryFormatKnitPack6RichRoot(),
               groupcompress_repo.RepositoryFormat2a())
@@ -128,10 +137,12 @@ def default_test_list():
     return result
 
 
-class TestCaseWithInterRepository(TestCaseWithBzrDir):
+class TestCaseWithInterRepository(TestCaseWithControlDir):
 
     def setUp(self):
         super(TestCaseWithInterRepository, self).setUp()
+        if self.extra_setup:
+            self.extra_setup(self)
 
     def make_branch(self, relpath, format=None):
         repo = self.make_repository(relpath, format=format)
@@ -143,7 +154,7 @@ class TestCaseWithInterRepository(TestCaseWithBzrDir):
             segments = url.split('/')
             if segments and segments[-1] not in ('', '.'):
                 parent = '/'.join(segments[:-1])
-                t = get_transport(parent)
+                t = transport.get_transport(parent)
                 try:
                     t.mkdir(segments[-1])
                 except FileExists:

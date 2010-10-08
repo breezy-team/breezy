@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,32 +19,31 @@
 
 import os
 
-from bzrlib import osutils
-from bzrlib.tests import (
-    condition_isinstance,
-    split_suite_by_condition,
-    multiply_tests,
-    SymlinkFeature
+from bzrlib import (
+    osutils,
+    tests,
     )
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import (
+    script,
+    )
 
 
 def load_tests(standard_tests, module, loader):
     """Parameterize tests for view-aware vs not."""
-    to_adapt, result = split_suite_by_condition(
-        standard_tests, condition_isinstance(TestAdd))
+    to_adapt, result = tests.split_suite_by_condition(
+        standard_tests, tests.condition_isinstance(TestAdd))
     scenarios = [
         ('pre-views', {'branch_tree_format': 'pack-0.92'}),
         ('view-aware', {'branch_tree_format': 'development6-rich-root'}),
         ]
-    return multiply_tests(to_adapt, scenarios, result)
+    return tests.multiply_tests(to_adapt, scenarios, result)
 
 
-class TestAdd(ExternalBase):
+class TestAdd(tests.TestCaseWithTransport):
 
     def make_branch_and_tree(self, dir):
-        return ExternalBase.make_branch_and_tree(self, dir,
-            format=self.branch_tree_format)
+        return super(TestAdd, self).make_branch_and_tree(
+            dir, format=self.branch_tree_format)
 
     def test_add_reports(self):
         """add command prints the names of added files."""
@@ -115,7 +114,6 @@ class TestAdd(ExternalBase):
 
         eq = self.assertEqual
         ass = self.assertTrue
-        chdir = os.chdir
 
         t = self.make_branch_and_tree('.')
         b = t.branch
@@ -130,17 +128,15 @@ class TestAdd(ExternalBase):
 
         # add with no arguments in a subdirectory gets only files below that
         # subdirectory
-        chdir('src')
-        self.run_bzr('add')
-        self.assertEquals(self.run_bzr('unknowns')[0], 'README\n')
+        self.run_bzr('add', working_dir='src')
+        self.assertEquals('README\n',
+                          self.run_bzr('unknowns', working_dir='src')[0])
         # reopen to see the new changes
-        t = t.bzrdir.open_workingtree()
+        t = t.bzrdir.open_workingtree('src')
         versioned = [path for path, entry in t.iter_entries_by_dir()]
-        self.assertEquals(versioned,
-            ['', 'src', 'src/foo.c'])
+        self.assertEquals(versioned, ['', 'src', 'src/foo.c'])
 
         # add from the parent directory should pick up all file names
-        chdir('..')
         self.run_bzr('add')
         self.assertEquals(self.run_bzr('unknowns')[0], '')
         self.run_bzr('check')
@@ -211,7 +207,7 @@ class TestAdd(ExternalBase):
         self.assertContainsRe(err, r'ERROR:.*\.bzr.*control file')
 
     def test_add_via_symlink(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         self.make_branch_and_tree('source')
         self.build_tree(['source/top.txt'])
         os.symlink('source', 'link')
@@ -219,8 +215,19 @@ class TestAdd(ExternalBase):
         self.assertEquals(out, 'adding top.txt\n')
 
     def test_add_symlink_to_abspath(self):
-        self.requireFeature(SymlinkFeature)
+        self.requireFeature(tests.SymlinkFeature)
         self.make_branch_and_tree('tree')
         os.symlink(osutils.abspath('target'), 'tree/link')
         out = self.run_bzr(['add', 'tree/link'])[0]
         self.assertEquals(out, 'adding link\n')
+
+    def test_add_not_child(self):
+        # https://bugs.launchpad.net/bzr/+bug/98735
+        sr = script.ScriptRunner()
+        self.make_branch_and_tree('tree1')
+        self.make_branch_and_tree('tree2')
+        self.build_tree(['tree1/a', 'tree2/b'])
+        sr.run_script(self, '''
+        $ bzr add tree1/a tree2/b
+        2>bzr: ERROR: Path "...tree2/b" is not a child of path "...tree1"
+        ''')

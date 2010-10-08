@@ -79,7 +79,7 @@ Other advantages include:
  * trunk quality and stability can be kept higher, making everyone's
    job less stressful
 
- * in open source communities:
+ * in open communities:
 
    * easier for non-core developers to create and maintain changes
 
@@ -89,7 +89,7 @@ Other advantages include:
  * in companies, easier to work with distributed and outsourced teams.
 
 For a detailed look at the advantages of distributed VCS tools over
-centralized VCS tools, see http://bazaar-vcs.org/BzrWhy.
+centralized VCS tools, see http://wiki.bazaar.canonical.com/BzrWhy.
 
 
 Key features of Bazaar
@@ -98,12 +98,12 @@ Key features of Bazaar
 While Bazaar is not the only distributed VCS tool around, it does have some
 notable features that make it an excellent choice for many teams and
 communities. A summary of these and comparisons with other VCS tools
-can be found on the Bazaar Wiki, http://bazaar-vcs.org.
+can be found on the Bazaar Wiki, http://wiki.bazaar.canonical.com.
 
 Of the many features, one in particular is worth highlighting:
 Bazaar is completely free software written in Python. As a result,
 it is easy to contribute improvements. If you wish to get involved,
-please see http://bazaar-vcs.org/BzrSupport.
+please see http://wiki.bazaar.canonical.com/BzrSupport.
 
 
 Learning more
@@ -134,7 +134,7 @@ In addition, the online help and `Bazaar User Reference`_ provide all the
 details on the commands and options available.
 
 .. _Bazaar in five minutes: ../mini-tutorial/index.html
-.. _Bazaar Quick Start Card: ../quick-reference/quick-start-summary.svg
+.. _Bazaar Quick Start Card: ../quick-reference/index.html
 .. _Bazaar User Reference: ../user-reference/index.html
 
 We hope you find this manual useful. If you have suggestions on how it

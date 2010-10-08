@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from bzrlib import registry, help_topics
+from bzrlib import registry
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import errors, urlutils
@@ -39,12 +39,12 @@ of converting bug IDs into URLs.
 
 _bugs_help = \
 """When making a commit, metadata about bugs fixed by that change can be
-recorded by using the --fixes option. For each bug marked as fixed, an
+recorded by using the ``--fixes`` option. For each bug marked as fixed, an
 entry is included in the 'bugs' revision property stating '<url> <status>'.
 (The only ``status`` value currently supported is ``fixed.``)
 
-The --fixes option allows you to specify a bug tracker and a bug identifier
-rather than a full URL. This looks like
+The ``--fixes`` option allows you to specify a bug tracker and a bug identifier
+rather than a full URL. This looks like::
 
     bzr commit --fixes <tracker>:<id>
 
@@ -56,10 +56,13 @@ you use one of these bug trackers then there is no setup required to
 use this feature, you just need to know the tracker identifier to use.
 These are the bugtrackers that are built in:
 
-     URL                          | Abbreviation | Example
-     https://bugs.launchpad.net/  | lp           | lp:12345
-     http://bugs.debian.org/      | deb          | deb:12345
-     http://bugzilla.gnome.org/   | gnome        | gnome:12345
+  ============================ ============ ============
+  URL                          Abbreviation Example
+  ============================ ============ ============
+  https://bugs.launchpad.net/  lp           lp:12345
+  http://bugs.debian.org/      deb          deb:12345
+  http://bugzilla.gnome.org/   gnome        gnome:12345
+  ============================ ============ ============
 
 For the bug trackers not listed above configuration is required.
 Support for generating the URLs for any project using Bugzilla or Trac
@@ -82,24 +85,24 @@ Launchpad
 
 Use ``bzr commit --fixes lp:2`` to record that this commit fixes bug 2.
 
-bugzilla_<tracker_abbreviation>_url
------------------------------------
+bugzilla_<tracker>_url
+----------------------
 
 If present, the location of the Bugzilla bug tracker referred to by
-<tracker_abbreviation>. This option can then be used together with ``bzr commit
+<tracker>. This option can then be used together with ``bzr commit
 --fixes`` to mark bugs in that tracker as being fixed by that commit. For
 example::
 
-    bugzilla_squid_url = http://www.squid-cache.org/bugs
+    bugzilla_squid_url = http://bugs.squid-cache.org
 
 would allow ``bzr commit --fixes squid:1234`` to mark Squid's bug 1234 as
 fixed.
 
-trac_<tracker_abbrevation>_url
-------------------------------
+trac_<tracker>_url
+------------------
 
 If present, the location of the Trac instance referred to by
-<tracker_abbreviation>. This option can then be used together with ``bzr commit
+<tracker>. This option can then be used together with ``bzr commit
 --fixes`` to mark bugs in that tracker as being fixed by that commit. For
 example::
 
@@ -108,11 +111,11 @@ example::
 would allow ``bzr commit --fixes twisted:1234`` to mark Twisted's bug 1234 as
 fixed.
 
-bugtracker_<tracker_abbrevation>_url
-------------------------------------
+bugtracker_<tracker>_url
+------------------------
 
 If present, the location of a generic bug tracker instance referred to by
-<tracker_abbreviation>. The location must contain an ``{id}`` placeholder,
+<tracker>. The location must contain an ``{id}`` placeholder,
 which will be replaced by a specific bug ID. This option can then be used
 together with ``bzr commit --fixes`` to mark bugs in that tracker as being
 fixed by that commit. For example::
@@ -124,7 +127,13 @@ Roundup bug tracker as fixed, or::
 
     bugtracker_cpan_url = http://rt.cpan.org/Public/Bug/Display.html?id={id}
 
-for CPAN's RT bug tracker.
+would allow ``bzr commit --fixes cpan:1234`` to mark bug 1234 in CPAN's
+RT bug tracker as fixed, or::
+
+    bugtracker_hudson_url = http://issues.hudson-ci.org/browse/{id}
+
+would allow ``bzr commit --fixes hudson:HUDSON-1234`` to mark bug HUDSON-1234
+in Hudson's JIRA bug tracker as fixed.
 """
 
 
@@ -225,14 +234,13 @@ tracker_registry.register('gnome',
     UniqueIntegerBugTracker('gnome', 'http://bugzilla.gnome.org/show_bug.cgi?id='))
 
 
-class URLParametrizedIntegerBugTracker(IntegerBugTracker):
+class URLParametrizedBugTracker(BugTracker):
     """A type of bug tracker that can be found on a variety of different sites,
     and thus needs to have the base URL configured.
 
     Looks for a config setting in the form '<type_name>_<abbreviation>_url'.
-    `type_name` is the name of the type of tracker (e.g. 'bugzilla' or 'trac')
-    and `abbreviation` is a short name for the particular instance (e.g.
-    'squid' or 'apache').
+    `type_name` is the name of the type of tracker and `abbreviation`
+    is a short name for the particular instance.
     """
 
     def get(self, abbreviation, branch):
@@ -253,6 +261,16 @@ class URLParametrizedIntegerBugTracker(IntegerBugTracker):
         return urlutils.join(self._base_url, self._bug_area) + str(bug_id)
 
 
+class URLParametrizedIntegerBugTracker(IntegerBugTracker, URLParametrizedBugTracker):
+    """A type of bug tracker that can be found on a variety of different sites,
+    and thus needs to have the base URL configured, but only allows integer bug IDs.
+
+    Looks for a config setting in the form '<type_name>_<abbreviation>_url'.
+    `type_name` is the name of the type of tracker (e.g. 'bugzilla' or 'trac')
+    and `abbreviation` is a short name for the particular instance (e.g.
+    'squid' or 'apache').
+    """
+
 tracker_registry.register(
     'trac', URLParametrizedIntegerBugTracker('trac', 'ticket/'))
 
@@ -261,7 +279,7 @@ tracker_registry.register(
     URLParametrizedIntegerBugTracker('bugzilla', 'show_bug.cgi?id='))
 
 
-class GenericBugTracker(URLParametrizedIntegerBugTracker):
+class GenericBugTracker(URLParametrizedBugTracker):
     """Generic bug tracker specified by an URL template."""
 
     def __init__(self):

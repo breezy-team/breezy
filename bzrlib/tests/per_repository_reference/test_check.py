@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -39,5 +39,4 @@ class TestCheck(TestCaseWithExternalReferenceRepository):
         check_result = referring.branch.repository.check(
             referring.branch.repository.all_revision_ids())
         check_result.report_results(verbose=False)
-        log = self._get_log(keep_log_file=True)
-        self.assertFalse("inconsistent parents" in log)
+        self.assertFalse("inconsistent parents" in self.get_log())

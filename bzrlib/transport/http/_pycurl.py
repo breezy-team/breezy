@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,16 +31,12 @@
 # from _curl_perform.  Not done because we may deprecate pycurl in the
 # future -- vila 20070212
 
-import os
 from cStringIO import StringIO
 import httplib
-import sys
 
 from bzrlib import (
     debug,
     errors,
-    trace,
-    __version__ as bzrlib_version,
     )
 import bzrlib
 from bzrlib.trace import mutter
@@ -132,6 +128,11 @@ class PyCurlTransport(HttpTransportBase):
             # Proxy handling is out of reach, so we punt
             self._set_connection(connection, auth)
         return connection
+
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
 
     def has(self, relpath):
         """See Transport.has()"""

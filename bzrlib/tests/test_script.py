@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,8 +16,10 @@
 
 
 from bzrlib import (
+    commands,
     osutils,
     tests,
+    ui,
     )
 from bzrlib.tests import script
 
@@ -27,8 +29,33 @@ class TestSyntax(tests.TestCase):
     def test_comment_is_ignored(self):
         self.assertEquals([], script._script_to_commands('#comment\n'))
 
-    def test_empty_line_is_ignored(self):
-        self.assertEquals([], script._script_to_commands('\n'))
+    def test_comment_multiple_lines(self):
+        self.assertEquals([
+            (['bar'], None, None, None),
+            ],
+            script._script_to_commands("""
+            # this comment is ignored
+            # so is this
+            # no we run bar
+            $ bar
+            """))
+
+    def test_trim_blank_lines(self):
+        """Blank lines are respected, but trimmed at the start and end.
+
+        Python triple-quoted syntax is going to give stubby/empty blank lines 
+        right at the start and the end.  These are cut off so that callers don't 
+        need special syntax to avoid them.
+
+        However we do want to be able to match commands that emit blank lines.
+        """
+        self.assertEquals([
+            (['bar'], None, '\n', None),
+            ],
+            script._script_to_commands("""
+            $bar
+
+            """))
 
     def test_simple_command(self):
         self.assertEquals([(['cd', 'trunk'], None, None, None)],
@@ -50,6 +77,18 @@ class TestSyntax(tests.TestCase):
         self.assertEquals(
             [(['cat', '>file'], 'content\n', None, None)],
             script._script_to_commands('$ cat >file\n<content\n'))
+
+    def test_indented(self):
+        # scripts are commonly given indented within the test source code, and
+        # common indentation is stripped off
+        story = """
+            $ bzr add
+            adding file
+            adding file2
+            """
+        self.assertEquals([(['bzr', 'add'], None,
+                            'adding file\nadding file2\n', None)],
+                          script._script_to_commands(story))
 
     def test_command_with_output(self):
         story = """
@@ -365,6 +404,14 @@ $ echo foo
         self.assertEquals(None, err)
         self.assertFileEqual('hello\nhappy\n', 'file')
 
+    def test_empty_line_in_output_is_respected(self):
+        self.run_script("""
+            $ echo
+
+            $ echo bar
+            bar
+            """)
+
 
 class TestRm(script.TestCaseWithTransportAndScript):
 
@@ -407,3 +454,79 @@ $ mkdir dir
 $ rm -r dir
 """)
         self.failIfExists('dir')
+
+
+class TestMv(script.TestCaseWithTransportAndScript):
+
+    def test_usage(self):
+        self.assertRaises(SyntaxError, self.run_script, '$ mv')
+        self.assertRaises(SyntaxError, self.run_script, '$ mv f')
+        self.assertRaises(SyntaxError, self.run_script, '$ mv f1 f2 f3')
+
+    def test_move_file(self):
+        self.run_script('$ echo content >file')
+        self.failUnlessExists('file')
+        self.run_script('$ mv file new_name')
+        self.failIfExists('file')
+        self.failUnlessExists('new_name')
+
+    def test_move_unknown_file(self):
+        self.assertRaises(AssertionError,
+                          self.run_script, '$ mv unknown does-not-exist')
+
+    def test_move_dir(self):
+        self.run_script("""
+$ mkdir dir
+$ echo content >dir/file
+""")
+        self.run_script('$ mv dir new_name')
+        self.failIfExists('dir')
+        self.failUnlessExists('new_name')
+        self.failUnlessExists('new_name/file')
+
+    def test_move_file_into_dir(self):
+        self.run_script("""
+$ mkdir dir
+$ echo content > file
+""")
+        self.run_script('$ mv file dir')
+        self.failUnlessExists('dir')
+        self.failIfExists('file')
+        self.failUnlessExists('dir/file')
+
+
+class cmd_test_confirm(commands.Command):
+
+    def run(self):
+        if ui.ui_factory.get_boolean(
+            'Really do it',
+            # 'bzrlib.tests.test_script.confirm',
+            # {}
+            ):
+            self.outf.write('Do it!\n')
+        else:
+            print 'ok, no'
+
+
+class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
+
+    def test_confirm_action(self):
+        """You can write tests that demonstrate user confirmation.
+        
+        Specifically, ScriptRunner does't care if the output line for the prompt
+        isn't terminated by a newline from the program; it's implicitly terminated 
+        by the input.
+        """
+        commands.builtin_command_registry.register(cmd_test_confirm)
+        self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
+        self.run_script("""
+            $ bzr test-confirm
+            2>Really do it? [y/n]: 
+            <yes
+            Do it!
+            $ bzr test-confirm
+            2>Really do it? [y/n]: 
+            <no
+            ok, no
+            """)
+

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -81,7 +81,7 @@ class XMLRPCTransport(xmlrpclib.Transport):
 class LaunchpadService(object):
     """A service to talk to Launchpad via XMLRPC.
 
-    See http://bazaar-vcs.org/Specs/LaunchpadRpc for the methods we can call.
+    See http://wiki.bazaar.canonical.com/Specs/LaunchpadRpc for the methods we can call.
     """
 
     LAUNCHPAD_DOMAINS = {
@@ -98,11 +98,8 @@ class LaunchpadService(object):
     for instance, domain in LAUNCHPAD_DOMAINS.iteritems():
         LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
 
-    # We use edge as the default because:
-    # Beta users get redirected to it
-    # All users can use it
-    # There is a bug in the launchpad side where redirection causes an OOPS.
-    DEFAULT_INSTANCE = 'edge'
+    # Previously 'edge' was used to avoid a launchpad bug with redirection
+    DEFAULT_INSTANCE = 'production'
     DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 
     transport = None

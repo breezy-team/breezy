@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -20,9 +20,9 @@
 """
 
 import os
-import sys
 
 from bzrlib import tests
+from bzrlib.transport import memory
 
 
 class TestCat(tests.TestCaseWithTransport):
@@ -128,6 +128,18 @@ class TestCat(tests.TestCaseWithTransport):
         out, err = self.run_bzr_subprocess(['cat', url])
         self.assertEqual('contents of README\n', out)
 
+    def test_cat_branch_revspec(self):
+        wt = self.make_branch_and_tree('a')
+        self.build_tree(['a/README'])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+        wt = self.make_branch_and_tree('b')
+        os.chdir('b')
+
+        out, err = self.run_bzr_subprocess(
+            ['cat', '-r', 'branch:../a', 'README'])
+        self.assertEqual('contents of a/README\n', out)
+
     def test_cat_filters(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['README'])
@@ -184,6 +196,25 @@ class TestCat(tests.TestCaseWithTransport):
         self.assertEqual('contents of README\n', out)
 
     def test_cat_nonexistent_branch(self):
-        self.vfs_transport_factory = tests.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         self.run_bzr_error(['^bzr: ERROR: Not a branch'],
                            ['cat', self.get_url()])
+
+    def test_cat_directory(self):
+        wt = self.make_branch_and_tree('a')
+        self.build_tree(['a/README'])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+
+        out, err = self.run_bzr_subprocess(['cat', '--directory=a', 'README'])
+        self.assertEqual('contents of a/README\n', out)
+
+    def test_cat_remote_directory(self):
+        wt = self.make_branch_and_tree('a')
+        self.build_tree(['a/README'])
+        wt.add('README')
+        wt.commit('Making sure there is a basis_tree available')
+
+        url = self.get_readonly_url() + '/a'
+        out, err = self.run_bzr_subprocess(['cat', '-d', url, 'README'])
+        self.assertEqual('contents of a/README\n', out)

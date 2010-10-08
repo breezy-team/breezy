@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -77,23 +77,13 @@ class _NoImplementCompare(_Hashable):
 
 # Even though this is an extension, we don't permute the tests for a python
 # version. As the plain python version is just a dict or set
-
-class _CompiledSimpleSet(tests.Feature):
-
-    def _probe(self):
-        if _simple_set_pyx is None:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._simple_set_pyx'
-
-CompiledSimpleSet = _CompiledSimpleSet()
+compiled_simpleset_feature = tests.ModuleAvailableFeature(
+                                'bzrlib._simple_set_pyx')
 
 
 class TestSimpleSet(tests.TestCase):
 
-    _test_needs_features = [CompiledSimpleSet]
+    _test_needs_features = [compiled_simpleset_feature]
     module = _simple_set_pyx
 
     def assertIn(self, obj, container):
@@ -389,3 +379,13 @@ class TestSimpleSet(tests.TestCase):
         # And even removing an item still causes it to fail
         obj.discard(k2)
         self.assertRaises(RuntimeError, iterator.next)
+
+    def test__sizeof__(self):
+        # SimpleSet needs a custom sizeof implementation, because it allocates
+        # memory that Python cannot directly see (_table).
+        # Too much variability in platform sizes for us to give a fixed size
+        # here. However without a custom implementation, __sizeof__ would give
+        # us only the size of the object, and not its table. We know the table
+        # is at least 4bytes*1024entries in size.
+        obj = self.module.SimpleSet()
+        self.assertTrue(obj.__sizeof__() > 4096)

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
 """Lists of ignore files, etc."""
 
 import errno
+import os
+from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
@@ -25,65 +27,7 @@ from bzrlib import (
     globbing,
     )
 
-# This was the full ignore list for bzr 0.8
-# please keep these sorted (in C locale order) to aid merging
-OLD_DEFAULTS = [
-    '#*#',
-    '*$',
-    '*,v',
-    '*.BAK',
-    '*.a',
-    '*.bak',
-    '*.elc',
-    '*.exe',
-    '*.la',
-    '*.lo',
-    '*.o',
-    '*.obj',
-    '*.orig',
-    '*.py[oc]',
-    '*.so',
-    '*.tmp',
-    '*~',
-    '.#*',
-    '.*.sw[nop]',
-    '.*.tmp',
-    # Our setup tests dump .python-eggs in the bzr source tree root
-    './.python-eggs',
-    '.DS_Store',
-    '.arch-ids',
-    '.arch-inventory',
-    '.bzr.log',
-    '.del-*',
-    '.git',
-    '.hg',
-    '.jamdeps'
-    '.libs',
-    '.make.state',
-    '.sconsign*',
-    '.svn',
-    '.sw[nop]',    # vim editing nameless file
-    '.tmp*',
-    'BitKeeper',
-    'CVS',
-    'CVS.adm',
-    'RCS',
-    'SCCS',
-    'TAGS',
-    '_darcs',
-    'aclocal.m4',
-    'autom4te*',
-    'config.h',
-    'config.h.in',
-    'config.log',
-    'config.status',
-    'config.sub',
-    'stamp-h',
-    'stamp-h.in',
-    'stamp-h1',
-    '{arch}',
-]
-
+from trace import warning
 
 # ~/.bazaar/ignore will be filled out using
 # this ignore list, if it does not exist
@@ -97,13 +41,38 @@ USER_DEFAULTS = [
     '*~',
     '.#*',
     '[#]*#',
+    '__pycache__',
 ]
 
 
+
 def parse_ignore_file(f):
-    """Read in all of the lines in the file and turn it into an ignore list"""
+    """Read in all of the lines in the file and turn it into an ignore list
+    
+    Continue in the case of utf8 decoding errors, and emit a warning when 
+    such and error is found. Optimise for the common case -- no decoding 
+    errors.
+    """
     ignored = set()
-    for line in f.read().decode('utf8').split('\n'):
+    ignore_file = f.read()
+    try:
+        # Try and parse whole ignore file at once.
+        unicode_lines = ignore_file.decode('utf8').split('\n')
+    except UnicodeDecodeError:
+        # Otherwise go though line by line and pick out the 'good'
+        # decodable lines
+        lines = ignore_file.split('\n')
+        unicode_lines = []
+        for line_number, line in enumerate(lines):
+            try:
+                unicode_lines.append(line.decode('utf-8'))
+            except UnicodeDecodeError:
+                # report error about line (idx+1)
+                warning('.bzrignore: On Line #%d, malformed utf8 character. '
+                        'Ignoring line.' % (line_number+1))
+
+    # Append each line to ignore list if it's not a comment line
+    for line in unicode_lines:
         line = line.rstrip('\r\n')
         if not line or line.startswith('#'):
             continue
@@ -210,35 +179,52 @@ def get_runtime_ignores():
 
 
 def tree_ignores_add_patterns(tree, name_pattern_list):
-    """Retrieve a list of ignores from the ignore file in a tree.
+    """Add more ignore patterns to the ignore file in a tree.
+    If ignore file does not exist then it will be created.
+    The ignore file will be automatically added under version control.
 
-    :param tree: Tree to retrieve the ignore list from.
-    :return:
+    :param tree: Working tree to update the ignore list.
+    :param name_pattern_list: List of ignore patterns.
+    :return: None
     """
+    # read in the existing ignores set
     ifn = tree.abspath(bzrlib.IGNORE_FILENAME)
     if tree.has_filename(ifn):
-        f = open(ifn, 'rt')
+        f = open(ifn, 'rU')
         try:
-            igns = f.read().decode('utf-8')
+            file_contents = f.read()
+            # figure out what kind of line endings are used
+            newline = getattr(f, 'newlines', None)
+            if type(newline) is tuple:
+                newline = newline[0]
+            elif newline is None:
+                newline = os.linesep
         finally:
             f.close()
     else:
-        igns = ""
-
-    # TODO: If the file already uses crlf-style termination, maybe
-    # we should use that for the newly added lines?
-
-    if igns and igns[-1] != '\n':
-        igns += '\n'
-    for name_pattern in name_pattern_list:
-        igns += name_pattern + '\n'
-
+        file_contents = ""
+        newline = os.linesep
+    
+    sio = StringIO(file_contents)
+    try:
+        ignores = parse_ignore_file(sio)
+    finally:
+        sio.close()
+    
+    # write out the updated ignores set
     f = atomicfile.AtomicFile(ifn, 'wb')
     try:
-        f.write(igns.encode('utf-8'))
+        # write the original contents, preserving original line endings
+        f.write(newline.join(file_contents.split('\n')))
+        if len(file_contents) > 0 and not file_contents.endswith('\n'):
+            f.write(newline)
+        for pattern in name_pattern_list:
+            if not pattern in ignores:
+                f.write(pattern.encode('utf-8'))
+                f.write(newline)
         f.commit()
     finally:
         f.close()
 
-    if not tree.path2id('.bzrignore'):
-        tree.add(['.bzrignore'])
+    if not tree.path2id(bzrlib.IGNORE_FILENAME):
+        tree.add([bzrlib.IGNORE_FILENAME])

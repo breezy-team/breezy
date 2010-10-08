@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,13 +19,13 @@ from bzrlib import (
     errors,
     revision as _mod_revision,
     )
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
+from bzrlib.tests import per_branch
 
 
 """Tests for branch.update()"""
 
 
-class TestUpdate(TestCaseWithBranch):
+class TestUpdate(per_branch.TestCaseWithBranch):
 
     def test_update_unbound_works(self):
         b = self.make_branch('.')
@@ -69,7 +69,7 @@ class TestUpdate(TestCaseWithBranch):
         self.assertEqual(['bar'], child_tree.branch.revision_history())
 
 
-class TestUpdateRevisions(TestCaseWithBranch):
+class TestUpdateRevisions(per_branch.TestCaseWithBranch):
 
     def test_accepts_graph(self):
         # An implementation may not use it, but it should allow a 'graph' to be

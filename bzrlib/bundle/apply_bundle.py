@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,7 +52,7 @@ def merge_bundle(reader, tree, check_clean, merge_type,
         pp = ProgressPhase("Merge phase", 6, pb)
         pp.next_phase()
         install_bundle(tree.branch.repository, reader)
-        merger = Merger(tree.branch, this_tree=tree, pb=pb,
+        merger = Merger(tree.branch, this_tree=tree,
                         change_reporter=change_reporter)
         merger.pp = pp
         merger.pp.next_phase()

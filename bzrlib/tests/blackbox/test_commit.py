@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,9 +18,11 @@
 """Tests for the commit CLI of bzr."""
 
 import os
+import re
 import sys
 
 from bzrlib import (
+    bzrdir,
     osutils,
     ignores,
     msgeditor,
@@ -31,11 +33,12 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
     probe_bad_non_ascii,
     TestSkipped,
+    UnicodeFilenameFeature,
     )
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestCommit(ExternalBase):
+class TestCommit(TestCaseWithTransport):
 
     def test_05_empty_commit(self):
         """Commit of tree with no versioned files should fail"""
@@ -106,6 +109,41 @@ class TestCommit(ExternalBase):
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'modified hello\.txt\n'
                               'Committed revision 2\.\n$')
+
+    def test_unicode_commit_message_is_filename(self):
+        """Unicode commit message same as a filename (Bug #563646).
+        """
+        self.requireFeature(UnicodeFilenameFeature)
+        file_name = u'\N{euro sign}'
+        self.run_bzr(['init'])
+        open(file_name, 'w').write('hello world')
+        self.run_bzr(['add'])
+        out, err = self.run_bzr(['commit', '-m', file_name])
+        reflags = re.MULTILINE|re.DOTALL|re.UNICODE
+        te = osutils.get_terminal_encoding()
+        self.assertContainsRe(err.decode(te),
+            u'The commit message is a file name:',
+            flags=reflags)
+
+        # Run same test with a filename that causes encode
+        # error for the terminal encoding. We do this
+        # by forcing terminal encoding of ascii for
+        # osutils.get_terminal_encoding which is used
+        # by ui.text.show_warning
+        default_get_terminal_enc = osutils.get_terminal_encoding
+        try:
+            osutils.get_terminal_encoding = lambda trace=None: 'ascii'
+            file_name = u'foo\u1234'
+            open(file_name, 'w').write('hello world')
+            self.run_bzr(['add'])
+            out, err = self.run_bzr(['commit', '-m', file_name])
+            reflags = re.MULTILINE|re.DOTALL|re.UNICODE
+            te = osutils.get_terminal_encoding()
+            self.assertContainsRe(err.decode(te, 'replace'),
+                u'The commit message is a file name:',
+                flags=reflags)
+        finally:
+            osutils.get_terminal_encoding = default_get_terminal_enc
 
     def test_warn_about_forgotten_commit_message(self):
         """Test that the lack of -m parameter is caught"""
@@ -343,22 +381,31 @@ class TestCommit(ExternalBase):
         trunk = self.make_branch_and_tree('trunk')
 
         u1 = trunk.branch.create_checkout('u1')
-        self.build_tree_contents([('u1/hosts', 'initial contents')])
+        self.build_tree_contents([('u1/hosts', 'initial contents\n')])
         u1.add('hosts')
         self.run_bzr('commit -m add-hosts u1')
 
         u2 = trunk.branch.create_checkout('u2')
-        self.build_tree_contents([('u2/hosts', 'altered in u2')])
+        self.build_tree_contents([('u2/hosts', 'altered in u2\n')])
         self.run_bzr('commit -m checkin-from-u2 u2')
 
         # make an offline commits
-        self.build_tree_contents([('u1/hosts', 'first offline change in u1')])
+        self.build_tree_contents([('u1/hosts', 'first offline change in u1\n')])
         self.run_bzr('commit -m checkin-offline --local u1')
 
         # now try to pull in online work from u2, and then commit our offline
         # work as a merge
         # retcode 1 as we expect a text conflict
         self.run_bzr('update u1', retcode=1)
+        self.assertFileEqual('''\
+<<<<<<< TREE
+first offline change in u1
+=======
+altered in u2
+>>>>>>> MERGE-SOURCE
+''',
+                             'u1/hosts')
+
         self.run_bzr('resolved u1/hosts')
         # add a text change here to represent resolving the merge conflicts in
         # favour of a new version of the file not identical to either the u1
@@ -654,7 +701,7 @@ class TestCommit(ExternalBase):
         self.assertContainsRe(err, r'modified test\nCommitted revision 2.')
 
     def test_commit_readonly_checkout(self):
-        # https://bugs.edge.launchpad.net/bzr/+bug/129701
+        # https://bugs.launchpad.net/bzr/+bug/129701
         # "UnlockableTransport error trying to commit in checkout of readonly
         # branch"
         self.make_branch('master')
@@ -666,28 +713,65 @@ class TestCommit(ExternalBase):
         self.assertContainsRe(err,
             r'^bzr: ERROR: Cannot lock.*readonly transport')
 
-    def test_commit_hook_template(self):
+    def setup_editor(self):
         # Test that commit template hooks work
-        def restoreDefaults():
-            msgeditor.hooks['commit_message_template'] = []
-            osutils.set_or_unset_env('BZR_EDITOR', default_editor)
         if sys.platform == "win32":
             f = file('fed.bat', 'w')
             f.write('@rem dummy fed')
             f.close()
-            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
+            osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
         else:
             f = file('fed.sh', 'wb')
             f.write('#!/bin/sh\n')
             f.close()
             os.chmod('fed.sh', 0755)
-            default_editor = osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
-        self.addCleanup(restoreDefaults)
+            osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
+
+    def setup_commit_with_template(self):
+        self.setup_editor()
         msgeditor.hooks.install_named_hook("commit_message_template",
                 lambda commit_obj, msg: "save me some typing\n", None)
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        out, err = self.run_bzr("commit tree/hello.txt")
+        return tree
+
+    def test_commit_hook_template_accepted(self):
+        tree = self.setup_commit_with_template()
+        out, err = self.run_bzr("commit tree/hello.txt", stdin="y\n")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual('save me some typing\n', last_rev.message)
+
+    def test_commit_hook_template_rejected(self):
+        tree = self.setup_commit_with_template()
+        expected = tree.last_revision()
+        out, err = self.run_bzr_error(["empty commit message"],
+            "commit tree/hello.txt", stdin="n\n")
+        self.assertEqual(expected, tree.last_revision())
+
+    def test_commit_without_username(self):
+        """Ensure commit error if username is not set.
+        """
+        self.run_bzr(['init', 'foo'])
+        os.chdir('foo')
+        open('foo.txt', 'w').write('hello')
+        self.run_bzr(['add'])
+        osutils.set_or_unset_env('EMAIL', None)
+        osutils.set_or_unset_env('BZR_EMAIL', None)
+        out, err = self.run_bzr(['commit', '-m', 'initial'], 3)
+        self.assertContainsRe(err, 'Unable to determine your name')
+
+    def test_commit_recursive_checkout(self):
+        """Ensure that a commit to a recursive checkout fails cleanly.
+        """
+        self.run_bzr(['init', 'test_branch'])
+        self.run_bzr(['checkout', 'test_branch', 'test_checkout'])
+        os.chdir('test_checkout')
+        self.run_bzr(['bind', '.']) # bind to self
+        open('foo.txt', 'w').write('hello')
+        self.run_bzr(['add'])
+        out, err = self.run_bzr(['commit', '-m', 'addedfoo'], 3)
+        self.assertEqual(out, '')
+        self.assertContainsRe(err,
+            'Branch.*test_checkout.*appears to be bound to itself')
+

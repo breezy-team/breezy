@@ -1,0 +1,8 @@
+There is a bug in disttools for distributions who's rpmbuild compresses 
+the man pages. This causes an error building the final packages as it's 
+expecting bzr.1 and not finding it, but finding bzr.1.gz that's unpackaged.
+
+This bug is known to affect Fedora, RHEL, and Centos distributions.
+
+There is a preliminary patch at http://bugs.python.org/issue644744 that
+fixes this issue with disttools.

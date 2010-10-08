@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 from cStringIO import StringIO
 import os
 import sys
+from textwrap import dedent
 
 from bzrlib import (
     errors,
@@ -503,6 +504,38 @@ class TestUnshelver(tests.TestCaseWithTransport):
             unshelver.tree.unlock()
         self.assertFileEqual(LINES_AJ, 'tree/foo')
         self.assertEqual(1, tree.get_shelf_manager().last_shelf())
+
+    def test_unshelve_args_preview(self):
+        tree = self.create_tree_with_shelf()
+        write_diff_to = StringIO()
+        unshelver = shelf_ui.Unshelver.from_args(
+            directory='tree', action='preview', write_diff_to=write_diff_to)
+        try:
+            unshelver.run()
+        finally:
+            unshelver.tree.unlock()
+        # The changes were not unshelved.
+        self.assertFileEqual(LINES_AJ, 'tree/foo')
+        self.assertEqual(1, tree.get_shelf_manager().last_shelf())
+
+        # But the diff was written to write_diff_to.
+        diff = write_diff_to.getvalue()
+        expected = dedent("""\
+            @@ -1,4 +1,4 @@
+            -a
+            +z
+             b
+             c
+             d
+            @@ -7,4 +7,4 @@
+             g
+             h
+             i
+            -j
+            +y
+
+            """)
+        self.assertEqualDiff(expected, diff[-len(expected):])
 
     def test_unshelve_args_delete_only(self):
         tree = self.make_branch_and_tree('tree')

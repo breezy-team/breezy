@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ from bzrlib import (
     errors,
     osutils,
     revision as _mod_revision,
+    transport,
     urlutils,
     )
 from bzrlib.branch import Branch
@@ -38,13 +39,12 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import client, medium
 from bzrlib.smart.server import BzrServerFactory, SmartTCPServer
 from bzrlib.tests import (
-    ParamikoFeature,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestSkipped,
     )
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport, remote
+from bzrlib.transport import remote
 
 
 class TestBzrServeBase(TestCaseWithTransport):
@@ -193,8 +193,8 @@ class TestBzrServe(TestBzrServeBase):
     def test_bzr_serve_port_readonly(self):
         """bzr server should provide a read only filesystem by default."""
         process, url = self.start_server_port()
-        transport = get_transport(url)
-        self.assertRaises(errors.TransportNotPossible, transport.mkdir, 'adir')
+        t = transport.get_transport(url)
+        self.assertRaises(errors.TransportNotPossible, t.mkdir, 'adir')
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_port_readwrite(self):
@@ -233,7 +233,7 @@ class TestBzrServe(TestBzrServeBase):
         f = open(log_fname, 'rb')
         content = f.read()
         f.close()
-        self.assertContainsRe(content, 'hpss request: \[')
+        self.assertContainsRe(content, r'hpss request: \[[0-9-]+\]')
 
 
 class TestCmdServeChrooting(TestBzrServeBase):
@@ -288,7 +288,7 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         return path
 
     def make_test_server(self, base_path='/'):
-        """Make and setUp a BzrServerFactory, backed by a memory transport, and
+        """Make and start a BzrServerFactory, backed by a memory transport, and
         creat '/home/user' in that transport.
         """
         bzr_server = BzrServerFactory(

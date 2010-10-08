@@ -62,7 +62,7 @@ Setting email via default configuration file
 --------------------------------------------
 
 To use the default ini file, create or edit the ``bazaar.conf`` file (in
-``~/.bazaar/`` on Linux and in ``%APPDATA%\bazaar\2.0\`` in Windows)
+``~/.bazaar/`` on Unix and in ``%APPDATA%\bazaar\2.0\`` in Windows)
 and set an email address as shown below.  Please note that the word DEFAULT
 is case sensitive, and must be in upper-case.
 ::
@@ -74,7 +74,7 @@ is case sensitive, and must be in upper-case.
 For more information on the ini file format, see `Configuration Settings`_ in
 the Bazaar User Reference.
 
-.. _Configuration Settings: ../user-reference/bzr_man.html#configuration-settings
+.. _Configuration Settings: ../user-reference/configuration-help.html
 
 Setting email on a per-branch basis
 -----------------------------------

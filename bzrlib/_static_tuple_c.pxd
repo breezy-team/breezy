@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ cdef extern from "_static_tuple_c.h":
     int import_static_tuple_c() except -1
     StaticTuple StaticTuple_New(Py_ssize_t)
     StaticTuple StaticTuple_Intern(StaticTuple)
+    StaticTuple StaticTuple_FromSequence(object)
 
     # Steals a reference and val must be a valid type, no checking is done
     void StaticTuple_SET_ITEM(StaticTuple key, Py_ssize_t offset, object val)
@@ -42,3 +43,4 @@ cdef extern from "_static_tuple_c.h":
     # not an 'object' return value.
     void *StaticTuple_GET_ITEM(StaticTuple key, Py_ssize_t offset)
     int StaticTuple_CheckExact(object)
+    Py_ssize_t StaticTuple_GET_SIZE(StaticTuple key)

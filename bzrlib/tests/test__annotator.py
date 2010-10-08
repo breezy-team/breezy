@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,36 +28,9 @@ from bzrlib import (
 
 def load_tests(standard_tests, module, loader):
     """Parameterize tests for all versions of groupcompress."""
-    scenarios = [
-        ('python', {'module': _annotator_py}),
-    ]
-    suite = loader.suiteClass()
-    if CompiledAnnotator.available():
-        from bzrlib import _annotator_pyx
-        scenarios.append(('C', {'module': _annotator_pyx}))
-    else:
-        # the compiled module isn't available, so we add a failing test
-        class FailWithoutFeature(tests.TestCase):
-            def test_fail(self):
-                self.requireFeature(CompiledAnnotator)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    result = tests.multiply_tests(standard_tests, scenarios, suite)
-    return result
-
-
-class _CompiledAnnotator(tests.Feature):
-
-    def _probe(self):
-        try:
-            import bzrlib._annotator_pyx
-        except ImportError:
-            return False
-        return True
-
-    def feature_name(self):
-        return 'bzrlib._annotator_pyx'
-
-CompiledAnnotator = _CompiledAnnotator()
+    suite, _ = tests.permute_tests_for_extension(standard_tests, loader,
+        'bzrlib._annotator_py', 'bzrlib._annotator_pyx')
+    return suite
 
 
 class TestAnnotator(tests.TestCaseWithMemoryTransport):

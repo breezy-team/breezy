@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -703,7 +703,7 @@ cdef class _MergeSortNode:
             self._revno_first, self._revno_second, self._revno_last,
             self.is_first_child, self.seen_by_child)
 
-    cdef int has_pending_parents(self):
+    cdef int has_pending_parents(self): # cannot_raise
         if self.left_pending_parent is not None or self.pending_parents:
             return 1
         return 0

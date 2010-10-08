@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -157,3 +157,11 @@ def _deserialise_internal_node(bytes, key, search_key_func=None):
     result._node_width = len(prefix)
     result._search_prefix = common_prefix
     return result
+
+
+def _bytes_to_text_key(bytes):
+    """Take a CHKInventory value string and return a (file_id, rev_id) tuple"""
+    sections = bytes.split('\n')
+    kind, file_id = sections[0].split(': ')
+    return (intern(file_id), intern(sections[3]))
+

@@ -3,25 +3,24 @@ README for Bazaar
 =================
 
 Bazaar (``bzr``) is a decentralized revision control system, designed to be
-easy for developers and end users alike.  Bazaar is part of the GNU project
-to develop a complete free operating system.
+easy for developers and end users alike.  Bazaar is part of the GNU project to
+develop a complete free operating system <http://www.gnu.org/>, and a project
+of Canonical <http://www.canonical.com/>.
 
-To install Bazaar, follow the instructions given at
-http://bazaar-vcs.org/Download. Ready-to-install packages are available
-for most popular operating systems or you can install from source.
+Ready-to-install packages are available for most popular operating systems from
+<http://wiki.bazaar.canonical.com/Download/> or you can install from source by
+following the instructions in the INSTALL file.
 
-To learn how to use Bazaar, see the official documentation at:
-
-    http://doc.bazaar-vcs.org/en/
+To learn how to use Bazaar, see the official documentation in the `doc`
+directory or at <http://doc.bazaar.canonical.com/en/>.
 
 For additional training materials including screencasts and slides,
 visit our community wiki documentation page at:
 
-    http://bazaar-vcs.org/Documentation/
+    http://wiki.bazaar.canonical.com/Documentation/
 
-Bazaar is written in Python, and is sponsored by Canonical Limited, the
-founders of Ubuntu and Launchpad. Bazaar is Free Software, and is released
-under the GNU General Public License.
+Bazaar is Free Software, and is released under the GNU General Public License,
+version 2 or later.
 
 Bazaar highlights
 =================

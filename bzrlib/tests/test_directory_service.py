@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,17 +18,17 @@
 
 from bzrlib import (
     errors,
+    transport,
     urlutils,
     )
 from bzrlib.directory_service import DirectoryServiceRegistry, directories
 from bzrlib.tests import TestCase, TestCaseWithTransport
-from bzrlib.transport import get_transport
 
 
 class FooService(object):
     """A directory service that maps the name to a FILE url"""
 
-    # eg 'file:///foo' on Linux, or 'file:///C:/foo' on Windows
+    # eg 'file:///foo' on Unix, or 'file:///C:/foo' on Windows
     base = urlutils.local_path_to_url('/foo')
 
     def look_up(self, name, url):
@@ -54,9 +54,9 @@ class TestDirectoryLookup(TestCase):
 
     def test_get_transport(self):
         directories.register('foo:', FooService, 'Map foo URLs to http urls')
-        self.addCleanup(lambda: directories.remove('foo:'))
+        self.addCleanup(directories.remove, 'foo:')
         self.assertEqual(FooService.base + 'bar/',
-                         get_transport('foo:bar').base)
+                         transport.get_transport('foo:bar').base)
 
 
 class TestAliasDirectory(TestCaseWithTransport):

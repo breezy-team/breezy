@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ import collections
 from cStringIO import StringIO
 import struct
 import sys
+import thread
 import threading
 import time
 
@@ -61,7 +62,13 @@ def _decode_tuple(req_line):
 
 def _encode_tuple(args):
     """Encode the tuple args to a bytestream."""
-    return '\x01'.join(args) + '\n'
+    joined = '\x01'.join(args) + '\n'
+    if type(joined) is unicode:
+        # XXX: We should fix things so this never happens!  -AJB, 20100304
+        mutter('response args contain unicode, should be only bytes: %r',
+               joined)
+        joined = joined.encode('ascii')
+    return joined
 
 
 class Requester(object):
@@ -1147,12 +1154,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
         self.response_sent = False
         self._headers = {'Software version': bzrlib.__version__}
         if 'hpss' in debug.debug_flags:
-            # python 2.6 introduced 'ident' as a nice small integer to
-            # represent a thread. But it doesn't exist in 2.4/2.5
-            cur_thread = threading.currentThread()
-            self._thread_id = getattr(cur_thread, 'ident', None)
-            if self._thread_id is None:
-                self._thread_id = cur_thread.getName()
+            self._thread_id = thread.get_ident()
             self._response_start_time = None
 
     def _trace(self, action, message, extra_bytes=None, include_time=False):
@@ -1229,6 +1231,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                     if first_chunk is None:
                         first_chunk = chunk
                     self._write_prefixed_body(chunk)
+                    self.flush()
                     if 'hpssdetail' in debug.debug_flags:
                         # Not worth timing separately, as _write_func is
                         # actually buffered

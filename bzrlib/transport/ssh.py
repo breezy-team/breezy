@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Robey Pointer <robey@lag.net>
+# Copyright (C) 2006-2010 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -126,12 +126,15 @@ class SSHVendorManager(object):
         elif 'SSH Secure Shell' in version:
             trace.mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
+        elif 'lsh' in version:
+            trace.mutter('ssh implementation is GNU lsh.')
+            vendor = LSHSubprocessVendor()
         # As plink user prompts are not handled currently, don't auto-detect
         # it by inspection below, but keep this vendor detection for if a path
         # is given in BZR_SSH. See https://bugs.launchpad.net/bugs/414743
         elif 'plink' in version and progname == 'plink':
             # Checking if "plink" was the executed argument as Windows
-            # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
+            # sometimes reports 'ssh -V' incorrectly with 'plink' in its
             # version.  See https://bugs.launchpad.net/bzr/+bug/107155
             trace.mutter("ssh implementation is Putty's plink.")
             vendor = PLinkSubprocessVendor()
@@ -173,12 +176,15 @@ register_default_ssh_vendor = _ssh_vendor_manager.register_default_vendor
 register_ssh_vendor = _ssh_vendor_manager.register_vendor
 
 
-def _ignore_sigint():
+def _ignore_signals():
     # TODO: This should possibly ignore SIGHUP as well, but bzr currently
     # doesn't handle it itself.
     # <https://launchpad.net/products/bzr/+bug/41433/+index>
     import signal
     signal.signal(signal.SIGINT, signal.SIG_IGN)
+    # GZ 2010-02-19: Perhaps make this check if breakin is installed instead
+    if signal.getsignal(signal.SIGQUIT) != signal.SIG_DFL:
+        signal.signal(signal.SIGQUIT, signal.SIG_IGN)
 
 
 class SocketAsChannelAdapter(object):
@@ -236,8 +242,7 @@ class SSHVendor(object):
     def connect_ssh(self, username, password, host, port, command):
         """Make an SSH connection.
 
-        :returns: something with a `close` method, and a `get_filelike_channels`
-            method that returns a pair of (read, write) filelike objects.
+        :returns: an SSHConnection.
         """
         raise NotImplementedError(self.connect_ssh)
 
@@ -264,17 +269,6 @@ class LoopbackVendor(SSHVendor):
         return SFTPClient(SocketAsChannelAdapter(sock))
 
 register_ssh_vendor('loopback', LoopbackVendor())
-
-
-class _ParamikoSSHConnection(object):
-    def __init__(self, channel):
-        self.channel = channel
-
-    def get_filelike_channels(self):
-        return self.channel.makefile('rb'), self.channel.makefile('wb')
-
-    def close(self):
-        return self.channel.close()
 
 
 class ParamikoVendor(SSHVendor):
@@ -345,26 +339,37 @@ class ParamikoVendor(SSHVendor):
             self._raise_connection_error(host, port=port, orig_error=e,
                                          msg='Unable to invoke remote bzr')
 
+_ssh_connection_errors = (EOFError, OSError, IOError, socket.error)
 if paramiko is not None:
     vendor = ParamikoVendor()
     register_ssh_vendor('paramiko', vendor)
     register_ssh_vendor('none', vendor)
     register_default_ssh_vendor(vendor)
-    _sftp_connection_errors = (EOFError, paramiko.SSHException)
+    _ssh_connection_errors += (paramiko.SSHException,)
     del vendor
-else:
-    _sftp_connection_errors = (EOFError,)
 
 
 class SubprocessVendor(SSHVendor):
     """Abstract base class for vendors that use pipes to a subprocess."""
 
     def _connect(self, argv):
-        proc = subprocess.Popen(argv,
-                                stdin=subprocess.PIPE,
-                                stdout=subprocess.PIPE,
+        # Attempt to make a socketpair to use as stdin/stdout for the SSH
+        # subprocess.  We prefer sockets to pipes because they support
+        # non-blocking short reads, allowing us to optimistically read 64k (or
+        # whatever) chunks.
+        try:
+            my_sock, subproc_sock = socket.socketpair()
+        except (AttributeError, socket.error):
+            # This platform doesn't support socketpair(), so just use ordinary
+            # pipes instead.
+            stdin = stdout = subprocess.PIPE
+            sock = None
+        else:
+            stdin = stdout = subproc_sock
+            sock = my_sock
+        proc = subprocess.Popen(argv, stdin=stdin, stdout=stdout,
                                 **os_specific_subprocess_params())
-        return SSHSubprocess(proc)
+        return SSHSubprocessConnection(proc, sock=sock)
 
     def connect_sftp(self, username, password, host, port):
         try:
@@ -372,14 +377,7 @@ class SubprocessVendor(SSHVendor):
                                                   subsystem='sftp')
             sock = self._connect(argv)
             return SFTPClient(SocketAsChannelAdapter(sock))
-        except _sftp_connection_errors, e:
-            self._raise_connection_error(host, port=port, orig_error=e)
-        except (OSError, IOError), e:
-            # If the machine is fast enough, ssh can actually exit
-            # before we try and send it the sftp request, which
-            # raises a Broken Pipe
-            if e.errno not in (errno.EPIPE,):
-                raise
+        except _ssh_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
     def connect_ssh(self, username, password, host, port, command):
@@ -387,14 +385,7 @@ class SubprocessVendor(SSHVendor):
             argv = self._get_vendor_specific_argv(username, host, port,
                                                   command=command)
             return self._connect(argv)
-        except (EOFError), e:
-            self._raise_connection_error(host, port=port, orig_error=e)
-        except (OSError, IOError), e:
-            # If the machine is fast enough, ssh can actually exit
-            # before we try and send it the sftp request, which
-            # raises a Broken Pipe
-            if e.errno not in (errno.EPIPE,):
-                raise
+        except _ssh_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
@@ -449,6 +440,27 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
         return args
 
 register_ssh_vendor('sshcorp', SSHCorpSubprocessVendor())
+
+
+class LSHSubprocessVendor(SubprocessVendor):
+    """SSH vendor that uses the 'lsh' executable from GNU"""
+
+    executable_path = 'lsh'
+
+    def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
+                                  command=None):
+        args = [self.executable_path]
+        if port is not None:
+            args.extend(['-p', str(port)])
+        if username is not None:
+            args.extend(['-l', username])
+        if subsystem is not None:
+            args.extend(['--subsystem', subsystem, host])
+        else:
+            args.extend([host] + command)
+        return args
+
+register_ssh_vendor('lsh', LSHSubprocessVendor())
 
 
 class PLinkSubprocessVendor(SubprocessVendor):
@@ -634,7 +646,7 @@ def os_specific_subprocess_params():
         # Running it in a separate process group is not good because then it
         # can't get non-echoed input of a password or passphrase.
         # <https://launchpad.net/products/bzr/+bug/40508>
-        return {'preexec_fn': _ignore_sigint,
+        return {'preexec_fn': _ignore_signals,
                 'close_fds': True,
                 }
 
@@ -642,18 +654,64 @@ import weakref
 _subproc_weakrefs = set()
 
 def _close_ssh_proc(proc):
-    for func in [proc.stdin.close, proc.stdout.close, proc.wait]:
+    """Carefully close stdin/stdout and reap the SSH process.
+
+    If the pipes are already closed and/or the process has already been
+    wait()ed on, that's ok, and no error is raised.  The goal is to do our best
+    to clean up (whether or not a clean up was already tried).
+    """
+    dotted_names = ['stdin.close', 'stdout.close', 'wait']
+    for dotted_name in dotted_names:
+        attrs = dotted_name.split('.')
         try:
-            func()
+            obj = proc
+            for attr in attrs:
+                obj = getattr(obj, attr)
+        except AttributeError:
+            # It's ok for proc.stdin or proc.stdout to be None.
+            continue
+        try:
+            obj()
         except OSError:
-            pass
+            # It's ok for the pipe to already be closed, or the process to
+            # already be finished.
+            continue
 
 
-class SSHSubprocess(object):
-    """A socket-like object that talks to an ssh subprocess via pipes."""
+class SSHConnection(object):
+    """Abstract base class for SSH connections."""
 
-    def __init__(self, proc):
+    def get_sock_or_pipes(self):
+        """Returns a (kind, io_object) pair.
+
+        If kind == 'socket', then io_object is a socket.
+
+        If kind == 'pipes', then io_object is a pair of file-like objects
+        (read_from, write_to).
+        """
+        raise NotImplementedError(self.get_sock_or_pipes)
+
+    def close(self):
+        raise NotImplementedError(self.close)
+
+
+class SSHSubprocessConnection(SSHConnection):
+    """A connection to an ssh subprocess via pipes or a socket.
+
+    This class is also socket-like enough to be used with
+    SocketAsChannelAdapter (it has 'send' and 'recv' methods).
+    """
+
+    def __init__(self, proc, sock=None):
+        """Constructor.
+
+        :param proc: a subprocess.Popen
+        :param sock: if proc.stdin/out is a socket from a socketpair, then sock
+            should bzrlib's half of that socketpair.  If not passed, proc's
+            stdin/out is assumed to be ordinary pipes.
+        """
         self.proc = proc
+        self._sock = sock
         # Add a weakref to proc that will attempt to do the same as self.close
         # to avoid leaving processes lingering indefinitely.
         def terminate(ref):
@@ -662,14 +720,37 @@ class SSHSubprocess(object):
         _subproc_weakrefs.add(weakref.ref(self, terminate))
 
     def send(self, data):
-        return os.write(self.proc.stdin.fileno(), data)
+        if self._sock is not None:
+            return self._sock.send(data)
+        else:
+            return os.write(self.proc.stdin.fileno(), data)
 
     def recv(self, count):
-        return os.read(self.proc.stdout.fileno(), count)
+        if self._sock is not None:
+            return self._sock.recv(count)
+        else:
+            return os.read(self.proc.stdout.fileno(), count)
 
     def close(self):
         _close_ssh_proc(self.proc)
 
-    def get_filelike_channels(self):
-        return (self.proc.stdout, self.proc.stdin)
+    def get_sock_or_pipes(self):
+        if self._sock is not None:
+            return 'socket', self._sock
+        else:
+            return 'pipes', (self.proc.stdout, self.proc.stdin)
+
+
+class _ParamikoSSHConnection(SSHConnection):
+    """An SSH connection via paramiko."""
+
+    def __init__(self, channel):
+        self.channel = channel
+
+    def get_sock_or_pipes(self):
+        return ('socket', self.channel)
+
+    def close(self):
+        return self.channel.close()
+
 

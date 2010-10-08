@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 """Commit message editor support."""
 
 import codecs
-import errno
 import os
 from subprocess import call
 import sys
@@ -27,6 +26,8 @@ from bzrlib import (
     config,
     osutils,
     trace,
+    transport,
+    ui,
     )
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
 from bzrlib.hooks import HookPoint, Hooks
@@ -63,22 +64,14 @@ def _run_editor(filename):
             ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
         except OSError, e:
-            # We're searching for an editor, so catch safe errors and continue
-            # errno 193 is ERROR_BAD_EXE_FORMAT on Windows. Python2.4 uses the
-            # winerror for errno. Python2.5+ use errno ENOEXEC and set winerror
-            # to 193. However, catching 193 here should be fine. Other
-            # platforms aren't likely to have that high of an error. And even
-            # if they do, it is still reasonable to fall back to the next
-            # editor.
-            if e.errno in (errno.ENOENT, errno.EACCES, errno.ENOEXEC, 193):
-                if candidate_source is not None:
-                    # We tried this editor because some user configuration (an
-                    # environment variable or config file) said to try it.  Let
-                    # the user know their configuration is broken.
-                    trace.warning(
-                        'Could not start editor "%s" (specified by %s): %s\n'
-                        % (candidate, candidate_source, str(e)))
-                continue
+            if candidate_source is not None:
+                # We tried this editor because some user configuration (an
+                # environment variable or config file) said to try it.  Let
+                # the user know their configuration is broken.
+                trace.warning(
+                    'Could not start editor "%s" (specified by %s): %s\n'
+                    % (candidate, candidate_source, str(e)))
+            continue
             raise
         if x == 0:
             return True
@@ -147,10 +140,23 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
     try:
         msgfilename, hasinfo = _create_temp_file_with_commit_template(
                                     infotext, ignoreline, start_message)
-
-        if not msgfilename or not _run_editor(msgfilename):
+        if not msgfilename:
             return None
-
+        basename = osutils.basename(msgfilename)
+        msg_transport = transport.get_transport(osutils.dirname(msgfilename))
+        reference_content = msg_transport.get_bytes(basename)
+        if not _run_editor(msgfilename):
+            return None
+        edited_content = msg_transport.get_bytes(basename)
+        if edited_content == reference_content:
+            if not ui.ui_factory.confirm_action(
+                "Commit message was not edited, use anyway",
+                "bzrlib.msgeditor.unchanged",
+                {}):
+                # Returning "" makes cmd_commit raise 'empty commit message
+                # specified' which is a reasonable error, given the user has
+                # rejected using the unedited template.
+                return ""
         started = False
         msg = []
         lastline, nlines = 0, 0

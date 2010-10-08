@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -341,7 +341,7 @@ def main():
                          "this library manually and put it to directory\n"
                          "where Bzr installed.\n"
                          "For detailed instructions see:\n"
-                         "http://bazaar-vcs.org/BzrOnPureWindows"
+                         "http://wiki.bazaar.canonical.com/BzrOnPureWindows"
                         ),
                         "Warning",
                         MB_OK | MB_ICONEXCLAMATION)

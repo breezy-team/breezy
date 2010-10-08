@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -106,7 +106,7 @@ class SmartWSGIApp(object):
         # e.g. consider a smart server request for "get /etc/passwd" or
         # something.
         self.chroot_server = chroot.ChrootServer(backing_transport)
-        self.chroot_server.setUp()
+        self.chroot_server.start_server()
         self.backing_transport = get_transport(self.chroot_server.get_url())
         self.root_client_path = root_client_path
         # While the chroot server can technically be torn down at this point,
@@ -114,7 +114,7 @@ class SmartWSGIApp(object):
         # protocol dictionary, we don't *just in case* there are parts of
         # bzrlib that will invoke 'get_transport' on urls rather than cloning
         # around the existing transport.
-        #self.chroot_server.tearDown()
+        #self.chroot_server.stop_server()
 
     def __call__(self, environ, start_response):
         """WSGI application callable."""

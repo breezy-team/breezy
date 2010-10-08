@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,27 +18,64 @@
 """
 
 import os
-import re
 import time
 
+from StringIO import StringIO
+
+from testtools.matchers import *
+
 from bzrlib import (
+    config,
     errors,
+    remote,
+    repository,
     tests,
     ui as _mod_ui,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
     )
-from bzrlib.tests import test_progress
+from bzrlib.tests import (
+    fixtures,
+    test_progress,
+    )
 from bzrlib.ui import text as _mod_ui_text
+from bzrlib.tests.testui import (
+    ProgressRecordingUIFactory,
+    )
+
+
+class TestUIConfiguration(tests.TestCaseWithTransport):
+
+    def test_output_encoding_configuration(self):
+        enc = fixtures.generate_unicode_encodings().next()
+        config.GlobalConfig().set_user_option('output_encoding',
+            enc)
+        ui = tests.TestUIFactory(stdin=None,
+            stdout=tests.StringIOWrapper(),
+            stderr=tests.StringIOWrapper())
+        output = ui.make_output_stream()
+        self.assertEquals(output.encoding, enc)
 
 
 class TestTextUIFactory(tests.TestCase):
 
-    def test_text_factory_ascii_password(self):
-        ui = tests.TestUIFactory(stdin='secret\n',
+    def make_test_ui_factory(self, stdin_contents):
+        ui = tests.TestUIFactory(stdin=stdin_contents,
                                  stdout=tests.StringIOWrapper(),
                                  stderr=tests.StringIOWrapper())
+        return ui
+
+    def test_text_factory_confirm(self):
+        # turns into reading a regular boolean
+        ui = self.make_test_ui_factory('n\n')
+        self.assertEquals(ui.confirm_action('Should %(thing)s pass?',
+            'bzrlib.tests.test_ui.confirmation',
+            {'thing': 'this'},),
+            False)
+
+    def test_text_factory_ascii_password(self):
+        ui = self.make_test_ui_factory('secret\n')
         pb = ui.nested_progress_bar()
         try:
             self.assertEqual('secret',
@@ -59,9 +96,7 @@ class TestTextUIFactory(tests.TestCase):
         We can't predict what encoding users will have for stdin, so we force
         it to utf8 to test that we transport the password correctly.
         """
-        ui = tests.TestUIFactory(stdin=u'baz\u1234'.encode('utf8'),
-                                 stdout=tests.StringIOWrapper(),
-                                 stderr=tests.StringIOWrapper())
+        ui = self.make_test_ui_factory(u'baz\u1234'.encode('utf8'))
         ui.stderr.encoding = ui.stdout.encoding = ui.stdin.encoding = 'utf8'
         pb = ui.nested_progress_bar()
         try:
@@ -78,65 +113,6 @@ class TestTextUIFactory(tests.TestCase):
             self.assertEqual('', ui.stdout.readline())
         finally:
             pb.finished()
-
-    def test_progress_note(self):
-        stderr = tests.StringIOWrapper()
-        stdout = tests.StringIOWrapper()
-        ui_factory = _mod_ui_text.TextUIFactory(stdin=tests.StringIOWrapper(''),
-                                                stderr=stderr,
-                                                stdout=stdout)
-        pb = ui_factory.nested_progress_bar()
-        try:
-            result = self.applyDeprecated(deprecated_in((2, 1, 0)),
-                pb.note,
-                't')
-            self.assertEqual(None, result)
-            self.assertEqual("t\n", stdout.getvalue())
-            # Since there was no update() call, there should be no clear() call
-            self.failIf(re.search(r'^\r {10,}\r$',
-                                  stderr.getvalue()) is not None,
-                        'We cleared the stderr without anything to put there')
-        finally:
-            pb.finished()
-
-    def test_progress_note_clears(self):
-        stderr = test_progress._TTYStringIO()
-        stdout = test_progress._TTYStringIO()
-        # so that we get a TextProgressBar
-        os.environ['TERM'] = 'xterm'
-        ui_factory = _mod_ui_text.TextUIFactory(
-            stdin=tests.StringIOWrapper(''),
-            stdout=stdout, stderr=stderr)
-        self.assertIsInstance(ui_factory._progress_view,
-                              _mod_ui_text.TextProgressView)
-        pb = ui_factory.nested_progress_bar()
-        try:
-            # Create a progress update that isn't throttled
-            pb.update('x', 1, 1)
-            result = self.applyDeprecated(deprecated_in((2, 1, 0)),
-                pb.note, 't')
-            self.assertEqual(None, result)
-            self.assertEqual("t\n", stdout.getvalue())
-            # the exact contents will depend on the terminal width and we don't
-            # care about that right now - but you're probably running it on at
-            # least a 10-character wide terminal :)
-            self.assertContainsRe(stderr.getvalue(), r'\r {10,}\r$')
-        finally:
-            pb.finished()
-
-    def test_progress_nested(self):
-        # test factory based nested and popping.
-        ui = _mod_ui_text.TextUIFactory(None, None, None)
-        pb1 = ui.nested_progress_bar()
-        pb2 = ui.nested_progress_bar()
-        # You do get a warning if the outermost progress bar wasn't finished
-        # first - it's not clear if this is really useful or if it should just
-        # become orphaned -- mbp 20090120
-        warnings, _ = self.callCatchWarnings(pb1.finished)
-        if len(warnings) != 1:
-            self.fail("unexpected warnings: %r" % (warnings,))
-        pb2.finished()
-        pb1.finished()
 
     def test_text_ui_get_boolean(self):
         stdin = tests.StringIOWrapper("y\n" # True
@@ -186,6 +162,7 @@ class TestTextUIFactory(tests.TestCase):
         factory = _mod_ui_text.TextUIFactory(
             stdin=tests.StringIOWrapper("yada\ny\n"),
             stdout=out, stderr=out)
+        factory._avail_width = lambda: 79
         pb = factory.nested_progress_bar()
         pb.show_bar = False
         pb.show_spinner = False
@@ -197,9 +174,9 @@ class TestTextUIFactory(tests.TestCase):
                                                factory.get_boolean,
                                                "what do you want"))
         output = out.getvalue()
-        self.assertContainsRe(factory.stdout.getvalue(),
-            "foo *\r\r  *\r*")
-        self.assertContainsRe(factory.stdout.getvalue(),
+        self.assertContainsRe(output,
+            "| foo *\r\r  *\r*")
+        self.assertContainsRe(output,
             r"what do you want\? \[y/n\]: what do you want\? \[y/n\]: ")
         # stdin should have been totally consumed
         self.assertEqual('', factory.stdin.readline())
@@ -247,6 +224,43 @@ class TestTextUIFactory(tests.TestCase):
             self.assertEquals('', ui.stdout.getvalue())
         finally:
             pb.finished()
+
+    def test_quietness(self):
+        os.environ['BZR_PROGRESS_BAR'] = 'text'
+        ui_factory = _mod_ui_text.TextUIFactory(None,
+            test_progress._TTYStringIO(),
+            test_progress._TTYStringIO())
+        self.assertIsInstance(ui_factory._progress_view,
+            _mod_ui_text.TextProgressView)
+        ui_factory.be_quiet(True)
+        self.assertIsInstance(ui_factory._progress_view,
+            _mod_ui_text.NullProgressView)
+
+    def test_text_ui_show_user_warning(self):
+        from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
+        from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5
+        err = StringIO()
+        out = StringIO()
+        ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)
+        remote_fmt = remote.RemoteRepositoryFormat()
+        remote_fmt._network_name = RepositoryFormatKnitPack5().network_name()
+        ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
+            to_format=remote_fmt)
+        self.assertEquals('', out.getvalue())
+        self.assertEquals("Doing on-the-fly conversion from RepositoryFormat2a() to "
+            "RemoteRepositoryFormat(_network_name='Bazaar RepositoryFormatKnitPack5 "
+            "(bzr 1.6)\\n').\nThis may take some time. Upgrade the repositories to "
+            "the same format for better performance.\n",
+            err.getvalue())
+        # and now with it suppressed please
+        err = StringIO()
+        out = StringIO()
+        ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)
+        ui.suppressed_warnings.add('cross_format_fetch')
+        ui.show_user_warning('cross_format_fetch', from_format=RepositoryFormat2a(),
+            to_format=remote_fmt)
+        self.assertEquals('', out.getvalue())
+        self.assertEquals('', err.getvalue())
 
 
 class TestTextUIOutputStream(tests.TestCase):
@@ -358,7 +372,7 @@ class TestUIFactoryTests(tests.TestCase):
 
     def test_test_ui_factory_progress(self):
         # there's no output; we just want to make sure this doesn't crash -
-        # see https://bugs.edge.launchpad.net/bzr/+bug/408201
+        # see https://bugs.launchpad.net/bzr/+bug/408201
         ui = tests.TestUIFactory()
         pb = ui.nested_progress_bar()
         pb.update('hello')
@@ -432,3 +446,52 @@ class TestBoolFromString(tests.TestCase):
         self.assertIsNone('0', av)
         self.assertIsNone('on', av)
         self.assertIsNone('off', av)
+
+
+class TestConfirmationUserInterfacePolicy(tests.TestCase):
+
+    def test_confirm_action_default(self):
+        base_ui = _mod_ui.NoninteractiveUIFactory()
+        for answer in [True, False]:
+            self.assertEquals(
+                _mod_ui.ConfirmationUserInterfacePolicy(base_ui, answer, {})
+                .confirm_action("Do something?",
+                    "bzrlib.tests.do_something", {}),
+                answer)
+
+    def test_confirm_action_specific(self):
+        base_ui = _mod_ui.NoninteractiveUIFactory()
+        for default_answer in [True, False]:
+            for specific_answer in [True, False]:
+                for conf_id in ['given_id', 'other_id']:
+                    wrapper = _mod_ui.ConfirmationUserInterfacePolicy(
+                        base_ui, default_answer, dict(given_id=specific_answer))
+                    result = wrapper.confirm_action("Do something?", conf_id, {})
+                    if conf_id == 'given_id':
+                        self.assertEquals(result, specific_answer)
+                    else:
+                        self.assertEquals(result, default_answer)
+
+    def test_repr(self):
+        base_ui = _mod_ui.NoninteractiveUIFactory()
+        wrapper = _mod_ui.ConfirmationUserInterfacePolicy(
+            base_ui, True, dict(a=2))
+        self.assertThat(repr(wrapper),
+            Equals("ConfirmationUserInterfacePolicy("
+                "NoninteractiveUIFactory(), True, {'a': 2})"))
+
+
+class TestProgressRecordingUI(tests.TestCase):
+    """Test test-oriented UIFactory that records progress updates"""
+
+    def test_nested_ignore_depth_beyond_one(self):
+        # we only want to capture the first level out progress, not
+        # want sub-components might do. So we have nested bars ignored.
+        factory = ProgressRecordingUIFactory()
+        pb1 = factory.nested_progress_bar()
+        pb1.update('foo', 0, 1)
+        pb2 = factory.nested_progress_bar()
+        pb2.update('foo', 0, 1)
+        pb2.finished()
+        pb1.finished()
+        self.assertEqual([("update", 0, 1, 'foo')], factory._calls)

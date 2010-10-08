@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -107,6 +107,29 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator, tree = self.prepare_shelve_move()
         creator.shelve_change(('rename', 'baz-id', 'foo/baz', 'bar/baz'))
         self.check_shelve_move(creator, tree)
+
+    def test_shelve_changed_root_id(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        tree.set_root_id('first-root-id')
+        tree.add(['foo'], ['foo-id'])
+        tree.commit('foo')
+        tree.set_root_id('second-root-id')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        self.expectFailure('shelf doesn\'t support shelving root changes yet',
+            self.assertEqual, [
+                ('delete file', 'first-root-id', 'directory', ''),
+                ('add file', 'second-root-id', 'directory', ''),
+                ('rename', 'foo-id', u'foo', u'foo'),
+                ], list(creator.iter_shelvable()))
+
+        self.assertEqual([('delete file', 'first-root-id', 'directory', ''),
+                          ('add file', 'second-root-id', 'directory', ''),
+                          ('rename', 'foo-id', u'foo', u'foo'),
+                         ], list(creator.iter_shelvable()))
 
     def assertShelvedFileEqual(self, expected_content, creator, file_id):
         s_trans_id = creator.shelf_transform.trans_id_file_id(file_id)

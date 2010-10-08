@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ from bzrlib import (
     progress,
     osutils,
     symbol_versioning,
+    trace,
     )
 
 """)
@@ -59,7 +60,13 @@ class TextUIFactory(UIFactory):
         self.stderr = stderr
         # paints progress, network activity, etc
         self._progress_view = self.make_progress_view()
-        
+
+    def be_quiet(self, state):
+        if state and not self._quiet:
+            self.clear_term()
+        UIFactory.be_quiet(self, state)
+        self._progress_view = self.make_progress_view()
+
     def clear_term(self):
         """Prepare the terminal for output.
 
@@ -145,9 +152,13 @@ class TextUIFactory(UIFactory):
     def make_progress_view(self):
         """Construct and return a new ProgressView subclass for this UI.
         """
-        # if the user specifically requests either text or no progress bars,
-        # always do that.  otherwise, guess based on $TERM and tty presence.
-        if os.environ.get('BZR_PROGRESS_BAR') == 'text':
+        # with --quiet, never any progress view
+        # <https://bugs.launchpad.net/bzr/+bug/320035>.  Otherwise if the
+        # user specifically requests either text or no progress bars, always
+        # do that.  otherwise, guess based on $TERM and tty presence.
+        if self.is_quiet():
+            return NullProgressView()
+        elif os.environ.get('BZR_PROGRESS_BAR') == 'text':
             return TextProgressView(self.stderr)
         elif os.environ.get('BZR_PROGRESS_BAR') == 'none':
             return NullProgressView()
@@ -203,6 +214,12 @@ class TextUIFactory(UIFactory):
         self._progress_view.show_transport_activity(transport,
             direction, byte_count)
 
+    def log_transport_activity(self, display=False):
+        """See UIFactory.log_transport_activity()"""
+        log = getattr(self._progress_view, 'log_transport_activity', None)
+        if log is not None:
+            log(display=display)
+
     def show_error(self, msg):
         self.clear_term()
         self.stderr.write("bzr: error: %s\n" % msg)
@@ -212,6 +229,9 @@ class TextUIFactory(UIFactory):
 
     def show_warning(self, msg):
         self.clear_term()
+        if isinstance(msg, unicode):
+            te = osutils.get_terminal_encoding()
+            msg = msg.encode(te, 'replace')
         self.stderr.write("bzr: warning: %s\n" % msg)
 
     def _progress_updated(self, task):
@@ -221,12 +241,28 @@ class TextUIFactory(UIFactory):
             warnings.warn("%r updated but no tasks are active" %
                 (task,))
         elif task != self._task_stack[-1]:
-            warnings.warn("%r is not the top progress task %r" %
-                (task, self._task_stack[-1]))
+            # We used to check it was the top task, but it's hard to always
+            # get this right and it's not necessarily useful: any actual
+            # problems will be evident in use
+            #warnings.warn("%r is not the top progress task %r" %
+            #     (task, self._task_stack[-1]))
+            pass
         self._progress_view.show_progress(task)
 
     def _progress_all_finished(self):
         self._progress_view.clear()
+
+    def show_user_warning(self, warning_id, **message_args):
+        """Show a text message to the user.
+
+        Explicitly not for warnings about bzr apis, deprecations or internals.
+        """
+        # eventually trace.warning should migrate here, to avoid logging and
+        # be easier to test; that has a lot of test fallout so for now just
+        # new code can call this
+        if warning_id not in self.suppressed_warnings:
+            self.stderr.write(self.format_user_warning(warning_id, message_args) +
+                '\n')
 
 
 class TextProgressView(object):
@@ -257,17 +293,25 @@ class TextProgressView(object):
         self._last_task = None
         self._total_byte_count = 0
         self._bytes_since_update = 0
+        self._bytes_by_direction = {'unknown': 0, 'read': 0, 'write': 0}
+        self._first_byte_time = None
         self._fraction = 0
         # force the progress bar to be off, as at the moment it doesn't 
         # correspond reliably to overall command progress
         self.enable_bar = False
 
+    def _avail_width(self):
+        # we need one extra space for terminals that wrap on last char
+        w = osutils.terminal_width() 
+        if w is None:
+            return None
+        else:
+            return w - 1
+
     def _show_line(self, s):
         # sys.stderr.write("progress %r\n" % s)
-        width = osutils.terminal_width()
+        width = self._avail_width()
         if width is not None:
-            # we need one extra space for terminals that wrap on last char
-            width = width - 1
             s = '%-*.*s' % (width, width, s)
         self._term_file.write('\r' + s + '\r')
 
@@ -301,7 +345,7 @@ class TextProgressView(object):
             markers = int(round(float(cols) * completion_fraction)) - 1
             bar_str = '[' + ('#' * markers + spin_str).ljust(cols) + '] '
             return bar_str
-        elif self._last_task.show_spinner:
+        elif (self._last_task is None) or self._last_task.show_spinner:
             # The last task wanted just a spinner, no bar
             spin_str =  r'/-\|'[self._spin_pos % 4]
             self._spin_pos += 1
@@ -310,6 +354,10 @@ class TextProgressView(object):
             return ''
 
     def _format_task(self, task):
+        """Format task-specific parts of progress bar.
+
+        :returns: (text_part, counter_part) both unicode strings.
+        """
         if not task.show_count:
             s = ''
         elif task.current_cnt is not None and task.total_cnt is not None:
@@ -325,21 +373,39 @@ class TextProgressView(object):
             t = t._parent_task
             if t.msg:
                 m = t.msg + ':' + m
-        return m + s
+        return m, s
 
     def _render_line(self):
         bar_string = self._render_bar()
         if self._last_task:
-            task_msg = self._format_task(self._last_task)
+            task_part, counter_part = self._format_task(self._last_task)
         else:
-            task_msg = ''
+            task_part = counter_part = ''
         if self._last_task and not self._last_task.show_transport_activity:
             trans = ''
         else:
             trans = self._last_transport_msg
-            if trans:
-                trans += ' | '
-        return (bar_string + trans + task_msg)
+        # the bar separates the transport activity from the message, so even
+        # if there's no bar or spinner, we must show something if both those
+        # fields are present
+        if (task_part or trans) and not bar_string:
+            bar_string = '| '
+        # preferentially truncate the task message if we don't have enough
+        # space
+        avail_width = self._avail_width()
+        if avail_width is not None:
+            # if terminal avail_width is unknown, don't truncate
+            current_len = len(bar_string) + len(trans) + len(task_part) + len(counter_part)
+            gap = current_len - avail_width
+            if gap > 0:
+                task_part = task_part[:-gap-2] + '..'
+        s = trans + bar_string + task_part + counter_part
+        if avail_width is not None:
+            if len(s) < avail_width:
+                s = s.ljust(avail_width)
+            elif len(s) > avail_width:
+                s = s[:avail_width]
+        return s
 
     def _repaint(self):
         s = self._render_line()
@@ -369,19 +435,25 @@ class TextProgressView(object):
         This may update a progress bar, spinner, or similar display.
         By default it does nothing.
         """
-        # XXX: Probably there should be a transport activity model, and that
-        # too should be seen by the progress view, rather than being poked in
-        # here.
-        if not self._have_output:
-            # As a workaround for <https://launchpad.net/bugs/321935> we only
-            # show transport activity when there's already a progress bar
-            # shown, which time the application code is expected to know to
-            # clear off the progress bar when it's going to send some other
-            # output.  Eventually it would be nice to have that automatically
-            # synchronized.
-            return
+        # XXX: there should be a transport activity model, and that too should
+        #      be seen by the progress view, rather than being poked in here.
         self._total_byte_count += byte_count
         self._bytes_since_update += byte_count
+        if self._first_byte_time is None:
+            # Note that this isn't great, as technically it should be the time
+            # when the bytes started transferring, not when they completed.
+            # However, we usually start with a small request anyway.
+            self._first_byte_time = time.time()
+        if direction in self._bytes_by_direction:
+            self._bytes_by_direction[direction] += byte_count
+        else:
+            self._bytes_by_direction['unknown'] += byte_count
+        if 'no_activity' in debug.debug_flags:
+            # Can be used as a workaround if
+            # <https://launchpad.net/bugs/321935> reappears and transport
+            # activity is cluttering other output.  However, thanks to
+            # TextUIOutputStream this shouldn't be a problem any more.
+            return
         now = time.time()
         if self._total_byte_count < 2000:
             # a little resistance at first, so it doesn't stay stuck at 0
@@ -392,14 +464,48 @@ class TextProgressView(object):
         elif now >= (self._transport_update_time + 0.5):
             # guard against clock stepping backwards, and don't update too
             # often
-            rate = self._bytes_since_update / (now - self._transport_update_time)
-            msg = ("%6dKB %5dKB/s" %
-                    (self._total_byte_count>>10, int(rate)>>10,))
+            rate = (self._bytes_since_update
+                    / (now - self._transport_update_time))
+            # using base-10 units (see HACKING.txt).
+            msg = ("%6dkB %5dkB/s " %
+                    (self._total_byte_count / 1000, int(rate) / 1000,))
             self._transport_update_time = now
             self._last_repaint = now
             self._bytes_since_update = 0
             self._last_transport_msg = msg
             self._repaint()
+
+    def _format_bytes_by_direction(self):
+        if self._first_byte_time is None:
+            bps = 0.0
+        else:
+            transfer_time = time.time() - self._first_byte_time
+            if transfer_time < 0.001:
+                transfer_time = 0.001
+            bps = self._total_byte_count / transfer_time
+
+        # using base-10 units (see HACKING.txt).
+        msg = ('Transferred: %.0fkB'
+               ' (%.1fkB/s r:%.0fkB w:%.0fkB'
+               % (self._total_byte_count / 1000.,
+                  bps / 1000.,
+                  self._bytes_by_direction['read'] / 1000.,
+                  self._bytes_by_direction['write'] / 1000.,
+                 ))
+        if self._bytes_by_direction['unknown'] > 0:
+            msg += ' u:%.0fkB)' % (
+                self._bytes_by_direction['unknown'] / 1000.
+                )
+        else:
+            msg += ')'
+        return msg
+
+    def log_transport_activity(self, display=False):
+        msg = self._format_bytes_by_direction()
+        trace.mutter(msg)
+        if display and self._total_byte_count > 0:
+            self.clear()
+            self._term_file.write(msg + '\n')
 
 
 class TextUIOutputStream(object):

@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -16,17 +16,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
-import os
 
-from bzrlib import errors
-from bzrlib.errors import NotBranchError, NotVersionedError
-from bzrlib.osutils import basename
-from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
-from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
+from bzrlib.tests import per_workingtree
 
 
-class TestPull(TestCaseWithWorkingTree):
+class TestPull(per_workingtree.TestCaseWithWorkingTree):
 
     def get_pullable_trees(self):
         self.build_tree(['from/', 'from/file', 'to/'])
@@ -56,3 +50,15 @@ class TestPull(TestCaseWithWorkingTree):
         tree_b.pull(tree_a.branch)
         self.assertFileEqual('contents of from/file\n', 'to/file')
 
+    def test_pull_changes_root_id(self):
+        tree = self.make_branch_and_tree('from')
+        tree.set_root_id('first_root_id')
+        self.build_tree(['from/file'])
+        tree.add(['file'])
+        tree.commit('first')
+        to_tree = tree.bzrdir.sprout('to').open_workingtree()
+        self.assertEqual('first_root_id', to_tree.get_root_id())
+        tree.set_root_id('second_root_id')
+        tree.commit('second')
+        to_tree.pull(tree.branch)
+        self.assertEqual('second_root_id', to_tree.get_root_id())
