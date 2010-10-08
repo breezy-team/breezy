@@ -422,7 +422,7 @@ def _bytes_to_text_key(bytes):
         raise ValueError('No kind section found.')
     if cur_end[1] != c' ':
         raise ValueError(
-		'Kind section should end with ": ", got %r' % str(cur_end[:2],))
+            'Kind section should end with ": ", got %r' % str(cur_end[:2],))
     file_id_str = cur_end + 2
     # file_id is now the data up until the next newline
     cur_end = <char*>memchr(file_id_str, c'\n', byte_end - file_id_str)
