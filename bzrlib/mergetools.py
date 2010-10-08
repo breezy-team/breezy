@@ -168,8 +168,10 @@ def get_merge_tools(conf=None):
 def set_merge_tools(merge_tools, conf=None):
     if conf is None:
         conf = config.GlobalConfig()
-    conf.set_user_option("mergetools", tuple(merge_tool.get_commandline()
-                                             for merge_tool in merge_tools))
+    conf_value = sorted(set(merge_tool.get_commandline()
+                           for merge_tool in merge_tools
+                           if len(merge_tool.get_commandline()) > 0))
+    conf.set_user_option("mergetools", conf_value)
 
 
 def find_merge_tool(name, conf=None):

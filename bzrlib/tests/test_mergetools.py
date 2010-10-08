@@ -101,6 +101,26 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
         self.assertEquals('winmergeu %r', tools[1].get_commandline())
         self.assertEquals('', tools[2].get_commandline())
+        
+    def test_set_merge_tools_duplicates(self):
+        config = FakeConfig()
+        mergetools.set_merge_tools(
+            [mergetools.MergeTool('kdiff3 %b %t %o -o %r'),
+             mergetools.MergeTool('kdiff3 %b %t %o -o %r')],
+            config)
+        tools = mergetools.get_merge_tools(config)
+        self.assertEquals(1, len(tools))
+        self.assertEquals('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
+        
+    def test_set_merge_tools_empty_tool(self):
+        config = FakeConfig()
+        mergetools.set_merge_tools(
+            [mergetools.MergeTool('kdiff3 %b %t %o -o %r'),
+             mergetools.MergeTool('')],
+            config)
+        tools = mergetools.get_merge_tools(config)
+        self.assertEquals(1, len(tools))
+        self.assertEquals('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
 
 
 class FakeConfig(object):
@@ -113,6 +133,12 @@ class FakeConfig(object):
     def get_user_option_as_list(self, option):
         if option == 'mergetools':
             return self.mergetools
+        else:
+            raise AssertionError('unknown option "%s"' % option)
+    
+    def set_user_option(self, option, value):
+        if option == 'mergetools':
+            self.mergetools = value
         else:
             raise AssertionError('unknown option "%s"' % option)
     
