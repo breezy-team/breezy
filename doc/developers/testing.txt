@@ -814,8 +814,8 @@ all the test variations.
 See also `Per-implementation tests`_ (above).
 
 
-Test scenarios
---------------
+Test scenarios and variations
+-----------------------------
 
 Some utilities are provided for generating variations of tests.  This can
 be used for per-implementation tests, or other cases where the same test
@@ -828,6 +828,34 @@ also provide a list of scenarios in which to run the tests.
 
 Typically ``multiply_tests_from_modules`` should be called from the test
 module's ``load_tests`` function.
+
+A higher-level interface for multiplying tests is *test variations*.  A
+test class can declare a list of `TestVariation` objects, and the tests
+will be repeated for the cross-product of variations::
+
+  class TestCheckout(TestCase):
+
+    variations = [VaryByRepositoryFormat(), VaryByTreeFormat()]
+
+the `TestVariation` must just provide a `scenarios` method that yields
+`(variation_name, attr_dict)` pairs.  It may do this by looking in a
+registry or at other dynamic information, so that plugins can cause new
+scenarios to run.  Variations may of course take constructor paramaters to
+change their behaviour.
+
+If you use `variations`, adding this line to your test module will make
+all classes automatically expand out.  You must have either this or a
+manual `load_test`::
+
+    from bzrlib.tests.variations import (
+        load_tests_from_their_variations,
+        )
+
+    load_tests = load_tests_from_their_variations
+
+Put the `load_tests` declaration or assignment immediately after the
+import statements, so people can see the effect it will have on the rest
+of the file.
 
 
 Test support
