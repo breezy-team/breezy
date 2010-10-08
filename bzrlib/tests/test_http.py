@@ -52,6 +52,7 @@ from bzrlib.tests import (
     )
 from bzrlib.tests.variations import (
     TestVariation,
+    load_tests_from_their_variations,
     multiply_tests_by_variations,
     multiply_tests_by_their_variations,
     )
@@ -67,6 +68,9 @@ from bzrlib.transport.http import (
 
 if features.pycurl.available():
     from bzrlib.transport.http._pycurl import PyCurlTransport
+
+
+load_tests = load_tests_from_their_variations
 
 
 class VaryByHttpClientImplementation(TestVariation):
@@ -152,69 +156,6 @@ class VaryByHttpActivity(TestVariation):
                     ('pycurl,https', dict(_activity_server=ActivityHTTPSServer,
                                         _transport=HTTPS_pycurl_transport,)),)
         return activity_scenarios
-
-
-def load_tests(standard_tests, module, loader):
-    """Multiply tests for http clients and protocol versions."""
-    result = loader.suiteClass()
-
-    # one for each transport implementation
-    t_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((
-                TestHttpTransportRegistration,
-                TestHttpTransportUrls,
-                Test_redirected_to,
-                )))
-    multiply_tests_by_their_variations(t_tests, result)
-
-    # some tests are parametrized by the protocol version only
-    p_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance((
-                TestAuthOnRedirected,
-                )))
-    multiply_tests_by_their_variations(p_tests, result)
-
-    # each implementation tested with each HTTP version
-    tp_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance((
-                SmartHTTPTunnellingTest,
-                TestDoCatchRedirections,
-                TestHTTPConnections,
-                TestHTTPRedirections,
-                TestHTTPSilentRedirections,
-                TestLimitedRangeRequestServer,
-                TestPost,
-                TestProxyHttpServer,
-                TestRanges,
-                TestSpecificRequestHandler,
-                )))
-    multiply_tests_by_their_variations(tp_tests, result) 
-
-    # proxy auth: each auth scheme on all http versions on all implementations.
-    tppa_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance((
-                TestProxyAuth,
-                )))
-    multiply_tests_by_their_variations(tppa_tests, result)
-
-    # auth: each auth scheme on all http versions on all implementations.
-    tpa_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance((
-                TestAuth,
-                )))
-    multiply_tests_by_their_variations(tpa_tests, result)
-
-    # activity: on all http[s] versions on all implementations
-    tpact_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance((
-                TestActivity,
-                )))
-    multiply_tests_by_their_variations(tpact_tests, result) 
-
-    # No parametrization for the remaining tests
-    result.addTests(remaining_tests)
-
-    return result
 
 
 class FakeManager(object):
@@ -2016,11 +1957,6 @@ class TestActivityMixin(object):
     be able to predict the activity on the client socket.
     """
 
-    variations = [
-        VaryByHttpActivity(),
-        VaryByHttpProtocolVersion(),
-        ]
-
     def setUp(self):
         tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
@@ -2158,6 +2094,11 @@ lalala whatever as long as itsssss
 
 
 class TestActivity(tests.TestCase, TestActivityMixin):
+
+    variations = [
+        VaryByHttpActivity(),
+        VaryByHttpProtocolVersion(),
+        ]
 
     def setUp(self):
         TestActivityMixin.setUp(self)
