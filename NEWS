@@ -9,6 +9,8 @@
 
   * Support non-ascii characters in tag names. (Jelmer Vernooij, #616995)
 
+  * Mark as compatible with bzr 2.3. (Jelmer Vernooij)
+
  FEATURES
 
   * Remove all remaining dependencies on C git. (Jelmer Vernooij, #348238)
