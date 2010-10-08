@@ -36,6 +36,10 @@ New Features
   Also, bzr will recognize if the 'ssh' comand is a symlink to lsh.
   (Matthew Gordon, #374700)
 
+* The ``pull`` and ``update`` commands now take a ``-show-base``
+  option that, in the case of conflicts, shows the base revision text.
+  (Rory Yorke,  #202374)
+
 Bug Fixes
 *********
 
@@ -45,6 +49,12 @@ Bug Fixes
 
 * Don't force openssh to use protocol=2, since that is now the default.
   (Neil Martinsen-Burrell, #561061)
+
+* Fix signature of RemoteBzrDir.create_workingtree to match that of its
+  superclass.  (Neil Martinsen-Burrell, Martin Pool, #524627)
+
+* Fix traceback with python-2.7's xmlrpclib
+  (Toshio Kuratomi, #612096)
 
 * Print junk rather than throwing a UnicodeDecodeError from ``bzr version-info``
   when using the rio format (with non-ascii information) on a non-utf-8 terminal.
@@ -56,6 +66,9 @@ Bug Fixes
 
 * Skip the tests that requires respecting the chmod bits when running as root.
   (Vincent Ladeuil, #646133)
+
+* Treat all IO, OS, and socket errors consistently when establishing
+  SSH/SFTP connections via a subprocess.  (Andrew Bennetts)
 
 * ``unshelve --preview`` now can show diff in a non-ascii encoding.
   (Andrej A Antonov, #518916)
@@ -74,8 +87,16 @@ Documentation
 * Provide more detailed help on the Launchpad plugin at "bzr help
   plugins/launchpad".  (Neil Martinsen-Burrell, #589379)
 
+* Suggest ``bzr revert`` for restoring locally deleted files in help text
+  for ``bzr update``.  (John C Barstow, #191466)
+
 API Changes
 ***********
+
+* ``WorkingTree`` methods ``pull``, ``update``, and ``_update_tree``
+  now have an optional argument, ``show_base``, which is by default
+  False.  This is flag is ultimately passed to ``merge.merge_inner``
+  in each case. (Rory Yorke, #202374)
 
 Internals
 *********
@@ -92,6 +113,10 @@ Testing
 
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
+
+* Suppress the "maximum recursion depth exceeded in __subclasscheck__"
+  warning on stderr emitted during ``test_dict_deepnested`` in
+  ``bzrlib/tests/test__bencode.py``.  (Andrew Bennetts)
 
 * Use tests.TestCaseInTempDir for tests that requires disk resources.
   (Vincent Ladeuil, #650001)
@@ -277,15 +302,8 @@ New Features
 * New development format ``development8-subtree`` which is similar to the 
   ``2a`` format and adds subtree support. (Jelmer Vernooij)
 
-* The ``pull`` and ``update`` commands now take a ``-show-base``
-  option that, in the case of conflicts, shows the base revision text.
-  (Rory Yorke,  #202374)
-
 Bug Fixes
 *********
-
-* Fix traceback with python-2.7's xmlrpclib
-  (Toshio Kuratomi, #612096)
 
 * Allow using both --using and --diff-options. 
   (Matthäus G. Chajdas, #234708)
@@ -344,9 +362,6 @@ Bug Fixes
   connections to pre-1.6 bzr+ssh servers to fail, and causing warnings on
   stderr in some other circumstances.  (Andrew Bennetts, #633745)
 
-* Fix signature of RemoteBzrDir.create_workingtree to match that of its
-  superclass.  (Neil Martinsen-Burrell, Martin Pool, #524627)
-
 * Fix spurious paramiko warning on hardy by ensuring that ``selftest``
   properly remove its warning filter. (Vincent Ladeuil, #625686)
 
@@ -380,9 +395,6 @@ Bug Fixes
 * Test classes like ``TestCase``, ``TestLoader``, and ``TestSuite`` should
   be available from ``bzrlib.tests.*``. They used to be, but were
   accidentally removed. (John Arbash Meinel, #627438)
-
-* Treat all IO, OS, and socket errors consistently when establishing
-  SSH/SFTP connections via a subprocess.  (Andrew Bennetts)
 
 * ``Transport.stat`` on a symlink, including a transport pointing directly
   to a symlink, now returns information about the symlink.
@@ -450,9 +462,6 @@ Documentation
   the new http://bazaar.canonical.com or http://wiki.bazaar.canonical.com
   (John Arbash Meinel, #617503)
 
-* Suggest ``bzr revert`` for restoring locally deleted files in help text
-  for ``bzr update``.  (John C Barstow, #191466)
-
 API Changes
 ***********
 
@@ -486,11 +495,6 @@ API Changes
   constructor has been deprecated, use the ``file_name`` parameter instead.
   (Vincent Ladeuil)
 
-* ``WorkingTree`` methods ``pull``, ``update``, and ``_update_tree``
-  now have an optional argument, ``show_base``, which is by default
-  False.  This is flag is ultimately passed to ``merge.merge_inner``
-  in each case. (Rory Yorke, #202374)
-
 Internals
 *********
 
@@ -515,10 +519,6 @@ Testing
 
 * Rearrange thread leak detection code to eliminate global state and make it
   possible to extend the reporting. (Martin [gz], #633462)
-
-* Suppress the "maximum recursion depth exceeded in __subclasscheck__"
-  warning on stderr emitted during ``test_dict_deepnested`` in
-  ``bzrlib/tests/test__bencode.py``.  (Andrew Bennetts)
 
 * The test suite now simply holds log files in memory, rather than writing them
   out to disk and then reading them back in and deleting them.
