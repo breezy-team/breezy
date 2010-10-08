@@ -164,16 +164,16 @@ def load_tests(standard_tests, module, loader):
                 TestHttpTransportUrls,
                 Test_redirected_to,
                 )))
-    result.addTests(multiply_tests_by_variations(
-        t_tests, [VaryByHttpClientImplementation()], loader))
+    multiply_tests_by_variations(
+        t_tests, [VaryByHttpClientImplementation()], result)
 
     # some tests are parametrized by the protocol version only
     p_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestAuthOnRedirected,
                 )))
-    tests.multiply_tests(
-        p_tests, VaryByHttpProtocolVersion().scenarios(), result)
+    multiply_tests_by_variations(
+        p_tests, [VaryByHttpProtocolVersion()], result)
 
     # each implementation tested with each HTTP version
     tp_tests, remaining_tests = tests.split_suite_by_condition(
@@ -189,40 +189,47 @@ def load_tests(standard_tests, module, loader):
                 TestRanges,
                 TestSpecificRequestHandler,
                 )))
-    tp_scenarios = tests.multiply_scenarios(
-        VaryByHttpClientImplementation().scenarios(),
-        VaryByHttpProtocolVersion().scenarios())
-    tests.multiply_tests(tp_tests, tp_scenarios, result)
+    multiply_tests_by_variations(
+        tp_tests, [
+            VaryByHttpClientImplementation(),
+            VaryByHttpProtocolVersion(),
+        ],
+        result)
 
     # proxy auth: each auth scheme on all http versions on all implementations.
     tppa_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestProxyAuth,
                 )))
-    tppa_scenarios = tests.multiply_scenarios(
-        tp_scenarios,
-        VaryByHttpProxyAuthScheme().scenarios())
-    tests.multiply_tests(tppa_tests, tppa_scenarios, result)
+    multiply_tests_by_variations(
+        tppa_tests, [
+            VaryByHttpClientImplementation(),
+            VaryByHttpProtocolVersion(),
+            VaryByHttpProxyAuthScheme(),
+        ], result)
 
     # auth: each auth scheme on all http versions on all implementations.
     tpa_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestAuth,
                 )))
-    tpa_scenarios = tests.multiply_scenarios(
-        tp_scenarios,
-        VaryByHttpAuthScheme().scenarios())
-    tests.multiply_tests(tpa_tests, tpa_scenarios, result)
+    multiply_tests_by_variations(
+        tpa_tests, [
+            VaryByHttpClientImplementation(),
+            VaryByHttpProtocolVersion(),
+            VaryByHttpAuthScheme(),
+        ], result)
 
     # activity: on all http[s] versions on all implementations
     tpact_tests, remaining_tests = tests.split_suite_by_condition(
         remaining_tests, tests.condition_isinstance((
                 TestActivity,
                 )))
-    tpact_scenarios = tests.multiply_scenarios(
-        VaryByHttpActivity().scenarios(),
-        VaryByHttpProtocolVersion().scenarios())
-    tests.multiply_tests(tpact_tests, tpact_scenarios, result)
+    multiply_tests_by_variations(
+        tpact_tests, [
+            VaryByHttpActivity(),
+            VaryByHttpProtocolVersion(),
+        ], result)
 
     # No parametrization for the remaining tests
     result.addTests(remaining_tests)

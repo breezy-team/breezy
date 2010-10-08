@@ -33,19 +33,16 @@ class TestVariation(object):
         raise NotImplementedError(self.scenarios)
 
 
-def multiply_tests_by_variations(tests, variations, loader):
+def multiply_tests_by_variations(multiplicand, variations, into_suite):
     """Given a test, multiply it by the full expansion of variations.
     
-    :param tests: A TestSuite, or a single TestCase.
+    :param multiplicand: A TestSuite, or a single TestCase to be repeated.
     :param variations: A list of TestVariation objects.
-    :param loader: A TestLoader used to generate new suites.
-
-    :returns: a TestSuite containing the expanded tests.
+    :param into_suite: A TestSuite into which the resulting tests will be
+        inserted.
     """
     # TODO: Document the behaviour if there are no variations or any of them
-    # returns empty
+    # returns empty. -- mbp 2010-10-08
     combined_scenarios = reduce(multiply_scenarios,
         [v.scenarios() for v in variations])
-    new_suite = loader.suiteClass()
-    multiply_tests(tests, combined_scenarios, new_suite)
-    return new_suite
+    multiply_tests(multiplicand, combined_scenarios, into_suite)
