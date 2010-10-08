@@ -840,6 +840,10 @@ class TestCase(testtools.TestCase):
         self._track_transports()
         self._track_locks()
         self._clear_debug_flags()
+        # Isolate global verbosity level, to make sure it's reproducible
+        # between tests.  We should get rid of this altogether: bug 656694. --
+        # mbp 20101008
+        self.overrideAttr(bzrlib.trace, '_verbosity_level', 0)
 
     def debug(self):
         # debug a frame up.
