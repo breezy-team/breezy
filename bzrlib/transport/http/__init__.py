@@ -668,10 +668,12 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
         pass
 
 
-def unhtml_roughly(maybe_html):
+def unhtml_roughly(maybe_html, length_limit=1000):
     """Very approximate html->text translation, for presenting error bodies.
+
+    :param length_limit: Truncate the result to this many characters.
 
     >>> unhtml_roughly("<b>bad</b> things happened\\n")
     ' bad  things happened '
     """
-    return re.subn(r"(<[^>]*>|\n|&nbsp;)", " ", maybe_html)[0]
+    return re.subn(r"(<[^>]*>|\n|&nbsp;)", " ", maybe_html)[0][:length_limit]
