@@ -64,8 +64,8 @@ class TestTestVariations(TestCase):
             [SimpleVariation('value')],
             suite)
         self.assertEquals(
-            get_generated_test_attributes(suite, 'value'),
-            ['a', 'b'])
+            ['a', 'b'],
+            get_generated_test_attributes(suite, 'value'))
 
     def test_multiply_tests_by_their_variations(self):
         loader = TestLoader()
@@ -73,16 +73,16 @@ class TestTestVariations(TestCase):
         multiply_tests_by_their_variations(PretendVaryingTest('test_nothing'),
             suite)
         self.assertEquals(
-            get_generated_test_attributes(suite, 'value'),
-            ['a', 'a', 'b', 'b'])
+            ['a', 'a', 'b', 'b'],
+            get_generated_test_attributes(suite, 'value'))
 
     def test_multiply_tests_no_variations(self):
         """Tests with no variations attribute aren't multiplied"""
         suite = TestLoader().suiteClass()
         multiply_tests_by_their_variations(self,
             suite)
-        self.assertEquals(
-            len(list(iter_suite_tests(suite))), 1)
+        self.assertLength(
+            list(iter_suite_tests(suite)), 1)
 
 
 class PretendVaryingTest(TestCase):
