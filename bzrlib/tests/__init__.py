@@ -260,7 +260,8 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def _elapsedTestTimeString(self):
         """Return a time string for the overall time the current test has taken."""
-        return self._formatTime(time.time() - self._start_time)
+        return self._formatTime(self._delta_to_float(
+            self._now() - self._start_datetime))
 
     def _testTimeString(self, testCase):
         benchmark_time = self._extractBenchmarkTime(testCase)
@@ -315,7 +316,7 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def _recordTestStartTime(self):
         """Record that a test has started."""
-        self._start_time = time.time()
+        self._start_datetime = self._now()
 
     def addError(self, test, err):
         """Tell result that test finished with an error.

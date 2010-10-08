@@ -55,7 +55,7 @@ __copyright__ = "Copyright 2005-2010 Canonical Ltd."
 version_info = (2, 3, 0, 'dev', 2)
 
 # API compatibility version
-api_minimum_version = (2, 2, 0)
+api_minimum_version = (2, 3, 0)
 
 
 def _format_version_tuple(version_info):

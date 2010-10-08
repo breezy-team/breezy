@@ -13,6 +13,11 @@ bzr 2.3b2
 Compatibility Breaks
 ********************
 
+* The ``bzr tags`` command sorts tag names using a natural sort by
+  default (so tag2 sorts before tag10).  The previous default was
+  strictly "asciibetical".  That behavior is still available as ``bzr tags
+  --sort=alpha``. (Neil Martinsen-Burrell, #640760)
+
 New Features
 ************
 
@@ -40,7 +45,10 @@ Bug Fixes
 
 * ``bzr break-lock --force`` breaks the lock without prompting.  (Before
   using this, make sure the process holding the lock really is dead.)
-  (Martin Pool, #392315)
+  (Martin Pool, #397315)
+
+* Don't force openssh to use protocol=2, since that is now the default.
+  (Neil Martinsen-Burrell, #561061)
 
 * Fix signature of RemoteBzrDir.create_workingtree to match that of its
   superclass.  (Neil Martinsen-Burrell, Martin Pool, #524627)
@@ -68,8 +76,16 @@ Bug Fixes
 Improvements
 ************
 
+* ``bzr remove`` now takes a ``--no-backup`` option for when you don't want it
+  to backup anything, just delete it. This option used to be called ``--force``
+  which is now deprecated.
+  (Marius Kruger, #400554)
+
 Documentation
 *************
+
+* Provide more detailed help on the Launchpad plugin at "bzr help
+  plugins/launchpad".  (Neil Martinsen-Burrell, #589379)
 
 * Suggest ``bzr revert`` for restoring locally deleted files in help text
   for ``bzr update``.  (John C Barstow, #191466)

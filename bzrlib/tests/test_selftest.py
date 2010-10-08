@@ -849,6 +849,21 @@ class TestTestResult(tests.TestCase):
         self.assertContainsRe(output,
             r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
 
+    def test_uses_time_from_testtools(self):
+        """Test case timings in verbose results should use testtools times"""
+        import datetime
+        class TimeAddedVerboseTestResult(tests.VerboseTestResult):
+            def startTest(self, test):
+                self.time(datetime.datetime.utcfromtimestamp(1.145))
+                super(TimeAddedVerboseTestResult, self).startTest(test)
+            def addSuccess(self, test):
+                self.time(datetime.datetime.utcfromtimestamp(51.147))
+                super(TimeAddedVerboseTestResult, self).addSuccess(test)
+            def report_tests_starting(self): pass
+        sio = StringIO()
+        self.get_passing_test().run(TimeAddedVerboseTestResult(sio, 0, 2))
+        self.assertEndsWith(sio.getvalue(), "OK    50002ms\n")
+
     def test_known_failure(self):
         """A KnownFailure being raised should trigger several result actions."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
