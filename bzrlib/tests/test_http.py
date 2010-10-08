@@ -50,6 +50,10 @@ from bzrlib.tests import (
     http_utils,
     test_server,
     )
+from bzrlib.tests.variations import (
+    TestVariation,
+    multiply_tests_by_variations,
+    )
 from bzrlib.transport import (
     http,
     remote,
@@ -62,18 +66,6 @@ from bzrlib.transport.http import (
 
 if features.pycurl.available():
     from bzrlib.transport.http._pycurl import PyCurlTransport
-
-
-class TestVariation(object):
-    """Variations that can be applied to tests"""
-
-    def scenarios(self):
-        """Return a list of (name, params) tuples.
-
-        All the tests subject to this varation will be repeated once per
-        scenario.
-        """
-        raise NotImplementedError(self.scenarios)
 
 
 class VaryByHttpClientImplementation(TestVariation):
@@ -161,8 +153,6 @@ class VaryByHttpActivity(TestVariation):
         return activity_scenarios
 
 
-
-
 def load_tests(standard_tests, module, loader):
     """Multiply tests for http clients and protocol versions."""
     result = loader.suiteClass()
@@ -174,8 +164,8 @@ def load_tests(standard_tests, module, loader):
                 TestHttpTransportUrls,
                 Test_redirected_to,
                 )))
-    tests.multiply_tests(
-        t_tests, VaryByHttpClientImplementation().scenarios(), result)
+    result.addTests(multiply_tests_by_variations(
+        t_tests, [VaryByHttpClientImplementation()], loader))
 
     # some tests are parametrized by the protocol version only
     p_tests, remaining_tests = tests.split_suite_by_condition(
