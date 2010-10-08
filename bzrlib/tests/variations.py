@@ -16,6 +16,7 @@
 
 
 from bzrlib.tests import (
+    iter_suite_tests,
     multiply_scenarios,
     multiply_tests,
     )
@@ -46,3 +47,16 @@ def multiply_tests_by_variations(multiplicand, variations, into_suite):
     combined_scenarios = reduce(multiply_scenarios,
         [v.scenarios() for v in variations])
     multiply_tests(multiplicand, combined_scenarios, into_suite)
+
+
+def multiply_tests_by_their_variations(some_tests, into_suite):
+    """Multiply the tests in the given suite by their declared variations.
+
+    Each test must have a 'variations' attribute which is a list of 
+    TestVariation objects.
+    :param some_tests: TestSuite or Test.
+    :param into_suite: A TestSuite into which the resulting tests will be
+        inserted.
+    """
+    for test in iter_suite_tests(some_tests):
+        multiply_tests_by_variations(test, test.variations, into_suite)

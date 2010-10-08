@@ -22,6 +22,7 @@ from bzrlib.tests import (
 
 from bzrlib.tests.variations import (
     TestVariation,
+    multiply_tests_by_their_variations,
     multiply_tests_by_variations,
     )
 
@@ -35,6 +36,11 @@ class SimpleVariation(TestVariation):
         ]
 
 
+def get_generated_test_attributes(suite, attr_name):
+    return sorted([
+        getattr(t, attr_name) for t in iter_suite_tests(suite)])
+
+
 class TestTestVariations(TestCase):
 
     def test_multiply_tests_by_variations(self):
@@ -44,8 +50,24 @@ class TestTestVariations(TestCase):
             self,
             [SimpleVariation()],
             suite)
-        generated_tests = list(iter_suite_tests(suite))
-        self.assertEquals(len(generated_tests), 2)
         self.assertEquals(
-            sorted([t.value for t in generated_tests]),
+            get_generated_test_attributes(suite, 'value'),
             ['a', 'b'])
+
+    def test_multiply_tests_by_their_variations(self):
+        loader = TestLoader()
+        suite = loader.suiteClass()
+        multiply_tests_by_their_variations(PretendVaryingTest('test_nothing'),
+            suite)
+        self.assertEquals(
+            get_generated_test_attributes(suite, 'value'),
+            ['a', 'b'])
+
+
+class PretendVaryingTest(TestCase):
+    
+    variations = [SimpleVariation()]
+
+    def test_nothing(self):
+        """This test exists just so it can be multiplied"""
+        pass
