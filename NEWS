@@ -74,6 +74,9 @@ New Features
 Bug Fixes
 *********
 
+* Always set PATH in start_bzr.bat on Windows.
+  (Matthäus G. Chajdas, #470264)
+
 * ``bzr break-lock --force`` breaks the lock without prompting.  (Before
   using this, make sure the process holding the lock really is dead.)
   (Martin Pool, #397315)
