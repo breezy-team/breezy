@@ -22,10 +22,10 @@ and the address to send the mail from is read from the configuration option
 ``post_commit_sender`` (if not supplied defaults to the email address reported
 by ``bzr whoami``).
 
-By default, the diff for the commit will be included in the email, if the
-length is less than 1000 lines. This limit can be changed (for instance, to 0
-to disable the feature) by setting the configuration option
-'post_commit_difflimit' to the number of lines you wish it to be limited to.
+By default, the diff for the commit will be included in the email if the
+length is less than 1000 lines. This limit can be changed by setting the
+configuration option 'post_commit_difflimit' to the number of lines you wish
+it to be limited to. Set it to 0 to unconditionally disable sending of diffs.
 
 By default bzr-email only emails when a commit occurs, not when a push or
 pull operation occurs. To email on push or pull set post_commit_push_pull=True

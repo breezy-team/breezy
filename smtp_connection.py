@@ -209,14 +209,16 @@ class SMTPConnection(object):
         self._connection.sendmail(from_email, to_emails,
                                   email_message.as_string())
 
-    def send_text_email(self, from_address, to_addresses, subject, message):
+    def send_text_email(self, from_address, to_addresses, subject, message,
+                        extra_mail_headers=None):
         """Send a single text-only email.
 
         This is a helper when you know you are just sending a simple text
         message. See create_email for an explanation of parameters.
         """
         msg, from_email, to_emails = self.create_email(from_address,
-                                            to_addresses, subject, message)
+                                            to_addresses, subject, message,
+                                            extra_mail_headers)
         self.send_email(msg, from_email, to_emails)
 
     def send_text_and_attachment_email(self, from_address, to_addresses,
