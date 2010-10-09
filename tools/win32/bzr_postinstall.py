@@ -173,6 +173,9 @@ def main():
                 content[ix] = s.replace('bzr.exe',
                                         '"%s"' % os.path.join(bzr_dir,
                                                               'bzr.exe'))
+            elif s.find (r'C:\Program Files\Bazaar') != -1:
+                content[ix] = s.replace (r'C:\Program Files\Bazaar',
+                                         bzr_dir)
 
         if dry_run:
             print "*** Write file: start_bzr.bat"

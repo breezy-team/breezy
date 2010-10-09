@@ -5,9 +5,8 @@ REM    **  You can change following environment variables  **
 REM    **  that affects on bzr behaviour                   **
 REM    ******************************************************
 
-REM If you don't add Bzr directory to system-wide PATH environment variable
-REM you can modify local PATH
-REM SET PATH=C:\Program Files\Bazaar;%PATH%
+REM Add the Bzr directory to system-wide PATH environment variable
+SET PATH=C:\Program Files\Bazaar;%PATH%
 
 REM Change next line to set-up e-mail to identify yourself in bzr
 REM SET BZREMAIL=
