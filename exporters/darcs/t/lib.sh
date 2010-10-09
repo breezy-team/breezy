@@ -262,7 +262,7 @@ diff_importgit()
 
 diff_importhg()
 {
-	test -z "`(cd $1.darcs; darcs diff)`" &&
+	cd $1.darcs && test -z "`darcs diff 2>&1`" && cd .. &&
 	diff --exclude _darcs --exclude .hg --exclude '*-darcs-backup*' --exclude 'hg-export.*' \
 		--exclude '.hgtags' --exclude '*.orig' -Nur $1 $1.darcs
 	return $?
@@ -270,14 +270,14 @@ diff_importhg()
 
 diff_importdarcs()
 {
-	test -z "`(cd $1.darcs; darcs diff)`" &&
+	cd $1.importdarcs && test -z "`darcs diff 2>&1`" && cd .. &&
 	diff --exclude _darcs --exclude '*-darcs-backup*' -Nur $1 $2
 	return $?
 }
 
 diff_importbzr()
 {
-	test -z "`(cd $1.darcs; darcs diff)`" &&
+	cd $1.darcs && test -z "`darcs diff 2>&1`" && cd .. &&
 	diff --exclude _darcs --exclude .bzr --exclude '*-darcs-backup*' -Nur $1 $1.darcs
 	return $?
 }

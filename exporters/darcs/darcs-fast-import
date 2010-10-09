@@ -155,6 +155,8 @@ class Handler:
 		sock.stdin.close()
 		self.log("Tagging %s:\n%s" % (version, sock.stdout.read()))
 		sock.stdout.close()
+		if sock.wait() != 0:
+			self.bug("darcs tag failed: '%s'" % sock.returncode)
 
 	def handle_commit(self):
 		if not self.prevfiles and self.options.import_marks:
@@ -249,12 +251,19 @@ class Handler:
 			return
 		for i in adds:
 			self.invoke_add(i)
-		sock = subprocess.Popen(["darcs", "record", "--ignore-times", "-a", "--pipe"], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-		buf = [self.date, self.ident, self.short, self.long]
-		sock.stdin.write("\n".join(buf))
+		args = ["darcs", "record", "--ignore-times", "-a", "--pipe"]
+		buf = [self.date, self.ident]
+		if not len(self.short):
+			args.extend(['-m', ''])
+		else:
+			buf.extend([self.short, self.long])
+		sock = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+		sock.stdin.write("\n".join(buf)+"\n")
 		sock.stdin.close()
 		self.log("Recording :%s:\n%s" % (self.mark_num, sock.stdout.read()))
 		sock.stdout.close()
+		if sock.wait() != 0:
+			self.bug("darcs record failed: '%s'" % sock.returncode)
 
 		for src, path in symlinks:
 			# symlink does not do what we want if path is
