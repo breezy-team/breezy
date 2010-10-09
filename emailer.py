@@ -253,7 +253,6 @@ class EmailSender(object):
                                  self.extra_headers())
 
     def should_send(self):
-        result = self.config.get_user_option('post_commit_difflimit')
         post_commit_push_pull = self.config.get_user_option(
             'post_commit_push_pull') == 'True'
         if post_commit_push_pull and self.op == 'commit':
