@@ -85,6 +85,7 @@ class TestTrace(TestCase):
             "bzr: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
 
     def test_format_mem_dump(self):
+        self.requireFeature(features.meliae)
         debug.debug_flags.add('mem_dump')
         try:
             raise MemoryError()
