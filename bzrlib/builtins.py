@@ -21,6 +21,8 @@ import os
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
+import itertools
+import re
 import sys
 import time
 
@@ -1505,13 +1507,20 @@ class cmd_remove(Command):
             title='Deletion Strategy', value_switches=True, enum_switch=False,
             safe='Backup changed files (default).',
             keep='Delete from bzr but leave the working copy.',
+            no_backup='Don\'t backup changed files.',
             force='Delete all the specified files, even if they can not be '
-                'recovered and even if they are non-empty directories.')]
+                'recovered and even if they are non-empty directories. '
+                '(deprecated, use no-backup)')]
     aliases = ['rm', 'del']
     encoding_type = 'replace'
 
     def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
+        if file_deletion_strategy == 'force':
+            note("(The --force option is deprecated, rather use --no-backup "
+                "in future.)")
+            file_deletion_strategy = 'no-backup'
+
         tree, file_list = WorkingTree.open_containing_paths(file_list)
 
         if file_list is not None:
@@ -1538,7 +1547,7 @@ class cmd_remove(Command):
             file_deletion_strategy = 'keep'
         tree.remove(file_list, verbose=verbose, to_file=self.outf,
             keep_files=file_deletion_strategy=='keep',
-            force=file_deletion_strategy=='force')
+            force=(file_deletion_strategy=='no-backup'))
 
 
 class cmd_file_id(Command):
@@ -5397,7 +5406,9 @@ class cmd_tags(Command):
             help='Branch whose tags should be displayed.'),
         RegistryOption.from_kwargs('sort',
             'Sort tags by different criteria.', title='Sorting',
-            alpha='Sort tags lexicographically (default).',
+            natural='Sort numeric substrings as numbers:'
+                    ' suitable for version numbers. (default)',
+            alpha='Sort tags lexicographically.',
             time='Sort tags chronologically.',
             ),
         'show-ids',
@@ -5407,7 +5418,7 @@ class cmd_tags(Command):
     @display_command
     def run(self,
             directory='.',
-            sort='alpha',
+            sort='natural',
             show_ids=False,
             revision=None,
             ):
@@ -5425,7 +5436,13 @@ class cmd_tags(Command):
             # only show revisions between revid1 and revid2 (inclusive)
             tags = [(tag, revid) for tag, revid in tags if
                 graph.is_between(revid, revid1, revid2)]
-        if sort == 'alpha':
+        if sort == 'natural':
+            def natural_sort_key(tag):
+                return [f(s) for f,s in 
+                        zip(itertools.cycle((unicode.lower,int)),
+                                            re.split('([0-9]+)', tag[0]))]
+            tags.sort(key=natural_sort_key)
+        elif sort == 'alpha':
             tags.sort()
         elif sort == 'time':
             timestamps = {}

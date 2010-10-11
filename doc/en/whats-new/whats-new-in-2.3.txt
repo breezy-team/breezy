@@ -25,6 +25,12 @@ Changed Behaviour
   bytecode files.
   (Andrea Corbellini, #626687)
 
+* The default sort order for the ``bzr tags`` command now uses a natural sort
+  where numeric substrings are sorted numerically.  The previous default was
+  "asciibetical" where tags were sorted by the characters they contained.  To
+  get the old behavior, one can use ``bzr tags --sort=alpha``.
+  (Neil Martinsen-Burrell, #640760)
+
 Launchpad integration
 *********************
 
