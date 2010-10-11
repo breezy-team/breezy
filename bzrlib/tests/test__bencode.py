@@ -16,6 +16,8 @@
 
 """Tests for bencode structured encoding"""
 
+import sys
+
 from bzrlib import tests
 
 def load_tests(standard_tests, module, loader):
@@ -105,7 +107,14 @@ class TestBencodeDecode(tests.TestCase):
                             'd8:spam.mp3d6:author5:Alice6:lengthi100000eee')
 
     def test_dict_deepnested(self):
-        self._run_check_error(RuntimeError, ("d0:" * 10000) + 'i1e' + ("e" * 10000))
+        # The recursion here provokes CPython into emitting a warning on
+        # stderr, "maximum recursion depth exceeded in __subclasscheck__", due
+        # to running out of stack space while evaluating "except (...):" in
+        # _bencode_py.  This is harmless, so we temporarily override stderr to
+        # avoid distracting noise in the test output.
+        self.overrideAttr(sys, 'stderr', self._log_file)
+        self._run_check_error(
+            RuntimeError, ("d0:" * 10000) + 'i1e' + ("e" * 10000))
 
     def test_malformed_dict(self):
         self._run_check_error(ValueError, 'd')

@@ -113,7 +113,7 @@ Proposing a merge
 
 
 Then propose a merge into bzr; for bzr 2.2 and later you can use the ``bzr
-propose-merge`` command.  In the comment for your merge proposal please
+lp-propose-merge`` command.  In the comment for your merge proposal please
 explain what you're trying to do and why.  For `example
 <https://code.launchpad.net/~ian-clatworthy/bzr/whats-new-in-2.1/+merge/19677>`_:
 
