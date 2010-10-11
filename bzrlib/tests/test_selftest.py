@@ -849,6 +849,21 @@ class TestTestResult(tests.TestCase):
         self.assertContainsRe(output,
             r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
 
+    def test_uses_time_from_testtools(self):
+        """Test case timings in verbose results should use testtools times"""
+        import datetime
+        class TimeAddedVerboseTestResult(tests.VerboseTestResult):
+            def startTest(self, test):
+                self.time(datetime.datetime.utcfromtimestamp(1.145))
+                super(TimeAddedVerboseTestResult, self).startTest(test)
+            def addSuccess(self, test):
+                self.time(datetime.datetime.utcfromtimestamp(51.147))
+                super(TimeAddedVerboseTestResult, self).addSuccess(test)
+            def report_tests_starting(self): pass
+        sio = StringIO()
+        self.get_passing_test().run(TimeAddedVerboseTestResult(sio, 0, 2))
+        self.assertEndsWith(sio.getvalue(), "OK    50002ms\n")
+
     def test_known_failure(self):
         """A KnownFailure being raised should trigger several result actions."""
         class InstrumentedTestResult(tests.ExtendedTestResult):
@@ -3299,6 +3314,77 @@ class TestThreadLeakDetection(tests.TestCase):
             (first_test, set([thread_b])),
             (third_test, set([thread_a, thread_c]))])
         self.assertContainsString(result.stream.getvalue(), "leaking threads")
+
+
+class TestPostMortemDebugging(tests.TestCase):
+    """Check post mortem debugging works when tests fail or error"""
+
+    class TracebackRecordingResult(tests.ExtendedTestResult):
+        def __init__(self):
+            tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
+            self.postcode = None
+        def _post_mortem(self, tb=None):
+            """Record the code object at the end of the current traceback"""
+            tb = tb or sys.exc_info()[2]
+            if tb is not None:
+                next = tb.tb_next
+                while next is not None:
+                    tb = next
+                    next = next.tb_next
+                self.postcode = tb.tb_frame.f_code
+        def report_error(self, test, err):
+            pass
+        def report_failure(self, test, err):
+            pass
+
+    def test_location_unittest_error(self):
+        """Needs right post mortem traceback with erroring unittest case"""
+        class Test(unittest.TestCase):
+            def runTest(self):
+                raise RuntimeError
+        result = self.TracebackRecordingResult()
+        Test().run(result)
+        self.assertEqual(result.postcode, Test.runTest.func_code)
+
+    def test_location_unittest_failure(self):
+        """Needs right post mortem traceback with failing unittest case"""
+        class Test(unittest.TestCase):
+            def runTest(self):
+                raise self.failureException
+        result = self.TracebackRecordingResult()
+        Test().run(result)
+        self.assertEqual(result.postcode, Test.runTest.func_code)
+
+    def test_location_bt_error(self):
+        """Needs right post mortem traceback with erroring bzrlib.tests case"""
+        class Test(tests.TestCase):
+            def test_error(self):
+                raise RuntimeError
+        result = self.TracebackRecordingResult()
+        Test("test_error").run(result)
+        self.assertEqual(result.postcode, Test.test_error.func_code)
+
+    def test_location_bt_failure(self):
+        """Needs right post mortem traceback with failing bzrlib.tests case"""
+        class Test(tests.TestCase):
+            def test_failure(self):
+                raise self.failureException
+        result = self.TracebackRecordingResult()
+        Test("test_failure").run(result)
+        self.assertEqual(result.postcode, Test.test_failure.func_code)
+
+    def test_env_var_triggers_post_mortem(self):
+        """Check pdb.post_mortem is called iff BZR_TEST_PDB is set"""
+        import pdb
+        result = tests.ExtendedTestResult(StringIO(), 0, 1)
+        post_mortem_calls = []
+        self.overrideAttr(pdb, "post_mortem", post_mortem_calls.append)
+        self.addCleanup(osutils.set_or_unset_env, "BZR_TEST_PDB",
+            osutils.set_or_unset_env("BZR_TEST_PDB", None))
+        result._post_mortem(1)
+        os.environ["BZR_TEST_PDB"] = "on"
+        result._post_mortem(2)
+        self.assertEqual([2], post_mortem_calls)
 
 
 class TestRunSuite(tests.TestCase):
