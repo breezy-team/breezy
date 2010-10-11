@@ -47,7 +47,7 @@ from bzrlib.tests import (
     test_server,
     )
 from bzrlib.tests.scenarios import (
-    load_tests_from_scenarios,
+    load_tests_apply_scenarios,
     multiply_scenarios,
     )
 from bzrlib.transport import (
@@ -64,7 +64,7 @@ if features.pycurl.available():
     from bzrlib.transport.http._pycurl import PyCurlTransport
 
 
-load_tests = load_tests_from_scenarios
+load_tests = load_tests_apply_scenarios
 
 
 def vary_by_http_client_implementation():

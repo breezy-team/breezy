@@ -25,7 +25,7 @@ from bzrlib.tests import (
     )
 
 from bzrlib.tests.scenarios import (
-    load_tests_from_scenarios,
+    load_tests_apply_scenarios,
     multiply_scenarios,
     multiply_tests_by_their_scenarios,
     )
@@ -34,7 +34,7 @@ from bzrlib.tests.scenarios import (
 # There aren't any actually parameterized tests here, but this exists as a
 # demonstration; so that you can interactively observe them being multiplied;
 # and so that we check everything hooks up properly.
-load_tests = load_tests_from_scenarios
+load_tests = load_tests_apply_scenarios
 
 
 def vary_by_color():

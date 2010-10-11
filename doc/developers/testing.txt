@@ -833,7 +833,7 @@ attributes.
 
 For example::
 
-    load_tests = load_tests_from_scenarios
+    load_tests = load_tests_apply_scenarios
 
     class TestCheckout(TestCase):
 

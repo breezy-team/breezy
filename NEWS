@@ -151,8 +151,8 @@ Testing
 
 * Add a new simpler way to generate multiple test variations, by setting
   the `scenarios` attribute of a test class to a list of scenarios
-  descriptions.  (See the testing guide and `bzrlib.tests.scenarios`.)
-  Simplify `test_http` using this.
+  descriptions, then using `load_tests_apply_scenarios`.  (See the testing
+  guide and `bzrlib.tests.scenarios`.) Simplify `test_http` using this.
   (Martin Pool, #597791)
 
 * Add ``tests/ssl_certs/ca.crt`` to the required test files list. Test

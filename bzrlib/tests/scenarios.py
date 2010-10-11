@@ -32,7 +32,7 @@ from bzrlib.tests import (
     )
 
 
-def load_tests_from_scenarios(standard_tests, module, loader):
+def load_tests_apply_scenarios(standard_tests, module, loader):
     """Multiply tests depending on their 'scenarios' attribute.
 
     This can be assigned to 'load_tests' in any test module to make this
