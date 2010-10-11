@@ -26,6 +26,8 @@ Bug Fixes
 * Don't force openssh to use protocol=2, since that is now the default.
   (Neil Martinsen-Burrell, #561061)
 
+* Make ``bzr tag --quiet`` really quiet. (Neil Martinsen-Burrell, #239523)
+
 Improvements
 ************
 
