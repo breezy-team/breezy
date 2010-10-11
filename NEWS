@@ -19,6 +19,9 @@ New Features
 Bug Fixes
 *********
 
+* Don't force openssh to use protocol=2, since that is now the default.
+  (Neil Martinsen-Burrell, #561061)
+
 Improvements
 ************
 
@@ -81,9 +84,6 @@ Bug Fixes
   using this, make sure the process holding the lock really is dead.)
   (Martin Pool, #397315)
 
-* Don't force openssh to use protocol=2, since that is now the default.
-  (Neil Martinsen-Burrell, #561061)
-
 * Fix signature of RemoteBzrDir.create_workingtree to match that of its
   superclass.  (Neil Martinsen-Burrell, Martin Pool, #524627)
 
@@ -121,6 +121,9 @@ Improvements
 
 Documentation
 *************
+
+* Correct the documentation for setting up the smart server with Apache.
+  (Neil Martinsen-Burrell, #311518)
 
 * Provide more detailed help on the Launchpad plugin at "bzr help
   plugins/launchpad".  (Neil Martinsen-Burrell, #589379)
