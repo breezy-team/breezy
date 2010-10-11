@@ -23,10 +23,7 @@ transport implementation, http protocol versions and authentication schemes.
 # TODO: Should be renamed to bzrlib.transport.http.tests?
 # TODO: What about renaming to bzrlib.tests.transport.http ?
 
-from cStringIO import StringIO
 import httplib
-import os
-import select
 import SimpleHTTPServer
 import socket
 import sys
@@ -42,7 +39,6 @@ from bzrlib import (
     tests,
     transport,
     ui,
-    urlutils,
     )
 from bzrlib.tests import (
     features,
@@ -368,7 +364,7 @@ class TestHttpTransportUrls(tests.TestCase):
 
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
-        t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
+        self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
         self.assertRaises(errors.InvalidURL,
                           self._transport,
                           'http://http://bazaar-vcs.org/bzr/bzr.dev/')
@@ -813,7 +809,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         t = self.get_readonly_transport()
         # force transport to issue multiple requests
         t._get_max_size = 2
-        l = list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
+        list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
         # The server should have issued 3 requests
         self.assertEqual(3, server.GET_request_nb)
         self.assertEqual('0123456789', t.get_bytes('a'))
@@ -896,6 +892,9 @@ class MultipleRangeWithoutContentLengthRequestHandler(
     def get_multiple_ranges(self, file, file_size, ranges):
         self.send_response(206)
         self.send_header('Accept-Ranges', 'bytes')
+        # XXX: this is strange; the 'random' name below seems undefined and
+        # yet the tests pass -- mbp 2010-10-11
+        raise AssertionError()
         boundary = "%d" % random.randint(0,0x7FFFFFFF)
         self.send_header("Content-Type",
                          "multipart/byteranges; boundary=%s" % boundary)
