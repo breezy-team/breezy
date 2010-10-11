@@ -14,83 +14,96 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+
+"""Tests for generating multiple tests for scenarios."""
+
 from bzrlib.tests import (
     TestCase,
     TestLoader,
     iter_suite_tests,
+    multiply_tests,
     )
 
-from bzrlib.tests.variations import (
-    TestVariation,
-    load_tests_from_their_variations,
-    multiply_tests_by_their_variations,
-    multiply_tests_by_variations,
+from bzrlib.tests.scenarios import (
+    load_tests_from_scenarios,
+    multiply_scenarios,
+    multiply_tests_by_their_scenarios,
     )
 
 
 # There aren't any actually parameterized tests here, but this exists as a
 # demonstration; so that you can interactively observe them being multiplied;
 # and so that we check everything hooks up properly.
-load_tests = load_tests_from_their_variations
+load_tests = load_tests_from_scenarios
 
 
-class SimpleVariation(TestVariation):
+def vary_by_color():
+    """Very simple static variation example"""
+    for color in ['red', 'green', 'blue']:
+        yield (color, {'color': color})
 
-    def __init__(self, attr_name):
-        # this variation is unusual in having constructor parameters -- most
-        # will be static -- but this lets us test having multiply variations
-        # of a single test
-        self.attr_name = attr_name
-        
-    def scenarios(self):
-        return [
-            ('a', {self.attr_name: 'a'}),
-            ('b', {self.attr_name: 'b'})
-        ]
+
+def vary_named_attribute(attr_name):
+    """More sophisticated: vary a named parameter"""
+    yield ('a', {attr_name: 'a'})
+    yield ('b', {attr_name: 'b'})
 
 
 def get_generated_test_attributes(suite, attr_name):
+    """Return the `attr_name` attribute from all tests in the suite"""
     return sorted([
         getattr(t, attr_name) for t in iter_suite_tests(suite)])
 
 
-class TestTestVariations(TestCase):
+class TestTestScenarios(TestCase):
 
-    def test_multiply_tests_by_variations(self):
+    def test_multiply_tests(self):
         loader = TestLoader()
         suite = loader.suiteClass()
-        multiply_tests_by_variations(
+        multiply_tests(
             self,
-            [SimpleVariation('value')],
+            vary_by_color(),
             suite)
         self.assertEquals(
-            ['a', 'b'],
-            get_generated_test_attributes(suite, 'value'))
+            ['blue', 'green', 'red'],
+            get_generated_test_attributes(suite, 'color'))
 
-    def test_multiply_tests_by_their_variations(self):
+    def test_multiply_scenarios_from_generators(self):
+        """It's safe to multiply scenarios that come from generators"""
+        s = multiply_scenarios(
+            vary_named_attribute('one'),
+            vary_named_attribute('two'),
+            )
+        self.assertEquals(
+            2*2,
+            len(s),
+            s)
+
+    def test_multiply_tests_by_their_scenarios(self):
         loader = TestLoader()
         suite = loader.suiteClass()
-        multiply_tests_by_their_variations(PretendVaryingTest('test_nothing'),
+        test_instance = PretendVaryingTest('test_nothing')
+        multiply_tests_by_their_scenarios(
+            test_instance,
             suite)
         self.assertEquals(
             ['a', 'a', 'b', 'b'],
             get_generated_test_attributes(suite, 'value'))
 
-    def test_multiply_tests_no_variations(self):
-        """Tests with no variations attribute aren't multiplied"""
+    def test_multiply_tests_no_scenarios(self):
+        """Tests with no scenarios attribute aren't multiplied"""
         suite = TestLoader().suiteClass()
-        multiply_tests_by_their_variations(self,
+        multiply_tests_by_their_scenarios(self,
             suite)
-        self.assertLength(
-            list(iter_suite_tests(suite)), 1)
+        self.assertLength(1, list(iter_suite_tests(suite)))
 
 
 class PretendVaryingTest(TestCase):
     
-    variations = [
-        SimpleVariation('value'), 
-        SimpleVariation('other'),
-        ]
+    scenarios = multiply_scenarios(
+        vary_named_attribute('value'), 
+        vary_named_attribute('other'),
+        )
 
     def test_nothing(self):
         """This test exists just so it can be multiplied"""

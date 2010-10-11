@@ -364,7 +364,6 @@ class TestHttpUrls(tests.TestCase):
 
 
 class TestHttpTransportUrls(tests.TestCase):
-
     """Test the http urls."""
 
     variations = [VaryByHttpClientImplementation()]

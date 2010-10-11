@@ -826,8 +826,10 @@ which depend on attributes of the test object being pre-set with the
 values to which the test should be applied.  The test suite should then
 also provide a list of scenarios in which to run the tests.
 
-Typically ``multiply_tests_from_modules`` should be called from the test
-module's ``load_tests`` function.
+A single *scenario* is defined by a `(name, parameter_dict)` tuple.  The
+short string name is combined with the name of the test method to form the
+test instance name.  The parameter dict is merged into the instance's
+attributes.
 
 A higher-level interface for multiplying tests is *test variations*.  A
 test class can declare a list of `TestVariation` objects, and the tests
@@ -837,25 +839,18 @@ will be repeated for the cross-product of variations::
 
     variations = [VaryByRepositoryFormat(), VaryByTreeFormat()]
 
-the `TestVariation` must just provide a `scenarios` method that yields
-`(variation_name, attr_dict)` pairs.  It may do this by looking in a
-registry or at other dynamic information, so that plugins can cause new
-scenarios to run.  Variations may of course take constructor paramaters to
-change their behaviour.
+you should then provide a `load_tests` method that will expand the tests.
+A simple way to do this is just::
 
-If you use `variations`, adding this line to your test module will make
-all classes automatically expand out.  You must have either this or a
-manual `load_test`::
+  load_tests = load_tests_from_scenarios
 
-    from bzrlib.tests.variations import (
-        load_tests_from_their_variations,
-        )
+The `load_tests` declaration or definition should be near the top of the
+file so its effect can be seen.
 
-    load_tests = load_tests_from_their_variations
+This is similar to the interface provided by `testscenarios`_ but we don't
+currently use that implementation.
 
-Put the `load_tests` declaration or assignment immediately after the
-import statements, so people can see the effect it will have on the rest
-of the file.
+.. _testscenarios: http://launchpad.net/testscenarios
 
 
 Test support
