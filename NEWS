@@ -158,6 +158,12 @@ Internals
 Testing
 *******
 
+* Add a new simpler way to generate multiple test variations, by setting
+  the `scenarios` attribute of a test class to a list of scenarios
+  descriptions, then using `load_tests_apply_scenarios`.  (See the testing
+  guide and `bzrlib.tests.scenarios`.) Simplify `test_http` using this.
+  (Martin Pool, #597791)
+
 * Add ``tests/ssl_certs/ca.crt`` to the required test files list. Test
   involving the pycurl https test server fail otherwise when running
   selftest from an installed version. (Vincent Ladeuil, #651706)

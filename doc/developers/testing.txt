@@ -811,17 +811,11 @@ with only one particular transport.  Once it's isolated, we can consider
 whether a test should be added for that particular implementation,
 or for all implementations of the interface.
 
-The multiplication of tests for different implementations is normally
-accomplished by overriding the ``load_tests`` function used to load tests
-from a module.  This function typically loads all the tests, then applies
-a TestProviderAdapter to them, which generates a longer suite containing
-all the test variations.
-
 See also `Per-implementation tests`_ (above).
 
 
-Test scenarios
---------------
+Test scenarios and variations
+-----------------------------
 
 Some utilities are provided for generating variations of tests.  This can
 be used for per-implementation tests, or other cases where the same test
@@ -832,8 +826,24 @@ which depend on attributes of the test object being pre-set with the
 values to which the test should be applied.  The test suite should then
 also provide a list of scenarios in which to run the tests.
 
-Typically ``multiply_tests_from_modules`` should be called from the test
-module's ``load_tests`` function.
+A single *scenario* is defined by a `(name, parameter_dict)` tuple.  The
+short string name is combined with the name of the test method to form the
+test instance name.  The parameter dict is merged into the instance's
+attributes.
+
+For example::
+
+    load_tests = load_tests_apply_scenarios
+
+    class TestCheckout(TestCase):
+
+    variations = multiply_scenarios(
+        VaryByRepositoryFormat(), 
+        VaryByTreeFormat(),
+        )
+
+The `load_tests` declaration or definition should be near the top of the
+file so its effect can be seen.
 
 
 Test support
