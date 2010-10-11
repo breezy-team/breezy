@@ -252,8 +252,12 @@ class cmd_status(Command):
     To skip the display of pending merge information altogether, use
     the no-pending option or specify a file/directory.
 
-    If a revision argument is given, the status is calculated against
-    that revision, or between two revisions if two are provided.
+    To compare the working directory to a specific revision, pass a
+    single revision to the revision argument.
+
+    To see which files have changed in a specific revision, or between
+    two revisions, pass a revision range to the revision argument.
+    This will produce the same results as calling 'bzr diff --summarize'.
     """
 
     # TODO: --no-recurse, --recurse options
