@@ -3997,15 +3997,15 @@ def multiply_scenarios(*scenarios):
 
     It is safe to pass scenario generators or iterators.
 
-    :returns: A list of compound scenarios.
+    :returns: A list of compound scenarios: the cross-product of all 
+        scenarios, with the names concatenated and the parameters
+        merged together.
     """
     return reduce(_multiply_two_scenarios, map(list, scenarios))
 
 
 def _multiply_two_scenarios(scenarios_left, scenarios_right):
     """Multiply two sets of scenarios.
-
-    It is safe to pass generators or iterators for as scenarios.
 
     :returns: the cartesian product of the two sets of scenarios, that is
         a scenario for every possible combination of a left scenario and a
