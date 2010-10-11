@@ -893,8 +893,7 @@ class MultipleRangeWithoutContentLengthRequestHandler(
         self.send_response(206)
         self.send_header('Accept-Ranges', 'bytes')
         # XXX: this is strange; the 'random' name below seems undefined and
-        # yet the tests pass -- mbp 2010-10-11
-        raise AssertionError()
+        # yet the tests pass -- mbp 2010-10-11 bug 658773
         boundary = "%d" % random.randint(0,0x7FFFFFFF)
         self.send_header("Content-Type",
                          "multipart/byteranges; boundary=%s" % boundary)
