@@ -16,6 +16,10 @@ Compatibility Breaks
 New Features
 ************
 
+* Provide a configuration option "default_format" that controls the
+  default format for new branches created with ``bzr init``.
+  (Neil Martinsen-Burrell, #484101)
+
 Bug Fixes
 *********
 
@@ -91,8 +95,8 @@ Bug Fixes
   (Toshio Kuratomi, #612096)
 
 * Print junk rather than throwing a UnicodeDecodeError from ``bzr version-info``
-  when using the rio format (with non-ascii information) on a non-utf-8 terminal.
-  (Andrej A Antonov, #518609)
+  when using the rio format (with non-ascii information) on a non-utf-8
+  terminal.  (Andrej A Antonov, #518609)
 
 * Skip tests that needs a bzr source tree when there isn't one. This is
   needed to succesfully run the test suite for installed versions.

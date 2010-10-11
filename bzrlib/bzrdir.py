@@ -3345,7 +3345,11 @@ register_metadir(controldir.format_registry, 'default-rich-root',
     help='Same as 2a.')
 
 # The current format that is made on 'bzr init'.
-controldir.format_registry.set_default('2a')
+format_name = config.GlobalConfig().get_user_option('default_format')
+if format_name is None:
+    controldir.format_registry.set_default('2a')
+else:
+    controldir.format_registry.set_default(format_name)
 
 # XXX 2010-08-20 JRV: There is still a lot of code relying on
 # bzrlib.bzrdir.format_registry existing. When BzrDir.create/BzrDir.open/etc
