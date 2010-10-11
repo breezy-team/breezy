@@ -723,6 +723,15 @@ class NotBranchError(PathError):
                     self.bzrdir.open_repository()
                 except NoRepositoryPresent:
                     self.detail = ''
+                except Exception:
+                    # Just ignore unexpected errors.  Raising arbitrary errors
+                    # during str(err) can provoke strange bugs.  Concretely
+                    # Launchpad's codehosting managed to raise NotBranchError
+                    # here, and then get stuck in an infinite loop/recursion
+                    # trying to str() that error.  All this error really cares
+                    # about that there's no working repository there, and if
+                    # open_repository() fails, there probably isn't.
+                    self.detail = ''
                 else:
                     self.detail = ': location is a repository'
             else:
