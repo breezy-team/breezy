@@ -375,6 +375,13 @@ class TestDebuntuExpansions(TestCaseInTempDir):
             self, path, dict(urls=[
                 'http://bazaar.launchpad.net/' + url_suffix]))
 
+    def assertURL(self, expected_url, shortcut, package='foo', distro='ubuntu',
+                  series=None):
+        factory = self._make_factory(package=package, distro=distro,
+                                     series=series)
+        self.assertEqual('http://bazaar.launchpad.net/~branch/' + expected_url,
+                         self.directory._resolve(shortcut, factory))
+
     # Bogus distro.
 
     def test_bogus_distro(self):
@@ -392,137 +399,81 @@ class TestDebuntuExpansions(TestCaseInTempDir):
     def test_missing_ubuntu_distroseries_without_project(self):
         # Launchpad does not hold source packages for Intrepid.  Missing or
         # bogus distroseries with no project name is treated like a project.
-        factory = self._make_factory(package='intrepid')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/intrepid',
-            self.directory._resolve('ubuntu:intrepid', factory))
+        self.assertURL('ubuntu/intrepid', 'ubuntu:intrepid', package='intrepid')
 
     def test_missing_ubuntu_distroseries_with_project(self):
         # Launchpad does not hold source packages for Intrepid.  Missing or
         # bogus distroseries with a project name is treated like an unknown
         # series (i.e. we keep it verbatim).
-        factory = self._make_factory(series='intrepid')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/intrepid/foo',
-            self.directory._resolve('ubuntu:intrepid/foo', factory))
+        self.assertURL('ubuntu/intrepid/foo',
+                       'ubuntu:intrepid/foo', series='intrepid')
 
     def test_missing_debian_distroseries(self):
         # Launchpad does not hold source packages for unstable.  Missing or
         # bogus distroseries is treated like a project.
-        factory = self._make_factory(package='sid', distro='debian')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/debian/sid',
-            self.directory._resolve('debianlp:sid', factory))
+        self.assertURL('debian/sid',
+                       'debianlp:sid', package='sid', distro='debian')
 
     # Ubuntu Default distro series.
 
     def test_ubuntu_default_distroseries_expansion(self):
-        factory = self._make_factory(package='foo')
-        self.assertEqual('http://bazaar.launchpad.net/~branch/ubuntu/foo',
-                         self.directory._resolve('ubuntu:foo', factory)),
+        self.assertURL('ubuntu/foo', 'ubuntu:foo')
 
     def test_ubuntu_natty_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='natty')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/natty/foo',
-            self.directory._resolve('ubuntu:natty/foo', factory)),
+        self.assertURL('ubuntu/natty/foo', 'ubuntu:natty/foo', series='natty')
 
     def test_ubuntu_n_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='natty')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/natty/foo',
-            self.directory._resolve('ubuntu:n/foo', factory)),
+        self.assertURL('ubuntu/natty/foo', 'ubuntu:n/foo', series='natty')
 
     def test_ubuntu_maverick_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='maverick')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/maverick/foo',
-            self.directory._resolve('ubuntu:maverick/foo', factory)),
+        self.assertURL('ubuntu/maverick/foo', 'ubuntu:maverick/foo',
+                       series='maverick')
 
     def test_ubuntu_m_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='maverick')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/maverick/foo',
-            self.directory._resolve('ubuntu:m/foo', factory)),
+        self.assertURL('ubuntu/maverick/foo', 'ubuntu:m/foo', series='maverick')
 
     def test_ubuntu_lucid_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='lucid')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/lucid/foo',
-            self.directory._resolve('ubuntu:lucid/foo', factory)),
+        self.assertURL('ubuntu/lucid/foo', 'ubuntu:lucid/foo', series='lucid')
 
     def test_ubuntu_l_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='lucid')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/lucid/foo',
-            self.directory._resolve('ubuntu:l/foo', factory)),
+        self.assertURL('ubuntu/lucid/foo', 'ubuntu:l/foo', series='lucid')
 
     def test_ubuntu_karmic_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='karmic')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/karmic/foo',
-            self.directory._resolve('ubuntu:karmic/foo', factory)),
+        self.assertURL('ubuntu/karmic/foo', 'ubuntu:karmic/foo',
+                       series='karmic')
 
     def test_ubuntu_k_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='karmic')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/karmic/foo',
-            self.directory._resolve('ubuntu:k/foo', factory)),
+        self.assertURL('ubuntu/karmic/foo', 'ubuntu:k/foo', series='karmic')
 
     def test_ubuntu_jaunty_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='jaunty')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/jaunty/foo',
-            self.directory._resolve('ubuntu:jaunty/foo', factory)),
+        self.assertURL('ubuntu/jaunty/foo', 'ubuntu:jaunty/foo',
+                       series='jaunty')
 
     def test_ubuntu_j_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='jaunty')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/jaunty/foo',
-            self.directory._resolve('ubuntu:j/foo', factory)),
+        self.assertURL('ubuntu/jaunty/foo', 'ubuntu:j/foo', series='jaunty')
 
     def test_ubuntu_hardy_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='hardy')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/hardy/foo',
-            self.directory._resolve('ubuntu:hardy/foo', factory)),
+        self.assertURL('ubuntu/hardy/foo', 'ubuntu:hardy/foo', series='hardy')
 
     def test_ubuntu_h_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='hardy')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/hardy/foo',
-            self.directory._resolve('ubuntu:h/foo', factory)),
+        self.assertURL('ubuntu/hardy/foo', 'ubuntu:h/foo', series='hardy')
 
     def test_ubuntu_dapper_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='dapper')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/dapper/foo',
-            self.directory._resolve('ubuntu:dapper/foo', factory)),
+        self.assertURL('ubuntu/dapper/foo', 'ubuntu:dapper/foo',
+                       series='dapper')
 
     def test_ubuntu_d_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', series='dapper')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/ubuntu/dapper/foo',
-            self.directory._resolve('ubuntu:d/foo', factory)),
+        self.assertURL('ubuntu/dapper/foo', 'ubuntu:d/foo', series='dapper')
 
     # Debian default distro series.
 
     def test_debian_default_distroseries_expansion(self):
-        factory = self._make_factory(package='foo', distro='debian')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/debian/foo',
-            self.directory._resolve('debianlp:foo', factory))
+        self.assertURL('debian/foo', 'debianlp:foo', distro='debian')
 
     def test_debian_squeeze_distroseries_expansion(self):
-        factory = self._make_factory(
-            package='foo', distro='debian', series='squeeze')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/debian/squeeze/foo',
-            self.directory._resolve('debianlp:squeeze/foo', factory)),
+        self.assertURL('debian/squeeze/foo', 'debianlp:squeeze/foo',
+                       distro='debian', series='squeeze')
 
     def test_debian_lenny_distroseries_expansion(self):
-        factory = self._make_factory(
-            package='foo', distro='debian', series='lenny')
-        self.assertEqual(
-            'http://bazaar.launchpad.net/~branch/debian/lenny/foo',
-            self.directory._resolve('debianlp:lenny/foo', factory)),
+        self.assertURL('debian/lenny/foo', 'debianlp:lenny/foo',
+                       distro='debian', series='lenny')
