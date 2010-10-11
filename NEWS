@@ -36,7 +36,7 @@ New Features
   Also, bzr will recognize if the 'ssh' comand is a symlink to lsh.
   (Matthew Gordon, #374700)
 
-* The ``pull`` and ``update`` commands now take a ``-show-base``
+* The ``pull`` and ``update`` commands now take a ``--show-base``
   option that, in the case of conflicts, shows the base revision text.
   (Rory Yorke,  #202374)
 
