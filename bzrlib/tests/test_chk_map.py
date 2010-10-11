@@ -16,8 +16,6 @@
 
 """Tests for maps built on a CHK versionedfiles facility."""
 
-from itertools import izip
-
 from bzrlib import (
     chk_map,
     errors,

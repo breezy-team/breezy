@@ -1369,7 +1369,7 @@ class InternalNode(Node):
         return self._search_prefix
 
     def unmap(self, store, key, check_remap=True):
-        """Remove key from this node and it's children."""
+        """Remove key from this node and its children."""
         if not len(self._items):
             raise AssertionError("can't unmap in an empty InternalNode.")
         children = [node for node, _

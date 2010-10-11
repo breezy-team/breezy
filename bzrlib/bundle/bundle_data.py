@@ -289,7 +289,7 @@ class BundleInfo(object):
     def _validate_revision(self, inventory, revision_id):
         """Make sure all revision entries match their checksum."""
 
-        # This is a mapping from each revision id to it's sha hash
+        # This is a mapping from each revision id to its sha hash
         rev_to_sha1 = {}
 
         rev = self.get_revision(revision_id)

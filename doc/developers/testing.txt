@@ -711,6 +711,22 @@ new feature instance with::
         _test_needs_features = [features.apport]
 
 
+Testing deprecated code
+-----------------------
+
+When code is deprecated, it is still supported for some length of time,
+usually until the next major version. The ``applyDeprecated`` helper
+wraps calls to deprecated code to verify that it is correctly issuing the
+deprecation warning, and also prevents the warnings from being printed
+during test runs.
+
+Typically patches that apply the ``@deprecated_function`` decorator should
+update the accompanying tests to use the ``applyDeprecated`` wrapper.
+
+``applyDeprecated`` is defined in ``bzrlib.tests.TestCase``. See the API
+docs for more details.
+
+
 Testing exceptions and errors
 -----------------------------
 

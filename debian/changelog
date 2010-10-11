@@ -1,3 +1,10 @@
+bzr (2.3.0~beta2-1) unstable; urgency=low
+
+  * New upstream release.
+  * Rebuild with python2.5 modules. Closes: #593409
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 11 Oct 2010 02:21:33 +0200
+
 bzr (2.3.0~beta1-1) experimental; urgency=low
 
   * New upstream release.

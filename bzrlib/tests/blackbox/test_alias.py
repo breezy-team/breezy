@@ -46,6 +46,9 @@ class TestAlias(tests.TestCaseWithTransport):
 
     def test_unicode_alias(self):
         """Unicode aliases should work (Bug #529930)"""
+        # XXX: strictly speaking, lack of unicode filenames doesn't imply that
+        # unicode command lines aren't available.
+        self.requireFeature(tests.UnicodeFilenameFeature)
         file_name = u'foo\xb6'
 
         tree = self.make_branch_and_tree('.')

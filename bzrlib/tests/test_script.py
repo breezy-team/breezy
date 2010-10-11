@@ -19,6 +19,7 @@ from bzrlib import (
     commands,
     osutils,
     tests,
+    trace,
     ui,
     )
 from bzrlib.tests import script
@@ -244,6 +245,15 @@ $ cat '*'
 $ echo 'cat' "dog" '"chicken"' "'dragon'"
 cat dog "chicken" 'dragon'
 """)
+
+    def test_verbosity_isolated(self):
+        """Global verbosity is isolated from commands run in scripts.
+        """
+        # see also 656694; we should get rid of global verbosity
+        self.run_script("""
+        $ bzr init --quiet a
+        """)
+        self.assertEquals(trace.is_quiet(), False)
 
 
 class TestCat(script.TestCaseWithTransportAndScript):

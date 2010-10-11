@@ -21,6 +21,8 @@ import os
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
+import itertools
+import re
 import sys
 import time
 
@@ -923,13 +925,16 @@ class cmd_pull(Command):
                  "branch.  Local pulls are not applied to "
                  "the master branch."
             ),
+        Option('show-base',
+            help="Show base revision text in conflicts.")
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
             revision=None, verbose=False,
-            directory=None, local=False):
+            directory=None, local=False,
+            show_base=False):
         # FIXME: too much stuff is in the command class
         revision_id = None
         mergeable = None
@@ -943,6 +948,9 @@ class cmd_pull(Command):
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
             self.add_cleanup(branch_to.lock_write().unlock)
+
+        if tree_to is None and show_base:
+            raise errors.BzrCommandError("Need working tree for --show-base.")
 
         if local and not branch_to.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -994,7 +1002,8 @@ class cmd_pull(Command):
                 view_info=view_info)
             result = tree_to.pull(
                 branch_from, overwrite, revision_id, change_reporter,
-                possible_transports=possible_transports, local=local)
+                possible_transports=possible_transports, local=local,
+                show_base=show_base)
         else:
             result = branch_to.pull(
                 branch_from, overwrite, revision_id, local=local)
@@ -1354,16 +1363,22 @@ class cmd_update(Command):
     If you want to discard your local changes, you can just do a
     'bzr revert' instead of 'bzr commit' after the update.
 
+    If you want to restore a file that has been removed locally, use
+    'bzr revert' instead of 'bzr update'.
+
     If the tree's branch is bound to a master branch, it will also update
     the branch from the master.
     """
 
     _see_also = ['pull', 'working-trees', 'status-flags']
     takes_args = ['dir?']
-    takes_options = ['revision']
+    takes_options = ['revision',
+                     Option('show-base',
+                            help="Show base revision text in conflicts."),
+                     ]
     aliases = ['up']
 
-    def run(self, dir='.', revision=None):
+    def run(self, dir='.', revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError(
                         "bzr update --revision takes exactly one revision")
@@ -1409,7 +1424,8 @@ class cmd_update(Command):
                 change_reporter,
                 possible_transports=possible_transports,
                 revision=revision_id,
-                old_tip=old_tip)
+                old_tip=old_tip,
+                show_base=show_base)
         except errors.NoSuchRevision, e:
             raise errors.BzrCommandError(
                                   "branch has no revision %s\n"
@@ -1491,13 +1507,20 @@ class cmd_remove(Command):
             title='Deletion Strategy', value_switches=True, enum_switch=False,
             safe='Backup changed files (default).',
             keep='Delete from bzr but leave the working copy.',
+            no_backup='Don\'t backup changed files.',
             force='Delete all the specified files, even if they can not be '
-                'recovered and even if they are non-empty directories.')]
+                'recovered and even if they are non-empty directories. '
+                '(deprecated, use no-backup)')]
     aliases = ['rm', 'del']
     encoding_type = 'replace'
 
     def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
+        if file_deletion_strategy == 'force':
+            note("(The --force option is deprecated, rather use --no-backup "
+                "in future.)")
+            file_deletion_strategy = 'no-backup'
+
         tree, file_list = WorkingTree.open_containing_paths(file_list)
 
         if file_list is not None:
@@ -1524,7 +1547,7 @@ class cmd_remove(Command):
             file_deletion_strategy = 'keep'
         tree.remove(file_list, verbose=verbose, to_file=self.outf,
             keep_files=file_deletion_strategy=='keep',
-            force=file_deletion_strategy=='force')
+            force=(file_deletion_strategy=='no-backup'))
 
 
 class cmd_file_id(Command):
@@ -4838,11 +4861,17 @@ class cmd_break_lock(Command):
     takes_options = [
         Option('config',
                help='LOCATION is the directory where the config lock is.'),
+        Option('force',
+            help='Do not ask for confirmation before breaking the lock.'),
         ]
 
-    def run(self, location=None, config=False):
+    def run(self, location=None, config=False, force=False):
         if location is None:
             location = u'.'
+        if force:
+            ui.ui_factory = ui.ConfirmationUserInterfacePolicy(ui.ui_factory,
+                None,
+                {'bzrlib.lockdir.break': True})
         if config:
             conf = _mod_config.LockableConfig(file_name=location)
             conf.break_lock()
@@ -4942,7 +4971,7 @@ class cmd_join(Command):
     not part of it.  (Such trees can be produced by "bzr split", but also by
     running "bzr branch" with the target inside a tree.)
 
-    The result is a combined tree, with the subtree no longer an independant
+    The result is a combined tree, with the subtree no longer an independent
     part.  This is marked as a merge of the subtree into the containing tree,
     and all history is preserved.
     """
@@ -5377,7 +5406,9 @@ class cmd_tags(Command):
             help='Branch whose tags should be displayed.'),
         RegistryOption.from_kwargs('sort',
             'Sort tags by different criteria.', title='Sorting',
-            alpha='Sort tags lexicographically (default).',
+            natural='Sort numeric substrings as numbers:'
+                    ' suitable for version numbers. (default)',
+            alpha='Sort tags lexicographically.',
             time='Sort tags chronologically.',
             ),
         'show-ids',
@@ -5387,7 +5418,7 @@ class cmd_tags(Command):
     @display_command
     def run(self,
             directory='.',
-            sort='alpha',
+            sort='natural',
             show_ids=False,
             revision=None,
             ):
@@ -5405,7 +5436,13 @@ class cmd_tags(Command):
             # only show revisions between revid1 and revid2 (inclusive)
             tags = [(tag, revid) for tag, revid in tags if
                 graph.is_between(revid, revid1, revid2)]
-        if sort == 'alpha':
+        if sort == 'natural':
+            def natural_sort_key(tag):
+                return [f(s) for f,s in 
+                        zip(itertools.cycle((unicode.lower,int)),
+                                            re.split('([0-9]+)', tag[0]))]
+            tags.sort(key=natural_sort_key)
+        elif sort == 'alpha':
             tags.sort()
         elif sort == 'time':
             timestamps = {}
