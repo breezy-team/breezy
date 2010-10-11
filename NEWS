@@ -115,6 +115,10 @@ Improvements
   which is now deprecated.
   (Marius Kruger, #400554)
 
+* When using the pycurl client module, Bazaar shows some of the text from
+  http server error messages.
+  (Martin Pool, #656667)
+
 Documentation
 *************
 

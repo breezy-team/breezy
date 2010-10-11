@@ -3882,6 +3882,7 @@ def _test_suite_modules_to_doctest():
         'bzrlib.tests',
         'bzrlib.tests.fixtures',
         'bzrlib.timestamp',
+        'bzrlib.transport.http',
         'bzrlib.version_info_formats.format_custom',
         ]
 
