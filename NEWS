@@ -70,6 +70,10 @@ New Features
 * Add ``annotate`` revision specifier, which selects the revision that
   introduced a specified line of a file.  (Aaron Bentley)
 
+* Add ``-Dmem_dump`` debug flag, which uses meliae to dump memory to 
+  a file upon an out of memory error.
+  (Karl Bielefeldt, #551391)
+
 * ``bzr status`` now displays a summary of existing shelves after
   the other status information. This is done using a ``post_status``
   hook.
