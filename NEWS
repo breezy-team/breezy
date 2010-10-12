@@ -16,6 +16,10 @@ Compatibility Breaks
 New Features
 ************
 
+* Add --no-tree option to 'bzr push' and 'bzr init' for creating a
+  new or mirrored branch without working trees.
+  (Matthew Gordon, #506730)
+
 * New shortcut url schemes ``ubuntu:`` and ``debianlp:`` access source
   branches on Launchpad.  E.g. ``bzr branch ubuntu:foo`` gives you the source
   branch for project ``foo`` in the current distroseries for Ubuntu while
