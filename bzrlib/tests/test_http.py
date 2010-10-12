@@ -1604,34 +1604,15 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         ui.ui_factory = tests.TestUIFactory(stdin=stdin_content,
                                             stderr=tests.StringIOWrapper())
         # Create a minimal config file with the right password
-        conf = config.AuthenticationConfig()
-        conf._get_config().update(
-            {'httptest': {'scheme': 'http', 'port': self.server.port,
-                          'user': user, 'password': password}})
-        conf._save()
+        _setup_authentication_config(
+            scheme='http', 
+            port=self.server.port,
+            user=user,
+            password=password)
         # Issue a request to the server to connect
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should have  been left untouched
         self.assertEqual(stdin_content, ui.ui_factory.stdin.readline())
-        # Only one 'Authentication Required' error should occur
-        self.assertEqual(1, self.server.auth_required_errors)
-
-    def test_user_from_auth_conf(self):
-        if self._testing_pycurl():
-            raise tests.TestNotApplicable(
-                'pycurl does not support authentication.conf')
-        user = 'joe'
-        password = 'foo'
-        self.server.add_user(user, password)
-        # Create a minimal config file with the right password
-        conf = config.AuthenticationConfig()
-        conf._get_config().update(
-            {'httptest': {'scheme': 'http', 'port': self.server.port,
-                          'user': user, 'password': password}})
-        conf._save()
-        t = self.get_user_transport(None, None)
-        # Issue a request to the server to connect
-        self.assertEqual('contents of a\n', t.get('a').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
@@ -1656,6 +1637,56 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         # initial 'who are you' and a second 'who are you' with the new nonce)
         self.assertEqual(2, self.server.auth_required_errors)
 
+    def test_user_from_auth_conf(self):
+        if self._testing_pycurl():
+            raise tests.TestNotApplicable(
+                'pycurl does not support authentication.conf')
+        user = 'joe'
+        password = 'foo'
+        self.server.add_user(user, password)
+        _setup_authentication_config(
+            scheme='http', 
+            port=self.server.port,
+            user=user,
+            password=password)
+        t = self.get_user_transport(None, None)
+        # Issue a request to the server to connect
+        self.assertEqual('contents of a\n', t.get('a').read())
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
+
+
+def _setup_authentication_config(**kwargs):
+    conf = config.AuthenticationConfig()
+    conf._get_config().update({'httptest': kwargs})
+    conf._save()
+
+
+
+class TestUrllib2AuthHandler(tests.TestCase):
+    """Unit tests for glue by which urllib2 asks us for authentication"""
+
+    def test_get_user_password_without_port(self):
+        """We cope if urllib2 doesn't tell us the port.
+
+        See https://bugs.launchpad.net/bzr/+bug/654684
+        """
+        user = 'joe'
+        password = 'foo'
+        _setup_authentication_config(
+            scheme='http', 
+            port=80,
+            host='localhost',
+            user=user,
+            password=password)
+        handler = _urllib2_wrappers.AbstractAuthHandler()
+        got_pass = handler.get_user_password(dict(
+            protocol='http',
+            host='localhost',
+            path='/',
+            realm='Realm',
+            ))
+        self.assertEquals(password, got_pass)
 
 
 class TestProxyAuth(TestAuth):
