@@ -1663,7 +1663,7 @@ def _setup_authentication_config(**kwargs):
 
 
 
-class TestUrllib2AuthHandler(tests.TestCase):
+class TestUrllib2AuthHandler(tests.TestCaseWithTransport):
     """Unit tests for glue by which urllib2 asks us for authentication"""
 
     def test_get_user_password_without_port(self):
@@ -1675,18 +1675,18 @@ class TestUrllib2AuthHandler(tests.TestCase):
         password = 'foo'
         _setup_authentication_config(
             scheme='http', 
-            port=80,
             host='localhost',
             user=user,
             password=password)
-        handler = _urllib2_wrappers.AbstractAuthHandler()
+        handler = _urllib2_wrappers.HTTPAuthHandler()
         got_pass = handler.get_user_password(dict(
+            user='joe',
             protocol='http',
             host='localhost',
             path='/',
             realm='Realm',
             ))
-        self.assertEquals(password, got_pass)
+        self.assertEquals((user, password), got_pass)
 
 
 class TestProxyAuth(TestAuth):
