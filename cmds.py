@@ -49,6 +49,8 @@ def collapse_by_person(revisions, canonical_committer):
         authors = rev.get_apparent_authors()
         for author in authors:
             username, email = config.parse_username(author)
+            if len(username) == 0 and len(email) == 0:
+                continue
             canon_author = canonical_committer[(username, email)]
             info = committer_to_info.setdefault(canon_author, ([], {}, {}))
             info[0].append(rev)
