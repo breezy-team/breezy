@@ -92,6 +92,17 @@ Documentation
   (Vincent Ladeuil, #219334)
 
 
+Expected releases for the 2.3 series
+************************************
+
+The 2.3 series has entered the beta phase and 2.3.0 should be released soon
+enough to be included into Natty Narwhal. 
+
+As a rough estimate, consider that 2.3.0 will be released in February
+2011 and be supported until August 2012. Additional releases will be
+made if critical bugs are encountered
+
+
 Further information
 *******************
 
