@@ -73,12 +73,12 @@ class LaunchpadDirectory(object):
                  _lp_login=None):
         """Resolve the base URL for this transport."""
         # Do ubuntu: and debianlp: expansions.
-        result = urlsplit(url)
-        if result.scheme in ('ubuntu', 'debianlp'):
-            if result.scheme == 'ubuntu':
+        scheme, netloc, path, query, fragment = urlsplit(url)
+        if scheme in ('ubuntu', 'debianlp'):
+            if scheme == 'ubuntu':
                 distro = 'ubuntu'
                 distro_series = _ubuntu_series_shortcuts
-            elif result.scheme == 'debianlp':
+            elif scheme == 'debianlp':
                 distro = 'debian'
                 # No shortcuts for Debian distroseries.
                 distro_series = {}
@@ -87,7 +87,7 @@ class LaunchpadDirectory(object):
             # Split the path.  It's either going to be 'project' or
             # 'series/project', but recognize that it may be a series we don't
             # know about.
-            path_parts = result.path.split('/')
+            path_parts = path.split('/')
             if len(path_parts) == 1:
                 # It's just a project name.
                 lp_url_template = 'lp:%(distro)s/%(project)s'
@@ -108,11 +108,11 @@ class LaunchpadDirectory(object):
                 distro=distro,
                 series=series,
                 project=project)
-            result = urlsplit(url)
+            scheme, netloc, path, query, fragment = urlsplit(url)
         service = LaunchpadService.for_url(url)
         if _lp_login is None:
             _lp_login = get_lp_login()
-        path = result[2].strip('/')
+        path = path.strip('/')
         if path.startswith('~/'):
             if _lp_login is None:
                 raise errors.InvalidURL(path=url,
