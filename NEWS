@@ -16,6 +16,13 @@ Compatibility Breaks
 New Features
 ************
 
+* New shortcut url schemes ``ubuntu:`` and ``debianlp:`` access source
+  branches on Launchpad.  E.g. ``bzr branch ubuntu:foo`` gives you the source
+  branch for project ``foo`` in the current distroseries for Ubuntu while
+  ``bzr branch debianlp:lenny/foo`` gives you the source branch (on Launchpad)
+  for project ``foo`` in Debian Lenny.
+  (Barry Warsaw, #609186)
+
 * Provide a configuration option "default_format" that controls the
   default format for new branches created with ``bzr init``.
   (Neil Martinsen-Burrell, #484101)
