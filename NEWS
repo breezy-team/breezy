@@ -59,6 +59,10 @@ API Changes
 Internals
 *********
 
+* ``tools/fixed-in.py`` find a bug in NEWS from its number or a regexp
+  matching the news entry and display the corresponding release, date, fix
+  authors and the news entry itself. (Vincent Ladeuil)
+
 Testing
 *******
 
