@@ -244,6 +244,41 @@ it if they are generally applicable to all users and meet the project's
 quality standards.
 
 
+Package source branches
+-----------------------
+
+When `maintaining packages for Ubuntu using Bazaar`_ you can easily access the
+package's source branch on Launchpad.  The package's source branch in the
+current (default) series can be downloaded like this::
+
+  bzr branch ubuntu:package
+
+where *package* is the name of the Ubuntu package you want to access.  To
+download the package branch for a specific series in Ubuntu (e.g. Maverick or
+Lucid), use this::
+
+  bzr branch ubuntu:maverick/package
+
+Ubuntu distroseries can also be abbreviated to just their first letter.  For
+example, the above could also be written::
+
+  bzr branch ubuntu:m/package
+
+You can also download the package source branch from Launchpad for several
+Debian series.  The default series can be downloaded like this::
+
+  bzr branch debianlp:package
+
+and a specific series can be downloaded like this::
+
+  bzr branch debianlp:lenny/package
+
+Note that the ``debianlp:`` scheme access the Debian source branch for a
+package from Launchpad only.
+
+.. _`maintaining packages for Ubuntu using Bazaar`: https://wiki.ubuntu.com/DistributedDevelopment
+
+
 Linking branches using Launchpad
 ================================
 

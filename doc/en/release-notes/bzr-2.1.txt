@@ -26,6 +26,9 @@ Bug Fixes
 * Skip the tests that requires respecting the chmod bits when running as root.
   (Vincent Ladeuil, #646133)
 
+* Using bzr with `lp:` urls behind an http proxy should work.
+  (Robert Collins, #558343)
+
 Improvements
 ************
 

@@ -31,6 +31,7 @@ from bzrlib import (
 from bzrlib.transport import (
     chroot,
     fakenfs,
+    http,
     local,
     memory,
     pathfilter,
@@ -993,3 +994,14 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # And the rest are threads
         for t in started[1:]:
             t.join()
+
+
+class TestUnhtml(tests.TestCase):
+
+    """Tests for unhtml_roughly"""
+
+    def test_truncation(self):
+        fake_html = "<p>something!\n" * 1000
+        result = http.unhtml_roughly(fake_html)
+        self.assertEquals(len(result), 1000)
+        self.assertStartsWith(result, " something!")
