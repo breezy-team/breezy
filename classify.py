@@ -33,7 +33,7 @@ def classify_filename(name):
 	# and have possibility to determining own types !?
     extension = os.path.splitext(name)[1]
     if extension in (".c", ".h", ".py", ".cpp", ".rb", ".pm", ".pl", ".ac",
-                        ".java"):
+                        ".java", ".cc", ".proto", ".yy", ".l"):
         return "code"
     if extension in (".html", ".xml", ".txt", ".rst", ".TODO"):
         return "documentation"
