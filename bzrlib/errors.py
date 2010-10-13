@@ -1395,7 +1395,7 @@ class WeaveParentMismatch(WeaveError):
 
 class WeaveInvalidChecksum(WeaveError):
 
-    _fmt = "Text did not match it's checksum: %(msg)s"
+    _fmt = "Text did not match its checksum: %(msg)s"
 
 
 class WeaveTextDiffers(WeaveError):
