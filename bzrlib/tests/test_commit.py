@@ -793,6 +793,12 @@ class TestCommit(TestCaseWithTransport):
         self.assertRaises(AssertionError, tree.commit, 'commit 1',
                 authors=['John\nDoe <jdoe@example.com>'])
 
+    def test_non_ascii_str_committer_rejected(self):
+        """Ensure an error is raised on a non-ascii byte string committer"""
+        tree = self.make_branch_and_tree(".")
+        self.assertRaises(UnicodeDecodeError, tree.commit, "Empty commit",
+            committer="Erik B\xe5gfors <erik@example.com>")
+
     def test_commit_with_checkout_and_branch_sharing_repo(self):
         repo = self.make_repository('repo', shared=True)
         # make_branch_and_tree ignores shared repos
