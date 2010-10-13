@@ -3809,6 +3809,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_rio',
         'bzrlib.tests.test_rules',
         'bzrlib.tests.test_sampler',
+        'bzrlib.tests.test_scenarios',
         'bzrlib.tests.test_script',
         'bzrlib.tests.test_selftest',
         'bzrlib.tests.test_serializer',
@@ -3882,6 +3883,7 @@ def _test_suite_modules_to_doctest():
         'bzrlib.tests',
         'bzrlib.tests.fixtures',
         'bzrlib.timestamp',
+        'bzrlib.transport.http',
         'bzrlib.version_info_formats.format_custom',
         ]
 
@@ -3990,7 +3992,19 @@ def test_suite(keep_only=None, starting_with=None):
     return suite
 
 
-def multiply_scenarios(scenarios_left, scenarios_right):
+def multiply_scenarios(*scenarios):
+    """Multiply two or more iterables of scenarios.
+
+    It is safe to pass scenario generators or iterators.
+
+    :returns: A list of compound scenarios: the cross-product of all 
+        scenarios, with the names concatenated and the parameters
+        merged together.
+    """
+    return reduce(_multiply_two_scenarios, map(list, scenarios))
+
+
+def _multiply_two_scenarios(scenarios_left, scenarios_right):
     """Multiply two sets of scenarios.
 
     :returns: the cartesian product of the two sets of scenarios, that is
