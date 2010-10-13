@@ -51,7 +51,7 @@ Bazaar Release Notes
 
 
 .. toctree::
-   :maxdepth: 1
+   :maxdepth: 2
 
 """
 
@@ -117,7 +117,7 @@ def main(argv):
     out_file_name = args[0]
     news_file_names = sorted(args[1:], key=natural_sort_key, reverse=True)
 
-    if out_file_name == 'index.txt':
+    if os.path.basename(out_file_name) == 'index.txt':
         preamble = preamble_sphinx
         output_news_file = output_news_file_sphinx
     else:
