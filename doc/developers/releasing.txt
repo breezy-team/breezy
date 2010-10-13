@@ -80,9 +80,15 @@ To start a new release cycle:
    
        version_info = (x, y, z, 'dev', 0)
    
-#. Add a new section at the top of ``NEWS`` about the new release,
-   including its version number and the headings from
-   ``NEWS-template.txt``.
+#. If you made a new series, then start a new release-notes file::
+
+       cd doc/en/release-notes
+       cp series-template.txt bzr-x.y.txt  # e.g. bzr-2.3.txt
+       bzr add bzr-x.y.txt
+
+#. Add a new section at the top of the current release notes (in
+   ``doc/en/release-notes``) about the new release, including its version
+   number and the headings from ``release-template.txt``.
 
 #. Update the "What's New" documents in ``doc/en/whats-new``.
 
@@ -121,20 +127,21 @@ Update the source code
 
        version_info = (2, 1, 2, 'final', 0)
 
-#. Update the ``./NEWS`` section for this release.
+#. Update the ``./doc/en/release-notes/`` section for this release.
 
    Fill out the date and a description of the release under the existing
-   header. If there isn't one, follow the above for using the NEWS
-   template.
+   header. If there isn't one, follow the instructions above for using the
+   ``release-template.txt`` file.
 
    See *2.1.1* or similar for an example of what this looks like.
 
 #. Add a summary of the release into the "What's New" document.
 
-#. To check that all bugs mentioned in ``./NEWS`` are actually marked as
-   closed in Launchpad, you can run ``tools/check-newsbugs.py``::
+#. To check that all bugs mentioned in the release notes are actually
+   marked as closed in Launchpad, you can run
+   ``tools/check-newsbugs.py``::
 
-     ./tools/check-newsbugs.py NEWS
+     ./tools/check-newsbugs.py doc/en/release-notes/bzr-x.y.txt
 
    (But note there will be many false positives, and this script may be
    flaky <https://bugs.edge.launchpad.net/bzr/+bug/354985>.  Don't let
@@ -313,7 +320,7 @@ Now that the release is publicly available, tell people about it.
       https://launchpad.net/bzr/2.x/2.x/ as a source tarball; packages
       for various systems will be available soon.
 
-      <<NEWS section from this release back to the last major release>>
+      <<release notes from this release back to the last major release>>
 
    Feel free to tweak this to your taste.
 
@@ -346,13 +353,13 @@ Now that the release is publicly available, tell people about it.
 Merging the released code back to trunk
 ---------------------------------------
 
-The rule is to keep ``NEWS`` sections sorted by date. You'll need to
-review the merge and make sure that that is respected.
+Merge the release branch back into the trunk.  The
+``doc/en/release-notes`` changes should be merged into the right place
+because each release series has its own release-notes file, but
+double-check.
 
-Merge the release branch back into the trunk.  Check that changes in NEWS
-were merged into the right sections.  If it's not already done, advance
-the version number in ``bzr`` and ``bzrlib/__init__.py``.  Submit this
-back into pqm for bzr.dev.
+If it's not already done, advance the version number in ``bzr`` and
+``bzrlib/__init__.py``.  Submit this back into pqm for bzr.dev.
 
 As soon as you change the version number in trunk, make sure you have
 created the corresponding milestone to ensure the continuity in bug
