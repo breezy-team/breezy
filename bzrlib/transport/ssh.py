@@ -126,6 +126,9 @@ class SSHVendorManager(object):
         elif 'SSH Secure Shell' in version:
             trace.mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
+        elif 'lsh' in version:
+            trace.mutter('ssh implementation is GNU lsh.')
+            vendor = LSHSubprocessVendor()
         # As plink user prompts are not handled currently, don't auto-detect
         # it by inspection below, but keep this vendor detection for if a path
         # is given in BZR_SSH. See https://bugs.launchpad.net/bugs/414743
@@ -403,7 +406,7 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
                                   command=None):
         args = [self.executable_path,
                 '-oForwardX11=no', '-oForwardAgent=no',
-                '-oClearAllForwardings=yes', '-oProtocol=2',
+                '-oClearAllForwardings=yes',
                 '-oNoHostAuthenticationForLocalhost=yes']
         if port is not None:
             args.extend(['-p', str(port)])
@@ -437,6 +440,27 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
         return args
 
 register_ssh_vendor('sshcorp', SSHCorpSubprocessVendor())
+
+
+class LSHSubprocessVendor(SubprocessVendor):
+    """SSH vendor that uses the 'lsh' executable from GNU"""
+
+    executable_path = 'lsh'
+
+    def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
+                                  command=None):
+        args = [self.executable_path]
+        if port is not None:
+            args.extend(['-p', str(port)])
+        if username is not None:
+            args.extend(['-l', username])
+        if subsystem is not None:
+            args.extend(['--subsystem', subsystem, host])
+        else:
+            args.extend([host] + command)
+        return args
+
+register_ssh_vendor('lsh', LSHSubprocessVendor())
 
 
 class PLinkSubprocessVendor(SubprocessVendor):

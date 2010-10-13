@@ -57,7 +57,7 @@ class PushResult(object):
 
 def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
     overwrite=False, remember=False, stacked_on=None, create_prefix=False,
-    use_existing_dir=False):
+    use_existing_dir=False, no_tree=False):
     """Push a branch to a location.
 
     :param br_from: the source branch
@@ -87,7 +87,8 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         try:
             br_to = br_from.create_clone_on_transport(to_transport,
                 revision_id=revision_id, stacked_on=stacked_on,
-                create_prefix=create_prefix, use_existing_dir=use_existing_dir)
+                create_prefix=create_prefix, use_existing_dir=use_existing_dir,
+                no_tree=no_tree)
         except errors.FileExists, err:
             if err.path.endswith('/.bzr'):
                 raise errors.BzrCommandError(
