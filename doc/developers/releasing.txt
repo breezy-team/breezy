@@ -2,10 +2,12 @@ Releasing Bazaar
 ################
 
 This document describes the processes for making and announcing a Bazaar
-release, and managing the release process.  This is just one phase of the
-`overall development cycle <http://doc.bazaar.canonical.com/developers/cycle.html>`_,
-but it's the most complex part.  This document gives a checklist you can
-follow from start to end in one go.
+release, and managing the release process.  This is just one phase of
+the `overall development cycle
+<http://doc.bazaar.canonical.com/developers/cycle.html>`_, (go re-read
+this document to ensure it hasn't been updated) but it's the most
+complex part.  This document gives a checklist you can follow from start
+to end in one go.
 
 If you're helping the Release Manager (RM) for one reason or another, you
 may notice that he didn't follow that document scrupulously. He may have
@@ -23,6 +25,56 @@ Preconditions
 #. Download the pqm plugin and install it into your ``~/.bazaar/plugins``::
 
      bzr branch lp:bzr-pqm ~/.bazaar/plugins/pqm
+
+
+When do we relase ?
+===================
+
+As of October 2010, we mantain four series.  Concurrently releasing them
+all at the same time makes it harder to shorten the delay between the
+source availability and the package building longer than necessary (we
+delay the official announcement until most of our users can install the new
+release).
+
+In order to continue to do time-based releases, we need to plan the
+releases by series to minimize the collisions. In the end, it's the Release
+Manager call to decide whether he prefers to do all releases at once
+though, so the rules presented here are a conservative approach.
+
+We want to respect the following rules::
+
+ #. as much as possible releases should not disturb development, and
+    ongoing development should not disturb releases,
+
+ #. the most recent development series should release once a month during
+    the beta period (see `Development cycles <cycle.html>`_ for more
+    details),
+
+ #. the most recent stable series should release every other month (based
+    on the amount of bug fixes, this can be shorter or longer depending on
+    the bugs importance),
+
+ #. previous series should relesase on a regular basis without interfering
+    with the most recent series with a decreasing order of priority (again
+    this should be based on bugs importance and user feedback),
+
+ #. the death of a series should be planned ahead of time. 6 months should
+    give enough time to our users to migrate to a more recent series. This
+    doesn't mean we will make a release at the end of the series, just that
+    before the end date we _could_ possibly put out another release if
+    there was a sufficiently important fix.  Beyond that date, we won't
+    even land changes on that branch (unless something causes a miraculous
+    resurrection.)
+
+ #. there should not be more than 2 releases in the same week (but the
+    Release Manager is free to ignore this (get in touch with packagers
+    though),
+
+ #. the series are aligned with Ubuntu releases for convenience since we
+    create a new series every 6 months. This means that we support the
+    stable series for 18 months. Note that we also propose the most recent
+    stable series via the ppa, so whether we keep supporting LTS directly
+    or via the ppa is still an open question.
 
 
 At the start of a release cycle
@@ -180,6 +232,9 @@ Update the source code
 
       # API compatibility version: bzrlib is currently API compatible with 1.7.
 
+   Note that the NEWS file formatting has evolved, this example needs to
+   be updated.
+
 #. Tag the new release::
 
      bzr tag bzr-1.14
@@ -235,16 +290,18 @@ Publishing the source tarball
    this changes what the download widget on the Launchpad bzr home
    page shows, so don't stop the release process yet, or platform binary
    installers won't be made and the download list will stay very small!
-   <https://bugs.edge.launchpad.net/launchpad/+bug/586445>
+   <https://bugs.launchpad.net/launchpad/+bug/586445>
 
 
 Announcing the source freeze
 ----------------------------
 
-#. Post to the ``bazaar`` list, saying that the source has been frozen.
-   This is the cue for platform maintainers and plugin authors to update
-   their code.  This is done before the general public announcement of the
-   release.
+#. Post to the ``bazaar`` list, saying that the source has been frozen
+   (gone gold). Be extra clear that this is only a *source* release
+   targeted at packagers and installer builders (see
+   <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue
+   for platform maintainers and plugin authors to update their code.  This
+   is done before the general public announcement of the release.
 
 
 Kick off the next cycle
@@ -300,11 +357,11 @@ Now that the release is publicly available, tell people about it.
 
       Subject: bzr x.y.z released!
 
-      <<Summary paragraph from news>>
-
       The Bazaar team is happy to announce availability of a new
       release of the bzr adaptive version control system.
       Bazaar is part of the GNU system <http://gnu.org/>.
+
+      <<Summary paragraph from news>>
 
       Thanks to everyone who contributed patches, suggestions, and
       feedback.
@@ -336,7 +393,8 @@ Now that the release is publicly available, tell people about it.
 
        python setup.py register
 
-   Remember to check the results afterwards.
+   Remember to check the results afterwards -- this should be done for
+   final releases but not for beta releases or Release Candidates.
 
    To be able to register the release you must create an account on
    <http://pypi.python.org/pypi> and have one of the existing owners of
