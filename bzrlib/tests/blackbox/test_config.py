@@ -88,11 +88,11 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
 
     def test_unknown_config(self):
         self.run_bzr_error(['The "moon" configuration does not exist'],
-                           ['config', '--force', 'moon', 'hello=world'])
+                           ['config', '--scope', 'moon', 'hello=world'])
 
     def test_bazaar_config_outside_branch(self):
         script.run_script(self, '''
-$ bzr config --force bazaar hello=world
+$ bzr config --scope bazaar hello=world
 $ bzr config -d tree hello
 bazaar:
   hello = world
@@ -100,7 +100,7 @@ bazaar:
 
     def test_bazaar_config_inside_branch(self):
         script.run_script(self, '''
-$ bzr config -d tree --force bazaar hello=world
+$ bzr config -d tree --scope bazaar hello=world
 $ bzr config -d tree hello
 bazaar:
   hello = world
@@ -108,7 +108,7 @@ bazaar:
 
     def test_locations_config_inside_branch(self):
         script.run_script(self, '''
-$ bzr config -d tree --force locations hello=world
+$ bzr config -d tree --scope locations hello=world
 $ bzr config -d tree hello
 locations:
   hello = world
@@ -124,7 +124,7 @@ branch:
 
     def test_branch_config_forcing_branch(self):
         script.run_script(self, '''
-$ bzr config -d tree --force branch hello=world
+$ bzr config -d tree --scope branch hello=world
 $ bzr config -d tree hello
 branch:
   hello = world
@@ -139,11 +139,11 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
 
     def test_unknown_config(self):
         self.run_bzr_error(['The "moon" configuration does not exist'],
-                           ['config', '--force', 'moon', '--remove', 'file'])
+                           ['config', '--scope', 'moon', '--remove', 'file'])
 
     def test_bazaar_config_outside_branch(self):
         script.run_script(self, '''
-$ bzr config --force bazaar --remove file
+$ bzr config --scope bazaar --remove file
 $ bzr config -d tree file
 locations:
   file = locations
@@ -153,7 +153,7 @@ branch:
 
     def test_bazaar_config_inside_branch(self):
         script.run_script(self, '''
-$ bzr config -d tree --force bazaar --remove file
+$ bzr config -d tree --scope bazaar --remove file
 $ bzr config -d tree file
 locations:
   file = locations
@@ -163,7 +163,7 @@ branch:
 
     def test_locations_config_inside_branch(self):
         script.run_script(self, '''
-$ bzr config -d tree --force locations --remove file
+$ bzr config -d tree --scope locations --remove file
 $ bzr config -d tree file
 branch:
   file = branch
@@ -189,7 +189,7 @@ bazaar:
 
     def test_branch_config_forcing_branch(self):
         script.run_script(self, '''
-$ bzr config -d tree --force branch --remove file
+$ bzr config -d tree --scope branch --remove file
 $ bzr config -d tree file
 locations:
   file = locations

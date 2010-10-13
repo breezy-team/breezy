@@ -1780,44 +1780,44 @@ class cmd_config(commands.Command):
         'directory',
         # FIXME: This should be a registry option so that plugins can register
         # their own config files (or not) -- vila 20101002
-        commands.Option('force', help='Force the configuration file',
-                        short_name='f', type=unicode),
+        commands.Option('scope', help='Reduce the scope to the specified'
+                        ' configuration file',
+                        type=unicode),
         commands.Option('remove', help='Remove the option from'
                         ' the configuration file'),
         ]
 
     @commands.display_command
-    def run(self, matching=None, directory=None, force=None, remove=False):
+    def run(self, matching=None, directory=None, scope=None, remove=False):
         if directory is None:
             directory = '.'
         directory = urlutils.normalize_url(directory)
         if matching is None:
-            matching = '*'
             self._show_config('*', directory)
         else:
             if remove:
-                self._remove_config_option(matching, directory, force)
+                self._remove_config_option(matching, directory, scope)
             else:
                 pos = matching.find('=')
                 if pos == -1:
                     self._show_config(matching, directory)
                 else:
                     self._set_config_option(matching[:pos], matching[pos+1:],
-                                            directory, force)
+                                            directory, scope)
 
-    def _get_configs(self, directory, force=None):
-        """Iterate the configurations specified by ``directory`` and ``force``.
+    def _get_configs(self, directory, scope=None):
+        """Iterate the configurations specified by ``directory`` and ``scope``.
 
         :param directory: Where the configurations are derived from.
 
-        :param force: A specific config to start from.
+        :param scope: A specific config to start from.
         """
-        if force is not None:
-            if force == 'bazaar':
+        if scope is not None:
+            if scope == 'bazaar':
                 yield GlobalConfig()
-            elif force == 'locations':
+            elif scope == 'locations':
                 yield LocationConfig(directory)
-            elif force == 'branch':
+            elif scope == 'branch':
                 (_, br, _) = bzrdir.BzrDir.open_containing_tree_or_branch(
                     directory)
                 yield br.get_config()
@@ -1842,18 +1842,18 @@ class cmd_config(commands.Command):
                         cur_conf_id = conf_id
                     self.outf.write('  %s = %s\n' % (name, value))
 
-    def _set_config_option(self, name, value, directory, force):
-        for conf in self._get_configs(directory, force):
+    def _set_config_option(self, name, value, directory, scope):
+        for conf in self._get_configs(directory, scope):
             conf.set_user_option(name, value)
             break
         else:
-            raise errors.NoSuchConfig(force)
+            raise errors.NoSuchConfig(scope)
 
-    def _remove_config_option(self, name, directory, force):
+    def _remove_config_option(self, name, directory, scope):
         removed = False
-        for conf in self._get_configs(directory, force):
+        for conf in self._get_configs(directory, scope):
             for (section_name, section, conf_id) in conf._get_sections():
-                if force is not None and conf_id != force:
+                if scope is not None and conf_id != scope:
                     # Not the right configuration file
                     continue
                 if name in section:
@@ -1866,6 +1866,6 @@ class cmd_config(commands.Command):
                     break
             break
         else:
-            raise errors.NoSuchConfig(force)
+            raise errors.NoSuchConfig(scope)
         if not removed:
             raise errors.NoSuchConfigOption(name)
