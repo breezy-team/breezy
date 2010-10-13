@@ -778,7 +778,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         assertWarning(None)
 
 
-class TestGlobalConfigItems(tests.TestCase):
+class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_user_id(self):
         my_config = config.GlobalConfig.from_string(sample_config_text)

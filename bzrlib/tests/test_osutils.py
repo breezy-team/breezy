@@ -1071,6 +1071,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         if sys.platform == 'win32':
             raise tests.TestNotApplicable(
                 "readdir IOError not tested on win32")
+        self.requireFeature(features.not_running_as_root)
         os.mkdir("test-unreadable")
         os.chmod("test-unreadable", 0000)
         # must chmod it back so that it can be removed

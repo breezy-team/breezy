@@ -68,6 +68,8 @@ As of August 2010, the following releases are supported:
 * Hardy LTS
 * Dapper LTS (supported but no longer updated for new releases)
 
+The ``rmadison bzr`` command will gives you an up-to-date summary
+of which bzr releases are current in each Ubuntu release.
 
 Preconditions
 -------------

@@ -195,6 +195,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         self._strict = strict
         self._first_thread_leaker_id = None
         self._tests_leaking_threads_count = 0
+        self._traceback_from_test = None
 
     def stopTestRun(self):
         run = self.testsRun
@@ -260,7 +261,8 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def _elapsedTestTimeString(self):
         """Return a time string for the overall time the current test has taken."""
-        return self._formatTime(time.time() - self._start_time)
+        return self._formatTime(self._delta_to_float(
+            self._now() - self._start_datetime))
 
     def _testTimeString(self, testCase):
         benchmark_time = self._extractBenchmarkTime(testCase)
@@ -280,6 +282,14 @@ class ExtendedTestResult(testtools.TextTestResult):
         what = re.sub(r'^bzrlib\.tests\.', '', what)
         return what
 
+    # GZ 2010-10-04: Cloned tests may end up harmlessly calling this method
+    #                multiple times in a row, because the handler is added for
+    #                each test but the container list is shared between cases.
+    #                See lp:498869 lp:625574 and lp:637725 for background.
+    def _record_traceback_from_test(self, exc_info):
+        """Store the traceback from passed exc_info tuple till"""
+        self._traceback_from_test = exc_info[2]
+
     def startTest(self, test):
         super(ExtendedTestResult, self).startTest(test)
         if self.count == 0:
@@ -288,6 +298,10 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.report_test_start(test)
         test.number = self.count
         self._recordTestStartTime()
+        # Make testtools cases give us the real traceback on failure
+        addOnException = getattr(test, "addOnException", None)
+        if addOnException is not None:
+            addOnException(self._record_traceback_from_test)
         # Only check for thread leaks if the test case supports cleanups
         addCleanup = getattr(test, "addCleanup", None)
         if addCleanup is not None:
@@ -296,6 +310,9 @@ class ExtendedTestResult(testtools.TextTestResult):
     def startTests(self):
         self.report_tests_starting()
         self._active_threads = threading.enumerate()
+
+    def stopTest(self, test):
+        self._traceback_from_test = None
 
     def _check_leaked_threads(self, test):
         """See if any threads have leaked since last call
@@ -315,7 +332,7 @@ class ExtendedTestResult(testtools.TextTestResult):
 
     def _recordTestStartTime(self):
         """Record that a test has started."""
-        self._start_time = time.time()
+        self._start_datetime = self._now()
 
     def addError(self, test, err):
         """Tell result that test finished with an error.
@@ -323,7 +340,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         Called from the TestCase run() method when the test
         fails with an unexpected error.
         """
-        self._post_mortem()
+        self._post_mortem(self._traceback_from_test)
         super(ExtendedTestResult, self).addError(test, err)
         self.error_count += 1
         self.report_error(test, err)
@@ -336,7 +353,7 @@ class ExtendedTestResult(testtools.TextTestResult):
         Called from the TestCase run() method when the test
         fails because e.g. an assert() method failed.
         """
-        self._post_mortem()
+        self._post_mortem(self._traceback_from_test)
         super(ExtendedTestResult, self).addFailure(test, err)
         self.failure_count += 1
         self.report_failure(test, err)
@@ -384,10 +401,11 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.not_applicable_count += 1
         self.report_not_applicable(test, reason)
 
-    def _post_mortem(self):
+    def _post_mortem(self, tb=None):
         """Start a PDB post mortem session."""
         if os.environ.get('BZR_TEST_PDB', None):
-            import pdb;pdb.post_mortem()
+            import pdb
+            pdb.post_mortem(tb)
 
     def progress(self, offset, whence):
         """The test is adjusting the count of tests to run."""
@@ -840,6 +858,10 @@ class TestCase(testtools.TestCase):
         self._track_transports()
         self._track_locks()
         self._clear_debug_flags()
+        # Isolate global verbosity level, to make sure it's reproducible
+        # between tests.  We should get rid of this altogether: bug 656694. --
+        # mbp 20101008
+        self.overrideAttr(bzrlib.trace, '_verbosity_level', 0)
 
     def debug(self):
         # debug a frame up.
@@ -984,7 +1006,7 @@ class TestCase(testtools.TestCase):
             try:
                 workingtree.WorkingTree.open(path)
             except (errors.NotBranchError, errors.NoWorkingTree):
-                return
+                raise TestSkipped('Needs a working tree of bzr sources')
         finally:
             self.enable_directory_isolation()
 
@@ -3787,6 +3809,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_rio',
         'bzrlib.tests.test_rules',
         'bzrlib.tests.test_sampler',
+        'bzrlib.tests.test_scenarios',
         'bzrlib.tests.test_script',
         'bzrlib.tests.test_selftest',
         'bzrlib.tests.test_serializer',
@@ -3860,6 +3883,7 @@ def _test_suite_modules_to_doctest():
         'bzrlib.tests',
         'bzrlib.tests.fixtures',
         'bzrlib.timestamp',
+        'bzrlib.transport.http',
         'bzrlib.version_info_formats.format_custom',
         ]
 
@@ -3968,7 +3992,19 @@ def test_suite(keep_only=None, starting_with=None):
     return suite
 
 
-def multiply_scenarios(scenarios_left, scenarios_right):
+def multiply_scenarios(*scenarios):
+    """Multiply two or more iterables of scenarios.
+
+    It is safe to pass scenario generators or iterators.
+
+    :returns: A list of compound scenarios: the cross-product of all 
+        scenarios, with the names concatenated and the parameters
+        merged together.
+    """
+    return reduce(_multiply_two_scenarios, map(list, scenarios))
+
+
+def _multiply_two_scenarios(scenarios_left, scenarios_right):
     """Multiply two sets of scenarios.
 
     :returns: the cartesian product of the two sets of scenarios, that is
