@@ -155,9 +155,9 @@ class Config(object):
     def __init__(self):
         super(Config, self).__init__()
 
-    def id(self):
+    def config_id(self):
         """Returns a unique ID for the config."""
-        raise NotImplementedError(self.id)
+        raise NotImplementedError(self.config_id)
 
     def get_editor(self):
         """Get the users pop up editor."""
@@ -462,11 +462,11 @@ class IniBasedConfig(Config):
         """
         parser = self._get_parser()
         if name is not None:
-            yield (name, parser[name], self.id())
+            yield (name, parser[name], self.config_id())
         else:
             # No section name has been given so we fallback to the configobj
             # itself which holds the variables defined outside of any section.
-            yield (None, parser, self.id())
+            yield (None, parser, self.config_id())
 
     def _get_options(self, sections=None):
         """Return an ordered list of (name, value, section, config_id) tuples.
@@ -493,7 +493,7 @@ class IniBasedConfig(Config):
                     # instead ? -- vila 20100930
                     continue
                 sections.append((section_name, section))
-        config_id = self.id()
+        config_id = self.config_id()
         for (section_name, section) in sections:
             for (name, value) in section.iteritems():
                 yield (name, value, section_name, config_id)
@@ -697,7 +697,7 @@ class GlobalConfig(LockableConfig):
     def __init__(self):
         super(GlobalConfig, self).__init__(file_name=config_filename())
 
-    def id(self):
+    def config_id(self):
         return 'bazaar'
 
     @classmethod
@@ -760,7 +760,7 @@ class GlobalConfig(LockableConfig):
             name = 'DEFAULT'
             if 'DEFAULT' not in parser:
                parser['DEFAULT']= {}
-        yield (name, parser[name], self.id())
+        yield (name, parser[name], self.config_id())
 
     @needs_write_lock
     def remove_user_option(self, option_name, section_name=None):
@@ -786,7 +786,7 @@ class LocationConfig(LockableConfig):
             location = urlutils.local_path_from_url(location)
         self.location = location
 
-    def id(self):
+    def config_id(self):
         return 'locations'
 
     @classmethod
@@ -856,7 +856,7 @@ class LocationConfig(LockableConfig):
         # the location path and we don't expose embedded sections either.
         parser = self._get_parser()
         for name, extra_path in self._get_matching_sections():
-            yield (name, parser[name], self.id())
+            yield (name, parser[name], self.config_id())
 
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
@@ -942,13 +942,13 @@ class BranchConfig(Config):
                                self._get_branch_data_config,
                                self._get_global_config)
 
-    def id(self):
+    def config_id(self):
         return 'branch'
 
     def _get_branch_data_config(self):
         if self._branch_data_config is None:
             self._branch_data_config = TreeConfig(self.branch)
-            self._branch_data_config.id = self.id
+            self._branch_data_config.config_id = self.config_id
         return self._branch_data_config
 
     def _get_location_config(self):
@@ -1039,7 +1039,7 @@ class BranchConfig(Config):
             sections = [('DEFAULT', branch_config._get_parser())]
         # FIXME: We shouldn't have to duplicate the code in IniBasedConfig but
         # Config itself has no notion of sections :( -- vila 20101001
-        config_id = self.id()
+        config_id = self.config_id()
         for (section_name, section) in sections:
             for (name, value) in section.iteritems():
                 yield (name, value, section_name, config_id)
@@ -1857,7 +1857,7 @@ class cmd_config(commands.Command):
                     # Not the right configuration file
                     continue
                 if name in section:
-                    if conf_id != conf.id():
+                    if conf_id != conf.config_id():
                         conf = self._get_configs(directory, conf_id).next()
                     # We use the first section in the first config where the
                     # option is defined to remove it

@@ -6070,7 +6070,7 @@ def _register_lazy_builtins():
     # be only called once.
     for (name, aliases, module_name) in [
         ('cmd_bundle_info', [], 'bzrlib.bundle.commands'),
-        ('cmd_config', ['conf'], 'bzrlib.config'),
+        ('cmd_config', [], 'bzrlib.config'),
         ('cmd_dpush', [], 'bzrlib.foreign'),
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
