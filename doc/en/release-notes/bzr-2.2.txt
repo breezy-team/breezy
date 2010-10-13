@@ -19,14 +19,6 @@ New Features
 Bug Fixes
 *********
 
-* Skip tests that needs a bzr source tree when there isn't one. This is
-  needed to succesfully run the test suite for installed versions.
-  (Vincent Ladeuil, #644855).
-
-* Skip the tests that requires respecting the chmod bits when running as
-  root. Including the one that wasn't present in 2.1.
-  (Vincent Ladeuil, #646133)
-
 * Using bzr with `lp:` urls behind an http proxy should work.
   (Robert Collins, #558343)
 
@@ -51,6 +43,14 @@ Testing
 
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
+
+* Skip tests that needs a bzr source tree when there isn't one. This is
+  needed to succesfully run the test suite for installed versions.
+  (Vincent Ladeuil, #644855).
+
+* Skip the tests that requires respecting the chmod bits when running as
+  root. Including the one that wasn't present in 2.1.
+  (Vincent Ladeuil, #646133)
 
 
 bzr 2.2.1
@@ -670,9 +670,6 @@ Bug Fixes
   UnicodeEncodeError. ``ui.text.show_warning`` now handles unicode
   messages.
   (Parth Malwankar, #563646)
-
-* Using bzr with `lp:` urls behind an http proxy should work.
-  (Robert Collins, #558343)
 
 * When passing a file to ``UTF8DirReader`` make sure to close the current
   directory file handle after the chdir fails. Otherwise when passing many
