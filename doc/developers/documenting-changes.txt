@@ -15,6 +15,12 @@ Adding a new feature, function or option
   document.  Consider whether you should also update command help
   or any help topics.
 
+A new hook or extension point
+  These are also described in NEWS, in the hook documentation, and in
+  "What's New."  Even though they might be API-only changes, the fact that 
+  they exist may interest users enough to write a new plugin that uses
+  them.
+
 Fixing a bug
   If the bug has any user-visible impact, describe it in the NEWS file
   in such a way that users can tell whether the problem they're
