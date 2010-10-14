@@ -71,17 +71,17 @@ def _format_version_tuple(version_info):
     1.0.0
     >>> print _format_version_tuple((1, 2, 0, 'dev', 0))
     1.2.0dev
-    >>> print bzrlib._format_version_tuple((1, 2, 0, 'dev', 1))
+    >>> print _format_version_tuple((1, 2, 0, 'dev', 1))
     1.2.0dev1
     >>> print _format_version_tuple((1, 1, 1, 'candidate', 2))
     1.1.1rc2
-    >>> print bzrlib._format_version_tuple((2, 1, 0, 'beta', 1))
+    >>> print _format_version_tuple((2, 1, 0, 'beta', 1))
     2.1b1
     >>> print _format_version_tuple((1, 4, 0))
     1.4.0
     >>> print _format_version_tuple((1, 4))
     1.4
-    >>> print bzrlib._format_version_tuple((2, 1, 0, 'final', 1))
+    >>> print _format_version_tuple((2, 1, 0, 'final', 1))
     Traceback (most recent call last):
     ...
     ValueError: version_info (2, 1, 0, 'final', 1) not valid
