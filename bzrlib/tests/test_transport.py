@@ -471,16 +471,16 @@ class TestHooks(tests.TestCase):
         return transport.ConnectedTransport("bogus:nowhere")
 
     def test_transporthooks_initialisation(self):
-    	"""Check all expected transport hook points are set up"""
-    	hookpoint = transport.TransportHooks()
-    	self.assertTrue("post_connect" in hookpoint,
-    	    "post_connect not in %s" % (hookpoint,))
+        """Check all expected transport hook points are set up"""
+        hookpoint = transport.TransportHooks()
+        self.assertTrue("post_connect" in hookpoint,
+            "post_connect not in %s" % (hookpoint,))
 
     def test_post_connect(self):
-    	"""Ensure the post_connect hook is called when _set_transport is"""
-    	calls = []
-    	transport.Transport.hooks.install_named_hook("post_connect",
-    	    calls.append, None)
+        """Ensure the post_connect hook is called when _set_transport is"""
+        calls = []
+        transport.Transport.hooks.install_named_hook("post_connect",
+            calls.append, None)
         t = self._get_connected_transport()
         self.assertLength(0, calls)
         t._set_connection("connection", "auth")
