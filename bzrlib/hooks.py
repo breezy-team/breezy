@@ -80,6 +80,7 @@ _builtin_known_hooks = (
     ('bzrlib.smart.client', '_SmartClient.hooks', 'SmartClientHooks'),
     ('bzrlib.smart.server', 'SmartTCPServer.hooks', 'SmartServerHooks'),
     ('bzrlib.status', 'hooks', 'StatusHooks'),
+    ('bzrlib.transport', 'Transport.hooks', 'TransportHooks'),
     ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks',
         'RioVersionInfoBuilderHooks'),
     ('bzrlib.merge_directive', 'BaseMergeDirective.hooks',

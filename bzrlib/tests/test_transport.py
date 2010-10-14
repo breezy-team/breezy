@@ -464,6 +464,29 @@ class TestChrootServer(tests.TestCase):
             server.stop_server()
 
 
+class TestHooks(tests.TestCase):
+    """Basic tests for transport hooks"""
+
+    def _get_connected_transport(self):
+        return transport.ConnectedTransport("bogus:nowhere")
+
+    def test_transporthooks_initialisation(self):
+    	"""Check all expected transport hook points are set up"""
+    	hookpoint = transport.TransportHooks()
+    	self.assertTrue("post_connect" in hookpoint,
+    	    "post_connect not in %s" % (hookpoint,))
+
+    def test_post_connect(self):
+    	"""Ensure the post_connect hook is called when _set_transport is"""
+    	calls = []
+    	transport.Transport.hooks.install_named_hook("post_connect",
+    	    calls.append, None)
+        t = self._get_connected_transport()
+        self.assertLength(0, calls)
+        t._set_connection("connection", "auth")
+        self.assertEqual(calls, [t])
+
+
 class PathFilteringDecoratorTransportTest(tests.TestCase):
     """Pathfilter decoration specific tests."""
 
