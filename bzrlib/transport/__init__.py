@@ -49,10 +49,12 @@ from bzrlib import (
 from bzrlib.symbol_versioning import (
         DEPRECATED_PARAMETER,
         )
+from bzrlib.trace import (
+    mutter,
+    )
 from bzrlib import (
     hooks,
     registry,
-    trace,
     )
 
 
@@ -275,7 +277,7 @@ class TransportHooks(hooks.Hooks):
         self.create_hook(hooks.HookPoint("post_connect",
             "Called after a new connection is established or a reconnect "
             "occurs. The connected transport instance is the sole argument "
-            "passed", (2, 3), None))
+            "passed.", (2, 3), None))
 
 
 class Transport(object):
@@ -1506,8 +1508,6 @@ class ConnectedTransport(Transport):
         self._shared_connection.connection = connection
         self._shared_connection.credentials = credentials
         for hook in self.hooks["post_connect"]:
-            # GZ 2010-10-14: Should the hook be passed the new connection and
-            #                credentials too or does opaque really mean that?
             hook(self)
 
     def _get_connection(self):
@@ -1606,6 +1606,7 @@ def get_transport(base, possible_transports=None):
             raise errors.UnsupportedProtocol(base, last_err)
         # This doesn't look like a protocol, consider it a local path
         new_base = urlutils.local_path_to_url(base)
+        # mutter('converting os path %r => url %s', base, new_base)
         return new_base
 
     # Catch any URLs which are passing Unicode rather than ASCII
@@ -1653,8 +1654,8 @@ def _try_transport_factories(base, factory_list):
         try:
             return factory.get_obj()(base), None
         except errors.DependencyNotPresent, e:
-            trace.mutter("failed to instantiate transport %r for %r: %r" %
-                         (factory, base, e))
+            mutter("failed to instantiate transport %r for %r: %r" %
+                    (factory, base, e))
             last_err = e
             continue
     return None, last_err
