@@ -1341,7 +1341,7 @@ class DiskTreeTransform(TreeTransformBase):
         # FIXME: There is no tree config, so we use the branch one (it's weird
         # to define it this way as orphaning can only occur in a working tree,
         # but that's all we have (for now). It will find the option in
-        # locations,conf or bazaar.conf though) -- vila 20100916
+        # locations.conf or bazaar.conf though) -- vila 20100916
         conf = self._tree.branch.get_config()
         conf_var_name = 'bzrlib.transform.orphan_policy'
         orphan_policy = conf.get_user_option(conf_var_name)
@@ -1406,7 +1406,7 @@ def move_orphan(tt, orphan_id, parent_id):
 def refuse_orphan(tt, orphan_id, parent_id):
     """See TreeTransformBase.new_orphan.
 
-    This refuses to create orphan, letting caller handle the conflict.
+    This refuses to create orphan, letting the caller handle the conflict.
     """
     raise OrphaningForbidden('never')
 

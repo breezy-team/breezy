@@ -181,6 +181,9 @@ Documentation
 * Correct the documentation for setting up the smart server with Apache.
   (Neil Martinsen-Burrell, #311518)
 
+* Fix rst typos in bzrlib/help_topics/en/conflict-types.txt.
+  (Vincent Ladeuil, #660943)
+
 * Provide more detailed help on the Launchpad plugin at "bzr help
   plugins/launchpad".  (Neil Martinsen-Burrell, #589379)
 
