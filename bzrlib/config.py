@@ -1770,7 +1770,15 @@ class TransportConfig(object):
 
 
 class cmd_config(commands.Command):
-    __doc__ = """Display informations about configuration options.
+    __doc__ = """Display, set or remove a configuration option.
+
+    Display the MATCHING configuration options mentioning their scope (the
+    configuration file they are defined in). The active value that bzr will
+    take into account is the first one displayed.
+
+    Setting a value is achieved by using name=value without spaces. The value
+    is set in the most relevant scope and can be checked by displaying the
+    option again.
     """
 
     aliases = ['conf']
