@@ -166,8 +166,8 @@ Bug Fixes
 
 * It's now possible to request orphan creation when a versioned directory
   should be deleted (when doing a pull, a merge or switch) via the
-  ``bzrlib.transform.orphan_policy`` configuration variable. Acceptable
-  values are ``conflict`` (the default behaviour that refuse to delete the
+  ``bzr.transform.orphan_policy`` configuration variable. Acceptable values
+  are ``conflict`` (the default behaviour that refuse to delete the
   directory) or ``move`` to create orphans (the unversioned files present
   in the directory). The orphans will be named ``<file>.~#~``.
   (Vincent Ladeuil, #323111)
