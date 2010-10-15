@@ -45,6 +45,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
+    pyutils,
     remote,
     repository,
     revision as _mod_revision,
@@ -3092,15 +3093,12 @@ def register_metadir(registry, key,
     def _load(full_name):
         mod_name, factory_name = full_name.rsplit('.', 1)
         try:
-            mod = __import__(mod_name, globals(), locals(),
-                    [factory_name])
+            factory = pyutils.get_named_object(mod_name, factory_name)
         except ImportError, e:
             raise ImportError('failed to load %s: %s' % (full_name, e))
-        try:
-            factory = getattr(mod, factory_name)
         except AttributeError:
             raise AttributeError('no factory %s in module %r'
-                % (full_name, mod))
+                % (full_name, sys.modules[mod_name]))
         return factory()
 
     def helper():
