@@ -97,12 +97,12 @@ Improved conflict handling
 * ``pull``, ``merge`` or ``switch`` can lead to conflicts when deleting a
   versioned directory contains unversioned files. The cause of the conflict
   is that deleting the directory will orphan the unversioned files so the
-  user needs to instruct ``bzr`` what do to do about these orpahns. This
-  can is controlled by setting the ``bzr.transform.orphan_policy``
-  configuration variable with a value of ``move``. In this case the
-  unversioned files are moved to a ``bzr-orphans`` directory at the root of
-  the working tree. The default behaviour is specified (if needed) by
-  setting the variable to ``conflict``.  (Vincent Ladeuil, #323111)
+  user needs to instruct ``bzr`` what do to do about these orpahns. This is
+  controlled by setting the ``bzr.transform.orphan_policy`` configuration
+  variable with a value of ``move``. In this case the unversioned files are
+  moved to a ``bzr-orphans`` directory at the root of the working tree. The
+  default behaviour is specified (if needed) by setting the variable to
+  ``conflict``.  (Vincent Ladeuil, #323111)
 
 Documentation
 *************

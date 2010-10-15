@@ -1412,10 +1412,12 @@ def refuse_orphan(tt, orphan_id, parent_id):
 
 
 orphaning_registry = registry.Registry()
-orphaning_registry.register('conflict', refuse_orphan,
-                            'Never create orphans.')
-orphaning_registry.register('move', move_orphan,
-                            'Move orphans into the bzr-orphans directory.')
+orphaning_registry.register(
+    'conflict', refuse_orphan,
+    'Leave orphans in place and create a conflict on the directory.')
+orphaning_registry.register(
+    'move', move_orphan,
+    'Move orphans into the bzr-orphans directory.')
 orphaning_registry._set_default_key('conflict')
 
 

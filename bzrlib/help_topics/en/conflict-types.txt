@@ -257,8 +257,8 @@ setting the ``bzr.transform.orphan_policy`` configuration option.
 
 There are two possible values for this option:
 
-* ``never`` (the default): will leave the orphans in place and generate a
-  conflicts,
+* ``conflict`` (the default): will leave the orphans in place and
+  generate a conflicts,
 
 * ``move``: will move the orphans to a ``bzr-orphans`` directory at the root
   of the working tree with names like ``<file>.~#~``.
