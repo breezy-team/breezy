@@ -304,10 +304,10 @@ doc/index.%.html: doc/index.%.txt
 	$(rst2html) --stylesheet=default.css $< $@
 
 %.html: %.txt
-	$(rst2html) --stylesheet=../../default.css $< $@
+	$(rst2html) --stylesheet=../../default.css $< "$@"
 
 doc/en/release-notes/NEWS.txt: $(NEWS_FILES) tools/generate_release_notes.py
-	$(PYTHON) tools/generate_release_notes.py $@ $(NEWS_FILES)
+	$(PYTHON) tools/generate_release_notes.py "$@" $(NEWS_FILES)
 
 upgrade_guide_dependencies =  $(wildcard $(addsuffix /*.txt, doc/en/upgrade-guide)) 
 

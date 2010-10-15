@@ -5,17 +5,6 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 1.17.1 (unreleased)
-#######################
-
-Bug Fixes
-*********
-
-* The optional ``_knit_load_data_pyx`` C extension was never being
-  imported.  This caused significant slowdowns when reading data from
-  knit format repositories.  (Andrew Bennetts, #405653)
-  
-
 bzr 1.17
 ########
 :Codename: so-late-its-brunch
