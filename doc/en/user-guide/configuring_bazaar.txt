@@ -66,7 +66,7 @@ the ``whoami`` command::
   email = Your Name <email@example.com>
 
 For further details on the syntax and configuration settings supported, see
-`Configuration Settings <../user-reference/bzr_man.html#configuration-settings>`_
+`Configuration Settings <../user-reference/index.html#configuration-settings>`_
 in the Bazaar User Reference.
 
 
@@ -78,5 +78,5 @@ certain patterns. Per-user rule-based preferences are defined in
 ``BZR_HOME/rules``.
 
 For further information on how rules are searched and the detailed syntax of
-the relevant files, see `Rules <../user-reference/bzr_man.html#rules>`_
+the relevant files, see `Rules <../user-reference/index.html#rules>`_
 in the Bazaar User Reference.

@@ -74,7 +74,7 @@ is case sensitive, and must be in upper-case.
 For more information on the ini file format, see `Configuration Settings`_ in
 the Bazaar User Reference.
 
-.. _Configuration Settings: ../user-reference/bzr_man.html#configuration-settings
+.. _Configuration Settings: ../user-reference/index.html#configuration-settings
 
 Setting email on a per-branch basis
 -----------------------------------
