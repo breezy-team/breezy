@@ -20,16 +20,13 @@ from bzrlib import (
     tests,
     )
 
-from fastimport import (
-    commands,
-    )
-
 from bzrlib.plugins.fastimport.helpers import (
     kind_to_mode,
     )
 
-from bzrlib.plugins.fastimport.processors import (
-    generic_processor,
+
+from bzrlib.plugins.fastimport.tests import (
+    FastimportFeature,
     )
 
 
@@ -51,9 +48,14 @@ def load_tests(standard_tests, module, loader):
 
 class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
 
+    _test_needs_features = [FastimportFeature]
+
     branch_format = "pack-0.92"
 
     def get_handler(self):
+        from bzrlib.plugins.fastimport.processors import (
+            generic_processor,
+            )
         branch = self.make_branch('.', format=self.branch_format)
         handler = generic_processor.GenericProcessor(branch.bzrdir)
         return handler, branch
@@ -194,6 +196,8 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file', content='aaa',
         executable=False, to_kind=None, to_content='bbb', to_executable=None):
+        from fastimport import commands
+
         # Revno 1: create a file or symlink
         # Revno 2: modify it
         if to_kind is None:
@@ -312,12 +316,14 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
 
 class TestImportToPackModifyTwice(TestCaseForGenericProcessor):
     """This tests when the same file is modified twice in the one commit.
-    
+
     Note: hg-fast-export produces data like this on occasions.
     """
 
     def file_command_iter(self, path, kind='file', content='aaa',
         executable=False, to_kind=None, to_content='bbb', to_executable=None):
+        from fastimport import commands
+
         # Revno 1: create a file twice
         if to_kind is None:
             to_kind = kind
@@ -348,6 +354,8 @@ class TestImportToPackModifyTwice(TestCaseForGenericProcessor):
 class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path1, path2, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create a file or symlink in a directory
         # Revno 2: create a second file that implicitly deletes the
         # first one because either:
@@ -425,6 +433,8 @@ class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
 class TestImportToPackDelete(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create a file or symlink
         # Revno 2: delete it
         def command_list():
@@ -496,6 +506,8 @@ class TestImportToPackDeleteNew(TestCaseForGenericProcessor):
     """Test deletion of a newly added file."""
 
     def file_command_iter(self, path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create a file or symlink then delete it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
@@ -542,6 +554,8 @@ class TestImportToPackDeleteNew(TestCaseForGenericProcessor):
 class TestImportToPackDeleteMultiLevel(TestCaseForGenericProcessor):
 
     def file_command_iter(self, paths, paths_to_delete):
+        from fastimport import commands
+
         # Revno 1: create multiple files
         # Revno 2: delete multiple files
         def command_list():
@@ -617,6 +631,8 @@ class TestImportToPackDeleteThenAdd(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file', content='aaa',
         executable=False, to_kind=None, to_content='bbb', to_executable=None):
+        from fastimport import commands
+
         # Revno 1: create a file or symlink
         # Revno 2: delete it and add it
         if to_kind is None:
@@ -693,6 +709,8 @@ class TestImportToPackDeleteThenAdd(TestCaseForGenericProcessor):
 class TestImportToPackDeleteDirectory(TestCaseForGenericProcessor):
 
     def file_command_iter(self, paths, dir):
+        from fastimport import commands
+
         # Revno 1: create multiple files
         # Revno 2: delete a directory holding those files
         def command_list():
@@ -734,6 +752,8 @@ class TestImportToPackDeleteDirectoryThenAddFile(TestCaseForGenericProcessor):
     """Test deleting a directory then adding a file in the same commit."""
 
     def file_command_iter(self, paths, dir, new_path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create files in a directory
         # Revno 2: delete the directory then add a file into it
         def command_list():
@@ -783,6 +803,8 @@ class TestImportToPackDeleteDirectoryThenAddFile(TestCaseForGenericProcessor):
 class TestImportToPackRename(TestCaseForGenericProcessor):
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create a file or symlink
         # Revno 2: rename it
         def command_list():
@@ -858,6 +880,8 @@ class TestImportToPackRenameNew(TestCaseForGenericProcessor):
     """Test rename of a newly added file."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create a file and rename it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
@@ -909,6 +933,8 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
     """Test rename to a destination path deleted in this commit."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create two files
         # Revno 2: delete one, rename the other one to that path
         def command_list():
@@ -1021,6 +1047,8 @@ class TestImportToPackRenameModified(TestCaseForGenericProcessor):
     """Test rename of a path previously modified in this commit."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create a file or symlink
         # Revno 2: modify then rename it
         def command_list():
@@ -1136,6 +1164,8 @@ class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
     """Test rename of a path then modfy the new-path in the same commit."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create a file or symlink
         # Revno 2: rename it then modify the newly created path
         def command_list():
@@ -1251,6 +1281,8 @@ class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
     """Test rename of to a deleted path then modfy the new-path in the same commit."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create two files or symlinks
         # Revno 2: delete one, rename the other to it then modify the newly created path
         def command_list():
@@ -1378,6 +1410,8 @@ class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
 class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path1, old_path2, new_path2, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create two files or symlinks in a directory
         # Revno 2: rename the second file so that it implicitly deletes the
         # first one because either:
@@ -1461,6 +1495,8 @@ class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
 class TestImportToPackCopy(TestCaseForGenericProcessor):
 
     def file_command_iter(self, src_path, dest_path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create a file or symlink
         # Revno 2: copy it
         def command_list():
@@ -1552,6 +1588,8 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
     """Test copy of a newly added file."""
 
     def file_command_iter(self, src_path, dest_path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create a file or symlink and copy it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
@@ -1632,6 +1670,8 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
 class TestImportToPackCopyToDeleted(TestCaseForGenericProcessor):
 
     def file_command_iter(self, src_path, dest_path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create two files or symlinks
         # Revno 2: delete one and copy the other one to its path
         def command_list():
@@ -1720,6 +1760,8 @@ class TestImportToPackCopyModified(TestCaseForGenericProcessor):
     """Test copy of file/symlink already modified in this commit."""
 
     def file_command_iter(self, src_path, dest_path, kind='file'):
+        from fastimport import commands
+
         # Revno 1: create a file or symlink
         # Revno 2: modify and copy it
         def command_list():
@@ -1818,6 +1860,8 @@ class TestImportToPackCopyModified(TestCaseForGenericProcessor):
 class TestImportToPackFileKinds(TestCaseForGenericProcessor):
 
     def get_command_iter(self, path, kind, content):
+        from fastimport import commands
+
         def command_list():
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
@@ -1839,6 +1883,7 @@ class TestImportToPackFileKinds(TestCaseForGenericProcessor):
 class TestModifyRevertInBranch(TestCaseForGenericProcessor):
 
     def file_command_iter(self):
+        from fastimport import commands
         # A     add 'foo'
         # |\
         # | B   modify 'foo'

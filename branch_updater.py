@@ -21,9 +21,6 @@ from operator import itemgetter
 from bzrlib import bzrdir, errors, osutils, transport
 from bzrlib.trace import error, note
 
-from fastimport.helpers import (
-    single_plural,
-    )
 from bzrlib.plugins.fastimport.helpers import (
     best_format_for_objects_in_a_repository,
     )
@@ -153,6 +150,7 @@ class BranchUpdater(object):
         
         :return: whether the branch was changed or not
         """
+        from fastimport.helpers import single_plural
         last_rev_id = self.cache_mgr.revision_ids[last_mark]
         revs = list(self.repo.iter_reverse_revision_history(last_rev_id))
         revno = len(revs)

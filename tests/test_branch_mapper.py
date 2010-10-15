@@ -22,8 +22,14 @@ from bzrlib.plugins.fastimport import (
     branch_mapper,
     )
 
+from bzrlib.plugins.fastimport.tests import (
+    FastimportFeature,
+    )
+
 
 class TestBranchMapper(tests.TestCase):
+
+    _test_needs_features = [FastimportFeature]
 
     def test_git_to_bzr(self):
         m = branch_mapper.BranchMapper()

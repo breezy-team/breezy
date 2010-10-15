@@ -37,7 +37,6 @@ except ImportError:
     import configobj
 from bzrlib.plugins.fastimport import (
     branch_updater,
-    bzr_commit_handler,
     cache_manager,
     marks_file,
     revision_store,
@@ -198,6 +197,9 @@ class GenericProcessor(processor.ImportProcessor):
         self.repo.start_write_group()
 
     def _load_info_and_params(self):
+        from bzrlib.plugins.fastimport (
+            bzr_commit_handler,
+            )
         self._mode = bool(self.params.get('mode', 'default'))
         self._experimental = self._mode == 'experimental'
 

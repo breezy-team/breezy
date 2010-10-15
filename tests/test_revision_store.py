@@ -27,9 +27,14 @@ from bzrlib import (
 from bzrlib.plugins.fastimport import (
     revision_store,
     )
+from bzrlib.plugins.fastimport.tests import (
+    FastimportFeature,
+    )
 
 
 class Test_TreeShim(tests.TestCase):
+
+    _test_needs_features = [FastimportFeature]
 
     def invAddEntry(self, inv, path, file_id=None):
         if path.endswith('/'):
@@ -47,7 +52,7 @@ class Test_TreeShim(tests.TestCase):
         self.invAddEntry(basis_inv, 'bar/', 'bar-id')
         self.invAddEntry(basis_inv, 'bar/baz', 'baz-id')
         return basis_inv
-        
+
     def test_id2path_no_delta(self):
         basis_inv = self.make_trivial_basis_inv()
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
@@ -87,7 +92,7 @@ class Test_TreeShim(tests.TestCase):
 
         def content_provider(file_id):
             return 'content of\n' + file_id + '\n'
-        
+
         shim = revision_store._TreeShim(repo=None, basis_inv=basis_inv,
                                         inv_delta=[],
                                         content_provider=content_provider)
@@ -144,4 +149,4 @@ class Test_TreeShim(tests.TestCase):
         # from pprint import pformat
         # self.assertEqualDiff(pformat(expected), pformat(changes))
         self.assertEqual(expected, changes)
-                        
+
