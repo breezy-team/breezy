@@ -56,6 +56,9 @@ Documentation
 API Changes
 ***********
 
+* ``bzrlib.tests.ForwardingResult`` no longer exists.  Use
+  ``testtools.ExtendedToOriginalDecorator`` instead.  (Andrew Bennetts)
+
 Internals
 *********
 
