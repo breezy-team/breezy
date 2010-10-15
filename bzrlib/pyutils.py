@@ -14,8 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Some convenience functions for general Python, such as a wrapper around
-``_import__``."""
+"""General Python convenience functions."""
 
 
 import sys
