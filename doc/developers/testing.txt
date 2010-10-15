@@ -340,9 +340,9 @@ Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 Shell-like tests
 ----------------
 
-``bzrlib/tests/script.py`` allows users to write tests in a syntax very close to a shell session,
-using a restricted and limited set of commands that should be enough to mimic
-most of the behaviours.
+``bzrlib/tests/script.py`` allows users to write tests in a syntax very
+close to a shell session, using a restricted and limited set of commands
+that should be enough to mimic most of the behaviours.
 
 A script is a set of commands, each command is composed of:
 
@@ -432,6 +432,12 @@ You can also check the existence of a file with cat, the following will fail if
 the file doesn't exist::
 
   $ cat file
+
+You can run files containing shell-like scripts with::
+
+  $ bzr test-script <script>
+
+where ``<script>`` is the path to the file containing the shell-like script.
 
 The actual use of ScriptRunner within a TestCase looks something like
 this::

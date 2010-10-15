@@ -90,6 +90,14 @@ New revision specifiers
   ``bzr log -vp -r mainline:annotate:bzrlib/transform.py:500``
   (Aaron Bentley)
 
+Testing/Bug reporting
+*********************
+
+* Shell-like scripts can now be run directly from the command line without
+  writing a python test. This should help users adding reproducing recipes
+  to bug reports. (Vincent Ladeuil)
+
+
 Documentation
 *************
 

@@ -86,6 +86,9 @@ Testing
   Instead, use '...' as a wildcard if you don't care about the output.
   (Martin Pool, #637830)
 
+* ``bzr test-script script`` is a new command that runs a shell-like script
+  from an the ``script`` file. (Vincent Ladeuil)
+
 
 bzr 2.3b2
 #########
