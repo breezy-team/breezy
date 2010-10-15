@@ -104,6 +104,7 @@ class TestDpush(tests.TestCaseWithTransport):
 
         script.run_script(self, '''
             $ bzr dpush -d dc d
+            2>Pushed up to revision 2.
             $ bzr revno dc
             2
             $ bzr status dc
@@ -121,6 +122,7 @@ class TestDpush(tests.TestCaseWithTransport):
         self.build_tree_contents([("dc/foofile", "blaaaal")])
         script.run_script(self, '''
             $ bzr dpush -d dc d --no-strict
+            2>Pushed up to revision 2.
             ''')
         self.assertFileEqual("blaaaal", "dc/foofile")
         # if the dummy vcs wasn't that dummy we could uncomment the line below

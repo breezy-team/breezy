@@ -15,13 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Test "bzr init"""
+"""Test 'bzr init'"""
 
 import os
 import re
 
 from bzrlib import (
     branch as _mod_branch,
+    config as _mod_config,
     osutils,
     urlutils,
     )
@@ -163,6 +164,20 @@ Using shared repository: %s
         self.run_bzr('init ../new/tree --create-prefix', working_dir='tree')
         self.failUnlessExists('new/tree/.bzr')
 
+    def test_init_default_format_option(self):
+        """bzr init should read default format from option default_format"""
+        conf = _mod_config.GlobalConfig.from_string('''
+[DEFAULT]
+default_format = 1.9
+''', save=True)
+        out, err = self.run_bzr_subprocess('init')
+        self.assertContainsRe(out, '1.9')
+
+    def test_init_no_tree(self):
+        """'bzr init --no-tree' creates a branch with no working tree."""
+        out, err = self.run_bzr('init --no-tree')
+        self.assertStartsWith(out, 'Created a standalone branch')
+
 
 class TestSFTPInit(TestCaseWithSFTPServer):
 
@@ -216,3 +231,4 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         out, err = self.run_bzr(['init', 'foo'])
         self.assertEqual(err, '')
         self.assertTrue(os.path.exists('foo'))
+        

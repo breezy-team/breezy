@@ -38,12 +38,14 @@ class _NotRunningAsRoot(tests.Feature):
 
 
 not_running_as_root = _NotRunningAsRoot()
+
 apport = tests.ModuleAvailableFeature('apport')
+meliae = tests.ModuleAvailableFeature('meliae')
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 pywintypes = tests.ModuleAvailableFeature('pywintypes')
-subunit = tests.ModuleAvailableFeature('subunit')
 sphinx = tests.ModuleAvailableFeature('sphinx')
+subunit = tests.ModuleAvailableFeature('subunit')
 
 
 class _BackslashDirSeparatorFeature(tests.Feature):
