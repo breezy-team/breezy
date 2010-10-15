@@ -2080,9 +2080,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                     files_to_backup.append(path[1])
 
         def backup(file_to_backup):
-            backup_name = self.bzrdir.generate_backup_name(file_to_backup)
+            backup_name = self.bzrdir._available_backup_name(file_to_backup)
             osutils.rename(abs_path, self.abspath(backup_name))
-            return "removed %s (but kept a copy: %s)" % (file_to_backup, backup_name)
+            return "removed %s (but kept a copy: %s)" % (file_to_backup,
+                                                         backup_name)
 
         # Build inv_delta and delete files where applicable,
         # do this before any modifications to inventory.

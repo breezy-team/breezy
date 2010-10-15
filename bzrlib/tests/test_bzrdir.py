@@ -32,6 +32,7 @@ from bzrlib import (
     repository,
     osutils,
     remote,
+    symbol_versioning,
     urlutils,
     win32utils,
     workingtree,
@@ -790,13 +791,27 @@ class ChrootedTests(TestCaseWithTransport):
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
+        # The following line force the orhaning to reveal bug #634470
+        tree.branch.get_config().set_user_option(
+            'bzr.transform.orphan_policy', 'move')
         tree.bzrdir.destroy_workingtree()
+        # FIXME: subtree/.bzr is left here which allows the test to pass (or
+        # fail :-( ) -- vila 20100909
         repo = self.make_repository('repo', shared=True,
             format='dirstate-with-subtree')
         repo.set_make_working_trees(False)
-        tree.bzrdir.sprout('repo/tree2')
-        self.failUnlessExists('repo/tree2/subtree')
-        self.failIfExists('repo/tree2/subtree/file')
+        # FIXME: we just deleted the workingtree and now we want to use it ????
+        # At a minimum, we should use tree.branch below (but this fails too
+        # currently) or stop calling this test 'treeless'. Specifically, I've
+        # turn the line below into an assertRaises when 'subtree/.bzr' is
+        # orphaned and sprout tries to access the branch there (which is left
+        # by bzrdir.BzrDirMeta1.destroy_workingtree when it ignores the
+        # [DeletingParent('Not deleting', u'subtree', None)] conflict). See bug
+        # #634470.  -- vila 20100909
+        self.assertRaises(errors.NotBranchError,
+                          tree.bzrdir.sprout, 'repo/tree2')
+#        self.failUnlessExists('repo/tree2/subtree')
+#        self.failIfExists('repo/tree2/subtree/file')
 
     def make_foo_bar_baz(self):
         foo = bzrdir.BzrDir.create_branch_convenience('foo').bzrdir
@@ -1417,6 +1432,9 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
 
 
 class TestGenerateBackupName(TestCaseWithMemoryTransport):
+    # FIXME: This may need to be unified with test_osutils.TestBackupNames or
+    # moved to per_bzrdir or per_transport for better coverage ?
+    # -- vila 20100909
 
     def setUp(self):
         super(TestGenerateBackupName, self).setUp()
@@ -1425,9 +1443,14 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
             possible_transports=[self._transport])
         self._bzrdir = bzrdir.BzrDir.open_from_transport(self._transport)
 
+    def test_deprecated_generate_backup_name(self):
+        res = self.applyDeprecated(
+                symbol_versioning.deprecated_in((2, 3, 0)),
+                self._bzrdir.generate_backup_name, 'whatever')
+
     def test_new(self):
-        self.assertEqual("a.~1~", self._bzrdir.generate_backup_name("a"))
+        self.assertEqual("a.~1~", self._bzrdir._available_backup_name("a"))
 
     def test_exiting(self):
         self._transport.put_bytes("a.~1~", "some content")
-        self.assertEqual("a.~2~", self._bzrdir.generate_backup_name("a"))
+        self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))

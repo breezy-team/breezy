@@ -87,6 +87,10 @@ from bzrlib import (
     registry,
     symbol_versioning,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 
 
 class BzrDir(controldir.ControlDir):
@@ -497,14 +501,16 @@ class BzrDir(controldir.ControlDir):
                                                format=format).bzrdir
         return bzrdir.create_workingtree()
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def generate_backup_name(self, base):
-        """Generate a non-existing backup file name based on base."""
-        counter = 1
-        name = "%s.~%d~" % (base, counter)
-        while self.root_transport.has(name):
-            counter += 1
-            name = "%s.~%d~" % (base, counter)
-        return name
+        return self._available_backup_name(base)
+
+    def _available_backup_name(self, base):
+        """Find a non-existing backup file name based on base.
+
+        See bzrlib.osutils.available_backup_name about race conditions.
+        """
+        return osutils.available_backup_name(base, self.root_transport.has)
 
     def backup_bzrdir(self):
         """Backup this bzr control directory.
@@ -512,16 +518,13 @@ class BzrDir(controldir.ControlDir):
         :return: Tuple with old path name and new path name
         """
 
-        backup_dir=self.generate_backup_name('backup.bzr')
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            # FIXME: bug 300001 -- the backup fails if the backup directory
-            # already exists, but it should instead either remove it or make
-            # a new backup directory.
-            #
             old_path = self.root_transport.abspath('.bzr')
+            backup_dir = self._available_backup_name('backup.bzr')
             new_path = self.root_transport.abspath(backup_dir)
-            ui.ui_factory.note('making backup of %s\n  to %s' % (old_path, new_path,))
+            ui.ui_factory.note('making backup of %s\n  to %s'
+                               % (old_path, new_path,))
             self.root_transport.copy_tree('.bzr', backup_dir)
             return (old_path, new_path)
         finally:
@@ -1291,7 +1294,10 @@ class BzrDirMeta1(BzrDir):
         wt = self.open_workingtree(recommend_upgrade=False)
         repository = wt.branch.repository
         empty = repository.revision_tree(_mod_revision.NULL_REVISION)
-        wt.revert(old_tree=empty)
+        # We ignore the conflicts returned by wt.revert since we're about to
+        # delete the wt metadata anyway, all that should be left here are
+        # detritus. But see bug #634470 about subtree .bzr dirs.
+        conflicts = wt.revert(old_tree=empty)
         self.destroy_workingtree_metadata()
 
     def destroy_workingtree_metadata(self):
