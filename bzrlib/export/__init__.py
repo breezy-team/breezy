@@ -20,7 +20,10 @@ Such as non-controlled directories, tarfiles, zipfiles, etc.
 """
 
 import os
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    pyutils,
+    )
 
 # Maps format name => export function
 _exporters = {}
@@ -55,8 +58,7 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
     When requesting a specific type of export, load the respective path.
     """
     def _loader(tree, dest, root, subdir, filtered, per_file_timestamps):
-        mod = __import__(module, globals(), locals(), [funcname])
-        func = getattr(mod, funcname)
+        func = pyutils.get_named_object(module, funcname)
         return func(tree, dest, root, subdir, filtered=filtered,
                     per_file_timestamps=per_file_timestamps)
     register_exporter(scheme, extensions, _loader)
