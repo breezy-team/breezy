@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -169,7 +169,14 @@ class TestBzrDir(TestCaseWithBzrDir):
         TestSkipped.  Returns the newly created working tree.
         """
         try:
-            return a_bzrdir.create_workingtree()
+            # This passes in many named options to make sure they're
+            # understood by subclasses: see
+            # <https://bugs.launchpad.net/bzr/+bug/524627>.
+            return a_bzrdir.create_workingtree(
+                revision_id=None,
+                from_branch=None,
+                accelerator_tree=None,
+                hardlink=False)
         except errors.NotLocalUrl:
             raise TestSkipped("cannot make working tree with transport %r"
                               % a_bzrdir.transport)

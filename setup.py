@@ -66,6 +66,7 @@ PKG_DATA = {# install files from selftest suite
             'package_data': {'bzrlib': ['doc/api/*.txt',
                                         'tests/test_patches_data/*',
                                         'help_topics/en/*.txt',
+                                        'tests/ssl_certs/ca.crt',
                                         'tests/ssl_certs/server_without_pass.key',
                                         'tests/ssl_certs/server_with_pass.key',
                                         'tests/ssl_certs/server.crt'
@@ -726,19 +727,6 @@ else:
         # generate and install bzr.1 only with plain install, not the
         # easy_install one
         DATA_FILES = [('man/man1', ['bzr.1'])]
-
-    if sys.platform != 'win32':
-        # see https://wiki.kubuntu.org/Apport/DeveloperHowTo
-        #
-        # checking the paths and hardcoding the check for root is a bit gross,
-        # but I don't see a cleaner way to find out the locations in a way
-        # that's going to align with the hardcoded paths in apport.
-        if os.geteuid() == 0:
-            DATA_FILES += [
-                ('/usr/share/apport/package-hooks',
-                    ['apport/source_bzr.py']),
-                ('/etc/apport/crashdb.conf.d/',
-                    ['apport/bzr-crashdb.conf']),]
 
     # std setup
     ARGS = {'scripts': ['bzr'],

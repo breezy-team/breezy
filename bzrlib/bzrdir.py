@@ -171,7 +171,7 @@ class BzrDir(controldir.ControlDir):
 
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
-        create_prefix=False, use_existing_dir=True):
+        create_prefix=False, use_existing_dir=True, no_tree=False):
         """Clone this bzrdir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -219,7 +219,7 @@ class BzrDir(controldir.ControlDir):
         # we should look up the policy needs first, or just use it as a hint,
         # or something.
         if local_repo:
-            make_working_trees = local_repo.make_working_trees()
+            make_working_trees = local_repo.make_working_trees() and not no_tree
             want_shared = local_repo.is_shared()
             repo_format_name = format.repository_format.network_name()
         else:
@@ -3351,7 +3351,11 @@ register_metadir(controldir.format_registry, 'default-rich-root',
     help='Same as 2a.')
 
 # The current format that is made on 'bzr init'.
-controldir.format_registry.set_default('2a')
+format_name = config.GlobalConfig().get_user_option('default_format')
+if format_name is None:
+    controldir.format_registry.set_default('2a')
+else:
+    controldir.format_registry.set_default(format_name)
 
 # XXX 2010-08-20 JRV: There is still a lot of code relying on
 # bzrlib.bzrdir.format_registry existing. When BzrDir.create/BzrDir.open/etc

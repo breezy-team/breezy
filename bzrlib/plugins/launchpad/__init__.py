@@ -14,7 +14,26 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Launchpad.net integration plugin for Bazaar."""
+"""Launchpad.net integration plugin for Bazaar.
+
+This plugin provides facilities for working with Bazaar branches that are
+hosted on Launchpad (http://launchpad.net).  It provides a directory service 
+for referring to Launchpad branches using the "lp:" prefix.  For example,
+lp:bzr refers to the Bazaar's main development branch and
+lp:~username/project/branch-name can be used to refer to a specific branch.
+
+This plugin provides a bug tracker so that "bzr commit --fixes lp:1234" will
+record that revision as fixing Launchpad's bug 1234.
+
+The plugin also provides the following commands:
+
+    launchpad-login: Show or set the Launchpad user ID
+    launchpad-open: Open a Launchpad branch page in your web browser
+    lp-propose-merge: Propose merging a branch on Launchpad
+    register-branch: Register a branch with launchpad.net
+    launchpad-mirror: Ask Launchpad to mirror a branch now
+
+"""
 
 # The XMLRPC server address can be overridden by setting the environment
 # variable $BZR_LP_XMLRPC_URL
@@ -352,6 +371,15 @@ def _register_directory():
     directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_directory',
                               'LaunchpadDirectory',
                               'Launchpad-based directory service',)
+    directories.register_lazy(
+        'debianlp:', 'bzrlib.plugins.launchpad.lp_directory',
+        'LaunchpadDirectory',
+        'debianlp: shortcut')
+    directories.register_lazy(
+        'ubuntu:', 'bzrlib.plugins.launchpad.lp_directory',
+        'LaunchpadDirectory',
+        'ubuntu: shortcut')
+
 _register_directory()
 
 

@@ -20,7 +20,7 @@
 A crash is an exception propagated up almost to the top level of Bazaar.
 
 If we have apport <https://launchpad.net/apport/>, we store a report of the
-crash using apport into it's /var/crash spool directory, from where the user
+crash using apport into its /var/crash spool directory, from where the user
 can either manually send it to Launchpad.  In some cases (at least Ubuntu
 development releases), Apport may pop up a window asking if they want
 to send it.

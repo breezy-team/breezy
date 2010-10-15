@@ -687,7 +687,12 @@ class Command(object):
 
         self._setup_outf()
 
-        return self.run(**all_cmd_args)
+        try:
+            return self.run(**all_cmd_args)
+        finally:
+            # reset it, so that other commands run in the same process won't
+            # inherit state
+            trace.set_verbosity_level(0)
 
     def _setup_run(self):
         """Wrap the defined run method on self with a cleanup.

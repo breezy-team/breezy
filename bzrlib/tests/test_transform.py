@@ -61,6 +61,7 @@ from bzrlib.osutils import (
 )
 from bzrlib.merge import Merge3Merger, Merger
 from bzrlib.tests import (
+    features,
     HardlinkFeature,
     SymlinkFeature,
     TestCase,
@@ -871,6 +872,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         rename.apply()
 
     def test_rename_fails(self):
+        self.requireFeature(features.not_running_as_root)
         # see https://bugs.launchpad.net/bzr/+bug/491763
         create, root_id = self.get_transform()
         first_dir = create.new_directory('first-dir', root_id, 'first-id')
@@ -2212,12 +2214,12 @@ class TestBackupName(tests.TestCase):
 
         tt = MockTransform()
         name1 = self.applyDeprecated(
-                symbol_versioning.deprecated_in((2, 3, 0)),
-                transform.get_backup_name, MockEntry(), {'a':[]}, 'a', tt)
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            transform.get_backup_name, MockEntry(), {'a':[]}, 'a', tt)
         self.assertEqual('name.~1~', name1)
         name2 = self.applyDeprecated(
-                symbol_versioning.deprecated_in((2, 3, 0)),
-                transform._get_backup_name, 'name', {'a':['name.~1~']}, 'a', tt)
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            transform._get_backup_name, 'name', {'a':['name.~1~']}, 'a', tt)
         self.assertEqual('name.~2~', name2)
 
 
