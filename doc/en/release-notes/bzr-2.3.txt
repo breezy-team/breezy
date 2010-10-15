@@ -1,0 +1,615 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 2.3b3
+#########
+
+:2.3b3: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+(none)
+
+New Features
+************
+
+* Add --no-tree option to 'bzr push' and 'bzr init' for creating a
+  new or mirrored branch without working trees.
+  (Matthew Gordon, #506730)
+
+* New shortcut url schemes ``ubuntu:`` and ``debianlp:`` access source
+  branches on Launchpad.  E.g. ``bzr branch ubuntu:foo`` gives you the source
+  branch for project ``foo`` in the current distroseries for Ubuntu while
+  ``bzr branch debianlp:lenny/foo`` gives you the source branch (on Launchpad)
+  for project ``foo`` in Debian Lenny.
+  (Barry Warsaw, #609186)
+
+* Provide a configuration option "default_format" that controls the
+  default format for new branches created with ``bzr init``.
+  (Neil Martinsen-Burrell, #484101)
+
+Improvements
+************
+
+Bug Fixes
+*********
+
+* Always set PATH in start_bzr.bat on Windows. (Matthäus G. Chajdas, #470264)
+
+* Don't force openssh to use protocol=2, since that is now the default.
+  (Neil Martinsen-Burrell, #561061)
+
+* Fix ``KeyError: 'port'`` when getting the stored password for an http
+  URL.
+  (Martin Pool, #654684)
+
+* Make ``bzr tag --quiet`` really quiet. (Neil Martinsen-Burrell, #239523)
+
+Documentation
+*************
+
+API Changes
+***********
+
+* ``bzrlib.tests.ForwardingResult`` no longer exists.  Use
+  ``testtools.ExtendedToOriginalDecorator`` instead.  (Andrew Bennetts)
+
+Internals
+*********
+
+* ``tools/fixed-in.py`` find a bug in NEWS from its number or a regexp
+  matching the news entry and display the corresponding release, date, fix
+  authors and the news entry itself. (Vincent Ladeuil)
+
+Testing
+*******
+
+* Blank output section in scriptrunner tests no longer match any output.
+  Instead, use '...' as a wildcard if you don't care about the output.
+  (Martin Pool, #637830)
+
+* ``bzr test-script script`` is a new command that runs a shell-like script
+  from an the ``script`` file. (Vincent Ladeuil)
+
+
+bzr 2.3b2
+#########
+
+:2.3b2: 2010-10-08
+
+External Compatibility Breaks
+*****************************
+
+* The ``bzr tags`` command sorts tag names using a natural sort by
+  default (so tag2 sorts before tag10).  The previous default was
+  strictly "asciibetical".  That behavior is still available as ``bzr tags
+  --sort=alpha``. (Neil Martinsen-Burrell, #640760)
+
+New Features
+************
+
+* Add ``mainline`` revision specifier, which selects the revision that
+  merged a specified revision into the mainline.  (Aaron Bentley)
+
+* Add ``annotate`` revision specifier, which selects the revision that
+  introduced a specified line of a file.  (Aaron Bentley)
+
+* Add ``-Dmem_dump`` debug flag, which uses meliae to dump memory to 
+  a file upon an out of memory error.
+  (Karl Bielefeldt, #551391)
+
+* ``bzr status`` now displays a summary of existing shelves after
+  the other status information. This is done using a ``post_status``
+  hook.
+  (Parth Malwankar, #403687)
+
+* GNU lsh is now a supported lsh client; just set BZR_SSH to 'lsh'.
+  Also, bzr will recognize if the 'ssh' comand is a symlink to lsh.
+  (Matthew Gordon, #374700)
+
+* The ``pull`` and ``update`` commands now take a ``--show-base``
+  option that, in the case of conflicts, shows the base revision text.
+  (Rory Yorke,  #202374)
+
+Improvements
+************
+
+* ``bzr break-lock --force`` breaks the lock without prompting.  (Before
+  using this, make sure the process holding the lock really is dead.)
+  (Martin Pool, #397315)
+
+* ``bzr remove`` now takes a ``--no-backup`` option for when you don't want it
+  to backup anything, just delete it. This option used to be called ``--force``
+  which is now deprecated.
+  (Marius Kruger, #400554)
+
+* When using the pycurl client module, Bazaar shows some of the text from
+  http server error messages.
+  (Martin Pool, #656667)
+
+Bug Fixes
+*********
+
+* Don't force openssh to use protocol=2, since that is now the default.
+  (Neil Martinsen-Burrell, #561061)
+
+* Fix signature of RemoteBzrDir.create_workingtree to match that of its
+  superclass.  (Neil Martinsen-Burrell, Martin Pool, #524627)
+
+* Fix traceback with python-2.7's xmlrpclib
+  (Toshio Kuratomi, #612096)
+
+* Print junk rather than throwing a UnicodeDecodeError from ``bzr version-info``
+  when using the rio format (with non-ascii information) on a non-utf-8
+  terminal.  (Andrej A Antonov, #518609)
+
+* Treat all IO, OS, and socket errors consistently when establishing
+  SSH/SFTP connections via a subprocess.  (Andrew Bennetts)
+
+* ``unshelve --preview`` now can show diff in a non-ascii encoding.
+  (Andrej A Antonov, #518916)
+
+Documentation
+*************
+
+* Correct the documentation for setting up the smart server with Apache.
+  (Neil Martinsen-Burrell, #311518)
+
+* Provide more detailed help on the Launchpad plugin at "bzr help
+  plugins/launchpad".  (Neil Martinsen-Burrell, #589379)
+
+* Suggest ``bzr revert`` for restoring locally deleted files in help text
+  for ``bzr update``.  (John C Barstow, #191466)
+
+API Changes
+***********
+
+* ``WorkingTree`` methods ``pull``, ``update``, and ``_update_tree``
+  now have an optional argument, ``show_base``, which is by default
+  False.  This is flag is ultimately passed to ``merge.merge_inner``
+  in each case. (Rory Yorke, #202374)
+
+Internals
+*********
+
+* Small change to GroupCompressBlock to work more in terms of 'chunks'
+  rather than 'content' for its compressed storage. (John Arbash Meinel)
+
+* When running ``bzr selftest --subunit`` the subunit stream will no
+  longer include the "log" information for tests which are considered to
+  be 'successes' (success, xfail, skip, etc) (John Arbash Meinel)
+
+Testing
+*******
+
+* Add a new simpler way to generate multiple test variations, by setting
+  the `scenarios` attribute of a test class to a list of scenarios
+  descriptions, then using `load_tests_apply_scenarios`.  (See the testing
+  guide and `bzrlib.tests.scenarios`.) Simplify `test_http` using this.
+  (Martin Pool, #597791)
+
+* Add ``tests/ssl_certs/ca.crt`` to the required test files list. Test
+  involving the pycurl https test server fail otherwise when running
+  selftest from an installed version. (Vincent Ladeuil, #651706)
+
+* Fix tests that failed when run under ``LANG=C``.
+  (Andrew Bennetts, #632387)
+
+* Skip tests that needs a bzr source tree when there isn't one. This is
+  needed to succesfully run the test suite for installed versions.
+  (Vincent Ladeuil, #644855).
+
+* Skip the tests that requires respecting the chmod bits when running as root.
+  (Vincent Ladeuil, #646133)
+
+* Suppress the "maximum recursion depth exceeded in __subclasscheck__"
+  warning on stderr emitted during ``test_dict_deepnested`` in
+  ``bzrlib/tests/test__bencode.py``.  (Andrew Bennetts)
+
+* Use tests.TestCaseInTempDir for tests that requires disk resources.
+  (Vincent Ladeuil, #650001)
+
+bzr 2.3b1
+#########
+
+:2.3b1: 2010-09-20
+
+This is the first beta of the 2.3 series, leading up to a 2.3.0
+release in January or February.  Beta releases are suitable for everyday use
+but may cause some incompatibilities with plugins.  Some plugins may need
+small updates to work with 2.3b1.
+
+2.3b1 includes some performance improvements in both speed and memory
+consumption, some preliminary support for generating a texinfo version of
+the doc and better support for launchpad.  Many changes were made to make
+our test suite more robust as well as numerous documentation fixes.  It
+improves the common infrastructure for dealing with colocated named
+branches and foreign branches.  We plan to continue with these themes
+through the 2.3 series.
+
+It also includes bug fixes for 2.0.6, 2.1.3 and 2.2.1 and over 40 fixes of
+its own.
+
+
+External Compatibility Breaks
+*****************************
+
+(none)
+
+New Features
+************
+
+* Added ``pre_status`` and ``post_status`` hooks. This allows plugins
+  to register custom handlers which will be invoked before/after the
+  standard status output is displayed. (Parth Malwankar)
+
+* ``bzr break-lock --config [location]`` can now break config files
+  locks. (Vincent Ladeuil, #525571)
+
+* ``bzrlib.config.LockableConfig`` is a base class for config files that
+  needs to be protected against multiple writers. All methods that
+  change a configuration variable value must be decorated with
+  @needs_write_lock (set_option() for example).
+  (Vincent Ladeuil,  #525571)
+
+* The ``lp:`` prefix will now use your known username (from
+  ``bzr launchpad-login``) to expand ``~`` to your username.  For example:
+  ``bzr launchpad-login user && bzr push lp:~/project/branch`` will now
+  push to ``lp:~user/project/branch``.  (John Arbash Meinel)
+
+* New development format ``development8-subtree`` which is similar to the 
+  ``2a`` format and adds subtree support. (Jelmer Vernooij)
+
+Improvements
+************
+
+* Allow using both ``--using`` and ``--diff-options``.
+  (Matthäus G. Chajdas, #234708)
+
+* Allow using non-integer bug ID with generic bug trackers.
+  (Alexandre Garnier, #440472)
+
+* ``bzr remove`` now just backs up changed files instead of exiting,
+  forcing you to choose to either keep or delete them. Bazaar will now delete
+  the files if they can easily be recovered using revert, otherwise they
+  will be backed up (adding an extention of the form .~#~).
+  (Marius Kruger, #400554)
+
+* ``bzr revert`` and ``bzr status`` are up to 15% faster on large trees
+  with many changes by not repeatedly building a list of all file-ids.
+  (Andrew Bennetts)
+
+* Decrease memory consumption when many chk index pages are loaded. (Such
+  as during ``bzr co`` or ``bzr ls -R`` of a large tree.) Often we need to
+  read many chk pages because the individual chk map nodes will be spread
+  randomly. Peak memory for 'bzr ls -R' on a large tree dropped from 396MB
+  down to 247MB, expect even more significant savings on 64-bit platforms.
+  (John Arbash Meinel)
+
+* Decrease peak memory during ``bzr send``. The old code was caching all
+  text content and all inventory strings for all revisions before
+  computing the diffs. Now we only cache as long as there is a child that
+  will need them. Sending 2000 bzr revisions drops from 1.2GB peak to
+  256MB peak. (John Arbash Meinel, #614576)
+
+* ``DirState`` internals use a little bit less memory. For bzr.dev it
+  drops the memory from 1MB down to about 800kB. And replaces a few
+  thousand tuples and sets with StaticTuple.  (John Arbash Meinel)
+
+* Inventory entries now consume less memory (on 32-bit Ubuntu file entries
+  have dropped from 68 bytes to 40, and directory entries from 120 bytes
+  to 48).  (Andrew Bennetts)
+
+* Reduce peak memory by one copy of compressed text when writing to pack
+  repositories.
+  (John Arbash Meinel, #566940)
+
+* When building new working trees, default to reading from the repository
+  rather than the source tree unless explicitly requested. (via
+  ``--files-from`` and ``--hardlink`` for ``bzr branch`` and
+  ``bzr checkout``. Generally, 2a format repositories extract
+  content faster than seeking and reading content from another tree,
+  especially in cold-cache situations. (John Arbash Meinel, #607298)
+
+* Add ``__pycache__`` to the default ``ignores`` file. Future releases of
+  Python will use this directory to store bytecodes.
+  (Andrea Corbellini, #626687)
+
+Bug Fixes
+*********
+
+* Additional merges after an unrelated branch has been merged with its
+  history no longer crash when deleted files are involved.
+  (Vincent Ladeuil, John Arbash Meinel, #375898)
+
+* ``bzr add SYMLINK/FILE`` now works properly when the symlink points to a
+  previously-unversioned directory within the tree: the directory is
+  marked versioned too.
+  (Martin Pool, #192859)
+
+* ``bzr clean-tree`` issues a warning if it is unable to delete a file
+  due to ``errno.EACCES`` instead of exiting with an error on Windows.
+  (Parth Malwankar, #430785)
+
+* ``bzr commit SYMLINK`` now works, rather than trying to commit the
+  target of the symlink.
+  (Martin Pool, John Arbash Meinel, #128562)
+
+* ``bzr ignore PATTERNS`` exits with error if a bad pattern is supplied.
+  ``InvalidPattern`` exception error message now shows faulting
+  regular expression.
+  (Parth Malwankar #300062)
+
+* ``bzr upgrade`` now creates the ``backup.bzr`` directory with the same
+  permissions as ``.bzr`` directory on a POSIX OS.
+  (Parth Malwankar, #262450)
+
+* CommitBuilder now uses the committer instead of _config.username to generate
+  the revision-id.  (Aaron Bentley, #614404)
+
+* Configuration files in ``${BZR_HOME}`` are now written in an atomic
+  way which should help avoid problems with concurrent writers.
+  (Vincent Ladeuil, #525571)
+
+* CommitBuilder now uses the committer instead of _config.username to generate
+  the revision-id.  (Aaron Bentley, #614404)
+
+* Configuration files in ``${BZR_HOME}`` are now protected against
+  concurrent writers by using a lock. (Vincent Ladeuil, #525571)
+
+* Cope with Microsoft FTP Server and VSFTPd that return reply '250
+  Directory created' when mkdir succeeds.  (Martin Pool, #224373)
+
+* `decode` parameter to get() method in FtpTransport and GioTransport classes
+  is deprecated. (Alexander Belchenko)
+
+* Don't print internal object name when print an invalid revision spec
+  error.  (Neil Martinsen-Burrell, #598701)
+
+* Don't traceback when a lockdir's ``held/info`` file is corrupt (e.g.
+  contains only NUL bytes).  Instead warn the user, and allow ``bzr
+  break-lock`` to remove it.  (Andrew Bennetts, #619872)
+  
+* ``EPIPE`` can be raised during test server shutdown. This happened on
+  gentoo only so far. (Vincent Ladeuil, #627277)
+
+* Errors occurring during http(s) test server starts should now be
+  handled cleanly. (Vincent Ladeuil, #392402)
+
+* Fix ``AttributeError on parent.children`` when adding a file under a 
+  directory that was a symlink in the previous commit.
+  (Martin Pool, #192859)
+
+* Fix ``AttributeError: 'NoneType' object has no attribute 'close'`` in
+  ``_close_ssh_proc`` when using ``bzr+ssh://``.  This was causing
+  connections to pre-1.6 bzr+ssh servers to fail, and causing warnings on
+  stderr in some other circumstances.  (Andrew Bennetts, #633745)
+
+* Fix spurious paramiko warning on hardy by ensuring that ``selftest``
+  properly remove its warning filter. (Vincent Ladeuil, #625686)
+
+* Fix ``AttributeError on parent.children`` when adding a file under a
+  directory that was a symlink in the previous commit.
+  (Martin Pool, #192859)
+
+* Fix ``AttributeError: 'NoneType' object has no attribute 'close'`` in
+  ``_close_ssh_proc`` when using ``bzr+ssh://``.  This was causing
+  connections to pre-1.6 bzr+ssh servers to fail, and causing warnings on
+  stderr in some other circumstances.  (Andrew Bennetts, #633745)
+
+* Fix a problem in bzr's ``Makefile`` that meant syntax errors in some
+  parts of bzr's source code could cause ``make check-nodocs`` to
+  incorrectly return an exit code of 0.
+  (Vincent Ladeuil, #626667)
+
+* ``HTTP/1.1`` test servers now set a ``Content-Length`` header to comply
+  with pedantic ``HTTP/1.1`` clients. (Vincent Ladeuil, #568421)
+
+* Most of the leaked threads during selftest are now fixed, allowing the
+  full test suite to pass on gentoo.
+  (Vincent Ladeuil, #392127)
+
+* Only call ``setlocale`` in the bzr startup script on posix systems. This
+  avoids an issue with the newer windows C runtimes used by Python 2.6 and
+  later which can mangle bytestrings printed to the console.
+  (Martin [gz], #631350)
+
+* `PathNotChild` should not give a traceback.
+  (Martin Pool, #98735)
+
+* Prevent ``CHKMap.apply_delta`` from generating non-canonical CHK maps,
+  which can result in "missing referenced chk root keys" errors when
+  fetching from repositories with affected revisions.
+  (Andrew Bennetts, #522637)
+
+* Raise ValueError instead of a string exception.
+  (John Arbash Meinel, #586926)
+
+* Repositories accessed via a smart server now reject being stacked on a
+  repository in an incompatible format, as is the case when accessing them
+  via other methods.  This was causing fetches from those repositories via
+  a smart server (e.g. using ``bzr branch``) to receive invalid data.
+  (Andrew Bennetts, #562380)
+
+* Selftest with versions of subunit that support ``stopTestRun`` will no longer
+  error. This error was caused by 2.0 not being updated when upstream
+  python merged the end of run patch, which chose ``stopTestRun`` rather than
+  ``done``. (Robert Collins, #571437)
+
+* Stop ``AttributeError: 'module' object has no attribute 'ElementTree'``
+  being thrown from ``xml_serializer`` on certain cElementTree setups.
+  (Martin [gz], #254278)
+
+* strace test-helper tests cope with the new Ubuntu policy of not allowing
+  users to attach to their own processes by default.
+  (Martin Pool, #626679)
+
+* Test classes like ``TestCase``, ``TestLoader``, and ``TestSuite`` should
+  be available from ``bzrlib.tests.*``. They used to be, but were
+  accidentally removed. (John Arbash Meinel, #627438)
+
+* ``Transport.stat`` on a symlink, including a transport pointing directly
+  to a symlink, now returns information about the symlink.
+  (Martin Pool)
+
+* Upgrading or fetching from a non-rich-root repository to a rich-root
+  repository (e.g. from pack-0.92 to 2a) no longer fails with
+  ``'Inter1and2Helper' object has no attribute 'source_repo'``.  This was
+  a regression from Bazaar 2.1.  (Andrew Bennetts, #636930)
+  
+Documentation
+*************
+
+* Added a builder/writer sphinx extension that can generate texinfo files. The
+  generated files are syntactically correct but the info navigation nodes
+  needs more work. (Vincent Ladeuil, #219334)
+
+* First tests defined for sphinx, including a new bzrlib.tests.features.sphinx
+  to make the tests conditional.
+  (Vincent Ladeuil)
+
+* Fix a lot of references in the docs to the old http://bazaar-vcs.org to
+  the new http://bazaar.canonical.com or http://wiki.bazaar.canonical.com
+  (John Arbash Meinel, #617503)
+
+API Changes
+***********
+
+* When passing a file to ``UTF8DirReader`` make sure to close the current
+  directory file handle after the chdir fails. Otherwise when passing many
+  filenames into a command line ``bzr status`` we would leak descriptors.
+  (John Arbash Meinel, #583486)
+
+* `ControlDirFormat` and  `ControlDir` have been split out of `BzrDirFormat`
+  and `BzrDir`, respectively. `ControlDirFormat`
+  and `ControlDir` should be used as the base classes for new non-.bzr
+  implementations.
+
+  `BzrDirFormat.register_control_format` has been renamed to
+  `ControlDirFormat.register_format`.
+
+  `BzrDirFormat.register_server_control_format` has been removed.
+
+  Probing for control directories is now done by separate objects derived
+  from `bzrlib.controldir.Prober` and registered using
+  `bzrlib.controldir.ControlDirFormat.register_prober` or
+  `bzrlib.controldir.ControlDirFormat.register_server_prober`.
+  `BzrDirFormat.probe_transport` has been moved onto `Prober`.
+
+  `BzrDirFormat.register_format` has been renamed to
+  `BzrProber.register_bzrdir_format`.
+
+  `bzrlib.bzrdir.network_format_registry` has been moved to
+  `bzrlib.controldir`.
+
+  (Jelmer Vernooij)
+
+* ``bzrlib.transform.TreeTransformBase.final_kind``,
+  ``bzrlib.transform.TreeTransform.tree_kind`` and
+  ``bzrlib.transform.TransformPreview.tree_kind`` now return None instead
+  of raising NoSuchFile.  (Vincent Ladeuil)
+
+* BzrError subclasses no longer support the name "message" to be used
+  as an argument for __init__ or in _fmt format specification as this
+  breaks in some Python versions. errors.LockError.__init__ argument
+  is now named "msg" instead of earlier "message".
+  (Parth Malwankar, #603461)
+
+* Configuration files should now use the ``from_string`` constructor rather
+  than the ``file`` parameter of the ``_get_parser`` method. The later has
+  been deprecated. ``from_string`` also accept a ``save=True`` parameter to
+  have the configuration file immediately written to disk. 
+  (Vincent Ladeuil)
+
+* Deprecate treating a `PushResult` and `PullResult` as an integer for the
+  relative change in revno.
+  (Martin Pool)
+
+* `FileInWrongBranch` is deprecated in favour of `PathNotChild` and no
+  longer raised.
+  (Martin Pool)
+
+* ``IniBaseConfig`` objects should now use the ``from_string`` constructor
+  the rather than the ``file`` parameter of the ``_get_parser`` method. The
+  later has been deprecated. (Vincent Ladeuil)
+
+* InventoryEntry instances now raise AttributeError if you try to assign
+  to attributes that are irrelevant to that kind of entry.  e.g. setting
+  ``symlink_target`` on an InventoryFile will fail.  It is still okay to
+  read those attributes on any kind of InventoryEntry.  The complete list
+  of affected attributes is: ``executable``, ``text_id``, ``text_sha1``,
+  ``text_size`` (only valid for kind == file); ``symlink_target`` (only
+  valid for kind == link); and ``reference_revision`` (only valid for kind
+  == tree-reference).  (Andrew Bennetts)
+
+* InventoryEntry objects no longer have ``_put_in_tar`` or
+  ``_put_on_disk`` methods.  (Andrew Bennetts)
+
+* The ``get_filename`` parameter in the ``config.IniBaseConfig``
+  constructor has been deprecated, use the ``file_name`` parameter instead.
+  (Vincent Ladeuil)
+
+* `tree_files` and `internal_tree_files` are now deprecated in favor of
+  `WorkingTree.open_containing_paths`.
+  (Martin Pool)
+
+Internals
+*********
+
+* Remove used and broken code path in ``BranchInitHookParams.__repr__``.
+  (Andrew Bennetts)
+
+Testing
+*******
+
+* Avoid spurious failures in ssh tests: wait for the SSH server to
+  actually finish, rather than just waiting for it to negotiate the key
+  exchange. (John Arbash Meinel, #626876)
+
+* ``build_tree_contents`` can create symlinks.
+  (Martin Pool, John Arbash Meinel)
+
+* Catch socket errors to avoid
+  bt.test_sftp_transport.SSHVendorBadConnection.test_bad_connection_ssh
+  random failures. (Vincent Ladeuil, #601804)
+
+* HTTP test servers will leak less threads (and sockets) and will not hang on
+  AIX anymore. (Vincent Ladeuil, #405745)
+
+* On platforms that don't support forking give a nice error message saying so
+  when ``bzr selftest --parallel=fork`` is used. (Martin [gz], #528730)
+
+* Rearrange thread leak detection code to eliminate global state and make it
+  possible to extend the reporting. (Martin [gz], #633462)
+
+* The old ``bzr selftest --benchmark`` option has been removed.
+  <https://launchpad.net/bzr-usertest> is an actively-maintained
+  macrobenchmark suite.
+  (Martin Pool)
+
+* The test suite now simply holds log files in memory, rather than writing them
+  out to disk and then reading them back in and deleting them.
+  (Andrew Bennetts)
+
+* The way ``bzr selftest --parallel`` generates N partitions of tests to
+  run in parallel has changed.  Instead of splitting the list of tests at
+  N-1 points, it distributes the tests one-by-one into the partitions in a
+  round robin fashion.  This reduces the total time to run the tests in
+  parallel because a series of slow tests in the test suite will be
+  distributed evenly among the parallel test suites, rather than slowing
+  down just one suite.  (Andrew Bennetts)
+
+* Tracebacks from a parameterized test are no longer reported against every
+  parameterization of that test.  This was done by adding a hack to
+  ``bzrlib.tests.clone_test`` so that it no longer causes
+  testtools.TestCase instances to share a details dict.
+  (Andrew Bennetts, #625574)
+
+
+..
+   vim: tw=74 ft=rst ff=unix
