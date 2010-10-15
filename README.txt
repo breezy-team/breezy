@@ -8,6 +8,8 @@ Required and recommended packages are:
 
 * Python 2.4 or later
 
+* Python-Fastimport 0.9.0 or later.
+
 * Bazaar 1.18 or later.
 
 
