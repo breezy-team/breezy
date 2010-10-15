@@ -55,6 +55,7 @@ def load_tests(basic_tests, module, loader):
                      'test_clean_tree',
                      'test_command_encoding',
                      'test_commit',
+                     'test_config',
                      'test_conflicts',
                      'test_debug',
                      'test_deleted',
