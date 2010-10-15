@@ -65,8 +65,7 @@ class TestReportChanges(tests.TestCase):
         reporter.report(file_id, (old_path, path), versioned_change, renamed,
             modified, exe_change, kind)
         if expected_lines is not None:
-            for i in range(len(expected_lines)):
-                self.assertEqualDiff(expected_lines[i], result[i])
+            self.assertEqualDiff('\n'.join(expected_lines), '\n'.join(result))
         else:
             self.assertEqual([], result)
 

@@ -359,6 +359,44 @@ $ bzr update -r revid:m2
 2>Updated to revision 2 of branch .../master
 ''')
 
+    def test_update_show_base(self):
+        """bzr update support --show-base
+
+        see https://bugs.launchpad.net/bzr/+bug/202374"""
+
+        tree=self.make_branch_and_tree('.')
+
+        f = open('hello','wt')
+        f.write('foo')
+        f.close()
+        tree.add('hello')
+        tree.commit('fie')
+
+        f = open('hello','wt')
+        f.write('fee')
+        f.close()
+        tree.commit('fee')
+
+        #tree.update() gives no such revision, so ...
+        self.run_bzr(['update','-r1'])
+
+        #create conflict
+        f = open('hello','wt')
+        f.write('fie')
+        f.close()
+
+        out, err = self.run_bzr(['update','--show-base'],retcode=1)
+
+        # check for conflict notification
+        self.assertContainsString(err,
+                                  ' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
+        
+        self.assertEqualDiff('<<<<<<< TREE\n'
+                             'fie||||||| BASE-REVISION\n'
+                             'foo=======\n'
+                             'fee>>>>>>> MERGE-SOURCE\n',
+                             open('hello').read())
+
     def test_update_checkout_prevent_double_merge(self):
         """"Launchpad bug 113809 in bzr "update performs two merges"
         https://launchpad.net/bugs/113809"""

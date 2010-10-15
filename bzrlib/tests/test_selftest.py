@@ -26,7 +26,10 @@ import time
 import unittest
 import warnings
 
-from testtools import MultiTestResult
+from testtools import (
+    ExtendedToOriginalDecorator,
+    MultiTestResult,
+    )
 from testtools.content import Content
 from testtools.content_type import ContentType
 from testtools.matchers import (
@@ -68,7 +71,7 @@ from bzrlib.tests import (
     test_sftp_transport,
     TestUtil,
     )
-from bzrlib.trace import note
+from bzrlib.trace import note, mutter
 from bzrlib.transport import memory
 from bzrlib.version import _get_bzr_source_tree
 
@@ -627,11 +630,11 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         result = test.run()
         total_failures = result.errors + result.failures
         if self._lock_check_thorough:
-            self.assertLength(1, total_failures)
+            self.assertEqual(1, len(total_failures))
         else:
             # When _lock_check_thorough is disabled, then we don't trigger a
             # failure
-            self.assertLength(0, total_failures)
+            self.assertEqual(0, len(total_failures))
 
 
 class TestTestCaseWithTransport(tests.TestCaseWithTransport):
@@ -848,6 +851,21 @@ class TestTestResult(tests.TestCase):
             r"( +1 +0 +0\.\d+ +0\.\d+ +<method 'disable' of '_lsprof\.Profiler' objects>\n)?")
         self.assertContainsRe(output,
             r"LSProf output for <type 'unicode'>\(\('world',\), {'errors': 'replace'}\)\n")
+
+    def test_uses_time_from_testtools(self):
+        """Test case timings in verbose results should use testtools times"""
+        import datetime
+        class TimeAddedVerboseTestResult(tests.VerboseTestResult):
+            def startTest(self, test):
+                self.time(datetime.datetime.utcfromtimestamp(1.145))
+                super(TimeAddedVerboseTestResult, self).startTest(test)
+            def addSuccess(self, test):
+                self.time(datetime.datetime.utcfromtimestamp(51.147))
+                super(TimeAddedVerboseTestResult, self).addSuccess(test)
+            def report_tests_starting(self): pass
+        sio = StringIO()
+        self.get_passing_test().run(TimeAddedVerboseTestResult(sio, 0, 2))
+        self.assertEndsWith(sio.getvalue(), "OK    50002ms\n")
 
     def test_known_failure(self):
         """A KnownFailure being raised should trigger several result actions."""
@@ -1104,9 +1122,9 @@ class TestRunner(tests.TestCase):
     def test_result_decorator(self):
         # decorate results
         calls = []
-        class LoggingDecorator(tests.ForwardingResult):
+        class LoggingDecorator(ExtendedToOriginalDecorator):
             def startTest(self, test):
-                tests.ForwardingResult.startTest(self, test)
+                ExtendedToOriginalDecorator.startTest(self, test)
                 calls.append('start')
         test = unittest.FunctionTestCase(lambda:None)
         stream = StringIO()
@@ -1251,9 +1269,9 @@ class TestRunner(tests.TestCase):
     def test_startTestRun(self):
         """run should call result.startTestRun()"""
         calls = []
-        class LoggingDecorator(tests.ForwardingResult):
+        class LoggingDecorator(ExtendedToOriginalDecorator):
             def startTestRun(self):
-                tests.ForwardingResult.startTestRun(self)
+                ExtendedToOriginalDecorator.startTestRun(self)
                 calls.append('startTestRun')
         test = unittest.FunctionTestCase(lambda:None)
         stream = StringIO()
@@ -1265,9 +1283,9 @@ class TestRunner(tests.TestCase):
     def test_stopTestRun(self):
         """run should call result.stopTestRun()"""
         calls = []
-        class LoggingDecorator(tests.ForwardingResult):
+        class LoggingDecorator(ExtendedToOriginalDecorator):
             def stopTestRun(self):
-                tests.ForwardingResult.stopTestRun(self)
+                ExtendedToOriginalDecorator.stopTestRun(self)
                 calls.append('stopTestRun')
         test = unittest.FunctionTestCase(lambda:None)
         stream = StringIO()
@@ -1690,6 +1708,108 @@ class TestTestCase(tests.TestCase):
         self.assertEqual('original', obj.test_attr)
 
 
+class _MissingFeature(tests.Feature):
+    def _probe(self):
+        return False
+missing_feature = _MissingFeature()
+
+
+def _get_test(name):
+    """Get an instance of a specific example test.
+
+    We protect this in a function so that they don't auto-run in the test
+    suite.
+    """
+
+    class ExampleTests(tests.TestCase):
+
+        def test_fail(self):
+            mutter('this was a failing test')
+            self.fail('this test will fail')
+
+        def test_error(self):
+            mutter('this test errored')
+            raise RuntimeError('gotcha')
+
+        def test_missing_feature(self):
+            mutter('missing the feature')
+            self.requireFeature(missing_feature)
+
+        def test_skip(self):
+            mutter('this test will be skipped')
+            raise tests.TestSkipped('reason')
+
+        def test_success(self):
+            mutter('this test succeeds')
+
+        def test_xfail(self):
+            mutter('test with expected failure')
+            self.knownFailure('this_fails')
+
+        def test_unexpected_success(self):
+            mutter('test with unexpected success')
+            self.expectFailure('should_fail', lambda: None)
+
+    return ExampleTests(name)
+
+
+class TestTestCaseLogDetails(tests.TestCase):
+
+    def _run_test(self, test_name):
+        test = _get_test(test_name)
+        result = testtools.TestResult()
+        test.run(result)
+        return result
+
+    def test_fail_has_log(self):
+        result = self._run_test('test_fail')
+        self.assertEqual(1, len(result.failures))
+        result_content = result.failures[0][1]
+        self.assertContainsRe(result_content, 'Text attachment: log')
+        self.assertContainsRe(result_content, 'this was a failing test')
+
+    def test_error_has_log(self):
+        result = self._run_test('test_error')
+        self.assertEqual(1, len(result.errors))
+        result_content = result.errors[0][1]
+        self.assertContainsRe(result_content, 'Text attachment: log')
+        self.assertContainsRe(result_content, 'this test errored')
+
+    def test_skip_has_no_log(self):
+        result = self._run_test('test_skip')
+        self.assertEqual(['reason'], result.skip_reasons.keys())
+        skips = result.skip_reasons['reason']
+        self.assertEqual(1, len(skips))
+        test = skips[0]
+        self.assertFalse('log' in test.getDetails())
+
+    def test_missing_feature_has_no_log(self):
+        # testtools doesn't know about addNotSupported, so it just gets
+        # considered as a skip
+        result = self._run_test('test_missing_feature')
+        self.assertEqual([missing_feature], result.skip_reasons.keys())
+        skips = result.skip_reasons[missing_feature]
+        self.assertEqual(1, len(skips))
+        test = skips[0]
+        self.assertFalse('log' in test.getDetails())
+
+    def test_xfail_has_no_log(self):
+        result = self._run_test('test_xfail')
+        self.assertEqual(1, len(result.expectedFailures))
+        result_content = result.expectedFailures[0][1]
+        self.assertNotContainsRe(result_content, 'Text attachment: log')
+        self.assertNotContainsRe(result_content, 'test with expected failure')
+
+    def test_unexpected_success_has_log(self):
+        result = self._run_test('test_unexpected_success')
+        self.assertEqual(1, len(result.unexpectedSuccesses))
+        # Inconsistency, unexpectedSuccesses is a list of tests,
+        # expectedFailures is a list of reasons?
+        test = result.unexpectedSuccesses[0]
+        details = test.getDetails()
+        self.assertTrue('log' in details)
+
+
 class TestTestCloning(tests.TestCase):
     """Tests that test cloning of TestCases (as used by multiply_tests)."""
 
@@ -1883,7 +2003,7 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
                 tree.branch.repository.bzrdir.root_transport)
 
 
-class SelfTestHelper:
+class SelfTestHelper(object):
 
     def run_selftest(self, **kwargs):
         """Run selftest returning its output."""
@@ -1949,7 +2069,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
             def __call__(test, result):
                 test.run(result)
             def run(test, result):
-                self.assertIsInstance(result, tests.ForwardingResult)
+                self.assertIsInstance(result, ExtendedToOriginalDecorator)
                 calls.append("called")
             def countTestCases(self):
                 return 1
@@ -2038,6 +2158,83 @@ class TestSelftestWithIdList(tests.TestCaseInTempDir, SelfTestHelper):
         # And generate a list of the tests in  the suite.
         err = self.assertRaises(errors.NoSuchFile, self.run_selftest,
             load_list='missing file name', list_only=True)
+
+
+class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
+
+    _test_needs_features = [features.subunit]
+
+    def run_subunit_stream(self, test_name):
+        from subunit import ProtocolTestCase
+        def factory():
+            return TestUtil.TestSuite([_get_test(test_name)])
+        stream = self.run_selftest(runner_class=tests.SubUnitBzrRunner,
+            test_suite_factory=factory)
+        test = ProtocolTestCase(stream)
+        result = testtools.TestResult()
+        test.run(result)
+        content = stream.getvalue()
+        return content, result
+
+    def test_fail_has_log(self):
+        content, result = self.run_subunit_stream('test_fail')
+        self.assertEqual(1, len(result.failures))
+        self.assertContainsRe(content, '(?m)^log$')
+        self.assertContainsRe(content, 'this test will fail')
+
+    def test_error_has_log(self):
+        content, result = self.run_subunit_stream('test_error')
+        self.assertContainsRe(content, '(?m)^log$')
+        self.assertContainsRe(content, 'this test errored')
+
+    def test_skip_has_no_log(self):
+        content, result = self.run_subunit_stream('test_skip')
+        self.assertNotContainsRe(content, '(?m)^log$')
+        self.assertNotContainsRe(content, 'this test will be skipped')
+        self.assertEqual(['reason'], result.skip_reasons.keys())
+        skips = result.skip_reasons['reason']
+        self.assertEqual(1, len(skips))
+        test = skips[0]
+        # RemotedTestCase doesn't preserve the "details"
+        ## self.assertFalse('log' in test.getDetails())
+
+    def test_missing_feature_has_no_log(self):
+        content, result = self.run_subunit_stream('test_missing_feature')
+        self.assertNotContainsRe(content, '(?m)^log$')
+        self.assertNotContainsRe(content, 'missing the feature')
+        self.assertEqual(['_MissingFeature\n'], result.skip_reasons.keys())
+        skips = result.skip_reasons['_MissingFeature\n']
+        self.assertEqual(1, len(skips))
+        test = skips[0]
+        # RemotedTestCase doesn't preserve the "details"
+        ## self.assertFalse('log' in test.getDetails())
+
+    def test_xfail_has_no_log(self):
+        content, result = self.run_subunit_stream('test_xfail')
+        self.assertNotContainsRe(content, '(?m)^log$')
+        self.assertNotContainsRe(content, 'test with expected failure')
+        self.assertEqual(1, len(result.expectedFailures))
+        result_content = result.expectedFailures[0][1]
+        self.assertNotContainsRe(result_content, 'Text attachment: log')
+        self.assertNotContainsRe(result_content, 'test with expected failure')
+
+    def test_unexpected_success_has_log(self):
+        content, result = self.run_subunit_stream('test_unexpected_success')
+        self.assertContainsRe(content, '(?m)^log$')
+        self.assertContainsRe(content, 'test with unexpected success')
+        self.expectFailure('subunit treats "unexpectedSuccess"'
+                           ' as a plain success',
+            self.assertEqual, 1, len(result.unexpectedSuccesses))
+        self.assertEqual(1, len(result.unexpectedSuccesses))
+        test = result.unexpectedSuccesses[0]
+        # RemotedTestCase doesn't preserve the "details"
+        ## self.assertTrue('log' in test.getDetails())
+
+    def test_success_has_no_log(self):
+        content, result = self.run_subunit_stream('test_success')
+        self.assertEqual(1, result.testsRun)
+        self.assertNotContainsRe(content, '(?m)^log$')
+        self.assertNotContainsRe(content, 'this test succeeds')
 
 
 class TestRunBzr(tests.TestCase):
@@ -3120,6 +3317,77 @@ class TestThreadLeakDetection(tests.TestCase):
             (first_test, set([thread_b])),
             (third_test, set([thread_a, thread_c]))])
         self.assertContainsString(result.stream.getvalue(), "leaking threads")
+
+
+class TestPostMortemDebugging(tests.TestCase):
+    """Check post mortem debugging works when tests fail or error"""
+
+    class TracebackRecordingResult(tests.ExtendedTestResult):
+        def __init__(self):
+            tests.ExtendedTestResult.__init__(self, StringIO(), 0, 1)
+            self.postcode = None
+        def _post_mortem(self, tb=None):
+            """Record the code object at the end of the current traceback"""
+            tb = tb or sys.exc_info()[2]
+            if tb is not None:
+                next = tb.tb_next
+                while next is not None:
+                    tb = next
+                    next = next.tb_next
+                self.postcode = tb.tb_frame.f_code
+        def report_error(self, test, err):
+            pass
+        def report_failure(self, test, err):
+            pass
+
+    def test_location_unittest_error(self):
+        """Needs right post mortem traceback with erroring unittest case"""
+        class Test(unittest.TestCase):
+            def runTest(self):
+                raise RuntimeError
+        result = self.TracebackRecordingResult()
+        Test().run(result)
+        self.assertEqual(result.postcode, Test.runTest.func_code)
+
+    def test_location_unittest_failure(self):
+        """Needs right post mortem traceback with failing unittest case"""
+        class Test(unittest.TestCase):
+            def runTest(self):
+                raise self.failureException
+        result = self.TracebackRecordingResult()
+        Test().run(result)
+        self.assertEqual(result.postcode, Test.runTest.func_code)
+
+    def test_location_bt_error(self):
+        """Needs right post mortem traceback with erroring bzrlib.tests case"""
+        class Test(tests.TestCase):
+            def test_error(self):
+                raise RuntimeError
+        result = self.TracebackRecordingResult()
+        Test("test_error").run(result)
+        self.assertEqual(result.postcode, Test.test_error.func_code)
+
+    def test_location_bt_failure(self):
+        """Needs right post mortem traceback with failing bzrlib.tests case"""
+        class Test(tests.TestCase):
+            def test_failure(self):
+                raise self.failureException
+        result = self.TracebackRecordingResult()
+        Test("test_failure").run(result)
+        self.assertEqual(result.postcode, Test.test_failure.func_code)
+
+    def test_env_var_triggers_post_mortem(self):
+        """Check pdb.post_mortem is called iff BZR_TEST_PDB is set"""
+        import pdb
+        result = tests.ExtendedTestResult(StringIO(), 0, 1)
+        post_mortem_calls = []
+        self.overrideAttr(pdb, "post_mortem", post_mortem_calls.append)
+        self.addCleanup(osutils.set_or_unset_env, "BZR_TEST_PDB",
+            osutils.set_or_unset_env("BZR_TEST_PDB", None))
+        result._post_mortem(1)
+        os.environ["BZR_TEST_PDB"] = "on"
+        result._post_mortem(2)
+        self.assertEqual([2], post_mortem_calls)
 
 
 class TestRunSuite(tests.TestCase):

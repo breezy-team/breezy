@@ -87,7 +87,7 @@ entering the command all on one line.) For more information on the
 variables that can be used in templates, see `Version Info`_ in the
 Bazaar User Reference.
 
-.. _Version Info: ../user-reference/bzr_man.html#version-info
+.. _Version Info: ../user-reference/index.html#version-info
 
 Predefined formats for dumping version information in specific languages
 are currently in development. Please contact us on the mailing list about

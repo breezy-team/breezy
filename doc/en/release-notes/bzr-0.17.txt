@@ -1,0 +1,129 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.17
+########
+
+:Released:  2007-06-18
+
+Bugfixes
+********
+
+* Fix crash of commit due to wrong lookup of filesystem encoding.
+  (Colin Watson, #120647)
+
+* Revert logging just to stderr in commit as broke unicode filenames.
+  (Aaron Bentley, Ian Clatworthy, #120930)
+
+
+bzr 0.17rc1
+###########
+
+:Released:  2007-06-12
+
+Notes When Upgrading
+********************
+
+* The kind() and is_executable() APIs on the WorkingTree interface no
+  longer implicitly (read) locks and unlocks the tree. This *might*
+  impact some plug-ins and tools using this part of the API. If you find
+  an issue that may be caused by this change, please let us know,
+  particularly the plug-in/tool maintainer. If encountered, the API
+  fix is to surround kind() and is_executable() calls with lock_read()
+  and unlock() like so::
+
+    work_tree.lock_read()
+    try:
+        kind = work_tree.kind(...)
+    finally:
+        work_tree.unlock()
+
+Internals
+*********
+* Rework of LogFormatter API to provide beginning/end of log hooks and to
+  encapsulate the details of the revision to be logged in a LogRevision
+  object.
+  In long log formats, merge revision ids are only shown when --show-ids
+  is specified, and are labelled "revision-id:", as per mainline
+  revisions, instead of "merged:". (Kent Gibson)
+
+* New ``BranchBuilder`` API which allows the construction of particular
+  histories quickly. Useful for testing and potentially other applications
+  too. (Robert Collins)
+
+Improvements
+************
+
+* There are two new help topics, working-trees and repositories that
+  attempt to explain these concepts. (James Westby, John Arbash Meinel,
+  Aaron Bentley)
+
+* Added ``bzr log --limit`` to report a limited number of revisions.
+  (Kent Gibson, #3659)
+
+* Revert does not try to preserve file contents that were originally
+  produced by reverting to a historical revision.  (Aaron Bentley)
+
+* ``bzr log --short`` now includes ``[merge]`` for revisions which
+  have more than one parent. This is a small improvement to help
+  understanding what changes have occurred
+  (John Arbash Meinel, #83887)
+
+* TreeTransform avoids many renames when contructing large trees,
+  improving speed.  3.25x speedups have been observed for construction of
+  kernel-sized-trees, and checkouts are 1.28x faster.  (Aaron Bentley)
+
+* Commit on large trees is now faster. In my environment, a commit of
+  a small change to the Mozilla tree (55k files) has dropped from
+  66 seconds to 32 seconds. For a small tree of 600 files, commit of a
+  small change is 33% faster. (Ian Clatworthy)
+
+* New --create-prefix option to bzr init, like for push.  (Daniel Watkins,
+  #56322)
+
+Bugfixes
+********
+
+* ``bzr push`` should only connect to the remote location one time.
+  We have been connecting 3 times because we forget to pass around
+  the Transport object. This adds ``BzrDir.clone_on_transport()``, so
+  that we can pass in the Transport that we already have.
+  (John Arbash Meinel, #75721)
+
+* ``DirState.set_state_from_inventory()`` needs to properly order
+  based on split paths, not just string paths.
+  (John Arbash Meinel, #115947)
+
+* Let TestUIFactoy encode the password prompt with its own stdout.
+  (Vincent Ladeuil, #110204)
+
+* pycurl should take use the range header that takes the range hint
+  into account.
+  (Vincent Ladeuil, #112719)
+
+* WorkingTree4.get_file_sha1 no longer raises an exception when invoked
+  on a missing file.  (Aaron Bentley, #118186)
+
+* WorkingTree.remove works correctly with tree references, and when pwd is
+  not the tree root. (Aaron Bentley)
+
+* Merge no longer fails when a file is renamed in one tree and deleted
+  in the other. (Aaron Bentley, #110279)
+
+* ``revision-info`` now accepts dotted revnos, doesn't require a tree,
+  and defaults to the last revision (Matthew Fuller, #90048)
+
+* Tests no longer fail when BZR_REMOTE_PATH is set in the environment.
+  (Daniel Watkins, #111958)
+
+* ``bzr branch -r revid:foo`` can be used to branch any revision in
+  your repository. (Previously Branch6 only supported revisions in your
+  mainline). (John Arbash Meinel, #115343)
+
+
+..
+   vim: tw=74 ft=rst ff=unix
