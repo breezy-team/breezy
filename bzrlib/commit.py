@@ -307,8 +307,6 @@ class Commit(object):
             else:
                 raise BzrError("The message or message_callback keyword"
                                " parameter is required for commit().")
-        if committer is not None and not isinstance(committer, unicode):
-            committer = committer.decode() # throw UnicodeError if non-ascii
 
         self.bound_branch = None
         self.any_entries_deleted = False

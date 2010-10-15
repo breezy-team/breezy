@@ -113,6 +113,8 @@ class CommitBuilder(object):
 
         if committer is None:
             self._committer = self._config.username()
+        elif not isinstance(committer, unicode):
+            self._committer = committer.decode() # throw if non-ascii
         else:
             self._committer = committer
 
