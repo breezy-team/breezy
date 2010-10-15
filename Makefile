@@ -139,11 +139,13 @@ SPHINX_DEPENDENCIES = \
 	doc/developers/Makefile \
 	doc/developers/make.bat
 
+NEWS_FILES = $(wildcard doc/en/release-notes/bzr-*.txt)
+
 doc/en/user-reference/index.txt: $(MAN_DEPENDENCIES)
 	$(PYTHON) tools/generate_docs.py -o $@ rstx
 
-doc/en/release-notes/index.txt: NEWS tools/generate_release_notes.py
-	$(PYTHON) tools/generate_release_notes.py NEWS $@
+doc/en/release-notes/index.txt: $(NEWS_FILES) tools/generate_release_notes.py
+	$(PYTHON) tools/generate_release_notes.py $@ $(NEWS_FILES)
 
 doc/%/Makefile: doc/en/Makefile
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
@@ -304,8 +306,8 @@ doc/index.%.html: doc/index.%.txt
 %.html: %.txt
 	$(rst2html) --stylesheet=../../default.css $< $@
 
-doc/en/release-notes/NEWS.txt: NEWS
-	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
+doc/en/release-notes/NEWS.txt: $(NEWS_FILES) tools/generate_release_notes.py
+	$(PYTHON) tools/generate_release_notes.py $@ $(NEWS_FILES)
 
 upgrade_guide_dependencies =  $(wildcard $(addsuffix /*.txt, doc/en/upgrade-guide)) 
 
