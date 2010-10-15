@@ -146,6 +146,17 @@ class TestPush(tests.TestCaseWithTransport):
         b2 = branch.Branch.open('pushed-location')
         self.assertEndsWith(b2.base, 'pushed-location/')
 
+    def test_push_no_tree(self):
+        # bzr push --no-tree of a branch with working trees
+        b = self.make_branch_and_tree('push-from')
+        self.build_tree(['push-from/file'])
+        b.add('file')
+        b.commit('commit 1')
+        out, err = self.run_bzr('push --no-tree -d push-from push-to')
+        self.assertEqual('', out)
+        self.assertEqual('Created new branch.\n', err)
+        self.failIfExists('push-to/file')
+
     def test_push_new_branch_revision_count(self):
         # bzr push of a branch with revisions to a new location
         # should print the number of revisions equal to the length of the
