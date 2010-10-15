@@ -103,6 +103,14 @@ External Compatibility Breaks
   strictly "asciibetical".  That behavior is still available as ``bzr tags
   --sort=alpha``. (Neil Martinsen-Burrell, #640760)
 
+* ``BzrDir.generate_backup_name`` has been deprecated and replaced by a
+  private method. ``osutils.available_backup_name`` provides an extensible
+  replacement. This allowed the deprecation of
+  ``bzrlib.transform.get_backup_name``,
+  ``bzrlib.transform._get_backup_name`` and
+  ``bzrlib.transform.TreeTransformBase.has_named_child``.
+  (Vincent Ladeuil)
+
 New Features
 ************
 
@@ -167,11 +175,25 @@ Bug Fixes
 * ``unshelve --preview`` now can show diff in a non-ascii encoding.
   (Andrej A Antonov, #518916)
 
+* Deleting a versioned directory can leave orphans: unversioned files that
+  were present don't have a parent anymore. The
+  ``bzr.transform.orphan_policy`` configuration option controls the ``bzr``
+  behaviour: ``conflict`` (the default) leave the orphans in place and
+  create a conflict for the directory, ``move`` create orphans named
+  ``<file>.~#~`` in a ``bzr-orphans`` directory at the root of the working
+  tree.  (Vincent Ladeuil, #323111)
+
+Improvements
+************
+
 Documentation
 *************
 
 * Correct the documentation for setting up the smart server with Apache.
   (Neil Martinsen-Burrell, #311518)
+
+* Fix rst typos in bzrlib/help_topics/en/conflict-types.txt.
+  (Vincent Ladeuil, #660943)
 
 * Provide more detailed help on the Launchpad plugin at "bzr help
   plugins/launchpad".  (Neil Martinsen-Burrell, #589379)
