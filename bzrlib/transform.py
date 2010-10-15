@@ -2728,8 +2728,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         tt.delete_contents(trans_id)
                     elif kind[1] is not None:
                         parent_trans_id = tt.trans_id_file_id(parent[0])
-                        backup_name = tt._available_backup_name(name[0],
-                                                                parent_trans_id)
+                        backup_name = tt._available_backup_name(
+                            name[0], parent_trans_id)
                         tt.adjust_path(backup_name, parent_trans_id, trans_id)
                         new_trans_id = tt.create_path(name[0], parent_trans_id)
                         if versioned == (True, True):
