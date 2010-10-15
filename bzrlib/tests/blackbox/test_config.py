@@ -54,30 +54,30 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
     def test_bazaar_config(self):
         self.bazaar_config.set_user_option('hello', 'world')
         script.run_script(self, '''\
-$ bzr config -d tree
-bazaar:
-  hello = world
-''')
+            $ bzr config -d tree
+            bazaar:
+              hello = world
+            ''')
 
     def test_locations_config_for_branch(self):
         self.locations_config.set_user_option('hello', 'world')
         self.branch_config.set_user_option('hello', 'you')
         script.run_script(self, '''\
-$ bzr config -d tree
-locations:
-  hello = world
-branch:
-  hello = you
-''')
+            $ bzr config -d tree
+            locations:
+              hello = world
+            branch:
+              hello = you
+            ''')
 
     def test_locations_config_outside_branch(self):
         self.bazaar_config.set_user_option('hello', 'world')
         self.locations_config.set_user_option('hello', 'world')
         script.run_script(self, '''\
-$ bzr config
-bazaar:
-  hello = world
-''')
+            $ bzr config
+            bazaar:
+              hello = world
+            ''')
 
 
 class TestConfigSetOption(tests.TestCaseWithTransport):
@@ -92,43 +92,43 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
 
     def test_bazaar_config_outside_branch(self):
         script.run_script(self, '''\
-$ bzr config --scope bazaar hello=world
-$ bzr config -d tree hello
-bazaar:
-  hello = world
-''')
+            $ bzr config --scope bazaar hello=world
+            $ bzr config -d tree hello
+            bazaar:
+              hello = world
+            ''')
 
     def test_bazaar_config_inside_branch(self):
         script.run_script(self, '''\
-$ bzr config -d tree --scope bazaar hello=world
-$ bzr config -d tree hello
-bazaar:
-  hello = world
-''')
+            $ bzr config -d tree --scope bazaar hello=world
+            $ bzr config -d tree hello
+            bazaar:
+              hello = world
+            ''')
 
     def test_locations_config_inside_branch(self):
         script.run_script(self, '''\
-$ bzr config -d tree --scope locations hello=world
-$ bzr config -d tree hello
-locations:
-  hello = world
-''')
+            $ bzr config -d tree --scope locations hello=world
+            $ bzr config -d tree hello
+            locations:
+              hello = world
+            ''')
 
     def test_branch_config_default(self):
         script.run_script(self, '''\
-$ bzr config -d tree hello=world
-$ bzr config -d tree hello
-branch:
-  hello = world
-''')
+            $ bzr config -d tree hello=world
+            $ bzr config -d tree hello
+            branch:
+              hello = world
+            ''')
 
     def test_branch_config_forcing_branch(self):
         script.run_script(self, '''\
-$ bzr config -d tree --scope branch hello=world
-$ bzr config -d tree hello
-branch:
-  hello = world
-''')
+            $ bzr config -d tree --scope branch hello=world
+            $ bzr config -d tree hello
+            branch:
+              hello = world
+            ''')
 
 
 class TestConfigRemoveOption(tests.TestCaseWithTransport):
@@ -143,62 +143,62 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
 
     def test_bazaar_config_outside_branch(self):
         script.run_script(self, '''\
-$ bzr config --scope bazaar --remove file
-$ bzr config -d tree file
-locations:
-  file = locations
-branch:
-  file = branch
-''')
+            $ bzr config --scope bazaar --remove file
+            $ bzr config -d tree file
+            locations:
+              file = locations
+            branch:
+              file = branch
+            ''')
 
     def test_bazaar_config_inside_branch(self):
         script.run_script(self, '''\
-$ bzr config -d tree --scope bazaar --remove file
-$ bzr config -d tree file
-locations:
-  file = locations
-branch:
-  file = branch
-''')
+            $ bzr config -d tree --scope bazaar --remove file
+            $ bzr config -d tree file
+            locations:
+              file = locations
+            branch:
+              file = branch
+            ''')
 
     def test_locations_config_inside_branch(self):
         script.run_script(self, '''\
-$ bzr config -d tree --scope locations --remove file
-$ bzr config -d tree file
-branch:
-  file = branch
-bazaar:
-  file = bazaar
-''')
+            $ bzr config -d tree --scope locations --remove file
+            $ bzr config -d tree file
+            branch:
+              file = branch
+            bazaar:
+              file = bazaar
+            ''')
 
     def test_branch_config_default(self):
         script.run_script(self, '''\
-$ bzr config -d tree --remove file
-$ bzr config -d tree file
-branch:
-  file = branch
-bazaar:
-  file = bazaar
-''')
+            $ bzr config -d tree --remove file
+            $ bzr config -d tree file
+            branch:
+              file = branch
+            bazaar:
+              file = bazaar
+            ''')
         script.run_script(self, '''\
-$ bzr config -d tree --remove file
-$ bzr config -d tree file
-bazaar:
-  file = bazaar
-''')
+            $ bzr config -d tree --remove file
+            $ bzr config -d tree file
+            bazaar:
+              file = bazaar
+            ''')
 
     def test_branch_config_forcing_branch(self):
         script.run_script(self, '''\
-$ bzr config -d tree --scope branch --remove file
-$ bzr config -d tree file
-locations:
-  file = locations
-bazaar:
-  file = bazaar
-''')
+            $ bzr config -d tree --scope branch --remove file
+            $ bzr config -d tree file
+            locations:
+              file = locations
+            bazaar:
+              file = bazaar
+            ''')
         script.run_script(self, '''\
-$ bzr config -d tree --remove file
-$ bzr config -d tree file
-bazaar:
-  file = bazaar
-''')
+            $ bzr config -d tree --remove file
+            $ bzr config -d tree file
+            bazaar:
+              file = bazaar
+            ''')
