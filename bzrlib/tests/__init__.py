@@ -89,10 +89,9 @@ try:
 except ImportError:
     # lsprof not available
     pass
-from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.plugin
-from bzrlib.smart import client, request, server
+from bzrlib.smart import client, request
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -116,7 +115,6 @@ from bzrlib.tests import (
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
-from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -3353,39 +3351,7 @@ def reinvoke_for_tests(suite):
     return result
 
 
-class ForwardingResult(unittest.TestResult):
-
-    def __init__(self, target):
-        unittest.TestResult.__init__(self)
-        self.result = target
-
-    def startTest(self, test):
-        self.result.startTest(test)
-
-    def stopTest(self, test):
-        self.result.stopTest(test)
-
-    def startTestRun(self):
-        self.result.startTestRun()
-
-    def stopTestRun(self):
-        self.result.stopTestRun()
-
-    def addSkip(self, test, reason):
-        self.result.addSkip(test, reason)
-
-    def addSuccess(self, test):
-        self.result.addSuccess(test)
-
-    def addError(self, test, err):
-        self.result.addError(test, err)
-
-    def addFailure(self, test, err):
-        self.result.addFailure(test, err)
-ForwardingResult = testtools.ExtendedToOriginalDecorator
-
-
-class ProfileResult(ForwardingResult):
+class ProfileResult(testtools.ExtendedToOriginalDecorator):
     """Generate profiling data for all activity between start and success.
     
     The profile data is appended to the test's _benchcalls attribute and can
@@ -3403,7 +3369,7 @@ class ProfileResult(ForwardingResult):
         # unavoidably fail.
         bzrlib.lsprof.BzrProfiler.profiler_block = 0
         self.profiler.start()
-        ForwardingResult.startTest(self, test)
+        testtools.ExtendedToOriginalDecorator.startTest(self, test)
 
     def addSuccess(self, test):
         stats = self.profiler.stop()
@@ -3413,10 +3379,10 @@ class ProfileResult(ForwardingResult):
             test._benchcalls = []
             calls = test._benchcalls
         calls.append(((test.id(), "", ""), stats))
-        ForwardingResult.addSuccess(self, test)
+        testtools.ExtendedToOriginalDecorator.addSuccess(self, test)
 
     def stopTest(self, test):
-        ForwardingResult.stopTest(self, test)
+        testtools.ExtendedToOriginalDecorator.stopTest(self, test)
         self.profiler = None
 
 
