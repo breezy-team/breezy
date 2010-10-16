@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -120,7 +120,7 @@ class BisectMetaTests(BisectTestCase):
         assert bisect.version_info
 
     def testBzrVersioning(self):
-        assert bisect.bzr_minimum_api >= bzrlib.api_minimum_version
+        assert bisect.bzr_minimum_api <= bzrlib.api_minimum_version
         assert bisect.bzr_minimum_api <= bzrlib.version_info[:3]
 
 
