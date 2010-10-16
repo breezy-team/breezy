@@ -194,7 +194,7 @@ def find_first_available_merge_tool(conf=None):
     return None
 
 
-def get_user_selected_merge_tool(conf=None):
+def get_default_merge_tool(conf=None):
     if conf is None:
         conf = config.GlobalConfig()
     name = conf.get_user_option('selected_mergetool')
@@ -206,7 +206,7 @@ def get_user_selected_merge_tool(conf=None):
     return merge_tool
 
 
-def set_user_selected_merge_tool(name, conf=None):
+def set_default_merge_tool(name, conf=None):
     if conf is None:
         conf = config.GlobalConfig()
     if isinstance(name, MergeTool):
