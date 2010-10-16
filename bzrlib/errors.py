@@ -2945,6 +2945,22 @@ class UnableEncodePath(BzrError):
         self.user_encoding = osutils.get_user_encoding()
 
 
+class NoSuchConfig(BzrError):
+
+    _fmt = ('The "%(config_id)s" configuration does not exist.')
+
+    def __init__(self, config_id):
+        BzrError.__init__(self, config_id=config_id)
+
+
+class NoSuchConfigOption(BzrError):
+
+    _fmt = ('The "%(option_name)s" configuration option does not exist.')
+
+    def __init__(self, option_name):
+        BzrError.__init__(self, option_name=option_name)
+
+
 class NoSuchAlias(BzrError):
 
     _fmt = ('The alias "%(alias_name)s" does not exist.')

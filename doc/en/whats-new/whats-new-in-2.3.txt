@@ -25,6 +25,12 @@ Changed Behaviour
   bytecode files.
   (Andrea Corbellini, #626687)
 
+* The default sort order for the ``bzr tags`` command now uses a natural sort
+  where numeric substrings are sorted numerically.  The previous default was
+  "asciibetical" where tags were sorted by the characters they contained.  To
+  get the old behavior, one can use ``bzr tags --sort=alpha``.
+  (Neil Martinsen-Burrell, #640760)
+
 Launchpad integration
 *********************
 
@@ -84,12 +90,52 @@ New revision specifiers
   ``bzr log -vp -r mainline:annotate:bzrlib/transform.py:500``
   (Aaron Bentley)
 
+Testing/Bug reporting
+*********************
+
+* Shell-like scripts can now be run directly from the command line without
+  writing a python test. This should help users adding reproducing recipes
+  to bug reports. (Vincent Ladeuil)
+
+
+Improved conflict handling
+**************************
+
+* ``pull``, ``merge`` or ``switch`` can lead to conflicts when deleting a
+  versioned directory contains unversioned files. The cause of the conflict
+  is that deleting the directory will orphan the unversioned files so the
+  user needs to instruct ``bzr`` what do to do about these orpahns. This is
+  controlled by setting the ``bzr.transform.orphan_policy`` configuration
+  variable with a value of ``move``. In this case the unversioned files are
+  moved to a ``bzr-orphans`` directory at the root of the working tree. The
+  default behaviour is specified (if needed) by setting the variable to
+  ``conflict``.  (Vincent Ladeuil, #323111)
+
 Documentation
 *************
 
 * A beta version of the documentation is now available in GNU TexInfo
   format, used by emacs and the standalone ``info`` reader.
   (Vincent Ladeuil, #219334)
+
+Configuration
+*************
+
+``bzr`` can be configure via environment variables, command-line options
+and configurations files. We've started working on unifying this and give
+access to more options. The first step is a new ``bzr config`` command that
+can be used to display the active configuration options in the current
+working tree or branch as well as the ability to set or remove an option.
+
+Expected releases for the 2.3 series
+************************************
+
+The 2.3 series has entered the beta phase and 2.3.0 should be released soon
+enough to be included into Natty Narwhal. 
+
+As a rough estimate, consider that 2.3.0 will be released in February
+2011 and be supported until August 2012. Additional releases will be
+made if critical bugs are encountered
 
 
 Further information

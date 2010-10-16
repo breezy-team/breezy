@@ -2354,3 +2354,23 @@ def getuser_unicode():
         raise errors.BzrError("Can't decode username as %s." % \
                 user_encoding)
     return username
+
+
+def available_backup_name(base, exists):
+    """Find a non-existing backup file name.
+
+    This will *not* create anything, this only return a 'free' entry.  This
+    should be used for checking names in a directory below a locked
+    tree/branch/repo to avoid race conditions. This is LBYL (Look Before You
+    Leap) and generally discouraged.
+
+    :param base: The base name.
+
+    :param exists: A callable returning True if the path parameter exists.
+    """
+    counter = 1
+    name = "%s.~%d~" % (base, counter)
+    while exists(name):
+        counter += 1
+        name = "%s.~%d~" % (base, counter)
+    return name

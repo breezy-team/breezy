@@ -19,8 +19,12 @@ import errno
 from stat import S_ISREG, S_IEXEC
 import time
 
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
+from bzrlib import (
+    errors,
+    lazy_import,
+    registry,
+    )
+lazy_import.lazy_import(globals(), """
 from bzrlib import (
     annotate,
     bencode,
@@ -32,6 +36,7 @@ from bzrlib import (
     multiparent,
     osutils,
     revision as _mod_revision,
+    trace,
     ui,
     )
 """)
@@ -55,6 +60,7 @@ from bzrlib.progress import ProgressPhase
 from bzrlib.symbol_versioning import (
         deprecated_function,
         deprecated_in,
+        deprecated_method,
         )
 from bzrlib.trace import mutter, warning
 from bzrlib import tree
@@ -64,11 +70,11 @@ import bzrlib.urlutils as urlutils
 
 ROOT_PARENT = "root-parent"
 
-
 def unique_add(map, key, value):
     if key in map:
         raise DuplicateKey(key=key)
     map[key] = value
+
 
 
 class _TransformResults(object):
@@ -531,30 +537,53 @@ class TreeTransformBase(object):
             # ensure that all children are registered with the transaction
             list(self.iter_tree_children(parent_id))
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def has_named_child(self, by_parent, parent_id, name):
-        try:
-            children = by_parent[parent_id]
-        except KeyError:
-            children = []
-        for child in children:
+        return self._has_named_child(
+            name, parent_id, known_children=by_parent.get(parent_id, []))
+
+    def _has_named_child(self, name, parent_id, known_children):
+        """Does a parent already have a name child.
+
+        :param name: The searched for name.
+
+        :param parent_id: The parent for which the check is made.
+
+        :param known_children: The already known children. This should have
+            been recently obtained from `self.by_parent.get(parent_id)`
+            (or will be if None is passed).
+        """
+        if known_children is None:
+            known_children = self.by_parent().get(parent_id, [])
+        for child in known_children:
             if self.final_name(child) == name:
                 return True
-        try:
-            path = self._tree_id_paths[parent_id]
-        except KeyError:
+        parent_path = self._tree_id_paths.get(parent_id, None)
+        if parent_path is None:
+            # No parent... no children
             return False
-        childpath = joinpath(path, name)
-        child_id = self._tree_path_ids.get(childpath)
+        child_path = joinpath(parent_path, name)
+        child_id = self._tree_path_ids.get(child_path, None)
         if child_id is None:
-            return lexists(self._tree.abspath(childpath))
+            # Not known by the tree transform yet, check the filesystem
+            return osutils.lexists(self._tree.abspath(child_path))
         else:
-            if self.final_parent(child_id) != parent_id:
-                return False
-            if child_id in self._removed_contents:
-                # XXX What about dangling file-ids?
-                return False
-            else:
-                return True
+            raise AssertionError('child_id is missing: %s, %s, %s'
+                                 % (name, parent_id, child_id))
+
+    def _available_backup_name(self, name, target_id):
+        """Find an available backup name.
+
+        :param name: The basename of the file.
+
+        :param target_id: The directory trans_id where the backup should 
+            be placed.
+        """
+        known_children = self.by_parent().get(target_id, [])
+        return osutils.available_backup_name(
+            name,
+            lambda base: self._has_named_child(
+                base, target_id, known_children))
 
     def _parent_loops(self):
         """No entry should be its own ancestor"""
@@ -758,6 +787,43 @@ class TreeTransformBase(object):
         trans_id = self._new_entry(name, parent_id, file_id)
         self.create_symlink(target, trans_id)
         return trans_id
+
+    def new_orphan(self, trans_id, parent_id):
+        """Schedule an item to be orphaned.
+
+        When a directory is about to be removed, its children, if they are not
+        versioned are moved out of the way: they don't have a parent anymore.
+
+        :param trans_id: The trans_id of the existing item.
+        :param parent_id: The parent trans_id of the item.
+        """
+        raise NotImplementedError(self.new_orphan)
+
+    def _get_potential_orphans(self, dir_id):
+        """Find the potential orphans in a directory.
+
+        A directory can't be safely deleted if there are versioned files in it.
+        If all the contained files are unversioned then they can be orphaned.
+
+        The 'None' return value means that the directory contains at least one
+        versioned file and should not be deleted.
+
+        :param dir_id: The directory trans id.
+
+        :return: A list of the orphan trans ids or None if at least one
+             versioned file is present.
+        """
+        orphans = []
+        # Find the potential orphans, stop if one item should be kept
+        for c in self.by_parent()[dir_id]:
+            if self.final_file_id(c) is None:
+                orphans.append(c)
+            else:
+                # We have a versioned file here, searching for orphans is
+                # meaningless.
+                orphans = None
+                break
+        return orphans
 
     def _affected_ids(self):
         """Return the set of transform ids affected by the transform"""
@@ -1271,6 +1337,89 @@ class DiskTreeTransform(TreeTransformBase):
             del self._limbo_children_names[trans_id]
         delete_any(self._limbo_name(trans_id))
 
+    def new_orphan(self, trans_id, parent_id):
+        # FIXME: There is no tree config, so we use the branch one (it's weird
+        # to define it this way as orphaning can only occur in a working tree,
+        # but that's all we have (for now). It will find the option in
+        # locations.conf or bazaar.conf though) -- vila 20100916
+        conf = self._tree.branch.get_config()
+        conf_var_name = 'bzr.transform.orphan_policy'
+        orphan_policy = conf.get_user_option(conf_var_name)
+        default_policy = orphaning_registry.default_key
+        if orphan_policy is None:
+            orphan_policy = default_policy
+        if orphan_policy not in orphaning_registry:
+            trace.warning('%s (from %s) is not a known policy, defaulting to %s'
+                          % (orphan_policy, conf_var_name, default_policy))
+            orphan_policy = default_policy
+        handle_orphan = orphaning_registry.get(orphan_policy)
+        handle_orphan(self, trans_id, parent_id)
+
+
+class OrphaningError(errors.BzrError):
+
+    # Only bugs could lead to such exception being seen by the user
+    internal_error = True
+    _fmt = "Error while orphaning %s in %s directory"
+
+    def __init__(self, orphan, parent):
+        errors.BzrError.__init__(self)
+        self.orphan = orphan
+        self.parent = parent
+
+
+class OrphaningForbidden(OrphaningError):
+
+    _fmt = "Policy: %s doesn't allow creating orphans."
+
+    def __init__(self, policy):
+        errors.BzrError.__init__(self)
+        self.policy = policy
+
+
+def move_orphan(tt, orphan_id, parent_id):
+    """See TreeTransformBase.new_orphan.
+
+    This creates a new orphan in the `bzr-orphans` dir at the root of the
+    `TreeTransform`.
+
+    :param tt: The TreeTransform orphaning `trans_id`.
+
+    :param orphan_id: The trans id that should be orphaned.
+
+    :param parent_id: The orphan parent trans id.
+    """
+    # Add the orphan dir if it doesn't exist
+    orphan_dir_basename = 'bzr-orphans'
+    od_id = tt.trans_id_tree_path(orphan_dir_basename)
+    if tt.final_kind(od_id) is None:
+        tt.create_directory(od_id)
+    parent_path = tt._tree_id_paths[parent_id]
+    # Find a name that doesn't exist yet in the orphan dir
+    actual_name = tt.final_name(orphan_id)
+    new_name = tt._available_backup_name(actual_name, od_id)
+    tt.adjust_path(new_name, od_id, orphan_id)
+    trace.warning('%s has been orphaned in %s'
+                  % (joinpath(parent_path, actual_name), orphan_dir_basename))
+
+
+def refuse_orphan(tt, orphan_id, parent_id):
+    """See TreeTransformBase.new_orphan.
+
+    This refuses to create orphan, letting the caller handle the conflict.
+    """
+    raise OrphaningForbidden('never')
+
+
+orphaning_registry = registry.Registry()
+orphaning_registry.register(
+    'conflict', refuse_orphan,
+    'Leave orphans in place and create a conflict on the directory.')
+orphaning_registry.register(
+    'move', move_orphan,
+    'Move orphans into the bzr-orphans directory.')
+orphaning_registry._set_default_key('conflict')
+
 
 class TreeTransform(DiskTreeTransform):
     """Represent a tree transformation.
@@ -1726,6 +1875,9 @@ class TransformPreview(DiskTreeTransform):
         for child in children:
             childpath = joinpath(path, child)
             yield self.trans_id_tree_path(childpath)
+
+    def new_orphan(self, trans_id, parent_id):
+        raise NotImplementedError(self.new_orphan)
 
 
 class _PreviewTree(tree.Tree):
@@ -2427,11 +2579,13 @@ def _reparent_children(tt, old_parent, new_parent):
     for child in tt.iter_tree_children(old_parent):
         tt.adjust_path(tt.final_name(child), new_parent, child)
 
+
 def _reparent_transform_children(tt, old_parent, new_parent):
     by_parent = tt.by_parent()
     for child in by_parent[old_parent]:
         tt.adjust_path(tt.final_name(child), new_parent, child)
     return by_parent[old_parent]
+
 
 def _content_match(tree, entry, file_id, kind, target_path):
     if entry.kind != kind:
@@ -2538,10 +2692,12 @@ def create_entry_executability(tt, entry, trans_id):
         tt.set_executability(entry.executable, trans_id)
 
 
+@deprecated_function(deprecated_in((2, 3, 0)))
 def get_backup_name(entry, by_parent, parent_trans_id, tt):
     return _get_backup_name(entry.name, by_parent, parent_trans_id, tt)
 
 
+@deprecated_function(deprecated_in((2, 3, 0)))
 def _get_backup_name(name, by_parent, parent_trans_id, tt):
     """Produce a backup-style name that appears to be available"""
     def name_gen():
@@ -2668,9 +2824,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         tt.delete_contents(trans_id)
                     elif kind[1] is not None:
                         parent_trans_id = tt.trans_id_file_id(parent[0])
-                        by_parent = tt.by_parent()
-                        backup_name = _get_backup_name(name[0], by_parent,
-                                                       parent_trans_id, tt)
+                        backup_name = tt._available_backup_name(
+                            name[0], parent_trans_id)
                         tt.adjust_path(backup_name, parent_trans_id, trans_id)
                         new_trans_id = tt.create_path(name[0], parent_trans_id)
                         if versioned == (True, True):
@@ -2799,11 +2954,30 @@ def conflict_pass(tt, conflicts, path_tree=None):
 
         elif c_type == 'missing parent':
             trans_id = conflict[1]
-            try:
-                tt.cancel_deletion(trans_id)
-                new_conflicts.add(('deleting parent', 'Not deleting',
-                                   trans_id))
-            except KeyError:
+            if trans_id in tt._removed_contents:
+                cancel_deletion = True
+                orphans = tt._get_potential_orphans(trans_id)
+                if orphans:
+                    cancel_deletion = False
+                    # All children are orphans
+                    for o in orphans:
+                        try:
+                            tt.new_orphan(o, trans_id)
+                        except OrphaningError:
+                            # Something bad happened so we cancel the directory
+                            # deletion which will leave it in place with a
+                            # conflict. The user can deal with it from there.
+                            # Note that this also catch the case where we don't
+                            # want to create orphans and leave the directory in
+                            # place.
+                            cancel_deletion = True
+                            break
+                if cancel_deletion:
+                    # Cancel the directory deletion
+                    tt.cancel_deletion(trans_id)
+                    new_conflicts.add(('deleting parent', 'Not deleting',
+                                       trans_id))
+            else:
                 create = True
                 try:
                     tt.final_name(trans_id)
@@ -2917,7 +3091,7 @@ class _FileMover(object):
             try:
                 os.rename(to, from_)
             except OSError, e:
-                raise errors.TransformRenameFailed(to, from_, str(e), e.errno)                
+                raise errors.TransformRenameFailed(to, from_, str(e), e.errno)
         # after rollback, don't reuse _FileMover
         past_renames = None
         pending_deletions = None

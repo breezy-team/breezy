@@ -44,7 +44,7 @@ FastCGI
         Options Indexes FollowSymLinks
         RewriteEngine On
         RewriteBase /code
-        RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+        RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
     </Directory>
 
     # bzr-smart.fcgiはDocumentRootの元に存在しないので、実行されるように
@@ -74,11 +74,11 @@ mod_python
 
 FastCGIと同じ方法でmod_rewriteを用いて書き換えルールを定義します::
 
-    RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
+    RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
 
 変更は次のようになります::
 
-    RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.py
+    RewriteRule ^(.*/)?\.bzr/smart$ /srv/example.com/scripts/bzr-smart.py
 
 mod_fastcgiのように、スクリプトがどのように扱われるのかも定義します::
 

@@ -21,6 +21,8 @@ import os
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
+import itertools
+import re
 import sys
 import time
 
@@ -264,8 +266,12 @@ class cmd_status(Command):
     To skip the display of pending merge information altogether, use
     the no-pending option or specify a file/directory.
 
-    If a revision argument is given, the status is calculated against
-    that revision, or between two revisions if two are provided.
+    To compare the working directory to a specific revision, pass a
+    single revision to the revision argument.
+
+    To see which files have changed in a specific revision, or between
+    two revisions, pass a revision range to the revision argument.
+    This will produce the same results as calling 'bzr diff --summarize'.
     """
 
     # TODO: --no-recurse, --recurse options
@@ -1077,6 +1083,9 @@ class cmd_push(Command):
         Option('strict',
                help='Refuse to push if there are uncommitted changes in'
                ' the working tree, --no-strict disables the check.'),
+        Option('no-tree',
+               help="Don't populate the working tree, even for protocols"
+               " that support it."),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1084,7 +1093,7 @@ class cmd_push(Command):
     def run(self, location=None, remember=False, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
-        stacked=False, strict=None):
+        stacked=False, strict=None, no_tree=False):
         from bzrlib.push import _show_push_branch
 
         if directory is None:
@@ -1136,7 +1145,7 @@ class cmd_push(Command):
         _show_push_branch(br_from, revision_id, location, self.outf,
             verbose=verbose, overwrite=overwrite, remember=remember,
             stacked_on=stacked_on, create_prefix=create_prefix,
-            use_existing_dir=use_existing_dir)
+            use_existing_dir=use_existing_dir, no_tree=no_tree)
 
 
 class cmd_branch(Command):
@@ -1519,13 +1528,20 @@ class cmd_remove(Command):
             title='Deletion Strategy', value_switches=True, enum_switch=False,
             safe='Backup changed files (default).',
             keep='Delete from bzr but leave the working copy.',
+            no_backup='Don\'t backup changed files.',
             force='Delete all the specified files, even if they can not be '
-                'recovered and even if they are non-empty directories.')]
+                'recovered and even if they are non-empty directories. '
+                '(deprecated, use no-backup)')]
     aliases = ['rm', 'del']
     encoding_type = 'replace'
 
     def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
+        if file_deletion_strategy == 'force':
+            note("(The --force option is deprecated, rather use --no-backup "
+                "in future.)")
+            file_deletion_strategy = 'no-backup'
+
         tree, file_list = WorkingTree.open_containing_paths(file_list)
 
         if file_list is not None:
@@ -1552,7 +1568,7 @@ class cmd_remove(Command):
             file_deletion_strategy = 'keep'
         tree.remove(file_list, verbose=verbose, to_file=self.outf,
             keep_files=file_deletion_strategy=='keep',
-            force=file_deletion_strategy=='force')
+            force=(file_deletion_strategy=='no-backup'))
 
 
 class cmd_file_id(Command):
@@ -1713,10 +1729,12 @@ class cmd_init(Command):
                 ),
          Option('append-revisions-only',
                 help='Never change revnos or the existing log.'
-                '  Append revisions to it only.')
+                '  Append revisions to it only.'),
+         Option('no-tree',
+                'Create a branch without a working tree.')
          ]
     def run(self, location=None, format=None, append_revisions_only=False,
-            create_prefix=False):
+            create_prefix=False, no_tree=False):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
@@ -1745,8 +1763,13 @@ class cmd_init(Command):
         except errors.NotBranchError:
             # really a NotBzrDir error...
             create_branch = bzrdir.BzrDir.create_branch_convenience
+            if no_tree:
+                force_new_tree = False
+            else:
+                force_new_tree = None
             branch = create_branch(to_transport.base, format=format,
-                                   possible_transports=[to_transport])
+                                   possible_transports=[to_transport],
+                                   force_new_tree=force_new_tree)
             a_bzrdir = branch.bzrdir
         else:
             from bzrlib.transport.local import LocalTransport
@@ -1756,7 +1779,8 @@ class cmd_init(Command):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
             branch = a_bzrdir.create_branch()
-            a_bzrdir.create_workingtree()
+            if not no_tree:
+                a_bzrdir.create_workingtree()
         if append_revisions_only:
             try:
                 branch.set_append_revisions_only(True)
@@ -5388,7 +5412,7 @@ class cmd_tag(Command):
             if tag_name is None:
                 raise errors.BzrCommandError("No tag specified to delete.")
             branch.tags.delete_tag(tag_name)
-            self.outf.write('Deleted tag %s.\n' % tag_name)
+            note('Deleted tag %s.' % tag_name)
         else:
             if revision:
                 if len(revision) != 1:
@@ -5406,7 +5430,7 @@ class cmd_tag(Command):
             if (not force) and branch.tags.has_tag(tag_name):
                 raise errors.TagAlreadyExists(tag_name)
             branch.tags.set_tag(tag_name, revision_id)
-            self.outf.write('Created tag %s.\n' % tag_name)
+            note('Created tag %s.' % tag_name)
 
 
 class cmd_tags(Command):
@@ -5421,7 +5445,9 @@ class cmd_tags(Command):
             help='Branch whose tags should be displayed.'),
         RegistryOption.from_kwargs('sort',
             'Sort tags by different criteria.', title='Sorting',
-            alpha='Sort tags lexicographically (default).',
+            natural='Sort numeric substrings as numbers:'
+                    ' suitable for version numbers. (default)',
+            alpha='Sort tags lexicographically.',
             time='Sort tags chronologically.',
             ),
         'show-ids',
@@ -5431,7 +5457,7 @@ class cmd_tags(Command):
     @display_command
     def run(self,
             directory='.',
-            sort='alpha',
+            sort='natural',
             show_ids=False,
             revision=None,
             ):
@@ -5449,7 +5475,13 @@ class cmd_tags(Command):
             # only show revisions between revid1 and revid2 (inclusive)
             tags = [(tag, revid) for tag, revid in tags if
                 graph.is_between(revid, revid1, revid2)]
-        if sort == 'alpha':
+        if sort == 'natural':
+            def natural_sort_key(tag):
+                return [f(s) for f,s in 
+                        zip(itertools.cycle((unicode.lower,int)),
+                                            re.split('([0-9]+)', tag[0]))]
+            tags.sort(key=natural_sort_key)
+        elif sort == 'alpha':
             tags.sort()
         elif sort == 'time':
             timestamps = {}
@@ -6062,10 +6094,12 @@ def _register_lazy_builtins():
     # be only called once.
     for (name, aliases, module_name) in [
         ('cmd_bundle_info', [], 'bzrlib.bundle.commands'),
+        ('cmd_config', [], 'bzrlib.config'),
         ('cmd_dpush', [], 'bzrlib.foreign'),
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
         ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
+        ('cmd_test_script', [], 'bzrlib.tests.script'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)
