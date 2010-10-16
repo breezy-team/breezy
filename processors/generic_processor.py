@@ -197,9 +197,7 @@ class GenericProcessor(processor.ImportProcessor):
         self.repo.start_write_group()
 
     def _load_info_and_params(self):
-        from bzrlib.plugins.fastimport (
-            bzr_commit_handler,
-            )
+        from bzrlib.plugins.fastimport import bzr_commit_handler
         self._mode = bool(self.params.get('mode', 'default'))
         self._experimental = self._mode == 'experimental'
 

@@ -358,7 +358,7 @@ class cmd_fast_import(Command):
         user_map=None):
         load_fastimport()
         from bzrlib.plugins.fastimport.processors import generic_processor
-        from fastimport.helpers import (
+        from bzrlib.plugins.fastimport.helpers import (
             open_destination_directory,
             )
         # If no format is given and the user is running a release
@@ -395,8 +395,8 @@ class cmd_fast_import(Command):
 
     def _generate_info(self, source):
         from cStringIO import StringIO
-        import parser
-        from bzrlib.plugins.fastimport.processors import info_processor
+        from fastimport import parser
+        from fastimport.processors import info_processor
         stream = _get_source_stream(source)
         output = StringIO()
         try:
@@ -502,7 +502,7 @@ class cmd_fast_import_filter(Command):
     def run(self, source, verbose=False, include_paths=None,
         exclude_paths=None, user_map=None):
         load_fastimport()
-        from bzrlib.plugins.fastimport.processors import filter_processor
+        from fastimport.processors import filter_processor
         params = {
             'include_paths': include_paths,
             'exclude_paths': exclude_paths,
@@ -541,7 +541,7 @@ class cmd_fast_import_info(Command):
     aliases = []
     def run(self, source, verbose=False):
         load_fastimport()
-        from bzrlib.plugins.fastimport.processors import info_processor
+        from fastimport.processors import info_processor
         return _run(source, info_processor.InfoProcessor, {}, verbose)
 
 
@@ -597,7 +597,7 @@ class cmd_fast_import_query(Command):
     aliases = []
     def run(self, source, verbose=False, commands=None, commit_mark=None):
         load_fastimport()
-        from bzrlib.plugins.fastimport.processors import query_processor
+        from fastimport.processors import query_processor
         from bzrlib.plugins.fastimport import helpers
         params = helpers.defines_to_dict(commands) or {}
         if commit_mark:
