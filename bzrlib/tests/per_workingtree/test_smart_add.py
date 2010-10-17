@@ -234,11 +234,7 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         tree.smart_add(["dir"])
         os.remove("dir")
         self.build_tree(["dir/", "dir/file"])
-        try:
-            tree.smart_add(["dir/file"])
-        except AttributeError, e:
-            self.expectFailure("Adding file in dir raises AttributeError",
-                self._reraise_current_error_as_assertion)
+        tree.smart_add(["dir/file"])
         tree.commit("Add file in dir")
 
     def test_custom_ids(self):
