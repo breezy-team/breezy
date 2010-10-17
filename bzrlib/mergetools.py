@@ -73,7 +73,10 @@ class MergeTool(object):
         return self._commandline
         
     def get_name(self):
-        return os.path.basename(self.get_executable())
+        name = os.path.basename(self.get_executable())
+        if sys.platform == 'win32' and name.lower().endswith('.exe'):
+            name = name[:-4]
+        return name
         
     def get_commandline(self):
         return self._commandline

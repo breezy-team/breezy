@@ -45,9 +45,17 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals('%r %b %t %o', mt.get_arguments())
         self.assertEquals('othertool %r %b %t %o', mt.get_commandline())
         
+    def test_name_win32(self):
+        if sys.platform != 'win32':
+            raise tests.TestSkipped('only required on win32')
+        mt = mergetools.MergeTool('/path/to/tool.exe foo bar')
+        self.assertEquals('tool', mt.get_name())
+        mt = mergetools.MergeTool('/path/to/TOOL.EXE foo bar')
+        self.assertEquals('TOOL', mt.get_name())
+        
     def test_quoted_executable(self):
         mt = mergetools.MergeTool('"C:\\Program Files\\KDiff3\\kdiff3.exe" %b %t %o -o %r')
-        self.assertEquals('kdiff3.exe', mt.get_name())
+        self.assertEquals('kdiff3', mt.get_name())
 
     def test_expand_commandline(self):
         mt = mergetools.MergeTool('kdiff3 %b %t %o -o %r')
