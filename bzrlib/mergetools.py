@@ -275,6 +275,10 @@ class cmd_mergetools(Command):
     When updating or removing an external merge tool, use the simple name of
     the executable, e.g. 'C:\Tools\kdiff3.exe' -> 'kdiff3'.
     
+    If you see the warning 'External merge tool is not available' when adding
+    or updating, the executable in the command-line you have supplied cannot
+    be found.
+    
     Examples:
         To add an external merge tool:
 
@@ -337,6 +341,11 @@ class cmd_mergetools(Command):
         merge_tools = get_merge_tools()
         merge_tools.append(new_mt)
         set_merge_tools(merge_tools)
+        uif = ui.ui_factory
+        uif.note('Added external merge tool: %s' % new_mt.get_name())
+        if not new_mt.is_available():
+            uif.show_warning(
+                'External merge tool is not available: %s' % new_mt.get_name())
     
     def detect_tools(self):
         new_merge_tools = detect_merge_tools()
@@ -382,6 +391,12 @@ class cmd_mergetools(Command):
             if mt.get_name() == name:
                 mt.set_executable(args[0])
                 mt.set_arguments(args[1:])
+                uif = ui.ui_factory
+                uif.note('Updated external merge tool: %s' % name)
+                if not mt.is_available():
+                    uif.show_warning(
+                        'External merge tool is not available: %s' %
+                        mt.get_name())
                 break
         else:
             raise errors.BzrCommandError(
