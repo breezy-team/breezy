@@ -4123,13 +4123,13 @@ class cmd_remerge(Command):
     """
     takes_args = ['file*']
     takes_options = [
-            'merge-type',
-            'reprocess',
-            Option('show-base',
-                   help="Show base revision text in conflicts."),
-            Option('resolve-using', help='Invokes an external merge tool for '
-                   'merged files with conflicts.', type=str),
-            ]
+        'merge-type',
+        'reprocess',
+        Option('show-base',
+               help="Show base revision text in conflicts."),
+        Option('resolve-using', help='Invokes an external merge tool for '
+               'merged files with conflicts.', type=str),
+    ]
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False, resolve_using=None):
