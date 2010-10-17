@@ -201,12 +201,12 @@ def find_first_available_merge_tool(conf=None):
 def get_default_merge_tool(conf=None):
     if conf is None:
         conf = config.GlobalConfig()
-    name = conf.get_user_option('selected_mergetool')
+    name = conf.get_user_option('default_mergetool')
     if name is None:
-        trace.mutter('no user selected merge tool defined')
+        trace.mutter('no default merge tool defined')
         return None
     merge_tool = find_merge_tool(name, conf)
-    trace.mutter('found user selected merge tool: %r', merge_tool)
+    trace.mutter('found default merge tool: %r', merge_tool)
     return merge_tool
 
 
@@ -217,8 +217,8 @@ def set_default_merge_tool(name, conf=None):
         name = name.get_name()
     if find_merge_tool(name, conf) is None:
         raise errors.BzrError('invalid merge tool name: %r' % name)
-    trace.mutter('setting user selected merge tool: %s', name)
-    conf.set_user_option('selected_mergetool', name)
+    trace.mutter('setting default merge tool: %s', name)
+    conf.set_user_option('default_mergetool', name)
 
 
 def _optional_quote_arg(arg):
