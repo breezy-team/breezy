@@ -298,6 +298,8 @@ class cmd_mergetools(Command):
     takes_options = [
         Option('add', help='Adds an external merge tool using ARGS as the '
                'command-line.', short_name='a'),
+        Option('detect', help='Automatically detect known external merge tools '
+               'on the PATH'),
         Option('list', help='Lists the currently defined external merge tools.',
                short_name='l'),
         Option('remove', help='Removes the external merge tool called ARG.',
@@ -306,13 +308,17 @@ class cmd_mergetools(Command):
                'using ARGS as the command-line.', type=str, short_name='u'),
     ]
 
-    def run(self, args_list=None, add=False, list=False, remove=None,
-            update=None):
-        if not add and not list and remove is None and update is None:
-            raise errors.BzrCommandError('You must supply one of --add, '
-                                         '--list, --remove or --update')
+    def run(self, args_list=None, add=False, detect=False, list=False,
+            remove=None, update=None):
+        if (not add and not detect and not list and remove is None and
+            update is None):
+            raise errors.BzrCommandError(
+                'You must supply one of --add, --detect, --list, --remove or '
+                '--update')
         if add:
             self.add_tool(args_list)
+        elif detect:
+            self.detect_tools()
         elif list:
             self.list_tools()
         elif remove is not None:
@@ -331,6 +337,24 @@ class cmd_mergetools(Command):
         merge_tools = get_merge_tools()
         merge_tools.append(new_mt)
         set_merge_tools(merge_tools)
+    
+    def detect_tools(self):
+        new_merge_tools = detect_merge_tools()
+        merge_tools = get_merge_tools()
+        for mt in merge_tools:
+            for new_mt in new_merge_tools:
+                if mt.get_name() == new_mt.get_name():
+                    new_merge_tools.remove(new_mt)
+                    break
+        uif = ui.ui_factory
+        if len(new_merge_tools) > 0:
+            for mt in new_merge_tools:
+                uif.note('Detected external merge tool: %s' % mt.get_name())
+        else:
+            uif.note('No external merge tools detected')
+            return
+        new_merge_tools.extend(merge_tools)
+        set_merge_tools(new_merge_tools)
 
     def list_tools(self):
         s = ui.ui_factory.make_output_stream()
