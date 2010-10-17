@@ -38,6 +38,10 @@ New Features
   default format for new branches created with ``bzr init``.
   (Neil Martinsen-Burrell, #484101)
 
+* ``bzr mergetools`` is a new command that allows you to define external merge
+  tools. These external merge tools can be used with ``bzr merge`` and
+  ``bzr remerge`` to resolve text conflicts. (Gordon Tyler, #489915)
+
 Improvements
 ************
 
@@ -71,6 +75,9 @@ API Changes
 * ``known_hooks_key_to_parent_and_attribute`` in ``bzrlib.hooks`` has been
   deprecated in favour of ``known_hooks.key_to_parent_and_attribute`` in
   the same module.  (Andrew Bennetts)
+
+* Added ``bzrlib.mergetools`` module with helper functions for working with
+  the list of external merge tools.
 
 Internals
 *********
