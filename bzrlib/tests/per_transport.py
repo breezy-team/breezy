@@ -26,28 +26,24 @@ from cStringIO import StringIO
 from StringIO import StringIO as pyStringIO
 import stat
 import sys
-import unittest
 
 from bzrlib import (
     errors,
     osutils,
+    pyutils,
     tests,
     urlutils,
     )
 from bzrlib.errors import (ConnectionError,
-                           DirectoryNotEmpty,
                            FileExists,
                            InvalidURL,
-                           LockError,
                            NoSuchFile,
-                           NotLocalUrl,
                            PathError,
                            TransportNotPossible,
                            )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
 from bzrlib.tests import (
-    TestCaseInTempDir,
     TestSkipped,
     TestNotApplicable,
     multiply_tests,
@@ -78,7 +74,7 @@ def transport_test_permutations():
     for module in _get_transport_modules():
         try:
             permutations = get_transport_test_permutations(
-                reduce(getattr, (module).split('.')[1:], __import__(module)))
+                pyutils.get_named_object(module))
             for (klass, server_factory) in permutations:
                 scenario = ('%s,%s' % (klass.__name__, server_factory.__name__),
                     {"transport_class":klass,
@@ -251,7 +247,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_get_bytes_unknown_file(self):
         t = self.get_transport()
-
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
 
     def test_get_with_open_write_stream_sees_all_content(self):
@@ -1266,7 +1261,7 @@ class TransportTests(TestTransportImplementation):
         self.assertIs(t._get_connection(), c._get_connection())
 
         # Temporary failure, we need to create a new dummy connection
-        new_connection = object()
+        new_connection = None
         t._set_connection(new_connection)
         # Check that both transports use the same connection
         self.assertIs(new_connection, t._get_connection())

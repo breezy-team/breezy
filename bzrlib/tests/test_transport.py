@@ -31,6 +31,7 @@ from bzrlib import (
 from bzrlib.transport import (
     chroot,
     fakenfs,
+    http,
     local,
     memory,
     pathfilter,
@@ -955,8 +956,12 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         ssh_server = stub_sftp.SFTPFullAbsoluteServer(StubSSHServer)
         # We *don't* want to override the default SSH vendor: the detected one
         # is the one to use.
+
+        # FIXME: I don't understand the above comment, SFTPFullAbsoluteServer
+        # inherits from SFTPServer which forces the SSH vendor to
+        # ssh.ParamikoVendor(). So it's forced, not detected. --vila 20100623
         self.start_server(ssh_server)
-        port = ssh_server._listener.port
+        port = ssh_server.port
 
         if sys.platform == 'win32':
             bzr_remote_path = sys.executable + ' ' + self.get_bzr_path()
@@ -989,3 +994,14 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # And the rest are threads
         for t in started[1:]:
             t.join()
+
+
+class TestUnhtml(tests.TestCase):
+
+    """Tests for unhtml_roughly"""
+
+    def test_truncation(self):
+        fake_html = "<p>something!\n" * 1000
+        result = http.unhtml_roughly(fake_html)
+        self.assertEquals(len(result), 1000)
+        self.assertStartsWith(result, " something!")

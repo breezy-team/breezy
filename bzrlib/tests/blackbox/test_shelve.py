@@ -77,16 +77,43 @@ class TestShelveList(TestCaseWithTransport):
         sr = ScriptRunner()
         sr.run_script(self, '''
 $ bzr add file
+adding file
 $ bzr shelve --all -m Foo
+2>Selected changes:
+2>-D  file
+2>Changes shelved with id "1".
 $ bzr shelve --list
   1: Foo
 $ bzr unshelve --keep
+2>Using changes with id "1".
+2>Message: Foo
+2>+N  file
+2>All changes applied successfully.
 $ bzr shelve --list
   1: Foo
 $ cat file
 contents of file
 ''')
 
+class TestUnshelvePreview(TestCaseWithTransport):
+    
+    def test_non_ascii(self):
+        """Test that we can show a non-ascii diff that would result from unshelving"""
+        
+        init_content = u'Initial: \u0418\u0437\u043d\u0430\u0447\n'.encode('utf-8')
+        more_content = u'More: \u0415\u0449\u0451\n'.encode('utf-8')
+        next_content = init_content + more_content
+        diff_part = '@@ -1,1 +1,2 @@\n %s+%s' % (init_content, more_content)
+        
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('a_file', init_content)])
+        tree.add('a_file')
+        tree.commit(message='committed')
+        self.build_tree_contents([('a_file', next_content)])
+        self.run_bzr(['shelve', '--all'])
+        out, err = self.run_bzr(['unshelve', '--preview'], encoding='latin-1')
+        
+        self.assertContainsString(out, diff_part)
 
 
 class TestShelveRelpath(TestCaseWithTransport):

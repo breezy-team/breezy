@@ -25,6 +25,7 @@ Working on Bazaar
    testing
    code-review
    code-style
+   documenting-changes
 
 * `Contributing to Bazaar Documentation <http://wiki.bazaar.canonical.com/ContributingToTheDocs>`_ (wiki)
 
@@ -36,6 +37,7 @@ Architecture overviews
    :maxdepth: 1
 
    transports
+   ui
 
 Releasing and Packaging
 =======================

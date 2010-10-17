@@ -504,6 +504,12 @@ Valid values:
     whether the format deprecation warning is shown on repositories that are
     using deprecated formats.
 
+default_format
+~~~~~~~~~~~~~~
+
+A format name for the default format used when creating branches.  See ``bzr
+help formats`` for possible values.
+
 
 Unicode options
 ---------------

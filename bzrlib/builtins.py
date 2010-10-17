@@ -21,6 +21,8 @@ import os
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
+import itertools
+import re
 import sys
 import time
 
@@ -32,7 +34,7 @@ from bzrlib import (
     bzrdir,
     directory_service,
     delta,
-    config,
+    config as _mod_config,
     errors,
     globbing,
     hooks,
@@ -250,8 +252,12 @@ class cmd_status(Command):
     To skip the display of pending merge information altogether, use
     the no-pending option or specify a file/directory.
 
-    If a revision argument is given, the status is calculated against
-    that revision, or between two revisions if two are provided.
+    To compare the working directory to a specific revision, pass a
+    single revision to the revision argument.
+
+    To see which files have changed in a specific revision, or between
+    two revisions, pass a revision range to the revision argument.
+    This will produce the same results as calling 'bzr diff --summarize'.
     """
 
     # TODO: --no-recurse, --recurse options
@@ -923,13 +929,16 @@ class cmd_pull(Command):
                  "branch.  Local pulls are not applied to "
                  "the master branch."
             ),
+        Option('show-base',
+            help="Show base revision text in conflicts.")
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
 
     def run(self, location=None, remember=False, overwrite=False,
             revision=None, verbose=False,
-            directory=None, local=False):
+            directory=None, local=False,
+            show_base=False):
         # FIXME: too much stuff is in the command class
         revision_id = None
         mergeable = None
@@ -943,6 +952,9 @@ class cmd_pull(Command):
             tree_to = None
             branch_to = Branch.open_containing(directory)[0]
             self.add_cleanup(branch_to.lock_write().unlock)
+
+        if tree_to is None and show_base:
+            raise errors.BzrCommandError("Need working tree for --show-base.")
 
         if local and not branch_to.get_bound_location():
             raise errors.LocalRequiresBoundBranch()
@@ -994,7 +1006,8 @@ class cmd_pull(Command):
                 view_info=view_info)
             result = tree_to.pull(
                 branch_from, overwrite, revision_id, change_reporter,
-                possible_transports=possible_transports, local=local)
+                possible_transports=possible_transports, local=local,
+                show_base=show_base)
         else:
             result = branch_to.pull(
                 branch_from, overwrite, revision_id, local=local)
@@ -1056,6 +1069,9 @@ class cmd_push(Command):
         Option('strict',
                help='Refuse to push if there are uncommitted changes in'
                ' the working tree, --no-strict disables the check.'),
+        Option('no-tree',
+               help="Don't populate the working tree, even for protocols"
+               " that support it."),
         ]
     takes_args = ['location?']
     encoding_type = 'replace'
@@ -1063,7 +1079,7 @@ class cmd_push(Command):
     def run(self, location=None, remember=False, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
-        stacked=False, strict=None):
+        stacked=False, strict=None, no_tree=False):
         from bzrlib.push import _show_push_branch
 
         if directory is None:
@@ -1115,7 +1131,7 @@ class cmd_push(Command):
         _show_push_branch(br_from, revision_id, location, self.outf,
             verbose=verbose, overwrite=overwrite, remember=remember,
             stacked_on=stacked_on, create_prefix=create_prefix,
-            use_existing_dir=use_existing_dir)
+            use_existing_dir=use_existing_dir, no_tree=no_tree)
 
 
 class cmd_branch(Command):
@@ -1354,16 +1370,22 @@ class cmd_update(Command):
     If you want to discard your local changes, you can just do a
     'bzr revert' instead of 'bzr commit' after the update.
 
+    If you want to restore a file that has been removed locally, use
+    'bzr revert' instead of 'bzr update'.
+
     If the tree's branch is bound to a master branch, it will also update
     the branch from the master.
     """
 
     _see_also = ['pull', 'working-trees', 'status-flags']
     takes_args = ['dir?']
-    takes_options = ['revision']
+    takes_options = ['revision',
+                     Option('show-base',
+                            help="Show base revision text in conflicts."),
+                     ]
     aliases = ['up']
 
-    def run(self, dir='.', revision=None):
+    def run(self, dir='.', revision=None, show_base=None):
         if revision is not None and len(revision) != 1:
             raise errors.BzrCommandError(
                         "bzr update --revision takes exactly one revision")
@@ -1409,7 +1431,8 @@ class cmd_update(Command):
                 change_reporter,
                 possible_transports=possible_transports,
                 revision=revision_id,
-                old_tip=old_tip)
+                old_tip=old_tip,
+                show_base=show_base)
         except errors.NoSuchRevision, e:
             raise errors.BzrCommandError(
                                   "branch has no revision %s\n"
@@ -1477,10 +1500,11 @@ class cmd_info(Command):
 class cmd_remove(Command):
     __doc__ = """Remove files or directories.
 
-    This makes bzr stop tracking changes to the specified files. bzr will delete
-    them if they can easily be recovered using revert. If no options or
-    parameters are given bzr will scan for files that are being tracked by bzr
-    but missing in your tree and stop tracking them for you.
+    This makes Bazaar stop tracking changes to the specified files. Bazaar will
+    delete them if they can easily be recovered using revert otherwise they
+    will be backed up (adding an extention of the form .~#~). If no options or
+    parameters are given Bazaar will scan for files that are being tracked by
+    Bazaar but missing in your tree and stop tracking them for you.
     """
     takes_args = ['file*']
     takes_options = ['verbose',
@@ -1488,16 +1512,22 @@ class cmd_remove(Command):
         RegistryOption.from_kwargs('file-deletion-strategy',
             'The file deletion mode to be used.',
             title='Deletion Strategy', value_switches=True, enum_switch=False,
-            safe='Only delete files if they can be'
-                 ' safely recovered (default).',
+            safe='Backup changed files (default).',
             keep='Delete from bzr but leave the working copy.',
+            no_backup='Don\'t backup changed files.',
             force='Delete all the specified files, even if they can not be '
-                'recovered and even if they are non-empty directories.')]
+                'recovered and even if they are non-empty directories. '
+                '(deprecated, use no-backup)')]
     aliases = ['rm', 'del']
     encoding_type = 'replace'
 
     def run(self, file_list, verbose=False, new=False,
         file_deletion_strategy='safe'):
+        if file_deletion_strategy == 'force':
+            note("(The --force option is deprecated, rather use --no-backup "
+                "in future.)")
+            file_deletion_strategy = 'no-backup'
+
         tree, file_list = WorkingTree.open_containing_paths(file_list)
 
         if file_list is not None:
@@ -1524,7 +1554,7 @@ class cmd_remove(Command):
             file_deletion_strategy = 'keep'
         tree.remove(file_list, verbose=verbose, to_file=self.outf,
             keep_files=file_deletion_strategy=='keep',
-            force=file_deletion_strategy=='force')
+            force=(file_deletion_strategy=='no-backup'))
 
 
 class cmd_file_id(Command):
@@ -1685,10 +1715,12 @@ class cmd_init(Command):
                 ),
          Option('append-revisions-only',
                 help='Never change revnos or the existing log.'
-                '  Append revisions to it only.')
+                '  Append revisions to it only.'),
+         Option('no-tree',
+                'Create a branch without a working tree.')
          ]
     def run(self, location=None, format=None, append_revisions_only=False,
-            create_prefix=False):
+            create_prefix=False, no_tree=False):
         if format is None:
             format = bzrdir.format_registry.make_bzrdir('default')
         if location is None:
@@ -1717,8 +1749,13 @@ class cmd_init(Command):
         except errors.NotBranchError:
             # really a NotBzrDir error...
             create_branch = bzrdir.BzrDir.create_branch_convenience
+            if no_tree:
+                force_new_tree = False
+            else:
+                force_new_tree = None
             branch = create_branch(to_transport.base, format=format,
-                                   possible_transports=[to_transport])
+                                   possible_transports=[to_transport],
+                                   force_new_tree=force_new_tree)
             a_bzrdir = branch.bzrdir
         else:
             from bzrlib.transport.local import LocalTransport
@@ -1728,7 +1765,8 @@ class cmd_init(Command):
                         raise errors.BranchExistsWithoutWorkingTree(location)
                 raise errors.AlreadyBranchError(location)
             branch = a_bzrdir.create_branch()
-            a_bzrdir.create_workingtree()
+            if not no_tree:
+                a_bzrdir.create_workingtree()
         if append_revisions_only:
             try:
                 branch.set_append_revisions_only(True)
@@ -1884,12 +1922,16 @@ class cmd_diff(Command):
         Same as 'bzr diff' but prefix paths with old/ and new/::
 
             bzr diff --prefix old/:new/
+            
+        Show the differences using a custom diff program with options::
+        
+            bzr diff --using /usr/bin/diff --diff-options -wu
     """
     _see_also = ['status']
     takes_args = ['file*']
     takes_options = [
         Option('diff-options', type=str,
-               help='Pass these options to the diff program.'),
+               help='Pass these options to the external diff program.'),
         Option('prefix', type=str,
                short_name='p',
                help='Set prefixes added to old and new filenames, as '
@@ -1935,10 +1977,6 @@ class cmd_diff(Command):
             raise errors.BzrCommandError(
                 '--prefix expects two values separated by a colon'
                 ' (eg "old/:new/")')
-
-        if using is not None and diff_options is not None:
-            raise errors.BzrCommandError(
-            '--diff-options and --using are mutually exclusive.')
 
         if revision and len(revision) > 2:
             raise errors.BzrCommandError('bzr diff --revision takes exactly'
@@ -3322,7 +3360,7 @@ class cmd_whoami(Command):
                 try:
                     c = Branch.open_containing(u'.')[0].get_config()
                 except errors.NotBranchError:
-                    c = config.GlobalConfig()
+                    c = _mod_config.GlobalConfig()
             else:
                 c = Branch.open(directory).get_config()
             if email:
@@ -3333,7 +3371,7 @@ class cmd_whoami(Command):
 
         # display a warning if an email address isn't included in the given name.
         try:
-            config.extract_email_address(name)
+            _mod_config.extract_email_address(name)
         except errors.NoEmailInUsername, e:
             warning('"%s" does not seem to contain an email address.  '
                     'This is allowed, but not recommended.', name)
@@ -3345,7 +3383,7 @@ class cmd_whoami(Command):
             else:
                 c = Branch.open(directory).get_config()
         else:
-            c = config.GlobalConfig()
+            c = _mod_config.GlobalConfig()
         c.set_user_option('email', name)
 
 
@@ -3418,13 +3456,13 @@ class cmd_alias(Command):
                 'bzr alias --remove expects an alias to remove.')
         # If alias is not found, print something like:
         # unalias: foo: not found
-        c = config.GlobalConfig()
+        c = _mod_config.GlobalConfig()
         c.unset_alias(alias_name)
 
     @display_command
     def print_aliases(self):
         """Print out the defined aliases in a similar format to bash."""
-        aliases = config.GlobalConfig().get_aliases()
+        aliases = _mod_config.GlobalConfig().get_aliases()
         for key, value in sorted(aliases.iteritems()):
             self.outf.write('bzr alias %s="%s"\n' % (key, value))
 
@@ -3440,7 +3478,7 @@ class cmd_alias(Command):
 
     def set_alias(self, alias_name, alias_command):
         """Save the alias in the global config."""
-        c = config.GlobalConfig()
+        c = _mod_config.GlobalConfig()
         c.set_alias(alias_name, alias_command)
 
 
@@ -3480,6 +3518,9 @@ class cmd_selftest(Command):
 
     If you set BZR_TEST_PDB=1 when running selftest, failing tests will drop
     into a pdb postmortem session.
+
+    The --coverage=DIRNAME global option produces a report with covered code
+    indicated.
 
     :Examples:
         Run only tests relating to 'ignore'::
@@ -3570,10 +3611,7 @@ class cmd_selftest(Command):
             randomize=None, exclude=None, strict=False,
             load_list=None, debugflag=None, starting_with=None, subunit=False,
             parallel=None, lsprof_tests=False):
-        from bzrlib.tests import selftest
-
-        # Make deprecation warnings visible, unless -Werror is set
-        symbol_versioning.activate_deprecation_warnings(override=False)
+        from bzrlib import tests
 
         if testspecs_list is not None:
             pattern = '|'.join(testspecs_list)
@@ -3620,7 +3658,14 @@ class cmd_selftest(Command):
                           "starting_with": starting_with
                           }
         selftest_kwargs.update(self.additional_selftest_args)
-        result = selftest(**selftest_kwargs)
+
+        # Make deprecation warnings visible, unless -Werror is set
+        cleanup = symbol_versioning.activate_deprecation_warnings(
+            override=False)
+        try:
+            result = tests.selftest(**selftest_kwargs)
+        finally:
+            cleanup()
         return int(not result)
 
 
@@ -4794,8 +4839,11 @@ class cmd_uncommit(Command):
             self.outf.write('The above revision(s) will be removed.\n')
 
         if not force:
-            if not ui.ui_factory.get_boolean('Are you sure'):
-                self.outf.write('Canceled')
+            if not ui.ui_factory.confirm_action(
+                    'Uncommit these revisions',
+                    'bzrlib.builtins.uncommit',
+                    {}):
+                self.outf.write('Canceled\n')
                 return 0
 
         mutter('Uncommitting from {%s} to {%s}',
@@ -4807,7 +4855,10 @@ class cmd_uncommit(Command):
 
 
 class cmd_break_lock(Command):
-    __doc__ = """Break a dead lock on a repository, branch or working directory.
+    __doc__ = """Break a dead lock.
+
+    This command breaks a lock on a repository, branch, working directory or
+    config file.
 
     CAUTION: Locks should only be broken when you are sure that the process
     holding the lock has been stopped.
@@ -4818,17 +4869,33 @@ class cmd_break_lock(Command):
     :Examples:
         bzr break-lock
         bzr break-lock bzr+ssh://example.com/bzr/foo
+        bzr break-lock --conf ~/.bazaar
     """
-    takes_args = ['location?']
 
-    def run(self, location=None, show=False):
+    takes_args = ['location?']
+    takes_options = [
+        Option('config',
+               help='LOCATION is the directory where the config lock is.'),
+        Option('force',
+            help='Do not ask for confirmation before breaking the lock.'),
+        ]
+
+    def run(self, location=None, config=False, force=False):
         if location is None:
             location = u'.'
-        control, relpath = bzrdir.BzrDir.open_containing(location)
-        try:
-            control.break_lock()
-        except NotImplementedError:
-            pass
+        if force:
+            ui.ui_factory = ui.ConfirmationUserInterfacePolicy(ui.ui_factory,
+                None,
+                {'bzrlib.lockdir.break': True})
+        if config:
+            conf = _mod_config.LockableConfig(file_name=location)
+            conf.break_lock()
+        else:
+            control, relpath = bzrdir.BzrDir.open_containing(location)
+            try:
+                control.break_lock()
+            except NotImplementedError:
+                pass
 
 
 class cmd_wait_until_signalled(Command):
@@ -4919,7 +4986,7 @@ class cmd_join(Command):
     not part of it.  (Such trees can be produced by "bzr split", but also by
     running "bzr branch" with the target inside a tree.)
 
-    The result is a combined tree, with the subtree no longer an independant
+    The result is a combined tree, with the subtree no longer an independent
     part.  This is marked as a merge of the subtree into the containing tree,
     and all history is preserved.
     """
@@ -5321,7 +5388,7 @@ class cmd_tag(Command):
             if tag_name is None:
                 raise errors.BzrCommandError("No tag specified to delete.")
             branch.tags.delete_tag(tag_name)
-            self.outf.write('Deleted tag %s.\n' % tag_name)
+            note('Deleted tag %s.' % tag_name)
         else:
             if revision:
                 if len(revision) != 1:
@@ -5339,7 +5406,7 @@ class cmd_tag(Command):
             if (not force) and branch.tags.has_tag(tag_name):
                 raise errors.TagAlreadyExists(tag_name)
             branch.tags.set_tag(tag_name, revision_id)
-            self.outf.write('Created tag %s.\n' % tag_name)
+            note('Created tag %s.' % tag_name)
 
 
 class cmd_tags(Command):
@@ -5354,7 +5421,9 @@ class cmd_tags(Command):
             help='Branch whose tags should be displayed.'),
         RegistryOption.from_kwargs('sort',
             'Sort tags by different criteria.', title='Sorting',
-            alpha='Sort tags lexicographically (default).',
+            natural='Sort numeric substrings as numbers:'
+                    ' suitable for version numbers. (default)',
+            alpha='Sort tags lexicographically.',
             time='Sort tags chronologically.',
             ),
         'show-ids',
@@ -5364,7 +5433,7 @@ class cmd_tags(Command):
     @display_command
     def run(self,
             directory='.',
-            sort='alpha',
+            sort='natural',
             show_ids=False,
             revision=None,
             ):
@@ -5382,7 +5451,13 @@ class cmd_tags(Command):
             # only show revisions between revid1 and revid2 (inclusive)
             tags = [(tag, revid) for tag, revid in tags if
                 graph.is_between(revid, revid1, revid2)]
-        if sort == 'alpha':
+        if sort == 'natural':
+            def natural_sort_key(tag):
+                return [f(s) for f,s in 
+                        zip(itertools.cycle((unicode.lower,int)),
+                                            re.split('([0-9]+)', tag[0]))]
+            tags.sort(key=natural_sort_key)
+        elif sort == 'alpha':
             tags.sort()
         elif sort == 'time':
             timestamps = {}
@@ -5995,10 +6070,12 @@ def _register_lazy_builtins():
     # be only called once.
     for (name, aliases, module_name) in [
         ('cmd_bundle_info', [], 'bzrlib.bundle.commands'),
+        ('cmd_config', [], 'bzrlib.config'),
         ('cmd_dpush', [], 'bzrlib.foreign'),
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
         ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
+        ('cmd_test_script', [], 'bzrlib.tests.script'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)

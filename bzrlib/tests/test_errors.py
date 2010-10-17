@@ -159,6 +159,13 @@ class TestErrors(TestCaseWithTransport):
             "cannot be broken.",
             str(error))
 
+    def test_lock_corrupt(self):
+        error = errors.LockCorrupt("corruption info")
+        self.assertEqualDiff("Lock is apparently held, but corrupted: "
+            "corruption info\n"
+            "Use 'bzr break-lock' to clear it",
+            str(error))
+
     def test_knit_data_stream_incompatible(self):
         error = errors.KnitDataStreamIncompatible(
             'stream format', 'target format')

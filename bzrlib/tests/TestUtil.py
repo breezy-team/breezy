@@ -20,6 +20,8 @@ import sys
 import logging
 import unittest
 
+from bzrlib import pyutils
+
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
 # shown frame is the test code, not our assertXYZ.
@@ -106,7 +108,7 @@ class TestLoader(unittest.TestLoader):
 
     def loadTestsFromModuleName(self, name):
         result = self.suiteClass()
-        module = _load_module_by_name(name)
+        module = pyutils.get_named_object(name)
 
         result.addTests(self.loadTestsFromModule(module))
         return result
@@ -177,17 +179,6 @@ class FilteredByModuleTestLoader(TestLoader):
             return TestLoader.loadTestsFromModuleName(self, name)
         else:
             return self.suiteClass()
-
-
-def _load_module_by_name(mod_name):
-    parts = mod_name.split('.')
-    module = __import__(mod_name)
-    del parts[0]
-    # for historical reasons python returns the top-level module even though
-    # it loads the submodule; we need to walk down to get the one we want.
-    while parts:
-        module = getattr(module, parts.pop(0))
-    return module
 
 
 class TestVisitor(object):

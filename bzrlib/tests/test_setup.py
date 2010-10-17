@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -74,9 +74,11 @@ class TestSetup(TestCase):
         self.log('args: %r', args)
         p = subprocess.Popen(args,
                              cwd=self.source_dir,
-                             stdout=self._log_file,
-                             stderr=self._log_file,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
                              )
-        s = p.communicate()
+        stdout, stderr = p.communicate()
+        self.log('stdout: %r', stdout)
+        self.log('stderr: %r', stderr)
         self.assertEqual(0, p.returncode,
                          'invocation of %r failed' % args)

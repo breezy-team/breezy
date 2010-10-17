@@ -389,6 +389,11 @@ class SFTPTransport(ConnectedTransport):
                                          self._host, self._port)
         return connection, (user, password)
 
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
+
     def _get_sftp(self):
         """Ensures that a connection is established"""
         connection = self._get_connection()

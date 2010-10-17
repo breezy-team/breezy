@@ -49,6 +49,7 @@ from bzrlib import (
     branch,
     bzrdir,
     conflicts as _mod_conflicts,
+    controldir,
     errors,
     generate_ids,
     globbing,
@@ -168,7 +169,7 @@ class TreeLink(TreeEntry):
 
 
 class WorkingTree(bzrlib.mutabletree.MutableTree,
-    bzrdir.ControlComponent):
+    controldir.ControlComponent):
     """Working copy tree.
 
     The inventory is held in the `Branch` working-inventory, and the
@@ -1266,13 +1267,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                 # absolute path
                 fap = from_dir_abspath + '/' + f
 
-                f_ie = inv.get_child(from_dir_id, f)
+                dir_ie = inv[from_dir_id]
+                if dir_ie.kind == 'directory':
+                    f_ie = dir_ie.children.get(f)
+                else:
+                    f_ie = None
                 if f_ie:
                     c = 'V'
                 elif self.is_ignored(fp[1:]):
                     c = 'I'
                 else:
-                    # we may not have found this file, because of a unicode issue
+                    # we may not have found this file, because of a unicode
+                    # issue, or because the directory was actually a symlink.
                     f_norm, can_access = osutils.normalized_filename(f)
                     if f == f_norm or not can_access:
                         # No change, so treat this file normally
@@ -1657,7 +1663,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             change_reporter=None, possible_transports=None, local=False):
+             change_reporter=None, possible_transports=None, local=False,
+             show_base=False):
         source.lock_read()
         try:
             old_revision_info = self.branch.last_revision_info()
@@ -1677,7 +1684,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                 basis_tree,
                                 this_tree=self,
                                 pb=None,
-                                change_reporter=change_reporter)
+                                change_reporter=change_reporter,
+                                show_base=show_base)
                     basis_root_id = basis_tree.get_root_id()
                     new_root_id = new_basis_tree.get_root_id()
                     if basis_root_id != new_root_id:
@@ -2019,10 +2027,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
         inv_delta = []
 
-        new_files=set()
+        all_files = set() # specified and nested files 
         unknown_nested_files=set()
         if to_file is None:
             to_file = sys.stdout
+
+        files_to_backup = []
 
         def recurse_directory_to_add_files(directory):
             # Recurse directory and add all files
@@ -2030,23 +2040,23 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             for parent_info, file_infos in self.walkdirs(directory):
                 for relpath, basename, kind, lstat, fileid, kind in file_infos:
                     # Is it versioned or ignored?
-                    if self.path2id(relpath) or self.is_ignored(relpath):
+                    if self.path2id(relpath):
                         # Add nested content for deletion.
-                        new_files.add(relpath)
+                        all_files.add(relpath)
                     else:
-                        # Files which are not versioned and not ignored
+                        # Files which are not versioned
                         # should be treated as unknown.
-                        unknown_nested_files.add((relpath, None, kind))
+                        files_to_backup.append(relpath)
 
         for filename in files:
             # Get file name into canonical form.
             abspath = self.abspath(filename)
             filename = self.relpath(abspath)
             if len(filename) > 0:
-                new_files.add(filename)
+                all_files.add(filename)
                 recurse_directory_to_add_files(filename)
 
-        files = list(new_files)
+        files = list(all_files)
 
         if len(files) == 0:
             return # nothing to do
@@ -2056,34 +2066,24 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
         # Bail out if we are going to delete files we shouldn't
         if not keep_files and not force:
-            has_changed_files = len(unknown_nested_files) > 0
-            if not has_changed_files:
-                for (file_id, path, content_change, versioned, parent_id, name,
-                     kind, executable) in self.iter_changes(self.basis_tree(),
-                         include_unchanged=True, require_versioned=False,
-                         want_unversioned=True, specific_files=files):
-                    if versioned == (False, False):
-                        # The record is unknown ...
-                        if not self.is_ignored(path[1]):
-                            # ... but not ignored
-                            has_changed_files = True
-                            break
-                    elif (content_change and (kind[1] is not None) and
-                            osutils.is_inside_any(files, path[1])):
-                        # Versioned and changed, but not deleted, and still
-                        # in one of the dirs to be deleted.
-                        has_changed_files = True
-                        break
+            for (file_id, path, content_change, versioned, parent_id, name,
+                 kind, executable) in self.iter_changes(self.basis_tree(),
+                     include_unchanged=True, require_versioned=False,
+                     want_unversioned=True, specific_files=files):
+                if versioned[0] == False:
+                    # The record is unknown or newly added
+                    files_to_backup.append(path[1])
+                elif (content_change and (kind[1] is not None) and
+                        osutils.is_inside_any(files, path[1])):
+                    # Versioned and changed, but not deleted, and still
+                    # in one of the dirs to be deleted.
+                    files_to_backup.append(path[1])
 
-            if has_changed_files:
-                # Make delta show ALL applicable changes in error message.
-                tree_delta = self.changes_from(self.basis_tree(),
-                    require_versioned=False, want_unversioned=True,
-                    specific_files=files)
-                for unknown_file in unknown_nested_files:
-                    if unknown_file not in tree_delta.unversioned:
-                        tree_delta.unversioned.extend((unknown_file,))
-                raise errors.BzrRemoveChangedFilesError(tree_delta)
+        def backup(file_to_backup):
+            backup_name = self.bzrdir._available_backup_name(file_to_backup)
+            osutils.rename(abs_path, self.abspath(backup_name))
+            return "removed %s (but kept a copy: %s)" % (file_to_backup,
+                                                         backup_name)
 
         # Build inv_delta and delete files where applicable,
         # do this before any modifications to inventory.
@@ -2113,12 +2113,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                         len(os.listdir(abs_path)) > 0):
                         if force:
                             osutils.rmtree(abs_path)
+                            message = "deleted %s" % (f,)
                         else:
-                            message = "%s is not an empty directory "\
-                                "and won't be deleted." % (f,)
+                            message = backup(f)
                     else:
-                        osutils.delete_any(abs_path)
-                        message = "deleted %s" % (f,)
+                        if f in files_to_backup:
+                            message = backup(f)
+                        else:
+                            osutils.delete_any(abs_path)
+                            message = "deleted %s" % (f,)
                 elif message is not None:
                     # Only care if we haven't done anything yet.
                     message = "%s does not exist." % (f,)
@@ -2261,7 +2264,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     _marker = object()
 
     def update(self, change_reporter=None, possible_transports=None,
-               revision=None, old_tip=_marker):
+               revision=None, old_tip=_marker, show_base=False):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -2304,12 +2307,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             else:
                 if old_tip is self._marker:
                     old_tip = None
-            return self._update_tree(old_tip, change_reporter, revision)
+            return self._update_tree(old_tip, change_reporter, revision, show_base)
         finally:
             self.unlock()
 
     @needs_tree_write_lock
-    def _update_tree(self, old_tip=None, change_reporter=None, revision=None):
+    def _update_tree(self, old_tip=None, change_reporter=None, revision=None,
+                     show_base=False):
         """Update a tree to the master branch.
 
         :param old_tip: if supplied, the previous tip revision the branch,
@@ -2342,7 +2346,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             other_tree = self.branch.repository.revision_tree(old_tip)
             nb_conflicts = merge.merge_inner(self.branch, other_tree,
                                              base_tree, this_tree=self,
-                                             change_reporter=change_reporter)
+                                             change_reporter=change_reporter,
+                                             show_base=show_base)
             if nb_conflicts:
                 self.add_parent_tree((old_tip, other_tree))
                 trace.note('Rerun update after fixing the conflicts.')
@@ -2372,7 +2377,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
             nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
                                              this_tree=self,
-                                             change_reporter=change_reporter)
+                                             change_reporter=change_reporter,
+                                             show_base=show_base)
             self.set_last_revision(revision)
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:

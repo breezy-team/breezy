@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Written by Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -395,4 +395,12 @@ class GzipFile(gzip.GzipFile):
         # (4 seconds to 1 seconds for the sample upgrades I was testing).
         self.write(''.join(lines))
 
+    if sys.version_info > (2, 7):
+        # As of Python 2.7 the crc32 must be positive when close is called
+        def close(self):
+            if self.fileobj is None:
+                return
+            if self.mode == gzip.WRITE:
+                self.crc &= 0xFFFFFFFFL
+            gzip.GzipFile.close(self)
 

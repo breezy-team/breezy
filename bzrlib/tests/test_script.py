@@ -16,8 +16,11 @@
 
 
 from bzrlib import (
+    commands,
     osutils,
     tests,
+    trace,
+    ui,
     )
 from bzrlib.tests import script
 
@@ -27,8 +30,33 @@ class TestSyntax(tests.TestCase):
     def test_comment_is_ignored(self):
         self.assertEquals([], script._script_to_commands('#comment\n'))
 
-    def test_empty_line_is_ignored(self):
-        self.assertEquals([], script._script_to_commands('\n'))
+    def test_comment_multiple_lines(self):
+        self.assertEquals([
+            (['bar'], None, None, None),
+            ],
+            script._script_to_commands("""
+            # this comment is ignored
+            # so is this
+            # no we run bar
+            $ bar
+            """))
+
+    def test_trim_blank_lines(self):
+        """Blank lines are respected, but trimmed at the start and end.
+
+        Python triple-quoted syntax is going to give stubby/empty blank lines 
+        right at the start and the end.  These are cut off so that callers don't 
+        need special syntax to avoid them.
+
+        However we do want to be able to match commands that emit blank lines.
+        """
+        self.assertEquals([
+            (['bar'], None, '\n', None),
+            ],
+            script._script_to_commands("""
+            $bar
+
+            """))
 
     def test_simple_command(self):
         self.assertEquals([(['cd', 'trunk'], None, None, None)],
@@ -135,6 +163,31 @@ class TestExecution(script.TestCaseWithTransportAndScript):
     def test_unknown_command(self):
         self.assertRaises(SyntaxError, self.run_script, 'foo')
 
+    def test_blank_output_mismatches_output(self):
+        """If you give output, the output must actually be blank.
+        
+        See <https://bugs.launchpad.net/bzr/+bug/637830>: previously blank
+        output was a wildcard.  Now you must say ... if you want that.
+        """
+        self.assertRaises(AssertionError,
+            self.run_script,
+            """
+            $ echo foo
+            """)
+
+    def test_ellipsis_everything(self):
+        """A simple ellipsis matches everything."""
+        self.run_script("""
+        $ echo foo
+        ...
+        """)
+
+    def test_ellipsis_matches_empty(self):
+        self.run_script("""
+        $ cd .
+        ...
+        """)
+
     def test_stops_on_unexpected_output(self):
         story = """
 $ mkdir dir
@@ -142,7 +195,6 @@ $ cd dir
 The cd command ouputs nothing
 """
         self.assertRaises(AssertionError, self.run_script, story)
-
 
     def test_stops_on_unexpected_error(self):
         story = """
@@ -163,10 +215,13 @@ $ bzr not-a-command
         # The status matters, not the output
         story = """
 $ bzr init
+...
 $ cat >file
 <Hello
 $ bzr add file
+...
 $ bzr commit -m 'adding file'
+2>...
 """
         self.run_script(story)
 
@@ -217,6 +272,15 @@ $ cat '*'
 $ echo 'cat' "dog" '"chicken"' "'dragon'"
 cat dog "chicken" 'dragon'
 """)
+
+    def test_verbosity_isolated(self):
+        """Global verbosity is isolated from commands run in scripts.
+        """
+        # see also 656694; we should get rid of global verbosity
+        self.run_script("""
+        $ bzr init --quiet a
+        """)
+        self.assertEquals(trace.is_quiet(), False)
 
 
 class TestCat(script.TestCaseWithTransportAndScript):
@@ -329,7 +393,10 @@ $ cd dir
 class TestBzr(script.TestCaseWithTransportAndScript):
 
     def test_bzr_smoke(self):
-        self.run_script('$ bzr init branch')
+        self.run_script("""
+            $ bzr init branch
+            Created a standalone tree (format: ...)
+            """)
         self.failUnlessExists('branch')
 
 
@@ -376,6 +443,14 @@ $ echo foo
         self.assertEquals(None, out)
         self.assertEquals(None, err)
         self.assertFileEqual('hello\nhappy\n', 'file')
+
+    def test_empty_line_in_output_is_respected(self):
+        self.run_script("""
+            $ echo
+
+            $ echo bar
+            bar
+            """)
 
 
 class TestRm(script.TestCaseWithTransportAndScript):
@@ -458,4 +533,40 @@ $ echo content > file
         self.failUnlessExists('dir')
         self.failIfExists('file')
         self.failUnlessExists('dir/file')
+
+
+class cmd_test_confirm(commands.Command):
+
+    def run(self):
+        if ui.ui_factory.get_boolean(
+            'Really do it',
+            # 'bzrlib.tests.test_script.confirm',
+            # {}
+            ):
+            self.outf.write('Do it!\n')
+        else:
+            print 'ok, no'
+
+
+class TestUserInteraction(script.TestCaseWithMemoryTransportAndScript):
+
+    def test_confirm_action(self):
+        """You can write tests that demonstrate user confirmation.
+        
+        Specifically, ScriptRunner does't care if the output line for the prompt
+        isn't terminated by a newline from the program; it's implicitly terminated 
+        by the input.
+        """
+        commands.builtin_command_registry.register(cmd_test_confirm)
+        self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
+        self.run_script("""
+            $ bzr test-confirm
+            2>Really do it? [y/n]: 
+            <yes
+            Do it!
+            $ bzr test-confirm
+            2>Really do it? [y/n]: 
+            <no
+            ok, no
+            """)
 

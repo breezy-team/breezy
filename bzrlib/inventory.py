@@ -836,7 +836,8 @@ class CommonInventory(object):
                 if ie.kind == 'directory':
                     descend(ie, child_path)
 
-        descend(self.root, u'')
+        if self.root is not None:
+            descend(self.root, u'')
         return accum
 
     def directories(self):
@@ -1177,9 +1178,6 @@ class Inventory(CommonInventory):
 
     def add(self, entry):
         """Add entry to inventory.
-
-        To add  a file to a branch ready to be committed, use Branch.add,
-        which calls this.
 
         :return: entry
         """

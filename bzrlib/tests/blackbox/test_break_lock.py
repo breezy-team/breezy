@@ -16,15 +16,17 @@
 
 """Tests for lock-breaking user interface"""
 
-import os
-
-import bzrlib
 from bzrlib import (
     branch,
     bzrdir,
+    config,
     errors,
-    lockdir,
+    osutils,
     tests,
+    )
+from bzrlib.tests.script import (
+    ScriptRunner,
+    run_script,
     )
 
 
@@ -68,12 +70,22 @@ class TestBreakLock(tests.TestCaseWithTransport):
         # shouldn't fail and should not produce error output
         self.assertEqual('', err)
 
+    def test_break_lock_no_interaction(self):
+        """With --force, the user isn't asked for confirmation"""
+        self.master_branch.lock_write()
+        run_script(self, """
+        $ bzr break-lock --force master-repo/master-branch
+        Broke lock ...master-branch/.bzr/...
+        """)
+        # lock should now be dead
+        self.assertRaises(errors.LockBroken, self.master_branch.unlock)
+
     def test_break_lock_everything_locked(self):
         ### if everything is locked, we should be able to unlock the lot.
         # however, we dont test breaking the working tree because we
         # cannot accurately do so right now: the dirstate lock is held
         # by an os lock, and we need to spawn a separate process to lock it
-        # thne kill -9 it.
+        # then kill -9 it.
         # sketch of test:
         # lock most of the dir:
         self.wt.branch.lock_write()
@@ -101,3 +113,24 @@ class TestBreakLockOldBranch(tests.TestCaseWithTransport):
         out, err = self.run_bzr('break-lock foo')
         self.assertEqual('', out)
         self.assertEqual('', err)
+
+class TestConfigBreakLock(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestConfigBreakLock, self).setUp()
+        self.config_file_name = './my.conf'
+        self.build_tree_contents([(self.config_file_name,
+                                   '[DEFAULT]\none=1\n')])
+        self.config = config.LockableConfig(file_name=self.config_file_name)
+        self.config.lock_write()
+
+    def test_create_pending_lock(self):
+        self.addCleanup(self.config.unlock)
+        self.assertTrue(self.config._lock.is_held)
+
+    def test_break_lock(self):
+        self.run_bzr('break-lock --config %s'
+                     % osutils.dirname(self.config_file_name),
+                     stdin="y\n")
+        self.assertRaises(errors.LockBroken, self.config.unlock)
+
