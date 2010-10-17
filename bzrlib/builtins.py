@@ -3831,8 +3831,8 @@ class cmd_merge(Command):
                ' merge.'),
         Option('interactive', help='Select changes interactively.',
             short_name='i'),
-        Option('resolve-using', help='Invokes an external merge tool for merged files '
-               'with conflicts.', type=str),
+        Option('resolve-using', help='Invokes the external merge tool named '
+               'ARG for each merged file with conflicts.', type=str),
     ]
 
     def run(self, location=None, revision=None, force=False,
@@ -4127,8 +4127,8 @@ class cmd_remerge(Command):
         'reprocess',
         Option('show-base',
                help="Show base revision text in conflicts."),
-        Option('resolve-using', help='Invokes an external merge tool for '
-               'merged files with conflicts.', type=str),
+        Option('resolve-using', help='Invokes the external merge tool named '
+               'ARG for each merged file with conflicts.', type=str),
     ]
 
     def run(self, file_list=None, merge_type=None, show_base=False,
