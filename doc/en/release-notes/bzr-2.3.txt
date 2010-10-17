@@ -77,7 +77,7 @@ API Changes
   the same module.  (Andrew Bennetts)
 
 * Added ``bzrlib.mergetools`` module with helper functions for working with
-  the list of external merge tools.
+  the list of external merge tools. (Gordon Tyler)
 
 Internals
 *********
