@@ -149,4 +149,3 @@ class FakeConfig(object):
             self.mergetools = value
         else:
             raise AssertionError('unknown option "%s"' % option)
-    
