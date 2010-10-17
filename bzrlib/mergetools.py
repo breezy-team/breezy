@@ -26,15 +26,16 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     cmdline,
-    commands,
     config,
     errors,
-    option,
     trace,
     ui,
     workingtree,
 )
 """)
+
+from bzrlib.commands import Command
+from bzrlib.option import Option
 
 
 substitution_help = {
@@ -53,8 +54,8 @@ def subprocess_invoker(executable, args, cleanup):
 
 
 class MergeTool(object):
-    @staticmethod
-    def from_executable_and_args(executable, args):
+    @classmethod
+    def from_executable_and_args(cls, executable, args):
         executable = _optional_quote_arg(executable)
         if not isinstance(args, str) and not isinstance(args, unicode):
             args = ' '.join([_optional_quote_arg(arg) for arg in args])
@@ -263,3 +264,102 @@ def _find_executable(executable, path=None):
                     return f
     else:
         return None
+
+
+class cmd_mergetools(Command):
+    __doc__ = """Manages external merge tools.
+    
+    External merge tools are defined by their command line. The executable may
+    omit its path if it can be found on the PATH.
+    
+    When updating or removing an external merge tool, use the simple name of
+    the executable, e.g. 'C:\Tools\kdiff3.exe' -> 'kdiff3'.
+    
+    Examples:
+        To add an external merge tool:
+
+            bzr mergetools --add mydifftool %b %t %o %r
+        
+        If you need to include options in your external merge tool's
+        command-line, insert '--' before the command-line to prevent bzr from
+        processing them as options to the mergetools command:
+        
+            bzr mergetools --add -- kdiff3 %b %t %o -o %r
+
+        To update an existing external merge tool:
+
+            bzr mergetools --update=kdiff3 -- /opt/kde/bin/kdiff3 %b %t %o -o %r
+
+        To remove an existing external merge tool:
+        
+            bzr mergetools --remove=kdiff3
+    """
+    takes_args = ['args*']
+    takes_options = [
+        Option('add', help='Adds an external merge tool using ARGS as the '
+               'command-line.', short_name='a'),
+        Option('list', help='Lists the currently defined external merge tools.',
+               short_name='l'),
+        Option('remove', help='Removes the external merge tool called ARG.',
+               type=str, short_name='r'),
+        Option('update', help='Updates the external merge tool called ARG '
+               'using ARGS as the command-line.', type=str, short_name='u'),
+    ]
+
+    def run(self, args_list=None, add=False, list=False, remove=None,
+            update=None):
+        if not add and not list and remove is None and update is None:
+            raise errors.BzrCommandError('You must supply one of --add, '
+                                         '--list, --remove or --update')
+        if add:
+            self.add_tool(args_list)
+        elif list:
+            self.list_tools()
+        elif remove is not None:
+            self.remove_tool(remove)
+        elif update is not None:
+            self.update_tool(update, args_list)
+    
+    def add_tool(self, args):
+        if args is None or len(args) == 0:
+            raise errors.BzrCommandError(
+                'You must supply the command-line for the external merge tool')
+        new_mt = MergeTool.from_executable_and_args(args[0], args[1:])
+        if find_merge_tool(new_mt.get_name()) is not None:
+            raise errors.BzrCommandError(
+                'External merge tool already exists: %s' % new_mt.get_name())
+        merge_tools = get_merge_tools()
+        merge_tools.append(new_mt)
+        set_merge_tools(merge_tools)
+
+    def list_tools(self):
+        s = ui.ui_factory.make_output_stream()
+        merge_tools = get_merge_tools()
+        for mt in merge_tools:
+            s.write('%s: %s\n' % (mt.get_name(), mt.get_commandline()))
+
+    def remove_tool(self, name):
+        merge_tools = get_merge_tools()
+        for mt in merge_tools:
+            if mt.get_name() == name:
+                merge_tools.remove(mt)
+                break
+        else:
+            raise errors.BzrCommandError(
+                'Unknown external merge tool: %s' % name)
+        set_merge_tools(merge_tools)
+
+    def update_tool(self, name, args):
+        if args is None or len(args) == 0:
+            raise errors.BzrCommandError(
+                'You must supply the command-line for the external merge tool')
+        merge_tools = get_merge_tools()
+        for mt in merge_tools:
+            if mt.get_name() == name:
+                mt.set_executable(args[0])
+                mt.set_arguments(args[1:])
+                break
+        else:
+            raise errors.BzrCommandError(
+                'Unknown external merge tool: %s' % name)
+        set_merge_tools(merge_tools)
