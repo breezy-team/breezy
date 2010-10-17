@@ -351,6 +351,20 @@ class LocalGitBranch(GitBranch):
         return True
 
 
+def _quick_lookup_revno(local_branch, remote_branch, revid):
+    assert isinstance(revid, str), "was %r" % revid
+    # Try in source branch first, it'll be faster
+    try:
+        return local_branch.revision_id_to_revno(revid)
+    except errors.NoSuchRevision:
+        graph = local_branch.repository.get_graph()
+        try:
+            return graph.find_distance_to_null(revid)
+        except errors.GhostRevisionsHaveNoRevno:
+            # FIXME: Check using graph.find_distance_to_null() ?
+            return remote_branch.revision_id_to_revno(revid)
+
+
 class GitBranchPullResult(branch.PullResult):
 
     def __init__(self):
@@ -371,13 +385,7 @@ class GitBranchPullResult(branch.PullResult):
         self._show_tag_conficts(to_file)
 
     def _lookup_revno(self, revid):
-        assert isinstance(revid, str), "was %r" % revid
-        # Try in source branch first, it'll be faster
-        try:
-            return self.source_branch.revision_id_to_revno(revid)
-        except errors.NoSuchRevision:
-            # FIXME: Check using graph.find_distance_to_null() ?
-            return self.target_branch.revision_id_to_revno(revid)
+        return _quick_lookup_revno(self.target_branch, self.source_branch, revid)
 
     def _get_old_revno(self):
         if self._old_revno is not None:
@@ -403,13 +411,7 @@ class GitBranchPullResult(branch.PullResult):
 class GitBranchPushResult(branch.BranchPushResult):
 
     def _lookup_revno(self, revid):
-        assert isinstance(revid, str), "was %r" % revid
-        # Try in source branch first, it'll be faster
-        try:
-            return self.source_branch.revision_id_to_revno(revid)
-        except errors.NoSuchRevision:
-            # FIXME: Check using graph.find_distance_to_null() ?
-            return self.target_branch.revision_id_to_revno(revid)
+        return _quick_lookup_revno(self.source_branch, self.target_branch, revid)
 
     @property
     def old_revno(self):
@@ -417,6 +419,11 @@ class GitBranchPushResult(branch.BranchPushResult):
 
     @property
     def new_revno(self):
+        new_original_revno = getattr(self, "new_original_revno", None)
+        if new_original_revno:
+            return new_original_revno
+        if getattr(self, "new_original_revid", None) is not None:
+            return self._lookup_revno(self.new_original_revid)
         return self._lookup_revno(self.new_revid)
 
 
@@ -661,14 +668,14 @@ class InterToGitBranch(branch.GenericInterBranch):
 
     def _get_new_refs(self, stop_revision=None):
         if stop_revision is None:
-            stop_revision = self.source.last_revision()
+            (stop_revno, stop_revision) = self.source.last_revision_info()
         assert type(stop_revision) is str
         main_ref = self.target.ref or "refs/heads/master"
         refs = { main_ref: (None, stop_revision) }
         for name, revid in self.source.tags.get_tag_dict().iteritems():
             if self.source.repository.has_revision(revid):
                 refs[tag_name_to_ref(name)] = (None, revid)
-        return refs, main_ref
+        return refs, main_ref, (stop_revno, stop_revision)
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
              possible_transports=None):
@@ -676,7 +683,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        new_refs, main_ref = self._get_new_refs(stop_revision)
+        new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
         def update_refs(old_refs):
             refs = dict(old_refs)
             # FIXME: Check for diverged branches
@@ -695,7 +702,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        new_refs, main_ref = self._get_new_refs(stop_revision)
+        new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
         def update_refs(old_refs):
             refs = dict(old_refs)
             # FIXME: Check for diverged branches
@@ -712,7 +719,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        new_refs, main_ref = self._get_new_refs(stop_revision)
+        new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
         def update_refs(old_refs):
             refs = dict(old_refs)
             # FIXME: Check for diverged branches
@@ -722,6 +729,7 @@ class InterToGitBranch(branch.GenericInterBranch):
             update_refs)
         result.old_revid = old_refs.get(self.target.ref, (None, NULL_REVISION))[1]
         result.new_revid = new_refs[main_ref][1]
+        (result.new_original_revno, result.new_original_revid) = stop_revinfo
         return result
 
 
