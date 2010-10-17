@@ -203,28 +203,14 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.assertEqual(['', 'dir', 'dir/subdir', 'dir/subdir/foo'],
             [path for path, ie in tree.iter_entries_by_dir()])
 
-    @staticmethod
-    def _reraise_current_error_as_assertion():
-        _, e, tb = sys.exc_info()
-        try:
-            raise AssertionError, AssertionError(str(e)), tb
-        finally:
-            del tb
-
-    def test_add_dir_bug_205636(self):
+    def test_add_dir_bug_251864(self):
         """Added file turning into a dir should be detected on add dir"""
         tree = self.make_branch_and_tree(".")
         self.build_tree(["dir"]) # whoops, make a file called dir
         tree.smart_add(["dir"])
         os.remove("dir")
         self.build_tree(["dir/", "dir/file"])
-        # GZ 2010-10-17: Need an expectError method like expectFailure but for
-        #                execptions that are not assertions
-        try:
-            tree.smart_add(["dir"])
-        except AttributeError, e:
-            self.expectFailure("Adding dir raises AttributeError",
-                self._reraise_current_error_as_assertion)
+        tree.smart_add(["dir"])
         tree.commit("Add dir contents")
 
     def test_add_subdir_file_bug_205636(self):
