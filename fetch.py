@@ -305,13 +305,14 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
 
 
 def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
-    o, rev, ret_tree, parent_trees, mapping, unusual_modes):
+    o, rev, ret_tree, parent_trees, mapping, unusual_modes, verifiers):
     new_unusual_modes = mapping.export_unusual_file_modes(rev)
     if new_unusual_modes != unusual_modes:
         raise AssertionError("unusual modes don't match: %r != %r" % (
             unusual_modes, new_unusual_modes))
     # Verify that we can reconstruct the commit properly
-    rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree, True)
+    rec_o = target_git_object_retriever._reconstruct_commit(rev, o.tree, True,
+        verifiers)
     if rec_o != o:
         raise AssertionError("Reconstructed commit differs: %r != %r" % (
             rec_o, o))
@@ -377,7 +378,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_inv = None
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
               inv_delta, rev.revision_id, rev.parent_ids, base_inv)
-    # FIXME: Check verifiers
+    # Check verifiers
     testament = StrictTestament3(rev, inv)
     calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
     if roundtrip_revid is not None:
@@ -396,7 +397,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
     if "verify" in debug.debug_flags:
         verify_commit_reconstruction(target_git_object_retriever, 
             lookup_object, o, rev, ret_tree, parent_trees, mapping,
-            unusual_modes)
+            unusual_modes, verifiers)
 
 
 def import_git_objects(repo, mapping, object_iter,
