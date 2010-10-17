@@ -273,11 +273,20 @@ class cmd_mergetools(Command):
     omit its path if it can be found on the PATH.
     
     When updating or removing an external merge tool, use the simple name of
-    the executable, e.g. 'C:\Tools\kdiff3.exe' -> 'kdiff3'.
+    the executable, e.g. C:\Tools\kdiff3.exe -> kdiff3.
     
     If you see the warning 'External merge tool is not available' when adding
     or updating, the executable in the command-line you have supplied cannot
     be found.
+    
+    The following markers can be used in the external merge tool command-line
+    to substitute filenames involved in the merge conflict:
+    
+        %b -> file.BASE
+        %t -> file.THIS
+        %o -> file.OTHER
+        %r -> file (output)
+        %T -> file.THIS (temp copy, used to overwrite "file" if merge succeeds)
     
     Examples:
         To add an external merge tool:
@@ -286,7 +295,7 @@ class cmd_mergetools(Command):
         
         If you need to include options in your external merge tool's
         command-line, insert '--' before the command-line to prevent bzr from
-        processing them as options to the mergetools command:
+        processing them as options to the ``bzr mergetools`` command:
         
             bzr mergetools --add -- kdiff3 %b %t %o -o %r
 
