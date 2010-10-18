@@ -34,6 +34,10 @@ Bug Fixes
 * Using bzr with `lp:` urls behind an http proxy should work.
   (Robert Collins, #558343)
 
+* Windows installers no longer requires the Microsoft vcredist to be
+  installed.
+  (Martin [gz], Gary van der Merwe, #632465)
+
 Improvements
 ************
 
