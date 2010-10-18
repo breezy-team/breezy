@@ -1866,6 +1866,13 @@ class cmd_diff(Command):
     "bzr diff -p1" is equivalent to "bzr diff --prefix old/:new/", and
     produces patches suitable for "patch -p1".
 
+    Note that when using the -r argument with a range of revisions, the
+    differences are computed between the two specified revisions.  That
+    is, the command does not show the changes introduced by the first 
+    revision in the range.  This differs from the interpretation of 
+    revision ranges used by "bzr log" which includes the first revision
+    in the range.
+
     :Exit values:
         1 - changed
         2 - unrepresentable changes
@@ -1889,7 +1896,11 @@ class cmd_diff(Command):
 
             bzr diff -r1..3 xxx
 
-        To see the changes introduced in revision X::
+        The changes introduced by revision 2 (equivalent to -r1..2)::
+
+            bzr diff -c2
+
+        To see the changes introduced by revision X::
         
             bzr diff -cX
 
@@ -1899,9 +1910,10 @@ class cmd_diff(Command):
 
             bzr diff -r<chosen_parent>..X
 
-        The changes introduced by revision 2 (equivalent to -r1..2)::
+        The changes between the current revision and the previous revision
+        (equivalent to -c-1 and -r-2..-1)
 
-            bzr diff -c2
+            bzr diff -r-2..
 
         Show just the differences for file NEWS::
 
