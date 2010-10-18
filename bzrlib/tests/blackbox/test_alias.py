@@ -16,10 +16,9 @@
 #
 
 """Tests of the 'bzr alias' command."""
-import os
 import codecs
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport, UnicodeFilenameFeature
 from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
@@ -46,6 +45,9 @@ class TestAlias(TestCaseWithTransport):
 
     def test_unicode_alias(self):
         """Unicode aliases should work (Bug #529930)"""
+        # XXX: strictly speaking, lack of unicode filenames doesn't imply that
+        # unicode command lines aren't available.
+        self.requireFeature(UnicodeFilenameFeature)
         config_enc = 'utf-8'
         file_name = u'foo\xb6'
 
