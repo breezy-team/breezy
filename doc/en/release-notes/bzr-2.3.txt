@@ -58,6 +58,9 @@ Bug Fixes
 Documentation
 *************
 
+* Add documentation of the ability to edit hunks when shelving.
+  (Neil Martinsen-Burrell, #517660)
+
 API Changes
 ***********
 

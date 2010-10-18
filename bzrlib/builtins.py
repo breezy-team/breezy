@@ -5898,6 +5898,18 @@ class cmd_shelve(Command):
 
     You can put multiple items on the shelf, and by default, 'unshelve' will
     restore the most recently shelved changes.
+
+    For complicated changes, it is possible to edit the changes in a separate
+    editor program to decide what the file remaining in the working copy
+    should look like.  To do this, add the configuration option
+
+        change_editor = PROGRAM @new_path @old_path
+
+    where @new_path is replaced with the path of the new version of the 
+    file and @old_path is replaced with the path of the old version of 
+    the file.  The PROGRAM should save the new file with the desired 
+    contents of the file in the working tree.
+        
     """
 
     takes_args = ['file*']
@@ -5915,7 +5927,7 @@ class cmd_shelve(Command):
         Option('destroy',
                help='Destroy removed changes instead of shelving them.'),
     ]
-    _see_also = ['unshelve']
+    _see_also = ['unshelve', 'configuration']
 
     def run(self, revision=None, all=False, file_list=None, message=None,
             writer=None, list=False, destroy=False, directory=u'.'):
