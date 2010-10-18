@@ -58,6 +58,9 @@ Bug Fixes
 Documentation
 *************
 
+* Add documentation of the ability to edit hunks when shelving.
+  (Neil Martinsen-Burrell, #517660)
+
 * Document the comment character in the .bzrignore file, including a
   workaround for ignore patterns that begin with #.
   (Neil Martinsen-Burrell, #621515)
