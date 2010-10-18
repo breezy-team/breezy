@@ -2676,8 +2676,13 @@ class cmd_ignore(Command):
     Patterns prefixed with '!!' act as regular ignore patterns, but have
     precedence over the '!' exception patterns.
 
-    Note: ignore patterns containing shell wildcards must be quoted from
-    the shell on Unix.
+    :Notes: 
+        
+    * Ignore patterns containing shell wildcards must be quoted from
+      the shell on Unix.
+
+    * Ignore patterns starting with "#" act as comments in the ignore file.
+      To ignore patterns that begin with that character, use the "RE:" prefix.
 
     :Examples:
         Ignore the top level Makefile::
@@ -2691,6 +2696,10 @@ class cmd_ignore(Command):
         ...but do not ignore "special.class"::
 
             bzr ignore "!special.class"
+
+        Ignore files whose name begins with the "#" character::
+
+            bzr ignore "RE:^#"
 
         Ignore .o files under the lib directory::
 

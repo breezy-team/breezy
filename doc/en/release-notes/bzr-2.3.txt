@@ -58,6 +58,10 @@ Bug Fixes
 Documentation
 *************
 
+* Document the comment character in the .bzrignore file, including a
+  workaround for ignore patterns that begin with #.
+  (Neil Martinsen-Burrell, #621515)
+
 API Changes
 ***********
 
