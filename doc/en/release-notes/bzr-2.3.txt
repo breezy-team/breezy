@@ -58,6 +58,9 @@ Bug Fixes
 Documentation
 *************
 
+* Be more specific about the meaning of revision ranges for ``bzr diff``.
+  (Neil Martinsen-Burrell, #247282)
+
 API Changes
 ***********
 
