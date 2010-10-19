@@ -214,7 +214,7 @@ class ScriptRunner(object):
         method = getattr(self, mname, None)
         if method is None:
             raise SyntaxError('Command not found "%s"' % (cmd[0],),
-                              None, 1, ' '.join(cmd))
+                              (None, 1, 1, ' '.join(cmd)))
         if input is None:
             str_input = ''
         else:
