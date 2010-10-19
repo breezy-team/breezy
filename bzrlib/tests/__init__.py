@@ -309,9 +309,9 @@ class ExtendedTestResult(testtools.TextTestResult):
     def stopTest(self, test):
         super(ExtendedTestResult, self).stopTest(test)
         # Manually break cycles, means touching various private things but hey
-        details = getattr(test, "_TestCase__details", None)
-        if details is not None:
-            details.clear()
+        getDetails = getattr(test, "getDetails", None)
+        if getDetails is not None:
+            getDetails().clear()
         type_equality_funcs = getattr(test, "_type_equality_funcs", None)
         if type_equality_funcs is not None:
             type_equality_funcs.clear()
