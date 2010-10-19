@@ -129,7 +129,7 @@ class TestamentTests(TestamentSetup):
             timestamp=1129025493,
             timezone=36000,
             rev_id='test@user-3',
-            committer='Erik B\xe5gfors <test@user>',
+            committer=u'Erik B\xe5gfors <test@user>',
             revprops={'uni':u'\xb5'}
             )
         t = self.from_revision(self.b.repository, 'test@user-3')
