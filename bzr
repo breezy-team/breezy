@@ -23,7 +23,7 @@ import sys
 import warnings
 
 # update this on each release
-_script_version = (2, 2, 0)
+_script_version = (2, 3, 0)
 
 try:
     version_info = sys.version_info
@@ -75,6 +75,16 @@ if sys.platform == 'darwin':
 else:
     import locale
 
+if os.name == "posix":
+    try:
+        locale.setlocale(locale.LC_ALL, '')
+    except locale.Error, e:
+        sys.stderr.write('bzr: warning: %s\n'
+            '  bzr could not set the application locale.\n'
+            '  Although this should be no problem for bzr itself, it might\n'
+            '  cause problems with some plugins. To investigate the issue,\n'
+            '  look at the output of the locale(1p) tool.\n' % e)
+
 
 # The python2.6 release includes some libraries that have deprecation warnings
 # against the interpreter - see https://bugs.launchpad.net/bzr/+bug/387139
@@ -85,17 +95,6 @@ warnings.filterwarnings('ignore',
     'gzip',
     )
 
-
-try:
-    locale.setlocale(locale.LC_ALL, '')
-except locale.Error, e:
-    sys.stderr.write('bzr: warning: %s\n'
-                     '  bzr could not set the application locale.\n'
-                     '  Although this should be no problem for bzr itself,\n'
-                     '  it might cause problems with some plugins.\n'
-                     '  To investigate the issue, look at the output\n'
-                     '  of the locale(1p) tool available on POSIX systems.\n'
-                     % e)
 
 # instruct bzrlib/__init__.py to install lazy_regex
 sys._bzr_lazy_regex = True

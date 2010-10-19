@@ -1247,7 +1247,8 @@ class DirStateWorkingTree(WorkingTree3):
         # have to change the legacy inventory too.
         if self._inventory is not None:
             for file_id in file_ids:
-                self._inventory.remove_recursive_id(file_id)
+                if self._inventory.has_id(file_id):
+                    self._inventory.remove_recursive_id(file_id)
 
     @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel, after=False):
@@ -1737,8 +1738,6 @@ class DirStateRevisionTree(Tree):
                 elif kind == 'directory':
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'symlink':
-                    inv_entry.executable = False
-                    inv_entry.text_size = None
                     inv_entry.symlink_target = utf8_decode(fingerprint)[0]
                 elif kind == 'tree-reference':
                     inv_entry.reference_revision = fingerprint or None

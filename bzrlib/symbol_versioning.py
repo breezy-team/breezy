@@ -29,6 +29,9 @@ __all__ = ['deprecated_function',
            'warn',
            ]
 
+
+import warnings
+# Import the 'warn' symbol so bzrlib can call it even if we redefine it
 from warnings import warn
 
 import bzrlib
@@ -296,13 +299,25 @@ def _check_for_filter(error_only):
     :param error_only: Only match an 'error' filter
     :return: True if a filter is found, False otherwise
     """
-    import warnings
     for filter in warnings.filters:
         if issubclass(DeprecationWarning, filter[2]):
             # This filter will effect DeprecationWarning
             if not error_only or filter[0] == 'error':
                 return True
     return False
+
+
+def _remove_filter_callable(filter):
+    """Build and returns a callable removing filter from the warnings.
+
+    :param filter: The filter to remove (can be None).
+
+    :return: A callable that will remove filter from warnings.filters.
+    """
+    def cleanup():
+        if filter:
+            warnings.filters.remove(filter)
+    return cleanup
 
 
 def suppress_deprecation_warnings(override=True):
@@ -314,18 +329,17 @@ def suppress_deprecation_warnings(override=True):
 
     :param override: If True, always set the ignore, if False, only set the
         ignore if there isn't already a filter.
+
     :return: A callable to remove the new warnings this added.
     """
-    import warnings
     if not override and _check_for_filter(error_only=False):
         # If there is already a filter effecting suppress_deprecation_warnings,
         # then skip it.
-        return
-    warnings.filterwarnings('ignore', category=DeprecationWarning)
-    filter = warnings.filters[0]
-    def cleanup():
-        warnings.filters.remove(filter)
-    return cleanup
+        filter = None
+    else:
+        warnings.filterwarnings('ignore', category=DeprecationWarning)
+        filter = warnings.filters[0]
+    return _remove_filter_callable(filter)
 
 
 def activate_deprecation_warnings(override=True):
@@ -342,10 +356,14 @@ def activate_deprecation_warnings(override=True):
     :param override: If False, only add a filter if there isn't an error filter
         already. (This slightly differs from suppress_deprecation_warnings, in
         because it always overrides everything but -Werror).
+
+    :return: A callable to remove the new warnings this added.
     """
-    import warnings
     if not override and _check_for_filter(error_only=True):
         # DeprecationWarnings are already turned into errors, don't downgrade
         # them to 'default'.
-        return
-    warnings.filterwarnings('default', category=DeprecationWarning)
+        filter = None
+    else:
+        warnings.filterwarnings('default', category=DeprecationWarning)
+        filter = warnings.filters[0]
+    return _remove_filter_callable(filter)

@@ -18,8 +18,12 @@
 import os
 import sys
 
-from bzrlib.tests import SymlinkFeature, TestSkipped
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    script,
+    SymlinkFeature,
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 from bzrlib.workingtree import WorkingTree
 from bzrlib import osutils
 
@@ -61,18 +65,9 @@ class TestRemove(TestCaseWithTransport):
         f.write("\nsome other new content!")
         f.close()
 
-    def run_bzr_remove_changed_files(self, error_regexes, files_to_remove,
-                                     working_dir=None):
-        error_regexes.extend(["Can't safely remove modified or unknown files:",
-            'Use --keep to not delete them,'
-            ' or --force to delete them regardless.'
-            ])
-        self.run_bzr_error(error_regexes,
-                           ['remove'] + list(files_to_remove),
-                           working_dir=working_dir)
-        #see if we can force it now
-        self.run_bzr(['remove', '--force'] + list(files_to_remove),
-                     working_dir=working_dir)
+    def run_bzr_remove_changed_files(self, files_to_remove, working_dir=None):
+        self.run_bzr(['remove'] + list(files_to_remove),
+           working_dir=working_dir)
 
     def test_remove_new_no_files_specified(self):
         tree = self.make_branch_and_tree('.')
@@ -177,20 +172,19 @@ class TestRemove(TestCaseWithTransport):
     def test_remove_unversioned_files(self):
         self.build_tree(files)
         tree = self.make_branch_and_tree('.')
-        self.run_bzr_remove_changed_files(
-            ['unknown:[.\s]*d/[.\s]*b/c[.\s]*b/[.\s]*a'], files)
+        self.run_bzr_remove_changed_files(files)
 
     def test_remove_changed_files(self):
         tree = self._make_tree_and_add(files)
         self.run_bzr("commit -m 'added files'")
         self.changeFile(a)
         self.changeFile(c)
-        self.run_bzr_remove_changed_files(['modified:[.\s]*a[.\s]*b/c'], files)
+        self.run_bzr_remove_changed_files(files)
 
     def test_remove_changed_ignored_files(self):
         tree = self._make_tree_and_add(['a'])
         self.run_bzr(['ignore', 'a'])
-        self.run_bzr_remove_changed_files(['added:[.\s]*a'], ['a'])
+        self.run_bzr_remove_changed_files(['a'])
 
     def test_remove_changed_files_from_child_dir(self):
         if sys.platform == 'win32':
@@ -200,7 +194,6 @@ class TestRemove(TestCaseWithTransport):
         self.changeFile(a)
         self.changeFile(c)
         self.run_bzr_remove_changed_files(
-            ['modified:[.\s]*a[.\s]*b/c'],
             ['../a', 'c', '.', '../d'], working_dir='b')
         self.assertNotInWorkingTree(files)
         self.failIfExists(files)
@@ -211,12 +204,29 @@ class TestRemove(TestCaseWithTransport):
         self.run_bzr('remove --keep a', error_regexes=["a is not versioned."])
         self.assertFilesUnversioned(files)
 
+    def test_remove_no_backup_unversioned_files(self):
+        self.build_tree(files)
+        tree = self.make_branch_and_tree('.')
+        script.ScriptRunner().run_script(self, '''
+        $ bzr remove --no-backup a b/ b/c d/
+        2>deleted d
+        2>removed b/c (but kept a copy: b/c.~1~)
+        2>deleted b
+        2>deleted a
+        ''')
+        self.assertFilesDeleted(files)
+
     def test_remove_force_unversioned_files(self):
         self.build_tree(files)
         tree = self.make_branch_and_tree('.')
-        self.run_bzr(['remove', '--force'] + list(files),
-                     error_regexes=["deleted a", "deleted b",
-                                    "deleted b/c", "deleted d"])
+        script.ScriptRunner().run_script(self, '''
+        $ bzr remove --force a b/ b/c d/
+        2>(The --force option is deprecated, rather use --no-backup in future.)
+        2>deleted d
+        2>removed b/c (but kept a copy: b/c.~1~)
+        2>deleted b
+        2>deleted a
+        ''')
         self.assertFilesDeleted(files)
 
     def test_remove_deleted_files(self):

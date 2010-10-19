@@ -32,6 +32,7 @@ from bzrlib import (
     hooks,
     osutils,
     revisiontree,
+    inventory,
     symbol_versioning,
     trace,
     tree,
@@ -375,6 +376,10 @@ class MutableTree(tree.Tree):
         This is designed more towards DWIM for humans than API clarity.
         For the specific behaviour see the help for cmd_add().
 
+        :param file_list: List of zero or more paths.  *NB: these are 
+            interpreted relative to the process cwd, not relative to the 
+            tree.*  (Add and most other tree methods use tree-relative
+            paths.)
         :param action: A reporter to be called with the inventory, parent_ie,
             path and kind of the path being added. It may return a file_id if
             a specific one should be used.
@@ -410,6 +415,10 @@ class MutableTree(tree.Tree):
             # than trying to find the relevant conflict for each added file.
             for c in self.conflicts():
                 conflicts_related.update(c.associated_filenames())
+
+        # expand any symlinks in the directory part, while leaving the
+        # filename alone
+        file_list = map(osutils.normalizepath, file_list)
 
         # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
@@ -715,6 +724,17 @@ def _add_one(tree, inv, parent_ie, path, kind, file_id_callback):
         file_id or None to generate a new file id
     :returns: None
     """
+    # if the parent exists, but isn't a directory, we have to do the
+    # kind change now -- really the inventory shouldn't pretend to know
+    # the kind of wt files, but it does.
+    if parent_ie.kind != 'directory':
+        # nb: this relies on someone else checking that the path we're using
+        # doesn't contain symlinks.
+        new_parent_ie = inventory.make_entry('directory', parent_ie.name,
+            parent_ie.parent_id, parent_ie.file_id)
+        del inv[parent_ie.file_id]
+        inv.add(new_parent_ie)
+        parent_ie = new_parent_ie
     file_id = file_id_callback(inv, parent_ie, path, kind)
     entry = inv.make_entry(kind, path.base_path, parent_ie.file_id,
         file_id=file_id)

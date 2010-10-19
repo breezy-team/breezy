@@ -629,6 +629,11 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
         """
         pass
 
+    def disconnect(self):
+        """See SmartClientMedium.disconnect()."""
+        t = self._http_transport_ref()
+        t.disconnect()
+
 
 # TODO: May be better located in smart/medium.py with the other
 # SmartMediumRequest classes
@@ -661,3 +666,14 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     def _finished_reading(self):
         """See SmartClientMediumRequest._finished_reading."""
         pass
+
+
+def unhtml_roughly(maybe_html, length_limit=1000):
+    """Very approximate html->text translation, for presenting error bodies.
+
+    :param length_limit: Truncate the result to this many characters.
+
+    >>> unhtml_roughly("<b>bad</b> things happened\\n")
+    ' bad  things happened '
+    """
+    return re.subn(r"(<[^>]*>|\n|&nbsp;)", " ", maybe_html)[0][:length_limit]

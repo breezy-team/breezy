@@ -282,13 +282,6 @@ class TestLRUCache(tests.TestCase):
         cache[6] = 7
         self.assertEqual([2, 3, 4, 5, 6], sorted(cache.keys()))
 
-    def test_after_cleanup_size_deprecated(self):
-        obj = self.callDeprecated([
-            'LRUCache.__init__(after_cleanup_size) was deprecated in 1.11.'
-            ' Use after_cleanup_count instead.'],
-            lru_cache.LRUCache, 50, after_cleanup_size=25)
-        self.assertEqual(obj._after_cleanup_count, 25)
-
     def test_resize_smaller(self):
         cache = lru_cache.LRUCache(max_cache=5, after_cleanup_count=4)
         cache[1] = 2

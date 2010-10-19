@@ -21,7 +21,6 @@ import errno
 import os
 import re
 import socket
-import stat
 import sys
 import time
 
@@ -1072,6 +1071,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         if sys.platform == 'win32':
             raise tests.TestNotApplicable(
                 "readdir IOError not tested on win32")
+        self.requireFeature(features.not_running_as_root)
         os.mkdir("test-unreadable")
         os.chmod("test-unreadable", 0000)
         # must chmod it back so that it can be removed
@@ -2076,5 +2076,43 @@ class TestGetuserUnicode(tests.TestCase):
 
     def test_unicode_user(self):
         ue = osutils.get_user_encoding()
+        uni_val, env_val = tests.probe_unicode_in_user_encoding()
+        if uni_val is None:
+            raise tests.TestSkipped(
+                'Cannot find a unicode character that works in encoding %s'
+                % (osutils.get_user_encoding(),))
+        uni_username = u'jrandom' + uni_val
+        encoded_username = uni_username.encode(ue)
+        osutils.set_or_unset_env('LOGNAME', encoded_username)
+        self.assertEqual(uni_username, osutils.getuser_unicode())
         osutils.set_or_unset_env('LOGNAME', u'jrandom\xb6'.encode(ue))
         self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
+
+class TestBackupNames(tests.TestCase):
+
+    def setUp(self):
+        super(TestBackupNames, self).setUp()
+        self.backups = []
+
+    def backup_exists(self, name):
+        return name in self.backups
+
+    def available_backup_name(self, name):
+        backup_name = osutils.available_backup_name(name, self.backup_exists)
+        self.backups.append(backup_name)
+        return backup_name
+
+    def assertBackupName(self, expected, name):
+        self.assertEqual(expected, self.available_backup_name(name))
+
+    def test_empty(self):
+        self.assertBackupName('file.~1~', 'file')
+
+    def test_existing(self):
+        self.available_backup_name('file')
+        self.available_backup_name('file')
+        self.assertBackupName('file.~3~', 'file')
+        # Empty slots are found, this is not a strict requirement and may be
+        # revisited if we test against all implementations.
+        self.backups.remove('file.~2~')
+        self.assertBackupName('file.~2~', 'file')

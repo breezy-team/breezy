@@ -625,20 +625,18 @@ class TestResolveUnversionedParent(TestResolveConflicts):
     # tests MissingParent resolution :-/
     preamble = """
 $ bzr init trunk
+...
 $ cd trunk
 $ mkdir dir
-$ bzr add dir
-$ bzr commit -m 'Create trunk'
-
+$ bzr add -q dir
+$ bzr commit -m 'Create trunk' -q
 $ echo 'trunk content' >dir/file
-$ bzr add dir/file
-$ bzr commit -m 'Add dir/file in trunk'
-
-$ bzr branch . -r 1 ../branch
+$ bzr add -q dir/file
+$ bzr commit -q -m 'Add dir/file in trunk'
+$ bzr branch -q . -r 1 ../branch
 $ cd ../branch
-$ bzr rm dir
-$ bzr commit -m 'Remove dir in branch'
-
+$ bzr rm dir -q
+$ bzr commit -q -m 'Remove dir in branch'
 $ bzr merge ../trunk
 2>+N  dir/
 2>+N  dir/file
@@ -649,15 +647,15 @@ $ bzr merge ../trunk
 
     def test_take_this(self):
         self.run_script("""
-$ bzr rm dir  --force
+$ bzr rm -q dir  --force
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_take_other(self):
         self.run_script("""
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
@@ -665,22 +663,20 @@ class TestResolveMissingParent(TestResolveConflicts):
 
     preamble = """
 $ bzr init trunk
+...
 $ cd trunk
 $ mkdir dir
 $ echo 'trunk content' >dir/file
-$ bzr add
-$ bzr commit -m 'Create trunk'
-
+$ bzr add -q
+$ bzr commit -m 'Create trunk' -q
 $ echo 'trunk content' >dir/file2
-$ bzr add dir/file2
-$ bzr commit -m 'Add dir/file2 in branch'
-
-$ bzr branch . -r 1 ../branch
+$ bzr add -q dir/file2
+$ bzr commit -q -m 'Add dir/file2 in branch'
+$ bzr branch -q . -r 1 ../branch
 $ cd ../branch
-$ bzr rm dir/file --force
-$ bzr rm dir
-$ bzr commit -m 'Remove dir/file'
-
+$ bzr rm -q dir/file --force
+$ bzr rm -q dir
+$ bzr commit -q -m 'Remove dir/file'
 $ bzr merge ../trunk
 2>+N  dir/
 2>+N  dir/file2
@@ -692,34 +688,36 @@ $ bzr merge ../trunk
     def test_keep_them_all(self):
         self.run_script("""
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_adopt_child(self):
         self.run_script("""
-$ bzr mv dir/file2 file2
-$ bzr rm dir --force
+$ bzr mv -q dir/file2 file2
+$ bzr rm -q dir --force
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_kill_them_all(self):
         self.run_script("""
-$ bzr rm dir --force
+$ bzr rm -q dir --force
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_this(self):
         self.run_script("""
 $ bzr resolve --take-this dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>...
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_other(self):
         self.run_script("""
 $ bzr resolve --take-other dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>...
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
@@ -727,22 +725,20 @@ class TestResolveDeletingParent(TestResolveConflicts):
 
     preamble = """
 $ bzr init trunk
+...
 $ cd trunk
 $ mkdir dir
 $ echo 'trunk content' >dir/file
-$ bzr add
-$ bzr commit -m 'Create trunk'
-
-$ bzr rm dir/file --force
-$ bzr rm dir --force
-$ bzr commit -m 'Remove dir/file'
-
-$ bzr branch . -r 1 ../branch
+$ bzr add -q
+$ bzr commit -m 'Create trunk' -q
+$ bzr rm -q dir/file --force
+$ bzr rm -q dir --force
+$ bzr commit -q -m 'Remove dir/file'
+$ bzr branch -q . -r 1 ../branch
 $ cd ../branch
 $ echo 'branch content' >dir/file2
-$ bzr add dir/file2
-$ bzr commit -m 'Add dir/file2 in branch'
-
+$ bzr add -q dir/file2
+$ bzr commit -q -m 'Add dir/file2 in branch'
 $ bzr merge ../trunk
 2>-D  dir/file
 2>Conflict: can't delete dir because it is not empty.  Not deleting.
@@ -753,34 +749,36 @@ $ bzr merge ../trunk
     def test_keep_them_all(self):
         self.run_script("""
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_adopt_child(self):
         self.run_script("""
-$ bzr mv dir/file2 file2
-$ bzr rm dir --force
+$ bzr mv -q dir/file2 file2
+$ bzr rm -q dir --force
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_kill_them_all(self):
         self.run_script("""
-$ bzr rm dir --force
+$ bzr rm -q dir --force
 $ bzr resolve dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_this(self):
         self.run_script("""
 $ bzr resolve --take-this dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_other(self):
         self.run_script("""
 $ bzr resolve --take-other dir
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>deleted dir/file2
+2>deleted dir
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
@@ -882,19 +880,19 @@ class TestResolveNonDirectoryParent(TestResolveConflicts):
 
     preamble = """
 $ bzr init trunk
+...
 $ cd trunk
 $ bzr mkdir foo
-$ bzr commit -m 'Create trunk'
+...
+$ bzr commit -m 'Create trunk' -q
 $ echo "Boing" >foo/bar
-$ bzr add foo/bar
-$ bzr commit -m 'Add foo/bar'
-
-$ bzr branch . -r 1 ../branch
+$ bzr add -q foo/bar
+$ bzr commit -q -m 'Add foo/bar'
+$ bzr branch -q . -r 1 ../branch
 $ cd ../branch
 $ rm -r foo
 $ echo "Boo!" >foo
-$ bzr commit -m 'foo is now a file'
-
+$ bzr commit -q -m 'foo is now a file'
 $ bzr merge ../trunk
 2>+N  foo.new/bar
 2>RK  foo => foo.new/
@@ -906,32 +904,34 @@ $ bzr merge ../trunk
 
     def test_take_this(self):
         self.run_script("""
-$ bzr rm foo.new --force
+$ bzr rm -q foo.new --force
 # FIXME: Isn't it weird that foo is now unkown even if foo.new has been put
 # aside ? -- vila 090916
-$ bzr add foo
+$ bzr add -q foo
 $ bzr resolve foo.new
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_take_other(self):
         self.run_script("""
-$ bzr rm foo --force
-$ bzr mv foo.new foo
+$ bzr rm -q foo --force
+$ bzr mv -q foo.new foo
 $ bzr resolve foo
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_this(self):
         self.run_script("""
 $ bzr resolve --take-this foo.new
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>...
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_other(self):
         self.run_script("""
 $ bzr resolve --take-other foo.new
-$ bzr commit --strict -m 'No more conflicts nor unknown files'
+2>...
+$ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
 
@@ -943,19 +943,19 @@ class TestMalformedTransform(script.TestCaseWithTransportAndScript):
         # conflict.
         self.run_script("""
 $ bzr init trunk
+...
 $ cd trunk
 $ bzr mkdir foo
-$ bzr commit -m 'Create trunk'
+...
+$ bzr commit -m 'Create trunk' -q
 $ rm -r foo
 $ echo "Boo!" >foo
-$ bzr commit -m 'foo is now a file'
-
-$ bzr branch . -r 1 ../branch
+$ bzr commit -m 'foo is now a file' -q
+$ bzr branch -q . -r 1 ../branch -q
 $ cd ../branch
 $ echo "Boing" >foo/bar
-$ bzr add foo/bar
-$ bzr commit -m 'Add foo/bar'
-
+$ bzr add -q foo/bar -q
+$ bzr commit -m 'Add foo/bar' -q
 $ bzr merge ../trunk
 2>bzr: ERROR: Tree transform is malformed [('unversioned executability', 'new-1')]
 """)

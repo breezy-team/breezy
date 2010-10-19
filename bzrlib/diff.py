@@ -420,12 +420,9 @@ def get_trees_and_branches_to_diff_locked(
 
     # Get the specific files (all files is None, no files is [])
     if make_paths_wt_relative and working_tree is not None:
-        try:
-            from bzrlib.builtins import safe_relpath_files
-            other_paths = safe_relpath_files(working_tree, other_paths,
+        other_paths = working_tree.safe_relpath_files(
+            other_paths,
             apply_view=apply_view)
-        except errors.FileInWrongBranch:
-            raise errors.BzrCommandError("Files are in different branches")
     specific_files.extend(other_paths)
     if len(specific_files) == 0:
         specific_files = None
@@ -739,9 +736,12 @@ class DiffFromTool(DiffPath):
                      path_encoding)
 
     @classmethod
-    def make_from_diff_tree(klass, command_string):
+    def make_from_diff_tree(klass, command_string, external_diff_options=None):
         def from_diff_tree(diff_tree):
-            return klass.from_string(command_string, diff_tree.old_tree,
+            full_command_string = [command_string]
+            if external_diff_options is not None:
+                full_command_string += ' ' + external_diff_options
+            return klass.from_string(full_command_string, diff_tree.old_tree,
                                      diff_tree.new_tree, diff_tree.to_file)
         return from_diff_tree
 
@@ -915,7 +915,7 @@ class DiffTree(object):
         :param using: Commandline to use to invoke an external diff tool
         """
         if using is not None:
-            extra_factories = [DiffFromTool.make_from_diff_tree(using)]
+            extra_factories = [DiffFromTool.make_from_diff_tree(using, external_diff_options)]
         else:
             extra_factories = []
         if external_diff_options:

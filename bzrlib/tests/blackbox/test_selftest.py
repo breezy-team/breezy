@@ -16,8 +16,9 @@
 
 """UI tests for the test framework."""
 
+import os
+
 from bzrlib import (
-    benchmarks,
     tests,
     )
 from bzrlib.tests import (
@@ -44,24 +45,6 @@ class SelfTestPatch:
             return params[0]
         finally:
             tests.selftest = original_selftest
-
-
-class TestOptionsWritingToDisk(tests.TestCaseInTempDir, SelfTestPatch):
-
-    def test_benchmark_runs_benchmark_tests(self):
-        """selftest --benchmark should change the suite factory."""
-        params = self.get_params_passed_to_core('selftest --benchmark')
-        self.assertEqual(benchmarks.test_suite,
-            params[1]['test_suite_factory'])
-        self.assertNotEqual(None, params[1]['bench_history'])
-        benchfile = open(".perf_history", "rt")
-        try:
-            lines = benchfile.readlines()
-        finally:
-            benchfile.close()
-        # Because we don't run the actual test code no output is made to the
-        # file.
-        self.assertEqual(0, len(lines))
 
 
 class TestOptions(tests.TestCase, SelfTestPatch):
@@ -167,3 +150,12 @@ class TestOptions(tests.TestCase, SelfTestPatch):
     def test_lsprof_tests(self):
         params = self.get_params_passed_to_core('selftest --lsprof-tests')
         self.assertEqual(True, params[1]["lsprof_tests"])
+
+    def test_parallel_fork_unsupported(self):
+        if getattr(os, "fork", None) is not None:
+            self.addCleanup(setattr, os, "fork", os.fork)
+            del os.fork
+        out, err = self.run_bzr(["selftest", "--parallel=fork", "-s", "bt.x"],
+            retcode=3)
+        self.assertIn("platform does not support fork", err)
+        self.assertFalse(out)

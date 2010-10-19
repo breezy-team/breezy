@@ -28,6 +28,8 @@ import textwrap
 from cStringIO import StringIO
 
 from bzrlib import (
+    commands,
+    errors,
     osutils,
     tests,
     )
@@ -56,6 +58,10 @@ def _script_to_commands(text, file_name=None):
     Input lines start with '<'.
     Output lines start with nothing.
     Error lines start with '2>'.
+
+    :return: A sequence of ([args], input, output, errors), where the args are
+        split in to words, and the input, output, and errors are just strings,
+        typically containing newlines.
     """
 
     commands = []
@@ -75,18 +81,26 @@ def _script_to_commands(text, file_name=None):
     lineno = 0
     input, output, error = None, None, None
     text = textwrap.dedent(text)
-    for line in text.split('\n'):
+    lines = text.split('\n')
+    # to make use of triple-quoted strings easier, we ignore a blank line
+    # right at the start and right at the end; the rest are meaningful
+    if lines and lines[0] == '':
+        del lines[0]
+    if lines and lines[-1] == '':
+        del lines[-1]
+    for line in lines:
         lineno += 1
         # Keep a copy for error reporting
         orig = line
         comment =  line.find('#')
         if comment >= 0:
             # Delete comments
+            # NB: this syntax means comments are allowed inside output, which
+            # may be confusing...
             line = line[0:comment]
             line = line.rstrip()
-        if line == '':
-            # Ignore empty lines
-            continue
+            if line == '':
+                continue
         if line.startswith('$'):
             # Time to output the current command
             add_command(cmd_cur, input, output, error)
@@ -209,20 +223,30 @@ class ScriptRunner(object):
         retcode, actual_output, actual_error = method(test_case,
                                                       str_input, args)
 
-        self._check_output(output, actual_output, test_case)
-        self._check_output(error, actual_error, test_case)
+        try:
+            self._check_output(output, actual_output, test_case)
+        except AssertionError, e:
+            raise AssertionError(str(e) + " in stdout of command %s" % cmd)
+        try:
+            self._check_output(error, actual_error, test_case)
+        except AssertionError, e:
+            raise AssertionError(str(e) +
+                " in stderr of running command %s" % cmd)
         if retcode and not error and actual_error:
             test_case.fail('In \n\t%s\nUnexpected error: %s'
                            % (' '.join(cmd), actual_error))
         return retcode, actual_output, actual_error
 
     def _check_output(self, expected, actual, test_case):
-        if expected is None:
-            # Specifying None means: any output is accepted
-            return
-        if actual is None:
-            test_case.fail('We expected output: %r, but found None'
-                           % (expected,))
+        if not actual:
+            if expected is None:
+                return
+            elif expected == '...\n':
+                return
+            else:
+                test_case.fail('expected output: %r, but found nothing'
+                            % (expected,))
+        expected = expected or ''
         matching = self.output_checker.check_output(
             expected, actual, self.check_options)
         if not matching:
@@ -232,7 +256,15 @@ class ScriptRunner(object):
             # 'expected' parameter. So we just fallback to our good old
             # assertEqualDiff since we know there *are* differences and the
             # output should be decently readable.
-            test_case.assertEqualDiff(expected, actual)
+            #
+            # As a special case, we allow output that's missing a final
+            # newline to match an expected string that does have one, so that
+            # we can match a prompt printed on one line, then input given on
+            # the next line.
+            if expected == actual + '\n':
+                pass
+            else:
+                test_case.assertEqualDiff(expected, actual)
 
     def _pre_process_args(self, args):
         new_args = []
@@ -481,3 +513,32 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
 def run_script(test_case, script_string):
     """Run the given script within a testcase"""
     return ScriptRunner().run_script(test_case, script_string)
+
+
+class cmd_test_script(commands.Command):
+    """Run a shell-like test from a file."""
+
+    hidden = True
+    takes_args = ['infile']
+
+    @commands.display_command
+    def run(self, infile):
+
+        f = open(infile)
+        try:
+            script = f.read()
+        finally:
+            f.close()
+
+        class Test(TestCaseWithTransportAndScript):
+
+            script = None # Set before running
+
+            def test_it(self):
+                self.run_script(script)
+
+        runner = tests.TextTestRunner(stream=self.outf)
+        test = Test('test_it')
+        test.path = os.path.realpath(infile)
+        res = runner.run(test)
+        return len(res.errors) + len(res.failures)

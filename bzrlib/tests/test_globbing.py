@@ -15,6 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import re
+
 from bzrlib import errors
 from bzrlib.globbing import (
     Globster,
@@ -53,14 +55,16 @@ class TestGlobster(TestCase):
     def test_char_group_digit(self):
         self.assertMatchBasenameAndFullpath([
             # The definition of digit this uses includes arabic digits from
-            # non-latin scripts (arabic, indic, etc.) and subscript/superscript
-            # digits, but neither roman numerals nor vulgar fractions.
+            # non-latin scripts (arabic, indic, etc.) but neither roman
+            # numerals nor vulgar fractions. Some characters such as
+            # subscript/superscript digits may or may not match depending on
+            # the Python version used, see: <http://bugs.python.org/issue6561>
             (u'[[:digit:]]',
-             [u'0', u'5', u'\u0663', u'\u06f9', u'\u0f21', u'\xb9'],
+             [u'0', u'5', u'\u0663', u'\u06f9', u'\u0f21'],
              [u'T', u'q', u' ', u'\u8336', u'.']),
             (u'[^[:digit:]]',
              [u'T', u'q', u' ', u'\u8336', u'.'],
-             [u'0', u'5', u'\u0663', u'\u06f9', u'\u0f21', u'\xb9']),
+             [u'0', u'5', u'\u0663', u'\u06f9', u'\u0f21']),
             ])
 
     def test_char_group_space(self):
@@ -311,10 +315,11 @@ class TestGlobster(TestCase):
 
     def test_bad_pattern(self):
         """Ensure that globster handles bad patterns cleanly."""
-        patterns = [u'RE:[']
+        patterns = [u'RE:[', u'/home/foo', u'RE:*.cpp']
         g = Globster(patterns)
-        e = self.assertRaises(errors.InvalidPattern, g.match, 'foo')
-        self.assertContainsRe(e.msg, "File.*ignore.*contains errors")
+        e = self.assertRaises(errors.InvalidPattern, g.match, 'filename')
+        self.assertContainsRe(e.msg,
+            "File.*ignore.*contains error.*RE:\[.*RE:\*\.cpp", flags=re.DOTALL)
 
 
 class TestExceptionGlobster(TestCase):

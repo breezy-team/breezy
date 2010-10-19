@@ -25,9 +25,19 @@ Working on Bazaar
    testing
    code-review
    code-style
+   documenting-changes
 
 * `Contributing to Bazaar Documentation <http://wiki.bazaar.canonical.com/ContributingToTheDocs>`_ (wiki)
 
+
+Architecture overviews
+======================
+
+.. toctree::
+   :maxdepth: 1
+
+   transports
+   ui
 
 Releasing and Packaging
 =======================

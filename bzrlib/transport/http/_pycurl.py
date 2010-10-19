@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,6 +44,7 @@ from bzrlib.transport.http import (
     ca_bundle,
     HttpTransportBase,
     response,
+    unhtml_roughly,
     )
 
 try:
@@ -127,6 +128,11 @@ class PyCurlTransport(HttpTransportBase):
             # Proxy handling is out of reach, so we punt
             self._set_connection(connection, auth)
         return connection
+
+    def disconnect(self):
+        connection = self._get_connection()
+        if connection is not None:
+            connection.close()
 
     def has(self, relpath):
         """See Transport.has()"""
@@ -285,22 +291,36 @@ class PyCurlTransport(HttpTransportBase):
         return code, response.handle_response(abspath, code, msg, data)
 
 
-    def _raise_curl_http_error(self, curl, info=None):
+    def _raise_curl_http_error(self, curl, info=None, body=None):
+        """Common curl->bzrlib error translation.
+
+        Some methods may choose to override this for particular cases.
+
+        The URL and code are automatically included as appropriate.
+
+        :param info: Extra information to include in the message.
+        :param body: File-like object from which the body of the page can be read.
+        """
         code = curl.getinfo(pycurl.HTTP_CODE)
         url = curl.getinfo(pycurl.EFFECTIVE_URL)
-        # Some error codes can be handled the same way for all
-        # requests
+        if body is not None:
+            response_body = body.read()
+            plaintext_body = unhtml_roughly(response_body)
+        else:
+            response_body = None
+            plaintext_body = ''
         if code == 403:
             raise errors.TransportError(
                 'Server refuses to fulfill the request (403 Forbidden)'
-                ' for %s' % url)
+                ' for %s: %s' % (url, plaintext_body))
         else:
             if info is None:
                 msg = ''
             else:
                 msg = ': ' + info
             raise errors.InvalidHttpResponse(
-                url, 'Unable to handle http code %d%s' % (code,msg))
+                url, 'Unable to handle http code %d%s: %s' 
+                % (code, msg, plaintext_body))
 
     def _debug_cb(self, kind, text):
         if kind in (pycurl.INFOTYPE_HEADER_IN, pycurl.INFOTYPE_DATA_IN,

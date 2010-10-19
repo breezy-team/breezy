@@ -16,14 +16,14 @@
 #
 
 """Tests of the 'bzr alias' command."""
-import os
-import codecs
 
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.config import (ensure_config_dir_exists, config_filename)
+from bzrlib import (
+    config,
+    tests,
+    )
 
 
-class TestAlias(TestCaseWithTransport):
+class TestAlias(tests.TestCaseWithTransport):
 
     def test_list_alias_with_none(self):
         """Calling alias with no parameters lists existing aliases."""
@@ -46,7 +46,9 @@ class TestAlias(TestCaseWithTransport):
 
     def test_unicode_alias(self):
         """Unicode aliases should work (Bug #529930)"""
-        config_enc = 'utf-8'
+        # XXX: strictly speaking, lack of unicode filenames doesn't imply that
+        # unicode command lines aren't available.
+        self.requireFeature(tests.UnicodeFilenameFeature)
         file_name = u'foo\xb6'
 
         tree = self.make_branch_and_tree('.')
@@ -54,11 +56,8 @@ class TestAlias(TestCaseWithTransport):
         tree.add(file_name)
         tree.commit('added')
 
-        ensure_config_dir_exists()
-        CONFIG=(u'[ALIASES]\n'
-                u'ust=st foo\xb6\n')
-
-        codecs.open(config_filename(),'w', config_enc).write(CONFIG)
+        config.GlobalConfig.from_string(
+            u'[ALIASES]\nust=st %s\n' % (file_name,), save=True)
 
         out, err = self.run_bzr('ust')
         self.assertEquals(err, '')

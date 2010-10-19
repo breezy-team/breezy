@@ -2068,6 +2068,29 @@ def send_all(sock, bytes, report_activity=None):
             report_activity(sent, 'write')
 
 
+def connect_socket(address):
+    # Slight variation of the socket.create_connection() function (provided by
+    # python-2.6) that can fail if getaddrinfo returns an empty list. We also
+    # provide it for previous python versions. Also, we don't use the timeout
+    # parameter (provided by the python implementation) so we don't implement
+    # it either).
+    err = socket.error('getaddrinfo returns an empty list')
+    host, port = address
+    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+        af, socktype, proto, canonname, sa = res
+        sock = None
+        try:
+            sock = socket.socket(af, socktype, proto)
+            sock.connect(sa)
+            return sock
+
+        except socket.error, err:
+            # 'err' is now the most recent error
+            if sock is not None:
+                sock.close()
+    raise err
+
+
 def dereference_path(path):
     """Determine the real path to a file.
 
@@ -2334,3 +2357,23 @@ def getuser_unicode():
         raise errors.BzrError("Can't decode username as %s." % \
                 user_encoding)
     return username
+
+
+def available_backup_name(base, exists):
+    """Find a non-existing backup file name.
+
+    This will *not* create anything, this only return a 'free' entry.  This
+    should be used for checking names in a directory below a locked
+    tree/branch/repo to avoid race conditions. This is LBYL (Look Before You
+    Leap) and generally discouraged.
+
+    :param base: The base name.
+
+    :param exists: A callable returning True if the path parameter exists.
+    """
+    counter = 1
+    name = "%s.~%d~" % (base, counter)
+    while exists(name):
+        counter += 1
+        name = "%s.~%d~" % (base, counter)
+    return name

@@ -2,11 +2,12 @@ Releasing Bazaar
 ################
 
 This document describes the processes for making and announcing a Bazaar
-release, and managing the release process.  This is just one phase of the
-`overall development cycle <http://doc.bazaar-vcs.org/developers/cycle.html>`_,
-but it's the most complex part.
-This document gives a checklist you can follow from start to end in one
-go.
+release, and managing the release process.  This is just one phase of
+the `overall development cycle
+<http://doc.bazaar.canonical.com/developers/cycle.html>`_, (go re-read
+this document to ensure it hasn't been updated) but it's the most
+complex part.  This document gives a checklist you can follow from start
+to end in one go.
 
 If you're helping the Release Manager (RM) for one reason or another, you
 may notice that he didn't follow that document scrupulously. He may have
@@ -24,6 +25,56 @@ Preconditions
 #. Download the pqm plugin and install it into your ``~/.bazaar/plugins``::
 
      bzr branch lp:bzr-pqm ~/.bazaar/plugins/pqm
+
+
+When do we relase ?
+===================
+
+As of October 2010, we mantain four series.  Concurrently releasing them
+all at the same time makes it harder to shorten the delay between the
+source availability and the package building longer than necessary (we
+delay the official announcement until most of our users can install the new
+release).
+
+In order to continue to do time-based releases, we need to plan the
+releases by series to minimize the collisions. In the end, it's the Release
+Manager call to decide whether he prefers to do all releases at once
+though, so the rules presented here are a conservative approach.
+
+We want to respect the following rules::
+
+ #. as much as possible releases should not disturb development, and
+    ongoing development should not disturb releases,
+
+ #. the most recent development series should release once a month during
+    the beta period (see `Development cycles <cycle.html>`_ for more
+    details),
+
+ #. the most recent stable series should release every other month (based
+    on the amount of bug fixes, this can be shorter or longer depending on
+    the bugs importance),
+
+ #. previous series should relesase on a regular basis without interfering
+    with the most recent series with a decreasing order of priority (again
+    this should be based on bugs importance and user feedback),
+
+ #. the death of a series should be planned ahead of time. 6 months should
+    give enough time to our users to migrate to a more recent series. This
+    doesn't mean we will make a release at the end of the series, just that
+    before the end date we _could_ possibly put out another release if
+    there was a sufficiently important fix.  Beyond that date, we won't
+    even land changes on that branch (unless something causes a miraculous
+    resurrection.)
+
+ #. there should not be more than 2 releases in the same week (but the
+    Release Manager is free to ignore this (get in touch with packagers
+    though),
+
+ #. the series are aligned with Ubuntu releases for convenience since we
+    create a new series every 6 months. This means that we support the
+    stable series for 18 months. Note that we also propose the most recent
+    stable series via the ppa, so whether we keep supporting LTS directly
+    or via the ppa is still an open question.
 
 
 At the start of a release cycle
@@ -73,7 +124,7 @@ To start a new release cycle:
 	submit_to = bazaar@lists.canonical.com
 	smtp_server = mail.example.com:25
 
-    Please see <http://doc.bazaar-vcs.org/developers/HACKING.html#an-overview-of-pqm>
+    Please see <http://doc.bazaar.canonical.com/developers/HACKING.html#an-overview-of-pqm>
     for more details on PQM
 
 #. Update the version number in the ``bzr`` script, and the
@@ -81,9 +132,17 @@ To start a new release cycle:
    
        version_info = (x, y, z, 'dev', 0)
    
-#. Add a new section at the top of ``NEWS`` about the new release,
-   including its version number and the headings from
-   ``NEWS-template.txt``.
+#. If you made a new series, then start a new release-notes file::
+
+       cd doc/en/release-notes
+       cp series-template.txt bzr-x.y.txt  # e.g. bzr-2.3.txt
+       bzr add bzr-x.y.txt
+
+#. Add a new section at the top of the current release notes (in
+   ``doc/en/release-notes``) about the new release, including its version
+   number and the headings from ``release-template.txt``.
+
+#. Update the "What's New" documents in ``doc/en/whats-new``.
 
 #. Commit this and send it to PQM.
 
@@ -120,18 +179,21 @@ Update the source code
 
        version_info = (2, 1, 2, 'final', 0)
 
-#. Check the release number in ``./NEWS``
+#. Update the ``./doc/en/release-notes/`` section for this release.
 
    Fill out the date and a description of the release under the existing
-   header. If there isn't one, follow the above for using the NEWS
-   template.
+   header. If there isn't one, follow the instructions above for using the
+   ``release-template.txt`` file.
 
    See *2.1.1* or similar for an example of what this looks like.
 
-#. To check that all bugs mentioned in ``./NEWS`` are actually marked as
-   closed in Launchpad, you can run ``tools/check-newsbugs.py``::
+#. Add a summary of the release into the "What's New" document.
 
-     ./tools/check-newsbugs.py NEWS
+#. To check that all bugs mentioned in the release notes are actually
+   marked as closed in Launchpad, you can run
+   ``tools/check-newsbugs.py``::
+
+     ./tools/check-newsbugs.py doc/en/release-notes/bzr-x.y.txt
 
    (But note there will be many false positives, and this script may be
    flaky <https://bugs.edge.launchpad.net/bzr/+bug/354985>.  Don't let
@@ -176,6 +238,9 @@ Update the source code
 
 
       # API compatibility version: bzrlib is currently API compatible with 1.7.
+
+   Note that the NEWS file formatting has evolved, this example needs to
+   be updated.
 
 #. Tag the new release::
 
@@ -232,16 +297,18 @@ Publishing the source tarball
    this changes what the download widget on the Launchpad bzr home
    page shows, so don't stop the release process yet, or platform binary
    installers won't be made and the download list will stay very small!
-   <https://bugs.edge.launchpad.net/launchpad/+bug/586445>
+   <https://bugs.launchpad.net/launchpad/+bug/586445>
 
 
 Announcing the source freeze
 ----------------------------
 
-#. Post to the ``bazaar`` list, saying that the source has been frozen.
-   This is the cue for platform maintainers and plugin authors to update
-   their code.  This is done before the general public announcement of the
-   release.
+#. Post to the ``bazaar`` list, saying that the source has been frozen
+   (gone gold). Be extra clear that this is only a *source* release
+   targeted at packagers and installer builders (see
+   <https://bugs.launchpad.net/launchpad/+bug/645084>).  This is the cue
+   for platform maintainers and plugin authors to update their code.  This
+   is done before the general public announcement of the release.
 
 
 Kick off the next cycle
@@ -263,17 +330,12 @@ available to the world.
 
 #. Go to the release web page at <https://launchpad.net/bzr/x.y/x.y.z>
 
-#. Link from http://bazaar-vcs.org/SourceDownloads to the tarball and
-   signature.
-
-#. Announce on the `Bazaar website <http://bazaar-vcs.org/>`_.
+#. Announce on the `Bazaar website <http://bazaar.canonical.com/>`_.
    This page is edited via the lp:bzr-website branch. (Changes
    pushed to this branch are refreshed by a cron job on escudero.)
 
-#. Announce on the `Bazaar wiki <http://bazaar-vcs.org/Welcome>`_.
-
 #. Check that the documentation for this release is available in
-   <http://doc.bazaar-vcs.org>.  It should be automatically build when the
+   <http://doc.bazaar.canonical.com>.  It should be automatically build when the
    branch is created, by a cron script ``update-bzr-docs`` on
    ``escudero``. As of today (2009-08-27) ``igc`` manually updates the
    pretty version of it.
@@ -302,20 +364,20 @@ Now that the release is publicly available, tell people about it.
 
       Subject: bzr x.y.z released!
 
-      <<Summary paragraph from news>>
-
       The Bazaar team is happy to announce availability of a new
       release of the bzr adaptive version control system.
       Bazaar is part of the GNU system <http://gnu.org/>.
+
+      <<Summary paragraph from news>>
 
       Thanks to everyone who contributed patches, suggestions, and
       feedback.
 
       Bazaar is now available for download from
-      http://bazaar-vcs.org/Download as a source tarball; packages
+      https://launchpad.net/bzr/2.x/2.x/ as a source tarball; packages
       for various systems will be available soon.
 
-      <<NEWS section from this release back to the last major release>>
+      <<release notes from this release back to the last major release>>
 
    Feel free to tweak this to your taste.
 
@@ -338,7 +400,8 @@ Now that the release is publicly available, tell people about it.
 
        python setup.py register
 
-   Remember to check the results afterwards.
+   Remember to check the results afterwards -- this should be done for
+   final releases but not for beta releases or Release Candidates.
 
    To be able to register the release you must create an account on
    <http://pypi.python.org/pypi> and have one of the existing owners of
@@ -348,13 +411,13 @@ Now that the release is publicly available, tell people about it.
 Merging the released code back to trunk
 ---------------------------------------
 
-The rule is to keep ``NEWS`` sections sorted by date. You'll need to
-review the merge and make sure that that is respected.
+Merge the release branch back into the trunk.  The
+``doc/en/release-notes`` changes should be merged into the right place
+because each release series has its own release-notes file, but
+double-check.
 
-Merge the release branch back into the trunk.  Check that changes in NEWS
-were merged into the right sections.  If it's not already done, advance
-the version number in ``bzr`` and ``bzrlib/__init__.py``.  Submit this
-back into pqm for bzr.dev.
+If it's not already done, advance the version number in ``bzr`` and
+``bzrlib/__init__.py``.  Submit this back into pqm for bzr.dev.
 
 As soon as you change the version number in trunk, make sure you have
 created the corresponding milestone to ensure the continuity in bug
@@ -378,6 +441,55 @@ The process is the same as for the first release. Goto `Doing a
 particular release`_ and follow the instructions again. Some details change
 between beta, candidate and final releases, but they should be
 documented. If the instructions aren't clear enough, please fix them.
+
+
+Getting the release into Ubuntu
+-------------------------------
+
+(Feel free to propose or add new sections here about what we should do to
+get bzr into other places.)
+
+For the currently-under-development release of Ubuntu, no special action
+is needed: the release should be picked by Debian and synced from there into
+Ubuntu.
+
+Releases off stable bzr branches should go in to the ``-updates`` of the
+Ubuntu release that originally contained that branch.  (Ubuntu Lucid had
+bzr 2.2.0, so should get every 2.2.x update.)  This means going through
+the `SRU (Stable Release Updates)
+<https://wiki.ubuntu.com/StableReleaseUpdates>`__ process.   
+
+As of September 2010, bzr has applied to the technical board to be added
+to the `MicroReleaseExceptions
+<https://wiki.ubuntu.com/StableReleaseUpdates/MicroReleaseExceptions>`__
+category so that whole bugfix releases can more easily be approved.
+
+**After making a bzr stable-release release, nominate the most serious bug
+for the appropriate Ubuntu release and subscribe the `ubuntu-sru` team.**
+
+This requires a couple of tricks (please reconsider and tweak as things
+evolves from one release to the other):
+
+ * create a distro task with the ``Also affects distribution`` button and
+   select ``bzr (Ubuntu)``.
+
+ * change the *URL* to point to ``ubuntu/+source/bzr`` instead of ``bzr``
+   (this is needed if you create the distro task but not if it exists
+   already). You should now be able to click the ``Nominate for release``
+   button and select the right Ubuntu release. As of September 2010, this
+   means:
+
+  * ``maverick`` for the 2.2 series,
+  * ``lucid`` for the 2.1 series,
+  * ``karmic`` for the 2.0 series.
+
+ * Subscribe the ``~ubuntu-sru`` team to the bug.
+
+ * Add a comment targeted to ``~ubuntu-sru`` explaining the expectations
+   (we are targeting running the test suite during the build which, as of
+   September 2010, fails for known reasons that are currently addressed).
+   Search for bugs tagged with ``sru`` for examples and don't forget to tag
+   the bug you selected.
 
 
 See also
