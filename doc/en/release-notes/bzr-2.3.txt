@@ -99,6 +99,10 @@ Testing
   Instead, use '...' as a wildcard if you don't care about the output.
   (Martin Pool, #637830)
 
+* Add an ignore_blanks keyword argument with default False to
+  bzrlib.tests.script.ScriptRunner.run_script to specify if missing
+  output does not need to be matched.  (Neil Martinsen-Burrell, #662509)
+
 * ``bzr test-script script`` is a new command that runs a shell-like script
   from an the ``script`` file. (Vincent Ladeuil)
 
