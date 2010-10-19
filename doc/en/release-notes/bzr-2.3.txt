@@ -46,6 +46,9 @@ Bug Fixes
 
 * Always set PATH in start_bzr.bat on Windows. (Matthäus G. Chajdas, #470264)
 
+* ``bzr status -r X..Y`` was failing because RevisionTree didn't implement
+  ``get_shelf_manager``. (John Arbash Meinel, #662053)
+
 * Don't force openssh to use protocol=2, since that is now the default.
   (Neil Martinsen-Burrell, #561061)
 

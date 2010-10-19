@@ -45,6 +45,14 @@ from bzrlib.workingtree import WorkingTree
 
 class BranchStatus(TestCaseWithTransport):
 
+    def setUp(self):
+        super(BranchStatus, self).setUp()
+        # As TestCase.setUp clears all hooks, we install this default
+        # post_status hook handler for the test.
+        status.hooks.install_named_hook('post_status',
+            status._show_shelve_summary,
+            'bzr status')
+
     def assertStatus(self, expected_lines, working_tree,
         revision=None, short=False, pending=True, verbose=False):
         """Run status in working_tree and look for output.
@@ -530,11 +538,6 @@ class BranchStatus(TestCaseWithTransport):
         self.run_bzr(['shelve', '--all', '-m', 'foo'])
         self.build_tree(['bye.c'])
         wt.add('bye.c')
-        # As TestCase.setUp clears all hooks, we install this default
-        # post_status hook handler for the test.
-        status.hooks.install_named_hook('post_status',
-            status._show_shelve_summary,
-            'bzr status')
         self.assertStatus([
                 'added:\n',
                 '  bye.c\n',
