@@ -1,3 +1,9 @@
+bzr (2.3.0~beta2-1ubuntu1) UNRELEASED; urgency=low
+
+  * Add testtools to build dependencies.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 20 Oct 2010 15:58:21 +0200
+
 bzr (2.3.0~beta2-1) unstable; urgency=low
 
   * New upstream release.
