@@ -80,19 +80,20 @@ class TestSuite(unittest.TestSuite):
         tests = list(self)
         tests.reverse()
         self._tests = []
-        problem_count = 0
+        stored_count = 0
         while tests:
             if result.shouldStop:
                 self._tests = reversed(tests)
                 break
             case = _run_and_collect_case(tests.pop(), result)()
+            new_stored_count = getattr(result, "_count_stored_tests", int)()
             if case is not None and isinstance(case, unittest.TestCase):
-                if problem_count == _count_problem_tests(result):
+                if stored_count == new_stored_count:
                     # Testcase didn't fail, but somehow is still alive
-                    result.stream.write("Uncollected test case: %r\n" % case)
+                    print "Uncollected test case: %s" % (case.id(),)
                 # Zombie the testcase but leave a working stub id method
                 case.__dict__ = {"id": lambda _id=case.id(): _id}
-            problem_count = _count_problem_tests(result)
+            stored_count = new_stored_count
         return result
 
 
@@ -100,11 +101,6 @@ def _run_and_collect_case(case, res):
     """Run test case against result and use weakref to drop the refcount"""
     case.run(res)
     return weakref.ref(case)
-
-
-def _count_problem_tests(res):
-    """Count of tests kept alive due to not succeeding"""
-    return res.error_count + res.failure_count + res.known_failure_count
 
 
 class TestLoader(unittest.TestLoader):

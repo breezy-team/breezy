@@ -408,6 +408,10 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.not_applicable_count += 1
         self.report_not_applicable(test, reason)
 
+    def _count_stored_tests(self):
+        """Count of tests instances kept alive due to not succeeding"""
+        return self.error_count + self.failure_count + self.known_failure_count
+
     def _post_mortem(self, tb=None):
         """Start a PDB post mortem session."""
         if os.environ.get('BZR_TEST_PDB', None):
