@@ -24,6 +24,7 @@ import os
 
 from bzrlib import commands
 
+
 class cmd_test_script(commands.Command):
     """Run a shell-like test from a file."""
 
@@ -32,6 +33,7 @@ class cmd_test_script(commands.Command):
 
     @commands.display_command
     def run(self, infile):
+        # local imports to defer testtools dependency
         from bzrlib import tests
         from bzrlib.tests.script import TestCaseWithTransportAndScript
 
