@@ -197,7 +197,7 @@ class ScriptRunner(object):
         self.output_checker = doctest.OutputChecker()
         self.check_options = doctest.ELLIPSIS
 
-    def run_script(self, test_case, text, ignore_blanks=False):
+    def run_script(self, test_case, text, ignore_output=False):
         """Run a shell-like script as a test.
 
         :param test_case: A TestCase instance that should provide the fail(),
@@ -205,8 +205,11 @@ class ScriptRunner(object):
             attribute used as a jail root.
 
         :param text: A shell-like script (see _script_to_commands for syntax).
+
+        :param ignore_output: For commands with no specified output, ignore
+            any output that does happen, including output on standard error.
         """
-        self.ignore_blanks = ignore_blanks
+        self.ignore_output = ignore_output
         for cmd, input, output, error in _script_to_commands(text):
             self.run_command(test_case, cmd, input, output, error)
 
@@ -248,7 +251,7 @@ class ScriptRunner(object):
                 test_case.fail('expected output: %r, but found nothing'
                             % (expected,))
 
-        if self.ignore_blanks and expected is None: 
+        if self.ignore_output and expected is None: 
             return
         
         expected = expected or ''
@@ -479,8 +482,9 @@ class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
         super(TestCaseWithMemoryTransportAndScript, self).setUp()
         self.script_runner = ScriptRunner()
 
-    def run_script(self, script, ignore_blanks=False):
-        return self.script_runner.run_script(self, script, ignore_blanks)
+    def run_script(self, script, ignore_output=False):
+        return self.script_runner.run_script(self, script, 
+                                             ignore_output=ignore_output)
 
     def run_command(self, cmd, input, output, error):
         return self.script_runner.run_command(self, cmd, input, output, error)
@@ -508,16 +512,18 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
         super(TestCaseWithTransportAndScript, self).setUp()
         self.script_runner = ScriptRunner()
 
-    def run_script(self, script, ignore_blanks=False):
-        return self.script_runner.run_script(self, script, ignore_blanks)
+    def run_script(self, script, ignore_output=False):
+        return self.script_runner.run_script(self, script,
+                                             ignore_output=ignore_output)
 
     def run_command(self, cmd, input, output, error):
         return self.script_runner.run_command(self, cmd, input, output, error)
 
 
-def run_script(test_case, script_string, ignore_blanks=False):
+def run_script(test_case, script_string, ignore_output=False):
     """Run the given script within a testcase"""
-    return ScriptRunner().run_script(test_case, script_string, ignore_blanks)
+    return ScriptRunner().run_script(test_case, script_string,
+                                     ignore_output=ignore_output)
 
 
 class cmd_test_script(commands.Command):
