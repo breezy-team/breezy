@@ -22,19 +22,7 @@ This module should be importable even if testtools aren't available.
 
 import os
 
-from bzrlib import (
-    commands,
-    )
-
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), '''
-    from bzrlib import (
-        tests,
-        )
-    from bzrlib.tests.script import (
-        TestCaseWithTransportAndScript,
-        )
-''')
+from bzrlib import commands
 
 class cmd_test_script(commands.Command):
     """Run a shell-like test from a file."""
@@ -44,6 +32,8 @@ class cmd_test_script(commands.Command):
 
     @commands.display_command
     def run(self, infile):
+        from bzrlib import tests
+        from bzrlib.tests.script import TestCaseWithTransportAndScript
 
         f = open(infile)
         try:
