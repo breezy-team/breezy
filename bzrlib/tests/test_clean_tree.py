@@ -99,7 +99,6 @@ class TestCleanTree(TestCaseInTempDir):
         def _dummy_rmtree(path, ignore_errors=False, onerror=None):
             """Call user supplied error handler onerror.
             """
-            self.assertTrue(isinstance(onerror, types.FunctionType))
             # Indicate failure in removing 'path' if path is subdir0
             # We later check to ensure that this is indicated
             # to the user as a warning. We raise OSError to construct

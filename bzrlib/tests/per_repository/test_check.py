@@ -113,8 +113,8 @@ class TestCallbacks(TestCaseWithRepository):
             needed_refs.setdefault(ref, []).append(tree.branch)
         self.tree_check = tree._check
         self.branch_check = tree.branch.check
-        tree._check = self.tree_callback
-        tree.branch.check = self.branch_callback
+        self.overrideAttr(tree, "_check", self.tree_callback)
+        self.overrideAttr(tree.branch, "check", self.branch_callback)
         self.callbacks = []
         tree.branch.repository.check([revid], callback_refs=needed_refs)
         self.assertNotEqual([], self.callbacks)
