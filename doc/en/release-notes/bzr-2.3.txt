@@ -90,7 +90,7 @@ Testing
   from an the ``script`` file. (Vincent Ladeuil)
 
 * Fix spurious test failures on babune related to the http pipe cleanup and
-  get rid of some 'bytes left on the HTTP socket' useless log messhes.
+  get rid of some 'bytes left on the HTTP socket' useless log messages.
   (Vincent Ladeuil, #655557)
 
 
