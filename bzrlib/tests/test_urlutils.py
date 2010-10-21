@@ -418,8 +418,8 @@ class TestUrlToPath(TestCase):
         self.assertEqual(u'D:/path/to/r\xe4ksm\xf6rg\xe5s',
             from_url('file:///d:/path/to/r%c3%a4ksm%c3%b6rg%c3%a5s'))
         self.assertEqual('/', from_url('file:///'))
-        self.assertEqual('C:', from_url('file:///C:'))
 
+        self.assertRaises(InvalidURL, from_url, 'file:///C:')
         self.assertRaises(InvalidURL, from_url, 'file:///c')
         self.assertRaises(InvalidURL, from_url, '/path/to/foo')
         # Not a valid _win32 url, no drive letter
