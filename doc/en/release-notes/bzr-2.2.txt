@@ -644,7 +644,7 @@ Bug Fixes
 
 * ``RemoteBranch.lock_write`` raises ``ReadOnlyError`` if called during a
   read lock, rather than causing an ``AttributeError``.
-  (Andrew Bennetts, Данило Шеган, #582781)
+  (Andrew Bennetts, Danilo Segan, #582781)
 
 * Selftest was failing with testtools 0.9.3, which caused an
   AssertionError raised from a cleanUp to be reported as a Failure, not an
