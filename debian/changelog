@@ -1,4 +1,4 @@
-bzr (2.3.0~beta2-1ubuntu1) UNRELEASED; urgency=low
+bzr (2.3.0~beta2-2) UNRELEASED; urgency=low
 
   * Add testtools to build dependencies.
 
