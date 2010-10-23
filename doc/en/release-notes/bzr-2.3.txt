@@ -49,6 +49,9 @@ Bug Fixes
 * ``bzr status -r X..Y`` was failing because RevisionTree didn't implement
   ``get_shelf_manager``. (John Arbash Meinel, #662053)
 
+* Correctly set the Content-Type  header when http POSTing to comply
+  with stricter web frameworks. (Vincent Ladeuil, #655100)
+
 * Don't force openssh to use protocol=2, since that is now the default.
   (Neil Martinsen-Burrell, #561061)
 
