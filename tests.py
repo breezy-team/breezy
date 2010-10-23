@@ -17,6 +17,7 @@
 "Test suite for the bzr bisect plugin."
 
 import os
+import stat
 from cStringIO import StringIO
 import shutil
 import bzrlib
@@ -58,7 +59,12 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
         test_file.close()
         self.tree.add(self.tree.relpath(os.path.join(os.getcwd(),
                                                      'test_file')))
-        self.tree.commit(message = "add test file")
+        test_file_append = open("test_file_append", "a")
+        test_file_append.write("one\n")
+        test_file_append.close()
+        self.tree.add(self.tree.relpath(os.path.join(os.getcwd(),
+                                                     'test_file_append')))
+        self.tree.commit(message = "add test files")
 
         bzrlib.bzrdir.BzrDir.open(".").sprout("../temp-clone")
         clone_bzrdir = bzrlib.bzrdir.BzrDir.open("../temp-clone")
@@ -67,6 +73,9 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
             test_file = open("../temp-clone/test_file", "w")
             test_file.write(content)
             test_file.close()
+            test_file_append = open("../temp-clone/test_file_append", "a")
+            test_file_append.write(content + "\n")
+            test_file_append.close()
             clone_tree.commit(message = "make branch test change")
             saved_subtree_revid = clone_tree.branch.last_revision()
 
@@ -74,6 +83,9 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
         test_file = open("test_file", "w")
         test_file.write("two")
         test_file.close()
+        test_file_append = open("test_file_append", "a")
+        test_file_append.write("two\n")
+        test_file_append.close()
         self.tree.commit(message = "merge external branch")
         shutil.rmtree("../temp-clone")
 
@@ -84,6 +96,9 @@ class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
             test_file = open("test_file", "w")
             test_file.write(content)
             test_file.close()
+            test_file_append = open("test_file_append", "a")
+            test_file_append.write(content + "\n")
+            test_file_append.close()
             self.tree.commit(message = "make test change")
 
 
@@ -337,3 +352,43 @@ class BisectFuncTests(BisectTestCase):
 
         self.run_bzr(['bisect', 'no'])
         self.assertRevno(3)
+
+    def testRunScript(self):
+        "Make a test script and run it."
+        test_script = open("test_script", "w")
+        test_script.write("#!/bin/sh\n"
+                          "grep -q '^four' test_file_append\n")
+        test_script.close()
+        os.chmod("test_script", stat.S_IRWXU)
+        self.run_bzr(['bisect', 'start'])
+        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(['bisect', 'no', '-r', '1'])
+        self.run_bzr(['bisect', 'run', './test_script'])
+        self.assertRevno(4)
+
+    def testRunScriptMergePoint(self):
+        "Make a test script and run it."
+        test_script = open("test_script", "w")
+        test_script.write("#!/bin/sh\n"
+                          "grep -q '^two' test_file_append\n")
+        test_script.close()
+        os.chmod("test_script", stat.S_IRWXU)
+        self.run_bzr(['bisect', 'start'])
+        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(['bisect', 'no', '-r', '1'])
+        self.run_bzr(['bisect', 'run', './test_script'])
+        self.assertRevno(2)
+
+    def testRunScriptSubtree(self):
+        "Make a test script and run it."
+        test_script = open("test_script", "w")
+        test_script.write("#!/bin/sh\n"
+                          "grep -q '^one dot two' test_file_append\n")
+        test_script.close()
+        os.chmod("test_script", stat.S_IRWXU)
+        self.run_bzr(['bisect', 'start'])
+        self.run_bzr(['bisect', 'yes'])
+        self.run_bzr(['bisect', 'no', '-r', '1'])
+        self.run_bzr(['bisect', 'run', './test_script'])
+        self.assertRevno(1.2)
+
