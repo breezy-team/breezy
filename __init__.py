@@ -22,7 +22,7 @@ import bzrlib.bzrdir
 from bzrlib.commands import Command, register_command
 from bzrlib.errors import BzrCommandError
 from bzrlib.option import Option
-from bzrlib.trace import info
+from bzrlib.trace import note
 
 from meta import *
 
@@ -332,7 +332,7 @@ class cmd_bisect(Command):
         Returns boolean indicating if bisection is done."""
         bisect_log = BisectLog()
         if bisect_log.is_done():
-            info("No further bisection is possible.\n")
+            note("No further bisection is possible.\n")
             bisect_log._current.show_rev_log(self.outf)
             return True
 
@@ -434,7 +434,7 @@ class cmd_bisect(Command):
 
     def run_bisect(self, script):
         import subprocess
-        info("Starting bisect.")
+        note("Starting bisect.")
         self.start()
         while True:
             try:
