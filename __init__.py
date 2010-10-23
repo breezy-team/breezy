@@ -314,6 +314,10 @@ class cmd_bisect(Command):
 
     bzr bisect run <script>
         Bisect automatically using <script> to determine 'yes' or 'no'.
+        <script> should exit with:
+           0 for yes
+           125 for unknown (like build failed so we could not test)
+           anything else for no
     """
 
     takes_args = ['subcommand', 'args*']
