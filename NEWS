@@ -19,6 +19,8 @@
 
   * Add --signoff option to 'bzr git-apply'. (Jelmer Vernooij)
 
+  * Add --force option to 'bzr git-apply'. (Jelmer Vernooij)
+
 0.5.2	2010-07-30
 
  COMPATIBILITY

@@ -204,7 +204,9 @@ class cmd_git_apply(Command):
     "bzr pull".
     """
 
-    takes_options = [Option('signoff', short_name='s', help='Add a Signed-off-by line.')]
+    takes_options = [
+        Option('signoff', short_name='s', help='Add a Signed-off-by line.'),
+        'force']
     takes_args = ["patches*"]
 
     def _apply_patch(self, wt, f, signoff):
@@ -230,14 +232,14 @@ class cmd_git_apply(Command):
             message += "Signed-off-by: %s\n" % signed_off_by.encode('utf-8')
         wt.commit(authors=[c.author], message=message)
 
-    def run(self, patches_list=None, signoff=False):
+    def run(self, patches_list=None, signoff=False, force=False):
         from bzrlib.errors import UncommittedChanges
         from bzrlib.workingtree import WorkingTree
         if patches_list is None:
             patches_list = []
 
         tree, _ = WorkingTree.open_containing(".")
-        if tree.basis_tree().changes_from(tree).has_changed():
+        if tree.basis_tree().changes_from(tree).has_changed() and not force:
             raise UncommittedChanges(tree)
         tree.lock_write()
         try:
