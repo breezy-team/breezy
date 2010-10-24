@@ -58,6 +58,8 @@ Bug Fixes
 
 * Make ``bzr tag --quiet`` really quiet. (Neil Martinsen-Burrell, #239523)
 
+* Report error if non-ASCII command option given. (Rory Yorke, #140563)
+
 Documentation
 *************
 

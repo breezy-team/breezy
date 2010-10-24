@@ -549,3 +549,10 @@ class TestNonAscii(tests.TestCaseWithTransport):
         txt = self.run_bzr_decode(['ignored'], encoding='ascii')
         fname = fname.encode('ascii', 'replace')
         self.assertEqual(txt, '%-50s %s\n' % (fname, fname))
+
+    def test_nonascii_optparse(self):
+        """Error raised when non-ascii in option name"""
+        # this won't work if \xe4 (a-with-umlaut) can't be encoded
+        # with the current encoding
+        out = self.run_bzr_error(('Only ASCII permitted in option names',),
+                                 ['st',u'-\xe4'])
