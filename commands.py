@@ -204,9 +204,16 @@ class cmd_git_apply(Command):
     "bzr pull".
     """
 
+    takes_options = [Option('signoff', short_name='s', help='Add a Signed-off-by line.')]
     takes_args = ["patches*"]
 
-    def _apply_patch(self, wt, f):
+    def _apply_patch(self, wt, f, signoff):
+        """Apply a patch.
+
+        :param wt: A Bazaar working tree object.
+        :param f: Patch file to read.
+        :param signoff: Add Signed-Off-By flag.
+        """
         from bzrlib.errors import BzrCommandError
         from dulwich.patch import git_am_patch_split
         import subprocess
@@ -217,9 +224,13 @@ class cmd_git_apply(Command):
         exitcode = p.wait()
         if exitcode != 0:
             raise BzrCommandError("error running patch")
-        wt.commit(authors=[c.author], message=c.message)
+        message = c.message
+        if signoff:
+            signed_off_by = wt.branch.get_config().username()
+            message += "Signed-off-by: %s\n" % signed_off_by.encode('utf-8')
+        wt.commit(authors=[c.author], message=message)
 
-    def run(self, patches_list=None):
+    def run(self, patches_list=None, signoff=False):
         from bzrlib.errors import UncommittedChanges
         from bzrlib.workingtree import WorkingTree
         if patches_list is None:
@@ -233,7 +244,7 @@ class cmd_git_apply(Command):
             for patch in patches_list:
                 f = open(patch, 'r')
                 try:
-                    self._apply_patch(tree, f)
+                    self._apply_patch(tree, f, signoff=signoff)
                 finally:
                     f.close()
         finally:

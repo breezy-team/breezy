@@ -17,6 +17,8 @@
 
   * Add some basic documentation in 'bzr help git'. (Jelmer Vernooij, #605394)
 
+  * Add --signoff option to 'bzr git-apply'. (Jelmer Vernooij)
+
 0.5.2	2010-07-30
 
  COMPATIBILITY
