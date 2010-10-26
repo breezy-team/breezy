@@ -109,6 +109,8 @@ Testing
   get rid of some 'bytes left on the HTTP socket' useless log messages.
   (Vincent Ladeuil, #655557)
 
+* ``bzrlib.tests.per_workingtree.TestCaseWithWorkingTree.make_branch_builder``
+  respects its ``relpath`` parameter. (Vincent Ladeuil)
 
 bzr 2.3b2
 #########
