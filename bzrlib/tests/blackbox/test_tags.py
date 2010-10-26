@@ -33,14 +33,6 @@ from bzrlib.workingtree import WorkingTree
 
 class TestTagging(TestCaseWithTransport):
 
-    # as of 0.14, the default format doesn't do tags so we need to use a
-    # specific format
-
-    def make_branch_and_tree(self, relpath):
-        format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
-        return TestCaseWithTransport.make_branch_and_tree(self, relpath,
-            format=format)
-
     def test_tag_command_help(self):
         out, err = self.run_bzr('help tag')
         self.assertContainsRe(out, 'Create, remove or modify a tag')
