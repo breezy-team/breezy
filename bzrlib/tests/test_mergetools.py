@@ -48,7 +48,7 @@ class TestMergeTool(tests.TestCaseInTempDir):
             raise tests.TestSkipped('only required on win32')
         mt = mergetools.MergeTool('/path/to/tool.exe foo bar')
         self.assertEquals('tool', mt.get_name())
-        mt = mergetools.MergeTool('/path/to/TOOL.EXE foo bar')
+        mt = mergetools.MergeTool('/path/to/TOOL.CMD foo bar')
         self.assertEquals('TOOL', mt.get_name())
         
     def test_quoted_executable(self):

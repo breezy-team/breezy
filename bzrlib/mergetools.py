@@ -53,6 +53,9 @@ def subprocess_invoker(executable, args, cleanup):
     return retcode
 
 
+_WIN32_PATH_EXT = [ext.lower() for ext in os.getenv('PATHEXT', '').split(';')]
+
+
 class MergeTool(object):
     @classmethod
     def from_executable_and_args(cls, executable, args):
@@ -75,8 +78,10 @@ class MergeTool(object):
         
     def get_name(self):
         name = os.path.basename(self.get_executable())
-        if sys.platform == 'win32' and name.lower().endswith('.exe'):
-            name = name[:-4]
+        if sys.platform == 'win32':
+            root, ext = os.path.splitext(name)
+            if ext.lower() in _WIN32_PATH_EXT:
+                name = root
         return name
         
     def get_commandline(self):
