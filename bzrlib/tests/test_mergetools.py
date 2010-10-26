@@ -57,31 +57,50 @@ class TestMergeTool(tests.TestCaseInTempDir):
         mt = mergetools.MergeTool('"C:\\Program Files\\KDiff3\\kdiff3.exe" %b %t %o -o %r')
         self.assertEquals('kdiff3', mt.get_name())
 
-    def test_expand_commandline(self):
+    def test_filename_substitution(self):
+        def dummy_invoker(executable, args, cleanup):
+            self._commandline = [executable] + args
+            cleanup(0)
         mt = mergetools.MergeTool('kdiff3 %b %t %o -o %r')
-        commandline, _ = mt._expand_commandline('test.txt')
+        mt.invoke('test.txt', dummy_invoker)
         self.assertEquals(
-            'kdiff3 test.txt.BASE test.txt.THIS test.txt.OTHER -o test.txt',
-            commandline)
-        commandline, _ = mt._expand_commandline('file with space.txt')
+            ['kdiff3',
+             'test.txt.BASE',
+             'test.txt.THIS',
+             'test.txt.OTHER',
+             '-o',
+             'test.txt'],
+            self._commandline)
+        mt.invoke('file with space.txt', dummy_invoker)
         self.assertEquals(
-            'kdiff3 "file with space.txt.BASE" "file with space.txt.THIS" "file with space.txt.OTHER" -o "file with space.txt"',
-            commandline)
-        commandline, _ = mt._expand_commandline('file with "space and quotes".txt')
+            ['kdiff3',
+             "file with space.txt.BASE",
+             "file with space.txt.THIS",
+             "file with space.txt.OTHER",
+             '-o',
+             "file with space.txt"],
+            self._commandline)
+        mt.invoke('file with "space and quotes".txt', dummy_invoker)
         self.assertEquals(
-            'kdiff3 "file with \\"space and quotes\\".txt.BASE" "file with \\"space and quotes\\".txt.THIS" "file with \\"space and quotes\\".txt.OTHER" -o "file with \\"space and quotes\\".txt"',
-            commandline)
+            ['kdiff3',
+             "file with \"space and quotes\".txt.BASE",
+             "file with \"space and quotes\".txt.THIS",
+             "file with \"space and quotes\".txt.OTHER",
+             '-o',
+             "file with \"space and quotes\".txt"],
+            self._commandline)
         
     def test_expand_commandline_tempfile(self):
+        def dummy_invoker(executable, args, cleanup):
+            self.assertEquals('some_tool', executable)
+            self.failUnlessExists(args[0])
+            cleanup(0)
+            self._tmp_file = args[0]
         self.build_tree(('test.txt', 'test.txt.BASE', 'test.txt.THIS',
                          'test.txt.OTHER'))
         mt = mergetools.MergeTool('some_tool %T')
-        commandline, tmpfile = mt._expand_commandline('test.txt')
-        self.assertStartsWith(commandline, 'some_tool ')
-        m = re.match('some_tool (.*)', commandline)
-        self.assertEquals(tmpfile, m.group(1))
-        self.failUnlessExists(m.group(1))
-        os.remove(tmpfile)
+        mt.invoke('test.txt', dummy_invoker)
+        self.failIfExists(self._tmp_file)
         
     def test_is_available(self):
         mt = mergetools.MergeTool('%s' % sys.executable)

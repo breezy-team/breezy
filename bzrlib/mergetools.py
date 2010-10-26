@@ -119,9 +119,8 @@ class MergeTool(object):
     def invoke(self, filename, invoker=None):
         if invoker is None:
             invoker = subprocess_invoker
-        # TODO: find a cleaner way to expand into args
-        commandline, tmp_file = self._expand_commandline(filename)
-        args = cmdline.split(commandline)
+        args = cmdline.split(self._commandline)
+        args, tmp_file = self._subst_filename(args, filename)
         def cleanup(retcode):
             if tmp_file is not None:
                 if retcode == 0: # on success, replace file with temp file
@@ -129,24 +128,22 @@ class MergeTool(object):
                 else: # otherwise, delete temp file
                     os.remove(tmp_file)
         return invoker(args[0], args[1:], cleanup)
-                
-    def _expand_commandline(self, filename):
-        commandline = self._commandline
+    
+    def _subst_filename(self, args, filename):
         tmp_file = None
-        commandline = commandline.replace('%b', _optional_quote_arg(filename +
-                                                                    '.BASE'))
-        commandline = commandline.replace('%t', _optional_quote_arg(filename +
-                                                                    '.THIS'))
-        commandline = commandline.replace('%o', _optional_quote_arg(filename +
-                                                                    '.OTHER'))
-        commandline = commandline.replace('%r', _optional_quote_arg(filename))
-        if '%T' in commandline:
-            tmp_file = tempfile.mktemp("_bzr_mergetools_%s.THIS" %
-                                       os.path.basename(filename))
-            shutil.copy(filename + ".THIS", tmp_file)
-            commandline = commandline.replace('%T',
-                                              _optional_quote_arg(tmp_file))
-        return commandline, tmp_file
+        subst_args = []
+        for arg in args:
+            arg = arg.replace('%b', filename + '.BASE')
+            arg = arg.replace('%t', filename + '.THIS')
+            arg = arg.replace('%o', filename +'.OTHER')
+            arg = arg.replace('%r', filename)
+            if '%T' in arg:
+                tmp_file = tempfile.mktemp("_bzr_mergetools_%s.THIS" %
+                                           os.path.basename(filename))
+                shutil.copy(filename + ".THIS", tmp_file)
+                arg = arg.replace('%T', tmp_file)
+            subst_args.append(arg)
+        return subst_args, tmp_file
 
 
 _KNOWN_MERGE_TOOLS = (
