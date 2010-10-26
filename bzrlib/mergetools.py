@@ -48,7 +48,7 @@ substitution_help = {
 
 
 def subprocess_invoker(executable, args, cleanup):
-    retcode = subprocess.call([executable] + args, shell=True)
+    retcode = subprocess.call([executable] + args)
     cleanup(retcode)
     return retcode
 
