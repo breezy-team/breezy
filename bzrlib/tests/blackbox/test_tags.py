@@ -24,7 +24,10 @@ from bzrlib.branch import (
     Branch,
     )
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    script,
+    TestCaseWithTransport,
+    )
 from bzrlib.repository import (
     Repository,
     )
@@ -114,6 +117,27 @@ class TestTagging(TestCaseWithTransport):
         self.run_bzr('push -d branch1 branch3')
         b3 = Branch.open('branch3')
         self.assertEquals(b3.tags.lookup_tag('tag1'), 'first-revid')
+
+    def test_commit_in_heavyweight_checkout_copies_tags_to_master(self):
+        script.run_script(self, """
+            $ bzr init master
+            $ cd master
+            $ bzr commit -m "Initial commit." --unchanged
+            $ cd ..
+            $ bzr checkout master child
+            $ bzr branch master fork
+            $ cd fork
+            $ bzr commit -m "Commit in fork." --unchanged
+            $ bzr tag new-tag
+            $ cd ../child
+            $ bzr merge ../fork
+            $ bzr ci -m "Merge fork."
+            $ bzr tags  # merge copies tags to child
+            new-tag              1.1.1
+            $ cd ..
+            $ bzr tags -d master  # commit copies tags to master
+            new-tag              1.1.1
+            """)
 
     def test_list_tags(self):
         tree1 = self.make_branch_and_tree('branch1')
