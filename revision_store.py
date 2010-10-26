@@ -64,8 +64,13 @@ class _TreeShim(object):
         return self._basis_inv.root.file_id
 
     def get_file_with_stat(self, file_id, path=None):
+        content = self.get_file_text(file_id, path)
+        sio = cStringIO.StringIO(content)
+        return sio, None
+
+    def get_file_text(self, file_id, path=None):
         try:
-            content = self._content_provider(file_id)
+            return self._content_provider(file_id)
         except KeyError:
             # The content wasn't shown as 'new'. Just validate this fact
             assert file_id not in self._new_info_by_id
@@ -73,9 +78,7 @@ class _TreeShim(object):
             old_text_key = (file_id, old_ie.revision)
             stream = self._repo.texts.get_record_stream([old_text_key],
                                                         'unordered', True)
-            content = stream.next().get_bytes_as('fulltext')
-        sio = cStringIO.StringIO(content)
-        return sio, None
+            return stream.next().get_bytes_as('fulltext')
 
     def get_symlink_target(self, file_id):
         if file_id in self._new_info_by_id:
