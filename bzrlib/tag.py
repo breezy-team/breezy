@@ -203,15 +203,40 @@ class BasicTags(_Tags):
             # no tags in the source, and we don't want to clobber anything
             # that's in the destination
             return
+        # We merge_to both master and child individually.
+        # it's possible for master and child to have differing sets of
+        # tags, in which case it's possible to have different sets of
+        # conflicts.  We report the union of both conflict sets.  In
+        # that case it's likely the child and master have accepted
+        # different tags from the source, but they were already different
+        # to start with, so that's ok.
+        # Ideally we'd improve this API to report the different conflicts
+        # more clearly to the caller, but we don't want to break plugins
+        # such as bzr-builddeb that use this API.
         to_tags.branch.lock_write()
         try:
-            dest_dict = to_tags.get_tag_dict()
-            result, conflicts = self._reconcile_tags(source_dict, dest_dict,
-                                                     overwrite)
-            if result != dest_dict:
-                to_tags._set_tag_dict(result)
+            master = to_tags.branch.get_master_branch()
+            try:
+                if master is not None:
+                    master.lock_write()
+                conflicts = self._merge_to(to_tags, source_dict, overwrite)
+                if master is not None:
+                    #conflicts += self.merge_to(master.tags, overwrite)
+                    conflicts += self._merge_to(master.tags, source_dict,
+                        overwrite)
+            finally:
+                if master is not None:
+                    master.unlock()
         finally:
             to_tags.branch.unlock()
+        return conflicts
+
+    def _merge_to(self, to_tags, source_dict, overwrite):
+        dest_dict = to_tags.get_tag_dict()
+        result, conflicts = self._reconcile_tags(source_dict, dest_dict,
+                                                 overwrite)
+        if result != dest_dict:
+            to_tags._set_tag_dict(result)
         return conflicts
 
     def rename_revisions(self, rename_map):
