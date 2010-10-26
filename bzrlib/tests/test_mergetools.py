@@ -23,6 +23,7 @@ from bzrlib import (
     mergetools,
     tests
 )
+from bzrlib.tests.features import backslashdir_feature
 
 
 class TestMergeTool(tests.TestCaseInTempDir):
@@ -52,6 +53,7 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals('TOOL', mt.get_name())
         
     def test_quoted_executable(self):
+        self.requireFeature(backslashdir_feature)
         mt = mergetools.MergeTool('"C:\\Program Files\\KDiff3\\kdiff3.exe" %b %t %o -o %r')
         self.assertEquals('kdiff3', mt.get_name())
 
