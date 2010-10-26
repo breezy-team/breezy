@@ -46,6 +46,10 @@ Bug Fixes
 
 * Always set PATH in start_bzr.bat on Windows. (Matthäus G. Chajdas, #470264)
 
+* Correctly add directory contents when the name was previously added as a
+  normal file, rather than throwing ``AttributeError: children`` during
+  smart_add. (Martin [gz], #251864)
+
 * Don't force openssh to use protocol=2, since that is now the default.
   (Neil Martinsen-Burrell, #561061)
 

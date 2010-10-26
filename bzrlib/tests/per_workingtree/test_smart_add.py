@@ -204,7 +204,10 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
             [path for path, ie in tree.iter_entries_by_dir()])
 
     def test_add_dir_bug_251864(self):
-        """Added file turning into a dir should be detected on add dir"""
+        """Added file turning into a dir should be detected on add dir
+
+        Similar to bug 205636 but with automatic adding of directory contents.
+        """
         tree = self.make_branch_and_tree(".")
         self.build_tree(["dir"]) # whoops, make a file called dir
         tree.smart_add(["dir"])
