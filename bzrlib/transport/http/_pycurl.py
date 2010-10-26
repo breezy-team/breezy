@@ -268,7 +268,9 @@ class PyCurlTransport(HttpTransportBase):
         # We override the Expect: header so that pycurl will send the POST
         # body immediately.
         try:
-            self._curl_perform(curl, header, ['Expect: '])
+            self._curl_perform(curl, header,
+                               ['Expect: ',
+                                'Content-Type: application/octet-stream'])
         except pycurl.error, e:
             if e[0] == CURLE_SEND_ERROR:
                 # When talking to an HTTP/1.0 server, getting a 400+ error code
