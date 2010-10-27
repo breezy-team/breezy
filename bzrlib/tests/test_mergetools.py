@@ -157,6 +157,16 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals(1, len(tools))
         self.assertEquals('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
 
+    def test_detect(self):
+        # only way to reliably test detection is to add a known existing
+        # executable to the list used for detection
+        old_kmt = mergetools._KNOWN_MERGE_TOOLS
+        mergetools._KNOWN_MERGE_TOOLS = ['sh', 'cmd']
+        tools = mergetools.detect_merge_tools()
+        tools_commandlines = [mt.get_commandline() for mt in tools]
+        self.assertTrue('sh' in tools_commandlines or
+                        'cmd' in tools_commandlines)
+        mergetools._KNOWN_MERGE_TOOLS = old_kmt
 
 class FakeConfig(object):
     """
