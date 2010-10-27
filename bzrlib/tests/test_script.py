@@ -161,6 +161,15 @@ class TestRedirections(tests.TestCase):
 class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_unknown_command(self):
+        """A clear error is reported for commands that aren't recognised
+
+        Testing the attributes of the SyntaxError instance is equivalent to
+        using traceback.format_exception_only and comparing with:
+          File "<string>", line 1
+            foo --frob
+            ^
+        SyntaxError: Command not found "foo"
+        """
         e = self.assertRaises(SyntaxError, self.run_script, "$ foo --frob")
         self.assertContainsRe(e.msg, "not found.*foo")
         self.assertEquals(e.text, "foo --frob")
