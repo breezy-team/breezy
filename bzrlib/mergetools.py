@@ -220,22 +220,6 @@ def set_default_merge_tool(name, conf=None):
     conf.set_user_option('default_mergetool', name)
 
 
-def _optional_quote_arg(arg):
-    if ' ' in arg and not _is_arg_quoted(arg):
-        return '"%s"' % _escape_quotes(arg)
-    else:
-        return arg
-
-
-def _is_arg_quoted(arg):
-    return (arg[0] == "'" and arg[-1] == "'") or \
-           (arg[0] == '"' and arg[-1] == '"')
-
-
-def _escape_quotes(arg):
-    return arg.replace('"', '\\"')
-
-
 # courtesy of 'techtonik' at http://snippets.dzone.com/posts/show/6313
 def _find_executable(executable, path=None):
     """Try to find 'executable' in the directories listed in 'path' (a
