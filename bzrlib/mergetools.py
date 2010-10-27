@@ -57,24 +57,19 @@ _WIN32_PATH_EXT = [ext.lower() for ext in os.getenv('PATHEXT', '').split(';')]
 
 
 class MergeTool(object):
-    @classmethod
-    def from_executable_and_args(cls, executable, args):
-        executable = _optional_quote_arg(executable)
-        if not isinstance(args, str) and not isinstance(args, unicode):
-            args = ' '.join([_optional_quote_arg(arg) for arg in args])
-        return MergeTool(executable + ' ' + args)
-    
     def __init__(self, commandline):
-        """commandline: Command line of merge tool, including executable and
-                        args with filename substitution markers.
+        """Initializes the merge tool using a string or sequence of strings.
         """
-        self._commandline = commandline
+        if isinstance(commandline, str) or isinstance(commandline, unicode):
+            self._commandline = cmdline.split(commandline)
+        else:
+            self._commandline = list(commandline)
         
     def __repr__(self):
         return '<MergeTool %r>' % self._commandline
         
     def __str__(self):
-        return self._commandline
+        return self.get_commandline()
         
     def get_name(self):
         name = os.path.basename(self.get_executable())
@@ -85,32 +80,35 @@ class MergeTool(object):
         return name
         
     def get_commandline(self):
+        return ' '.join(self._commandline)
+        
+    def get_commandline_as_list(self):
         return self._commandline
     
     def get_executable(self):
-        parts = cmdline.split(self._commandline)
-        if len(parts) < 1:
+        if len(self._commandline) < 1:
             return ''
-        return parts[0]
+        return self._commandline[0]
     
     def get_arguments(self):
-        parts = cmdline.split(self._commandline)
-        if len(parts) < 2:
+        if len(self._commandline) < 2:
             return ''
-        return ' '.join(parts[1:])
+        return ' '.join(self._commandline[1:])
         
     def set_executable(self, executable):
-        split_cmdline = cmdline.split(self._commandline)
-        split_cmdline[0] = _optional_quote_arg(executable)
-        self._commandline = ' '.join(split_cmdline)
+        self._commandline[:1] = [executable]
     
     def set_arguments(self, args):
-        if not isinstance(args, str) and not isinstance(args, unicode):
-            args = ' '.join([_optional_quote_arg(arg) for arg in args])
-        self._commandline = self.get_executable() + ' ' + args
+        if isinstance(args, str) or isinstance(args, unicode):
+            self._commandline = [self.get_executable()] + cmdline.split(args)
+        else:
+            self._commandline = [self.get_executable()] + args
     
     def set_commandline(self, commandline):
-        self._commandline = commandline
+        if isinstance(commandline, str) or isinstance(commandline, unicode):
+            self._commandline = cmdline.split(commandline)
+        else:
+            self._commandline = list(commandline)
 
     def is_available(self):
         executable = self.get_executable()
@@ -119,8 +117,7 @@ class MergeTool(object):
     def invoke(self, filename, invoker=None):
         if invoker is None:
             invoker = subprocess_invoker
-        args = cmdline.split(self._commandline)
-        args, tmp_file = self._subst_filename(args, filename)
+        args, tmp_file = self._subst_filename(self._commandline, filename)
         def cleanup(retcode):
             if tmp_file is not None:
                 if retcode == 0: # on success, replace file with temp file
@@ -345,7 +342,7 @@ class cmd_mergetools(Command):
         if args is None or len(args) == 0:
             raise errors.BzrCommandError(
                 'You must supply the command-line for the external merge tool')
-        new_mt = MergeTool.from_executable_and_args(args[0], args[1:])
+        new_mt = MergeTool(args)
         if find_merge_tool(new_mt.get_name()) is not None:
             raise errors.BzrCommandError(
                 'External merge tool already exists: %s' % new_mt.get_name())

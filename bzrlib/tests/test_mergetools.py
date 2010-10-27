@@ -30,19 +30,27 @@ class TestMergeTool(tests.TestCaseInTempDir):
     def test_basics(self):
         mt = mergetools.MergeTool('/path/to/tool --opt %b -x %t %o --stuff %r')
         self.assertEquals('/path/to/tool --opt %b -x %t %o --stuff %r', mt.get_commandline())
+        self.assertEquals(['/path/to/tool', '--opt', '%b', '-x', '%t', '%o',
+                           '--stuff', '%r'], mt.get_commandline_as_list())
         self.assertEquals('/path/to/tool', mt.get_executable())
         self.assertEquals('--opt %b -x %t %o --stuff %r', mt.get_arguments())
         self.assertEquals('tool', mt.get_name())
         mt.set_commandline('/new/path/to/bettertool %b %t %o %r')
         self.assertEquals('/new/path/to/bettertool %b %t %o %r', mt.get_commandline())
+        self.assertEquals(['/new/path/to/bettertool', '%b', '%t', '%o', '%r'],
+            mt.get_commandline_as_list())
         self.assertEquals('/new/path/to/bettertool', mt.get_executable())
         self.assertEquals('%b %t %o %r', mt.get_arguments())
         mt.set_executable('othertool')
         self.assertEquals('othertool', mt.get_executable())
         self.assertEquals('othertool %b %t %o %r', mt.get_commandline())
+        self.assertEquals(['othertool', '%b', '%t', '%o', '%r'],
+            mt.get_commandline_as_list())
         mt.set_arguments('%r %b %t %o')
         self.assertEquals('%r %b %t %o', mt.get_arguments())
         self.assertEquals('othertool %r %b %t %o', mt.get_commandline())
+        self.assertEquals(['othertool', '%r', '%b', '%t', '%o'],
+            mt.get_commandline_as_list())
         
     def test_name_win32(self):
         if sys.platform != 'win32':
