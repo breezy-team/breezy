@@ -1736,6 +1736,37 @@ class DistributionBranchTests(BuilddebTestCase):
             upstream_revision=upstream_rev2)
         self.assertEqual("a-id", tree.path2id("b"))
 
+    def test_merge_upstream_rename_in_packaging_branch(self):
+        """Test renaming a file in the packaging branch."""
+        self.requireFeature(PristineTarFeature)
+        version1 = Version("1.0-1")
+        version2 = Version("1.1-1")
+        packaging_tree = self.make_branch_and_tree("packaging")
+        packaging_tree.lock_write()
+        self.addCleanup(packaging_tree.unlock)
+        self.build_tree(['packaging/a'])
+        packaging_tree.add(['a'], ['a-id'])
+        upstream_rev1 = packaging_tree.commit("one")
+        db = DistributionBranch(packaging_tree.branch, None,
+            tree=packaging_tree)
+        dbs = DistributionBranchSet()
+        dbs.add_branch(db)
+        packaging_tree.rename_one('a', 'b')
+        self.build_tree(['packaging/a'])
+        packaging_tree.add(['a'], ['other-a-id'])
+        packaging_tree.commit("add packaging")
+        packaging_tree.branch.tags.set_tag("upstream-%s" % version1.upstream_version,
+                upstream_rev1)
+        builder = SourcePackageBuilder("package", version2)
+        builder.add_default_control()
+        builder.add_upstream_file("a", "New a")
+        builder.add_upstream_file("b", "Renamed a")
+        builder.build()
+        db.merge_upstream(builder.tar_name(), version2.upstream_version,
+            version1.upstream_version)
+        self.assertEqual("a-id", packaging_tree.path2id("b"))
+        self.assertEqual("other-a-id", packaging_tree.path2id("a"))
+
     def test_import_symlink(self):
         version = Version("1.0-1")
         self.requireFeature(PristineTarFeature)

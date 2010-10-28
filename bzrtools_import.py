@@ -252,13 +252,17 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None):
         renames = {}
 
         # First we find the renames
+        other_trees = file_ids_from[:]
         if target_tree is not None:
+            other_trees.insert(0, target_tree)
+        for other_tree in other_trees:
             for relative_path, member in to_process:
                 trans_id = tt.trans_id_tree_path(relative_path)
                 existing_file_id = tt.tree_file_id(trans_id)
-                target_id = target_tree.path2id(relative_path)
+                target_id = other_tree.path2id(relative_path)
                 if (target_id is not None
-                    and target_id != existing_file_id):
+                    and target_id != existing_file_id
+                    and target_id not in renames):
                     renames[target_id] = relative_path
 
         # The we do the work
@@ -348,6 +352,8 @@ def _import_archive(tree, archive_file, file_ids_from, target_tree=None):
                     finally:
                         other_tree.unlock()
                 if not found:
+                    # Should this really use the trans_id as the
+                    # file_id?
                     tt.version_file(trans_id, trans_id)
             added.add(relative_path)
 
