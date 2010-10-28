@@ -57,28 +57,43 @@ _WIN32_PATH_EXT = [unicode(ext.lower())
                    for ext in os.getenv('PATHEXT', '').split(';')]
 
 
+def tool_name_from_executable(executable):
+    name = os.path.basename(executable)
+    if sys.platform == 'win32':
+        root, ext = os.path.splitext(name)
+        if ext.lower() in _WIN32_PATH_EXT:
+            name = root
+    return name
+
+
 class MergeTool(object):
-    def __init__(self, commandline):
-        """Initializes the merge tool using a string or sequence of strings.
+    def __init__(self, name, commandline):
+        """Initializes the merge tool with a name and a command-line (a string
+        or sequence of strings).
         """
         if isinstance(commandline, str) or isinstance(commandline, unicode):
             self._commandline = cmdline.split(commandline)
-        else:
+        elif isinstance(commandline, tuple) or isinstance(commandline, list):
             self._commandline = list(commandline)
+        else:
+            raise TypeError('%r is not valid for commandline; must be string '
+                            'or sequence of strings' % commandline)
+        if name is None:
+            self._name = tool_name_from_executable(self.get_executable())
+        else:
+            self._name = name
         
     def __repr__(self):
-        return '<MergeTool %r>' % self._commandline
+        return '<MergeTool %s: %r>' % (self._name, self._commandline)
         
     def __str__(self):
         return self.get_commandline()
         
     def get_name(self):
-        name = os.path.basename(self.get_executable())
-        if sys.platform == 'win32':
-            root, ext = os.path.splitext(name)
-            if ext.lower() in _WIN32_PATH_EXT:
-                name = root
-        return name
+        return self._name
+    
+    def set_name(self, name):
+        self._name = name
         
     def get_commandline(self):
         return u' '.join(self._commandline)
@@ -155,7 +170,7 @@ _KNOWN_MERGE_TOOLS = (
 
 
 def detect_merge_tools():
-    tools = [MergeTool(commandline) for commandline in _KNOWN_MERGE_TOOLS]
+    tools = [MergeTool(None, commandline) for commandline in _KNOWN_MERGE_TOOLS]
     return [tool for tool in tools if tool.is_available()]
 
 
@@ -163,19 +178,25 @@ def get_merge_tools(conf=None):
     """Returns list of MergeTool objects."""
     if conf is None:
         conf = config.GlobalConfig()
-    commandlines = conf.get_user_option_as_list('mergetools')
-    if commandlines is None:
+    names = conf.get_user_option_as_list('mergetools')
+    if names is None:
         return []
-    return [MergeTool(commandline) for commandline in commandlines]
+    return [MergeTool(name, conf.get_user_option_as_list('mergetools.%s' % name) or name)
+            for name in names]
 
 
 def set_merge_tools(merge_tools, conf=None):
     if conf is None:
         conf = config.GlobalConfig()
-    conf_value = sorted(set(merge_tool.get_commandline()
-                           for merge_tool in merge_tools
-                           if len(merge_tool.get_commandline()) > 0))
-    conf.set_user_option("mergetools", conf_value)
+    tools = {}
+    for tool in merge_tools:
+        if not tool.get_name() in tools and len(tool.get_commandline_as_list()) > 0:
+            tools[tool.get_name()] = tool
+    names = sorted(tools.keys())
+    conf.set_user_option("mergetools", names)
+    for name in names:
+        tool = tools[name]
+        conf.set_user_option("mergetools.%s" % name, tool.get_commandline_as_list())
 
 
 def find_merge_tool(name, conf=None):
@@ -293,8 +314,8 @@ class cmd_mergetools(Command):
     """
     takes_args = ['args*']
     takes_options = [
-        Option('add', help='Adds an external merge tool using ARGS as the '
-               'command-line.', short_name='a'),
+        Option('add', help='Adds an external merge tool called ARG using ARGS '
+               'as the command-line.', type=unicode, short_name='a'),
         Option('detect', help='Automatically detect known external merge tools '
                'on the PATH'),
         Option('list', help='Lists the currently defined external merge tools.',
@@ -305,15 +326,15 @@ class cmd_mergetools(Command):
                'using ARGS as the command-line.', type=unicode, short_name='u'),
     ]
 
-    def run(self, args_list=None, add=False, detect=False, list=False,
+    def run(self, args_list=None, add=None, detect=False, list=False,
             remove=None, update=None):
-        if (not add and not detect and not list and remove is None and
+        if (add is None and not detect and not list and remove is None and
             update is None):
             raise errors.BzrCommandError(
                 u'You must supply one of --add, --detect, --list, --remove or '
                 u'--update')
         if add:
-            self.add_tool(args_list)
+            self.add_tool(add, args_list)
         elif detect:
             self.detect_tools()
         elif list:
@@ -323,11 +344,11 @@ class cmd_mergetools(Command):
         elif update is not None:
             self.update_tool(update, args_list)
     
-    def add_tool(self, args):
+    def add_tool(self, name, args):
         if args is None or len(args) == 0:
             raise errors.BzrCommandError(
                 u'You must supply the command-line for the external merge tool')
-        new_mt = MergeTool(args)
+        new_mt = MergeTool(name, args)
         if find_merge_tool(new_mt.get_name()) is not None:
             raise errors.BzrCommandError(
                 u'External merge tool already exists: %s' % new_mt.get_name())

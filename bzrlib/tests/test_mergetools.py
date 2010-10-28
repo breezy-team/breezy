@@ -29,19 +29,21 @@ from bzrlib.tests.features import backslashdir_feature
 
 class TestMergeTool(tests.TestCaseInTempDir):
     def test_basics(self):
-        mt = mergetools.MergeTool('/path/to/tool --opt %b -x %t %o --stuff %r')
+        mt = mergetools.MergeTool('tool', '/path/to/tool --opt %b -x %t %o --stuff %r')
         self.assertEquals('/path/to/tool --opt %b -x %t %o --stuff %r', mt.get_commandline())
         self.assertEquals(['/path/to/tool', '--opt', '%b', '-x', '%t', '%o',
                            '--stuff', '%r'], mt.get_commandline_as_list())
         self.assertEquals('/path/to/tool', mt.get_executable())
         self.assertEquals('--opt %b -x %t %o --stuff %r', mt.get_arguments())
         self.assertEquals('tool', mt.get_name())
+        mt.set_name('bettertool')
         mt.set_commandline('/new/path/to/bettertool %b %t %o %r')
         self.assertEquals('/new/path/to/bettertool %b %t %o %r', mt.get_commandline())
         self.assertEquals(['/new/path/to/bettertool', '%b', '%t', '%o', '%r'],
             mt.get_commandline_as_list())
         self.assertEquals('/new/path/to/bettertool', mt.get_executable())
         self.assertEquals('%b %t %o %r', mt.get_arguments())
+        self.assertEquals('bettertool', mt.get_name())
         mt.set_executable('othertool')
         self.assertEquals('othertool', mt.get_executable())
         self.assertEquals('othertool %b %t %o %r', mt.get_commandline())
@@ -52,15 +54,18 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals('othertool %r %b %t %o', mt.get_commandline())
         self.assertEquals(['othertool', '%r', '%b', '%t', '%o'],
             mt.get_commandline_as_list())
+        mt = mergetools.MergeTool(None, '/path/to/tool blah stuff etc')
+        self.assertEquals('tool', mt.get_name())
         
     def test_unicode(self):
-        mt = mergetools.MergeTool(u'/path/to/Инструмент --opt %b -x %t %o --stuff %r')
+        mt = mergetools.MergeTool(u'Инструмент', u'/path/to/Инструмент --opt %b -x %t %o --stuff %r')
         self.assertEquals(u'/path/to/Инструмент --opt %b -x %t %o --stuff %r', mt.get_commandline())
         self.assertEquals([u'/path/to/Инструмент', u'--opt', u'%b', u'-x', u'%t', u'%o',
                            u'--stuff', u'%r'], mt.get_commandline_as_list())
         self.assertEquals(u'/path/to/Инструмент', mt.get_executable())
         self.assertEquals(u'--opt %b -x %t %o --stuff %r', mt.get_arguments())
         self.assertEquals(u'Инструмент', mt.get_name())
+        mt.set_name(u'лучший_инструмент')
         mt.set_commandline(u'/new/path/to/лучший_инструмент %b %t %o %r')
         self.assertEquals(u'/new/path/to/лучший_инструмент %b %t %o %r', mt.get_commandline())
         self.assertEquals([u'/new/path/to/лучший_инструмент', u'%b', u'%t', u'%o', u'%r'],
@@ -78,25 +83,19 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals(u'Другой_инструмент %r %b %t %o', mt.get_commandline())
         self.assertEquals([u'Другой_инструмент', u'%r', u'%b', u'%t', u'%o'],
             mt.get_commandline_as_list())
-        
-    def test_name_win32(self):
-        if sys.platform != 'win32':
-            raise tests.TestSkipped('only required on win32')
-        mt = mergetools.MergeTool('/path/to/tool.exe foo bar')
-        self.assertEquals('tool', mt.get_name())
-        mt = mergetools.MergeTool('/path/to/TOOL.CMD foo bar')
-        self.assertEquals('TOOL', mt.get_name())
+        mt = mergetools.MergeTool(None, u'/path/to/Инструмент blah stuff etc')
+        self.assertEquals(u'Инструмент', mt.get_name())
         
     def test_quoted_executable(self):
         self.requireFeature(backslashdir_feature)
-        mt = mergetools.MergeTool('"C:\\Program Files\\KDiff3\\kdiff3.exe" %b %t %o -o %r')
+        mt = mergetools.MergeTool('kdiff3', '"C:\\Program Files\\KDiff3\\kdiff3.exe" %b %t %o -o %r')
         self.assertEquals('kdiff3', mt.get_name())
 
     def test_filename_substitution(self):
         def dummy_invoker(executable, args, cleanup):
             self._commandline = [executable] + args
             cleanup(0)
-        mt = mergetools.MergeTool('kdiff3 %b %t %o -o %r')
+        mt = mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r')
         mt.invoke('test.txt', dummy_invoker)
         self.assertEquals(
             ['kdiff3',
@@ -133,12 +132,12 @@ class TestMergeTool(tests.TestCaseInTempDir):
             self._tmp_file = args[0]
         self.build_tree(('test.txt', 'test.txt.BASE', 'test.txt.THIS',
                          'test.txt.OTHER'))
-        mt = mergetools.MergeTool('some_tool %T')
+        mt = mergetools.MergeTool('some_tool', 'some_tool %T')
         mt.invoke('test.txt', dummy_invoker)
         self.failIfExists(self._tmp_file)
         
     def test_is_available(self):
-        mt = mergetools.MergeTool('%s' % sys.executable)
+        mt = mergetools.MergeTool(sys.executable, sys.executable)
         self.assertTrue(mt.is_available())
         mt.set_executable(os.path.basename(sys.executable))
         self.assertTrue(mt.is_available())
@@ -146,42 +145,48 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertFalse(mt.is_available())
         
     def test_empty_commandline(self):
-        mt = mergetools.MergeTool('')
+        mt = mergetools.MergeTool('', '')
         self.assertEquals('', mt.get_executable())
         self.assertEquals('', mt.get_arguments())
         
     def test_no_arguments(self):
-        mt = mergetools.MergeTool('tool')
+        mt = mergetools.MergeTool('tool', 'tool')
         self.assertEquals('tool', mt.get_executable())
         self.assertEquals('', mt.get_arguments())
         
     def test_get_merge_tools(self):
         config = FakeConfig()
-        config.set_mergetools(['kdiff3 %b %t %o -o %r', 'winmergeu %r', ''])
+        config.set_user_option('mergetools', 'kdiff3,winmergeu')
+        config.set_user_option('mergetools.kdiff3', 'kdiff3,%b,%t,%o,-o,%r')
+        config.set_user_option('mergetools.winmergeu', 'winmergeu,%r')
         tools = mergetools.get_merge_tools(config)
-        self.assertEquals(3, len(tools))
+        self.assertEquals(2, len(tools))
+        self.assertEquals('kdiff3', tools[0].get_name())
         self.assertEquals('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
+        self.assertEquals('winmergeu', tools[1].get_name())
         self.assertEquals('winmergeu %r', tools[1].get_commandline())
-        self.assertEquals('', tools[2].get_commandline())
         
     def test_set_merge_tools_duplicates(self):
         config = FakeConfig()
         mergetools.set_merge_tools(
-            [mergetools.MergeTool('kdiff3 %b %t %o -o %r'),
-             mergetools.MergeTool('kdiff3 %b %t %o -o %r')],
+            [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
+             mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r')],
             config)
         tools = mergetools.get_merge_tools(config)
         self.assertEquals(1, len(tools))
+        self.assertEquals('kdiff3', tools[0].get_name())
         self.assertEquals('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
         
     def test_set_merge_tools_empty_tool(self):
         config = FakeConfig()
         mergetools.set_merge_tools(
-            [mergetools.MergeTool('kdiff3 %b %t %o -o %r'),
-             mergetools.MergeTool('')],
+            [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
+             mergetools.MergeTool('',''),
+             mergetools.MergeTool('blah','')],
             config)
         tools = mergetools.get_merge_tools(config)
         self.assertEquals(1, len(tools))
+        self.assertEquals('kdiff3', tools[0].get_name())
         self.assertEquals('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
 
     def test_detect(self):
@@ -200,17 +205,17 @@ class FakeConfig(object):
     """
     Just enough of the Config interface to fool the mergetools module.
     """
-    def set_mergetools(self, value):
-        self.mergetools = value
-    
+    def __init__(self):
+        self.options = {}
+        
+    def get_user_option(self, option):
+        return self.options[option]
+        
     def get_user_option_as_list(self, option):
-        if option == 'mergetools':
-            return self.mergetools
-        else:
-            raise AssertionError('unknown option "%s"' % option)
+        return self.options[option].split(',')
     
     def set_user_option(self, option, value):
-        if option == 'mergetools':
-            self.mergetools = value
+        if isinstance(value, tuple) or isinstance(value, list):
+            self.options[option] = ','.join(value)
         else:
-            raise AssertionError('unknown option "%s"' % option)
+            self.options[option] = value

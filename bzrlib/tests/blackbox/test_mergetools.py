@@ -21,24 +21,24 @@ from bzrlib import (
 
 class TestMergeTools(tests.TestCaseInTempDir):
     def test_add(self):
-        self.run_bzr('mergetools --add meld %b %T %o')
+        self.run_bzr('mergetools --add=meld meld %b %T %o')
         tools = mergetools.get_merge_tools()
         self.assertEquals(['meld %b %T %o'],
             [mt.get_commandline() for mt in tools])
         
     def test_update(self):
-        self.run_bzr('mergetools --add meld %b %T %o')
+        self.run_bzr('mergetools --add=meld meld %b %T %o')
         self.run_bzr('mergetools --update=meld meld %b stuff %T %o')
         tools = mergetools.get_merge_tools()
         self.assertEquals(['meld %b stuff %T %o'],
             [mt.get_commandline() for mt in tools])
         
     def test_list(self):
-        self.run_bzr('mergetools --add meld %b %T %o')
+        self.run_bzr('mergetools --add=meld meld %b %T %o')
         out, err = self.run_bzr('mergetools --list')
         self.assertContainsRe(out, 'meld %b %T %o')
         
     def test_remove(self):
-        self.run_bzr('mergetools --add meld %b %T %o')
+        self.run_bzr('mergetools --add=meld meld %b %T %o')
         self.run_bzr('mergetools --remove meld')
         self.assertLength(0, mergetools.get_merge_tools())
