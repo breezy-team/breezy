@@ -19,6 +19,10 @@ New Features
 Bug Fixes
 *********
 
+* Commit in a bound branch or heavyweight checkout now propagates new tags
+  (e.g. from a merge) to the master branch (and informs the user if there
+  is a conflict).  (Andrew Bennetts, #603395)
+  
 * ``NotBranchError`` no longer allows errors from calling
   ``bzrdir.open_repository()`` to propagate.  This is unhelpful at best,
   and at worst can trigger infinite loops in callers.  (Andrew Bennetts)

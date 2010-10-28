@@ -139,6 +139,33 @@ class TestTagging(TestCaseWithTransport):
             new-tag              1.1.1
             """)
 
+    def test_commit_in_heavyweight_checkout_reports_tag_conflict(self):
+        script.run_script(self, """
+            $ bzr init master
+            $ cd master
+            $ bzr commit -m "Initial commit." --unchanged
+            $ cd ..
+            $ bzr checkout master child
+            $ bzr branch master fork
+            $ cd fork
+            $ bzr commit -m "Commit in fork." --unchanged
+            $ bzr tag new-tag
+            $ cd ../master
+            $ bzr tag new-tag
+            $ cd ../child
+            $ bzr merge ../fork
+            $ bzr ci -m "Merge fork."
+            2>Committing to: .../master/
+            2>Conflicting tags in bound branch:
+            2>    new-tag
+            2>Committed revision 2.
+            $ bzr tags  # merge copies tags to child
+            new-tag              1.1.1
+            $ cd ..
+            $ bzr tags -d master  # master's conflicting tag is unchanged
+            new-tag              1
+            """)
+
     def test_list_tags(self):
         tree1 = self.make_branch_and_tree('branch1')
         tree1.commit(allow_pointless=True, message='revision 1',
