@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -50,6 +51,32 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals('%r %b %t %o', mt.get_arguments())
         self.assertEquals('othertool %r %b %t %o', mt.get_commandline())
         self.assertEquals(['othertool', '%r', '%b', '%t', '%o'],
+            mt.get_commandline_as_list())
+        
+    def test_unicode(self):
+        mt = mergetools.MergeTool(u'/path/to/Инструмент --opt %b -x %t %o --stuff %r')
+        self.assertEquals(u'/path/to/Инструмент --opt %b -x %t %o --stuff %r', mt.get_commandline())
+        self.assertEquals([u'/path/to/Инструмент', u'--opt', u'%b', u'-x', u'%t', u'%o',
+                           u'--stuff', u'%r'], mt.get_commandline_as_list())
+        self.assertEquals(u'/path/to/Инструмент', mt.get_executable())
+        self.assertEquals(u'--opt %b -x %t %o --stuff %r', mt.get_arguments())
+        self.assertEquals(u'Инструмент', mt.get_name())
+        mt.set_commandline(u'/new/path/to/лучший_инструмент %b %t %o %r')
+        self.assertEquals(u'/new/path/to/лучший_инструмент %b %t %o %r', mt.get_commandline())
+        self.assertEquals([u'/new/path/to/лучший_инструмент', u'%b', u'%t', u'%o', u'%r'],
+            mt.get_commandline_as_list())
+        self.assertEquals(u'/new/path/to/лучший_инструмент', mt.get_executable())
+        self.assertEquals(u'%b %t %o %r', mt.get_arguments())
+        self.assertEquals(u'лучший_инструмент', mt.get_name())
+        mt.set_executable(u'Другой_инструмент')
+        self.assertEquals(u'Другой_инструмент', mt.get_executable())
+        self.assertEquals(u'Другой_инструмент %b %t %o %r', mt.get_commandline())
+        self.assertEquals([u'Другой_инструмент', u'%b', u'%t', u'%o', u'%r'],
+            mt.get_commandline_as_list())
+        mt.set_arguments(u'%r %b %t %o')
+        self.assertEquals(u'%r %b %t %o', mt.get_arguments())
+        self.assertEquals(u'Другой_инструмент %r %b %t %o', mt.get_commandline())
+        self.assertEquals([u'Другой_инструмент', u'%r', u'%b', u'%t', u'%o'],
             mt.get_commandline_as_list())
         
     def test_name_win32(self):
@@ -167,6 +194,7 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertTrue('sh' in tools_commandlines or
                         'cmd' in tools_commandlines)
         mergetools._KNOWN_MERGE_TOOLS = old_kmt
+
 
 class FakeConfig(object):
     """

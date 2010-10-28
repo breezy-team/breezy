@@ -39,11 +39,11 @@ from bzrlib.option import Option
 
 
 substitution_help = {
-    '%b' : 'file.BASE',
-    '%t' : 'file.THIS',
-    '%o' : 'file.OTHER',
-    '%r' : 'file (output)',
-    '%T' : 'file.THIS (temp copy, used to overwrite "file" if merge succeeds)'
+    u'%b' : u'file.BASE',
+    u'%t' : u'file.THIS',
+    u'%o' : u'file.OTHER',
+    u'%r' : u'file (output)',
+    u'%T' : u'file.THIS (temp copy, used to overwrite "file" if merge succeeds)'
 }
 
 
@@ -53,7 +53,8 @@ def subprocess_invoker(executable, args, cleanup):
     return retcode
 
 
-_WIN32_PATH_EXT = [ext.lower() for ext in os.getenv('PATHEXT', '').split(';')]
+_WIN32_PATH_EXT = [unicode(ext.lower())
+                   for ext in os.getenv('PATHEXT', '').split(';')]
 
 
 class MergeTool(object):
@@ -80,20 +81,20 @@ class MergeTool(object):
         return name
         
     def get_commandline(self):
-        return ' '.join(self._commandline)
+        return u' '.join(self._commandline)
         
     def get_commandline_as_list(self):
         return self._commandline
     
     def get_executable(self):
         if len(self._commandline) < 1:
-            return ''
+            return u''
         return self._commandline[0]
     
     def get_arguments(self):
         if len(self._commandline) < 2:
-            return ''
-        return ' '.join(self._commandline[1:])
+            return u''
+        return u' '.join(self._commandline[1:])
         
     def set_executable(self, executable):
         self._commandline[:1] = [executable]
@@ -130,26 +131,26 @@ class MergeTool(object):
         tmp_file = None
         subst_args = []
         for arg in args:
-            arg = arg.replace('%b', filename + '.BASE')
-            arg = arg.replace('%t', filename + '.THIS')
-            arg = arg.replace('%o', filename +'.OTHER')
-            arg = arg.replace('%r', filename)
-            if '%T' in arg:
-                tmp_file = tempfile.mktemp("_bzr_mergetools_%s.THIS" %
+            arg = arg.replace(u'%b', filename + u'.BASE')
+            arg = arg.replace(u'%t', filename + u'.THIS')
+            arg = arg.replace(u'%o', filename + u'.OTHER')
+            arg = arg.replace(u'%r', filename)
+            if u'%T' in arg:
+                tmp_file = tempfile.mktemp(u"_bzr_mergetools_%s.THIS" %
                                            os.path.basename(filename))
-                shutil.copy(filename + ".THIS", tmp_file)
-                arg = arg.replace('%T', tmp_file)
+                shutil.copy(filename + u".THIS", tmp_file)
+                arg = arg.replace(u'%T', tmp_file)
             subst_args.append(arg)
         return subst_args, tmp_file
 
 
 _KNOWN_MERGE_TOOLS = (
-    'bcompare %t %o %b %r',
-    'kdiff3 %b %t %o -o %r',
-    'xxdiff -m -O -M %r %t %b %o',
-    'meld %b %T %o',
-    'opendiff %t %o -ancestor %b -merge %r',
-    'winmergeu %r',
+    u'bcompare %t %o %b %r',
+    u'kdiff3 %b %t %o -o %r',
+    u'xxdiff -m -O -M %r %t %b %o',
+    u'meld %b %T %o',
+    u'opendiff %t %o -ancestor %b -merge %r',
+    u'winmergeu %r',
 )
 
 
@@ -299,9 +300,9 @@ class cmd_mergetools(Command):
         Option('list', help='Lists the currently defined external merge tools.',
                short_name='l'),
         Option('remove', help='Removes the external merge tool called ARG.',
-               type=str, short_name='r'),
+               type=unicode, short_name='r'),
         Option('update', help='Updates the external merge tool called ARG '
-               'using ARGS as the command-line.', type=str, short_name='u'),
+               'using ARGS as the command-line.', type=unicode, short_name='u'),
     ]
 
     def run(self, args_list=None, add=False, detect=False, list=False,
@@ -309,8 +310,8 @@ class cmd_mergetools(Command):
         if (not add and not detect and not list and remove is None and
             update is None):
             raise errors.BzrCommandError(
-                'You must supply one of --add, --detect, --list, --remove or '
-                '--update')
+                u'You must supply one of --add, --detect, --list, --remove or '
+                u'--update')
         if add:
             self.add_tool(args_list)
         elif detect:
@@ -325,19 +326,19 @@ class cmd_mergetools(Command):
     def add_tool(self, args):
         if args is None or len(args) == 0:
             raise errors.BzrCommandError(
-                'You must supply the command-line for the external merge tool')
+                u'You must supply the command-line for the external merge tool')
         new_mt = MergeTool(args)
         if find_merge_tool(new_mt.get_name()) is not None:
             raise errors.BzrCommandError(
-                'External merge tool already exists: %s' % new_mt.get_name())
+                u'External merge tool already exists: %s' % new_mt.get_name())
         merge_tools = get_merge_tools()
         merge_tools.append(new_mt)
         set_merge_tools(merge_tools)
         uif = ui.ui_factory
-        uif.note('Added external merge tool: %s' % new_mt.get_name())
+        uif.note(u'Added external merge tool: %s' % new_mt.get_name())
         if not new_mt.is_available():
             uif.show_warning(
-                'External merge tool is not available: %s' % new_mt.get_name())
+                u'External merge tool is not available: %s' % new_mt.get_name())
     
     def detect_tools(self):
         new_merge_tools = detect_merge_tools()
@@ -350,9 +351,9 @@ class cmd_mergetools(Command):
         uif = ui.ui_factory
         if len(new_merge_tools) > 0:
             for mt in new_merge_tools:
-                uif.note('Detected external merge tool: %s' % mt.get_name())
+                uif.note(u'Detected external merge tool: %s' % mt.get_name())
         else:
-            uif.note('No external merge tools detected')
+            uif.note(u'No external merge tools detected')
             return
         new_merge_tools.extend(merge_tools)
         set_merge_tools(new_merge_tools)
@@ -361,7 +362,7 @@ class cmd_mergetools(Command):
         s = ui.ui_factory.make_output_stream()
         merge_tools = get_merge_tools()
         for mt in merge_tools:
-            s.write('%s: %s\n' % (mt.get_name(), mt.get_commandline()))
+            s.write(u'%s: %s\n' % (mt.get_name(), mt.get_commandline()))
 
     def remove_tool(self, name):
         merge_tools = get_merge_tools()
@@ -371,26 +372,26 @@ class cmd_mergetools(Command):
                 break
         else:
             raise errors.BzrCommandError(
-                'Unknown external merge tool: %s' % name)
+                u'Unknown external merge tool: %s' % name)
         set_merge_tools(merge_tools)
 
     def update_tool(self, name, args):
         if args is None or len(args) == 0:
             raise errors.BzrCommandError(
-                'You must supply the command-line for the external merge tool')
+                u'You must supply the command-line for the external merge tool')
         merge_tools = get_merge_tools()
         for mt in merge_tools:
             if mt.get_name() == name:
                 mt.set_executable(args[0])
                 mt.set_arguments(args[1:])
                 uif = ui.ui_factory
-                uif.note('Updated external merge tool: %s' % name)
+                uif.note(u'Updated external merge tool: %s' % name)
                 if not mt.is_available():
                     uif.show_warning(
-                        'External merge tool is not available: %s' %
+                        u'External merge tool is not available: %s' %
                         mt.get_name())
                 break
         else:
             raise errors.BzrCommandError(
-                'Unknown external merge tool: %s' % name)
+                u'Unknown external merge tool: %s' % name)
         set_merge_tools(merge_tools)
