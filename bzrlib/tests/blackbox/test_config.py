@@ -41,7 +41,7 @@ class TestWithoutConfig(tests.TestCaseWithTransport):
         self.assertEquals('', out)
         self.assertEquals('', err)
 
-    def test_unknown_option(self):
+    def test_remove_unknown_option(self):
         self.run_bzr_error(['The "file" configuration option does not exist',],
                            ['config', '--remove', 'file'])
 
@@ -49,13 +49,17 @@ class TestWithoutConfig(tests.TestCaseWithTransport):
         self.run_bzr_error(['--active and --remove are mutually exclusive.',],
                            ['config', '--remove', '--active'])
 
-    def test_remove_no_name(self):
+    def test_remove_no_option(self):
         self.run_bzr_error(['--remove expects an option to remove.',],
                            ['config', '--remove'])
 
-    def test_active_no_name(self):
+    def test_active_no_option(self):
         self.run_bzr_error(['--active expects an option to display.',],
                            ['config', '--active'])
+
+    def test_active_unknown_option(self):
+        self.run_bzr_error(['The "file" configuration option does not exist',],
+                           ['config', '--active', 'file'])
 
 
 class TestConfigDisplay(tests.TestCaseWithTransport):

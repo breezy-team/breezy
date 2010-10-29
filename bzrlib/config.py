@@ -1874,6 +1874,8 @@ class cmd_config(commands.Command):
                         break
                     else:
                         self.outf.write('  %s = %s\n' % (name, value))
+        if active and not displayed:
+            raise errors.NoSuchConfigOption(matching)
 
     def _set_config_option(self, name, value, directory, scope):
         for conf in self._get_configs(directory, scope):
