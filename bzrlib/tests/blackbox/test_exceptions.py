@@ -47,6 +47,17 @@ class TestExceptionReporting(TestCase):
                 r'exceptions\.AssertionError: always fails\n')
         self.assertContainsRe(err, r'Bazaar has encountered an internal error')
 
+class TestOptParseBugHandling(TestCase):
+    "Test that we handle http://bugs.python.org/issue2931"
+
+    def test_nonascii_optparse(self):
+        """Reasonable error raised when non-ascii in option name"""
+        if sys.version_info < (2,5):
+            error_re='no such option'
+        else:
+            error_re='Only ASCII permitted in option names'
+        out = self.run_bzr_error((error_re,),
+                                 ['st',u'-\xe4'])
 
 class TestDeprecationWarning(tests.TestCaseWithTransport):
     """The deprecation warning is controlled via a global variable:
