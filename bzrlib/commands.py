@@ -815,6 +815,8 @@ def parse_args(command, argv, alias_argv=None):
     else:
         args = argv
 
+    # for python 2.5 and later, optparse raises this exception if a non-ascii
+    # option name is given.  See http://bugs.python.org/issue2931
     try:
         options, args = parser.parse_args(args)
     except UnicodeEncodeError,e:
