@@ -61,6 +61,9 @@ Bug Fixes
 
 * Make ``bzr tag --quiet`` really quiet. (Neil Martinsen-Burrell, #239523)
 
+* Missing files (files bzr add'ed and then OS deleted) are now shown in ``bzr
+  status`` output. (Rory Yorke, #134168)
+
 Documentation
 *************
 
