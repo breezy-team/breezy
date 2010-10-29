@@ -1776,6 +1776,8 @@ class cmd_config(commands.Command):
     configuration file they are defined in). The active value that bzr will
     take into account is the first one displayed.
 
+    To display *only* the active value, use the --active option.
+
     Setting a value is achieved by using name=value without spaces. The value
     is set in the most relevant scope and can be checked by displaying the
     option again.
@@ -1791,27 +1793,40 @@ class cmd_config(commands.Command):
         commands.Option('scope', help='Reduce the scope to the specified'
                         ' configuration file',
                         type=unicode),
+        commands.Option('active', short_name='1',
+            help='Display the active value for the option.',
+            ),
         commands.Option('remove', help='Remove the option from'
                         ' the configuration file'),
         ]
 
     @commands.display_command
-    def run(self, matching=None, directory=None, scope=None, remove=False):
+    def run(self, matching=None, directory=None, scope=None,
+            remove=False, active=False):
         if directory is None:
             directory = '.'
         directory = urlutils.normalize_url(directory)
-        if matching is None:
-            self._show_config('*', directory)
+        if remove and active:
+            raise errors.BzrError(
+                '--active and --remove are mutually exclusive.')
+        elif remove:
+            # Delete the option in the given scope
+            self._remove_config_option(matching, directory, scope)
+        elif matching is None:
+            if active:
+                raise errors.BzrError(
+                    '--active expects an option to display its value.')
+            # Display all the options values
+            self._show_config('*', directory, scope, active)
         else:
-            if remove:
-                self._remove_config_option(matching, directory, scope)
+            try:
+                name, value = matching.split('=', 1)
+            except ValueError:
+                # Display the option(s) value(s)
+                self._show_config(matching, directory, scope, active)
             else:
-                pos = matching.find('=')
-                if pos == -1:
-                    self._show_config(matching, directory)
-                else:
-                    self._set_config_option(matching[:pos], matching[pos+1:],
-                                            directory, scope)
+                # Set the option value
+                self._set_config_option(name, value, directory, scope)
 
     def _get_configs(self, directory, scope=None):
         """Iterate the configurations specified by ``directory`` and ``scope``.
@@ -1838,17 +1853,27 @@ class cmd_config(commands.Command):
                 yield LocationConfig(directory)
                 yield GlobalConfig()
 
-    def _show_config(self, matching, directory):
+    def _show_config(self, matching, directory, scope, active):
         # Turn the glob into a regexp
         matching_re = re.compile(fnmatch.translate(matching))
         cur_conf_id = None
-        for c in self._get_configs(directory):
+        displayed = False
+        for c in self._get_configs(directory, scope):
+            if displayed:
+                break
             for (name, value, section, conf_id) in c._get_options():
                 if matching_re.search(name):
-                    if cur_conf_id != conf_id:
+                    if not active and cur_conf_id != conf_id:
+                        # Explain where the options are defined
                         self.outf.write('%s:\n' % (conf_id,))
                         cur_conf_id = conf_id
-                    self.outf.write('  %s = %s\n' % (name, value))
+                    if active:
+                        # Display only the first value and exit
+                        self.outf.write('%s\n' % (value))
+                        displayed = True
+                        break
+                    else:
+                        self.outf.write('  %s = %s\n' % (name, value))
 
     def _set_config_option(self, name, value, directory, scope):
         for conf in self._get_configs(directory, scope):
@@ -1858,6 +1883,9 @@ class cmd_config(commands.Command):
             raise errors.NoSuchConfig(scope)
 
     def _remove_config_option(self, name, directory, scope):
+        if name is None:
+            raise errors.BzrCommandError(
+                '--remove expects an option to remove.')
         removed = False
         for conf in self._get_configs(directory, scope):
             for (section_name, section, conf_id) in conf._get_sections():

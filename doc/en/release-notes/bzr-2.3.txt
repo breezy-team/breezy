@@ -22,10 +22,11 @@ New Features
   new or mirrored branch without working trees.
   (Matthew Gordon, #506730)
 
-* ``bzr config`` is a new command that displays the configuration options for
-  a given directory. It accepts a glob to match against multiple options at
-  once. It can also be used to set or delete a configuration option in any
-  configuration file. (Vincent Ladeuil)
+* ``bzr config`` is a new command that displays the configuration options
+  for a given directory. It accepts a glob to match against multiple
+  options at once. It can also display the active value for a given option
+  for use in scripts. It can also be used to set or delete a configuration
+  option in any configuration file. (Vincent Ladeuil)
 
 * New shortcut url schemes ``ubuntu:`` and ``debianlp:`` access source
   branches on Launchpad.  E.g. ``bzr branch ubuntu:foo`` gives you the source

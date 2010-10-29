@@ -45,6 +45,19 @@ class TestWithoutConfig(tests.TestCaseWithTransport):
         self.run_bzr_error(['The "file" configuration option does not exist',],
                            ['config', '--remove', 'file'])
 
+    def test_active_remove_exclusive(self):
+        self.run_bzr_error(['--active and --remove are mutually exclusive.',],
+                           ['config', '--remove', '--active'])
+
+    def test_remove_no_name(self):
+        self.run_bzr_error(['--remove expects an option to remove.',],
+                           ['config', '--remove'])
+
+    def test_active_no_name(self):
+        self.run_bzr_error(['--active expects an option to display.',],
+                           ['config', '--active'])
+
+
 class TestConfigDisplay(tests.TestCaseWithTransport):
 
     def setUp(self):
@@ -77,6 +90,33 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
             $ bzr config
             bazaar:
               hello = world
+            ''')
+
+class TestConfigActive(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestConfigActive, self).setUp()
+        _t_config.create_configs_with_file_option(self)
+
+    def test_active_in_locations(self):
+        script.run_script(self, '''\
+            $ bzr config -d tree --active file
+            locations
+            ''')
+
+    def test_active_in_bazaar(self):
+        script.run_script(self, '''\
+            $ bzr config -d tree --scope bazaar --active file
+            bazaar
+            ''')
+
+    def test_active_in_branch(self):
+        # We need to delete the locations definition that overrides the branch
+        # one
+        script.run_script(self, '''\
+            $ bzr config -d tree --remove file
+            $ bzr config -d tree --active file
+            branch
             ''')
 
 
