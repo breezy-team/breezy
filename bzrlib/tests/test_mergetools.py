@@ -155,36 +155,57 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals('', mt.get_arguments())
         
     def test_get_merge_tools(self):
-        config = FakeConfig()
-        config.set_user_option('mergetools', 'kdiff3,winmergeu')
-        config.set_user_option('mergetools.kdiff3', 'kdiff3,%b,%t,%o,-o,%r')
-        config.set_user_option('mergetools.winmergeu', 'winmergeu,%r')
-        tools = mergetools.get_merge_tools(config)
-        self.assertEquals(2, len(tools))
+        conf = FakeConfig()
+        conf.set_user_option('mergetools', 'kdiff3,winmergeu,funkytool')
+        conf.set_user_option('mergetools.kdiff3', 'kdiff3 %b %t %o -o %r')
+        conf.set_user_option('mergetools.winmergeu', 'winmergeu %r')
+        conf.set_user_option('mergetools.funkytool', 'funkytool "arg with spaces" %T')
+        tools = mergetools.get_merge_tools(conf)
+        self.assertEquals(3, len(tools))
         self.assertEquals('kdiff3', tools[0].get_name())
         self.assertEquals('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
         self.assertEquals('winmergeu', tools[1].get_name())
         self.assertEquals('winmergeu %r', tools[1].get_commandline())
+        self.assertEquals('funkytool', tools[2].get_name())
+        self.assertEquals('funkytool "arg with spaces" %T',
+                          tools[2].get_commandline(quote=True))
         
+    def test_set_merge_tools(self):
+        conf = FakeConfig()
+        tools = [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
+                 mergetools.MergeTool('winmergeu', 'winmergeu %r'),
+                 mergetools.MergeTool('funkytool',
+                                      'funkytool "arg with spaces" %T')
+                 ]
+        mergetools.set_merge_tools(tools, conf)
+        self.assertEquals(['funkytool', 'kdiff3', 'winmergeu'],
+            conf.get_user_option_as_list('mergetools'))
+        self.assertEquals('funkytool "arg with spaces" %T',
+                          conf.get_user_option('mergetools.funkytool'))
+        self.assertEquals('kdiff3 %b %t %o -o %r',
+                          conf.get_user_option('mergetools.kdiff3'))
+        self.assertEquals('winmergeu %r',
+                          conf.get_user_option('mergetools.winmergeu'))
+    
     def test_set_merge_tools_duplicates(self):
-        config = FakeConfig()
+        conf = FakeConfig()
         mergetools.set_merge_tools(
             [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
              mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r')],
-            config)
-        tools = mergetools.get_merge_tools(config)
+            conf)
+        tools = mergetools.get_merge_tools(conf)
         self.assertEquals(1, len(tools))
         self.assertEquals('kdiff3', tools[0].get_name())
         self.assertEquals('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
         
     def test_set_merge_tools_empty_tool(self):
-        config = FakeConfig()
+        conf = FakeConfig()
         mergetools.set_merge_tools(
             [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
              mergetools.MergeTool('',''),
              mergetools.MergeTool('blah','')],
-            config)
-        tools = mergetools.get_merge_tools(config)
+            conf)
+        tools = mergetools.get_merge_tools(conf)
         self.assertEquals(1, len(tools))
         self.assertEquals('kdiff3', tools[0].get_name())
         self.assertEquals('kdiff3 %b %t %o -o %r', tools[0].get_commandline())

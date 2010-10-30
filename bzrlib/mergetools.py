@@ -95,8 +95,12 @@ class MergeTool(object):
     def set_name(self, name):
         self._name = name
         
-    def get_commandline(self):
-        return u' '.join(self._commandline)
+    def get_commandline(self, quote=False):
+        if quote:
+            args = _quote_args(self._commandline)
+        else:
+            args = self._commandline
+        return u' '.join(args)
         
     def get_commandline_as_list(self):
         return self._commandline
@@ -181,7 +185,7 @@ def get_merge_tools(conf=None):
     names = conf.get_user_option_as_list('mergetools')
     if names is None:
         return []
-    return [MergeTool(name, conf.get_user_option_as_list('mergetools.%s' % name) or name)
+    return [MergeTool(name, conf.get_user_option('mergetools.%s' % name) or name)
             for name in names]
 
 
@@ -196,7 +200,8 @@ def set_merge_tools(merge_tools, conf=None):
     conf.set_user_option("mergetools", names)
     for name in names:
         tool = tools[name]
-        conf.set_user_option("mergetools.%s" % name, tool.get_commandline_as_list())
+        conf.set_user_option("mergetools.%s" % name,
+                             tool.get_commandline(quote=True))
 
 
 def find_merge_tool(name, conf=None):
@@ -240,6 +245,26 @@ def set_default_merge_tool(name, conf=None):
         raise errors.BzrError('invalid merge tool name: %r' % name)
     trace.mutter('setting default merge tool: %s', name)
     conf.set_user_option('default_mergetool', name)
+
+
+def _quote_args(args):
+    return [_quote_arg(arg) for arg in args]
+
+
+def _quote_arg(arg):
+    if u' ' in arg and not _is_arg_quoted(arg):
+        return u'"%s"' % _escape_quotes(arg)
+    else:
+        return arg
+
+
+def _is_arg_quoted(arg):
+    return (arg[0] == u"'" and arg[-1] == u"'") or \
+           (arg[0] == u'"' and arg[-1] == u'"')
+
+
+def _escape_quotes(arg):
+    return arg.replace(u'"', u'\\"')
 
 
 # courtesy of 'techtonik' at http://snippets.dzone.com/posts/show/6313
