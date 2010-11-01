@@ -25,7 +25,7 @@ import bzrlib.bzrdir
 import bzrlib.tests
 import bzrlib.revisionspec
 import bzrlib.plugins.bisect as bisect
-
+from bzrlib.tests import KnownFailure
 
 class BisectTestCase(bzrlib.tests.TestCaseWithTransport):
     "Test harness specific to the bisect plugin."
@@ -377,8 +377,13 @@ class BisectFuncTests(BisectTestCase):
         self.run_bzr(['bisect', 'yes'])
         self.run_bzr(['bisect', 'no', '-r', '1'])
         self.run_bzr(['bisect', 'run', './test_script'])
-        self.assertRevno(2)
-
+        try:
+            self.assertRevno(2)
+        except AssertionError:
+            raise KnownFailure\
+                ("bisect does not drill down into merge commits: "
+                 "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
+        
     def testRunScriptSubtree(self):
         "Make a test script and run it."
         test_script = open("test_script", "w")
@@ -390,5 +395,9 @@ class BisectFuncTests(BisectTestCase):
         self.run_bzr(['bisect', 'yes'])
         self.run_bzr(['bisect', 'no', '-r', '1'])
         self.run_bzr(['bisect', 'run', './test_script'])
-        self.assertRevno(1.2)
-
+        try:
+            self.assertRevno(1.2)
+        except AssertionError:
+            raise KnownFailure\
+                ("bisect does not drill down into merge commits: "
+                 "https://bugs.launchpad.net/bzr-bisect/+bug/539937")
