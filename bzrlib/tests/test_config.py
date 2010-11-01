@@ -369,8 +369,10 @@ class TestConfigPath(tests.TestCase):
                 r'C:\Documents and Settings\bogus\Application Data'
             self.bzr_home = \
                 'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
-        else:
+        elif sys.platform == 'darwin':
             self.bzr_home = '/home/bogus/.bazaar'
+        else:
+            self.bzr_home = '/home/bogus/.config/bazaar'
 
     def test_config_dir(self):
         self.assertEqual(config.config_dir(), self.bzr_home)
