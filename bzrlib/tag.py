@@ -204,12 +204,14 @@ class BasicTags(_Tags):
             # that's in the destination
             return
         # We merge_to both master and child individually.
-        # it's possible for master and child to have differing sets of
+        #
+        # It's possible for master and child to have differing sets of
         # tags, in which case it's possible to have different sets of
         # conflicts.  We report the union of both conflict sets.  In
         # that case it's likely the child and master have accepted
-        # different tags from the source, but they were already different
-        # to start with, so that's ok.
+        # different tags from the source, which may be a surprising result, but
+        # the best we can do in the circumstances.
+        #
         # Ideally we'd improve this API to report the different conflicts
         # more clearly to the caller, but we don't want to break plugins
         # such as bzr-builddeb that use this API.
@@ -221,7 +223,6 @@ class BasicTags(_Tags):
                     master.lock_write()
                 conflicts = self._merge_to(to_tags, source_dict, overwrite)
                 if master is not None:
-                    #conflicts += self.merge_to(master.tags, overwrite)
                     conflicts += self._merge_to(master.tags, source_dict,
                         overwrite)
             finally:
@@ -229,7 +230,10 @@ class BasicTags(_Tags):
                     master.unlock()
         finally:
             to_tags.branch.unlock()
-        return conflicts
+        # We use set() to remove any duplicate conflicts from the master
+        # branch.  We then use list() to keep the behaviour as close to 2.2.1
+        # and earlier as possible, to minimise potential compatibility issues.
+        return list(set(conflicts))
 
     def _merge_to(self, to_tags, source_dict, overwrite):
         dest_dict = to_tags.get_tag_dict()
