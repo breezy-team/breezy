@@ -1,0 +1,49 @@
+Transitioning Unix installs to the XDG Base Directory Specification
+===================================================================
+
+Currently, Bazaar stores its configuration files and plugins under the
+directory ~/.bazaar on unix installs.  On Windows, this is
+%APPDATA%/Bazaar/2.0 and on Mac OS X, the directory is ~/.bazaaar.  With the
+XDG Base Directory specification
+(http://standards.freedesktop.org/basedir-spec/basedir-spec-latest.html), many
+Linux and Unix platforms have tried to centralize configuration files under a
+specific directory referred to as $XDG_CONFIG_HOME.  This has a default value
+of ~/.config.
+
+Bazaar would like to be a good Unix citizen by using these standard locations
+for configuration files.  This will require a transitional phase while moving
+to the standard location.  Note that the following descriptions do not apply
+to Windows or Mac OS X which can and should use their own native configuration
+locations.
+
+Transitional Phase
+------------------
+
+* If ~/.bazaar exists and $XDG_CONFIG_HOME/bazaar does not:
+
+  - On opening config files, write out a message that users should move
+    their config files to $XDG_CONFIG_HOME/bazaar and give them a command line
+    to do so. Do NOT create new config files in $XDG_CONFIG_HOME/bazaar to
+    avoid fragmentation (two configuration directories in use at the same
+    time).
+
+* If both ~/.bazaar and $XDG_CONFIG_HOME/bazaar exist:
+
+  - Use the config files in $XDG_CONFIG_HOME/bazaar with a warning that those
+    in ~/.bazaar are being ignored.  Don't use a pastiche of files from both
+    directories, again to avoid fragmentation.
+
+* If only $XDG_CONFIG_HOME exists, use it.
+
+
+Final Phase
+-----------
+
+* If ~/.bazaar exists and $XDG_CONFIG_HOME/bazaar does not:
+
+  - Explain that configuration files are now meant to be found in
+    $XDG_CONFIG_HOME/bazaar and offer to copy the existing files over.
+
+* If both ~/.bazaar and $XDG_CONFIG_HOME/bazaar exist:
+
+  - Warn that the configuration files in .bazaar are being ignored?

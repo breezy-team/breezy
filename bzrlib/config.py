@@ -1100,19 +1100,15 @@ class BranchConfig(Config):
 
 
 def ensure_config_dir_exists(path=None):
-    """Make sure a configuration directory exists.
-    This makes sure that the directory exists.
-    On windows, since configuration directories are 2 levels deep,
-    it makes sure both the directory and the parent directory exists.
+    """Make sure a configuration directory (and its parent) exists.
     """
     if path is None:
         path = config_dir()
     if not os.path.isdir(path):
-        if sys.platform == 'win32':
-            parent_dir = os.path.dirname(path)
-            if not os.path.isdir(parent_dir):
-                trace.mutter('creating config parent directory: %r', parent_dir)
-                os.mkdir(parent_dir)
+        parent_dir = os.path.dirname(path)
+        if not os.path.isdir(parent_dir):
+            trace.mutter('creating config parent directory: %r', parent_dir)
+            os.mkdir(parent_dir)
         trace.mutter('creating config directory: %r', path)
         os.mkdir(path)
         osutils.copy_ownership_from_path(path)
@@ -1121,7 +1117,8 @@ def ensure_config_dir_exists(path=None):
 def config_dir():
     """Return per-user configuration directory.
 
-    By default this is ~/.bazaar/
+    By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
+    and $XDG_CONFIG_HOME/bazaar/ on Linux and other platforms.
 
     TODO: Global option --config-dir to override this.
     """
@@ -1135,10 +1132,35 @@ def config_dir():
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
+    elif sys.platform == 'darwin':
+        if base is None:
+            # this takes into account $HOME
+            base = os.path.expanduser("~")
+        return osutils.pathjoin(base, '.bazaar')
     else:
         if base is None:
-            base = os.path.expanduser("~")
-        return osutils.pathjoin(base, ".bazaar")
+            base = os.environ.get('XDG_CONFIG_HOME', None)
+        if base is None:
+            base = osutils.pathjoin(os.path.expanduser("~"), ".config")
+
+        newpath = osutils.pathjoin(base, "bazaar")
+        oldpath = osutils.pathjoin(os.path.expanduser("~"), ".bazaar")
+
+        if osutils.isdir(oldpath):
+            if not osutils.isdir(newpath):
+                trace.note("""\
+Bazaar now suggests that its configuration live in ~/.config/bazaar,
+but that directory does not exist.  If you would like, you can
+move your configuration files to that directory using the command
+"mv ~/.bazaar ~/.config/bazaar"
+""")
+                return oldpath
+            else:
+                trace.note("Ignoring configuration files in %s in favor of %s"\
+                           % (oldpath, newpath))
+                return newpath
+        else:
+            return newpath
 
 
 def config_filename():
