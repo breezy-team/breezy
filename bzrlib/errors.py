@@ -1072,6 +1072,18 @@ class LockBreakMismatch(LockError):
         self.target = target
 
 
+class LockCorrupt(LockError):
+
+    _fmt = ("Lock is apparently held, but corrupted: %(corruption_info)s\n"
+            "Use 'bzr break-lock' to clear it")
+
+    internal_error = False
+
+    def __init__(self, corruption_info, file_data=None):
+        self.corruption_info = corruption_info
+        self.file_data = file_data
+
+
 class LockNotHeld(LockError):
 
     _fmt = "Lock not held: %(lock)s"
@@ -1383,7 +1395,7 @@ class WeaveParentMismatch(WeaveError):
 
 class WeaveInvalidChecksum(WeaveError):
 
-    _fmt = "Text did not match it's checksum: %(msg)s"
+    _fmt = "Text did not match its checksum: %(msg)s"
 
 
 class WeaveTextDiffers(WeaveError):
@@ -2931,6 +2943,22 @@ class UnableEncodePath(BzrError):
         self.path = path
         self.kind = kind
         self.user_encoding = osutils.get_user_encoding()
+
+
+class NoSuchConfig(BzrError):
+
+    _fmt = ('The "%(config_id)s" configuration does not exist.')
+
+    def __init__(self, config_id):
+        BzrError.__init__(self, config_id=config_id)
+
+
+class NoSuchConfigOption(BzrError):
+
+    _fmt = ('The "%(option_name)s" configuration option does not exist.')
+
+    def __init__(self, option_name):
+        BzrError.__init__(self, option_name=option_name)
 
 
 class NoSuchAlias(BzrError):

@@ -1564,7 +1564,7 @@ class ConnectedTransport(Transport):
         raise NotImplementedError(self.disconnect)
 
 
-def get_transport(base, possible_transports=None):
+def _get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
     :param base: either a URL or a directory name.
@@ -1629,6 +1629,15 @@ def get_transport(base, possible_transports=None):
     transport, last_err = _try_transport_factories(base, factory_list)
 
     return transport
+
+# GZ 2010-10-18: Temporary hack to put the real get_transport behind a layer
+#                if indirection so it can be safely overriden for the test
+#                suite. If you are reading this comment in the final 2.3
+#                release, phone me up and yell at me.
+def get_transport(base, possible_transports=None):
+    return _get_transport(base, possible_transports)
+
+get_transport.__doc__ = _get_transport.__doc__
 
 
 def _try_transport_factories(base, factory_list):

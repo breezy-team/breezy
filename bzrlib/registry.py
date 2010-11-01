@@ -17,6 +17,9 @@
 """Classes to provide name-to-object registry-like support."""
 
 
+from bzrlib.pyutils import get_named_object
+
+
 class _ObjectGetter(object):
     """Maintain a reference to an object, and return the object on request.
 
@@ -58,26 +61,14 @@ class _LazyObjectGetter(_ObjectGetter):
         return the imported object.
         """
         if not self._imported:
-            self._do_import()
+            self._obj = get_named_object(self._module_name, self._member_name)
+            self._imported = True
         return super(_LazyObjectGetter, self).get_obj()
 
-    def _do_import(self):
-        if self._member_name:
-            segments = self._member_name.split('.')
-            names = segments[0:1]
-        else:
-            names = [self._member_name]
-        obj = __import__(self._module_name, globals(), locals(), names)
-        if self._member_name:
-            for segment in segments:
-                obj = getattr(obj, segment)
-        self._obj = obj
-        self._imported = True
-
     def __repr__(self):
-        return "<%s.%s object at %x, module=%r attribute=%r>" % (
+        return "<%s.%s object at %x, module=%r attribute=%r imported=%r>" % (
             self.__class__.__module__, self.__class__.__name__, id(self),
-            self._module_name, self._member_name)
+            self._module_name, self._member_name, self._imported)
 
 
 class Registry(object):

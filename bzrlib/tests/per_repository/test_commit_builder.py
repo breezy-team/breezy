@@ -1288,6 +1288,16 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertRaises(ValueError, builder.commit,
             u'Invalid\r\ncommit message\r\n')
 
+    def test_non_ascii_str_committer_rejected(self):
+        """Ensure an error is raised on a non-ascii byte string committer"""
+        branch = self.make_branch('.')
+        branch.repository.lock_write()
+        self.addCleanup(branch.repository.unlock)
+        self.assertRaises(UnicodeDecodeError,
+            branch.repository.get_commit_builder,
+            branch, [], branch.get_config(),
+            committer="Erik B\xe5gfors <erik@example.com>")
+
     def test_stacked_repositories_reject_commit_builder(self):
         # As per bug 375013, committing to stacked repositories is currently
         # broken, so repositories with fallbacks refuse to hand out a commit

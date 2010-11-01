@@ -18,6 +18,7 @@ import sys
 
 from bzrlib import (
     delta as _mod_delta,
+    hooks as _mod_hooks,
     log,
     osutils,
     tsort,
@@ -150,6 +151,10 @@ def show_tree_status(wt, show_unchanged=None,
         old.lock_read()
         new.lock_read()
         try:
+            for hook in hooks['pre_status']:
+                hook(StatusHookParams(old, new, to_file, versioned,
+                    show_ids, short, verbose))
+
             specific_files, nonexistents \
                 = _filter_nonexistent(specific_files, old, new)
             want_unversioned = not versioned
@@ -210,6 +215,9 @@ def show_tree_status(wt, show_unchanged=None,
                 show_pending_merges(new, to_file, short, verbose=verbose)
             if nonexistents:
                 raise errors.PathsDoNotExist(nonexistents)
+            for hook in hooks['post_status']:
+                hook(StatusHookParams(old, new, to_file, versioned,
+                    show_ids, short, verbose))
         finally:
             old.unlock()
             new.unlock()
@@ -356,3 +364,99 @@ def _filter_nonexistent(orig_paths, old_tree, new_tree):
     # their groups individually.  But for consistency of this
     # function's API, it's better to sort both than just 'nonexistent'.
     return sorted(remaining), sorted(nonexistent)
+
+
+class StatusHooks(_mod_hooks.Hooks):
+    """A dictionary mapping hook name to a list of callables for status hooks.
+
+    e.g. ['post_status'] Is the list of items to be called when the
+    status command has finished printing the status.
+    """
+
+    def __init__(self):
+        """Create the default hooks.
+
+        These are all empty initially, because by default nothing should get
+        notified.
+        """
+        _mod_hooks.Hooks.__init__(self)
+        self.create_hook(_mod_hooks.HookPoint('post_status',
+            "Called with argument StatusHookParams after Bazaar has "
+            "displayed the status. StatusHookParams has the attributes "
+            "(old_tree, new_tree, to_file, versioned, show_ids, short, "
+            "verbose). The last four arguments correspond to the command "
+            "line options specified by the user for the status command. "
+            "to_file is the output stream for writing.",
+            (2, 3), None))
+        self.create_hook(_mod_hooks.HookPoint('pre_status',
+            "Called with argument StatusHookParams before Bazaar "
+            "displays the status. StatusHookParams has the attributes "
+            "(old_tree, new_tree, to_file, versioned, show_ids, short, "
+            "verbose). The last four arguments correspond to the command "
+            "line options specified by the user for the status command. "
+            "to_file is the output stream for writing.",
+            (2, 3), None))
+
+
+class StatusHookParams(object):
+    """Object holding parameters passed to post_status hooks.
+
+    :ivar old_tree: Start tree (basis tree) for comparison.
+    :ivar new_tree: Working tree.
+    :ivar to_file: If set, write to this file.
+    :ivar versioned: Show only versioned files.
+    :ivar show_ids: Show internal object ids.
+    :ivar short: Use short status indicators.
+    :ivar verbose: Verbose flag.
+    """
+
+    def __init__(self, old_tree, new_tree, to_file, versioned, show_ids,
+            short, verbose):
+        """Create a group of post_status hook parameters.
+
+        :param old_tree: Start tree (basis tree) for comparison.
+        :param new_tree: Working tree.
+        :param to_file: If set, write to this file.
+        :param versioned: Show only versioned files.
+        :param show_ids: Show internal object ids.
+        :param short: Use short status indicators.
+        :param verbose: Verbose flag.
+        """
+        self.old_tree = old_tree
+        self.new_tree = new_tree
+        self.to_file = to_file
+        self.versioned = versioned
+        self.show_ids = show_ids
+        self.short = short
+        self.verbose = verbose
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
+
+    def __repr__(self):
+        return "<%s(%s, %s, %s, %s, %s, %s, %s)>" % (self.__class__.__name__,
+            self.old_tree, self.new_tree, self.to_file, self.versioned,
+            self.show_ids, self.short, self.verbose)
+
+
+def _show_shelve_summary(params):
+    """post_status hook to display a summary of shelves.
+
+    :param params: StatusHookParams.
+    """
+    get_shelf_manager = getattr(params.new_tree, 'get_shelf_manager', None)
+    if get_shelf_manager is None:
+        return
+    manager = get_shelf_manager()
+    shelves = manager.active_shelves()
+    if shelves:
+        params.to_file.write('%d shelves exist. '
+            'See "bzr shelve --list" for details.\n' % len(shelves))
+
+
+hooks = StatusHooks()
+
+
+hooks.install_named_hook('post_status', _show_shelve_summary,
+    'bzr status')
+
