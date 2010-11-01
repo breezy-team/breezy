@@ -71,7 +71,7 @@ DEBIAN_RELEASES = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'stable',
 DEBIAN_POCKETS = ('', '-security', '-proposed-updates', '-backports')
 UBUNTU_RELEASES = ('warty', 'hoary', 'breezy', 'dapper', 'edgy',
         'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty', 'karmic',
-        'lucid', 'maverick')
+        'lucid', 'maverick', 'natty')
 UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
 
 
