@@ -49,6 +49,10 @@ Bug Fixes
 * ``bzr status -r X..Y`` was failing because RevisionTree didn't implement
   ``get_shelf_manager``. (John Arbash Meinel, #662053)
 
+* Correctly add directory contents when the name was previously added as a
+  normal file, rather than throwing ``AttributeError: children`` during
+  smart_add. (Martin [gz], #251864)
+
 * Correctly set the Content-Type  header when http POSTing to comply
   with stricter web frameworks. (Vincent Ladeuil, #655100)
 
