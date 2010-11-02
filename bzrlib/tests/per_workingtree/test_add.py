@@ -23,7 +23,6 @@ from bzrlib import (
     inventory,
     osutils,
     tests,
-    workingtree,
     )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
@@ -177,23 +176,3 @@ class TestAdd(TestCaseWithWorkingTree):
         tree.unversion(['foo-id'])
         tree.add(['foo'], ['foo-id'])
         self.assertEqual('foo-id', tree.path2id('foo'))
-
-    def test_add_subdir_file_bug_205636(self):
-        """Added file turning into a dir should be detected on add dir/file"""
-        if self.workingtree_format.__class__ in (
-                workingtree.WorkingTreeFormat2,
-                workingtree.WorkingTreeFormat3):
-            self.knownFailure("Old workingtree formats raise AttributeError")
-        tree = self.make_branch_and_tree(".")
-        self.build_tree(["dir"]) # whoops, make a file called dir
-        tree.add(["dir"], ["dir-id"])
-        os.remove("dir")
-        self.build_tree(["dir/", "dir/file"])
-        tree.add(["dir/file"], ["file-id"])
-        tree.commit("Add file in dir")
-        self.addCleanup(tree.lock_read().unlock)
-        self.assertEqual([
-                (u"dir", "V", "directory", "dir-id"),
-                (u"dir/file", "V", "file", "file-id")],
-            [t[:4] for t in tree.list_files()])
-        self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
