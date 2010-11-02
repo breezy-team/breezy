@@ -19,6 +19,9 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr resolve --take--other <file>`` will not crash anymore if ``<file>`` is
+  involved in a text conflict. (Vincent Ladeuil, #646961)
+
 * Correctly set the Content-Type  header when http POSTing to comply
   with stricter web frameworks. (Vincent Ladeuil, #655100)
 
