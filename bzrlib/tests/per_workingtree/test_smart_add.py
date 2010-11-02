@@ -226,6 +226,10 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
             self.expectFailure("Adding dir raises AttributeError",
                 self._reraise_current_error_as_assertion)
         tree.commit("Add dir contents")
+        self.addCleanup(tree.lock_read().unlock)
+        self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
+            [(t[0], t[2]) for t in tree.list_files()])
+        self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
     def test_add_subdir_file_bug_205636(self):
         """Added file turning into a dir should be detected on add dir/file"""
@@ -236,6 +240,10 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.build_tree(["dir/", "dir/file"])
         tree.smart_add(["dir/file"])
         tree.commit("Add file in dir")
+        self.addCleanup(tree.lock_read().unlock)
+        self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
+            [(t[0], t[2]) for t in tree.list_files()])
+        self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
 
     def test_custom_ids(self):
         sio = StringIO()

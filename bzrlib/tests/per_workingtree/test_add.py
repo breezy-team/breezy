@@ -191,3 +191,9 @@ class TestAdd(TestCaseWithWorkingTree):
         self.build_tree(["dir/", "dir/file"])
         tree.add(["dir/file"], ["file-id"])
         tree.commit("Add file in dir")
+        self.addCleanup(tree.lock_read().unlock)
+        self.assertEqual([
+                (u"dir", "V", "directory", "dir-id"),
+                (u"dir/file", "V", "file", "file-id")],
+            [t[:4] for t in tree.list_files()])
+        self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
