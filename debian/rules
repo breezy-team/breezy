@@ -12,7 +12,7 @@ DEB_COMPRESS_EXCLUDE += .svg .pdf
 clean::
 	$(MAKE) clean-docs
 
-ifneq (,$(findstring test,$(DEB_BUILD_OPTIONS)))
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 common-post-build-indep::
 	./bzr selftest --no-plugins
 endif
