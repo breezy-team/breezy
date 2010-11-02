@@ -74,8 +74,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
 
         :param inifile: the name of the file or a sequence of lines.
         """
-        options = {'encoding': 'utf-8'}
-        self._cfg = configobj.ConfigObj(inifile, options=options)
+        self._cfg = configobj.ConfigObj(inifile, encoding='utf-8')
         sections = self._cfg.keys()
         patterns = []
         self.pattern_to_section = {}
