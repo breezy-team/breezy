@@ -55,7 +55,7 @@ class TestSetup(TestCase):
             raise TestSkipped('You must have distutils installed to run this test.'
                               ' Usually this can be found by installing "python-dev"')
         self.log('test_build running in %s' % os.getcwd())
-        install_dir = osutils.mkdtemp()
+        root_dir = osutils.mkdtemp()
         # setup.py must be run from the root source directory, but the tests
         # are not necessarily invoked from there
         self.source_dir = os.path.dirname(os.path.dirname(bzrlib.__file__))
@@ -63,10 +63,10 @@ class TestSetup(TestCase):
             self.run_setup(['clean'])
             # build is implied by install
             ## self.run_setup(['build'])
-            self.run_setup(['install', '--prefix', install_dir])
+            self.run_setup(['install', '--root', root_dir])
             self.run_setup(['clean'])
         finally:
-            osutils.rmtree(install_dir)
+            osutils.rmtree(root_dir)
 
     def run_setup(self, args):
         args = [sys.executable, './setup.py', ] + args
