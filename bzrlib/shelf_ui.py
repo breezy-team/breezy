@@ -154,7 +154,7 @@ class Shelver(object):
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
-                  message=None, directory='.', destroy=False):
+                  message=None, directory=None, destroy=False):
         """Create a shelver from commandline arguments.
 
         The returned shelver wil have a work_tree that is locked and should
@@ -168,6 +168,10 @@ class Shelver(object):
         :param destroy: Change the working tree without storing the shelved
             changes.
         """
+        if directory is None:
+            directory = u'.'
+        elif file_list:
+            file_list = [osutils.pathjoin(directory, f) for f in file_list]
         tree, path = workingtree.WorkingTree.open_containing(directory)
         # Ensure that tree is locked for the lifetime of target_tree, as
         # target tree may be reading from the same dirstate.

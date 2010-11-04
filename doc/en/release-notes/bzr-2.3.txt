@@ -53,6 +53,10 @@ Bug Fixes
   normal file, rather than throwing ``AttributeError: children`` during
   smart_add. (Martin [gz], #251864)
 
+* Correctly handle the ``--directory`` option for all code paths of
+  ``resolve`` and ``shelve``, this was previously ignored when paths were
+  provided as parameters. (Vincent Ladeuil, #670851)
+
 * Correctly set the Content-Type  header when http POSTing to comply
   with stricter web frameworks. (Vincent Ladeuil, #655100)
 
