@@ -73,6 +73,13 @@ Bug Fixes
 * Missing files (files bzr add'ed and then OS deleted) are now shown in ``bzr
   status`` output. (Rory Yorke, #134168)
 
+* ``NotBranchError`` no longer allows errors from calling
+  ``bzrdir.open_repository()`` to propagate.  This is unhelpful at best,
+  and at worst can trigger infinite loops in callers.  (Andrew Bennetts)
+  
+* Windows installers no longer requires the Microsoft vcredist to be
+  installed. (Martin [gz], Gary van der Merwe, #632465)
+
 Documentation
 *************
 
