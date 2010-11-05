@@ -353,8 +353,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         return control.open_workingtree(), relpath
 
     @staticmethod
-    def open_containing_paths(file_list, default_directory='.',
-        canonicalize=True, apply_view=True):
+    def open_containing_paths(file_list, default_directory=None,
+                              canonicalize=True, apply_view=True):
         """Open the WorkingTree that contains a set of paths.
 
         Fail if the paths given are not all in a single tree.
@@ -362,6 +362,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         This is used for the many command-line interfaces that take a list of
         any number of files and that require they all be in the same tree.
         """
+        if default_directory is None:
+            default_directory = u'.'
         # recommended replacement for builtins.internal_tree_files
         if file_list is None or len(file_list) == 0:
             tree = WorkingTree.open_containing(default_directory)[0]
@@ -375,9 +377,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                     view_str = views.view_display_str(view_files)
                     note("Ignoring files outside view. View is %s" % view_str)
             return tree, file_list
-        tree = WorkingTree.open_containing(file_list[0])[0]
+        if default_directory == u'.':
+            seed = file_list[0]
+        else:
+            seed = default_directory
+            file_list = [osutils.pathjoin(default_directory, f)
+                         for f in file_list]
+        tree = WorkingTree.open_containing(seed)[0]
         return tree, tree.safe_relpath_files(file_list, canonicalize,
-            apply_view=apply_view)
+                                             apply_view=apply_view)
 
     def safe_relpath_files(self, file_list, canonicalize=True, apply_view=True):
         """Convert file_list into a list of relpaths in tree.
@@ -1663,7 +1671,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
-             change_reporter=None, possible_transports=None, local=False):
+             change_reporter=None, possible_transports=None, local=False,
+             show_base=False):
         source.lock_read()
         try:
             old_revision_info = self.branch.last_revision_info()
@@ -1683,7 +1692,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                 basis_tree,
                                 this_tree=self,
                                 pb=None,
-                                change_reporter=change_reporter)
+                                change_reporter=change_reporter,
+                                show_base=show_base)
                     basis_root_id = basis_tree.get_root_id()
                     new_root_id = new_basis_tree.get_root_id()
                     if basis_root_id != new_root_id:
@@ -2078,9 +2088,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                     files_to_backup.append(path[1])
 
         def backup(file_to_backup):
-            backup_name = self.bzrdir.generate_backup_name(file_to_backup)
+            backup_name = self.bzrdir._available_backup_name(file_to_backup)
             osutils.rename(abs_path, self.abspath(backup_name))
-            return "removed %s (but kept a copy: %s)" % (file_to_backup, backup_name)
+            return "removed %s (but kept a copy: %s)" % (file_to_backup,
+                                                         backup_name)
 
         # Build inv_delta and delete files where applicable,
         # do this before any modifications to inventory.
@@ -2261,7 +2272,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     _marker = object()
 
     def update(self, change_reporter=None, possible_transports=None,
-               revision=None, old_tip=_marker):
+               revision=None, old_tip=_marker, show_base=False):
         """Update a working tree along its branch.
 
         This will update the branch if its bound too, which means we have
@@ -2304,12 +2315,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             else:
                 if old_tip is self._marker:
                     old_tip = None
-            return self._update_tree(old_tip, change_reporter, revision)
+            return self._update_tree(old_tip, change_reporter, revision, show_base)
         finally:
             self.unlock()
 
     @needs_tree_write_lock
-    def _update_tree(self, old_tip=None, change_reporter=None, revision=None):
+    def _update_tree(self, old_tip=None, change_reporter=None, revision=None,
+                     show_base=False):
         """Update a tree to the master branch.
 
         :param old_tip: if supplied, the previous tip revision the branch,
@@ -2342,7 +2354,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             other_tree = self.branch.repository.revision_tree(old_tip)
             nb_conflicts = merge.merge_inner(self.branch, other_tree,
                                              base_tree, this_tree=self,
-                                             change_reporter=change_reporter)
+                                             change_reporter=change_reporter,
+                                             show_base=show_base)
             if nb_conflicts:
                 self.add_parent_tree((old_tip, other_tree))
                 trace.note('Rerun update after fixing the conflicts.')
@@ -2372,7 +2385,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
             nb_conflicts = merge.merge_inner(self.branch, to_tree, base_tree,
                                              this_tree=self,
-                                             change_reporter=change_reporter)
+                                             change_reporter=change_reporter,
+                                             show_base=show_base)
             self.set_last_revision(revision)
             # TODO - dedup parents list with things merged by pull ?
             # reuse the tree we've updated to to set the basis:

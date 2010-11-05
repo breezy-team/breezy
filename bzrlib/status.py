@@ -444,7 +444,10 @@ def _show_shelve_summary(params):
 
     :param params: StatusHookParams.
     """
-    manager = params.new_tree.get_shelf_manager()
+    get_shelf_manager = getattr(params.new_tree, 'get_shelf_manager', None)
+    if get_shelf_manager is None:
+        return
+    manager = get_shelf_manager()
     shelves = manager.active_shelves()
     if shelves:
         params.to_file.write('%d shelves exist. '

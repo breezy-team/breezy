@@ -165,7 +165,7 @@ class Response(httplib.HTTPResponse):
     """
 
     # Some responses have bodies in which we have no interest
-    _body_ignored_responses = [301,302, 303, 307, 401, 403, 404]
+    _body_ignored_responses = [301,302, 303, 307, 400, 401, 403, 404, 501]
 
     # in finish() below, we may have to discard several MB in the worst
     # case. To avoid buffering that much, we read and discard by chunks
@@ -266,17 +266,27 @@ class AbstractHTTPConnection:
     def cleanup_pipe(self):
         """Read the remaining bytes of the last response if any."""
         if self._response is not None:
-            pending = self._response.finish()
-            # Warn the user (once)
-            if (self._ranges_received_whole_file is None
-                and self._response.status == 200
-                and pending and pending > self._range_warning_thresold
-                ):
-                self._ranges_received_whole_file = True
-                trace.warning(
-                    'Got a 200 response when asking for multiple ranges,'
-                    ' does your server at %s:%s support range requests?',
-                    self.host, self.port)
+            try:
+                pending = self._response.finish()
+                # Warn the user (once)
+                if (self._ranges_received_whole_file is None
+                    and self._response.status == 200
+                    and pending and pending > self._range_warning_thresold
+                    ):
+                    self._ranges_received_whole_file = True
+                    trace.warning(
+                        'Got a 200 response when asking for multiple ranges,'
+                        ' does your server at %s:%s support range requests?',
+                        self.host, self.port)
+            except socket.error, e:
+                # It's conceivable that the socket is in a bad state here
+                # (including some test cases) and in this case, it doesn't need
+                # cleaning anymore, so no need to fail, we just get rid of the
+                # socket and let callers reconnect
+                if (len(e.args) == 0
+                    or e.args[0] not in (errno.ECONNRESET, errno.ECONNABORTED)):
+                    raise
+                self.close()
             self._response = None
         # Preserve our preciousss
         sock = self.sock
@@ -1202,15 +1212,17 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         user = auth.get('user', None)
         password = auth.get('password', None)
         realm = auth['realm']
+        port = auth.get('port', None)
 
         if user is None:
             user = auth_conf.get_user(auth['protocol'], auth['host'],
-                                      port=auth['port'], path=auth['path'],
+                                      port=port, path=auth['path'],
                                       realm=realm, ask=True,
                                       prompt=self.build_username_prompt(auth))
         if user is not None and password is None:
             password = auth_conf.get_password(
-                auth['protocol'], auth['host'], user, port=auth['port'],
+                auth['protocol'], auth['host'], user,
+                port=port,
                 path=auth['path'], realm=realm,
                 prompt=self.build_password_prompt(auth))
 

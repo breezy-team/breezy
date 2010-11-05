@@ -66,8 +66,61 @@ the ``whoami`` command::
   email = Your Name <email@example.com>
 
 For further details on the syntax and configuration settings supported, see
-`Configuration Settings <../user-reference/configuration-help.html>`_
+`Configuration Settings <../user-reference/index.html#configuration-settings>`_
 in the Bazaar User Reference.
+
+
+Looking at the active configuration
+-----------------------------------
+
+To look at all the currently defined options, you can use the following
+command::
+
+  bzr config
+
+``bzr`` implements some rules to decide where to get the value of a
+configuration option.
+
+The current policy is to examine the existing configurations files in a
+given order for matching definitions.
+
+  * ``locations.conf`` is searched first for a section whose name matches the
+    location considered (working tree, branch or remote branch),
+
+  * the current ``branch.conf`` is searched next,
+
+  * ``bazaar.conf`` is searched next,
+
+  * finally, some options can have default values generally defined in the
+    code itself and not displayed by ``bzr config`` (see `Configuration
+    Settings <../user-reference/index.html#configuration-settings>`_).
+
+This is better understood by using ```bzr config`` with no arguments, which
+will display some output of the form::
+
+  locations:
+    post_commit_to = commits@example.com
+    news_merge_files = NEWS
+  branch:
+    parent_location = bzr+ssh://bazaar.launchpad.net/+branch/bzr/
+    nickname = config-modify
+    push_location = bzr+ssh://bazaar.launchpad.net/~vila/bzr/config-modify/
+  bazaar:
+    debug_flags = hpss,
+
+Each configuration file is associated with a given scope whose name is
+displayed before each set of defined options.
+
+Modifying the active configuration
+----------------------------------
+
+To set an option to a given value use::
+
+  bzr config opt=value
+
+To remove an option use::
+
+  bzr config --remove opt
 
 
 Rule-based preferences
@@ -78,5 +131,5 @@ certain patterns. Per-user rule-based preferences are defined in
 ``BZR_HOME/rules``.
 
 For further information on how rules are searched and the detailed syntax of
-the relevant files, see `Rules <../user-reference/rules-help.html>`_
+the relevant files, see `Rules <../user-reference/index.html#rules>`_
 in the Bazaar User Reference.

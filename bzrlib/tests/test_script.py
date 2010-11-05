@@ -19,6 +19,7 @@ from bzrlib import (
     commands,
     osutils,
     tests,
+    trace,
     ui,
     )
 from bzrlib.tests import script
@@ -160,7 +161,18 @@ class TestRedirections(tests.TestCase):
 class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_unknown_command(self):
-        self.assertRaises(SyntaxError, self.run_script, 'foo')
+        """A clear error is reported for commands that aren't recognised
+
+        Testing the attributes of the SyntaxError instance is equivalent to
+        using traceback.format_exception_only and comparing with:
+          File "<string>", line 1
+            foo --frob
+            ^
+        SyntaxError: Command not found "foo"
+        """
+        e = self.assertRaises(SyntaxError, self.run_script, "$ foo --frob")
+        self.assertContainsRe(e.msg, "not found.*foo")
+        self.assertEquals(e.text, "foo --frob")
 
     def test_blank_output_mismatches_output(self):
         """If you give output, the output must actually be blank.
@@ -271,6 +283,15 @@ $ cat '*'
 $ echo 'cat' "dog" '"chicken"' "'dragon'"
 cat dog "chicken" 'dragon'
 """)
+
+    def test_verbosity_isolated(self):
+        """Global verbosity is isolated from commands run in scripts.
+        """
+        # see also 656694; we should get rid of global verbosity
+        self.run_script("""
+        $ bzr init --quiet a
+        """)
+        self.assertEquals(trace.is_quiet(), False)
 
 
 class TestCat(script.TestCaseWithTransportAndScript):
