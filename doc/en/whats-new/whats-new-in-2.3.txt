@@ -121,7 +121,7 @@ Documentation
 Configuration
 *************
 
-``bzr`` can be configure via environment variables, command-line options
+``bzr`` can be configured via environment variables, command-line options
 and configurations files. We've started working on unifying this and give
 access to more options. The first step is a new ``bzr config`` command that
 can be used to display the active configuration options in the current
