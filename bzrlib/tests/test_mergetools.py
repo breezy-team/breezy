@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -58,33 +57,33 @@ class TestMergeTool(tests.TestCaseInTempDir):
         self.assertEquals('tool', mt.get_name())
         
     def test_unicode(self):
-        mt = mergetools.MergeTool(u'Инструмент', u'/path/to/Инструмент --opt %b -x %t %o --stuff %r')
-        self.assertEquals(u'/path/to/Инструмент --opt %b -x %t %o --stuff %r', mt.get_commandline())
-        self.assertEquals([u'/path/to/Инструмент', u'--opt', u'%b', u'-x', u'%t', u'%o',
+        mt = mergetools.MergeTool(u'b\u0414r', u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r')
+        self.assertEquals(u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r', mt.get_commandline())
+        self.assertEquals([u'/path/to/b\u0414r', u'--opt', u'%b', u'-x', u'%t', u'%o',
                            u'--stuff', u'%r'], mt.get_commandline_as_list())
-        self.assertEquals(u'/path/to/Инструмент', mt.get_executable())
+        self.assertEquals(u'/path/to/b\u0414r', mt.get_executable())
         self.assertEquals(u'--opt %b -x %t %o --stuff %r', mt.get_arguments())
-        self.assertEquals(u'Инструмент', mt.get_name())
-        mt.set_name(u'лучший_инструмент')
-        mt.set_commandline(u'/new/path/to/лучший_инструмент %b %t %o %r')
-        self.assertEquals(u'/new/path/to/лучший_инструмент %b %t %o %r', mt.get_commandline())
-        self.assertEquals([u'/new/path/to/лучший_инструмент', u'%b', u'%t', u'%o', u'%r'],
+        self.assertEquals(u'b\u0414r', mt.get_name())
+        mt.set_name(u'b\u0414rs')
+        mt.set_commandline(u'/new/path/to/b\u0414rs %b %t %o %r')
+        self.assertEquals(u'/new/path/to/b\u0414rs %b %t %o %r', mt.get_commandline())
+        self.assertEquals([u'/new/path/to/b\u0414rs', u'%b', u'%t', u'%o', u'%r'],
             mt.get_commandline_as_list())
-        self.assertEquals(u'/new/path/to/лучший_инструмент', mt.get_executable())
+        self.assertEquals(u'/new/path/to/b\u0414rs', mt.get_executable())
         self.assertEquals(u'%b %t %o %r', mt.get_arguments())
-        self.assertEquals(u'лучший_инструмент', mt.get_name())
-        mt.set_executable(u'Другой_инструмент')
-        self.assertEquals(u'Другой_инструмент', mt.get_executable())
-        self.assertEquals(u'Другой_инструмент %b %t %o %r', mt.get_commandline())
-        self.assertEquals([u'Другой_инструмент', u'%b', u'%t', u'%o', u'%r'],
+        self.assertEquals(u'b\u0414rs', mt.get_name())
+        mt.set_executable(u'b\u0414rst')
+        self.assertEquals(u'b\u0414rst', mt.get_executable())
+        self.assertEquals(u'b\u0414rst %b %t %o %r', mt.get_commandline())
+        self.assertEquals([u'b\u0414rst', u'%b', u'%t', u'%o', u'%r'],
             mt.get_commandline_as_list())
         mt.set_arguments(u'%r %b %t %o')
         self.assertEquals(u'%r %b %t %o', mt.get_arguments())
-        self.assertEquals(u'Другой_инструмент %r %b %t %o', mt.get_commandline())
-        self.assertEquals([u'Другой_инструмент', u'%r', u'%b', u'%t', u'%o'],
+        self.assertEquals(u'b\u0414rst %r %b %t %o', mt.get_commandline())
+        self.assertEquals([u'b\u0414rst', u'%r', u'%b', u'%t', u'%o'],
             mt.get_commandline_as_list())
-        mt = mergetools.MergeTool(None, u'/path/to/Инструмент blah stuff etc')
-        self.assertEquals(u'Инструмент', mt.get_name())
+        mt = mergetools.MergeTool(None, u'/path/to/b\u0414r blah stuff etc')
+        self.assertEquals(u'b\u0414r', mt.get_name())
         
     def test_quoted_executable(self):
         self.requireFeature(backslashdir_feature)
