@@ -71,6 +71,7 @@ from bzrlib import (
     lock as _mod_lock,
     memorytree,
     osutils,
+    pyutils,
     ui,
     urlutils,
     registry,
@@ -89,10 +90,9 @@ try:
 except ImportError:
     # lsprof not available
     pass
-from bzrlib.merge import merge_inner
 import bzrlib.merge3
 import bzrlib.plugin
-from bzrlib.smart import client, request, server
+from bzrlib.smart import client, request
 import bzrlib.store
 from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
@@ -116,7 +116,6 @@ from bzrlib.tests import (
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
 import bzrlib.version_info_formats.format_custom
-from bzrlib.workingtree import WorkingTree, WorkingTreeFormat2
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -899,14 +898,14 @@ class TestCase(testtools.TestCase):
 
     def _clear_hooks(self):
         # prevent hooks affecting tests
+        known_hooks = hooks.known_hooks
         self._preserved_hooks = {}
-        for key, factory in hooks.known_hooks.items():
-            parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
-            current_hooks = hooks.known_hooks_key_to_object(key)
+        for key, (parent, name) in known_hooks.iter_parent_objects():
+            current_hooks = getattr(parent, name)
             self._preserved_hooks[parent] = (name, current_hooks)
         self.addCleanup(self._restoreHooks)
-        for key, factory in hooks.known_hooks.items():
-            parent, name = hooks.known_hooks_key_to_parent_and_attribute(key)
+        for key, (parent, name) in known_hooks.iter_parent_objects():
+            factory = known_hooks.get(key)
             setattr(parent, name, factory())
         # this hook should always be installed
         request._install_hook()
@@ -2452,7 +2451,7 @@ class TestCaseWithMemoryTransport(TestCase):
                 self.addCleanup(t.disconnect)
             return t
 
-        orig_get_transport = self.overrideAttr(_mod_transport, 'get_transport',
+        orig_get_transport = self.overrideAttr(_mod_transport, '_get_transport',
                                                get_transport_with_cleanup)
         self._make_test_root()
         self.addCleanup(os.chdir, os.getcwdu())
@@ -3353,39 +3352,7 @@ def reinvoke_for_tests(suite):
     return result
 
 
-class ForwardingResult(unittest.TestResult):
-
-    def __init__(self, target):
-        unittest.TestResult.__init__(self)
-        self.result = target
-
-    def startTest(self, test):
-        self.result.startTest(test)
-
-    def stopTest(self, test):
-        self.result.stopTest(test)
-
-    def startTestRun(self):
-        self.result.startTestRun()
-
-    def stopTestRun(self):
-        self.result.stopTestRun()
-
-    def addSkip(self, test, reason):
-        self.result.addSkip(test, reason)
-
-    def addSuccess(self, test):
-        self.result.addSuccess(test)
-
-    def addError(self, test, err):
-        self.result.addError(test, err)
-
-    def addFailure(self, test, err):
-        self.result.addFailure(test, err)
-ForwardingResult = testtools.ExtendedToOriginalDecorator
-
-
-class ProfileResult(ForwardingResult):
+class ProfileResult(testtools.ExtendedToOriginalDecorator):
     """Generate profiling data for all activity between start and success.
     
     The profile data is appended to the test's _benchcalls attribute and can
@@ -3403,7 +3370,7 @@ class ProfileResult(ForwardingResult):
         # unavoidably fail.
         bzrlib.lsprof.BzrProfiler.profiler_block = 0
         self.profiler.start()
-        ForwardingResult.startTest(self, test)
+        testtools.ExtendedToOriginalDecorator.startTest(self, test)
 
     def addSuccess(self, test):
         stats = self.profiler.stop()
@@ -3413,10 +3380,10 @@ class ProfileResult(ForwardingResult):
             test._benchcalls = []
             calls = test._benchcalls
         calls.append(((test.id(), "", ""), stats))
-        ForwardingResult.addSuccess(self, test)
+        testtools.ExtendedToOriginalDecorator.addSuccess(self, test)
 
     def stopTest(self, test):
-        ForwardingResult.stopTest(self, test)
+        testtools.ExtendedToOriginalDecorator.stopTest(self, test)
         self.profiler = None
 
 
@@ -3795,6 +3762,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_permissions',
         'bzrlib.tests.test_plugins',
         'bzrlib.tests.test_progress',
+        'bzrlib.tests.test_pyutils',
         'bzrlib.tests.test_read_bundle',
         'bzrlib.tests.test_reconcile',
         'bzrlib.tests.test_reconfigure',
@@ -3809,6 +3777,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_rio',
         'bzrlib.tests.test_rules',
         'bzrlib.tests.test_sampler',
+        'bzrlib.tests.test_scenarios',
         'bzrlib.tests.test_script',
         'bzrlib.tests.test_selftest',
         'bzrlib.tests.test_serializer',
@@ -3878,10 +3847,12 @@ def _test_suite_modules_to_doctest():
         'bzrlib.lockdir',
         'bzrlib.merge3',
         'bzrlib.option',
+        'bzrlib.pyutils',
         'bzrlib.symbol_versioning',
         'bzrlib.tests',
         'bzrlib.tests.fixtures',
         'bzrlib.timestamp',
+        'bzrlib.transport.http',
         'bzrlib.version_info_formats.format_custom',
         ]
 
@@ -3990,7 +3961,19 @@ def test_suite(keep_only=None, starting_with=None):
     return suite
 
 
-def multiply_scenarios(scenarios_left, scenarios_right):
+def multiply_scenarios(*scenarios):
+    """Multiply two or more iterables of scenarios.
+
+    It is safe to pass scenario generators or iterators.
+
+    :returns: A list of compound scenarios: the cross-product of all 
+        scenarios, with the names concatenated and the parameters
+        merged together.
+    """
+    return reduce(_multiply_two_scenarios, map(list, scenarios))
+
+
+def _multiply_two_scenarios(scenarios_left, scenarios_right):
     """Multiply two sets of scenarios.
 
     :returns: the cartesian product of the two sets of scenarios, that is
@@ -4120,7 +4103,7 @@ def permute_tests_for_extension(standard_tests, loader, py_module_name,
         the module is available.
     """
 
-    py_module = __import__(py_module_name, {}, {}, ['NO_SUCH_ATTRIB'])
+    py_module = pyutils.get_named_object(py_module_name)
     scenarios = [
         ('python', {'module': py_module}),
     ]
@@ -4279,9 +4262,8 @@ class _CompatabilityThunkFeature(Feature):
             symbol_versioning.warn(depr_msg + use_msg, DeprecationWarning)
             # Import the new feature and use it as a replacement for the
             # deprecated one.
-            mod = __import__(self._replacement_module, {}, {},
-                             [self._replacement_name])
-            self._feature = getattr(mod, self._replacement_name)
+            self._feature = pyutils.get_named_object(
+                self._replacement_module, self._replacement_name)
 
     def _probe(self):
         self._ensure()

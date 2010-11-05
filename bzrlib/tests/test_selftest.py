@@ -26,7 +26,10 @@ import time
 import unittest
 import warnings
 
-from testtools import MultiTestResult
+from testtools import (
+    ExtendedToOriginalDecorator,
+    MultiTestResult,
+    )
 from testtools.content import Content
 from testtools.content_type import ContentType
 from testtools.matchers import (
@@ -76,18 +79,6 @@ from bzrlib.version import _get_bzr_source_tree
 def _test_ids(test_suite):
     """Get the ids for the tests in a test suite."""
     return [t.id() for t in tests.iter_suite_tests(test_suite)]
-
-
-class SelftestTests(tests.TestCase):
-
-    def test_import_tests(self):
-        mod = TestUtil._load_module_by_name('bzrlib.tests.test_selftest')
-        self.assertEqual(mod.SelftestTests, SelftestTests)
-
-    def test_import_test_failure(self):
-        self.assertRaises(ImportError,
-                          TestUtil._load_module_by_name,
-                          'bzrlib.no-name-yet')
 
 
 class MetaTestLog(tests.TestCase):
@@ -1119,9 +1110,9 @@ class TestRunner(tests.TestCase):
     def test_result_decorator(self):
         # decorate results
         calls = []
-        class LoggingDecorator(tests.ForwardingResult):
+        class LoggingDecorator(ExtendedToOriginalDecorator):
             def startTest(self, test):
-                tests.ForwardingResult.startTest(self, test)
+                ExtendedToOriginalDecorator.startTest(self, test)
                 calls.append('start')
         test = unittest.FunctionTestCase(lambda:None)
         stream = StringIO()
@@ -1266,9 +1257,9 @@ class TestRunner(tests.TestCase):
     def test_startTestRun(self):
         """run should call result.startTestRun()"""
         calls = []
-        class LoggingDecorator(tests.ForwardingResult):
+        class LoggingDecorator(ExtendedToOriginalDecorator):
             def startTestRun(self):
-                tests.ForwardingResult.startTestRun(self)
+                ExtendedToOriginalDecorator.startTestRun(self)
                 calls.append('startTestRun')
         test = unittest.FunctionTestCase(lambda:None)
         stream = StringIO()
@@ -1280,9 +1271,9 @@ class TestRunner(tests.TestCase):
     def test_stopTestRun(self):
         """run should call result.stopTestRun()"""
         calls = []
-        class LoggingDecorator(tests.ForwardingResult):
+        class LoggingDecorator(ExtendedToOriginalDecorator):
             def stopTestRun(self):
-                tests.ForwardingResult.stopTestRun(self)
+                ExtendedToOriginalDecorator.stopTestRun(self)
                 calls.append('stopTestRun')
         test = unittest.FunctionTestCase(lambda:None)
         stream = StringIO()
@@ -2066,7 +2057,7 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
             def __call__(test, result):
                 test.run(result)
             def run(test, result):
-                self.assertIsInstance(result, tests.ForwardingResult)
+                self.assertIsInstance(result, ExtendedToOriginalDecorator)
                 calls.append("called")
             def countTestCases(self):
                 return 1

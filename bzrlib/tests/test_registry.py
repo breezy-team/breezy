@@ -20,6 +20,7 @@ import os
 import sys
 
 from bzrlib import (
+    branch,
     errors,
     osutils,
     registry,
@@ -285,6 +286,13 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
             '      self.a = a\n'
             '\n\n'
         )
+
+    def test_lazy_import_registry_foo(self):
+        a_registry = registry.Registry()
+        a_registry.register_lazy('foo', 'bzrlib.branch', 'Branch')
+        a_registry.register_lazy('bar', 'bzrlib.branch', 'Branch.hooks')
+        self.assertEqual(branch.Branch, a_registry.get('foo'))
+        self.assertEqual(branch.Branch.hooks, a_registry.get('bar'))
 
     def test_lazy_import_registry(self):
         plugin_name = self.create_simple_plugin()

@@ -42,6 +42,7 @@ USER_DEFAULTS = [
     '.#*',
     '[#]*#',
     '__pycache__',
+    'bzr-orphans',
 ]
 
 

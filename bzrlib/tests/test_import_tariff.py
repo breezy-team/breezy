@@ -109,3 +109,9 @@ class TestImportTariffs(TestCaseWithTransport):
         # loading wt-specific stuff
         #
         # See https://bugs.launchpad.net/bzr/+bug/553017
+
+    def test_help_commands(self):
+        # See https://bugs.launchpad.net/bzr/+bug/663773
+        self.run_command_check_imports(['help', 'commands'], [
+            'testtools',
+            ])

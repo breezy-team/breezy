@@ -161,7 +161,43 @@ class TestRedirections(tests.TestCase):
 class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_unknown_command(self):
-        self.assertRaises(SyntaxError, self.run_script, 'foo')
+        """A clear error is reported for commands that aren't recognised
+
+        Testing the attributes of the SyntaxError instance is equivalent to
+        using traceback.format_exception_only and comparing with:
+          File "<string>", line 1
+            foo --frob
+            ^
+        SyntaxError: Command not found "foo"
+        """
+        e = self.assertRaises(SyntaxError, self.run_script, "$ foo --frob")
+        self.assertContainsRe(e.msg, "not found.*foo")
+        self.assertEquals(e.text, "foo --frob")
+
+    def test_blank_output_mismatches_output(self):
+        """If you give output, the output must actually be blank.
+        
+        See <https://bugs.launchpad.net/bzr/+bug/637830>: previously blank
+        output was a wildcard.  Now you must say ... if you want that.
+        """
+        self.assertRaises(AssertionError,
+            self.run_script,
+            """
+            $ echo foo
+            """)
+
+    def test_ellipsis_everything(self):
+        """A simple ellipsis matches everything."""
+        self.run_script("""
+        $ echo foo
+        ...
+        """)
+
+    def test_ellipsis_matches_empty(self):
+        self.run_script("""
+        $ cd .
+        ...
+        """)
 
     def test_stops_on_unexpected_output(self):
         story = """
@@ -170,7 +206,6 @@ $ cd dir
 The cd command ouputs nothing
 """
         self.assertRaises(AssertionError, self.run_script, story)
-
 
     def test_stops_on_unexpected_error(self):
         story = """
@@ -191,10 +226,13 @@ $ bzr not-a-command
         # The status matters, not the output
         story = """
 $ bzr init
+...
 $ cat >file
 <Hello
 $ bzr add file
+...
 $ bzr commit -m 'adding file'
+2>...
 """
         self.run_script(story)
 
@@ -366,7 +404,10 @@ $ cd dir
 class TestBzr(script.TestCaseWithTransportAndScript):
 
     def test_bzr_smoke(self):
-        self.run_script('$ bzr init branch')
+        self.run_script("""
+            $ bzr init branch
+            Created a standalone tree (format: ...)
+            """)
         self.failUnlessExists('branch')
 
 

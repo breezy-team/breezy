@@ -39,6 +39,7 @@ from bzrlib import (
     lockdir,
     lru_cache,
     osutils,
+    pyutils,
     revision as _mod_revision,
     static_tuple,
     symbol_versioning,
@@ -52,6 +53,7 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
 
+import sys
 from bzrlib import (
     errors,
     registry,
@@ -113,6 +115,8 @@ class CommitBuilder(object):
 
         if committer is None:
             self._committer = self._config.username()
+        elif not isinstance(committer, unicode):
+            self._committer = committer.decode() # throw if non-ascii
         else:
             self._committer = committer
 
@@ -2825,12 +2829,11 @@ def __make_delegated(name, from_module):
             % (name, from_module),
             DeprecationWarning,
             stacklevel=2)
-        m = __import__(from_module, globals(), locals(), [name])
         try:
-            return getattr(m, name)
+            return pyutils.get_named_object(from_module, name)
         except AttributeError:
             raise AttributeError('module %s has no name %s'
-                    % (m, name))
+                    % (sys.modules[from_module], name))
     globals()[name] = _deprecated_repository_forwarder
 
 for _name in [

@@ -45,6 +45,14 @@ from bzrlib.workingtree import WorkingTree
 
 class BranchStatus(TestCaseWithTransport):
 
+    def setUp(self):
+        super(BranchStatus, self).setUp()
+        # As TestCase.setUp clears all hooks, we install this default
+        # post_status hook handler for the test.
+        status.hooks.install_named_hook('post_status',
+            status._show_shelve_summary,
+            'bzr status')
+
     def assertStatus(self, expected_lines, working_tree,
         revision=None, short=False, pending=True, verbose=False):
         """Run status in working_tree and look for output.
@@ -203,12 +211,18 @@ class BranchStatus(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
 
-        self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
+        self.build_tree(['directory/','directory/hello.c',
+                         'bye.c','test.c','dir2/',
+                         'missing.c'])
         wt.add('directory')
         wt.add('test.c')
         wt.commit('testing')
+        wt.add('missing.c')
+        unlink('missing.c')
 
         self.assertStatus([
+                'missing:\n',
+                '  missing.c\n',
                 'unknown:\n',
                 '  bye.c\n',
                 '  dir2/\n',
@@ -219,6 +233,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertStatus([
                 '?   bye.c\n',
                 '?   dir2/\n',
+                '+!  missing.c\n',
                 '?   directory/hello.c\n'
                 ],
                 wt, short=True)
@@ -260,6 +275,20 @@ class BranchStatus(TestCaseWithTransport):
                          short=True, revision=revs)
         tof.seek(0)
         self.assertEquals(tof.readlines(), ['+N  test.c\n'])
+
+        tof = StringIO()
+        show_tree_status(wt, specific_files=['missing.c'], to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['missing:\n',
+                           '  missing.c\n'])
+
+        tof = StringIO()
+        show_tree_status(wt, specific_files=['missing.c'], to_file=tof,
+                         short=True)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['+!  missing.c\n'])
 
     def test_specific_files_conflicts(self):
         tree = self.make_branch_and_tree('.')
@@ -530,11 +559,6 @@ class BranchStatus(TestCaseWithTransport):
         self.run_bzr(['shelve', '--all', '-m', 'foo'])
         self.build_tree(['bye.c'])
         wt.add('bye.c')
-        # As TestCase.setUp clears all hooks, we install this default
-        # post_status hook handler for the test.
-        status.hooks.install_named_hook('post_status',
-            status._show_shelve_summary,
-            'bzr status')
         self.assertStatus([
                 'added:\n',
                 '  bye.c\n',
