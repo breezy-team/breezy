@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-"Support for git-style bisection."
+"""Support for git-style bisection."""
 
 import sys
 import os
@@ -31,7 +31,7 @@ bisect_rev_path = ".bzr/bisect_revid"
 
 
 class BisectCurrent(object):
-    "Bisect class for managing the current revision."
+    """Bisect class for managing the current revision."""
 
     def __init__(self, filename = bisect_rev_path):
         self._filename = filename
@@ -45,23 +45,23 @@ class BisectCurrent(object):
             self._revid = self._bzrbranch.last_revision()
 
     def _save(self):
-        "Save the current revision."
+        """Save the current revision."""
 
         revid_file = open(self._filename, "w")
         revid_file.write(self._revid + "\n")
         revid_file.close()
 
     def get_current_revid(self):
-        "Return the current revision id."
+        """Return the current revision id."""
         return self._revid
 
     def get_current_revno(self):
-        "Return the current revision number as a tuple."
+        """Return the current revision number as a tuple."""
         revdict = self._bzrbranch.get_revision_id_to_revno_map()
         return revdict[self.get_current_revid()]
 
     def get_parent_revids(self):
-        "Return the IDs of the current revision's predecessors."
+        """Return the IDs of the current revision's predecessors."""
         repo = self._bzrbranch.repository
         repo.lock_read()
         retval = repo.get_parent_map([self._revid]).get(self._revid, None)
@@ -69,18 +69,18 @@ class BisectCurrent(object):
         return retval
 
     def is_merge_point(self):
-        "Is the current revision a merge point?"
+        """Is the current revision a merge point?"""
         return len(self.get_parent_revids()) > 1
 
     def show_rev_log(self, out = sys.stdout):
-        "Write the current revision's log entry to a file."
+        """Write the current revision's log entry to a file."""
         rev = self._bzrbranch.repository.get_revision(self._revid)
         revno = ".".join([str(x) for x in self.get_current_revno()])
         out.write("On revision %s (%s):\n%s\n" % (revno, rev.revision_id,
                                                   rev.message))
 
     def switch(self, revid):
-        "Switch the current revision to the given revid."
+        """Switch the current revision to the given revid."""
         working = self._bzrdir.open_workingtree()
         if isinstance(revid, int):
             revid = self._bzrbranch.get_rev_id(revid)
@@ -92,7 +92,7 @@ class BisectCurrent(object):
         self._save()
 
     def reset(self):
-        "Revert bisection, setting the working tree to normal."
+        """Revert bisection, setting the working tree to normal."""
         working = self._bzrdir.open_workingtree()
         last_rev = working.branch.last_revision()
         rev_tree = working.branch.repository.revision_tree(last_rev)
@@ -102,7 +102,7 @@ class BisectCurrent(object):
 
 
 class BisectLog(object):
-    "Bisect log file handler."
+    """Bisect log file handler."""
 
     def __init__(self, filename = bisect_info_path):
         self._items = []
@@ -115,27 +115,27 @@ class BisectLog(object):
         self.load()
 
     def _open_for_read(self):
-        "Open log file for reading."
+        """Open log file for reading."""
         if self._filename:
             return open(self._filename)
         else:
             return sys.stdin
 
     def _open_for_write(self):
-        "Open log file for writing."
+        """Open log file for writing."""
         if self._filename:
             return open(self._filename, "w")
         else:
             return sys.stdout
 
     def _load_bzr_tree(self):
-        "Load bzr information."
+        """Load bzr information."""
         if not self._bzrdir:
             self._bzrdir = bzrlib.bzrdir.BzrDir.open_containing('.')[0]
             self._bzrbranch = self._bzrdir.open_branch()
 
     def _find_range_and_middle(self, branch_last_rev = None):
-        "Find the current revision range, and the midpoint."
+        """Find the current revision range, and the midpoint."""
         self._load_bzr_tree()
         self._middle_revid = None
 
@@ -193,12 +193,12 @@ class BisectLog(object):
         self._low_revid = low_revid
 
     def _switch_wc_to_revno(self, revno, outf):
-        "Move the working tree to the given revno."
+        """Move the working tree to the given revno."""
         self._current.switch(revno)
         self._current.show_rev_log(out=outf)
 
     def _set_status(self, revid, status):
-        "Set the bisect status for the given revid."
+        """Set the bisect status for the given revid."""
         if not self.is_done():
             if status != "done" and revid in [x[0] for x in self._items 
                                               if x[1] in ['yes', 'no']]:
@@ -206,11 +206,11 @@ class BisectLog(object):
             self._items.append((revid, status))
 
     def change_file_name(self, filename):
-        "Switch log files."
+        """Switch log files."""
         self._filename = filename
 
     def load(self):
-        "Load the bisection log."
+        """Load the bisection log."""
         self._items = []
         if os.path.exists(self._filename):
             revlog = self._open_for_read()
@@ -219,23 +219,23 @@ class BisectLog(object):
                 self._items.append((revid, status))
 
     def save(self):
-        "Save the bisection log."
+        """Save the bisection log."""
         revlog = self._open_for_write()
         for (revid, status) in self._items:
             revlog.write("%s %s\n" % (revid, status))
 
     def is_done(self):
-        "Report whether we've found the right revision."
+        """Report whether we've found the right revision."""
         return len(self._items) > 0 and self._items[-1][1] == "done"
 
     def set_status_from_revspec(self, revspec, status):
-        "Set the bisection status for the revision in revspec."
+        """Set the bisection status for the revision in revspec."""
         self._load_bzr_tree()
         revid = revspec[0].in_history(self._bzrbranch).rev_id
         self._set_status(revid, status)
 
     def set_current(self, status):
-        "Set the current revision to the given bisection status."
+        """Set the current revision to the given bisection status."""
         self._set_status(self._current.get_current_revid(), status)
 
     def is_merge_point(self, revid):
@@ -251,7 +251,7 @@ class BisectLog(object):
         return retval
 
     def bisect(self, outf):
-        "Using the current revision's status, do a bisection."
+        """Using the current revision's status, do a bisection."""
         self._find_range_and_middle()
         # If we've found the "final" revision, check for a
         # merge point.
@@ -322,7 +322,7 @@ class cmd_bisect(Command):
                      'revision']
 
     def _check(self):
-        "Check preconditions for most operations to work."
+        """Check preconditions for most operations to work."""
         if not os.path.exists(bisect_info_path):
             raise BzrCommandError("No bisection in progress.")
 
@@ -345,7 +345,7 @@ class cmd_bisect(Command):
         return False
 
     def run(self, subcommand, args_list, revision=None, output=None):
-        "Handle the bisect command."
+        """Handle the bisect command."""
 
         log_fn = None
         if subcommand in ('yes', 'no', 'move') and revision:
@@ -384,13 +384,13 @@ class cmd_bisect(Command):
                 "Unknown bisect command: " + subcommand)
 
     def reset(self):
-        "Reset the bisect state to no state."
+        """Reset the bisect state to no state."""
         self._check()
         BisectCurrent().reset()
         os.unlink(bisect_info_path)
 
     def start(self):
-        "Reset the bisect state, then prepare for a new bisection."
+        """Reset the bisect state, then prepare for a new bisection."""
         if os.path.exists(bisect_info_path):
             BisectCurrent().reset()
             os.unlink(bisect_info_path)
@@ -400,21 +400,21 @@ class cmd_bisect(Command):
         bisect_log.save()
 
     def yes(self, revspec):
-        "Mark that a given revision has the state we're looking for."
+        """Mark that a given revision has the state we're looking for."""
         self._set_state(revspec, "yes")
 
     def no(self, revspec):
-        "Mark that a given revision does not have the state we're looking for."
+        """Mark that a given revision does not have the state we're looking for."""
         self._set_state(revspec, "no")
 
     def move(self, revspec):
-        "Move to a different revision manually."
+        """Move to a different revision manually."""
         current = BisectCurrent()
         current.switch(revspec)
         current.show_rev_log(out=self.outf)
 
     def log(self, filename):
-        "Write the current bisect log to a file."
+        """Write the current bisect log to a file."""
         self._check()
         bisect_log = BisectLog()
         bisect_log.change_file_name(filename)
