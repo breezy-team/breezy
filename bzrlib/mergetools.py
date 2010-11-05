@@ -71,17 +71,8 @@ class MergeTool(object):
         """Initializes the merge tool with a name and a command-line (a string
         or sequence of strings).
         """
-        if isinstance(commandline, basestring):
-            self._commandline = cmdline.split(commandline)
-        elif isinstance(commandline, tuple) or isinstance(commandline, list):
-            self._commandline = list(commandline)
-        else:
-            raise TypeError('%r is not valid for commandline; must be string '
-                            'or sequence of strings' % commandline)
-        if name is None:
-            self._name = tool_name_from_executable(self.get_executable())
-        else:
-            self._name = name
+        self.set_commandline(commandline)
+        self.set_name(name) # needs commandline set first when name is None
         
     def __repr__(self):
         return '<MergeTool %s: %r>' % (self._name, self._commandline)
@@ -93,7 +84,10 @@ class MergeTool(object):
         return self._name
     
     def set_name(self, name):
-        self._name = name
+        if name is None:
+            self._name = tool_name_from_executable(self.get_executable())
+        else:
+            self._name = name
         
     def get_commandline(self, quote=False):
         if quote:
@@ -108,8 +102,11 @@ class MergeTool(object):
     def set_commandline(self, commandline):
         if isinstance(commandline, basestring):
             self._commandline = cmdline.split(commandline)
-        else:
+        elif isinstance(commandline, (tuple, list)):
             self._commandline = list(commandline)
+        else:
+            raise TypeError('%r is not valid for commandline; must be string '
+                            'or sequence of strings' % commandline)
 
     def get_executable(self):
         if len(self._commandline) < 1:
