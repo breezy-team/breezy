@@ -71,7 +71,7 @@ class MergeTool(object):
         """Initializes the merge tool with a name and a command-line (a string
         or sequence of strings).
         """
-        if isinstance(commandline, str) or isinstance(commandline, unicode):
+        if isinstance(commandline, basestring):
             self._commandline = cmdline.split(commandline)
         elif isinstance(commandline, tuple) or isinstance(commandline, list):
             self._commandline = list(commandline)
@@ -106,7 +106,7 @@ class MergeTool(object):
         return self._commandline
     
     def set_commandline(self, commandline):
-        if isinstance(commandline, str) or isinstance(commandline, unicode):
+        if isinstance(commandline, basestring):
             self._commandline = cmdline.split(commandline)
         else:
             self._commandline = list(commandline)
@@ -125,7 +125,7 @@ class MergeTool(object):
         return u' '.join(self._commandline[1:])
         
     def set_arguments(self, args):
-        if isinstance(args, str) or isinstance(args, unicode):
+        if isinstance(args, basestring):
             self._commandline = [self.get_executable()] + cmdline.split(args)
         else:
             self._commandline = [self.get_executable()] + args
