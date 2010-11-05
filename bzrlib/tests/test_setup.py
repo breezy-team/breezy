@@ -43,8 +43,11 @@ class TestSetup(TestCase):
         This tests that the build process and man generator run correctly.
         It also can catch new subdirectories that weren't added to setup.py.
         """
-        if not os.path.isfile('setup.py'):
-            raise TestSkipped('There is no setup.py file in current directory')
+        # setup.py must be run from the root source directory, but the tests
+        # are not necessarily invoked from there
+        self.source_dir = os.path.dirname(os.path.dirname(bzrlib.__file__))
+        if not os.path.isfile(os.path.join(self.source_dir, 'setup.py')):
+            raise TestSkipped('There is no setup.py file adjacent to the bzrlib directory')
         try:
             import distutils.sysconfig
             makefile_path = distutils.sysconfig.get_makefile_filename()
@@ -56,9 +59,6 @@ class TestSetup(TestCase):
                               ' Usually this can be found by installing "python-dev"')
         self.log('test_build running in %s' % os.getcwd())
         install_dir = osutils.mkdtemp()
-        # setup.py must be run from the root source directory, but the tests
-        # are not necessarily invoked from there
-        self.source_dir = os.path.dirname(os.path.dirname(bzrlib.__file__))
         try:
             self.run_setup(['clean'])
             # build is implied by install
