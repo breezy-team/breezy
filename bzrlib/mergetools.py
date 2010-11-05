@@ -105,31 +105,31 @@ class MergeTool(object):
     def get_commandline_as_list(self):
         return self._commandline
     
-    def get_executable(self):
-        if len(self._commandline) < 1:
-            return u''
-        return self._commandline[0]
-    
-    def get_arguments(self):
-        if len(self._commandline) < 2:
-            return u''
-        return u' '.join(self._commandline[1:])
-        
-    def set_executable(self, executable):
-        self._commandline[:1] = [executable]
-    
-    def set_arguments(self, args):
-        if isinstance(args, str) or isinstance(args, unicode):
-            self._commandline = [self.get_executable()] + cmdline.split(args)
-        else:
-            self._commandline = [self.get_executable()] + args
-    
     def set_commandline(self, commandline):
         if isinstance(commandline, str) or isinstance(commandline, unicode):
             self._commandline = cmdline.split(commandline)
         else:
             self._commandline = list(commandline)
 
+    def get_executable(self):
+        if len(self._commandline) < 1:
+            return u''
+        return self._commandline[0]
+    
+    def set_executable(self, executable):
+        self._commandline[:1] = [executable]
+    
+    def get_arguments(self):
+        if len(self._commandline) < 2:
+            return u''
+        return u' '.join(self._commandline[1:])
+        
+    def set_arguments(self, args):
+        if isinstance(args, str) or isinstance(args, unicode):
+            self._commandline = [self.get_executable()] + cmdline.split(args)
+        else:
+            self._commandline = [self.get_executable()] + args
+    
     def is_available(self):
         executable = self.get_executable()
         return os.path.exists(executable) or _find_executable(executable)
