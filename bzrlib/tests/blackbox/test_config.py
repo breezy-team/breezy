@@ -31,13 +31,8 @@ from bzrlib.tests import (
 
 class TestWithoutConfig(tests.TestCaseWithTransport):
 
-    def test_no_config(self):
+    def test_config_all(self):
         out, err = self.run_bzr(['config'])
-        self.assertEquals('', out)
-        self.assertEquals('', err)
-
-    def test_all_variables_no_config(self):
-        out, err = self.run_bzr(['config', '*'])
         self.assertEquals('', out)
         self.assertEquals('', err)
 
@@ -45,21 +40,32 @@ class TestWithoutConfig(tests.TestCaseWithTransport):
         self.run_bzr_error(['The "file" configuration option does not exist',],
                            ['config', '--remove', 'file'])
 
-    def test_active_remove_exclusive(self):
-        self.run_bzr_error(['--active and --remove are mutually exclusive.',],
-                           ['config', '--remove', '--active'])
+    def test_all_remove_exclusive(self):
+        self.run_bzr_error(['--all and --remove are mutually exclusive.',],
+                           ['config', '--remove', '--all'])
+
+    def test_all_set_exclusive(self):
+        self.run_bzr_error(['Only one option can be set.',],
+                           ['config', '--all', 'hello=world'])
 
     def test_remove_no_option(self):
         self.run_bzr_error(['--remove expects an option to remove.',],
                            ['config', '--remove'])
 
-    def test_active_no_option(self):
-        self.run_bzr_error(['--active expects an option to display.',],
-                           ['config', '--active'])
-
-    def test_active_unknown_option(self):
+    def test_unknown_option(self):
         self.run_bzr_error(['The "file" configuration option does not exist',],
-                           ['config', '--active', 'file'])
+                           ['config', 'file'])
+
+    def test_unexpected_regexp(self):
+        self.run_bzr_error(
+            ['The "\*file" configuration option does not exist',],
+            ['config', '*file'])
+
+    def test_wrong_regexp(self):
+        self.run_bzr_error(
+            ['Invalid pattern\(s\) found. "\*file" nothing to repeat',],
+            ['config', '--all', '*file'])
+
 
 
 class TestConfigDisplay(tests.TestCaseWithTransport):
@@ -96,6 +102,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
               hello = world
             ''')
 
+
 class TestConfigActive(tests.TestCaseWithTransport):
 
     def setUp(self):
@@ -104,13 +111,13 @@ class TestConfigActive(tests.TestCaseWithTransport):
 
     def test_active_in_locations(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --active file
+            $ bzr config -d tree file
             locations
             ''')
 
     def test_active_in_bazaar(self):
         script.run_script(self, '''\
-            $ bzr config -d tree --scope bazaar --active file
+            $ bzr config -d tree --scope bazaar file
             bazaar
             ''')
 
@@ -119,7 +126,7 @@ class TestConfigActive(tests.TestCaseWithTransport):
         # one
         script.run_script(self, '''\
             $ bzr config -d tree --remove file
-            $ bzr config -d tree --active file
+            $ bzr config -d tree file
             branch
             ''')
 
@@ -137,7 +144,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
     def test_bazaar_config_outside_branch(self):
         script.run_script(self, '''\
             $ bzr config --scope bazaar hello=world
-            $ bzr config -d tree hello
+            $ bzr config -d tree --all hello
             bazaar:
               hello = world
             ''')
@@ -145,7 +152,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
     def test_bazaar_config_inside_branch(self):
         script.run_script(self, '''\
             $ bzr config -d tree --scope bazaar hello=world
-            $ bzr config -d tree hello
+            $ bzr config -d tree --all hello
             bazaar:
               hello = world
             ''')
@@ -153,7 +160,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
     def test_locations_config_inside_branch(self):
         script.run_script(self, '''\
             $ bzr config -d tree --scope locations hello=world
-            $ bzr config -d tree hello
+            $ bzr config -d tree --all hello
             locations:
               hello = world
             ''')
@@ -161,7 +168,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
     def test_branch_config_default(self):
         script.run_script(self, '''\
             $ bzr config -d tree hello=world
-            $ bzr config -d tree hello
+            $ bzr config -d tree --all hello
             branch:
               hello = world
             ''')
@@ -169,7 +176,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
     def test_branch_config_forcing_branch(self):
         script.run_script(self, '''\
             $ bzr config -d tree --scope branch hello=world
-            $ bzr config -d tree hello
+            $ bzr config -d tree --all hello
             branch:
               hello = world
             ''')
@@ -188,7 +195,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
     def test_bazaar_config_outside_branch(self):
         script.run_script(self, '''\
             $ bzr config --scope bazaar --remove file
-            $ bzr config -d tree file
+            $ bzr config -d tree --all file
             locations:
               file = locations
             branch:
@@ -198,7 +205,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
     def test_bazaar_config_inside_branch(self):
         script.run_script(self, '''\
             $ bzr config -d tree --scope bazaar --remove file
-            $ bzr config -d tree file
+            $ bzr config -d tree --all file
             locations:
               file = locations
             branch:
@@ -208,7 +215,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
     def test_locations_config_inside_branch(self):
         script.run_script(self, '''\
             $ bzr config -d tree --scope locations --remove file
-            $ bzr config -d tree file
+            $ bzr config -d tree --all file
             branch:
               file = branch
             bazaar:
@@ -218,7 +225,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
     def test_branch_config_default(self):
         script.run_script(self, '''\
             $ bzr config -d tree --remove file
-            $ bzr config -d tree file
+            $ bzr config -d tree --all file
             branch:
               file = branch
             bazaar:
@@ -226,7 +233,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             ''')
         script.run_script(self, '''\
             $ bzr config -d tree --remove file
-            $ bzr config -d tree file
+            $ bzr config -d tree --all file
             bazaar:
               file = bazaar
             ''')
@@ -234,7 +241,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
     def test_branch_config_forcing_branch(self):
         script.run_script(self, '''\
             $ bzr config -d tree --scope branch --remove file
-            $ bzr config -d tree file
+            $ bzr config -d tree --all file
             locations:
               file = locations
             bazaar:
@@ -242,7 +249,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             ''')
         script.run_script(self, '''\
             $ bzr config -d tree --remove file
-            $ bzr config -d tree file
+            $ bzr config -d tree --all file
             bazaar:
               file = bazaar
             ''')

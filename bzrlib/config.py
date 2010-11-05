@@ -1772,19 +1772,20 @@ class TransportConfig(object):
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
 
-    Display the MATCHING configuration options mentioning their scope (the
-    configuration file they are defined in). The active value that bzr will
-    take into account is the first one displayed.
+    Display the active value for a given option.
 
-    To display *only* the active value, use the --active option.
+    If --all is specified, NAME is interpreted as a regular expression and all
+    matching options are displayed mentioning their scope. The active value
+    that bzr will take into account is the first one displayed for each option.
+
+    If no NAME is given, --all .* is implied.
 
     Setting a value is achieved by using name=value without spaces. The value
     is set in the most relevant scope and can be checked by displaying the
     option again.
     """
 
-    aliases = ['conf']
-    takes_args = ['matching?']
+    takes_args = ['name?']
 
     takes_options = [
         'directory',
@@ -1793,38 +1794,41 @@ class cmd_config(commands.Command):
         commands.Option('scope', help='Reduce the scope to the specified'
                         ' configuration file',
                         type=unicode),
-        commands.Option('active', short_name='1',
-            help='Display the active value for the option.',
+        commands.Option('all',
+            help='Display all the defined values for the matching options.',
             ),
         commands.Option('remove', help='Remove the option from'
                         ' the configuration file'),
         ]
 
     @commands.display_command
-    def run(self, matching=None, directory=None, scope=None,
-            remove=False, active=False):
+    def run(self, name=None, all=False, directory=None, scope=None,
+            remove=False):
         if directory is None:
             directory = '.'
         directory = urlutils.normalize_url(directory)
-        if remove and active:
+        if remove and all:
             raise errors.BzrError(
-                '--active and --remove are mutually exclusive.')
+                '--all and --remove are mutually exclusive.')
         elif remove:
             # Delete the option in the given scope
-            self._remove_config_option(matching, directory, scope)
-        elif matching is None:
-            if active:
-                raise errors.BzrError(
-                    '--active expects an option to display its value.')
-            # Display all the options values
-            self._show_config('*', directory, scope, active)
+            self._remove_config_option(name, directory, scope)
+        elif name is None:
+            # Defaults to all options
+            self._show_matching_options('.*', directory, scope)
         else:
             try:
-                name, value = matching.split('=', 1)
+                name, value = name.split('=', 1)
             except ValueError:
                 # Display the option(s) value(s)
-                self._show_config(matching, directory, scope, active)
+                if all:
+                    self._show_matching_options(name, directory, scope)
+                else:
+                    self._show_value(name, directory, scope)
             else:
+                if all:
+                    raise errors.BzrError(
+                        'Only one option can be set.')
                 # Set the option value
                 self._set_config_option(name, value, directory, scope)
 
@@ -1853,29 +1857,34 @@ class cmd_config(commands.Command):
                 yield LocationConfig(directory)
                 yield GlobalConfig()
 
-    def _show_config(self, matching, directory, scope, active):
-        # Turn the glob into a regexp
-        matching_re = re.compile(fnmatch.translate(matching))
-        cur_conf_id = None
+    def _show_value(self, name, directory, scope):
         displayed = False
         for c in self._get_configs(directory, scope):
             if displayed:
                 break
-            for (name, value, section, conf_id) in c._get_options():
-                if matching_re.search(name):
-                    if not active and cur_conf_id != conf_id:
+            for (oname, value, section, conf_id) in c._get_options():
+                if name == oname:
+                    # Display only the first value and exit
+                    self.outf.write('%s\n' % (value))
+                    displayed = True
+                    break
+        if not displayed:
+            raise errors.NoSuchConfigOption(name)
+
+    def _show_matching_options(self, name, directory, scope):
+        name = re.compile(name)
+        # We want any error in the regexp to be raised *now* so we need to
+        # avoid the delay introduced by the lazy regexp.
+        name._compile_and_collapse()
+        cur_conf_id = None
+        for c in self._get_configs(directory, scope):
+            for (oname, value, section, conf_id) in c._get_options():
+                if name.search(oname):
+                    if cur_conf_id != conf_id:
                         # Explain where the options are defined
                         self.outf.write('%s:\n' % (conf_id,))
                         cur_conf_id = conf_id
-                    if active:
-                        # Display only the first value and exit
-                        self.outf.write('%s\n' % (value))
-                        displayed = True
-                        break
-                    else:
-                        self.outf.write('  %s = %s\n' % (name, value))
-        if active and not displayed:
-            raise errors.NoSuchConfigOption(matching)
+                    self.outf.write('  %s = %s\n' % (oname, value))
 
     def _set_config_option(self, name, value, directory, scope):
         for conf in self._get_configs(directory, scope):
