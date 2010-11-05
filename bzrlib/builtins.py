@@ -6095,12 +6095,12 @@ def _register_lazy_builtins():
     for (name, aliases, module_name) in [
         ('cmd_bundle_info', [], 'bzrlib.bundle.commands'),
         ('cmd_config', [], 'bzrlib.config'),
-        ('cmd_dpush', [], 'bzrlib.foreign'),
-        ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
-        ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
+        ('cmd_dpush', [], 'bzrlib.foreign'),
+        ('cmd_mergetools', [], 'bzrlib.mergetools'),
+        ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
         ('cmd_test_script', [], 'bzrlib.tests.script'),
-        ('cmd_mergetools', [], 'bzrlib.mergetools'),
+        ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)
