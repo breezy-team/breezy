@@ -41,6 +41,14 @@ class TestShelveList(TestCaseWithTransport):
         self.assertEqual('', err)
         self.assertEqual('  1: Foo\n', out)
 
+    def test_shelve_list_via_directory(self):
+        tree = self.make_branch_and_tree('tree')
+        creator = self.make_creator(tree)
+        shelf_id = tree.get_shelf_manager().shelve_changes(creator, 'Foo')
+        out, err = self.run_bzr('shelve -d tree --list', retcode=1)
+        self.assertEqual('', err)
+        self.assertEqual('  1: Foo\n', out)
+
     def test_shelve_no_message(self):
         tree = self.make_branch_and_tree('.')
         creator = self.make_creator(tree)
@@ -77,10 +85,18 @@ class TestShelveList(TestCaseWithTransport):
         sr = ScriptRunner()
         sr.run_script(self, '''
 $ bzr add file
+adding file
 $ bzr shelve --all -m Foo
+2>Selected changes:
+2>-D  file
+2>Changes shelved with id "1".
 $ bzr shelve --list
   1: Foo
 $ bzr unshelve --keep
+2>Using changes with id "1".
+2>Message: Foo
+2>+N  file
+2>All changes applied successfully.
 $ bzr shelve --list
   1: Foo
 $ cat file
@@ -116,6 +132,12 @@ class TestShelveRelpath(TestCaseWithTransport):
         tree.add('file')
         os.chdir('tree/dir')
         self.run_bzr('shelve --all ../file')
+
+    def test_shelve_via_directory(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file', 'tree/dir/'])
+        tree.add('file')
+        self.run_bzr('shelve -d tree/dir --all ../file')
 
 
 class TestShelveUnshelve(TestCaseWithTransport):

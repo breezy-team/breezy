@@ -1,4 +1,4 @@
-bzr (2.3.0~beta2-3) UNRELEASED; urgency=low
+bzr (2.3.0~beta3-1) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
   * Add testtools to build dependencies.
@@ -7,8 +7,9 @@ bzr (2.3.0~beta2-3) UNRELEASED; urgency=low
 
   [ Max Bowsher ]
   * Amend watch file to match current package version scheme.
+  * New upstream release.
 
- -- Max Bowsher <maxb@f2s.com>  Fri, 05 Nov 2010 23:11:10 +0000
+ -- Max Bowsher <maxb@f2s.com>  Fri, 05 Nov 2010 23:21:04 +0000
 
 bzr (2.3.0~beta2-1) unstable; urgency=low
 
