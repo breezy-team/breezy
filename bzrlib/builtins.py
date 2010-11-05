@@ -3925,7 +3925,7 @@ class cmd_merge(Command):
             retval = self._do_merge(merger, change_reporter, allow_pending,
                                     verified)
         if retval != 0 and resolve_using is not None:
-                _resolve_using_merge_tool(resolve_using, tree.conflicts())
+            _resolve_using_merge_tool(resolve_using, tree.conflicts())
         return retval
 
     def _get_preview(self, merger):
