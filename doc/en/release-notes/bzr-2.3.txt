@@ -68,6 +68,10 @@ Bug Fixes
   URL.
   (Martin Pool, #654684)
 
+* In case of an error while copying ownership to ``.bazaar`` directory,
+  the message is sent to the log file to avoid confing the user.
+  (Parth Malwankar, #657553)
+
 * Make ``bzr tag --quiet`` really quiet. (Neil Martinsen-Burrell, #239523)
 
 * Missing files (files bzr add'ed and then OS deleted) are now shown in ``bzr
