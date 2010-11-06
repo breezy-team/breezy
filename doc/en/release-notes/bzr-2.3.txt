@@ -8,7 +8,6 @@ Bazaar Release Notes
 bzr 2.3b4
 #########
 
-:Codename: Nirvana
 :2.3.b4: NOT RELEASED YET
 
 External Compatibility Breaks
@@ -26,6 +25,11 @@ Improvements
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
+
+* ``bzr config <option>`` will now display only the value itself so scripts
+  can use it to query the currently active configuration. Displaying several
+  options matching a given regular expression is now controlled via the
+  ``--all`` option.  (Vincent Ladeuil, bug #670251)
 
 Bug Fixes
 *********
