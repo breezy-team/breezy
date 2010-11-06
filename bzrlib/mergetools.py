@@ -319,21 +319,21 @@ class cmd_mergetools(Command):
     Examples:
         To add an external merge tool:
 
-            bzr mergetools --add mydifftool %b %t %o %r
+            bzr mergetools --add="My Diff Tool" mydifftool %b %t %o %r
         
         If you need to include options in your external merge tool's
         command-line, insert '--' before the command-line to prevent bzr from
         processing them as options to the ``bzr mergetools`` command:
         
-            bzr mergetools --add -- kdiff3 %b %t %o -o %r
+            bzr mergetools --add=KDiff3 -- kdiff3 %b %t %o -o %r
 
         To update an existing external merge tool:
 
-            bzr mergetools --update=kdiff3 -- /opt/kde/bin/kdiff3 %b %t %o -o %r
+            bzr mergetools --update=KDiff3 -- /opt/kde/bin/kdiff3 %b %t %o -o %r
 
         To remove an existing external merge tool:
         
-            bzr mergetools --remove=kdiff3
+            bzr mergetools --remove=KDiff3
     """
     takes_args = ['args*']
     takes_options = [
