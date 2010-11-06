@@ -4,6 +4,15 @@ bzr-fastimport Release Notes
 
 .. contents::
 
+0.10 UNRELEASED
+
+Changes
+-------
+
+* bzr-fastimport's file parsing and generation functionality has been exported into
+  separate upstream project called python-fastimport, that it now depends on.
+  python-fastimport can be retrieved from http://launchpad.net/python-fastimport.
+
 0.9 28-Feb-2010
 ===============
 

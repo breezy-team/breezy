@@ -18,6 +18,7 @@
 
 
 from bzrlib import (
+    debug,
     errors,
     generate_ids,
     inventory,
@@ -25,12 +26,23 @@ from bzrlib import (
     revision,
     serializer,
     )
-from bzrlib.plugins.fastimport import commands, helpers, processor
+from bzrlib.trace import (
+    mutter,
+    note,
+    warning,
+    )
+from fastimport import (
+    helpers,
+    processor,
+    )
+
+from bzrlib.plugins.fastimport.helpers import (
+    mode_to_kind,
+    )
 
 
 _serializer_handles_escaping = hasattr(serializer.Serializer,
     'squashes_xml_invalid_characters')
-
 
 def copy_inventory(inv):
     # This currently breaks revision-id matching
@@ -67,6 +79,27 @@ class GenericCommitHandler(processor.CommitHandler):
         # then a fresh file-id is required.
         self._paths_deleted_this_commit = set()
 
+    def mutter(self, msg, *args):
+        """Output a mutter but add context."""
+        msg = "%s (%s)" % (msg, self.command.id)
+        mutter(msg, *args)
+
+    def debug(self, msg, *args):
+        """Output a mutter if the appropriate -D option was given."""
+        if "fast-import" in debug.debug_flags:
+            msg = "%s (%s)" % (msg, self.command.id)
+            mutter(msg, *args)
+
+    def note(self, msg, *args):
+        """Output a note but add context."""
+        msg = "%s (%s)" % (msg, self.command.id)
+        note(msg, *args)
+
+    def warning(self, msg, *args):
+        """Output a warning but add context."""
+        msg = "%s (%s)" % (msg, self.command.id)
+        warning(msg, *args)
+
     def pre_process_files(self):
         """Prepare for committing."""
         self.revision_id = self.gen_revision_id()
@@ -76,7 +109,7 @@ class GenericCommitHandler(processor.CommitHandler):
         self.data_for_commit[inventory.ROOT_ID] = []
 
         # Track the heads and get the real parent list
-        parents = self.cache_mgr.track_heads(self.command)
+        parents = self.cache_mgr.reftracker.track_heads(self.command)
 
         # Convert the parent commit-ids to bzr revision-ids
         if parents:
@@ -427,7 +460,7 @@ class GenericCommitHandler(processor.CommitHandler):
             self._modify_item(dest_path, kind, False, ie.symlink_target, inv)
         else:
             self.warning("ignoring copy of %s %s - feature not yet supported",
-                kind, path)
+                kind, dest_path)
 
     def _rename_item(self, old_path, new_path, inv):
         existing = self._new_file_ids.get(old_path) or \
@@ -551,8 +584,9 @@ class InventoryCommitHandler(GenericCommitHandler):
         else:
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)
-        self._modify_item(filecmd.path, filecmd.kind,
-            filecmd.is_executable, data, self.inventory)
+        (kind, is_executable) = mode_to_kind(filecmd.mode)
+        self._modify_item(filecmd.path, kind,
+            is_executable, data, self.inventory)
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)
@@ -650,7 +684,7 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
             if len(ie.children) == 0:
                 result.append((dir, file_id))
                 if self.verbose:
-                    self.note("pruning empty directory %s" % (dir,))                
+                    self.note("pruning empty directory %s" % (dir,))
         return result
 
     def _get_proposed_inventory(self, delta):
@@ -821,18 +855,19 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         self.record_new(new_path, ie)
 
     def modify_handler(self, filecmd):
+        (kind, executable) = mode_to_kind(filecmd.mode)
         if filecmd.dataref is not None:
-            if filecmd.kind == commands.DIRECTORY_KIND:
+            if kind == "directory":
                 data = None
-            elif filecmd.kind == commands.TREE_REFERENCE_KIND:
+            elif kind == "tree-reference":
                 data = filecmd.dataref
             else:
                 data = self.cache_mgr.fetch_blob(filecmd.dataref)
         else:
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)
-        self._modify_item(filecmd.path, filecmd.kind,
-            filecmd.is_executable, data, self.basis_inventory)
+        self._modify_item(filecmd.path, kind,
+            executable, data, self.basis_inventory)
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)

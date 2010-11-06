@@ -20,11 +20,18 @@ import atexit
 import os
 import shutil
 import tempfile
-import time
 import weakref
 
 from bzrlib import lru_cache, trace
-from bzrlib.plugins.fastimport import branch_mapper, helpers
+from bzrlib.plugins.fastimport import (
+    branch_mapper,
+    )
+from fastimport.helpers import (
+    single_plural,
+    )
+from fastimport.reftracker import (
+    RefTracker,
+    )
 
 
 class _Cleanup(object):
@@ -51,8 +58,7 @@ class _Cleanup(object):
             self.small_blobs.close()
             self.small_blobs = None
         if self.tempdir is not None:
-            shutils.rmtree(self.tempdir)
-        
+            shutil.rmtree(self.tempdir)
 
 
 class _Cleanup(object):
@@ -79,11 +85,11 @@ class _Cleanup(object):
             self.small_blobs.close()
             self.small_blobs = None
         if self.tempdir is not None:
-            shutils.rmtree(self.tempdir)
-        
+            shutil.rmtree(self.tempdir)
+
 
 class CacheManager(object):
-    
+
     _small_blob_threshold = 25*1024
     _sticky_cache_size = 300*1024*1024
     _sticky_flushed_size = 100*1024*1024
@@ -122,11 +128,6 @@ class CacheManager(object):
         # (path, branch_ref) -> file-ids - as generated.
         # (Use store_file_id/fetch_fileid methods rather than direct access.)
 
-        # Head tracking: last ref, last id per ref & map of commit ids to ref*s*
-        self.last_ref = None
-        self.last_ids = {}
-        self.heads = {}
-
         # Work out the blobs to make sticky - None means all
         self._blob_ref_counts = {}
         if info is not None:
@@ -145,6 +146,8 @@ class CacheManager(object):
         # than reinstantiate on every usage
         self.branch_mapper = branch_mapper.BranchMapper()
 
+        self.reftracker = RefTracker()
+
     def dump_stats(self, note=trace.note):
         """Dump some statistics about what we cached."""
         # TODO: add in inventory stastistics
@@ -153,8 +156,7 @@ class CacheManager(object):
         self._show_stats_for(self.revision_ids, "revision-ids", note=note)
         # These aren't interesting so omit from the output, at least for now
         #self._show_stats_for(self._blobs, "other blobs", note=note)
-        #self._show_stats_for(self.last_ids, "last-ids", note=note)
-        #self._show_stats_for(self.heads, "heads", note=note)
+        #self.reftracker.dump_stats(note=note)
 
     def _show_stats_for(self, dict, label, note=trace.note, tuple_key=False):
         """Dump statistics about a given dictionary.
@@ -176,15 +178,14 @@ class CacheManager(object):
                 size = size / 1024
                 unit = 'G'
         note("    %-12s: %8.1f %s (%d %s)" % (label, size, unit, count,
-            helpers.single_plural(count, "item", "items")))
+            single_plural(count, "item", "items")))
 
     def clear_all(self):
         """Free up any memory used by the caches."""
         self._blobs.clear()
         self._sticky_blobs.clear()
         self.revision_ids.clear()
-        self.last_ids.clear()
-        self.heads.clear()
+        self.reftracker.clear()
         self.inventories.clear()
 
     def _flush_blobs_to_disk(self):
@@ -193,7 +194,7 @@ class CacheManager(object):
         total_blobs = len(sticky_blobs)
         blobs.sort(key=lambda k:len(sticky_blobs[k]))
         if self._tempdir is None:
-            tempdir = tempfile.mkdtemp(prefix='bzr_fastimport_blobs-')
+            tempdir = tempfile.mkdtemp(prefix='fastimport_blobs-')
             self._tempdir = tempdir
             self._cleanup.tempdir = self._tempdir
             self._cleanup.small_blobs = tempfile.TemporaryFile(
@@ -234,7 +235,6 @@ class CacheManager(object):
         trace.note('flushed %d/%d blobs w/ %.1fMB (%.1fMB small) to disk'
                    % (count, total_blobs, bytes / 1024. / 1024,
                       n_small_bytes / 1024. / 1024))
-        
 
     def store_blob(self, id, data):
         """Store a blob of data."""
@@ -289,32 +289,4 @@ class CacheManager(object):
             self._sticky_memory_bytes -= len(content)
         return content
 
-    def track_heads(self, cmd):
-        """Track the repository heads given a CommitCommand.
-        
-        :param cmd: the CommitCommand
-        :return: the list of parents in terms of commit-ids
-        """
-        # Get the true set of parents
-        if cmd.from_ is not None:
-            parents = [cmd.from_]
-        else:
-            last_id = self.last_ids.get(cmd.ref)
-            if last_id is not None:
-                parents = [last_id]
-            else:
-                parents = []
-        parents.extend(cmd.merges)
 
-        # Track the heads
-        self.track_heads_for_ref(cmd.ref, cmd.id, parents)
-        return parents
-
-    def track_heads_for_ref(self, cmd_ref, cmd_id, parents=None):
-        if parents is not None:
-            for parent in parents:
-                if parent in self.heads:
-                    del self.heads[parent]
-        self.heads.setdefault(cmd_id, set()).add(cmd_ref)
-        self.last_ids[cmd_ref] = cmd_id
-        self.last_ref = cmd_ref

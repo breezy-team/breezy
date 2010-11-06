@@ -19,29 +19,34 @@
 
 import time
 from bzrlib import (
-    bzrdir,
+    debug,
     delta,
     errors,
     osutils,
     progress,
     )
 from bzrlib.repofmt import pack_repo
-from bzrlib.trace import note, mutter
+from bzrlib.trace import (
+    mutter,
+    note,
+    warning,
+    )
 try:
     import bzrlib.util.configobj.configobj as configobj
 except ImportError:
     import configobj
 from bzrlib.plugins.fastimport import (
     branch_updater,
-    bzr_commit_handler,
     cache_manager,
+    marks_file,
+    revision_store,
+    )
+from fastimport import (
     commands,
     errors as plugin_errors,
     helpers,
     idmapfile,
-    marks_file,
     processor,
-    revision_store,
     )
 
 
@@ -122,8 +127,18 @@ class GenericProcessor(processor.ImportProcessor):
 
     def __init__(self, bzrdir, params=None, verbose=False, outf=None,
             prune_empty_dirs=True):
-        processor.ImportProcessor.__init__(self, bzrdir, params, verbose)
+        processor.ImportProcessor.__init__(self, params, verbose)
         self.prune_empty_dirs = prune_empty_dirs
+        self.bzrdir = bzrdir
+        try:
+            # Might be inside a branch
+            (self.working_tree, self.branch) = bzrdir._get_tree_branch()
+            self.repo = self.branch.repository
+        except errors.NotBranchError:
+            # Must be inside a repository
+            self.working_tree = None
+            self.branch = None
+            self.repo = bzrdir.open_repository()
 
     def pre_process(self):
         self._start_time = time.time()
@@ -182,6 +197,7 @@ class GenericProcessor(processor.ImportProcessor):
         self.repo.start_write_group()
 
     def _load_info_and_params(self):
+        from bzrlib.plugins.fastimport import bzr_commit_handler
         self._mode = bool(self.params.get('mode', 'default'))
         self._experimental = self._mode == 'experimental'
 
@@ -277,6 +293,31 @@ class GenericProcessor(processor.ImportProcessor):
                 self.repo, self.inventory_cache_size,
                 fulltext_when=fulltext_when)
 
+    def process(self, command_iter):
+        """Import data into Bazaar by processing a stream of commands.
+
+        :param command_iter: an iterator providing commands
+        """
+        if self.working_tree is not None:
+            self.working_tree.lock_write()
+        elif self.branch is not None:
+            self.branch.lock_write()
+        elif self.repo is not None:
+            self.repo.lock_write()
+        try:
+            super(GenericProcessor, self)._process(command_iter)
+        finally:
+            # If an unhandled exception occurred, abort the write group
+            if self.repo is not None and self.repo.is_in_write_group():
+                self.repo.abort_write_group()
+            # Release the locks
+            if self.working_tree is not None:
+                self.working_tree.unlock()
+            elif self.branch is not None:
+                self.branch.unlock()
+            elif self.repo is not None:
+                self.repo.unlock()
+
     def _process(self, command_iter):
         # if anything goes wrong, abort the write group if any
         try:
@@ -295,15 +336,16 @@ class GenericProcessor(processor.ImportProcessor):
             marks_file.export_marks(self.params.get("export-marks"),
                 self.cache_mgr.revision_ids)
 
-        if self.cache_mgr.last_ref == None:
+        if self.cache_mgr.reftracker.last_ref == None:
             """Nothing to refresh"""
             return
 
         # Update the branches
         self.note("Updating branch information ...")
         updater = branch_updater.BranchUpdater(self.repo, self.branch,
-            self.cache_mgr, helpers.invert_dictset(self.cache_mgr.heads),
-            self.cache_mgr.last_ref, self.tags)
+            self.cache_mgr, helpers.invert_dictset(
+                self.cache_mgr.reftracker.heads),
+            self.cache_mgr.reftracker.last_ref, self.tags)
         branches_updated, branches_lost = updater.update()
         self._branch_count = len(branches_updated)
 
@@ -468,7 +510,7 @@ class GenericProcessor(processor.ImportProcessor):
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
         if self.skip_total and self._revision_count < self.skip_total:
-            self.cache_mgr.track_heads(cmd)
+            self.cache_mgr.reftracker.track_heads(cmd)
             # Check that we really do know about this commit-id
             if not self.cache_mgr.revision_ids.has_key(cmd.id):
                 raise plugin_errors.BadRestart(cmd.id)
@@ -483,7 +525,7 @@ class GenericProcessor(processor.ImportProcessor):
             return
         if self.first_incremental_commit:
             self.first_incremental_commit = None
-            parents = self.cache_mgr.track_heads(cmd)
+            parents = self.cache_mgr.reftracker.track_heads(cmd)
 
         # 'Commit' the revision and report progress
         handler = self.commit_handler_factory(cmd, self.cache_mgr,
@@ -546,7 +588,7 @@ class GenericProcessor(processor.ImportProcessor):
             return
 
         if cmd.from_ is not None:
-            self.cache_mgr.track_heads_for_ref(cmd.ref, cmd.from_)
+            self.cache_mgr.reftracker.track_heads_for_ref(cmd.ref, cmd.from_)
 
     def tag_handler(self, cmd):
         """Process a TagCommand."""
@@ -566,3 +608,19 @@ class GenericProcessor(processor.ImportProcessor):
         feature = cmd.feature_name
         if feature not in commands.FEATURE_NAMES:
             raise plugin_errors.UnknownFeature(feature)
+
+    def debug(self, mgs, *args):
+        """Output a debug message if the appropriate -D option was given."""
+        if "fast-import" in debug.debug_flags:
+            msg = "%s DEBUG: %s" % (self._time_of_day(), msg)
+            mutter(msg, *args)
+
+    def note(self, msg, *args):
+        """Output a note but timestamp it."""
+        msg = "%s %s" % (self._time_of_day(), msg)
+        note(msg, *args)
+
+    def warning(self, msg, *args):
+        """Output a warning but timestamp it."""
+        msg = "%s WARNING: %s" % (self._time_of_day(), msg)
+        warning(msg, *args)

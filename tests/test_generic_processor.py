@@ -17,18 +17,19 @@
 import time
 
 from bzrlib import (
-    branch,
     tests,
     )
-
-from bzrlib.plugins.fastimport import (
-    commands,
-    errors,
+from bzrlib.plugins.fastimport.helpers import (
+    kind_to_mode,
+    )
+from bzrlib.plugins.fastimport.tests import (
+    FastimportFeature,
     )
 
-from bzrlib.plugins.fastimport.processors import (
-    generic_processor,
-    )
+try:
+    from fastimport import commands
+except ImportError:
+    commands = object()
 
 
 def load_tests(standard_tests, module, loader):
@@ -49,9 +50,14 @@ def load_tests(standard_tests, module, loader):
 
 class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
 
+    _test_needs_features = [FastimportFeature]
+
     branch_format = "pack-0.92"
 
     def get_handler(self):
+        from bzrlib.plugins.fastimport.processors import (
+            generic_processor,
+            )
         branch = self.make_branch('.', format=self.branch_format)
         handler = generic_processor.GenericProcessor(branch.bzrdir)
         return handler, branch
@@ -192,23 +198,24 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file', content='aaa',
         executable=False, to_kind=None, to_content='bbb', to_executable=None):
+
         # Revno 1: create a file or symlink
         # Revno 2: modify it
         if to_kind is None:
             to_kind = kind
         if to_executable is None:
             to_executable = executable
+        mode = kind_to_mode(kind, executable)
+        to_mode = kind_to_mode(to_kind, to_executable)
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, executable,
-                        None, content)
+                yield commands.FileModifyCommand(path, mode, None, content)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand(path, to_kind, to_executable,
-                        None, to_content)
+                yield commands.FileModifyCommand(path, to_mode, None, to_content)
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
         return command_list
@@ -310,12 +317,13 @@ class TestImportToPackModify(TestCaseForGenericProcessor):
 
 class TestImportToPackModifyTwice(TestCaseForGenericProcessor):
     """This tests when the same file is modified twice in the one commit.
-    
+
     Note: hg-fast-export produces data like this on occasions.
     """
 
     def file_command_iter(self, path, kind='file', content='aaa',
         executable=False, to_kind=None, to_content='bbb', to_executable=None):
+
         # Revno 1: create a file twice
         if to_kind is None:
             to_kind = kind
@@ -325,9 +333,9 @@ class TestImportToPackModifyTwice(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, executable,
+                yield commands.FileModifyCommand(path, kind_to_mode(kind, executable),
                         None, content)
-                yield commands.FileModifyCommand(path, to_kind, to_executable,
+                yield commands.FileModifyCommand(path, kind_to_mode(to_kind, to_executable),
                         None, to_content)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -346,6 +354,7 @@ class TestImportToPackModifyTwice(TestCaseForGenericProcessor):
 class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path1, path2, kind='file'):
+
         # Revno 1: create a file or symlink in a directory
         # Revno 2: create a second file that implicitly deletes the
         # first one because either:
@@ -355,12 +364,12 @@ class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path1, kind, False,
+                yield commands.FileModifyCommand(path1, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand(path2, kind, False,
+                yield commands.FileModifyCommand(path2, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
@@ -423,13 +432,14 @@ class TestImportToPackModifyTricky(TestCaseForGenericProcessor):
 class TestImportToPackDelete(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file'):
+
         # Revno 1: create a file or symlink
         # Revno 2: delete it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, False,
+                yield commands.FileModifyCommand(path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -494,12 +504,13 @@ class TestImportToPackDeleteNew(TestCaseForGenericProcessor):
     """Test deletion of a newly added file."""
 
     def file_command_iter(self, path, kind='file'):
+
         # Revno 1: create a file or symlink then delete it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, False,
+                yield commands.FileModifyCommand(path, kind_to_mode(kind, False),
                         None, "aaa")
                 yield commands.FileDeleteCommand(path)
             yield commands.CommitCommand('head', '1', author,
@@ -540,6 +551,7 @@ class TestImportToPackDeleteNew(TestCaseForGenericProcessor):
 class TestImportToPackDeleteMultiLevel(TestCaseForGenericProcessor):
 
     def file_command_iter(self, paths, paths_to_delete):
+
         # Revno 1: create multiple files
         # Revno 2: delete multiple files
         def command_list():
@@ -547,7 +559,7 @@ class TestImportToPackDeleteMultiLevel(TestCaseForGenericProcessor):
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
                 for i, path in enumerate(paths):
-                    yield commands.FileModifyCommand(path, 'file', False,
+                    yield commands.FileModifyCommand(path, kind_to_mode('file', False),
                             None, "aaa%d" % i)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -615,6 +627,7 @@ class TestImportToPackDeleteThenAdd(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file', content='aaa',
         executable=False, to_kind=None, to_content='bbb', to_executable=None):
+
         # Revno 1: create a file or symlink
         # Revno 2: delete it and add it
         if to_kind is None:
@@ -625,13 +638,13 @@ class TestImportToPackDeleteThenAdd(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, executable,
+                yield commands.FileModifyCommand(path, kind_to_mode(kind, executable),
                         None, content)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
                 yield commands.FileDeleteCommand(path)
-                yield commands.FileModifyCommand(path, to_kind, to_executable,
+                yield commands.FileModifyCommand(path, kind_to_mode(to_kind, to_executable),
                         None, to_content)
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
@@ -691,6 +704,7 @@ class TestImportToPackDeleteThenAdd(TestCaseForGenericProcessor):
 class TestImportToPackDeleteDirectory(TestCaseForGenericProcessor):
 
     def file_command_iter(self, paths, dir):
+
         # Revno 1: create multiple files
         # Revno 2: delete a directory holding those files
         def command_list():
@@ -698,7 +712,7 @@ class TestImportToPackDeleteDirectory(TestCaseForGenericProcessor):
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
                 for i, path in enumerate(paths):
-                    yield commands.FileModifyCommand(path, 'file', False,
+                    yield commands.FileModifyCommand(path, kind_to_mode('file', False),
                             None, "aaa%d" % i)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -732,6 +746,7 @@ class TestImportToPackDeleteDirectoryThenAddFile(TestCaseForGenericProcessor):
     """Test deleting a directory then adding a file in the same commit."""
 
     def file_command_iter(self, paths, dir, new_path, kind='file'):
+
         # Revno 1: create files in a directory
         # Revno 2: delete the directory then add a file into it
         def command_list():
@@ -739,13 +754,13 @@ class TestImportToPackDeleteDirectoryThenAddFile(TestCaseForGenericProcessor):
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
                 for i, path in enumerate(paths):
-                    yield commands.FileModifyCommand(path, kind, False,
+                    yield commands.FileModifyCommand(path, kind_to_mode(kind, False),
                             None, "aaa%d" % i)
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
                 yield commands.FileDeleteCommand(dir)
-                yield commands.FileModifyCommand(new_path, kind, False,
+                yield commands.FileModifyCommand(new_path, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
@@ -781,13 +796,14 @@ class TestImportToPackDeleteDirectoryThenAddFile(TestCaseForGenericProcessor):
 class TestImportToPackRename(TestCaseForGenericProcessor):
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+
         # Revno 1: create a file or symlink
         # Revno 2: rename it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -856,12 +872,13 @@ class TestImportToPackRenameNew(TestCaseForGenericProcessor):
     """Test rename of a newly added file."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+
         # Revno 1: create a file and rename it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
                 yield commands.FileRenameCommand(old_path, new_path)
             yield commands.CommitCommand('head', '1', author,
@@ -907,15 +924,16 @@ class TestImportToPackRenameToDeleted(TestCaseForGenericProcessor):
     """Test rename to a destination path deleted in this commit."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+
         # Revno 1: create two files
         # Revno 2: delete one, rename the other one to that path
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
-                yield commands.FileModifyCommand(new_path, kind, False,
+                yield commands.FileModifyCommand(new_path, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -1019,18 +1037,19 @@ class TestImportToPackRenameModified(TestCaseForGenericProcessor):
     """Test rename of a path previously modified in this commit."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+
         # Revno 1: create a file or symlink
         # Revno 2: modify then rename it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "bbb")
                 yield commands.FileRenameCommand(old_path, new_path)
             yield commands.CommitCommand('head', '2', author,
@@ -1134,19 +1153,20 @@ class TestImportToPackRenameThenModify(TestCaseForGenericProcessor):
     """Test rename of a path then modfy the new-path in the same commit."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+
         # Revno 1: create a file or symlink
         # Revno 2: rename it then modify the newly created path
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
                 yield commands.FileRenameCommand(old_path, new_path)
-                yield commands.FileModifyCommand(new_path, kind, False,
+                yield commands.FileModifyCommand(new_path, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
@@ -1249,22 +1269,23 @@ class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
     """Test rename of to a deleted path then modfy the new-path in the same commit."""
 
     def get_command_iter(self, old_path, new_path, kind='file'):
+
         # Revno 1: create two files or symlinks
         # Revno 2: delete one, rename the other to it then modify the newly created path
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(old_path, kind, False,
+                yield commands.FileModifyCommand(old_path, kind_to_mode(kind, False),
                         None, "aaa")
-                yield commands.FileModifyCommand(new_path, kind, False,
+                yield commands.FileModifyCommand(new_path, kind_to_mode(kind, False),
                         None, "zzz")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
                 yield commands.FileDeleteCommand(new_path)
                 yield commands.FileRenameCommand(old_path, new_path)
-                yield commands.FileModifyCommand(new_path, kind, False,
+                yield commands.FileModifyCommand(new_path, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '2', author,
                 committer, "commit 2", ":1", [], files_two)
@@ -1376,6 +1397,7 @@ class TestImportToPackDeleteRenameThenModify(TestCaseForGenericProcessor):
 class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path1, old_path2, new_path2, kind='file'):
+
         # Revno 1: create two files or symlinks in a directory
         # Revno 2: rename the second file so that it implicitly deletes the
         # first one because either:
@@ -1385,9 +1407,9 @@ class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path1, kind, False,
+                yield commands.FileModifyCommand(path1, kind_to_mode(kind, False),
                         None, "aaa")
-                yield commands.FileModifyCommand(old_path2, kind, False,
+                yield commands.FileModifyCommand(old_path2, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -1459,13 +1481,14 @@ class TestImportToPackRenameTricky(TestCaseForGenericProcessor):
 class TestImportToPackCopy(TestCaseForGenericProcessor):
 
     def file_command_iter(self, src_path, dest_path, kind='file'):
+
         # Revno 1: create a file or symlink
         # Revno 2: copy it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(src_path, kind, False,
+                yield commands.FileModifyCommand(src_path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -1550,12 +1573,13 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
     """Test copy of a newly added file."""
 
     def file_command_iter(self, src_path, dest_path, kind='file'):
+
         # Revno 1: create a file or symlink and copy it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(src_path, kind, False,
+                yield commands.FileModifyCommand(src_path, kind_to_mode(kind, False),
                         None, "aaa")
                 yield commands.FileCopyCommand(src_path, dest_path)
             yield commands.CommitCommand('head', '1', author,
@@ -1630,15 +1654,16 @@ class TestImportToPackCopyNew(TestCaseForGenericProcessor):
 class TestImportToPackCopyToDeleted(TestCaseForGenericProcessor):
 
     def file_command_iter(self, src_path, dest_path, kind='file'):
+
         # Revno 1: create two files or symlinks
         # Revno 2: delete one and copy the other one to its path
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(src_path, kind, False,
+                yield commands.FileModifyCommand(src_path, kind_to_mode(kind, False),
                         None, "aaa")
-                yield commands.FileModifyCommand(dest_path, kind, False,
+                yield commands.FileModifyCommand(dest_path, kind_to_mode(kind, False),
                         None, "bbb")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
@@ -1718,18 +1743,19 @@ class TestImportToPackCopyModified(TestCaseForGenericProcessor):
     """Test copy of file/symlink already modified in this commit."""
 
     def file_command_iter(self, src_path, dest_path, kind='file'):
+
         # Revno 1: create a file or symlink
         # Revno 2: modify and copy it
         def command_list():
             author = ['', 'bugs@a.com', time.time(), time.timezone]
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(src_path, kind, False,
+                yield commands.FileModifyCommand(src_path, kind_to_mode(kind, False),
                         None, "aaa")
             yield commands.CommitCommand('head', '1', author,
                 committer, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand(src_path, kind, False,
+                yield commands.FileModifyCommand(src_path, kind_to_mode(kind, False),
                         None, "bbb")
                 yield commands.FileCopyCommand(src_path, dest_path)
             yield commands.CommitCommand('head', '2', author,
@@ -1816,10 +1842,11 @@ class TestImportToPackCopyModified(TestCaseForGenericProcessor):
 class TestImportToPackFileKinds(TestCaseForGenericProcessor):
 
     def get_command_iter(self, path, kind, content):
+
         def command_list():
             committer = ['', 'elmer@a.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand(path, kind, False,
+                yield commands.FileModifyCommand(path, kind_to_mode(kind, False),
                         None, content)
             yield commands.CommitCommand('head', '1', None,
                 committer, "commit 1", None, [], files_one)
@@ -1850,17 +1877,17 @@ class TestModifyRevertInBranch(TestCaseForGenericProcessor):
             committer_c = ['', 'c@elmer.com', time.time(), time.timezone]
             committer_d = ['', 'd@elmer.com', time.time(), time.timezone]
             def files_one():
-                yield commands.FileModifyCommand('foo', 'file', False,
+                yield commands.FileModifyCommand('foo', kind_to_mode('file', False),
                         None, "content A\n")
             yield commands.CommitCommand('head', '1', None,
                 committer_a, "commit 1", None, [], files_one)
             def files_two():
-                yield commands.FileModifyCommand('foo', 'file', False,
+                yield commands.FileModifyCommand('foo', kind_to_mode('file', False),
                         None, "content B\n")
             yield commands.CommitCommand('head', '2', None,
                 committer_b, "commit 2", ":1", [], files_two)
             def files_three():
-                yield commands.FileModifyCommand('foo', 'file', False,
+                yield commands.FileModifyCommand('foo', kind_to_mode('file', False),
                         None, "content A\n")
             yield commands.CommitCommand('head', '3', None,
                 committer_c, "commit 3", ":2", [], files_three)

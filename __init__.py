@@ -79,11 +79,20 @@ To report bugs or publish enhancements, visit the bzr-fastimport project
 page on Launchpad, https://launchpad.net/bzr-fastimport.
 """
 
-version_info = (0, 9, 0, 'dev', 0)
+version_info = (0, 10, 0, 'dev', 0)
 
 from bzrlib import bzrdir
 from bzrlib.commands import Command, register_command
 from bzrlib.option import Option, ListOption, RegistryOption
+
+
+def load_fastimport():
+    """Load the fastimport module or raise an appropriate exception."""
+    try:
+        import fastimport
+    except ImportError, e:
+        from bzrlib.errors import DependencyNotPresent
+        raise DependencyNotPresent("fastimport", e)
 
 
 def test_suite():
@@ -103,7 +112,7 @@ def _run(source, processor_factory, control, params, verbose,
       destination is expected
     :param user_map: if not None, the file containing the user map.
     """
-    import parser
+    from fastimport import parser
     stream = _get_source_stream(source)
     user_mapper = _get_user_mapper(user_map)
     proc = processor_factory(control, params=params, verbose=verbose)
@@ -114,6 +123,7 @@ def _run(source, processor_factory, control, params, verbose,
 def _get_source_stream(source):
     if source == '-':
         import sys
+        from fastimport import helpers
         stream = helpers.binary_stream(sys.stdin)
     elif source.endswith('.gz'):
         import gzip
@@ -346,7 +356,7 @@ class cmd_fast_import(Command):
         trees=False, count=-1, checkpoint=10000, autopack=4, inv_cache=-1,
         mode=None, import_marks=None, export_marks=None, format=None,
         user_map=None):
-        from bzrlib.errors import BzrCommandError, NotBranchError
+        load_fastimport()
         from bzrlib.plugins.fastimport.processors import generic_processor
         from bzrlib.plugins.fastimport.helpers import (
             open_destination_directory,
@@ -385,8 +395,8 @@ class cmd_fast_import(Command):
 
     def _generate_info(self, source):
         from cStringIO import StringIO
-        import parser
-        from bzrlib.plugins.fastimport.processors import info_processor
+        from fastimport import parser
+        from fastimport.processors import info_processor
         stream = _get_source_stream(source)
         output = StringIO()
         try:
@@ -491,12 +501,13 @@ class cmd_fast_import_filter(Command):
     encoding_type = 'exact'
     def run(self, source, verbose=False, include_paths=None,
         exclude_paths=None, user_map=None):
-        from bzrlib.plugins.fastimport.processors import filter_processor
+        load_fastimport()
+        from fastimport.processors import filter_processor
         params = {
             'include_paths': include_paths,
             'exclude_paths': exclude_paths,
             }
-        return _run(source, filter_processor.FilterProcessor, None, params,
+        return _run(source, filter_processor.FilterProcessor, params,
             verbose, user_map=user_map)
 
 
@@ -529,8 +540,9 @@ class cmd_fast_import_info(Command):
     takes_options = ['verbose']
     aliases = []
     def run(self, source, verbose=False):
-        from bzrlib.plugins.fastimport.processors import info_processor
-        return _run(source, info_processor.InfoProcessor, None, {}, verbose)
+        load_fastimport()
+        from fastimport.processors import info_processor
+        return _run(source, info_processor.InfoProcessor, {}, verbose)
 
 
 class cmd_fast_import_query(Command):
@@ -584,12 +596,13 @@ class cmd_fast_import_query(Command):
                      ]
     aliases = []
     def run(self, source, verbose=False, commands=None, commit_mark=None):
-        from bzrlib.plugins.fastimport.processors import query_processor
+        load_fastimport()
+        from fastimport.processors import query_processor
         from bzrlib.plugins.fastimport import helpers
         params = helpers.defines_to_dict(commands) or {}
         if commit_mark:
             params['commit-mark'] = commit_mark
-        return _run(source, query_processor.QueryProcessor, None, params,
+        return _run(source, query_processor.QueryProcessor, params,
             verbose)
 
 
@@ -698,9 +711,10 @@ class cmd_fast_export(Command):
         git_branch="master", checkpoint=10000, marks=None,
         import_marks=None, export_marks=None, revision=None,
         plain=True):
+        load_fastimport()
         from bzrlib.plugins.fastimport import bzr_exporter
 
-        if marks:                                              
+        if marks:
             import_marks = export_marks = marks
         exporter = bzr_exporter.BzrFastExporter(source,
             destination=destination,
@@ -763,6 +777,7 @@ class cmd_fast_export_from_cvs(Command):
     encoding_type = 'exact'
     def run(self, source, destination, verbose=False, trunk_only=False,
         encoding=None, sort=None):
+        load_fastimport()
         from bzrlib.plugins.fastimport.exporters import fast_export_from
         custom = []
         if trunk_only:
@@ -820,6 +835,7 @@ class cmd_fast_export_from_hg(Command):
     aliases = []
     encoding_type = 'exact'
     def run(self, source, destination, verbose=False):
+        load_fastimport()
         from bzrlib.plugins.fastimport.exporters import fast_export_from
         fast_export_from(source, destination, 'hg', verbose)
 
@@ -846,6 +862,7 @@ class cmd_fast_export_from_git(Command):
     aliases = []
     encoding_type = 'exact'
     def run(self, source, destination, verbose=False):
+        load_fastimport()
         from bzrlib.plugins.fastimport.exporters import fast_export_from
         fast_export_from(source, destination, 'git', verbose)
 
@@ -867,6 +884,7 @@ class cmd_fast_export_from_mtn(Command):
     aliases = []
     encoding_type = 'exact'
     def run(self, source, destination, verbose=False):
+        load_fastimport()
         from bzrlib.plugins.fastimport.exporters import fast_export_from
         fast_export_from(source, destination, 'mtn', verbose)
 
@@ -882,7 +900,7 @@ class cmd_fast_export_from_p4(Command):
     bzrp4 must be installed as its p4_fast_export.py module is used under
     the covers to do the export.  bzrp4 can be downloaded from
     https://launchpad.net/bzrp4/.
-    
+
     The P4PORT environment variable must be set, and you must be logged
     into the Perforce server.
 
@@ -898,6 +916,7 @@ class cmd_fast_export_from_p4(Command):
     aliases = []
     encoding_type = 'exact'
     def run(self, source, destination, verbose=False):
+        load_fastimport()
         from bzrlib.plugins.fastimport.exporters import fast_export_from
         custom = []
         fast_export_from(source, destination, 'p4', verbose, custom)
@@ -936,6 +955,7 @@ class cmd_fast_export_from_svn(Command):
     encoding_type = 'exact'
     def run(self, source, destination, verbose=False, trunk_path=None,
         branches_path=None, tags_path=None):
+        load_fastimport()
         from bzrlib.plugins.fastimport.exporters import fast_export_from
         custom = []
         if trunk_path is not None:

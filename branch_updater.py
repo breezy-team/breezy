@@ -21,7 +21,9 @@ from operator import itemgetter
 from bzrlib import bzrdir, errors, osutils, transport
 from bzrlib.trace import error, note
 
-import helpers
+from bzrlib.plugins.fastimport.helpers import (
+    best_format_for_objects_in_a_repository,
+    )
 
 
 class BranchUpdater(object):
@@ -40,7 +42,7 @@ class BranchUpdater(object):
         self.last_ref = last_ref
         self.tags = tags
         self._branch_format = \
-            helpers.best_format_for_objects_in_a_repository(repo)
+            best_format_for_objects_in_a_repository(repo)
 
     def update(self):
         """Update the Bazaar branches and tips matching the heads.
@@ -148,6 +150,7 @@ class BranchUpdater(object):
         
         :return: whether the branch was changed or not
         """
+        from fastimport.helpers import single_plural
         last_rev_id = self.cache_mgr.revision_ids[last_mark]
         revs = list(self.repo.iter_reverse_revision_history(last_rev_id))
         revno = len(revs)
@@ -169,6 +172,6 @@ class BranchUpdater(object):
         if changed:
             tagno = len(my_tags)
             note("\t branch %s now has %d %s and %d %s", br.nick,
-                revno, helpers.single_plural(revno, "revision", "revisions"),
-                tagno, helpers.single_plural(tagno, "tag", "tags"))
+                revno, single_plural(revno, "revision", "revisions"),
+                tagno, single_plural(tagno, "tag", "tags"))
         return changed

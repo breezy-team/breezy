@@ -17,19 +17,32 @@
 """Tests for bzr-fastimport."""
 
 
-from bzrlib.tests.TestUtil import TestLoader, TestSuite
+from bzrlib import errors as bzr_errors
+from bzrlib.tests import Feature, TestLoader
+from bzrlib.plugins.fastimport import load_fastimport
+
+
+class _FastimportFeature(Feature):
+
+    def _probe(self):
+        try:
+            load_fastimport()
+        except bzr_errors.DependencyNotPresent:
+            return False
+        return True
+
+    def feature_name(self):
+        return 'fastimport'
+
+
+FastimportFeature = _FastimportFeature()
+
 
 
 def test_suite():
     module_names = [__name__ + '.' + x for x in [
         'test_branch_mapper',
-        'test_commands',
-        'test_errors',
-        'test_filter_processor',
         'test_generic_processor',
-        'test_head_tracking',
-        'test_helpers',
-        'test_parser',
         'test_revision_store',
         ]]
     loader = TestLoader()
