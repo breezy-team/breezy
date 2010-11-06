@@ -426,8 +426,7 @@ class cmd_mergetools(Command):
         merge_tools = get_merge_tools()
         for mt in merge_tools:
             if mt.get_name() == name:
-                mt.set_executable(args[0])
-                mt.set_arguments(args[1:])
+                mt.set_commandline(args)
                 uif = ui.ui_factory
                 uif.note(u'Updated external merge tool: %s' % name)
                 if not mt.is_available():
