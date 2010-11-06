@@ -116,17 +116,6 @@ class MergeTool(object):
     def set_executable(self, executable):
         self._commandline[:1] = [executable]
     
-    def get_arguments(self):
-        if len(self._commandline) < 2:
-            return u''
-        return u' '.join(self._commandline[1:])
-        
-    def set_arguments(self, args):
-        if isinstance(args, basestring):
-            self._commandline = [self.get_executable()] + cmdline.split(args)
-        else:
-            self._commandline = [self.get_executable()] + args
-    
     def is_available(self):
         executable = self.get_executable()
         return os.path.exists(executable) or _find_executable(executable)
