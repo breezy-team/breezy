@@ -224,8 +224,9 @@ def _win32_local_path_from_url(url):
         return '/'
 
     # usual local path with drive letter
-    if (win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
-                             'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+    if (len(win32_url) < 6
+        or win32_url[3] not in ('abcdefghijklmnopqrstuvwxyz'
+                                'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
         or win32_url[4] not in  '|:'
         or win32_url[5] != '/'):
         raise errors.InvalidURL(url, 'Win32 file urls start with'

@@ -138,8 +138,10 @@ class HttpTransport_urllib(http.HttpTransportBase):
         abspath = self._remote_path('.bzr/smart')
         # We include 403 in accepted_errors so that send_http_smart_request can
         # handle a 403.  Otherwise a 403 causes an unhandled TransportError.
-        response = self._perform(Request('POST', abspath, body_bytes,
-                                         accepted_errors=[200, 403]))
+        response = self._perform(
+            Request('POST', abspath, body_bytes,
+                    {'Content-Type': 'application/octet-stream'},
+                    accepted_errors=[200, 403]))
         code = response.code
         data = handle_response(abspath, code, response.info(), response)
         return code, data

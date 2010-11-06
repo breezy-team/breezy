@@ -28,7 +28,6 @@ import textwrap
 from cStringIO import StringIO
 
 from bzrlib import (
-    commands,
     errors,
     osutils,
     tests,
@@ -214,7 +213,7 @@ class ScriptRunner(object):
         method = getattr(self, mname, None)
         if method is None:
             raise SyntaxError('Command not found "%s"' % (cmd[0],),
-                              None, 1, ' '.join(cmd))
+                              (None, 1, 1, ' '.join(cmd)))
         if input is None:
             str_input = ''
         else:
@@ -514,31 +513,3 @@ def run_script(test_case, script_string):
     """Run the given script within a testcase"""
     return ScriptRunner().run_script(test_case, script_string)
 
-
-class cmd_test_script(commands.Command):
-    """Run a shell-like test from a file."""
-
-    hidden = True
-    takes_args = ['infile']
-
-    @commands.display_command
-    def run(self, infile):
-
-        f = open(infile)
-        try:
-            script = f.read()
-        finally:
-            f.close()
-
-        class Test(TestCaseWithTransportAndScript):
-
-            script = None # Set before running
-
-            def test_it(self):
-                self.run_script(script)
-
-        runner = tests.TextTestRunner(stream=self.outf)
-        test = Test('test_it')
-        test.path = os.path.realpath(infile)
-        res = runner.run(test)
-        return len(res.errors) + len(res.failures)

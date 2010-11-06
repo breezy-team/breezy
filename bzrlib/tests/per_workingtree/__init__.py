@@ -62,7 +62,7 @@ class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
     def make_branch_builder(self, relpath, format=None):
         if format is None:
             format = self.bzrdir_format
-        builder = branchbuilder.BranchBuilder(self.get_transport(),
+        builder = branchbuilder.BranchBuilder(self.get_transport(relpath),
                                               format=format)
         return builder
 

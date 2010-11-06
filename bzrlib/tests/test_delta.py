@@ -122,6 +122,12 @@ class TestReportChanges(tests.TestCase):
             renamed=False, modified='created', exe_change=False,
             kind=(None, 'file'), unversioned_filter=lambda x:True)
 
+    def test_missing(self):
+        self.assertReport('+!  missing.c', file_id=None, path='missing.c',
+             old_path=None, versioned_change='added',
+             renamed=False, modified='missing', exe_change=False,
+             kind=(None, None))
+
     def test_view_filtering(self):
         # If a file in within the view, it should appear in the output
         expected_lines = [
@@ -279,11 +285,16 @@ class TestDeltaShow(tests.TestCaseWithTransport):
                                   ('branch/f2', '2\n'),
                                   ('branch/f3', '3\n'),
                                   ('branch/f4', '4\n'),
+                                  ('branch/f5', '5\n'),
                                   ('branch/dir/',),
                                  ])
         wt.add(['f1', 'f2', 'f3', 'f4', 'dir'],
                ['f1-id', 'f2-id', 'f3-id', 'f4-id', 'dir-id'])
         wt.commit('commit one', rev_id='1')
+
+        # TODO add rename,removed,etc. here?
+        wt.add('f5')
+        os.unlink('branch/f5')
 
         long_status = """added:
   dir/
@@ -291,12 +302,15 @@ class TestDeltaShow(tests.TestCaseWithTransport):
   f2
   f3
   f4
+missing:
+  f5
 """
         short_status = """A  dir/
 A  f1
 A  f2
 A  f3
 A  f4
+!  f5
 """
 
         repo = wt.branch.repository
