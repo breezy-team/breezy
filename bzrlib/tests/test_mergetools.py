@@ -38,7 +38,7 @@ class TestBasics(tests.TestCase):
         
     def test_get_commandline_as_list(self):
         self.assertEqual(['/path/to/tool', '--opt', '%b', '-x', '%t', '%o',
-                           '--stuff', '%r'],
+                          '--stuff', '%r'],
             self.tool.get_commandline_as_list())
         
     def test_get_executable(self):
@@ -66,36 +66,64 @@ class TestBasics(tests.TestCase):
                           '--stuff', '%r'],
             self.tool.get_commandline_as_list())
         
+    def test_quoted_executable(self):
+        self.requireFeature(backslashdir_feature)
+        self.tool.set_commandline(
+            '"C:\\Program Files\\KDiff3\\kdiff3.exe" %b %t %o -o %r')
+        self.assertEqual('C:\\Program Files\\KDiff3\\kdiff3.exe',
+                         self.tool.get_executable())
+        
 
-
-class TestMergeTool(tests.TestCaseInTempDir):
-    def test_unicode(self):
-        mt = mergetools.MergeTool(u'b\u0414r', u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r')
-        self.assertEqual(u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r', mt.get_commandline())
-        self.assertEqual([u'/path/to/b\u0414r', u'--opt', u'%b', u'-x', u'%t', u'%o',
-                           u'--stuff', u'%r'], mt.get_commandline_as_list())
-        self.assertEqual(u'/path/to/b\u0414r', mt.get_executable())
-        self.assertEqual(u'b\u0414r', mt.get_name())
-        mt.set_name(u'b\u0414rs')
-        mt.set_commandline(u'/new/path/to/b\u0414rs %b %t %o %r')
-        self.assertEqual(u'/new/path/to/b\u0414rs %b %t %o %r', mt.get_commandline())
-        self.assertEqual([u'/new/path/to/b\u0414rs', u'%b', u'%t', u'%o', u'%r'],
-            mt.get_commandline_as_list())
-        self.assertEqual(u'/new/path/to/b\u0414rs', mt.get_executable())
-        self.assertEqual(u'b\u0414rs', mt.get_name())
-        mt.set_executable(u'b\u0414rst')
-        self.assertEqual(u'b\u0414rst', mt.get_executable())
-        self.assertEqual(u'b\u0414rst %b %t %o %r', mt.get_commandline())
-        self.assertEqual([u'b\u0414rst', u'%b', u'%t', u'%o', u'%r'],
-            mt.get_commandline_as_list())
-        mt = mergetools.MergeTool(None, u'/path/to/b\u0414r blah stuff etc')
-        self.assertEqual(u'b\u0414r', mt.get_name())
+class TestUnicodeBasics(tests.TestCase):
+    def setUp(self):
+        super(TestUnicodeBasics, self).setUp()
+        self.tool = mergetools.MergeTool(u'someb\u0414r',
+            u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r')
+        
+    def test_get_commandline(self):
+        self.assertEqual(u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r',
+            self.tool.get_commandline())
+        
+    def test_get_commandline_as_list(self):
+        self.assertEqual([u'/path/to/b\u0414r', u'--opt', u'%b', u'-x', u'%t',
+                          u'%o', u'--stuff', u'%r'],
+            self.tool.get_commandline_as_list())
+        
+    def test_get_executable(self):
+        self.assertEqual(u'/path/to/b\u0414r', self.tool.get_executable())
+        
+    def test_get_name(self):
+        self.assertEqual(u'someb\u0414r', self.tool.get_name())
+        
+    def test_set_name(self):
+        self.tool.set_name(u'betterb\u0414r')
+        self.assertEqual(u'betterb\u0414r', self.tool.get_name())
+        
+    def test_set_name_none(self):
+        self.tool.set_name(None)
+        self.assertEqual(u'b\u0414r', self.tool.get_name())
+        
+    def test_set_commandline(self):
+        self.tool.set_commandline(u'/new/path/to/betterb\u0414r %b %t %o %r')
+        self.assertEqual([u'/new/path/to/betterb\u0414r', u'%b', u'%t', u'%o',
+                          u'%r'],
+            self.tool.get_commandline_as_list())        
+        
+    def test_set_executable(self):
+        self.tool.set_executable(u'otherb\u0414r')
+        self.assertEqual([u'otherb\u0414r', u'--opt', u'%b', u'-x', u'%t',
+                          u'%o', u'--stuff', u'%r'],
+            self.tool.get_commandline_as_list())
         
     def test_quoted_executable(self):
         self.requireFeature(backslashdir_feature)
-        mt = mergetools.MergeTool('kdiff3', '"C:\\Program Files\\KDiff3\\kdiff3.exe" %b %t %o -o %r')
-        self.assertEqual('kdiff3', mt.get_name())
+        self.tool.set_commandline(
+            u'"C:\\Program Files\\KDiff3\\b\u0414r.exe" %b %t %o -o %r')
+        self.assertEqual(u'C:\\Program Files\\KDiff3\\b\u0414r.exe',
+                         self.tool.get_executable())
 
+
+class TestMergeTool(tests.TestCaseInTempDir):
     def test_filename_substitution(self):
         def dummy_invoker(executable, args, cleanup):
             self._commandline = [executable] + args
