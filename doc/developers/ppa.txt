@@ -7,16 +7,17 @@ See also: `Bazaar Developer Document Catalog <index.html>`_.
 Background
 ----------
 
-We build Ubuntu ``.deb`` packages for Bazaar as an important part of the release
-process.  These packages are hosted in a few `Personal Package Archives (PPA)`__ on
-Launchpad.
+We build Ubuntu ``.deb`` packages for Bazaar as an important part of the
+release process.  These packages are hosted in a few `Personal Package
+Archives (PPA)`__ on Launchpad.
 
   __ https://help.launchpad.net/PPAQuickStart
 
-As of June 2010, there are three PPAs:
+As of September 2010, there are four PPAs:
 
-<https://launchpad.net/~bzr/+archive>
+<https://launchpad.net/~bzr/+archive/ppa>
     Final released versions and updates.
+    Most users who want updates to bzr should add this.
 
 <https://launchpad.net/~bzr/+archive/proposed>
     Proposed uploads to move into ~bzr, awaiting testing.
@@ -67,6 +68,8 @@ As of August 2010, the following releases are supported:
 * Hardy LTS
 * Dapper LTS (supported but no longer updated for new releases)
 
+The ``rmadison bzr`` command will gives you an up-to-date summary
+of which bzr releases are current in each Ubuntu release.
 
 Preconditions
 -------------
@@ -130,12 +133,12 @@ Overview of packaging with builddeb
 * Now merge across that change into each supported branch with a 
   simple ``bzr merge``.
   
-Locally testing builds
-~~~~~~~~~~~~~~~~~~~~~~
+Locally testing using pbuilder
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It may be useful to locally test builds inside pbuilder.  You may want to 
 use the script from <http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=255165> 
-to wrap it.
+to wrap it, and to give it sensible defaults for your local machine.
 
 Update all packages in proposed before copping the main ppa
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -328,7 +331,20 @@ summary of current package versions with::
   apt-cache madison bzr
   
   
+Testing the contents of the PPA
+-------------------------------
+
+A somewhat crude but useful way to test the contents of the PPA is to
+install the relevant packages into an schroot::
+
+ schroot -c hardy-test -u root -- \
+   apt-get install -o 'APT::Install-Suggests="true"' \
+   -o 'APT::Install-Recommends="true"' \
+   bzr
+
+This should make sure everything can be installed; it won't guarantee that 
   
+
 Packaging dependencies
 ----------------------
 

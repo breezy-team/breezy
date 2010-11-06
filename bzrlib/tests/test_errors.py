@@ -159,6 +159,13 @@ class TestErrors(TestCaseWithTransport):
             "cannot be broken.",
             str(error))
 
+    def test_lock_corrupt(self):
+        error = errors.LockCorrupt("corruption info")
+        self.assertEqualDiff("Lock is apparently held, but corrupted: "
+            "corruption info\n"
+            "Use 'bzr break-lock' to clear it",
+            str(error))
+
     def test_knit_data_stream_incompatible(self):
         error = errors.KnitDataStreamIncompatible(
             'stream format', 'target format')
@@ -663,6 +670,15 @@ class TestErrors(TestCaseWithTransport):
     def test_not_branch_bzrdir_without_repo(self):
         bzrdir = self.make_bzrdir('bzrdir')
         err = errors.NotBranchError('path', bzrdir=bzrdir)
+        self.assertEqual('Not a branch: "path".', str(err))
+
+    def test_not_branch_bzrdir_with_recursive_not_branch_error(self):
+        class FakeBzrDir(object):
+            def open_repository(self):
+                # str() on the NotBranchError will trigger a call to this,
+                # which in turn will another, identical NotBranchError.
+                raise errors.NotBranchError('path', bzrdir=FakeBzrDir())
+        err = errors.NotBranchError('path', bzrdir=FakeBzrDir())
         self.assertEqual('Not a branch: "path".', str(err))
 
     def test_not_branch_laziness(self):

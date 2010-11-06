@@ -45,6 +45,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
+    pyutils,
     remote,
     repository,
     revision as _mod_revision,
@@ -85,6 +86,10 @@ from bzrlib import (
     hooks,
     registry,
     symbol_versioning,
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
     )
 
 
@@ -165,28 +170,9 @@ class BzrDir(controldir.ControlDir):
                 format.get_format_description(),
                 basedir)
 
-    def clone(self, url, revision_id=None, force_new_repo=False,
-              preserve_stacking=False):
-        """Clone this bzrdir and its contents to url verbatim.
-
-        :param url: The url create the clone at.  If url's last component does
-            not exist, it will be created.
-        :param revision_id: The tip revision-id to use for any branch or
-            working tree.  If not None, then the clone operation may tune
-            itself to download less data.
-        :param force_new_repo: Do not use a shared repository for the target
-                               even if one is available.
-        :param preserve_stacking: When cloning a stacked branch, stack the
-            new branch on top of the other branch's stacked-on branch.
-        """
-        return self.clone_on_transport(get_transport(url),
-                                       revision_id=revision_id,
-                                       force_new_repo=force_new_repo,
-                                       preserve_stacking=preserve_stacking)
-
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
-        create_prefix=False, use_existing_dir=True):
+        create_prefix=False, use_existing_dir=True, no_tree=False):
         """Clone this bzrdir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -234,7 +220,7 @@ class BzrDir(controldir.ControlDir):
         # we should look up the policy needs first, or just use it as a hint,
         # or something.
         if local_repo:
-            make_working_trees = local_repo.make_working_trees()
+            make_working_trees = local_repo.make_working_trees() and not no_tree
             want_shared = local_repo.is_shared()
             repo_format_name = format.repository_format.network_name()
         else:
@@ -515,14 +501,16 @@ class BzrDir(controldir.ControlDir):
                                                format=format).bzrdir
         return bzrdir.create_workingtree()
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def generate_backup_name(self, base):
-        """Generate a non-existing backup file name based on base."""
-        counter = 1
-        name = "%s.~%d~" % (base, counter)
-        while self.root_transport.has(name):
-            counter += 1
-            name = "%s.~%d~" % (base, counter)
-        return name
+        return self._available_backup_name(base)
+
+    def _available_backup_name(self, base):
+        """Find a non-existing backup file name based on base.
+
+        See bzrlib.osutils.available_backup_name about race conditions.
+        """
+        return osutils.available_backup_name(base, self.root_transport.has)
 
     def backup_bzrdir(self):
         """Backup this bzr control directory.
@@ -530,16 +518,13 @@ class BzrDir(controldir.ControlDir):
         :return: Tuple with old path name and new path name
         """
 
-        backup_dir=self.generate_backup_name('backup.bzr')
         pb = ui.ui_factory.nested_progress_bar()
         try:
-            # FIXME: bug 300001 -- the backup fails if the backup directory
-            # already exists, but it should instead either remove it or make
-            # a new backup directory.
-            #
             old_path = self.root_transport.abspath('.bzr')
+            backup_dir = self._available_backup_name('backup.bzr')
             new_path = self.root_transport.abspath(backup_dir)
-            ui.ui_factory.note('making backup of %s\n  to %s' % (old_path, new_path,))
+            ui.ui_factory.note('making backup of %s\n  to %s'
+                               % (old_path, new_path,))
             self.root_transport.copy_tree('.bzr', backup_dir)
             return (old_path, new_path)
         finally:
@@ -1309,7 +1294,10 @@ class BzrDirMeta1(BzrDir):
         wt = self.open_workingtree(recommend_upgrade=False)
         repository = wt.branch.repository
         empty = repository.revision_tree(_mod_revision.NULL_REVISION)
-        wt.revert(old_tree=empty)
+        # We ignore the conflicts returned by wt.revert since we're about to
+        # delete the wt metadata anyway, all that should be left here are
+        # detritus. But see bug #634470 about subtree .bzr dirs.
+        conflicts = wt.revert(old_tree=empty)
         self.destroy_workingtree_metadata()
 
     def destroy_workingtree_metadata(self):
@@ -1719,7 +1707,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
     def register_format(klass, format):
         BzrProber.register_bzrdir_format(format)
         # bzr native formats have a network name of their format string.
-        network_format_registry.register(format.get_format_string(), format.__class__)
+        controldir.network_format_registry.register(format.get_format_string(), format.__class__)
         controldir.ControlDirFormat.register_format(format)
 
     def _supply_sub_formats_to(self, other_format):
@@ -1738,7 +1726,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
     def unregister_format(klass, format):
         BzrProber.unregister_bzrdir_format(format)
         controldir.ControlDirFormat.unregister_format(format)
-        network_format_registry.remove(format.get_format_string())
+        controldir.network_format_registry.remove(format.get_format_string())
 
 
 class BzrDirFormat4(BzrDirFormat):
@@ -2145,15 +2133,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     workingtree_format = property(__get_workingtree_format,
                                   __set_workingtree_format)
-
-
-network_format_registry = registry.FormatRegistry()
-"""Registry of formats indexed by their network name.
-
-The network name for a BzrDirFormat is an identifier that can be used when
-referring to formats with smart server operations. See
-BzrDirFormat.network_name() for more detail.
-"""
 
 
 # Register bzr formats
@@ -2703,6 +2682,8 @@ class ConvertMetaToMeta(Converter):
 class RemoteBzrDirFormat(BzrDirMetaFormat1):
     """Format representing bzrdirs accessed via a smart server"""
 
+    supports_workingtrees = False
+
     def __init__(self):
         BzrDirMetaFormat1.__init__(self)
         # XXX: It's a bit ugly that the network name is here, because we'd
@@ -2717,7 +2698,7 @@ class RemoteBzrDirFormat(BzrDirMetaFormat1):
 
     def get_format_description(self):
         if self._network_name:
-            real_format = network_format_registry.get(self._network_name)
+            real_format = controldir.network_format_registry.get(self._network_name)
             return 'Remote: ' + real_format.get_format_description()
         return 'bzr remote bzrdir'
 
@@ -3118,15 +3099,12 @@ def register_metadir(registry, key,
     def _load(full_name):
         mod_name, factory_name = full_name.rsplit('.', 1)
         try:
-            mod = __import__(mod_name, globals(), locals(),
-                    [factory_name])
+            factory = pyutils.get_named_object(mod_name, factory_name)
         except ImportError, e:
             raise ImportError('failed to load %s: %s' % (full_name, e))
-        try:
-            factory = getattr(mod, factory_name)
         except AttributeError:
             raise AttributeError('no factory %s in module %r'
-                % (full_name, mod))
+                % (full_name, sys.modules[mod_name]))
         return factory()
 
     def helper():
@@ -3371,7 +3349,11 @@ register_metadir(controldir.format_registry, 'default-rich-root',
     help='Same as 2a.')
 
 # The current format that is made on 'bzr init'.
-controldir.format_registry.set_default('2a')
+format_name = config.GlobalConfig().get_user_option('default_format')
+if format_name is None:
+    controldir.format_registry.set_default('2a')
+else:
+    controldir.format_registry.set_default(format_name)
 
 # XXX 2010-08-20 JRV: There is still a lot of code relying on
 # bzrlib.bzrdir.format_registry existing. When BzrDir.create/BzrDir.open/etc

@@ -103,6 +103,11 @@ class TestResolve(TestConflictsBase):
         self.assertEqual(True, conflicts.is_empty(),
                          "tree still contains conflicts: %r" % conflicts)
 
+    def test_resolve_via_directory(self):
+        """resolve when run from subdirectory should handle relative paths"""
+        self.build_tree(["a/subdir/"])
+        self.run_bzr("resolve -d a/subdir ../myfile")
+
     def test_auto_resolve(self):
         """Text conflicts can be resolved automatically"""
         tree = self.make_branch_and_tree('tree')

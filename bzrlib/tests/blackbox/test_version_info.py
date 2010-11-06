@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -151,3 +151,19 @@ class TestVersionInfo(TestCaseWithTransport):
             '"{revno} {branch_nick} {clean}\n" branch')
         self.assertEqual("2 branch 0\n", out)
         self.assertEqual("", err)
+    
+    def test_non_ascii(self):
+        """Test that we can output non-ascii data"""
+        
+        commit_message = u'Non-ascii message with character not in latin-1: \u1234'
+        
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['a_file'])
+        tree.add('a_file')
+        tree.commit(commit_message)
+        out, err = self.run_bzr(
+            ['version-info', '--include-history'], encoding='latin-1')
+        
+        self.assertContainsString(out, commit_message.encode('utf-8'))
+
+

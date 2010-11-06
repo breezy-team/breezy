@@ -9,7 +9,7 @@ or the concept of the patch.
 
 Normally changes by core contributors are reviewed by one other core
 developer, and changes from other people are reviewed by two core
-developers.  Use intelligent discretion about whether if the patch is trivial.
+developers.  Use intelligent discretion about whether the patch is trivial.
 
 No one likes their merge requests sitting in a queue going nowhere: this 
 is pure waste.  We prioritize reviewing existing proposals.  
@@ -66,9 +66,9 @@ Checklist for reviewers
   blackbox (command-line level) and API-oriented tests?
 
 * If this change will be visible to end users or API users, is it
-  appropriately documented in NEWS?
+  appropriately documented in NEWS and/or in whats-new ?
 
-* Does it meet the coding standards below?
+* Does it meet the `coding standards <code-style.html>`_?
 
 * If it changes the user-visible behaviour, does it update the help
   strings and user documentation?

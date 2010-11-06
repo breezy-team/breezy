@@ -25,6 +25,7 @@ prefix) put in the ``debug_flags`` variable in ``bazaar.conf``.
 -Dknit            Trace knit operations.
 -Dlock            Trace when lockdir locks are taken or released.
 -Dprogress        Trace progress bar operations.
+-Dmem_dump        Dump memory to a file upon an out of memory error.
 -Dmerge           Emit information for debugging merges.
 -Dno_apport       Don't use apport to report crashes.
 -Dno_activity 	  Don't show transport activity indicator in progress bar.

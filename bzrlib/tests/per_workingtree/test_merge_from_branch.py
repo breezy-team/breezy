@@ -20,7 +20,6 @@
 import os
 
 from bzrlib import (
-    branchbuilder,
     errors,
     merge
     )
@@ -118,13 +117,6 @@ class TestMergeFromBranch(per_workingtree.TestCaseWithWorkingTree):
 
 
 class TestMergedBranch(per_workingtree.TestCaseWithWorkingTree):
-
-    def make_branch_builder(self, relpath, format=None):
-        if format is None:
-            format = self.bzrdir_format
-        builder = branchbuilder.BranchBuilder(self.get_transport(),
-                                              format=format)
-        return builder
 
     def make_inner_branch(self):
         bld_inner = self.make_branch_builder('inner')

@@ -26,28 +26,24 @@ from cStringIO import StringIO
 from StringIO import StringIO as pyStringIO
 import stat
 import sys
-import unittest
 
 from bzrlib import (
     errors,
     osutils,
+    pyutils,
     tests,
     urlutils,
     )
 from bzrlib.errors import (ConnectionError,
-                           DirectoryNotEmpty,
                            FileExists,
                            InvalidURL,
-                           LockError,
                            NoSuchFile,
-                           NotLocalUrl,
                            PathError,
                            TransportNotPossible,
                            )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
 from bzrlib.tests import (
-    TestCaseInTempDir,
     TestSkipped,
     TestNotApplicable,
     multiply_tests,
@@ -78,7 +74,7 @@ def transport_test_permutations():
     for module in _get_transport_modules():
         try:
             permutations = get_transport_test_permutations(
-                reduce(getattr, (module).split('.')[1:], __import__(module)))
+                pyutils.get_named_object(module))
             for (klass, server_factory) in permutations:
                 scenario = ('%s,%s' % (klass.__name__, server_factory.__name__),
                     {"transport_class":klass,

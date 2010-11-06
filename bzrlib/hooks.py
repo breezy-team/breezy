@@ -16,7 +16,11 @@
 
 
 """Support for plugin hooking logic."""
-from bzrlib import registry
+from bzrlib import (
+    pyutils,
+    registry,
+    symbol_versioning,
+    )
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import textwrap
@@ -29,37 +33,63 @@ from bzrlib.help_topics import help_as_plain_text
 """)
 
 
-known_hooks = registry.Registry()
-# known_hooks registry contains
-# tuple of (module, member name) which is the hook point
-# module where the specific hooks are defined
-# callable to get the empty specific Hooks for that attribute
-known_hooks.register_lazy(('bzrlib.branch', 'Branch.hooks'), 'bzrlib.branch',
-    'BranchHooks')
-known_hooks.register_lazy(('bzrlib.bzrdir', 'BzrDir.hooks'), 'bzrlib.bzrdir',
-    'BzrDirHooks')
-known_hooks.register_lazy(('bzrlib.commands', 'Command.hooks'),
-    'bzrlib.commands', 'CommandHooks')
-known_hooks.register_lazy(('bzrlib.info', 'hooks'),
-    'bzrlib.info', 'InfoHooks')
-known_hooks.register_lazy(('bzrlib.lock', 'Lock.hooks'), 'bzrlib.lock',
-    'LockHooks')
-known_hooks.register_lazy(('bzrlib.merge', 'Merger.hooks'), 'bzrlib.merge',
-    'MergeHooks')
-known_hooks.register_lazy(('bzrlib.msgeditor', 'hooks'), 'bzrlib.msgeditor',
-    'MessageEditorHooks')
-known_hooks.register_lazy(('bzrlib.mutabletree', 'MutableTree.hooks'),
-    'bzrlib.mutabletree', 'MutableTreeHooks')
-known_hooks.register_lazy(('bzrlib.smart.client', '_SmartClient.hooks'),
-    'bzrlib.smart.client', 'SmartClientHooks')
-known_hooks.register_lazy(('bzrlib.smart.server', 'SmartTCPServer.hooks'),
-    'bzrlib.smart.server', 'SmartServerHooks')
-known_hooks.register_lazy(
-    ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks'),
-    'bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilderHooks')
-known_hooks.register_lazy(
-    ('bzrlib.merge_directive', 'BaseMergeDirective.hooks'),
-    'bzrlib.merge_directive', 'MergeDirectiveHooks')
+class KnownHooksRegistry(registry.Registry):
+    # known_hooks registry contains
+    # tuple of (module, member name) which is the hook point
+    # module where the specific hooks are defined
+    # callable to get the empty specific Hooks for that attribute
+
+    def register_lazy_hook(self, hook_module_name, hook_member_name,
+            hook_factory_member_name):
+        self.register_lazy((hook_module_name, hook_member_name),
+            hook_module_name, hook_factory_member_name)
+
+    def iter_parent_objects(self):
+        """Yield (hook_key, (parent_object, attr)) tuples for every registered
+        hook, where 'parent_object' is the object that holds the hook
+        instance.
+
+        This is useful for resetting/restoring all the hooks to a known state,
+        as is done in bzrlib.tests.TestCase._clear_hooks.
+        """
+        for key in self.keys():
+            yield key, self.key_to_parent_and_attribute(key)
+
+    def key_to_parent_and_attribute(self, (module_name, member_name)):
+        """Convert a known_hooks key to a (parent_obj, attr) pair.
+
+        :param key: A tuple (module_name, member_name) as found in the keys of
+            the known_hooks registry.
+        :return: The parent_object of the hook and the name of the attribute on
+            that parent object where the hook is kept.
+        """
+        parent_mod, parent_member, attr = pyutils.calc_parent_name(module_name,
+            member_name)
+        return pyutils.get_named_object(parent_mod, parent_member), attr
+
+
+_builtin_known_hooks = (
+    ('bzrlib.branch', 'Branch.hooks', 'BranchHooks'),
+    ('bzrlib.bzrdir', 'BzrDir.hooks', 'BzrDirHooks'),
+    ('bzrlib.commands', 'Command.hooks', 'CommandHooks'),
+    ('bzrlib.info', 'hooks', 'InfoHooks'),
+    ('bzrlib.lock', 'Lock.hooks', 'LockHooks'),
+    ('bzrlib.merge', 'Merger.hooks', 'MergeHooks'),
+    ('bzrlib.msgeditor', 'hooks', 'MessageEditorHooks'),
+    ('bzrlib.mutabletree', 'MutableTree.hooks', 'MutableTreeHooks'),
+    ('bzrlib.smart.client', '_SmartClient.hooks', 'SmartClientHooks'),
+    ('bzrlib.smart.server', 'SmartTCPServer.hooks', 'SmartServerHooks'),
+    ('bzrlib.status', 'hooks', 'StatusHooks'),
+    ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks',
+        'RioVersionInfoBuilderHooks'),
+    ('bzrlib.merge_directive', 'BaseMergeDirective.hooks',
+        'MergeDirectiveHooks'),
+    )
+
+known_hooks = KnownHooksRegistry()
+for (_hook_module, _hook_attribute, _hook_class) in _builtin_known_hooks:
+    known_hooks.register_lazy_hook(_hook_module, _hook_attribute, _hook_class)
+del _builtin_known_hooks, _hook_module, _hook_attribute, _hook_class
 
 
 def known_hooks_key_to_object((module_name, member_name)):
@@ -69,24 +99,13 @@ def known_hooks_key_to_object((module_name, member_name)):
         the known_hooks registry.
     :return: The object this specifies.
     """
-    return registry._LazyObjectGetter(module_name, member_name).get_obj()
+    return pyutils.get_named_object(module_name, member_name)
 
 
-def known_hooks_key_to_parent_and_attribute((module_name, member_name)):
-    """Convert a known_hooks key to a object.
-
-    :param key: A tuple (module_name, member_name) as found in the keys of
-        the known_hooks registry.
-    :return: The object this specifies.
-    """
-    member_list = member_name.rsplit('.', 1)
-    if len(member_list) == 2:
-        parent_name, attribute = member_list
-    else:
-        parent_name = None
-        attribute = member_name
-    parent = known_hooks_key_to_object((module_name, parent_name))
-    return parent, attribute
+@symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 3)))
+def known_hooks_key_to_parent_and_attribute(key):
+    """See KnownHooksRegistry.key_to_parent_and_attribute."""
+    return known_hooks.key_to_parent_and_attribute(key)
 
 
 class Hooks(dict):
@@ -179,13 +198,13 @@ class HookPoint(object):
     """A single hook that clients can register to be called back when it fires.
 
     :ivar name: The name of the hook.
+    :ivar doc: The docs for using the hook.
     :ivar introduced: A version tuple specifying what version the hook was
         introduced in. None indicates an unknown version.
     :ivar deprecated: A version tuple specifying what version the hook was
         deprecated or superseded in. None indicates that the hook is not
         superseded or deprecated. If the hook is superseded then the doc
         should describe the recommended replacement hook to register for.
-    :ivar doc: The docs for using the hook.
     """
 
     def __init__(self, name, doc, introduced, deprecated):

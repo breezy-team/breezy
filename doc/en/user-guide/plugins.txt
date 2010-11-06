@@ -59,8 +59,8 @@ Alternative plugin locations
 If you have the necessary permissions, plugins can also be installed on a
 system-wide basis.  One can additionally override the personal plugins
 location by setting the environment variable ``BZR_PLUGIN_PATH`` (see `User
-Reference <../user-reference/bzr_man.html#bzr-plugin-path>`_ for a detailed
-explanation).
+Reference <../user-reference/configuration-help.html#bzr-plugin-path>`_ 
+for a detailed explanation).
 
 Listing the installed plugins
 -----------------------------
