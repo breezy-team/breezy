@@ -189,6 +189,7 @@ class TestMergeToolOperations(tests.TestCaseInTempDir):
         mt = mergetools.MergeTool('tool', 'tool')
         self.assertEqual('tool', mt.get_commandline())
 
+
 class TestModuleFunctions(tests.TestCaseInTempDir):
     def test_get_merge_tools(self):
         conf = FakeConfig()
