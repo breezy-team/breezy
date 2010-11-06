@@ -123,7 +123,7 @@ class TestUnicodeBasics(tests.TestCase):
                          self.tool.get_executable())
 
 
-class TestMergeTool(tests.TestCaseInTempDir):
+class TestMergeToolOperations(tests.TestCaseInTempDir):
     def test_filename_substitution(self):
         def dummy_invoker(executable, args, cleanup):
             self._commandline = [executable] + args
@@ -169,12 +169,16 @@ class TestMergeTool(tests.TestCaseInTempDir):
         mt.invoke('test.txt', dummy_invoker)
         self.failIfExists(self._tmp_file)
         
-    def test_is_available(self):
-        mt = mergetools.MergeTool(sys.executable, sys.executable)
+    def test_is_available_full_tool_path(self):
+        mt = mergetools.MergeTool(None, sys.executable)
         self.assertTrue(mt.is_available())
-        mt.set_executable(os.path.basename(sys.executable))
+        
+    def test_is_available_tool_on_path(self):
+        mt = mergetools.MergeTool(None, os.path.basename(sys.executable))
         self.assertTrue(mt.is_available())
-        mt.set_executable("ThisExecutableShouldReallyNotExist")
+        
+    def test_is_available_nonexistent(self):
+        mt = mergetools.MergeTool(None, "ThisExecutableShouldReallyNotExist")
         self.assertFalse(mt.is_available())
         
     def test_empty_commandline(self):
@@ -184,7 +188,8 @@ class TestMergeTool(tests.TestCaseInTempDir):
     def test_no_arguments(self):
         mt = mergetools.MergeTool('tool', 'tool')
         self.assertEqual('tool', mt.get_commandline())
-        
+
+class TestModuleFunctions(tests.TestCaseInTempDir):
     def test_get_merge_tools(self):
         conf = FakeConfig()
         conf.set_user_option('mergetools', 'kdiff3,winmergeu,funkytool')
