@@ -8,7 +8,6 @@ Bazaar Release Notes
 bzr 2.3b4
 #########
 
-:Codename: Nirvana
 :2.3.b4: NOT RELEASED YET
 
 External Compatibility Breaks
@@ -26,6 +25,10 @@ Improvements
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
+
+* ``bzr config <option>`` will now display only the value itself so scripts
+  can use it to query the currently active conficguration. The ``--active``
+  option has been removed. (Vincent Ladeuil)
 
 Bug Fixes
 *********
@@ -75,11 +78,10 @@ New Features
   new or mirrored branch without working trees.
   (Matthew Gordon, #506730)
 
-* ``bzr config`` is a new command that displays the configuration options
-  for a given directory. It accepts a glob to match against multiple
-  options at once. It can also display the active value for a given option
-  for use in scripts. It can also be used to set or delete a configuration
-  option in any configuration file. (Vincent Ladeuil)
+* ``bzr config`` is a new command that displays the configuration options for
+  a given directory. It accepts a glob to match against multiple options at
+  once. It can also be used to set or delete a configuration option in any
+  configuration file. (Vincent Ladeuil)
 
 * New shortcut url schemes ``ubuntu:`` and ``debianlp:`` access source
   branches on Launchpad.  E.g. ``bzr branch ubuntu:foo`` gives you the source
