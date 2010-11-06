@@ -507,6 +507,8 @@ class TestPost(tests.TestCase):
         self.assertTrue(
             server.received_bytes.startswith('POST /.bzr/smart HTTP/1.'))
         self.assertTrue('content-length: 19\r' in server.received_bytes.lower())
+        self.assertTrue('content-type: application/octet-stream\r'
+                        in server.received_bytes.lower())
         # The transport should not be assuming that the server can accept
         # chunked encoding the first time it connects, because HTTP/1.1, so we
         # check for the literal string.
@@ -961,7 +963,7 @@ class TruncatedMultipleRangeRequestHandler(
                 return
             self.send_range_content(file, start, end - start + 1)
             cur += 1
-        # No final boundary
+        # Final boundary
         self.wfile.write(boundary_line)
 
 
@@ -995,6 +997,7 @@ class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
         # Finally the client have tried a single range request and stays in
         # that mode
         self.assertEqual('single', t._range_hint)
+
 
 class LimitedRangeRequestHandler(http_server.TestingHTTPRequestHandler):
     """Errors out when range specifiers exceed the limit"""

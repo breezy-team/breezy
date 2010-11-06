@@ -45,6 +45,11 @@ from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
 
 class TestWorkingTree(TestCaseWithWorkingTree):
 
+    def test_branch_builder(self):
+        # Just a smoke test that we get a branch at the specified relpath
+        builder = self.make_branch_builder('foobar')
+        br = branch.Branch.open('foobar')
+
     def test_list_files(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['dir/', 'file'])

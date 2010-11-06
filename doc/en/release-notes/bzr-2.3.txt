@@ -5,10 +5,65 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.3b4
+#########
+
+:Codename: Nirvana
+:2.3.b4: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+* ``bzr mergetools`` is a new command that allows you to define external merge
+  tools. These external merge tools can be used with ``bzr merge`` and
+  ``bzr remerge`` to resolve text conflicts. (Gordon Tyler, #489915)
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+* Added ``bzrlib.mergetools`` module with helper functions for working with
+  the list of external merge tools. (Gordon Tyler)
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
 bzr 2.3b3
 #########
 
-:2.3b3: NOT RELEASED YET
+:2.3b3: 2010-11-05
 
 External Compatibility Breaks
 *****************************
@@ -38,17 +93,25 @@ New Features
   default format for new branches created with ``bzr init``.
   (Neil Martinsen-Burrell, #484101)
 
-* ``bzr mergetools`` is a new command that allows you to define external merge
-  tools. These external merge tools can be used with ``bzr merge`` and
-  ``bzr remerge`` to resolve text conflicts. (Gordon Tyler, #489915)
-
-Improvements
-************
-
 Bug Fixes
 *********
 
 * Always set PATH in start_bzr.bat on Windows. (Matthäus G. Chajdas, #470264)
+
+* ``bzr status -r X..Y`` was failing because RevisionTree didn't implement
+  ``get_shelf_manager``. (John Arbash Meinel, #662053)
+
+* Correctly add directory contents when the name was previously added as a
+  normal file, rather than throwing ``AttributeError: children`` during
+  smart_add. (Martin [gz], #251864)
+
+* Correctly handle the ``--directory`` option for all code paths of
+  ``resolve`` and ``shelve``, this was previously ignored when paths were
+  provided as parameters. When both are provided, ``--directory`` becomes
+  the base directory for the other paths. (Vincent Ladeuil, #670851)
+
+* Correctly set the Content-Type  header when http POSTing to comply
+  with stricter web frameworks. (Vincent Ladeuil, #665100)
 
 * Don't force openssh to use protocol=2, since that is now the default.
   (Neil Martinsen-Burrell, #561061)
@@ -59,8 +122,28 @@ Bug Fixes
 
 * Make ``bzr tag --quiet`` really quiet. (Neil Martinsen-Burrell, #239523)
 
+* Missing files (files bzr add'ed and then OS deleted) are now shown in ``bzr
+  status`` output. (Rory Yorke, #134168)
+
+* ``NotBranchError`` no longer allows errors from calling
+  ``bzrdir.open_repository()`` to propagate.  This is unhelpful at best,
+  and at worst can trigger infinite loops in callers.  (Andrew Bennetts)
+  
+* Windows installers no longer requires the Microsoft vcredist to be
+  installed. (Martin [gz], Gary van der Merwe, #632465)
+
 Documentation
 *************
+
+* Add documentation of the ability to edit hunks when shelving.
+  (Neil Martinsen-Burrell, #517660)
+
+* Be more specific about the meaning of revision ranges for ``bzr diff``.
+  (Neil Martinsen-Burrell, #247282)
+
+* Document the comment character in the .bzrignore file, including a
+  workaround for ignore patterns that begin with #.
+  (Neil Martinsen-Burrell, #631515)
 
 API Changes
 ***********
@@ -75,9 +158,6 @@ API Changes
 * ``known_hooks_key_to_parent_and_attribute`` in ``bzrlib.hooks`` has been
   deprecated in favour of ``known_hooks.key_to_parent_and_attribute`` in
   the same module.  (Andrew Bennetts)
-
-* Added ``bzrlib.mergetools`` module with helper functions for working with
-  the list of external merge tools. (Gordon Tyler)
 
 Internals
 *********
@@ -96,6 +176,12 @@ Testing
 * ``bzr test-script script`` is a new command that runs a shell-like script
   from an the ``script`` file. (Vincent Ladeuil)
 
+* Fix spurious test failures on babune related to the http pipe cleanup and
+  get rid of some 'bytes left on the HTTP socket' useless log messages.
+  (Vincent Ladeuil, #655557)
+
+* ``bzrlib.tests.per_workingtree.TestCaseWithWorkingTree.make_branch_builder``
+  respects its ``relpath`` parameter. (Vincent Ladeuil)
 
 bzr 2.3b2
 #########
@@ -238,6 +324,10 @@ Testing
 * Add ``tests/ssl_certs/ca.crt`` to the required test files list. Test
   involving the pycurl https test server fail otherwise when running
   selftest from an installed version. (Vincent Ladeuil, #651706)
+
+* Blank output section in scriptrunner tests no longer match any output.
+  Instead, use '...' as a wildcard if you don't care about the output.
+  (Martin Pool, #637830)
 
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)

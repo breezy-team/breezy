@@ -353,8 +353,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         return control.open_workingtree(), relpath
 
     @staticmethod
-    def open_containing_paths(file_list, default_directory='.',
-        canonicalize=True, apply_view=True):
+    def open_containing_paths(file_list, default_directory=None,
+                              canonicalize=True, apply_view=True):
         """Open the WorkingTree that contains a set of paths.
 
         Fail if the paths given are not all in a single tree.
@@ -362,6 +362,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         This is used for the many command-line interfaces that take a list of
         any number of files and that require they all be in the same tree.
         """
+        if default_directory is None:
+            default_directory = u'.'
         # recommended replacement for builtins.internal_tree_files
         if file_list is None or len(file_list) == 0:
             tree = WorkingTree.open_containing(default_directory)[0]
@@ -375,9 +377,15 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                     view_str = views.view_display_str(view_files)
                     note("Ignoring files outside view. View is %s" % view_str)
             return tree, file_list
-        tree = WorkingTree.open_containing(file_list[0])[0]
+        if default_directory == u'.':
+            seed = file_list[0]
+        else:
+            seed = default_directory
+            file_list = [osutils.pathjoin(default_directory, f)
+                         for f in file_list]
+        tree = WorkingTree.open_containing(seed)[0]
         return tree, tree.safe_relpath_files(file_list, canonicalize,
-            apply_view=apply_view)
+                                             apply_view=apply_view)
 
     def safe_relpath_files(self, file_list, canonicalize=True, apply_view=True):
         """Convert file_list into a list of relpaths in tree.

@@ -1867,6 +1867,13 @@ class cmd_diff(Command):
     "bzr diff -p1" is equivalent to "bzr diff --prefix old/:new/", and
     produces patches suitable for "patch -p1".
 
+    Note that when using the -r argument with a range of revisions, the
+    differences are computed between the two specified revisions.  That
+    is, the command does not show the changes introduced by the first 
+    revision in the range.  This differs from the interpretation of 
+    revision ranges used by "bzr log" which includes the first revision
+    in the range.
+
     :Exit values:
         1 - changed
         2 - unrepresentable changes
@@ -1890,7 +1897,11 @@ class cmd_diff(Command):
 
             bzr diff -r1..3 xxx
 
-        To see the changes introduced in revision X::
+        The changes introduced by revision 2 (equivalent to -r1..2)::
+
+            bzr diff -c2
+
+        To see the changes introduced by revision X::
         
             bzr diff -cX
 
@@ -1900,9 +1911,10 @@ class cmd_diff(Command):
 
             bzr diff -r<chosen_parent>..X
 
-        The changes introduced by revision 2 (equivalent to -r1..2)::
+        The changes between the current revision and the previous revision
+        (equivalent to -c-1 and -r-2..-1)
 
-            bzr diff -c2
+            bzr diff -r-2..
 
         Show just the differences for file NEWS::
 
@@ -2677,8 +2689,13 @@ class cmd_ignore(Command):
     Patterns prefixed with '!!' act as regular ignore patterns, but have
     precedence over the '!' exception patterns.
 
-    Note: ignore patterns containing shell wildcards must be quoted from
-    the shell on Unix.
+    :Notes: 
+        
+    * Ignore patterns containing shell wildcards must be quoted from
+      the shell on Unix.
+
+    * Ignore patterns starting with "#" act as comments in the ignore file.
+      To ignore patterns that begin with that character, use the "RE:" prefix.
 
     :Examples:
         Ignore the top level Makefile::
@@ -2692,6 +2709,10 @@ class cmd_ignore(Command):
         ...but do not ignore "special.class"::
 
             bzr ignore "!special.class"
+
+        Ignore files whose name begins with the "#" character::
+
+            bzr ignore "RE:^#"
 
         Ignore .o files under the lib directory::
 
@@ -5885,7 +5906,7 @@ class cmd_remove_branch(Command):
             location = "."
         branch = Branch.open_containing(location)[0]
         branch.bzrdir.destroy_branch()
-        
+
 
 class cmd_shelve(Command):
     __doc__ = """Temporarily set aside some changes from the current tree.
@@ -5910,6 +5931,18 @@ class cmd_shelve(Command):
 
     You can put multiple items on the shelf, and by default, 'unshelve' will
     restore the most recently shelved changes.
+
+    For complicated changes, it is possible to edit the changes in a separate
+    editor program to decide what the file remaining in the working copy
+    should look like.  To do this, add the configuration option
+
+        change_editor = PROGRAM @new_path @old_path
+
+    where @new_path is replaced with the path of the new version of the 
+    file and @old_path is replaced with the path of the old version of 
+    the file.  The PROGRAM should save the new file with the desired 
+    contents of the file in the working tree.
+        
     """
 
     takes_args = ['file*']
@@ -5927,12 +5960,12 @@ class cmd_shelve(Command):
         Option('destroy',
                help='Destroy removed changes instead of shelving them.'),
     ]
-    _see_also = ['unshelve']
+    _see_also = ['unshelve', 'configuration']
 
     def run(self, revision=None, all=False, file_list=None, message=None,
-            writer=None, list=False, destroy=False, directory=u'.'):
+            writer=None, list=False, destroy=False, directory=None):
         if list:
-            return self.run_for_list()
+            return self.run_for_list(directory=directory)
         from bzrlib.shelf_ui import Shelver
         if writer is None:
             writer = bzrlib.option.diff_writer_registry.get()
@@ -5946,8 +5979,10 @@ class cmd_shelve(Command):
         except errors.UserAbort:
             return 0
 
-    def run_for_list(self):
-        tree = WorkingTree.open_containing('.')[0]
+    def run_for_list(self, directory=None):
+        if directory is None:
+            directory = u'.'
+        tree = WorkingTree.open_containing(directory)[0]
         self.add_cleanup(tree.lock_read().unlock)
         manager = tree.get_shelf_manager()
         shelves = manager.active_shelves()
@@ -6088,7 +6123,7 @@ def _register_lazy_builtins():
         ('cmd_mergetools', [], 'bzrlib.mergetools'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
-        ('cmd_test_script', [], 'bzrlib.tests.script'),
+        ('cmd_test_script', [], 'bzrlib.cmd_test_script'),
         ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)

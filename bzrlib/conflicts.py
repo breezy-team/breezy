@@ -122,7 +122,7 @@ class cmd_resolve(commands.Command):
             'verbose',
             ]
     _see_also = ['conflicts']
-    def run(self, file_list=None, all=False, action=None, directory=u'.',
+    def run(self, file_list=None, all=False, action=None, directory=None,
             using=None, verbose=False):
         if using is not None:
             action = 'tool'
@@ -130,12 +130,14 @@ class cmd_resolve(commands.Command):
             if file_list:
                 raise errors.BzrCommandError("If --all is specified,"
                                              " no FILE may be provided")
+            if directory is None:
+                directory = u'.'
             tree = workingtree.WorkingTree.open_containing(directory)[0]
             if action is None:
                 action = 'done'
         else:
             tree, file_list = workingtree.WorkingTree.open_containing_paths(
-                file_list)
+                file_list, directory)
             if file_list is None:
                 if action is None:
                     # FIXME: There is a special case here related to the option
@@ -187,7 +189,7 @@ class cmd_resolve(commands.Command):
             resolved = 0
             for file in file_list:
                 # to avoid unnecessary './' prefix on file names
-                if directory != u'.':
+                if directory != u'.' and directory is not None:
                     file = os.path.join(directory, file)
                 if verbose:
                     ui.ui_factory.show_message('Invoking %s on %s...' %
