@@ -49,6 +49,10 @@ Bug Fixes
 * ``bzr status -r X..Y`` was failing because RevisionTree didn't implement
   ``get_shelf_manager``. (John Arbash Meinel, #662053)
 
+* Better message if there is an error while setting ownership of
+ ``.bazaar`` directory.
+  (Parth Malwankar, #657553)
+
 * Correctly add directory contents when the name was previously added as a
   normal file, rather than throwing ``AttributeError: children`` during
   smart_add. (Martin [gz], #251864)
@@ -67,10 +71,6 @@ Bug Fixes
 * Fix ``KeyError: 'port'`` when getting the stored password for an http
   URL.
   (Martin Pool, #654684)
-
-* In case of an error while copying ownership to ``.bazaar`` directory,
-  the message is sent to the log file to avoid confing the user.
-  (Parth Malwankar, #657553)
 
 * Make ``bzr tag --quiet`` really quiet. (Neil Martinsen-Burrell, #239523)
 

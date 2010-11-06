@@ -23,7 +23,6 @@ import time
 import codecs
 
 from bzrlib.lazy_import import lazy_import
-from bzrlib.trace import mutter
 lazy_import(globals(), """
 from datetime import datetime
 import getpass
@@ -451,6 +450,7 @@ def get_terminal_encoding(trace=False):
 
     :param trace: If True trace the selected encoding via mutter().
     """
+    from bzrlib.trace import mutter
     output_encoding = getattr(sys.stdout, 'encoding', None)
     if not output_encoding:
         input_encoding = getattr(sys.stdin, 'encoding', None)
@@ -969,7 +969,7 @@ def failed_to_load_extension(exception):
     # with 10 warnings.
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
-        mutter("failed to load compiled extension: %s" % exception_str)
+        trace.mutter("failed to load compiled extension: %s" % exception_str)
         _extension_load_failures.append(exception_str)
 
 
@@ -1874,7 +1874,10 @@ def copy_ownership_from_path(dst, src=None):
         s = os.stat(src)
         chown(dst, s.st_uid, s.st_gid)
     except OSError, e:
-        mutter('Unable to copy ownership from "%s" to "%s": %s.', src, dst, e)
+        trace.warning(
+            'Unable to copy ownership from "%s" to "%s". '
+            'You may want to set it manually.', src, dst)
+        trace.log_exception_quietly()
 
 
 def path_prefix_key(path):
