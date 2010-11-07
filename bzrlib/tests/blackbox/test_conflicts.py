@@ -19,6 +19,8 @@ from bzrlib import (
     tests,
     workingtree,
     )
+from bzrlib.tests import script
+
 
 # FIXME: These don't really look at the output of the conflict commands, just
 # the number of lines - there should be more examination.
@@ -126,3 +128,46 @@ class TestResolve(TestConflictsBase):
         self.assertEqual('', err)
         out, err = self.run_bzr('conflicts')
         self.assertEqual(0, len(out.splitlines()))
+
+class TestResolveSilentlyIgnore(script.TestCaseWithTransportAndScript):
+
+    def test_bug_646961(self):
+        self.run_script("""\
+            $ bzr init base
+            Created a standalone tree (format: 2a)
+            $ cd base
+            $ echo >file1
+            $ bzr add
+            adding file1
+            $ bzr ci -m "stuff"
+            2>Committing to: .../base/
+            2>added file1
+            2>Committed revision 1.
+            $ cd ..
+            $ bzr branch base branch
+            2>Branched 1 revision(s).
+            $ cd base
+            $ echo "1" >> file1
+            $ bzr ci -m "branch 1"
+            2>Committing to: .../base/
+            2>modified file1
+            2>Committed revision 2.
+            $ cd ../branch
+            $ echo "2" >> file1
+            $ bzr ci -m "branch 2"
+            2>Committing to: .../branch/
+            2>modified file1
+            2>Committed revision 2.
+            $ cd ../base
+            $ bzr merge ../branch
+            2> M  file1
+            2>Text conflict in file1
+            2>1 conflicts encountered.
+            # The following succeeds silently without resolving the conflict
+            $ bzr resolve file1 --take-other
+            # The following wil fail when --take-other is implemented
+            # for text conflicts
+            $ bzr conflicts
+            Text conflict in file1
+            """)
+
