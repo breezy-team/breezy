@@ -8,7 +8,6 @@ Bazaar Release Notes
 bzr 2.3b4
 #########
 
-:Codename: Nirvana
 :2.3.b4: NOT RELEASED YET
 
 External Compatibility Breaks
@@ -27,11 +26,22 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr config <option>`` will now display only the value itself so scripts
+  can use it to query the currently active configuration. Displaying several
+  options matching a given regular expression is now controlled via the
+  ``--all`` option.  (Vincent Ladeuil, bug #670251)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* ``bzr resolve --take-other <file>`` will not crash anymore if ``<file>``
+  is involved in a text conflict (but the conflict is still not
+  resolved). (Vincent Ladeuil, #646961)
+
+* Report error if non-ASCII command option given. (Rory Yorke, #140563)
 
 Documentation
 *************
@@ -56,6 +66,10 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* Blank output section in scriptrunner tests no longer match any output.
+  Instead, use '...' as a wildcard if you don't care about the output.
+  (Martin Pool, #637830)
 
 
 bzr 2.3b3

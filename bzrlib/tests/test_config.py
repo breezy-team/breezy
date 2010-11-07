@@ -36,7 +36,10 @@ from bzrlib import (
     trace,
     transport,
     )
-from bzrlib.tests import features
+from bzrlib.tests import (
+    features,
+    scenarios,
+    )
 from bzrlib.util.configobj import configobj
 
 
@@ -52,16 +55,7 @@ def lockable_config_scenarios():
           'config_section': '.'}),]
 
 
-def load_tests(standard_tests, module, loader):
-    suite = loader.suiteClass()
-
-    lc_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((
-                TestLockableConfig,
-                )))
-    tests.multiply_tests(lc_tests, lockable_config_scenarios(), suite)
-    suite.addTest(remaining_tests)
-    return suite
+load_tests = scenarios.load_tests_apply_scenarios
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -476,6 +470,8 @@ class TestIniBaseConfigOnDisk(tests.TestCaseInTempDir):
 
 
 class TestLockableConfig(tests.TestCaseInTempDir):
+
+    scenarios = lockable_config_scenarios()
 
     # Set by load_tests
     config_class = None
@@ -1474,8 +1470,8 @@ class TestTransportConfig(tests.TestCaseWithTransport):
 def create_configs(test):
     """Create configuration files for a given test.
 
-    This requires creating a tree (and populate the ``test.tree`` attribute and
-    its associated branch and will populate the following attributes:
+    This requires creating a tree (and populate the ``test.tree`` attribute)
+    and its associated branch and will populate the following attributes:
 
     - branch_config: A BranchConfig for the associated branch.
 
