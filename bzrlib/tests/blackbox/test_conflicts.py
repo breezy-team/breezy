@@ -49,58 +49,33 @@ def make_tree_with_conflicts(test, this_path='this', other_path='other'):
     return this_tree, other_tree
 
 
-# FIXME: These don't really look at the output of the conflict commands, just
-# the number of lines - there should be more examination.
-
-class TestConflictsBase(tests.TestCaseWithTransport):
+class TestConflicts(script.TestCaseWithTransportAndScript):
 
     def setUp(self):
-        super(TestConflictsBase, self).setUp()
-        self.make_tree_with_conflicts()
-
-    def make_tree_with_conflicts(self):
-        a_tree = self.make_branch_and_tree('a')
-        self.build_tree_contents([
-            ('a/myfile', 'contentsa\n'),
-            ('a/my_other_file', 'contentsa\n'),
-            ('a/mydir/',),
-            ])
-        a_tree.add('myfile')
-        a_tree.add('my_other_file')
-        a_tree.add('mydir')
-        a_tree.commit(message="new")
-        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
-        self.build_tree_contents([
-            ('b/myfile', 'contentsb\n'),
-            ('b/my_other_file', 'contentsb\n'),
-            ])
-        b_tree.rename_one('mydir', 'mydir2')
-        b_tree.commit(message="change")
-        self.build_tree_contents([
-            ('a/myfile', 'contentsa2\n'),
-            ('a/my_other_file', 'contentsa2\n'),
-            ])
-        a_tree.rename_one('mydir', 'mydir3')
-        a_tree.commit(message='change')
-        a_tree.merge_from_branch(b_tree.branch)
-
-    def run_bzr(self, cmd, working_dir='a', **kwargs):
-        return super(TestConflictsBase, self).run_bzr(
-            cmd, working_dir=working_dir, **kwargs)
-
-
-class TestConflicts(TestConflictsBase):
+        super(TestConflicts, self).setUp()
+        make_tree_with_conflicts(self, 'branch', 'other')
 
     def test_conflicts(self):
-        out, err = self.run_bzr('conflicts')
-        self.assertEqual(3, len(out.splitlines()))
+        self.run_script("""\
+$ cd branch
+$ bzr conflicts
+Text conflict in my_other_file
+Path conflict: mydir3 / mydir2
+Text conflict in myfile
+""")
 
     def test_conflicts_text(self):
-        out, err = self.run_bzr('conflicts --text')
-        self.assertEqual(['my_other_file', 'myfile'], out.splitlines())
+        self.run_script("""\
+$ cd branch
+$ bzr conflicts --text
+my_other_file
+myfile
+""")
 
     def test_conflicts_directory(self):
-        """Test --directory option"""
-        out, err = self.run_bzr('conflicts --directory a', working_dir='.')
-        self.assertEqual(3, len(out.splitlines()))
-        self.assertEqual('', err)
+        self.run_script("""\
+$ bzr conflicts  -d branch
+Text conflict in my_other_file
+Path conflict: mydir3 / mydir2
+Text conflict in myfile
+""")
