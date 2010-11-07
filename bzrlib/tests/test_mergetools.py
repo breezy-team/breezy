@@ -77,19 +77,23 @@ class TestBasics(tests.TestCase):
         other_tool = mergetools.MergeTool('sometool',
             '/path/to/tool --opt %b -x %t %o --stuff %r')
         self.assertTrue(self.tool == other_tool)
+        self.assertTrue(self.tool != None)
         
     def test_comparison_none(self):
         self.assertFalse(self.tool == None)
+        self.assertTrue(self.tool != None)
 
     def test_comparison_fail_name(self):
         other_tool = mergetools.MergeTool('sometoolx',
             '/path/to/tool --opt %b -x %t %o --stuff %r')
         self.assertFalse(self.tool == other_tool)
+        self.assertTrue(self.tool != other_tool)
         
     def test_comparison_fail_commandline(self):
         other_tool = mergetools.MergeTool('sometool',
             '/path/to/tool --opt %b -x %t %o --stuff %r extra')
         self.assertFalse(self.tool == other_tool)
+        self.assertTrue(self.tool != other_tool)
         
 
 class TestUnicodeBasics(tests.TestCase):
@@ -144,19 +148,23 @@ class TestUnicodeBasics(tests.TestCase):
         other_tool = mergetools.MergeTool(u'someb\u0414r',
             u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r')
         self.assertTrue(self.tool == other_tool)
+        self.assertFalse(self.tool != other_tool)
         
     def test_comparison_none(self):
         self.assertFalse(self.tool == None)
+        self.assertTrue(self.tool != None)
 
     def test_comparison_fail_name(self):
         other_tool = mergetools.MergeTool(u'someb\u0414rx',
             u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r')
         self.assertFalse(self.tool == other_tool)
+        self.assertTrue(self.tool != other_tool)
         
     def test_comparison_fail_commandline(self):
         other_tool = mergetools.MergeTool(u'someb\u0414r',
             u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r extra')
         self.assertFalse(self.tool == other_tool)
+        self.assertTrue(self.tool != other_tool)
 
 
 class TestMergeToolOperations(tests.TestCaseInTempDir):

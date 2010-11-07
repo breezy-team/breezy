@@ -82,6 +82,12 @@ class MergeTool(object):
             return cmp(self, other) == 0
         else:
             return False
+        
+    def __ne__(self, other):
+        if type(other) == MergeTool:
+            return cmp(self, other) != 0
+        else:
+            return True
     
     def __cmp__(self, other):
         if type(other == MergeTool):
