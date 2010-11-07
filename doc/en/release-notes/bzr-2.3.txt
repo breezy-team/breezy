@@ -37,6 +37,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr resolve --take-other <file>`` will not crash anymore if ``<file>``
+  is involved in a text conflict (but the conflict is still not
+  resolved). (Vincent Ladeuil, #646961)
+
 * Report error if non-ASCII command option given. (Rory Yorke, #140563)
 
 Documentation
