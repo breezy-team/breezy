@@ -78,6 +78,9 @@ class TestBasics(tests.TestCase):
             '/path/to/tool --opt %b -x %t %o --stuff %r')
         self.assertTrue(self.tool == other_tool)
         
+    def test_comparison_none(self):
+        self.assertFalse(self.tool == None)
+
     def test_comparison_fail_name(self):
         other_tool = mergetools.MergeTool('sometoolx',
             '/path/to/tool --opt %b -x %t %o --stuff %r')
@@ -141,6 +144,9 @@ class TestUnicodeBasics(tests.TestCase):
         other_tool = mergetools.MergeTool(u'someb\u0414r',
             u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r')
         self.assertTrue(self.tool == other_tool)
+        
+    def test_comparison_none(self):
+        self.assertFalse(self.tool == None)
 
     def test_comparison_fail_name(self):
         other_tool = mergetools.MergeTool(u'someb\u0414rx',
