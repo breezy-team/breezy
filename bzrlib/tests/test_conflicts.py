@@ -649,12 +649,14 @@ $ bzr merge ../trunk
         self.run_script("""
 $ bzr rm -q dir  --force
 $ bzr resolve dir
+2>2 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_take_other(self):
         self.run_script("""
 $ bzr resolve dir
+2>2 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -688,6 +690,7 @@ $ bzr merge ../trunk
     def test_keep_them_all(self):
         self.run_script("""
 $ bzr resolve dir
+2>2 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -696,6 +699,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 $ bzr mv -q dir/file2 file2
 $ bzr rm -q dir --force
 $ bzr resolve dir
+2>2 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -703,6 +707,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
         self.run_script("""
 $ bzr rm -q dir --force
 $ bzr resolve dir
+2>2 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -749,6 +754,7 @@ $ bzr merge ../trunk
     def test_keep_them_all(self):
         self.run_script("""
 $ bzr resolve dir
+2>2 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -757,6 +763,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 $ bzr mv -q dir/file2 file2
 $ bzr rm -q dir --force
 $ bzr resolve dir
+2>2 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -764,12 +771,14 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
         self.run_script("""
 $ bzr rm -q dir --force
 $ bzr resolve dir
+2>2 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
     def test_resolve_taking_this(self):
         self.run_script("""
 $ bzr resolve --take-this dir
+2>2 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -778,6 +787,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 $ bzr resolve --take-other dir
 2>deleted dir/file2
 2>deleted dir
+2>2 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -909,6 +919,7 @@ $ bzr rm -q foo.new --force
 # aside ? -- vila 090916
 $ bzr add -q foo
 $ bzr resolve foo.new
+2>1 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
@@ -917,6 +928,7 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 $ bzr rm -q foo --force
 $ bzr mv -q foo.new foo
 $ bzr resolve foo
+2>1 conflict(s) resolved, 0 remaining
 $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 """)
 
