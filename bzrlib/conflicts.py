@@ -602,12 +602,9 @@ class ContentsConflict(PathConflict):
         self._resolve_with_cleanups(tree, 'THIS')
 
 
-# FIXME: TextConflict is about a single file-id, there never is a conflict_path
-# attribute so we shouldn't inherit from PathConflict but simply from Conflict
-
 # TODO: There should be a base revid attribute to better inform the user about
 # how the conflicts were generated.
-class TextConflict(PathConflict):
+class TextConflict(Conflict):
     """The merge algorithm could not resolve all differences encountered."""
 
     has_files = True
@@ -615,6 +612,8 @@ class TextConflict(PathConflict):
     typestring = 'text conflict'
 
     format = 'Text conflict in %(path)s'
+
+    rformat = '%(class)s(%(path)r, %(file_id)r)'
 
     def associated_filenames(self):
         return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
