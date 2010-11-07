@@ -73,6 +73,21 @@ class TestBasics(tests.TestCase):
         self.assertEqual('C:\\Program Files\\KDiff3\\kdiff3.exe',
                          self.tool.get_executable())
         
+    def test_comparison(self):
+        other_tool = mergetools.MergeTool('sometool',
+            '/path/to/tool --opt %b -x %t %o --stuff %r')
+        self.assertTrue(self.tool == other_tool)
+        
+    def test_comparison_fail_name(self):
+        other_tool = mergetools.MergeTool('sometoolx',
+            '/path/to/tool --opt %b -x %t %o --stuff %r')
+        self.assertFalse(self.tool == other_tool)
+        
+    def test_comparison_fail_commandline(self):
+        other_tool = mergetools.MergeTool('sometool',
+            '/path/to/tool --opt %b -x %t %o --stuff %r extra')
+        self.assertFalse(self.tool == other_tool)
+        
 
 class TestUnicodeBasics(tests.TestCase):
     def setUp(self):
@@ -121,6 +136,21 @@ class TestUnicodeBasics(tests.TestCase):
             u'"C:\\Program Files\\KDiff3\\b\u0414r.exe" %b %t %o -o %r')
         self.assertEqual(u'C:\\Program Files\\KDiff3\\b\u0414r.exe',
                          self.tool.get_executable())
+
+    def test_comparison(self):
+        other_tool = mergetools.MergeTool(u'someb\u0414r',
+            u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r')
+        self.assertTrue(self.tool == other_tool)
+
+    def test_comparison_fail_name(self):
+        other_tool = mergetools.MergeTool(u'someb\u0414rx',
+            u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r')
+        self.assertFalse(self.tool == other_tool)
+        
+    def test_comparison_fail_commandline(self):
+        other_tool = mergetools.MergeTool(u'someb\u0414r',
+            u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r extra')
+        self.assertFalse(self.tool == other_tool)
 
 
 class TestMergeToolOperations(tests.TestCaseInTempDir):

@@ -77,6 +77,12 @@ class MergeTool(object):
     def __repr__(self):
         return '<MergeTool %s: %r>' % (self._name, self._commandline)
         
+    def __cmp__(self, other):
+        r = cmp(self._name, other._name)
+        if r != 0:
+            return r
+        return cmp(self._commandline, other._commandline)
+        
     def __str__(self):
         return self.get_commandline()
         
