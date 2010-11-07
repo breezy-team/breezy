@@ -85,8 +85,8 @@ class MergeTool(object):
     
     def __cmp__(self, other):
         if type(other == MergeTool):
-            return cmp((self._name, other._name),
-                (self._commandline, other._commandline))
+            return cmp((self._name, self._commandline),
+                (other._name, other._commandline))
         
     def __str__(self):
         return self.get_commandline()
