@@ -514,9 +514,6 @@ class GenericProcessor(processor.ImportProcessor):
             # Check that we really do know about this commit-id
             if not self.cache_mgr.revision_ids.has_key(cmd.id):
                 raise plugin_errors.BadRestart(cmd.id)
-            # Consume the file commands and free any non-sticky blobs
-            for fc in cmd.file_iter():
-                pass
             self.cache_mgr._blobs = {}
             self._revision_count += 1
             if cmd.ref.startswith('refs/tags/'):
