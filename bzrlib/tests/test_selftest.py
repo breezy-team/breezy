@@ -3398,7 +3398,7 @@ class TestRunSuite(tests.TestCase):
 
 
 class TestUncollectedWarnings(tests.TestCase):
-    """Check reference cycles keeping a test case alive emits in a warning"""
+    """Check a test case still alive after being run emits a warning"""
 
     class Test(tests.TestCase):
         def test_pass(self):
@@ -3454,3 +3454,13 @@ class TestUncollectedWarnings(tests.TestCase):
     def test_additonal_decorator(self):
         out = self._run_selftest_with_suite(
             suite_decorators=[tests.TestDecorator])
+
+
+class TestUncollectedWarningsSubunit(TestUncollectedWarnings):
+    """Check warnings from tests staying alive are emitted with subunit"""
+
+    _test_needs_features = [features.subunit]
+
+    def _run_selftest_with_suite(self, **kwargs):
+        return TestUncollectedWarnings._run_selftest_with_suite(self,
+            runner_class=tests.SubUnitBzrRunner, **kwargs)
