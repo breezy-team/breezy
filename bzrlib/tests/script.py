@@ -196,8 +196,7 @@ class ScriptRunner(object):
         self.output_checker = doctest.OutputChecker()
         self.check_options = doctest.ELLIPSIS
 
-    def run_script(self, test_case, text, 
-                   blank_output_matches_anything=False):
+    def run_script(self, test_case, text, null_output_matches_anything=False):
         """Run a shell-like script as a test.
 
         :param test_case: A TestCase instance that should provide the fail(),
@@ -206,11 +205,11 @@ class ScriptRunner(object):
 
         :param text: A shell-like script (see _script_to_commands for syntax).
 
-        :param blank_output_matches_anything: For commands with no specified
+        :param null_output_matches_anything: For commands with no specified
             output, ignore any output that does happen, including output on
             standard error.
         """
-        self.blank_output_matches_anything = blank_output_matches_anything
+        self.null_output_matches_anything = null_output_matches_anything
         for cmd, input, output, error in _script_to_commands(text):
             self.run_command(test_case, cmd, input, output, error)
 
@@ -252,11 +251,11 @@ class ScriptRunner(object):
                 test_case.fail('expected output: %r, but found nothing'
                             % (expected,))
 
-        blank_output_matches_anything = getattr(self, 
-            'blank_output_matches_anything', False)
-        if blank_output_matches_anything and expected is None: 
+        null_output_matches_anything = getattr(
+            self, 'null_output_matches_anything', False)
+        if null_output_matches_anything and expected is None:
             return
-        
+
         expected = expected or ''
         matching = self.output_checker.check_output(
             expected, actual, self.check_options)
@@ -485,9 +484,9 @@ class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
         super(TestCaseWithMemoryTransportAndScript, self).setUp()
         self.script_runner = ScriptRunner()
 
-    def run_script(self, script, blank_output_matches_anything=False):
+    def run_script(self, script, null_output_matches_anything=False):
         return self.script_runner.run_script(self, script, 
-                   blank_output_matches_anything=blank_output_matches_anything)
+                   null_output_matches_anything=null_output_matches_anything)
 
     def run_command(self, cmd, input, output, error):
         return self.script_runner.run_command(self, cmd, input, output, error)
@@ -515,16 +514,16 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
         super(TestCaseWithTransportAndScript, self).setUp()
         self.script_runner = ScriptRunner()
 
-    def run_script(self, script, blank_output_matches_anything=False):
+    def run_script(self, script, null_output_matches_anything=False):
         return self.script_runner.run_script(self, script,
-                   blank_output_matches_anything=blank_output_matches_anything)
+                   null_output_matches_anything=null_output_matches_anything)
 
     def run_command(self, cmd, input, output, error):
         return self.script_runner.run_command(self, cmd, input, output, error)
 
 
-def run_script(test_case, script_string, blank_output_matches_anything=False):
+def run_script(test_case, script_string, null_output_matches_anything=False):
     """Run the given script within a testcase"""
     return ScriptRunner().run_script(test_case, script_string,
-               blank_output_matches_anything=blank_output_matches_anything)
+               null_output_matches_anything=null_output_matches_anything)
 

@@ -16,7 +16,7 @@
 
 """Front-end command for shell-like test scripts.
 
-See developers/testing.html for more explanations.
+See doc/developers/testing.txt for more explanations.
 This module should be importable even if testtools aren't available.
 """
 

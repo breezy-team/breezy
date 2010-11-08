@@ -185,9 +185,10 @@ Testing
   Instead, use '...' as a wildcard if you don't care about the output.
   (Martin Pool, #637830)
 
-* Add a blank_output_matches_anything keyword argument with default False to
-  bzrlib.tests.script.ScriptRunner.run_script to specify if missing
-  output does not need to be matched.  (Neil Martinsen-Burrell, #662509)
+* Add a null_output_matches_anything keyword argument with default False to
+  bzrlib.tests.script.ScriptRunner.run_script to specify that the command
+  output should not be checked (as opposed to expecting an empty output).
+  (Neil Martinsen-Burrell, #662509)
 
 * ``bzr test-script script`` is a new command that runs a shell-like script
   from an the ``script`` file. (Vincent Ladeuil)
