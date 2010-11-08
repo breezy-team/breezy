@@ -3417,12 +3417,15 @@ class TestUncollectedWarnings(tests.TestCase):
 
     def _run_selftest_with_suite(self, **kwargs):
         sio = StringIO()
-        gc.disable()
+        gc_on = gc.isenabled()
+        if gc_on:
+            gc.disable()
         try:
             tests.selftest(test_suite_factory=self._get_suite, stream=sio,
                 **kwargs)
         finally:
-            gc.enable()
+            if gc_on:
+                gc.enable()
         output = sio.getvalue()
         self.assertNotContainsRe(output, "Uncollected test case.*test_pass")
         self.assertContainsRe(output, "Uncollected test case.*test_self_ref")
