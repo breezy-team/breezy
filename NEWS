@@ -23,7 +23,7 @@ Bug Fixes
   is involved in a text conflict (but the conflict is still not
   resolved). (Vincent Ladeuil, #646961)
 
-* Commit in a bound branch or heavyweight checkout now propagates new tags
+* Commit in a bound branch or heavyweight checkout now propagates tags
   (e.g. from a merge) to the master branch (and informs the user if there
   is a conflict).  (Andrew Bennetts, #603395)
   
