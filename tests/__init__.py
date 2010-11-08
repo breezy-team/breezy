@@ -42,6 +42,7 @@ FastimportFeature = _FastimportFeature()
 def test_suite():
     module_names = [__name__ + '.' + x for x in [
         'test_commands',
+        'test_exporter',
         'test_branch_mapper',
         'test_generic_processor',
         'test_revision_store',

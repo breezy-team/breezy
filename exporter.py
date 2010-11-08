@@ -43,6 +43,18 @@ from bzrlib import (
 from bzrlib.plugins.fastimport import helpers, marks_file
 
 from fastimport import commands
+from fastimport.helpers import binary_stream
+
+
+def _get_output_stream(destination):
+    if destination is None or destination == '-':
+        return binary_stream(sys.stdout)
+    elif destination.endswith('gz'):
+        import gzip
+        return gzip.open(destination, 'wb')
+    else:
+        return open(destination, 'wb')
+
 
 class BzrFastExporter(object):
 
@@ -57,13 +69,7 @@ class BzrFastExporter(object):
           authors, revision properties, etc.
         """
         self.source = source
-        if destination is None or destination == '-':
-            self.outf = helpers.binary_stream(sys.stdout)
-        elif destination.endswith('gz'):
-            import gzip
-            self.outf = gzip.open(destination, 'wb')
-        else:
-            self.outf = open(destination, 'wb')
+        self.outf = _get_output_stream(destination)
         self.git_branch = git_branch
         self.checkpoint = checkpoint
         self.import_marks_file = import_marks_file

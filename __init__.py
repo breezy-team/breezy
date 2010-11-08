@@ -712,11 +712,11 @@ class cmd_fast_export(Command):
         import_marks=None, export_marks=None, revision=None,
         plain=True):
         load_fastimport()
-        from bzrlib.plugins.fastimport import bzr_exporter
+        from bzrlib.plugins.fastimport import exporter
 
         if marks:
             import_marks = export_marks = marks
-        exporter = bzr_exporter.BzrFastExporter(source,
+        exporter = exporter.BzrFastExporter(source,
             destination=destination,
             git_branch=git_branch, checkpoint=checkpoint,
             import_marks_file=import_marks, export_marks_file=export_marks,
