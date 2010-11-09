@@ -242,12 +242,15 @@ def get_default_merge_tool(conf=None):
 def set_default_merge_tool(name, conf=None):
     if conf is None:
         conf = config.GlobalConfig()
-    if isinstance(name, MergeTool):
-        name = name.get_name()
-    if find_merge_tool(name, conf) is None:
-        raise errors.BzrError('invalid merge tool name: %r' % name)
-    trace.mutter('setting default merge tool: %s', name)
-    conf.set_user_option('default_mergetool', name)
+    if name is None:
+        conf.remove_user_option('default_mergetool')
+    else:
+        if isinstance(name, MergeTool):
+            name = name.get_name()
+        if find_merge_tool(name, conf) is None:
+            raise errors.BzrError('invalid merge tool name: %r' % name)
+        trace.mutter('setting default merge tool: %s', name)
+        conf.set_user_option('default_mergetool', name)
 
 
 def resolve_using_merge_tool(tool_name, conflicts):
