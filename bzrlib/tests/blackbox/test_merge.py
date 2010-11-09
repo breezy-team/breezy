@@ -23,9 +23,9 @@ import os
 
 from bzrlib import (
     branch,
+    branchbuilder,
     bzrdir,
     conflicts,
-    errors,
     merge_directive,
     osutils,
     tests,
@@ -624,6 +624,32 @@ class TestMerge(tests.TestCaseWithTransport):
             self.failIfExists("a")
             tree.revert()
             self.failUnlessExists("a")
+
+    def make_master_and_checkout(self):
+        builder = self.make_branch_builder('master')
+        builder.build_commit(message='Initial commit.', rev_id='rev-1')
+        master = builder.get_branch()
+        child = master.create_checkout(self.get_url('child'))
+        return master, child
+
+    def make_fork(self, branch):
+        fork = branch.create_clone_on_transport(self.get_transport('fork'))
+        builder = branchbuilder.BranchBuilder(branch=fork)
+        builder.build_commit(message='Commit in fork.', rev_id='fork-1')
+        return fork
+
+    def test_merge_does_not_propagate_tags_to_master(self):
+        """'bzr merge' alone does not propagate tags to a master branch.
+
+        This is so that 'bzr merge && bzr revert' will have no effect on the
+        master branch.  (If the user runs 'bzr commit', then that is when the
+        tags from the merge are propagated.)
+        """
+        master, child = self.make_master_and_checkout()
+        fork = self.make_fork(master)
+        fork.tags.set_tag('new-tag', fork.last_revision())
+        self.run_bzr(['merge', '../fork'], working_dir='child')
+        self.assertEqual({}, master.tags.get_tag_dict())
 
 
 class TestMergeForce(tests.TestCaseWithTransport):
