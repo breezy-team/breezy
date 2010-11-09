@@ -30,6 +30,7 @@ from bzrlib import (
     bencode,
     cleanup,
     errors,
+    symbol_versioning,
     trace,
     )
 
@@ -58,7 +59,7 @@ class DisabledTags(_Tags):
     lookup_tag = _not_supported
     delete_tag = _not_supported
 
-    def merge_to(self, to_tags, overwrite=False):
+    def merge_to(self, to_tags, overwrite=False, ignore_master=False):
         # we never have anything to copy
         pass
 
@@ -178,7 +179,7 @@ class BasicTags(_Tags):
             raise ValueError("failed to deserialize tag dictionary %r: %s"
                 % (tag_content, e))
 
-    def merge_to(self, to_tags, overwrite=False):
+    def merge_to(self, to_tags, overwrite=False, ignore_master=False):
         """Copy tags between repositories if necessary and possible.
 
         This method has common command-line behaviour about handling
@@ -189,15 +190,18 @@ class BasicTags(_Tags):
 
         :param to_tags: Branch to receive these tags
         :param overwrite: Overwrite conflicting tags in the target branch
+        :param ignore_master: Do not modify the tags in the target's master
+            branch (if any).  Default is false (so the master will be updated).
+            New in bzr 2.2.2 and bzr 2.3.
 
         :returns: A list of tags that conflicted, each of which is
             (tagname, source_target, dest_target), or None if no copying was
             done.
         """
         operation = cleanup.OperationWithCleanups(self._merge_to_operation)
-        return operation.run(to_tags, overwrite)
+        return operation.run(to_tags, overwrite, ignore_master)
 
-    def _merge_to_operation(self, operation, to_tags, overwrite):
+    def _merge_to_operation(self, operation, to_tags, overwrite, ignore_master):
         add_cleanup = operation.add_cleanup
         if self.branch == to_tags.branch:
             return
@@ -222,7 +226,10 @@ class BasicTags(_Tags):
         # more clearly to the caller, but we don't want to break plugins
         # such as bzr-builddeb that use this API.
         add_cleanup(to_tags.branch.lock_write().unlock)
-        master = to_tags.branch.get_master_branch()
+        if ignore_master:
+            master = None
+        else:
+            master = to_tags.branch.get_master_branch()
         if master is not None:
             add_cleanup(master.lock_write().unlock)
         conflicts = self._merge_to(to_tags, source_dict, overwrite)
@@ -277,6 +284,27 @@ class BasicTags(_Tags):
         return result, conflicts
 
 
-def _merge_tags_if_possible(from_branch, to_branch):
-    from_branch.tags.merge_to(to_branch.tags)
+def _merge_tags_if_possible(from_branch, to_branch, ignore_master=False):
+    # Try hard to support merge_to implementations that don't expect
+    # 'ignore_master' (new in bzr 2.2.2/2.3).  First, if the flag isn't set
+    # then we can safely avoid passing ignore_master at all.
+    if not ignore_master:
+        from_branch.tags.merge_to(to_branch.tags)
+        return
+    # If the flag is set, try to pass it, but be ready to catch TypeError.
+    try:
+        from_branch.tags.merge_to(to_branch.tags, ignore_master=ignore_master)
+    except TypeError:
+        # Probably this implementation of 'merge_to' is from a plugin that
+        # doesn't expect the 'ignore_master' keyword argument (e.g. bzr-svn
+        # 1.0.4).  There's a small risk that the TypeError is actually caused
+        # by a completely different problem (which is why we don't catch it for
+        # the ignore_master=False case), but even then there's probably no harm
+        # in calling a second time.
+        symbol_versioning.warn(
+            symbol_versioning.deprecated_in((2,2,2)) % (
+                "Tags.merge_to (from %r) that doesn't accept ignore_master"
+                " kwarg" % (from_branch.tags.merge_to,),),
+            DeprecationWarning)
+        from_branch.tags.merge_to(to_branch.tags)
 

@@ -3326,7 +3326,7 @@ class GenericInterBranch(InterBranch):
         if isinstance(format, remote.RemoteBranchFormat):
             format._ensure_real()
             return format._custom_format
-        return format                                                                                                  
+        return format
 
     @needs_write_lock
     def copy_content_into(self, revision_id=None):

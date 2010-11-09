@@ -52,6 +52,14 @@ Documentation
 API Changes
 ***********
 
+* The ``merge_to`` method of ``branch.tags`` objects is now expected to
+  take a ``ignore_master=False`` keyword parameter.  Plugins that
+  implement this method should add that parameter to their signature.
+  Callsites in bzr itself that pass that flag will still try to work with
+  the old signature (they catch TypeError and retry without the flag), but
+  this support is deprecated and will be removed eventually.
+  (Andrew Bennetts, #603395)
+
 Internals
 *********
 

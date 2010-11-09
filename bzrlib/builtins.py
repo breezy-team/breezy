@@ -3980,7 +3980,9 @@ class cmd_merge(Command):
         if ((remember or tree.branch.get_submit_branch() is None) and
              user_location is not None):
             tree.branch.set_submit_branch(other_branch.base)
-        _merge_tags_if_possible(other_branch, tree.branch)
+        # Merge tags (but don't set them in the master branch yet, the user
+        # might revert this merge).  Commit will propagate them.
+        _merge_tags_if_possible(other_branch, tree.branch, ignore_master=True)
         merger = _mod_merge.Merger.from_revision_ids(pb, tree,
             other_revision_id, base_revision_id, other_branch, base_branch)
         if other_path != '':
