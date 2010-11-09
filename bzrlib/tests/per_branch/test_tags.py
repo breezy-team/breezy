@@ -148,13 +148,15 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
     """Tests for checkout.branch.tags.merge_to.
     
     In particular this exercises variations in tag conflicts in the master
-    branch and/or the checkout (child).  It's unusual to have different tags in
-    the child and master (they child is supposed to synchronised to the
-    master, and e.g. 'bzr update' will unconditionally overwrite the child
-    tags), but it can happen as merge_to in bzr < 2.2.2 didn't propagate
-    changes to the master.  Current bzr versions may find themselves operating
-    on checkouts touched by older bzrs, so we make sure bzr copes gracefully
-    with this surprising situation.
+    branch and/or the checkout (child).  It may seem strange to have different
+    tags in the child and master, but 'bzr merge' intentionally updates the
+    child and not the master (instead the next 'bzr commit', if the user
+    decides to commit, will update the master).  Also, merge_to in bzr < 2.2.2
+    didn't propagate changes to the master, and current bzr versions may find
+    themselves operating on checkouts touched by older bzrs
+    
+    So we need to make sure bzr copes gracefully with differing tags in the
+    master versus the child.
 
     See also <https://bugs.launchpad.net/bzr/+bug/603395>.
     """
@@ -183,6 +185,20 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         other.tags.merge_to(child.tags)
         self.assertEquals('rev-1', child.tags.lookup_tag('foo'))
         self.assertEquals('rev-1', master.tags.lookup_tag('foo'))
+
+    def test_ignore_master_disables_tag_propagation(self):
+        """merge_to(child, ignore_master=True) does not merge tags to the
+        master.
+        """
+        master = self.make_branch('master')
+        other = self.make_branch('other')
+        other.tags.set_tag('foo', 'rev-1')
+        child = self.make_branch('child')
+        child.bind(master)
+        child.update()
+        other.tags.merge_to(child.tags, ignore_master=True)
+        self.assertEquals('rev-1', child.tags.lookup_tag('foo'))
+        self.assertRaises(errors.NoSuchTag, master.tags.lookup_tag, 'foo')
 
     def test_merge_to_overwrite_conflict_in_master(self):
         """merge_to(child, overwrite=True) overwrites any conflicting tags in
@@ -285,8 +301,8 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
         child = self.make_branch('child')
         child.bind(master)
         child.update()
-        # We need to use the private method _set_tag_dict because normally bzr
-        # tries to prevent this scenario.
+        # We use the private method _set_tag_dict because normally bzr tries to
+        # avoid this scenario.
         child.tags._set_tag_dict({'foo': 'rev-3'})
         tag_conflicts = other.tags.merge_to(child.tags)
         # Both master and child conflict, so both stay as they were.

@@ -135,9 +135,8 @@ class TestTagging(TestCaseWithTransport):
     def test_merge_without_commit_does_not_propagate_tags_to_master(self):
         """'bzr merge' alone does not propagate tags to a master branch.
 
-        This is so that 'bzr merge && bzr revert' will have no effect on the
-        master branch.  (If the user runs 'bzr commit', then that is when the
-        tags from the merge are propagated.)
+        (If the user runs 'bzr commit', then that is when the tags from the
+        merge are propagated.)
         """
         master, child = self.make_master_and_checkout()
         fork = self.make_fork(master)
