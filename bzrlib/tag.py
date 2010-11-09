@@ -303,8 +303,8 @@ def _merge_tags_if_possible(from_branch, to_branch, ignore_master=False):
         # in calling a second time.
         symbol_versioning.warn(
             symbol_versioning.deprecated_in((2,2,2)) % (
-                "Tags.merge_to (from %r) that doesn't accept ignore_master"
-                " kwarg" % (from_branch.tags.merge_to,),),
+                "Tags.merge_to (of %r) that doesn't accept ignore_master kwarg"
+                % (from_branch.tags,),),
             DeprecationWarning)
         from_branch.tags.merge_to(to_branch.tags)
 
