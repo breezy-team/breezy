@@ -122,10 +122,6 @@ class TestTagMerging(TestCaseWithTransport):
 class TestTagsInCheckouts(TestCaseWithTransport):
     """Tests for how tags are synchronised between the master and child branch
     of a checkout.
-
-    Note that it is possible (although a bit uncommon) for the master and child
-    to have different sets of tags.  So this includes tests for those cases to
-    make sure the behaviour in those situations is well-defined.
     """
 
     def test_update_tag_into_checkout(self):
