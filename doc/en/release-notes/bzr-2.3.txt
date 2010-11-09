@@ -37,6 +37,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Better message if there is an error while setting ownership of
+  ``.bazaar`` directory. (Parth Malwankar, #657553)
+
 * ``bzr resolve --take-other <file>`` will not crash anymore if ``<file>``
   is involved in a text conflict (but the conflict is still not
   resolved). (Vincent Ladeuil, #646961)
