@@ -1,4 +1,4 @@
-bzr (2.3.0~beta3-1) UNRELEASED; urgency=low
+bzr (2.3.0~beta3-1) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Add testtools to build dependencies.
