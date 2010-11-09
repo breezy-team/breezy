@@ -28,6 +28,7 @@ when the branch is opened.  Clients should typically do
 
 from bzrlib import (
     bencode,
+    cleanup,
     errors,
     trace,
     )
@@ -193,6 +194,11 @@ class BasicTags(_Tags):
             (tagname, source_target, dest_target), or None if no copying was
             done.
         """
+        operation = cleanup.OperationWithCleanups(self._merge_to_operation)
+        return operation.run(to_tags, overwrite)
+
+    def _merge_to_operation(self, operation, to_tags, overwrite):
+        add_cleanup = operation.add_cleanup
         if self.branch == to_tags.branch:
             return
         if not self.branch.supports_tags():
@@ -215,21 +221,14 @@ class BasicTags(_Tags):
         # Ideally we'd improve this API to report the different conflicts
         # more clearly to the caller, but we don't want to break plugins
         # such as bzr-builddeb that use this API.
-        to_tags.branch.lock_write()
-        try:
-            master = to_tags.branch.get_master_branch()
-            try:
-                if master is not None:
-                    master.lock_write()
-                conflicts = self._merge_to(to_tags, source_dict, overwrite)
-                if master is not None:
-                    conflicts += self._merge_to(master.tags, source_dict,
-                        overwrite)
-            finally:
-                if master is not None:
-                    master.unlock()
-        finally:
-            to_tags.branch.unlock()
+        add_cleanup(to_tags.branch.lock_write().unlock)
+        master = to_tags.branch.get_master_branch()
+        if master is not None:
+            add_cleanup(master.lock_write().unlock)
+        conflicts = self._merge_to(to_tags, source_dict, overwrite)
+        if master is not None:
+            conflicts += self._merge_to(master.tags, source_dict,
+                overwrite)
         # We use set() to remove any duplicate conflicts from the master
         # branch.  We then use list() to keep the behaviour as close to 2.2.1
         # and earlier as possible, to minimise potential compatibility issues.
