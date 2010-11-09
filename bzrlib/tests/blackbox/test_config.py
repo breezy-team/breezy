@@ -74,6 +74,40 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         super(TestConfigDisplay, self).setUp()
         _t_config.create_configs(self)
 
+    def test_multiline_all_values(self):
+        self.bazaar_config.set_user_option('multiline', '1\n2\n')
+        script.run_script(self, """\
+            $ bzr config -d tree
+            bazaar:
+              multiline = '''1
+            2
+            '''
+            """)
+
+    def test_multiline_value_only(self):
+        self.bazaar_config.set_user_option('multiline', '1\n2\n')
+        script.run_script(self, """\
+            $ bzr config -d tree multiline
+            '''1
+            2
+            '''
+            """)
+
+    def test_list_all_values(self):
+        self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
+        script.run_script(self, '''\
+            $ bzr config -d tree
+            bazaar:
+              list = 1, a, "with, a comma"
+            ''')
+
+    def test_list_value_only(self):
+        self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
+        script.run_script(self, '''\
+            $ bzr config -d tree list
+            1, a, "with, a comma"
+            ''')
+
     def test_bazaar_config(self):
         self.bazaar_config.set_user_option('hello', 'world')
         script.run_script(self, '''\

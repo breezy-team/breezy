@@ -37,6 +37,8 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr config`` properly displays list values. (Vincent Ladeuil, #672382)
+
 * ``bzr config`` will now respect option policies when displaying the value
   and display the definition sections when appropriate.
   (Vincent Ladeuil, #671050)
