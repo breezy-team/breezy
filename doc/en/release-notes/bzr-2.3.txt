@@ -5,10 +5,82 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.3b4
+#########
+
+:2.3.b4: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+* ``bzr config <option>`` will now display only the value itself so scripts
+  can use it to query the currently active configuration. Displaying several
+  options matching a given regular expression is now controlled via the
+  ``--all`` option.  (Vincent Ladeuil, bug #670251)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* ``bzr resolve --take-other <file>`` will not crash anymore if ``<file>``
+  is involved in a text conflict (but the conflict is still not
+  resolved). (Vincent Ladeuil, #646961)
+
+* Report error if non-ASCII command option given. (Rory Yorke, #140563)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+* Add a null_output_matches_anything keyword argument with default False to
+  bzrlib.tests.script.ScriptRunner.run_script to specify that the command
+  output should not be checked (as opposed to expecting an empty output).
+  (Neil Martinsen-Burrell, #662509)
+
+* Blank output section in scriptrunner tests no longer match any output.
+  Instead, use '...' as a wildcard if you don't care about the output.
+  (Martin Pool, #637830)
+
+
 bzr 2.3b3
 #########
 
-:2.3b3: NOT RELEASED YET
+:2.3b3: 2010-11-05
 
 External Compatibility Breaks
 *****************************
@@ -38,9 +110,6 @@ New Features
   default format for new branches created with ``bzr init``.
   (Neil Martinsen-Burrell, #484101)
 
-Improvements
-************
-
 Bug Fixes
 *********
 
@@ -63,7 +132,7 @@ Bug Fixes
   the base directory for the other paths. (Vincent Ladeuil, #670851)
 
 * Correctly set the Content-Type  header when http POSTing to comply
-  with stricter web frameworks. (Vincent Ladeuil, #655100)
+  with stricter web frameworks. (Vincent Ladeuil, #665100)
 
 * Don't force openssh to use protocol=2, since that is now the default.
   (Neil Martinsen-Burrell, #561061)
@@ -77,6 +146,13 @@ Bug Fixes
 * Missing files (files bzr add'ed and then OS deleted) are now shown in ``bzr
   status`` output. (Rory Yorke, #134168)
 
+* ``NotBranchError`` no longer allows errors from calling
+  ``bzrdir.open_repository()`` to propagate.  This is unhelpful at best,
+  and at worst can trigger infinite loops in callers.  (Andrew Bennetts)
+  
+* Windows installers no longer requires the Microsoft vcredist to be
+  installed. (Martin [gz], Gary van der Merwe, #632465)
+
 Documentation
 *************
 
@@ -88,7 +164,7 @@ Documentation
 
 * Document the comment character in the .bzrignore file, including a
   workaround for ignore patterns that begin with #.
-  (Neil Martinsen-Burrell, #621515)
+  (Neil Martinsen-Burrell, #631515)
 
 API Changes
 ***********
