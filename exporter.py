@@ -40,10 +40,16 @@ from bzrlib import (
     trace,
     )
 
-from bzrlib.plugins.fastimport import helpers, marks_file
+from bzrlib.plugins.fastimport import (
+    helpers,
+    marks_file,
+    )
 
 from fastimport import commands
-from fastimport.helpers import binary_stream
+from fastimport.helpers import (
+    binary_stream,
+    single_plural,
+    )
 
 
 def _get_output_stream(destination):
@@ -178,7 +184,7 @@ class BzrFastExporter(object):
         time_required = progress.str_tdelta(time.time() - self._start_time)
         rc = len(self.revid_to_mark)
         self.note("Exported %d %s in %s",
-            rc, helpers.single_plural(rc, "revision", "revisions"),
+            rc, single_plural(rc, "revision", "revisions"),
             time_required)
 
     def print_cmd(self, cmd):
