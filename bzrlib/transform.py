@@ -130,7 +130,7 @@ class TreeTransformBase(object):
             self._new_root = self.trans_id_tree_file_id(root_id)
         else:
             self._new_root = None
-        # Indictor of whether the transform has been applied
+        # Indicator of whether the transform has been applied
         self._done = False
         # A progress bar
         self._pb = pb

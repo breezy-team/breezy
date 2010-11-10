@@ -31,6 +31,11 @@ Improvements
   options matching a given regular expression is now controlled via the
   ``--all`` option.  (Vincent Ladeuil, bug #670251)
 
+* ``bzr resolve`` now accepts ``--take-this`` and ``--take-other`` actions
+  for text conflicts. This *replace* the whole file with the content
+  designated by the action. This will *ignore* all differences that would
+  have been merge cleanly otherwise. (Vincent Ladeuil, #638451)
+
 * ``bzr resolve`` now reports the number of conflicts resolved and the
   number of remaining conflicts. This provides a better feedback about the
   whole resolution process. (Vincent Ladeuil)
