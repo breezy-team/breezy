@@ -19,8 +19,35 @@ New Features
 Bug Fixes
 *********
 
+* ``bzr resolve --take-other <file>`` will not crash anymore if ``<file>``
+  is involved in a text conflict (but the conflict is still not
+  resolved). (Vincent Ladeuil, #646961)
+
+* Commit in a bound branch or heavyweight checkout now propagates tags
+  (e.g. from a merge) to the master branch (and informs the user if there
+  is a conflict).  (Andrew Bennetts, #603395)
+  
+* Correctly set the Content-Type header when http POSTing to comply
+  with stricter web frameworks. (Vincent Ladeuil, #655100)
+
+* ``NotBranchError`` no longer allows errors from calling
+  ``bzrdir.open_repository()`` to propagate.  This is unhelpful at best,
+  and at worst can trigger infinite loops in callers.  (Andrew Bennetts)
+  
+* Skip tests that needs a bzr source tree when there isn't one. This is
+  needed to succesfully run the test suite for installed versions.
+  (Vincent Ladeuil, #644855).
+
+* Skip the tests that requires respecting the chmod bits when running as
+  root. Including the one that wasn't present in 2.1.
+  (Vincent Ladeuil, #646133)
+
 * Using bzr with `lp:` urls behind an http proxy should work.
   (Robert Collins, #558343)
+
+* Windows installers no longer requires the Microsoft vcredist to be
+  installed.
+  (Martin [gz], Gary van der Merwe, #632465)
 
 Improvements
 ************
@@ -43,14 +70,6 @@ Testing
 
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
-
-* Skip tests that needs a bzr source tree when there isn't one. This is
-  needed to succesfully run the test suite for installed versions.
-  (Vincent Ladeuil, #644855).
-
-* Skip the tests that requires respecting the chmod bits when running as
-  root. Including the one that wasn't present in 2.1.
-  (Vincent Ladeuil, #646133)
 
 
 bzr 2.2.1
