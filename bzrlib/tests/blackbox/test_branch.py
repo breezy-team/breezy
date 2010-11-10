@@ -270,6 +270,20 @@ class TestBranch(TestCaseWithTransport):
         self.run_bzr('checkout --lightweight a b')
         self.assertLength(2, calls)
 
+    def test_branch_fetches_all_tags(self):
+        builder = self.make_branch_builder('source')
+        builder.build_commit(message="Rev 1", rev_id='rev-1')
+        builder.build_commit(message="Rev 2", rev_id='rev-2')
+        source = builder.get_branch()
+        source.tags.set_tag('tag-a', 'rev-2')
+        source.set_last_revision_info(1, 'rev-1')
+        # Now source has a tag not in its ancestry.  Make a branch from it.
+        self.run_bzr('branch source new-branch')
+        new_branch = branch.Branch.open('new-branch')
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2', new_branch.tags.lookup_tag('tag-a'))
+        new_branch.repository.get_revision('rev-2')
+
 
 class TestBranchStacked(TestCaseWithTransport):
     """Tests for branch --stacked"""

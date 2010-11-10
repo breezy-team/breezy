@@ -392,16 +392,34 @@ class ControlDir(ControlComponent):
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo, is_new_repo = repository_policy.acquire_repository()
         is_stacked = stacked or (len(result_repo._fallback_repositories) != 0)
-        if is_new_repo and revision_id is not None and not is_stacked:
+        if source_branch is None:
+            if revision_id is None:
+                revs_to_fetch = None # (this means fetch all)
+            else:
+                revs_to_fetch = set([revision_id])
+        else:
+            revs_to_fetch = set(source_branch.tags.get_reverse_tag_dict())
+            if revision_id is None:
+                revs_to_fetch.add(source_branch.last_revision())
+            else:
+                revs_to_fetch.add(revision_id)
+        if is_new_repo and revs_to_fetch and not is_stacked:
             fetch_spec = graph.PendingAncestryResult(
-                [revision_id], source_repository)
+                revs_to_fetch, source_repository)
         else:
             fetch_spec = None
         if source_repository is not None:
             # Fetch while stacked to prevent unstacked fetch from
             # Branch.sprout.
             if fetch_spec is None:
-                result_repo.fetch(source_repository, revision_id=revision_id)
+                if revs_to_fetch is None:
+                    result_repo.fetch(source_repository, revision_id=None)
+                else:
+                    # XXX!  Replace this for-loop with a single call using a
+                    # better fetch_spec.
+                    for rev_to_fetch in revs_to_fetch:
+                        result_repo.fetch(
+                            source_repository, revision_id=rev_to_fetch)
             else:
                 result_repo.fetch(source_repository, fetch_spec=fetch_spec)
 
