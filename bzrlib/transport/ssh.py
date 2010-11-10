@@ -361,13 +361,14 @@ class SubprocessVendor(SSHVendor):
             # This platform doesn't support socketpair(), so just use ordinary
             # pipes instead.
             stdin = stdout = subprocess.PIPE
-            sock = None
+            my_sock, subproc_sock = None, None
         else:
             stdin = stdout = subproc_sock
-            sock = my_sock
         proc = subprocess.Popen(argv, stdin=stdin, stdout=stdout,
                                 **os_specific_subprocess_params())
-        return SSHSubprocessConnection(proc, sock=sock)
+        if subproc_sock is not None:
+            subproc_sock.close()
+        return SSHSubprocessConnection(proc, sock=my_sock)
 
     def connect_sftp(self, username, password, host, port):
         try:
