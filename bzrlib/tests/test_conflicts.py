@@ -26,26 +26,13 @@ from bzrlib import (
     tests,
     workingtree,
     )
-from bzrlib.tests import script
+from bzrlib.tests import (
+    script,
+    scenarios,
+    )
 
 
-def load_tests(standard_tests, module, loader):
-    result = loader.suiteClass()
-
-    sp_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((
-                TestParametrizedResolveConflicts,
-                )))
-    # Each test class defines its own scenarios. This is needed for
-    # TestResolvePathConflictBefore531967 that verifies that the same tests as
-    # TestResolvePathConflict still pass.
-    for test in tests.iter_suite_tests(sp_tests):
-        tests.apply_scenarios(test, test.scenarios(), result)
-
-    # No parametrization for the remaining tests
-    result.addTests(remaining_tests)
-
-    return result
+load_tests = scenarios.load_tests_apply_scenarios
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -293,34 +280,31 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
     _this = None
     _other = None
 
-    @staticmethod
-    def scenarios():
-        """Return the scenario list for the conflict type defined by the class.
+    scenarios = []
+    """The scenario list for the conflict type defined by the class.
 
-        Each scenario is of the form:
-        (common, (left_name, left_dict), (right_name, right_dict))
+    Each scenario is of the form:
+    (common, (left_name, left_dict), (right_name, right_dict))
 
-        * common is a dict
+    * common is a dict
 
-        * left_name and right_name are the scenario names that will be combined
+    * left_name and right_name are the scenario names that will be combined
 
-        * left_dict and right_dict are the attributes specific to each half of
-          the scenario. They should include at least 'actions' and 'check' and
-          will be available as '_this' and '_other' test instance attributes.
+    * left_dict and right_dict are the attributes specific to each half of
+      the scenario. They should include at least 'actions' and 'check' and
+      will be available as '_this' and '_other' test instance attributes.
 
-        Daughters classes are free to add their specific attributes as they see
-        fit in any of the three dicts.
+    Daughters classes are free to add their specific attributes as they see
+    fit in any of the three dicts.
 
-        This is a class method so that load_tests can find it.
+    This is a class method so that load_tests can find it.
 
-        '_base_actions' in the common dict, 'actions' and 'check' in the left
-        and right dicts use names that map to methods in the test classes. Some
-        prefixes are added to these names to get the correspong methods (see
-        _get_actions() and _get_check()). The motivation here is to avoid
-        collisions in the class namespace.
-        """
-        # Only concrete classes return actual scenarios
-        return []
+    '_base_actions' in the common dict, 'actions' and 'check' in the left
+    and right dicts use names that map to methods in the test classes. Some
+    prefixes are added to these names to get the correspong methods (see
+    _get_actions() and _get_check()). The motivation here is to avoid
+    collisions in the class namespace.
+    """
 
     def setUp(self):
         super(TestParametrizedResolveConflicts, self).setUp()
@@ -390,16 +374,15 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
 
 class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.ContentsConflict,
+    _conflict_type = conflicts.ContentsConflict
 
-    # Set by load_tests from scenarios()
+    # Set by the scenarios
     # path and file-id for the file involved in the conflict
     _path = None
     _file_id = None
 
-    @staticmethod
-    def scenarios():
-        base_scenarios = [
+    scenarios = mirror_scenarios(
+        [
             # File modified/deleted
             (dict(_base_actions='create_file',
                   _path='file', _file_id='file-id'),
@@ -407,8 +390,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
               dict(actions='modify_file', check='file_has_more_content')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist')),),
-            ]
-        return mirror_scenarios(base_scenarios)
+            ])
 
     def do_create_file(self):
         return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
@@ -436,17 +418,16 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 
 class TestResolvePathConflict(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.PathConflict,
+    _conflict_type = conflicts.PathConflict
 
     def do_nothing(self):
         return []
 
-    @staticmethod
-    def scenarios():
-        # Each side dict additionally defines:
-        # - path path involved (can be '<deleted>')
-        # - file-id involved
-        base_scenarios = [
+    # Each side dict additionally defines:
+    # - path path involved (can be '<deleted>')
+    # - file-id involved
+    scenarios = mirror_scenarios(
+        [
             # File renamed/deleted
             (dict(_base_actions='create_file'),
              ('file_renamed',
@@ -483,8 +464,7 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
              ('dir_renamed2',
               dict(actions='rename_dir2', check='dir_renamed2',
                    path='new-dir2', file_id='dir-id')),),
-        ]
-        return mirror_scenarios(base_scenarios)
+            ])
 
     def do_create_file(self):
         return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
@@ -568,14 +548,10 @@ class TestResolvePathConflictBefore531967(TestResolvePathConflict):
 
 class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.DuplicateEntry,
+    _conflict_type = conflicts.DuplicateEntry
 
-    @staticmethod
-    def scenarios():
-        # Each side dict additionally defines:
-        # - path involved
-        # - file-id involved
-        base_scenarios = [
+    scenarios = mirror_scenarios(
+        [
             # File created with different file-ids
             (dict(_base_actions='nothing'),
              ('filea_created',
@@ -584,8 +560,7 @@ class TestResolveDuplicateEntry(TestParametrizedResolveConflicts):
              ('fileb_created',
               dict(actions='create_file_b', check='file_content_b',
                    path='file', file_id='file-b-id')),),
-            ]
-        return mirror_scenarios(base_scenarios)
+            ])
 
     def do_nothing(self):
         return []
@@ -784,19 +759,18 @@ $ bzr commit -q --strict -m 'No more conflicts nor unknown files'
 
 class TestResolveParentLoop(TestParametrizedResolveConflicts):
 
-    _conflict_type = conflicts.ParentLoop,
+    _conflict_type = conflicts.ParentLoop
 
     _this_args = None
     _other_args = None
 
-    @staticmethod
-    def scenarios():
-        # Each side dict additionally defines:
-        # - dir_id: the directory being moved
-        # - target_id: The target directory
-        # - xfail: whether the test is expected to fail if the action is
-        #     involved as 'other'
-        base_scenarios = [
+    # Each side dict additionally defines:
+    # - dir_id: the directory being moved
+    # - target_id: The target directory
+    # - xfail: whether the test is expected to fail if the action is
+    #   involved as 'other'
+    scenarios = mirror_scenarios(
+        [
             # Dirs moved into each other
             (dict(_base_actions='create_dir1_dir2'),
              ('dir1_into_dir2',
@@ -813,8 +787,7 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
              ('dir3_into_dir2',
               dict(actions='move_dir3_into_dir2', check='dir3_4_moved',
                    dir_id='dir3-id', target_id='dir2-id', xfail=True))),
-            ]
-        return mirror_scenarios(base_scenarios)
+            ])
 
     def do_create_dir1_dir2(self):
         return [('add', ('dir1', 'dir1-id', 'directory', '')),
