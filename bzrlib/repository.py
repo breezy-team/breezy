@@ -1737,9 +1737,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 not _mod_revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
-        # if there is no specific appropriate InterRepository, this will get
-        # the InterRepository base class, which raises an
-        # IncompatibleRepositories when asked to fetch.
         inter = InterRepository.get(source, self)
         return inter.fetch(revision_id=revision_id, pb=pb,
             find_ghosts=find_ghosts, fetch_spec=fetch_spec)
