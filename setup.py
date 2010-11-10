@@ -692,7 +692,8 @@ elif 'py2exe' in sys.argv:
     dll_excludes.extend(["MSWSOCK.dll",
                          "MSVCP60.dll",
                          "MSVCP90.dll",
-                         "powrprof.dll"])
+                         "powrprof.dll",
+                         "SHFOLDER.dll"])
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes,
                                "excludes": excludes,

@@ -41,6 +41,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Better message if there is an error while setting ownership of
+  ``.bazaar`` directory. (Parth Malwankar, #657553)
+
 * ``bzr resolve --take-other <file>`` will not crash anymore if ``<file>``
   is involved in a text conflict (but the conflict is still not
   resolved). (Vincent Ladeuil, #646961)
@@ -70,6 +73,11 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* Add a null_output_matches_anything keyword argument with default False to
+  bzrlib.tests.script.ScriptRunner.run_script to specify that the command
+  output should not be checked (as opposed to expecting an empty output).
+  (Neil Martinsen-Burrell, #662509)
 
 * Blank output section in scriptrunner tests no longer match any output.
   Instead, use '...' as a wildcard if you don't care about the output.

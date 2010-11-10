@@ -50,6 +50,16 @@ hello world
         self.assertEquals('OK', out_lines[-1])
         self.assertEquals('', err)
 
+    def test_null_output(self):
+        self.build_tree_contents([('script', '''
+$ echo hello world
+''')])
+        out, err = self.run_bzr(['test-script', 'script', '--null-output'])
+        out_lines = out.splitlines()
+        self.assertStartsWith(out_lines[-3], 'Ran 1 test in ')
+        self.assertEquals('OK', out_lines[-1])
+        self.assertEquals('', err)
+
     def test_failing_script(self):
         self.build_tree_contents([('script', '''
 $ echo hello foo

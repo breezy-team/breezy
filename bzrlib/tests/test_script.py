@@ -186,6 +186,14 @@ class TestExecution(script.TestCaseWithTransportAndScript):
             $ echo foo
             """)
 
+    def test_null_output_matches_option(self):
+        """If you want null output to be a wild card, you can pass 
+        null_output_matches_anything to run_script"""
+        self.run_script(
+            """
+            $ echo foo
+            """, null_output_matches_anything=True)
+
     def test_ellipsis_everything(self):
         """A simple ellipsis matches everything."""
         self.run_script("""
