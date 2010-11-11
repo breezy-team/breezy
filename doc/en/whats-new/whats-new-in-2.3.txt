@@ -111,6 +111,9 @@ Improved conflict handling
   default behaviour is specified (if needed) by setting the variable to
   ``conflict``.  (Vincent Ladeuil, #323111)
 
+* ``bzr resolve`` now provides more feedback about the conflicts just
+  resolved and the remaining ones. (Vincent Ladeuil)
+
 * External merge tools can now be configured and invoked for files with text
   conflicts during ``merge`` and ``remerge`` by adding the ``--resolve-using``
   option.  (Gordon Tyler, #489915)
@@ -129,7 +132,8 @@ Configuration
 and configurations files. We've started working on unifying this and give
 access to more options. The first step is a new ``bzr config`` command that
 can be used to display the active configuration options in the current
-working tree or branch as well as the ability to set or remove an option.
+working tree or branch as well as the ability to set or remove an
+option. Scripts can also use it to get only the value for a given option.
 
 Expected releases for the 2.3 series
 ************************************

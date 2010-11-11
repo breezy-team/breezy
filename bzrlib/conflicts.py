@@ -205,7 +205,9 @@ class cmd_resolve(commands.Command):
                 for conflict in unresolved:
                     ui.ui_factory.show_message(str(conflict))
         else:
-            resolve(tree, file_list, action=action)
+            before, after = resolve(tree, file_list, action=action)
+            trace.note('%d conflict(s) resolved, %d remaining'
+                       % (before - after, after))
 
 
 def resolve(tree, paths=None, ignore_misses=False, recursive=False,
@@ -224,8 +226,10 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False,
     :param action: How the conflict should be resolved,
     """
     tree.lock_tree_write()
+    nb_conflicts_after = None
     try:
         tree_conflicts = tree.conflicts()
+        nb_conflicts_before = len(tree_conflicts)
         if paths is None:
             new_conflicts = ConflictList()
             to_process = tree_conflicts
@@ -239,11 +243,15 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False,
             except NotImplementedError:
                 new_conflicts.append(conflict)
         try:
+            nb_conflicts_after = len(new_conflicts)
             tree.set_conflicts(new_conflicts)
         except errors.UnsupportedOperation:
             pass
     finally:
         tree.unlock()
+    if nb_conflicts_after is None:
+        nb_conflicts_after = nb_conflicts_before
+    return nb_conflicts_before, nb_conflicts_after
 
 
 def restore(filename):
@@ -648,12 +656,9 @@ class ContentsConflict(PathConflict):
         self._resolve_with_cleanups(tree, 'THIS')
 
 
-# FIXME: TextConflict is about a single file-id, there never is a conflict_path
-# attribute so we shouldn't inherit from PathConflict but simply from Conflict
-
 # TODO: There should be a base revid attribute to better inform the user about
 # how the conflicts were generated.
-class TextConflict(PathConflict):
+class TextConflict(Conflict):
     """The merge algorithm could not resolve all differences encountered."""
 
     has_files = True
@@ -661,6 +666,8 @@ class TextConflict(PathConflict):
     typestring = 'text conflict'
 
     format = 'Text conflict in %(path)s'
+
+    rformat = '%(class)s(%(path)r, %(file_id)r)'
 
     def associated_filenames(self):
         return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
