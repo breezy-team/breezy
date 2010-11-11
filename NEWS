@@ -49,6 +49,9 @@ Bug Fixes
   installed.
   (Martin [gz], Gary van der Merwe, #632465)
 
+* Close leaked socket to SSH subprocesses, which caused dput sftp uploads
+  to hang.  (Max Bowsher, #659590)
+
 Improvements
 ************
 
