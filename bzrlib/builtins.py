@@ -41,7 +41,6 @@ from bzrlib import (
     log,
     merge as _mod_merge,
     merge_directive,
-    mergetools,
     osutils,
     reconfigure,
     rename_map,
@@ -3839,8 +3838,6 @@ class cmd_merge(Command):
                ' merge.'),
         Option('interactive', help='Select changes interactively.',
             short_name='i'),
-        Option('resolve-using', help='Invokes the external merge tool named '
-               'ARG for each merged file with conflicts.', type=str),
     ]
 
     def run(self, location=None, revision=None, force=False,
@@ -3849,7 +3846,6 @@ class cmd_merge(Command):
             directory=None,
             preview=False,
             interactive=False,
-            resolve_using=None
             ):
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
@@ -3926,15 +3922,12 @@ class cmd_merge(Command):
                 "This branch has no commits."
                 " (perhaps you would prefer 'bzr pull')")
         if preview:
-            retval = self._do_preview(merger)
+            return self._do_preview(merger)
         elif interactive:
-            retval = self._do_interactive(merger)
+            return self._do_interactive(merger)
         else:
-            retval = self._do_merge(merger, change_reporter, allow_pending,
-                                    verified)
-        if retval != 0 and resolve_using is not None:
-            mergetools.resolve_using_merge_tool(resolve_using, tree.conflicts())
-        return retval
+            return self._do_merge(merger, change_reporter, allow_pending,
+                                  verified)
 
     def _get_preview(self, merger):
         tree_merger = merger.make_merger()
@@ -4134,13 +4127,11 @@ class cmd_remerge(Command):
         'merge-type',
         'reprocess',
         Option('show-base',
-               help="Show base revision text in conflicts."),
-        Option('resolve-using', help='Invokes the external merge tool named '
-               'ARG for each merged file with conflicts.', type=str),
+               help="Show base revision text in conflicts.")
     ]
 
     def run(self, file_list=None, merge_type=None, show_base=False,
-            reprocess=False, resolve_using=None):
+            reprocess=False):
         from bzrlib.conflicts import restore
         if merge_type is None:
             merge_type = _mod_merge.Merge3Merger
@@ -4198,9 +4189,6 @@ class cmd_remerge(Command):
         finally:
             tree.set_parent_ids(parents)
         if conflicts > 0:
-            if resolve_using is not None:
-                mergetools.resolve_using_merge_tool(resolve_using,
-                                                    tree.conflicts())
             return 1
         else:
             return 0
@@ -6120,7 +6108,6 @@ def _register_lazy_builtins():
         ('cmd_config', [], 'bzrlib.config'),
         ('cmd_conflicts', [], 'bzrlib.conflicts'),
         ('cmd_dpush', [], 'bzrlib.foreign'),
-        ('cmd_mergetools', [], 'bzrlib.mergetools'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
         ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
         ('cmd_test_script', [], 'bzrlib.cmd_test_script'),

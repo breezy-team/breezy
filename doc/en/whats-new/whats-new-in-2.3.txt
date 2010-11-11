@@ -111,9 +111,9 @@ Improved conflict handling
   default behaviour is specified (if needed) by setting the variable to
   ``conflict``.  (Vincent Ladeuil, #323111)
 
-* External merge tools can now be configured using the ``mergetools`` command,
-  and invoked for files with text conflicts during ``merge`` and ``remerge``
-  by adding the ``--resolve-using`` option.
+* External merge tools can now be configured and invoked for files with text
+  conflicts during ``merge`` and ``remerge`` by adding the ``--resolve-using``
+  option.  (Gordon Tyler, #489915)
 
 Documentation
 *************

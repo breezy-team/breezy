@@ -19,9 +19,9 @@ External Compatibility Breaks
 New Features
 ************
 
-* ``bzr mergetools`` is a new command that allows you to define external merge
-  tools. These external merge tools can be used with ``bzr merge`` and
-  ``bzr remerge`` to resolve text conflicts. (Gordon Tyler, #489915)
+* External merge tools can now be configured and invoked for files with text
+  conflicts during ``merge`` and ``remerge`` by adding the ``--resolve-using``
+  option.  (Gordon Tyler, #489915)
 
 Improvements
 ************
