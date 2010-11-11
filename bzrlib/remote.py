@@ -2391,6 +2391,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self._real_branch._set_tags_bytes(bytes)
 
     def _set_tags_bytes(self, bytes):
+        if self.is_locked():
+            self._tags_bytes = bytes
         medium = self._client._medium
         if medium._is_remote_before((1, 18)):
             self._vfs_set_tags_bytes(bytes)

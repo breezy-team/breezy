@@ -195,6 +195,37 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         # mutated its earlier return values.
         self.assertEqual({'one': 'rev-1'}, b.tags.get_tag_dict())
 
+    def make_write_locked_branch_with_one_tag(self):
+        b = self.make_branch('b')
+        b.tags.set_tag('one', 'rev-1')
+        self.addCleanup(b.lock_write().unlock)
+        # Populate the cache
+        b.tags.get_tag_dict()
+        return b
+
+    def test_set_tag_invalides_cache(self):
+        b = self.make_write_locked_branch_with_one_tag()
+        b.tags.set_tag('one', 'rev-1-changed')
+        self.assertEqual({'one': 'rev-1-changed'}, b.tags.get_tag_dict())
+
+    def test_delete_tag_invalides_cache(self):
+        b = self.make_write_locked_branch_with_one_tag()
+        b.tags.delete_tag('one')
+        self.assertEqual({}, b.tags.get_tag_dict())
+
+    def test_merge_to_invalides_cache(self):
+        b1 = self.make_write_locked_branch_with_one_tag()
+        b2 = self.make_branch('b2')
+        b2.tags.set_tag('two', 'rev-2')
+        b2.tags.merge_to(b1.tags)
+        self.assertEqual(
+            {'one': 'rev-1', 'two': 'rev-2'}, b1.tags.get_tag_dict())
+
+    def test_rename_revisions_invalides_cache(self):
+        b = self.make_write_locked_branch_with_one_tag()
+        b.tags.rename_revisions({'rev-1': 'rev-1-changed'})
+        self.assertEqual({'one': 'rev-1-changed'}, b.tags.get_tag_dict())
+
 
 class TestUnsupportedTags(per_branch.TestCaseWithBranch):
     """Formats that don't support tags should give reasonable errors."""
