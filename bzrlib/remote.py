@@ -246,14 +246,15 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._ensure_real()
         self._real_bzrdir.destroy_repository()
 
-    def create_branch(self, name=None):
+    def create_branch(self, name=None, repository=None):
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self,
-            name=name)
+            name=name, repository=repository)
         if not isinstance(real_branch, RemoteBranch):
-            result = RemoteBranch(self, self.find_repository(), real_branch,
-                                  name=name)
+            if not isinstance(repository, RemoteRepository):
+                raise AssertionError('xxx %r' % (repository,))
+            result = RemoteBranch(self, repository, real_branch, name=name)
         else:
             result = real_branch
         # BzrDir.clone_on_transport() uses the result of create_branch but does
@@ -2093,7 +2094,7 @@ class RemoteBranchFormat(branch.BranchFormat):
                                   name=name)
         return result
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, repository=None):
         # 1) get the network name to use.
         if self._custom_format:
             network_name = self._custom_format.network_name()
@@ -2127,13 +2128,20 @@ class RemoteBranchFormat(branch.BranchFormat):
         # Turn the response into a RemoteRepository object.
         format = RemoteBranchFormat(network_name=response[1])
         repo_format = response_tuple_to_repo_format(response[3:])
-        if response[2] == '':
-            repo_bzrdir = a_bzrdir
+        repo_path = response[2]
+        if repository is not None:
+            if repository.bzrdir.root_transport.base != medium.base + repo_path:
+                raise AssertionError(
+                    'xxx %r vs. %r %r' % (repository, medium.base, repo_path))
+            remote_repo = repository
         else:
-            repo_bzrdir = RemoteBzrDir(
-                a_bzrdir.root_transport.clone(response[2]), a_bzrdir._format,
-                a_bzrdir._client)
-        remote_repo = RemoteRepository(repo_bzrdir, repo_format)
+            if repo_path == '':
+                repo_bzrdir = a_bzrdir
+            else:
+                repo_bzrdir = RemoteBzrDir(
+                    a_bzrdir.root_transport.clone(repo_path), a_bzrdir._format,
+                    a_bzrdir._client)
+            remote_repo = RemoteRepository(repo_bzrdir, repo_format)
         remote_branch = RemoteBranch(a_bzrdir, remote_repo,
             format=format, setup_stacking=False, name=name)
         # XXX: We know this is a new branch, so it must have revno 0, revid

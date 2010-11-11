@@ -105,6 +105,13 @@ class Branch(controldir.ControlComponent):
 
     def _activate_fallback_location(self, url):
         """Activate the branch/repository from url as a fallback repository."""
+        for existing_fallback_repo in self.repository._fallback_repositories:
+            if existing_fallback_repo.user_url == url:
+                # This fallback is already configured.  This probably only
+                # happens because BzrDir.sprout is a horrible mess.  To avoid
+                # confusing _unstack we don't add this a second time.
+                # XXX: log a warning, maybe?
+                return
         repo = self._get_fallback_repository(url)
         if repo.has_same_location(self.repository):
             raise errors.UnstackableLocationError(self.user_url, url)
@@ -809,7 +816,8 @@ class Branch(controldir.ControlComponent):
             old_repository = self.repository
             if len(old_repository._fallback_repositories) != 1:
                 raise AssertionError("can't cope with fallback repositories "
-                    "of %r" % (self.repository,))
+                    "of %r (fallbacks: %r)" % (old_repository,
+                        old_repository._fallback_repositories))
             # Open the new repository object.
             # Repositories don't offer an interface to remove fallback
             # repositories today; take the conceptually simpler option and just
@@ -1266,7 +1274,8 @@ class Branch(controldir.ControlComponent):
         return result
 
     @needs_read_lock
-    def sprout(self, to_bzrdir, revision_id=None, repository_policy=None):
+    def sprout(self, to_bzrdir, revision_id=None, repository_policy=None,
+            repository=None):
         """Create a new line of development from the branch, into to_bzrdir.
 
         to_bzrdir controls the branch format.
@@ -1277,7 +1286,7 @@ class Branch(controldir.ControlComponent):
         if (repository_policy is not None and
             repository_policy.requires_stacking()):
             to_bzrdir._format.require_stacking(_skip_repo=True)
-        result = to_bzrdir.create_branch()
+        result = to_bzrdir.create_branch(repository=repository)
         result.lock_write()
         try:
             if repository_policy is not None:
@@ -1634,7 +1643,8 @@ class BranchFormat(object):
             hook(params)
 
     def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
-                           lock_type='metadir', set_format=True):
+                           repository=None, lock_type='metadir',
+                           set_format=True):
         """Initialize a branch in a bzrdir, with specified files
 
         :param a_bzrdir: The bzrdir to initialize the branch in
@@ -1674,11 +1684,12 @@ class BranchFormat(object):
         finally:
             if lock_taken:
                 control_files.unlock()
-        branch = self.open(a_bzrdir, name, _found=True)
+        branch = self.open(a_bzrdir, name, _found=True,
+                found_repository=repository)
         self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, repository=None):
         """Create a branch of this format in a_bzrdir.
         
         :param name: Name of the colocated branch to create.
@@ -1718,7 +1729,8 @@ class BranchFormat(object):
         """
         raise NotImplementedError(self.network_name)
 
-    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
+            found_repository=None):
         """Return the branch object for a_bzrdir
 
         :param a_bzrdir: A BzrDir that contains a branch.
@@ -2018,8 +2030,11 @@ class BzrBranchFormat4(BranchFormat):
         """See BranchFormat.get_format_description()."""
         return "Branch format 4"
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, repository=None):
         """Create a branch of this format in a_bzrdir."""
+        if repository is not None:
+            raise NotImplementedError(
+                "initialize(repository=<not None>) on %r" % (self,))
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
@@ -2034,16 +2049,19 @@ class BzrBranchFormat4(BranchFormat):
         """The network name for this format is the control dirs disk label."""
         return self._matchingbzrdir.get_format_string()
 
-    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
+            found_repository=None):
         """See BranchFormat.open()."""
         if not _found:
             # we are being called directly and must probe.
             raise NotImplementedError
+        if found_repository is None:
+            found_repository = a_bzrdir.open_repository()
         return BzrBranch(_format=self,
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
                          name=name,
-                         _repository=a_bzrdir.open_repository())
+                         _repository=found_repository)
 
     def __str__(self):
         return "Bazaar-NG branch format 4"
@@ -2063,7 +2081,8 @@ class BranchFormatMetadir(BranchFormat):
         """
         return self.get_format_string()
 
-    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False):
+    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
+            found_repository=None):
         """See BranchFormat.open()."""
         if not _found:
             format = BranchFormat.find_format(a_bzrdir, name=name)
@@ -2074,11 +2093,13 @@ class BranchFormatMetadir(BranchFormat):
         try:
             control_files = lockable_files.LockableFiles(transport, 'lock',
                                                          lockdir.LockDir)
+            if found_repository is None:
+                found_repository = a_bzrdir.find_repository()
             return self._branch_class()(_format=self,
                               _control_files=control_files,
                               name=name,
                               a_bzrdir=a_bzrdir,
-                              _repository=a_bzrdir.find_repository(),
+                              _repository=found_repository,
                               ignore_fallbacks=ignore_fallbacks)
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
@@ -2116,12 +2137,12 @@ class BzrBranchFormat5(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 5"
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, repository=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        return self._initialize_helper(a_bzrdir, utf8_files, name)
+        return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
 
     def supports_tags(self):
         return False
@@ -2149,13 +2170,13 @@ class BzrBranchFormat6(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 6"
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, repository=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
                       ('branch.conf', ''),
                       ('tags', ''),
                       ]
-        return self._initialize_helper(a_bzrdir, utf8_files, name)
+        return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
 
     def make_tags(self, branch):
         """See bzrlib.branch.BranchFormat.make_tags()."""
@@ -2179,14 +2200,14 @@ class BzrBranchFormat8(BranchFormatMetadir):
         """See BranchFormat.get_format_description()."""
         return "Branch format 8"
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, repository=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
                       ('branch.conf', ''),
                       ('tags', ''),
                       ('references', '')
                       ]
-        return self._initialize_helper(a_bzrdir, utf8_files, name)
+        return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
 
     def __init__(self):
         super(BzrBranchFormat8, self).__init__()
@@ -2215,13 +2236,13 @@ class BzrBranchFormat7(BzrBranchFormat8):
     This format was introduced in bzr 1.6.
     """
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, repository=None):
         """Create a branch of this format in a_bzrdir."""
         utf8_files = [('last-revision', '0 null:\n'),
                       ('branch.conf', ''),
                       ('tags', ''),
                       ]
-        return self._initialize_helper(a_bzrdir, utf8_files, name)
+        return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
 
     def _branch_class(self):
         return BzrBranch7
@@ -2269,7 +2290,8 @@ class BranchReferenceFormat(BranchFormat):
         transport = a_bzrdir.get_branch_transport(None, name=name)
         location = transport.put_bytes('location', to_branch.base)
 
-    def initialize(self, a_bzrdir, name=None, target_branch=None):
+    def initialize(self, a_bzrdir, name=None, target_branch=None,
+            repository=None):
         """Create a branch of this format in a_bzrdir."""
         if target_branch is None:
             # this format does not implement branch itself, thus the implicit
@@ -2303,7 +2325,8 @@ class BranchReferenceFormat(BranchFormat):
         return clone
 
     def open(self, a_bzrdir, name=None, _found=False, location=None,
-             possible_transports=None, ignore_fallbacks=False):
+             possible_transports=None, ignore_fallbacks=False,
+             found_repository=None):
         """Return the branch that the branch reference in a_bzrdir points at.
 
         :param a_bzrdir: A BzrDir that contains a branch.
