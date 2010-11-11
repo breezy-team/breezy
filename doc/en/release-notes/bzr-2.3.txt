@@ -31,6 +31,10 @@ Improvements
   options matching a given regular expression is now controlled via the
   ``--all`` option.  (Vincent Ladeuil, bug #670251)
 
+* ``bzr resolve`` now reports the number of conflicts resolved and the
+  number of remaining conflicts. This provides a better feedback about the
+  whole resolution process. (Vincent Ladeuil)
+
 Bug Fixes
 *********
 
