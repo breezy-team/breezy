@@ -3762,7 +3762,7 @@ class cmd_merge(Command):
     not already contain revision BASE-1, such a merge is commonly referred to
     as "cherrypicking".
 
-    Revision numbers are always relative to the branch being merged.
+    Revision numbers are always relative to the source branch.
 
     Merge will do its best to combine the changes in two branches, but there
     are some kinds of problems only a human can fix.  When it encounters those,
