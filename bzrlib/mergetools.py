@@ -73,49 +73,49 @@ class MergeTool(object):
         """
         self.set_commandline(commandline)
         self.set_name(name) # needs commandline set first when name is None
-        
+
     def __repr__(self):
         return '<MergeTool %s: %r>' % (self._name, self._commandline)
-        
+
     def __eq__(self, other):
         if type(other) == MergeTool:
             return cmp(self, other) == 0
         else:
             return False
-        
+
     def __ne__(self, other):
         if type(other) == MergeTool:
             return cmp(self, other) != 0
         else:
             return True
-    
+
     def __cmp__(self, other):
         if type(other == MergeTool):
             return cmp((self._name, self._commandline),
                 (other._name, other._commandline))
-        
+
     def __str__(self):
         return self.get_commandline()
-        
+
     def get_name(self):
         return self._name
-    
+
     def set_name(self, name):
         if name is None:
             self._name = tool_name_from_executable(self.get_executable())
         else:
             self._name = name
-        
+
     def get_commandline(self, quote=False):
         if quote:
             args = _quote_args(self._commandline)
         else:
             args = self._commandline
         return u' '.join(args)
-        
+
     def get_commandline_as_list(self):
         return self._commandline
-    
+
     def set_commandline(self, commandline):
         if isinstance(commandline, basestring):
             self._commandline = cmdline.split(commandline)
@@ -129,14 +129,14 @@ class MergeTool(object):
         if len(self._commandline) < 1:
             return u''
         return self._commandline[0]
-    
+
     def set_executable(self, executable):
         self._commandline[:1] = [executable]
-    
+
     def is_available(self):
         executable = self.get_executable()
         return os.path.exists(executable) or _find_executable(executable)
-        
+
     def invoke(self, filename, invoker=None):
         if invoker is None:
             invoker = subprocess_invoker
@@ -148,7 +148,7 @@ class MergeTool(object):
                 else: # otherwise, delete temp file
                     os.remove(tmp_file)
         return invoker(args[0], args[1:], cleanup)
-    
+
     def _subst_filename(self, args, filename):
         tmp_file = None
         subst_args = []
