@@ -424,23 +424,23 @@ class ControlDir(ControlComponent):
                 revs_to_fetch.add(source_branch.last_revision())
             else:
                 revs_to_fetch.add(revision_id)
-        if is_new_repo and revs_to_fetch and not is_stacked:
-            fetch_spec = graph.PendingAncestryResult(
-                revs_to_fetch, source_repository)
-        else:
-            fetch_spec = None
         if source_repository is not None:
+            if is_new_repo and revs_to_fetch and not is_stacked:
+                fetch_spec = graph.PendingAncestryResult(
+                    revs_to_fetch, source_repository)
+            elif revs_to_fetch:
+                inter_repo = repository.InterRepository.get(
+                    source_repository, result_repo)
+                fetch_spec = inter_repo._walk_to_common_revisions(revs_to_fetch)
+            else:
+                fetch_spec = None
             # Fetch while stacked to prevent unstacked fetch from
             # Branch.sprout.
             if fetch_spec is None:
                 if revs_to_fetch is None:
                     result_repo.fetch(source_repository, revision_id=None)
                 else:
-                    # XXX!  Replace this for-loop with a single call using a
-                    # better fetch_spec.
-                    for rev_to_fetch in revs_to_fetch:
-                        result_repo.fetch(
-                            source_repository, revision_id=rev_to_fetch)
+                    raise AssertionError('this case should be unreachable')
             else:
                 result_repo.fetch(source_repository, fetch_spec=fetch_spec)
 
