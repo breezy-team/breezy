@@ -44,6 +44,10 @@ Bug Fixes
 * Better message if there is an error while setting ownership of
   ``.bazaar`` directory. (Parth Malwankar, #657553)
 
+* Don't create commit message files in the current directory to avoid nasty
+  interactions with emacs (which tries to establish the status of the file
+  during the commit which breaks on windows). (Vincent Ladeuil, #673637)
+
 * ``bzr resolve --take-other <file>`` will not crash anymore if ``<file>``
   is involved in a text conflict (but the conflict is still not
   resolved). (Vincent Ladeuil, #646961)
