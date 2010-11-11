@@ -236,12 +236,13 @@ class TestMergeToolOperations(tests.TestCaseInTempDir):
 
 class TestModuleFunctions(tests.TestCaseInTempDir):
     def test_get_merge_tools(self):
-        conf = FakeConfig()
-        conf.set_user_option('mergetools', 'kdiff3,winmergeu,funkytool')
+        conf = config.GlobalConfig()
+        conf.set_user_option('mergetools', ['kdiff3', 'winmergeu', 'funkytool'])
         conf.set_user_option('mergetools.kdiff3', 'kdiff3 %b %t %o -o %r')
         conf.set_user_option('mergetools.winmergeu', 'winmergeu %r')
         conf.set_user_option('mergetools.funkytool', 'funkytool "arg with spaces" %T')
         tools = mergetools.get_merge_tools(conf)
+        self.log(repr(tools))
         self.assertEqual(3, len(tools))
         self.assertEqual('kdiff3', tools[0].get_name())
         self.assertEqual('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
@@ -252,7 +253,7 @@ class TestModuleFunctions(tests.TestCaseInTempDir):
                           tools[2].get_commandline(quote=True))
         
     def test_set_merge_tools(self):
-        conf = FakeConfig()
+        conf = config.GlobalConfig()
         tools = [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
                  mergetools.MergeTool('winmergeu', 'winmergeu %r'),
                  mergetools.MergeTool('funkytool',
@@ -269,7 +270,7 @@ class TestModuleFunctions(tests.TestCaseInTempDir):
                           conf.get_user_option('mergetools.winmergeu'))
     
     def test_set_merge_tools_duplicates(self):
-        conf = FakeConfig()
+        conf = config.GlobalConfig()
         mergetools.set_merge_tools(
             [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
              mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r')],
@@ -280,7 +281,7 @@ class TestModuleFunctions(tests.TestCaseInTempDir):
         self.assertEqual('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
         
     def test_set_merge_tools_empty_tool(self):
-        conf = FakeConfig()
+        conf = config.GlobalConfig()
         mergetools.set_merge_tools(
             [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
              mergetools.MergeTool('',''),
@@ -301,23 +302,3 @@ class TestModuleFunctions(tests.TestCaseInTempDir):
         self.assertTrue('sh' in tools_commandlines or
                         'cmd' in tools_commandlines)
         mergetools._KNOWN_MERGE_TOOLS = old_kmt
-
-
-class FakeConfig(object):
-    """
-    Just enough of the Config interface to fool the mergetools module.
-    """
-    def __init__(self):
-        self.options = {}
-        
-    def get_user_option(self, option):
-        return self.options[option]
-        
-    def get_user_option_as_list(self, option):
-        return self.options[option].split(',')
-    
-    def set_user_option(self, option, value):
-        if isinstance(value, tuple) or isinstance(value, list):
-            self.options[option] = ','.join(value)
-        else:
-            self.options[option] = value
