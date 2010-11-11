@@ -880,8 +880,12 @@ class Branch(controldir.ControlComponent):
 
         :seealso: Branch._get_tags_bytes.
         """
-        return _run_with_write_locked_target(self, self._transport.put_bytes,
-            'tags', bytes)
+        return _run_with_write_locked_target(self, self._set_tags_bytes_locked,
+                bytes)
+
+    def _set_tags_bytes_locked(self, bytes):
+        self._tags_bytes = bytes
+        return self._transport.put_bytes('tags', bytes)
 
     def _cache_revision_history(self, rev_history):
         """Set the cached revision history to rev_history.
