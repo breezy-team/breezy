@@ -108,7 +108,6 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         # and it keeps the same value
         self.assertEquals(b2.tags.lookup_tag('conflicts'), 'revid-2')
 
-
     def test_unicode_tag(self):
         b1 = self.make_branch('b')
         tag_name = u'\u3070'
@@ -142,6 +141,59 @@ class TestBranchTags(per_branch.TestCaseWithBranch):
         b1 = self.make_branch('b1')
         b2 = self.make_branch('b2')
         b1.tags.merge_to(b2.tags)
+
+    def test_read_lock_caches_tags(self):
+        """Tags are read from a branch only once during a read-lock."""
+        # Open the same branch twice.  Read-lock one, and then mutate the tags
+        # in the second.  The read-locked branch never re-reads the tags, so it
+        # never observes the changed/new tags.
+        b1 = self.make_branch('b')
+        b1.tags.set_tag('one', 'rev-1')
+        b2 = b1.bzrdir.open_branch()
+        b1.lock_read()
+        self.assertEqual({'one': 'rev-1'}, b1.tags.get_tag_dict())
+        # Add a tag and modify a tag in b2.  b1 is read-locked and has already
+        # read the tags, so it is unaffected.
+        b2.tags.set_tag('one', 'rev-1-changed')
+        b2.tags.set_tag('two', 'rev-2')
+        self.assertEqual({'one': 'rev-1'}, b1.tags.get_tag_dict())
+        b1.unlock()
+        # Once unlocked the cached value is forgotten, so now the latest tags
+        # will be retrieved.
+        self.assertEqual(
+            {'one': 'rev-1-changed', 'two': 'rev-2'}, b1.tags.get_tag_dict())
+
+    def test_unlocked_does_not_cache_tags(self):
+        """Unlocked branches do not cache tags."""
+        # Open the same branch twice.
+        b1 = self.make_branch('b')
+        b1.tags.set_tag('one', 'rev-1')
+        b2 = b1.bzrdir.open_branch()
+        self.assertEqual({'one': 'rev-1'}, b1.tags.get_tag_dict())
+        # Add a tag and modify a tag in b2.  b1 isn't locked, so it will
+        # immediately return the new tags too.
+        b2.tags.set_tag('one', 'rev-1-changed')
+        b2.tags.set_tag('two', 'rev-2')
+        self.assertEqual(
+            {'one': 'rev-1-changed', 'two': 'rev-2'}, b1.tags.get_tag_dict())
+
+    def test_cached_tag_dict_not_accidentally_mutable(self):
+        """When there's a cached version of the tags, b.tags.get_tag_dict
+        returns a copy of the cached data so that callers cannot accidentally
+        corrupt the cache.
+        """
+        b = self.make_branch('b')
+        b.tags.set_tag('one', 'rev-1')
+        self.addCleanup(b.lock_read().unlock)
+        # The first time the data returned will not be in the cache
+        tags_dict = b.tags.get_tag_dict()
+        tags_dict['two'] = 'rev-2'
+        # The second time the data comes from the cache
+        tags_dict = b.tags.get_tag_dict()
+        tags_dict['three'] = 'rev-3'
+        # The get_tag_dict() result should still be unchanged, even though we
+        # mutated its earlier return values.
+        self.assertEqual({'one': 'rev-1'}, b.tags.get_tag_dict())
 
 
 class TestUnsupportedTags(per_branch.TestCaseWithBranch):
