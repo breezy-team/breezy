@@ -3759,8 +3759,8 @@ class cmd_merge(Command):
     If you specify two values, "--revision BASE..OTHER", only revisions BASE
     through OTHER, excluding BASE but including OTHER, will be merged.  If this
     causes some revisions to be skipped, i.e. if the destination branch does
-    not already contain revision BASE-1, such a merge is commonly referred to
-    as "cherrypicking".
+    not already contain revision BASE, such a merge is commonly referred to as
+    "cherrypicking".
 
     Revision numbers are always relative to the source branch.
 
