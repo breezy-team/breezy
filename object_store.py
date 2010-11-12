@@ -108,7 +108,7 @@ class LRUTreeCache(object):
         self._cache.add(tree.get_revision_id(), tree)
 
 
-def _find_missing_bzr_revids(get_parent_map, want, have):
+def _find_missing_bzr_revids(graph, want, have):
     """Find the revisions that have to be pushed.
 
     :param get_parent_map: Function that returns the parents for a sequence
@@ -117,19 +117,9 @@ def _find_missing_bzr_revids(get_parent_map, want, have):
     :param have: Revisions the target already has
     :return: Set of revisions to fetch
     """
-    pending = want - have
-    processed = set()
     todo = set()
-    while pending:
-        processed.update(pending)
-        next_map = get_parent_map(pending)
-        next_pending = set()
-        for item in next_map.iteritems():
-            if item[0] in have:
-                continue
-            todo.add(item[0])
-            next_pending.update(p for p in item[1] if p not in processed)
-        pending = next_pending
+    for rev in want:
+        todo.update(graph.find_unique_ancestors(rev, have))
     if NULL_REVISION in todo:
         todo.remove(NULL_REVISION)
     return todo
@@ -640,8 +630,8 @@ class BazaarObjectStore(BaseObjectStore):
                 assert type == "commit"
                 pending.add(revid)
 
-        todo = _find_missing_bzr_revids(self.repository.get_parent_map, 
-                                        pending, processed)
+        graph = self.repository.get_graph()
+        todo = _find_missing_bzr_revids(graph, pending, processed)
         trace.mutter('sending revisions %r', todo)
         ret = []
         pb = ui.ui_factory.nested_progress_bar()
