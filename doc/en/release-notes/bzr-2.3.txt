@@ -26,16 +26,27 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Bazaar now caches a branch's tags while that branch is read-locked.
+  This removes 1 network roundtrip from most interactions with a remote
+  branch.  (Andrew Bennetts)
+
 * ``bzr config <option>`` will now display only the value itself so scripts
   can use it to query the currently active configuration. Displaying several
   options matching a given regular expression is now controlled via the
   ``--all`` option.  (Vincent Ladeuil, bug #670251)
+
+* ``bzr resolve`` now reports the number of conflicts resolved and the
+  number of remaining conflicts. This provides a better feedback about the
+  whole resolution process. (Vincent Ladeuil)
 
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* Better message if there is an error while setting ownership of
+  ``.bazaar`` directory. (Parth Malwankar, #657553)
 
 * ``bzr config`` will now respect option policies when displaying the value
   and display the definition sections when appropriate.

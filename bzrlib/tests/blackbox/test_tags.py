@@ -17,6 +17,7 @@
 """Tests for commands related to tags"""
 
 from bzrlib import (
+    branchbuilder,
     bzrdir,
     tag,
     )
@@ -24,7 +25,10 @@ from bzrlib.branch import (
     Branch,
     )
 from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    script,
+    TestCaseWithTransport,
+    )
 from bzrlib.repository import (
     Repository,
     )
@@ -32,14 +36,6 @@ from bzrlib.workingtree import WorkingTree
 
 
 class TestTagging(TestCaseWithTransport):
-
-    # as of 0.14, the default format doesn't do tags so we need to use a
-    # specific format
-
-    def make_branch_and_tree(self, relpath):
-        format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
-        return TestCaseWithTransport.make_branch_and_tree(self, relpath,
-            format=format)
 
     def test_tag_command_help(self):
         out, err = self.run_bzr('help tag')
@@ -122,6 +118,57 @@ class TestTagging(TestCaseWithTransport):
         self.run_bzr('push -d branch1 branch3')
         b3 = Branch.open('branch3')
         self.assertEquals(b3.tags.lookup_tag('tag1'), 'first-revid')
+
+    def make_master_and_checkout(self):
+        builder = self.make_branch_builder('master')
+        builder.build_commit(message='Initial commit.', rev_id='rev-1')
+        master = builder.get_branch()
+        child = master.create_checkout(self.get_url('child'))
+        return master, child
+
+    def make_fork(self, branch):
+        fork = branch.create_clone_on_transport(self.get_transport('fork'))
+        builder = branchbuilder.BranchBuilder(branch=fork)
+        builder.build_commit(message='Commit in fork.', rev_id='fork-1')
+        return fork
+
+    def test_commit_in_heavyweight_checkout_copies_tags_to_master(self):
+        master, child = self.make_master_and_checkout()
+        fork = self.make_fork(master)
+        fork.tags.set_tag('new-tag', fork.last_revision())
+        script.run_script(self, """
+            $ cd child
+            $ bzr merge ../fork
+            $ bzr commit -m "Merge fork."
+            2>Committing to: .../master/
+            2>Committed revision 2.
+            """, null_output_matches_anything=True)
+        # Merge copied the tag to child and commit propagated it to master
+        self.assertEqual(
+            {'new-tag': fork.last_revision()}, child.branch.tags.get_tag_dict())
+        self.assertEqual(
+            {'new-tag': fork.last_revision()}, master.tags.get_tag_dict())
+
+    def test_commit_in_heavyweight_checkout_reports_tag_conflict(self):
+        master, child = self.make_master_and_checkout()
+        fork = self.make_fork(master)
+        fork.tags.set_tag('new-tag', fork.last_revision())
+        master_r1 = master.last_revision()
+        master.tags.set_tag('new-tag', master_r1)
+        script.run_script(self, """
+            $ cd child
+            $ bzr merge ../fork
+            $ bzr commit -m "Merge fork."
+            2>Committing to: .../master/
+            2>Conflicting tags in bound branch:
+            2>    new-tag
+            2>Committed revision 2.
+            """, null_output_matches_anything=True)
+        # Merge copied the tag to child.  master's conflicting tag is unchanged.
+        self.assertEqual(
+            {'new-tag': fork.last_revision()}, child.branch.tags.get_tag_dict())
+        self.assertEqual(
+            {'new-tag': master_r1}, master.tags.get_tag_dict())
 
     def test_list_tags(self):
         tree1 = self.make_branch_and_tree('branch1')
