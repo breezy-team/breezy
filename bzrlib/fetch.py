@@ -154,6 +154,17 @@ class RepoFetcher(object):
         If no revisions need to be fetched, then this just returns None.
         """
         if self._fetch_spec is not None:
+            # XXX: create a base class or something to distinguish "unrealised
+            # fetch spec (like EverythingNotInOtherFetchSpec)" and "ready to
+            # use as-is fetch spec".
+            from bzrlib import controldir
+            if isinstance(self._fetch_spec,
+                    (controldir.EverythingNotInOtherFetchSpec,
+                        controldir.EverythingFetchSpec)):
+                # XXX: find_ghosts really ought to be part of the fetch_spec
+                # param.
+                return self.to_repository.search_missing_revision_ids(
+                    self.from_repository, find_ghosts=self.find_ghosts)
             return self._fetch_spec
         mutter('fetch up to rev {%s}', self._last_revision)
         if self._last_revision is NULL_REVISION:

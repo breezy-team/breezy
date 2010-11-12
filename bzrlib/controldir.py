@@ -497,13 +497,7 @@ class ControlDir(ControlComponent):
             fetch_spec_factory.target_repo_kind = _TargetRepoKinds.PREEXISTING
         if source_repository is not None:
             fetch_spec = fetch_spec_factory.make_fetch_spec()
-            if isinstance(fetch_spec, EverythingFetchSpec):
-                # XXX: make EverythingFetchSpec a real search result
-                result_repo.fetch(source_repository)
-            elif isinstance(fetch_spec, EverythingNotInOtherFetchSpec):
-                result_repo.fetch(source_repository)
-            else:
-                result_repo.fetch(source_repository, fetch_spec=fetch_spec)
+            result_repo.fetch(source_repository, fetch_spec=fetch_spec)
 
         if source_branch is None:
             # this is for sprouting a controldir without a branch; is that
