@@ -311,7 +311,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
         revidmap = {}
         def determine_wants(old_refs):
             ret = {}
-            self.old_refs = old_refs
+            self.old_refs = dict([(k, (v, None)) for (k, v) in old_refs.iteritems()])
             self.new_refs = update_refs(self.old_refs)
             for name, (gitid, revid) in self.new_refs.iteritems():
                 if gitid is None:
