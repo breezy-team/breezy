@@ -61,12 +61,12 @@ needed, could improve the bzr user experience.
 This specification describes a way to provide user and passwords to bzr while
 storing them in a relatively safe way.
 
-Note that ssh servers can be configured to use keys instead of (``user``,
+Note that SSH servers can be configured to use keys instead of (``user``,
 ``password``) and, when used with appropriate agents, provide the same kind of
-comfort this specification aims to provide for all other schemes. Since ssh
+comfort this specification aims to provide for all other schemes. Since SSH 
 agents provide a safer way to secure the passwords, this specification is
 restricted to providing ``user`` but does not provide ``password`` when used
-for ssh.
+for SSH.
 
 Authentication definitions
 --------------------------
@@ -77,8 +77,8 @@ bzr:
 1. user and password
 
 ``FTP`` and ``SFTP`` needs a (``user``, ``password``) to authenticate against a
-``host`` (SFTP can use ssh keys too, but we don't talk about that in this
-specification as ssh agents provide a better solution).
+``host`` (SFTP can use SSH keys too, but we don't talk about that in this
+specification as SSH agents provide a better solution).
 
 2. user, realm and password
 
@@ -115,8 +115,8 @@ authentication definitions (``scheme``, ``host``, ``port``, ``path``, ``user``,
 
   * ``path``: can be empty (FTP or SFTP will never use it),
 
-  * ``user``: can be empty (``bzr`` will defaults to python's
-    ``getpass.get_user()`` for FTP, SFTP and ssh),
+  * ``user``: can be empty (``bzr`` will defaults to Python's
+    ``getpass.get_user()`` for FTP, SFTP and SSH),
 
   * ``password``: can be empty (for security reasons, a user may use the
     definitions without storing the passwords but want to be prompted ; or the
@@ -303,7 +303,7 @@ The use cases described below use the file format defined above.
   * source hosting provider declaring sub-domains for each project::
 
         [sfnet domain]
-        # we use sftp, but ssh is the scheme used for authentication
+        # we use SFTP, but SSH is the scheme used for authentication
         scheme=ssh
         # The leading '.' ensures that 'sf.net' alone doesn't match
         host=.sf.net
@@ -392,7 +392,7 @@ Questions and Answers
     * plugins can be written and registered to handle the associated
       ``password_encoding``.
 
-  * Could it be possible to encode the whole authentication file with a ssh key
+  * Could it be possible to encode the whole authentication file with an SSH key
     ?
 
     * yes and if the user configure a ssh-agent it will not be queried for

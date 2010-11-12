@@ -75,7 +75,7 @@ The syntax is::
 
 If a directory is not given, one is created based on the last part of
 the URL. Here are some examples showing a drive qualified path (M:/) and an
-sftp URL respectively::
+SFTP URL respectively::
 
   bzr branch M:/cool-trunk
   bzr branch sftp://bill@mary-laptop/cool-repo/cool-trunk

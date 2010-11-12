@@ -206,7 +206,7 @@ Bug Fixes
 
 * Fix plugin packaging on Windows. (Ian Clatworthy, #524162)
 
-* Fix stub sftp test server to call os.getcwdu().
+* Fix stub SFTP test server to call os.getcwdu().
   (Vincent Ladeuil, #526221, #526353)
 
 * Fixed CHM generation by moving the NEWS section template into
@@ -272,7 +272,7 @@ Users are encouraged to upgrade from the 2.0 stable series.
 Bug Fixes
 *********
 
-* Don't require testtools to use sftp.
+* Don't require testtools to use SFTP.
   (Vincent Ladeuil, #516183)
 
 * Fix "AttributeError in Inter1and2Helper" during fetch.
@@ -696,7 +696,7 @@ Bug Fixes
   (Joke de Buhr, Vincent Ladeuil, #353370, #62539)
   (John Arbash Meinel, Vincent Ladeuil, #492561)
 
-* Terminate ssh subprocesses when no references to them remain, fixing
+* Terminate SSH subprocesses when no references to them remain, fixing
   subprocess and file descriptor leaks.  (Andrew Bennetts, #426662)
   
 * The ``--hardlink`` option of ``bzr branch`` and ``bzr checkout`` now
@@ -778,7 +778,7 @@ Internals
   been changed to the equalivent ``Transport.get_bytes()``. The main
   difference is that the latter will explicitly call ``file.close()``,
   rather than expecting the garbage collector to handle it. This helps
-  with some race conditions on Windows during the test suite and sftp
+  with some race conditions on Windows during the test suite and SFTP
   tests. (John Arbash Meinel)
 
 Testing
@@ -1103,7 +1103,7 @@ Bug Fixes
 * Don't restrict the command name used to run the test suite.
   (Vincent Ladeuil, #419950)
 
-* ftp transports were built differently when the kerberos python module was
+* FTP transports were built differently when the kerberos python module was
   present leading to obscure failures related to ASCII/BINARY modes.
   (Vincent Ladeuil, #443041)
 

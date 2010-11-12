@@ -34,7 +34,7 @@ Changes
   path are no longer loaded: only the first successfully loaded one is
   used. (Robert Collins)
 
-* Use systems' external ssh command to open connections if possible.
+* Use system's external SSH command to open connections if possible.
   This gives better integration with user settings such as ProxyCommand.
   (James Henstridge)
 
@@ -80,7 +80,7 @@ Improvements
 * Accept 'bzr resolved' (an alias for 'bzr resolve'), as this is
   the same as Subversion.  (Martin Pool)
 
-* New ftp transport support (on ftplib), for ftp:// and aftp://
+* New FTP transport support (on ftplib), for ftp:// and aftp://
   URLs.  (Daniel Silverstone)
 
 * Commit editor temporary files now start with ``bzr_log.``, to allow
@@ -140,7 +140,7 @@ Bug Fixes
 
 * Fix for bzr pull failing sometimes under windows
 
-* Fix for sftp transport under windows when using interactive auth
+* Fix for SFTP transport under windows when using interactive auth
 
 * Show files which are both renamed and modified as such in 'bzr
   status' output.  (Daniel Silverstone, #4503)
@@ -208,8 +208,8 @@ Testing
   (Martin Pool) (NB: TestSkipped should only be raised for correctable
   reasons - see the wiki spec ImprovingBzrTestSuite).
 
-* Test sftp with relative, absolute-in-homedir and absolute-not-in-homedir
-  paths for the transport tests. Introduce blackbox remote sftp tests that
+* Test SFTP with relative, absolute-in-homedir and absolute-not-in-homedir
+  paths for the transport tests. Introduce blackbox remote SFTP tests that
   test the same permutations. (Robert Collins, Robey Pointer)
 
 * Transport implementation tests are now independent of the local file

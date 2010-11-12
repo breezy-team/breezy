@@ -132,7 +132,7 @@ Improvements
 * Long log format reports deltas on merge revisions.
   (John Arbash Meinel, Kent Gibson)
 
-* Make initial push over ftp more resilient. (John Arbash Meinel)
+* Make initial push over FTP more resilient. (John Arbash Meinel)
 
 * Print a summary of changes for update just like pull does.
   (Daniel Watkins, #113990)

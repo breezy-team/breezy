@@ -151,7 +151,7 @@ Bug Fixes
 * bzr send uses default values for ranges when only half of an elipsis
   is specified ("-r..5" or "-r5..").  (#61685, Aaron Bentley)
 
-* Avoid trouble when Windows ssh calls itself 'plink' but no plink
+* Avoid trouble when Windows SSH calls itself 'plink' but no plink
   binary is present.  (Martin Albisetti, #107155)
 
 * ``bzr remove`` should remove clean subtrees.  Now it will remove (without
@@ -171,7 +171,7 @@ Bug Fixes
 * ``bzr --version`` takes care about encoding of stdout, especially
   when output is redirected. (Alexander Belchenko, #131100)
 
-* Prompt for an ftp password if none is provided.
+* Prompt for an FTP password if none is provided.
   (Vincent Ladeuil, #137044)
 
 * Reuse bound branch associated transport to avoid multiple

@@ -205,7 +205,7 @@ Bug Fixes
   displayed test name is always the one that's actually running.
   (Martin Pool, #123688)
 
-* Authenticating against an ssh server now uses ``auth_none`` to determine
+* Authenticating against an SSH server now uses ``auth_none`` to determine
   if password authentication is even supported. This fixes a bug where
   users would be prompted for a launchpad password, even though launchpad
   only supports publickey authentication. (John Arbash Meinel, #375867)

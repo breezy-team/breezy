@@ -182,7 +182,7 @@ Notes When Upgrading
 Changes
 *******
 
-* Disable detection of plink.exe as possible ssh vendor. Plink vendor
+* Disable detection of plink.exe as possible SSH vendor. Plink vendor
   still available if user selects it explicitly with BZR_SSH environment
   variable. (Alexander Belchenko, workaround for bug #107593)
 
@@ -194,7 +194,7 @@ Features
 ********
 
 * New ``authentication.conf`` file holding the password or other credentials
-  for remote servers. This can be used for ssh, sftp, smtp and other
+  for remote servers. This can be used for SSH, SFTP, SMTP and other
   supported transports.
   (Vincent Ladeuil)
 
@@ -274,7 +274,7 @@ Bug Fixes
 * ``commit`` is now able to invoke an external editor in a non-ascii
   directory. (Daniel Watkins, #84043)
 
-* Catch connection errors for ftp.
+* Catch connection errors for FTP.
   (Vincent Ladeuil, #164567)
 
 * ``check`` no longer reports spurious unreferenced text versions.
@@ -388,7 +388,7 @@ Bug Fixes
 * Upgrade util/configobj to version 4.4.0.
   (Vincent Ladeuil, #151208).
 
-* Wrap medusa ftp test server as an FTPServer feature.
+* Wrap medusa FTP test server as an FTPServer feature.
   (Vincent Ladeuil, #157752)
 
 API Breaks

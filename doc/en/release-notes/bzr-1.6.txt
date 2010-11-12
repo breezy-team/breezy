@@ -179,7 +179,7 @@ Bug Fixes
 * ``Inventory.copy()`` was failing to set the revision property for
   the root entry. (Jelmer Vernooij)
 
-* sftp transport: added missing ``FileExists`` case to
+* SFTP transport: added missing ``FileExists`` case to
   ``_translate_io_exception`` (Christophe Troestler, #123475)
 
 * The help for ``bzr ignored`` now suggests ``bzr ls --ignored`` for
@@ -693,7 +693,7 @@ Bugfixes
   get_parent_map requirements exposed a latent bug here.  (Aaron Bentley)
 
 * Issue a warning and ignore passwords declared in authentication.conf when
-  used for an ssh scheme (sftp or bzr+ssh).
+  used for an SSH scheme (sftp:// or bzr+ssh://).
   (Vincent Ladeuil, #203186)
 
 * Make both HTTP implementations raise appropriate exceptions on 403

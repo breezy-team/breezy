@@ -50,10 +50,10 @@ saved.
 These revisions have other uses as well. For example, one can comment
 revisions to record what the recent set of changes meant by providing an
 optional log message. Real life log messages include things like "Fixed
-the web template to close the table" and "Added sftp suppport. Fixes #595"
+the web template to close the table" and "Added SFTP suppport. Fixes #595"
 	
 We keep these logs so that if later there is some sort of problem with
-sftp, we can figure out when the problem probably happened.
+SFTP, we can figure out when the problem probably happened.
 
 How DVCS is different
 =====================

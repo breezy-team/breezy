@@ -113,7 +113,7 @@ Bug Fixes
 * mv correctly handles paths that traverse symlinks.
   (Aaron Bentley, #66964)
 
-* Give nicer looking error messages when failing to connect over ssh.
+* Give nicer looking error messages when failing to connect over SSH.
   (John Arbash Meinel, #49172)
 
 * Pushing to a remote branch does not currently update the remote working

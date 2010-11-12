@@ -592,8 +592,8 @@ New Features
   replaces the outdated ``contrib/bash/bzr`` script with a version
   using the plugin. (Martin von Gagern, #560030)
 
-* A new transport based on GIO (the gnome i/o library) provides access to
-  samba shares, webdav using gio+smb and gio+dav. It is also possible to
+* A new transport based on GIO (the Gnome I/O library) provides access to
+  Samba shares, WebDAV using gio+smb and gio+dav. It is also possible to
   use gio for some already existing transport methods as gio+file,
   gio+sftp, gio+ftp. 
   (Mattias Eriksson)
@@ -937,7 +937,7 @@ through the 2.2 series.
 
 Over thirty bugs have been fixed, including in the log command, exporting
 to tarballs, restarting interrupted system calls, portability of compiled
-extensions, making backups during upgrade, and locking on ftp.
+extensions, making backups during upgrade, and locking on FTP.
 
 Compatibility Breaks
 ********************
@@ -1072,7 +1072,7 @@ Bug Fixes
   (Jason Spashett, #183504)
 
 * Correctly interpret "451 Rename/move failure: Directory not empty" from
-  ftp servers while trying to take a lock.
+  FTP servers while trying to take a lock.
   (Martin Pool, #528722)
 
 * DirStateRevisionTree.kind() was returning wrong result when 'kind'

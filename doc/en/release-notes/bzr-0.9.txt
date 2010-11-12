@@ -72,7 +72,7 @@ Improvements
   grained analysis of performance.
   (Robert Collins, Martin Pool).
 
-* 'bzr commit' shows a progress bar. This is useful for commits over sftp
+* 'bzr commit' shows a progress bar. This is useful for commits over SFTP
   where commit can take an appreciable time. (Robert Collins)
 
 * 'bzr add' is now less verbose in telling you what ignore globs were
@@ -81,8 +81,8 @@ Improvements
   ignored). 'bzr add -v' is unchanged and will report every ignored
   file. (Robert Collins).
 
-* ftp now has a test server if medusa is installed. As part of testing,
-  ftp support has been improved, including support for supplying a
+* FTP now has a test server if medusa is installed. As part of testing,
+  FTP support has been improved, including support for supplying a
   non-standard port. (John Arbash Meinel).
 
 * 'bzr log --line' shows the revision number, and uses only the
@@ -136,7 +136,7 @@ Improvements
   branch is as much as 4x faster.
   (Michael Ellerman, Johan Rydberg, John Arbash Meinel, #46768)
 
-* Performance improvements for sftp. Branching and pulling are now up to
+* Performance improvements for SFTP. Branching and pulling are now up to
   2x faster. Utilize paramiko.readv() support for async requests if it
   is available (paramiko > 1.6) (John Arbash Meinel)
 
@@ -158,7 +158,7 @@ Bug Fixes
 
 * Handle broken pipe under win32 correctly. (John Arbash Meinel)
 
-* sftp tests now work correctly on win32 if you have a newer paramiko
+* SFTP tests now work correctly on win32 if you have a newer paramiko
   (John Arbash Meinel)
 
 * Cleanup win32 test suite, and general cleanup of places where
@@ -189,7 +189,7 @@ Bug Fixes
 
 * Handle openbsd returning None for sys.getfilesystemencoding() (#41183)
 
-* Support ftp APPE (append) to allow Knits to be used over ftp (#42592)
+* Support FTP APPE (append) to allow Knits to be used over FTP (#42592)
 
 * Removals are only committed if they match the filespec (or if there is
   no filespec).  (#46635, Aaron Bentley)
@@ -205,7 +205,7 @@ Bug Fixes
   working with long filenames on windows. (Also helps for unicode filenames
   not generating hidden files). (John Arbash Meinel, #43801)
 
-* Restore terminal mode on C-c while reading sftp password.  (#48923,
+* Restore terminal mode on C-c while reading SFTP password.  (#48923,
   Nicholas Allen, Martin Pool)
 
 * Timestamps are rounded to 1ms, and revision entries can be recreated

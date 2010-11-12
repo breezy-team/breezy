@@ -422,7 +422,7 @@ Paths are passed across the network.  The client needs to see a namespace
 that includes any repository that might need to be referenced, and the
 client needs to know about a root directory beyond which it cannot ascend.
 
-Servers run over ssh will typically want to be able to access any path the
+Servers run over SSH will typically want to be able to access any path the
 user can access.  Public servers on the other hand (which might be over
 HTTP, SSH or TCP) will typically want to restrict access to only a
 particular directory and its children, so will want to do a software
