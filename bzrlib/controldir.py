@@ -458,38 +458,21 @@ class ControlDir(ControlComponent):
         cloning_format = self.cloning_metadir(stacked)
         # Create/update the result branch
         result = cloning_format.initialize_on_transport(target_transport)
+        source_branch, source_repository = self._find_source_repo(
+            add_cleanup, source_branch)
         # if a stacked branch wasn't requested, we don't create one
         # even if the origin was stacked
-        stacked_branch_url = None
-        if source_branch is not None:
-            add_cleanup(source_branch.lock_read().unlock)
-            if stacked:
-                stacked_branch_url = self.root_transport.base
-            source_repository = source_branch.repository
+        if stacked and source_branch is not None:
+            stacked_branch_url = self.root_transport.base
         else:
-            try:
-                source_branch = self.open_branch()
-                source_repository = source_branch.repository
-                if stacked:
-                    stacked_branch_url = self.root_transport.base
-            except errors.NotBranchError:
-                source_branch = None
-                try:
-                    source_repository = self.open_repository()
-                except errors.NoRepositoryPresent:
-                    source_repository = None
-                else:
-                    add_cleanup(source_repository.lock_read().unlock)
-            else:
-                add_cleanup(source_branch.lock_read().unlock)
-        fetch_spec_factory.source_repo = source_repository
+            stacked_branch_url = None
         repository_policy = result.determine_repository_policy(
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo, is_new_repo = repository_policy.acquire_repository()
         add_cleanup(result_repo.lock_write().unlock)
-        is_stacked = stacked or (len(result_repo._fallback_repositories) != 0)
+        fetch_spec_factory.source_repo = source_repository
         fetch_spec_factory.target_repo = result_repo
-        if is_stacked:
+        if stacked or (len(result_repo._fallback_repositories) != 0):
             fetch_spec_factory.target_repo_kind = _TargetRepoKinds.STACKED
         elif is_new_repo:
             fetch_spec_factory.target_repo_kind = _TargetRepoKinds.EMPTY
@@ -548,6 +531,34 @@ class ControlDir(ControlComponent):
                     force_new_repo=force_new_repo, recurse=recurse,
                     stacked=stacked)
         return result
+
+    def _find_source_repo(self, add_cleanup, source_branch):
+        """Find the source branch and repo for a sprout operation.
+        
+        This is helper intended for use by _sprout.
+
+        :returns: (source_branch, source_repository).  Either or both may be
+            None.  If not None, they will be read-locked (and their unlock(s)
+            scheduled via the add_cleanup param).
+        """
+        if source_branch is not None:
+            add_cleanup(source_branch.lock_read().unlock)
+            source_repository = source_branch.repository
+        else:
+            try:
+                source_branch = self.open_branch()
+                source_repository = source_branch.repository
+            except errors.NotBranchError:
+                source_branch = None
+                try:
+                    source_repository = self.open_repository()
+                except errors.NoRepositoryPresent:
+                    source_repository = None
+                else:
+                    add_cleanup(source_repository.lock_read().unlock)
+            else:
+                add_cleanup(source_branch.lock_read().unlock)
+        return source_branch, source_repository
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
         remember=False, create_prefix=False):
