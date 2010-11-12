@@ -83,6 +83,75 @@ class ControlComponent(object):
         return self.user_transport.base
 
 
+class _TargetRepoKinds(object):
+    # cheap enum
+    PREEXISTING = 'preexisting'
+    STACKED = 'stacked'
+    EMPTY = 'empty'
+
+
+class EverythingFetchSpec(object):
+    """A 'search result' that just asks the source to send *everything*."""
+
+
+class EverythingNotInOtherFetchSpec(object):
+    """A fetch spec meaning 'fetch all revs in source that are not already
+    present in target'."""
+
+
+class FetchSpecFactory(object):
+    """A helper for building the best fetch spec for a sprout call.
+
+    Factors that go into determining the sort of fetch to perform:
+     * did the caller specify a revision ID?
+     * (hypothetically better APIs would allow callers to specify N
+        revision IDs)
+     * is there a source branch (need to fetch the tip)
+     * is there an existing target repo (don't need to refetch revs it
+       already has)
+     * target is stacked?  (similar to pre-existing target repo: even if
+       the target itself is new don't want to refetch existing revs)
+     * ...?
+    """
+
+    def __init__(self):
+        self.explicit_rev_ids = set()
+        self.source_branch = None
+        self.source_repo = None
+        self.target_repo = None
+        self.target_repo_kind = None
+
+    def add_revision_ids(self, revision_ids):
+        self.explicit_rev_ids.update(revision_ids)
+        
+    def make_fetch_spec(self):
+        """Build a SearchResult or PendingAncestryResult or etc."""
+        # XXX: there's no way for a caller to specify 'copy just the revs for a
+        # source branch?
+        assert self.target_repo_kind is not None
+        if len(self.explicit_rev_ids) == 0:
+            if self.target_repo_kind == _TargetRepoKinds.EMPTY:
+                return EverythingFetchSpec()
+            else:
+                # We want everything not already in the target (or target's
+                # fallbacks).
+                return EverythingNotInOtherFetchSpec()
+        heads_to_fetch = set(self.explicit_rev_ids)
+        if self.source_branch is not None:
+            heads_to_fetch.update(
+                self.source_branch.tags.get_reverse_tag_dict())
+            heads_to_fetch.add(self.source_branch.last_revision())
+        assert self.source_repo
+        if self.target_repo_kind == _TargetRepoKinds.EMPTY:
+            return graph.PendingAncestryResult(heads_to_fetch, self.source_repo)
+        # The target already has some revisions, quite possibly including most
+        # of the revisions in the ancestries of heads_to_fetch.  So find out
+        # exactly which revisions are new.
+        inter_repo = repository.InterRepository.get(
+            self.source_repo, self.target_repo)
+        return inter_repo._walk_to_common_revisions(heads_to_fetch)
+
+
 class ControlDir(ControlComponent):
     """A control directory.
 
@@ -379,6 +448,11 @@ class ControlDir(ControlComponent):
                accelerator_tree=None, hardlink=False, stacked=False,
                source_branch=None, create_tree_if_local=True):
         add_cleanup = op.add_cleanup
+        fetch_spec_factory = FetchSpecFactory()
+        if source_branch is not None:
+            fetch_spec_factory.source_branch = source_branch
+        if revision_id is not None:
+            fetch_spec_factory.add_revision_ids([revision_id])
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir(stacked)
@@ -408,38 +482,26 @@ class ControlDir(ControlComponent):
                     add_cleanup(source_repository.lock_read().unlock)
             else:
                 add_cleanup(source_branch.lock_read().unlock)
+        fetch_spec_factory.source_repo = source_repository
         repository_policy = result.determine_repository_policy(
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo, is_new_repo = repository_policy.acquire_repository()
         add_cleanup(result_repo.lock_write().unlock)
         is_stacked = stacked or (len(result_repo._fallback_repositories) != 0)
-        # XXX: there's no way for a caller to specify 'copy just the revs for a
-        # source branch?
-        if revision_id is None:
-            # revision_id=None means 'copy entire repo.'
-            revs_to_fetch = None
+        fetch_spec_factory.target_repo = result_repo
+        if is_stacked:
+            fetch_spec_factory.target_repo_kind = _TargetRepoKinds.STACKED
+        elif is_new_repo:
+            fetch_spec_factory.target_repo_kind = _TargetRepoKinds.EMPTY
         else:
-            revs_to_fetch = set([revision_id])
-            if source_branch is not None:
-                revs_to_fetch.update(source_branch.tags.get_reverse_tag_dict())
-                revs_to_fetch.add(source_branch.last_revision())
+            fetch_spec_factory.target_repo_kind = _TargetRepoKinds.PREEXISTING
         if source_repository is not None:
-            if revs_to_fetch is None:
-                fetch_spec = None
-            elif is_new_repo and not is_stacked:
-                fetch_spec = graph.PendingAncestryResult(
-                    revs_to_fetch, source_repository)
-            else:
-                inter_repo = repository.InterRepository.get(
-                    source_repository, result_repo)
-                fetch_spec = inter_repo._walk_to_common_revisions(revs_to_fetch)
-            # Fetch while stacked to prevent unstacked fetch from
-            # Branch.sprout.
-            if fetch_spec is None:
-                if revs_to_fetch is None:
-                    result_repo.fetch(source_repository, revision_id=None)
-                else:
-                    raise AssertionError('this case should be unreachable')
+            fetch_spec = fetch_spec_factory.make_fetch_spec()
+            if isinstance(fetch_spec, EverythingFetchSpec):
+                # XXX: make EverythingFetchSpec a real search result
+                result_repo.fetch(source_repository)
+            elif isinstance(fetch_spec, EverythingNotInOtherFetchSpec):
+                result_repo.fetch(source_repository)
             else:
                 result_repo.fetch(source_repository, fetch_spec=fetch_spec)
 
