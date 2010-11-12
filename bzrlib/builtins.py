@@ -4127,8 +4127,8 @@ class cmd_remerge(Command):
             'merge-type',
             'reprocess',
             Option('show-base',
-                   help="Show base revision text in conflicts.")
-    ]
+                   help="Show base revision text in conflicts."),
+            ]
 
     def run(self, file_list=None, merge_type=None, show_base=False,
             reprocess=False):

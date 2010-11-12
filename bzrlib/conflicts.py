@@ -31,7 +31,6 @@ from bzrlib import (
     rio,
     trace,
     transform,
-    ui,
     workingtree,
     )
 """)
@@ -118,7 +117,7 @@ class cmd_resolve(commands.Command):
             ResolveActionOption(),
             ]
     _see_also = ['conflicts']
-    def run(self, file_list=None, all=False, action=None, directory=None,
+    def run(self, file_list=None, all=False, action=None, directory=None):
         if all:
             if file_list:
                 raise errors.BzrCommandError("If --all is specified,"
