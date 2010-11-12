@@ -26,6 +26,10 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Bazaar now caches a branch's tags while that branch is read-locked.
+  This removes 1 network roundtrip from most interactions with a remote
+  branch.  (Andrew Bennetts)
+
 * ``bzr config <option>`` will now display only the value itself so scripts
   can use it to query the currently active configuration. Displaying several
   options matching a given regular expression is now controlled via the
