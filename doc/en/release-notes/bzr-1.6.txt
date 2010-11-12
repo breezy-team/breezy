@@ -64,7 +64,7 @@ Bug Fixes
   but to support those repositories, we know always request full texts
   for Revision texts. (John Arbash Meinel, #261339)
 
-* The previous ``--1.6-rich-root`` format used an incorrect xml
+* The previous ``--1.6-rich-root`` format used an incorrect XML
   serializer, which would accidentally support fetching from a
   repository that supported subtrees, even though the local one would
   not. We deprecated that format, and introduced a new one that uses
@@ -696,11 +696,11 @@ Bugfixes
   used for an ssh scheme (sftp or bzr+ssh).
   (Vincent Ladeuil, #203186)
 
-* Make both http implementations raise appropriate exceptions on 403
+* Make both HTTP implementations raise appropriate exceptions on 403
   Forbidden when POSTing smart requests.
   (Vincent Ladeuil, #230223)
 
-* Properly *title* header names in http requests instead of capitalizing
+* Properly *title* header names in HTTP requests instead of capitalizing
   them.
   (Vincent Ladeuil, #229076)
 

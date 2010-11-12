@@ -162,7 +162,7 @@ Bug Fixes
 * Fix long standing bug in partial commit when there are renames
   left in tree. (Robert Collins, #140419)
 
-* Fix selftest semi-random noise during http related tests.
+* Fix selftest semi-random noise during HTTP related tests.
   (Vincent Ladeuil, #140614)
 
 * Fix typo in ftp.py making the reconnection fail on temporary errors.
@@ -175,7 +175,7 @@ Bug Fixes
 * Fix log against smart server branches that don't support tags.
   (James Westby, #140615)
 
-* Fix pycurl http implementation by defining error codes from
+* Fix pycurl HTTP implementation by defining error codes from
   pycurl instead of relying on an old curl definition.
   (Vincent Ladeuil, #147530)
 
@@ -289,7 +289,7 @@ Internals
   tuple containing the key information about a path for commit processing
   to complete. (Robert Collins)
 
-* New method on xml serialisers, write_inventory_to_lines, which matches the
+* New method on XML serialisers, write_inventory_to_lines, which matches the
   API used by knits for adding content. (Robert Collins)
 
 * New module ``bzrlib.bisect_multi`` with generic multiple-bisection-at-once

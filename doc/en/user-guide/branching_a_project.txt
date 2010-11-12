@@ -43,7 +43,7 @@ tilde like so: ``sftp://example.com/~/public_html`` should map to
 ``public_html`` within your home directory.
 
 .. note:: Access over HTTP or HTTPS is read-only by default.
-   See `Pushing over the http smart server
+   See `Pushing over the HTTP smart server
    <http_smart_server.html#pushing-over-the-http-smart-server>`_ for
    details on configuring read-write access.
 

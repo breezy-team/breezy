@@ -237,7 +237,7 @@ difficult to create these through the ``bzr`` command line, but if people find t
 that could be changed.
 This is actually how `Launchpad`_ allows you to ``bzr checkout https://launchpad.net/bzr``.
 Effectively a ``BranchReference`` is a symlink, but it allows you to reference any other URL.
-If it is extended to support relative references, it would even work over http, sftp,
+If it is extended to support relative references, it would even work over HTTP, SFTP,
 and local paths.
 
 .. _Launchpad: https://launchpad.net

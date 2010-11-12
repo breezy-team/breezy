@@ -27,7 +27,7 @@ Bug Fixes
   (e.g. from a merge) to the master branch (and informs the user if there
   is a conflict).  (Andrew Bennetts, #603395)
   
-* Correctly set the Content-Type header when http POSTing to comply
+* Correctly set the Content-Type header when HTTP POSTing to comply
   with stricter web frameworks. (Vincent Ladeuil, #655100)
 
 * ``NotBranchError`` no longer allows errors from calling
@@ -42,7 +42,7 @@ Bug Fixes
   root. Including the one that wasn't present in 2.1.
   (Vincent Ladeuil, #646133)
 
-* Using bzr with `lp:` urls behind an http proxy should work.
+* Using bzr with `lp:` URLs behind an HTTP proxy should work.
   (Robert Collins, #558343)
 
 * Windows installers no longer requires the Microsoft vcredist to be

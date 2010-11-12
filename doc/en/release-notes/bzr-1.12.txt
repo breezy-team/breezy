@@ -98,7 +98,7 @@ Improvements
   operations, and they are drawn different.  (Martin Pool, #172741)
 
 * Progress bars now show the rate of activity for urllib and pycurl based
-  http client implementations. The operations are tracked at the socket
+  HTTP client implementations. The operations are tracked at the socket
   level for better precision.
   (Vincent Ladeuil)
 

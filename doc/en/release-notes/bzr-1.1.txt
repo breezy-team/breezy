@@ -108,7 +108,7 @@ Bugfixes
   pointed to different logical drives on Windows.
   (Alexander Belchenko, #90847)
 
-* HTTP test servers are now compatible with the http protocol version 1.1.
+* HTTP test servers are now compatible with the HTTP protocol version 1.1.
   (Vincent Ladeuil, #175524)
 
 * _KnitParentsProvider.get_parent_map now handles requests for ghosts
@@ -140,7 +140,7 @@ Bugfixes
   removed use characters not supported in the terminal encoding.
   (Aaron Bentley)
 
-* When dumb http servers return whole files instead of the requested ranges,
+* When dumb HTTP servers return whole files instead of the requested ranges,
   read the remaining bytes by chunks to avoid overflowing network buffers.
   (Vincent Ladeuil, #175886)
 
@@ -214,8 +214,7 @@ Testing
 * New helper method ``bzrlib.tests.split_suite_by_re`` which splits a test
   suite into two according to a regular expression. (Robert Collins)
 
-* Parametrize all http tests for the transport implementations, the http
-  protocol versions (1.0 and 1.1) and the authentication schemes.
+* Parametrize all HTTP tests for the transport implementations, the HTTP protocol versions (1.0 and 1.1) and the authentication schemes.
   (Vincent Ladeuil)
 
 * The ``exclude_pattern`` and ``random_order`` parameters to the function

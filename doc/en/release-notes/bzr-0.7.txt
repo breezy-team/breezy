@@ -125,7 +125,7 @@ Bug Fixes
 
 * Error when run with -OO
 
-* Fix bug in reporting http errors that don't have an http error code.
+* Fix bug in reporting HTTP errors that don't have an HTTP error code.
   (Martin Pool)
 
 * Handle more cases of pipe errors in display commands

@@ -45,7 +45,7 @@ Bugfixes
 
 * Fix detection of directory entries in the inventory. (James Westby)
 
-* Fix handling of http code 400: Bad Request When issuing too many ranges.
+* Fix handling of HTTP code 400: Bad Request When issuing too many ranges.
   (Vincent Ladeuil, #115209)
 
 * Issue a CONNECT request when connecting to an https server
