@@ -185,26 +185,29 @@ def get_merge_tools(conf=None):
     """Returns list of MergeTool objects."""
     if conf is None:
         conf = config.GlobalConfig()
-    names = conf.get_user_option_as_list('mergetools')
-    if names is None:
-        return []
-    return [MergeTool(name, conf.get_user_option('mergetools.%s' % name) or name)
-            for name in names]
+    tools = []
+    for (oname, value, section, conf_id) in conf._get_options():
+        if oname.startswith('mergetools.'):
+            tools.append(MergeTool(oname[len('mergetools.'):], value))
+    return tools
 
 
 def set_merge_tools(merge_tools, conf=None):
     if conf is None:
         conf = config.GlobalConfig()
-    tools = {}
+    # remove entries from config for tools which do not appear in merge_tools
+    tool_names = [tool.get_name() for tool in merge_tools]
+    for (oname, value, section, conf_id) in conf._get_options():
+        if oname.startswith('mergetools.'):
+            if oname[len('mergetools.'):] not in tool_names:
+                conf.remove_user_option(oname)
+    # set config entries
     for tool in merge_tools:
-        if not tool.get_name() in tools and len(tool.get_commandline_as_list()) > 0:
-            tools[tool.get_name()] = tool
-    names = sorted(tools.keys())
-    conf.set_user_option("mergetools", names)
-    for name in names:
-        tool = tools[name]
-        conf.set_user_option("mergetools.%s" % name,
-                             tool.get_commandline(quote=True))
+        oname = 'mergetools.%s' % tool.get_name()
+        value = tool.get_commandline(quote=True)
+        if oname == '' or value == '':
+            continue
+        conf.set_user_option(oname, value)
 
 
 def find_merge_tool(name, conf=None):

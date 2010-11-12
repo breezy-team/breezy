@@ -237,7 +237,6 @@ class TestMergeToolOperations(tests.TestCaseInTempDir):
 class TestModuleFunctions(tests.TestCaseInTempDir):
     def test_get_merge_tools(self):
         conf = config.GlobalConfig()
-        conf.set_user_option('mergetools', ['kdiff3', 'winmergeu', 'funkytool'])
         conf.set_user_option('mergetools.kdiff3', 'kdiff3 %b %t %o -o %r')
         conf.set_user_option('mergetools.winmergeu', 'winmergeu %r')
         conf.set_user_option('mergetools.funkytool', 'funkytool "arg with spaces" %T')
@@ -260,8 +259,6 @@ class TestModuleFunctions(tests.TestCaseInTempDir):
                                       'funkytool "arg with spaces" %T')
                  ]
         mergetools.set_merge_tools(tools, conf)
-        self.assertEqual(['funkytool', 'kdiff3', 'winmergeu'],
-            conf.get_user_option_as_list('mergetools'))
         self.assertEqual('funkytool "arg with spaces" %T',
                           conf.get_user_option('mergetools.funkytool'))
         self.assertEqual('kdiff3 %b %t %o -o %r',
@@ -291,6 +288,22 @@ class TestModuleFunctions(tests.TestCaseInTempDir):
         self.assertEqual(1, len(tools))
         self.assertEqual('kdiff3', tools[0].get_name())
         self.assertEqual('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
+
+    def test_set_merge_tools_remove_one(self):
+        conf = config.GlobalConfig()
+        tools = [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
+                 mergetools.MergeTool('winmergeu', 'winmergeu %r'),
+                 mergetools.MergeTool('funkytool',
+                                      'funkytool "arg with spaces" %T')
+                 ]
+        mergetools.set_merge_tools(tools, conf)
+        del tools[0]
+        mergetools.set_merge_tools(tools, conf)
+        self.assertEqual(sorted([
+            ('mergetools.funkytool', 'funkytool "arg with spaces" %T', 'DEFAULT', 'bazaar'),
+            ('mergetools.winmergeu', 'winmergeu %r', 'DEFAULT', 'bazaar'),
+            ]),
+            sorted(conf._get_options()))
 
     def test_detect(self):
         # only way to reliably test detection is to add a known existing
