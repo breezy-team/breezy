@@ -99,6 +99,7 @@ def load_tests(basic_tests, module, loader):
                      'test_remove',
                      'test_re_sign',
                      'test_remove_tree',
+                     'test_resolve',
                      'test_revert',
                      'test_revno',
                      'test_revision_history',

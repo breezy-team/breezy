@@ -159,7 +159,9 @@ class cmd_resolve(commands.Command):
                 # conflict.auto(tree) --vila 091242
                 pass
         else:
-            resolve(tree, file_list, action=action)
+            before, after = resolve(tree, file_list, action=action)
+            trace.note('%d conflict(s) resolved, %d remaining'
+                       % (before - after, after))
 
 
 def resolve(tree, paths=None, ignore_misses=False, recursive=False,
@@ -178,8 +180,10 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False,
     :param action: How the conflict should be resolved,
     """
     tree.lock_tree_write()
+    nb_conflicts_after = None
     try:
         tree_conflicts = tree.conflicts()
+        nb_conflicts_before = len(tree_conflicts)
         if paths is None:
             new_conflicts = ConflictList()
             to_process = tree_conflicts
@@ -193,11 +197,15 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False,
             except NotImplementedError:
                 new_conflicts.append(conflict)
         try:
+            nb_conflicts_after = len(new_conflicts)
             tree.set_conflicts(new_conflicts)
         except errors.UnsupportedOperation:
             pass
     finally:
         tree.unlock()
+    if nb_conflicts_after is None:
+        nb_conflicts_after = nb_conflicts_before
+    return nb_conflicts_before, nb_conflicts_after
 
 
 def restore(filename):
