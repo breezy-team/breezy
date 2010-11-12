@@ -584,3 +584,36 @@ send_strict
 If present, defines the ``--strict`` option default value for checking
 uncommitted changes before sending a merge directive.
 
+
+External Merge Tools
+--------------------
+
+mergetools.<name>
+~~~~~~~~~~~~~~~~~
+
+Defines an external merge tool called <name> with the given command-line.
+Arguments containing spaces should be quoted using single or double quotes. The
+executable may omit its path if it can be found on the PATH.
+
+The following markers can be used in the command-line to substitute filenames
+involved in the merge conflict:
+
+%b -> file.BASE
+%t -> file.THIS
+%o -> file.OTHER
+%r -> file (output)
+%T -> file.THIS (temp copy, used to overwrite "file" if merge succeeds)
+
+For example:
+
+  mergetools.kdiff3 = kdiff3 %b %t %o -o %r
+
+default_mergetool
+~~~~~~~~~~~~~~~~~
+
+Specifies which external merge tool (as defined above) should be selected by
+default in tools such as ``bzr qconflicts``.
+
+For example:
+
+  default_mergetool = kdiff3
