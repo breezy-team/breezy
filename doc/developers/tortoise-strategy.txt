@@ -437,7 +437,7 @@ The following is a high-level set of milestones for the implementation:
 * Implement property pages and context menus in C++. Expand RPC server as
   necessary.
 
-* Create binary for alpha releases, then go round-and-round until its baked.
+* Create binary for alpha releases, then go round-and-round until it's baked.
 
 Alternative Implementation Strategies
 -------------------------------------
