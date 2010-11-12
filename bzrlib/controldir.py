@@ -413,27 +413,26 @@ class ControlDir(ControlComponent):
         result_repo, is_new_repo = repository_policy.acquire_repository()
         add_cleanup(result_repo.lock_write().unlock)
         is_stacked = stacked or (len(result_repo._fallback_repositories) != 0)
-        if source_branch is None:
-            if revision_id is None:
-                revs_to_fetch = None # (this means fetch all)
-            else:
-                revs_to_fetch = set([revision_id])
+        # XXX: there's no way for a caller to specify 'copy just the revs for a
+        # source branch?
+        if revision_id is None:
+            # revision_id=None means 'copy entire repo.'
+            revs_to_fetch = None
         else:
-            revs_to_fetch = set(source_branch.tags.get_reverse_tag_dict())
-            if revision_id is None:
+            revs_to_fetch = set([revision_id])
+            if source_branch is not None:
+                revs_to_fetch.update(source_branch.tags.get_reverse_tag_dict())
                 revs_to_fetch.add(source_branch.last_revision())
-            else:
-                revs_to_fetch.add(revision_id)
         if source_repository is not None:
-            if is_new_repo and revs_to_fetch and not is_stacked:
+            if revs_to_fetch is None:
+                fetch_spec = None
+            elif is_new_repo and not is_stacked:
                 fetch_spec = graph.PendingAncestryResult(
                     revs_to_fetch, source_repository)
-            elif revs_to_fetch:
+            else:
                 inter_repo = repository.InterRepository.get(
                     source_repository, result_repo)
                 fetch_spec = inter_repo._walk_to_common_revisions(revs_to_fetch)
-            else:
-                fetch_spec = None
             # Fetch while stacked to prevent unstacked fetch from
             # Branch.sprout.
             if fetch_spec is None:
