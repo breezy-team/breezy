@@ -216,12 +216,13 @@ class TestRegistryIter(tests.TestCase):
         # We create a registry with "official" objects and "hidden"
         # objects. The later represent the side effects that led to bug #277048
         # and #430510
-        self_registry = registry.Registry()
+        _registry = registry.Registry()
 
         def register_more():
-            self_registry.register('hidden', None)
+           _registry.register('hidden', None)
 
-        self.registry = self_registry
+        # Avoid closing over self by binding local variable
+        self.registry = _registry
         self.registry.register('passive', None)
         self.registry.register('active', register_more)
         self.registry.register('passive-too', None)
@@ -231,7 +232,7 @@ class TestRegistryIter(tests.TestCase):
             def get_obj(inner_self):
                 # Surprise ! Getting a registered object (think lazy loaded
                 # module) register yet another object !
-                self_registry.register('more hidden', None)
+                _registry.register('more hidden', None)
                 return inner_self._obj
 
         self.registry.register('hacky', None)

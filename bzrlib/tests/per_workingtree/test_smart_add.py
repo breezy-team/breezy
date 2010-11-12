@@ -265,7 +265,6 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         super(TestSmartAddTreeUnicode, self).setUp()
         self.build_tree([u'a\u030a'])
         self.wt = self.make_branch_and_tree('.')
-        self.addCleanup(setattr, self, "wt", None)
         self.overrideAttr(osutils, 'normalized_filename')
 
     def test_accessible_explicit(self):

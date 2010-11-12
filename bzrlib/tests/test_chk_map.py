@@ -1108,9 +1108,9 @@ class TestMap(TestCaseWithStore):
         basis_get = basis._store.get_record_stream
         def get_record_stream(keys, order, fulltext):
             if ('sha1:1adf7c0d1b9140ab5f33bb64c6275fa78b1580b7',) in keys:
-                self.fail("'aaa' pointer was followed %r" % keys)
+                raise AssertionError("'aaa' pointer was followed %r" % keys)
             return basis_get(keys, order, fulltext)
-        self.overrideAttr(basis._store, "get_record_stream", get_record_stream)
+        basis._store.get_record_stream = get_record_stream
         result = sorted(list(target.iter_changes(basis)))
         for change in result:
             if change[0] == ('aaa',):

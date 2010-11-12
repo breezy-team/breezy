@@ -577,6 +577,8 @@ class TestErrors(TestCaseWithTransport):
         except ZeroDivisionError:
             err = errors.HookFailed('hook stage', 'hook name', sys.exc_info(),
                 warn=False)
+        # GZ 2010-11-08: Should not store exc_info in exception instances, but
+        #                HookFailed is deprecated anyway and could maybe go.
         try:
             self.assertStartsWith(
                 str(err), 'Hook \'hook name\' during hook stage failed:\n')
@@ -613,6 +615,7 @@ class TestErrors(TestCaseWithTransport):
             raise Exception("example error")
         except Exception:
             err = errors.SmartMessageHandlerError(sys.exc_info())
+        # GZ 2010-11-08: Should not store exc_info in exception instances.
         try:
             self.assertStartsWith(
                 str(err), "The message handler raised an exception:\n")
