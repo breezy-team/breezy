@@ -3837,7 +3837,7 @@ class cmd_merge(Command):
         Option('preview', help='Instead of merging, show a diff of the'
                ' merge.'),
         Option('interactive', help='Select changes interactively.',
-            short_name='i'),
+            short_name='i')
     ]
 
     def run(self, location=None, revision=None, force=False,
@@ -4124,10 +4124,10 @@ class cmd_remerge(Command):
     """
     takes_args = ['file*']
     takes_options = [
-        'merge-type',
-        'reprocess',
-        Option('show-base',
-               help="Show base revision text in conflicts.")
+            'merge-type',
+            'reprocess',
+            Option('show-base',
+                   help="Show base revision text in conflicts.")
     ]
 
     def run(self, file_list=None, merge_type=None, show_base=False,
@@ -6106,11 +6106,11 @@ def _register_lazy_builtins():
     for (name, aliases, module_name) in [
         ('cmd_bundle_info', [], 'bzrlib.bundle.commands'),
         ('cmd_config', [], 'bzrlib.config'),
-        ('cmd_conflicts', [], 'bzrlib.conflicts'),
         ('cmd_dpush', [], 'bzrlib.foreign'),
+        ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ('cmd_resolve', ['resolved'], 'bzrlib.conflicts'),
+        ('cmd_conflicts', [], 'bzrlib.conflicts'),
         ('cmd_sign_my_commits', [], 'bzrlib.sign_my_commits'),
         ('cmd_test_script', [], 'bzrlib.cmd_test_script'),
-        ('cmd_version_info', [], 'bzrlib.cmd_version_info'),
         ]:
         builtin_command_registry.register_lazy(name, aliases, module_name)
