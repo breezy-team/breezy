@@ -2369,7 +2369,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         self._ensure_real()
         return self._real_branch._get_tags_bytes()
 
+    @needs_read_lock
     def _get_tags_bytes(self):
+        if self._tags_bytes is None:
+            self._tags_bytes = self._get_tags_bytes_via_hpss()
+        return self._tags_bytes
+
+    def _get_tags_bytes_via_hpss(self):
         medium = self._client._medium
         if medium._is_remote_before((1, 13)):
             return self._vfs_get_tags_bytes()
@@ -2385,6 +2391,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self._real_branch._set_tags_bytes(bytes)
 
     def _set_tags_bytes(self, bytes):
+        if self.is_locked():
+            self._tags_bytes = bytes
         medium = self._client._medium
         if medium._is_remote_before((1, 18)):
             self._vfs_set_tags_bytes(bytes)
