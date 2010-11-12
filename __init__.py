@@ -336,9 +336,7 @@ def update_stanza(rev, stanza):
         stanza.add("git-commit", rev.foreign_revid)
 
 
-rio_hooks = getattr(RioVersionInfoBuilder, "hooks", None)
-if rio_hooks is not None:
-    rio_hooks.install_named_hook('revision', update_stanza, None)
+RioVersionInfoBuilder.hooks.install_named_hook('revision', update_stanza, None)
 
 
 from bzrlib.transport import transport_server_registry
