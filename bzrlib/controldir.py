@@ -473,32 +473,25 @@ class ControlDir(ControlComponent):
         else:
             wt = None
         if recurse == 'down':
+            basis = None
             if wt is not None:
                 basis = wt.basis_tree()
-                basis.lock_read()
-                subtrees = basis.iter_references()
             elif result_branch is not None:
                 basis = result_branch.basis_tree()
-                basis.lock_read()
-                subtrees = basis.iter_references()
             elif source_branch is not None:
                 basis = source_branch.basis_tree()
-                basis.lock_read()
+            if basis is not None:
+                add_cleanup(basis.lock_read().unlock)
                 subtrees = basis.iter_references()
             else:
                 subtrees = []
-                basis = None
-            try:
-                for path, file_id in subtrees:
-                    target = urlutils.join(url, urlutils.escape(path))
-                    sublocation = source_branch.reference_parent(file_id, path)
-                    sublocation.bzrdir.sprout(target,
-                        basis.get_reference_revision(file_id, path),
-                        force_new_repo=force_new_repo, recurse=recurse,
-                        stacked=stacked)
-            finally:
-                if basis is not None:
-                    basis.unlock()
+            for path, file_id in subtrees:
+                target = urlutils.join(url, urlutils.escape(path))
+                sublocation = source_branch.reference_parent(file_id, path)
+                sublocation.bzrdir.sprout(target,
+                    basis.get_reference_revision(file_id, path),
+                    force_new_repo=force_new_repo, recurse=recurse,
+                    stacked=stacked)
         return result
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
