@@ -57,7 +57,7 @@ bzr 1.7rc2
 :Released: 2008-09-17
 
 A few bug fixes from 1.7rc1. The biggest change is a new
-``RemoteBranch.get_stacked_on_url`` rpc. This allows clients that are
+``RemoteBranch.get_stacked_on_url`` RPC. This allows clients that are
 trying to access a Stacked branch over the smart protocol, to properly
 connect to the stacked-on location.
 

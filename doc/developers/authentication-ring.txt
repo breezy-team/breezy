@@ -347,7 +347,7 @@ Implementation constraints
 * No assumptions should be made about the clients of this service
   (i.e. Transport is the primary target but plugins must be able to use it as
   well, the definitions used: (``scheme, host, [port,] path``) are general
-  enough to described credentials for ``svn`` servers or LaunchPad xmlrpc
+  enough to described credentials for ``svn`` servers or LaunchPad XML-RPC
   calls).
 
 * Policies regarding default users may be taken into account by the

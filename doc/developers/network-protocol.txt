@@ -317,7 +317,7 @@ this version are 8-bit clean.)
 
   (Discussion) We're discussing having the byte segments be not just a
   method for sending a stream across the network, but actually having them
-  be preserved in the rpc from end to end.  This may be useful when
+  be preserved in the RPC from end to end.  This may be useful when
   there's an iterator on one side feeding in to an iterator on the other,
   if it avoids doing chunking and byte-counting at two levels, and if
   those iterators are a natural place to get good granularity.  Also, for
