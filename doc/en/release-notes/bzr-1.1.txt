@@ -118,7 +118,7 @@ Bugfixes
 * ``merge --weave --uncommitted`` now works.  (Aaron Bentley)
 
 * pycurl authentication handling was broken and incomplete. Fix handling of
-  user:pass embedded in the urls.
+  user:pass embedded in the URLs.
   (Vincent Ladeuil, #177643)
 
 * Files inside non-directories are now handled like other conflict types.

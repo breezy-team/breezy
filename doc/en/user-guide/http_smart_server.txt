@@ -278,7 +278,7 @@ actually write data on your system, e.g. in apache it looks like::
     </Location>
 
 At this time, it is not possible to allow some people to have read-only
-access and others to have read-write access to the same urls. Because at
+access and others to have read-write access to the same URLs. Because at
 the HTTP layer (which is doing the Authenticating), everything is just a
 POST request.  However, it would certainly be possible to have HTTPS
 require authentication and use a writable server, and plain HTTP allow

@@ -110,7 +110,7 @@ New Features
   once. It can also be used to set or delete a configuration option in any
   configuration file. (Vincent Ladeuil)
 
-* New shortcut url schemes ``ubuntu:`` and ``debianlp:`` access source
+* New shortcut URL schemes ``ubuntu:`` and ``debianlp:`` access source
   branches on Launchpad.  E.g. ``bzr branch ubuntu:foo`` gives you the source
   branch for project ``foo`` in the current distroseries for Ubuntu while
   ``bzr branch debianlp:lenny/foo`` gives you the source branch (on Launchpad)

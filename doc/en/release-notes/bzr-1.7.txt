@@ -116,7 +116,7 @@ Features
 Improvements
 ************
 
-* A url like ``log+file:///tmp`` will log all access to that Transport
+* A URL like ``log+file:///tmp`` will log all access to that Transport
   to ``.bzr.log``, which may help in debugging or profiling.
   (Martin Pool)
 

@@ -187,9 +187,9 @@ Internals
   are returned as NoSuchFile. Other exceptions will propagate as normal.
   This allows debuging of actual errors. (Robert Collins)
 
-* bzrlib.transport.Transport now accepts *ONLY* url escaped relative paths
+* bzrlib.transport.Transport now accepts *ONLY* URL-escaped relative paths
   to apis like 'put', 'get' and 'has'. This is to provide consistent
-  behaviour - it operates on url's only. (Robert Collins)
+  behaviour - it operates on URLs only. (Robert Collins)
 
 * Transports can register using ``register_lazy_transport``, and they
   will be loaded when first used.  (Martin Pool)

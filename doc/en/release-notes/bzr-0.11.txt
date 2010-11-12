@@ -60,7 +60,7 @@ Improvements
   modules will not actually be imported if they are not used.
   (John Arbash Meinel)
 
-* Support ``bzr://`` and ``bzr+ssh://`` urls to work with the new RPC-based
+* Support ``bzr://`` and ``bzr+ssh://`` URLS to work with the new RPC-based
   transport which will be used with the upcoming high-performance smart
   server. The new command ``bzr serve`` will invoke bzr in server mode,
   which processes these requests. (Andrew Bennetts, Robert Collins, Martin

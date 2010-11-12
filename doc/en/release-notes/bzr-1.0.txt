@@ -330,7 +330,7 @@ Bug Fixes
   suggestion for an acceptable name is given. (Daniel Watkins, #103023)
 
 * Leave port as None in transport objects if user doesn't
-  specify a port in urls.
+  specify a port in URLs.
   (vincent Ladeuil, #150860)
 
 * Make sure Repository.fetch(self) is properly a no-op for all

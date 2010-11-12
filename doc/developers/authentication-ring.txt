@@ -361,7 +361,7 @@ Implementation constraints
   a password.
 
 * As this specification proposes a matching between some credentials
-  definitions and real urls, the implementation provides an optional UI
+  definitions and real URLs, the implementation provides an optional UI
   feedback about which credential definition is used. Using ``-Dauth`` will
   output some traces in the ``.bzr.log`` file metionning the sections
   used. This allows the user to validate his definitions.

@@ -172,7 +172,7 @@ Improvements
 * digest authentication is now supported for proxies and HTTP by the urllib
   based HTTP implementation. Tested against Apache 2.0.55 and Squid
   2.6.5. Basic and digest authentication are handled coherently for HTTP
-  and proxy: if the user is provided in the url (bzr command line for HTTP,
+  and proxy: if the user is provided in the URL (bzr command line for HTTP,
   proxy environment variables for proxies), the password is prompted for
   (only once). If the password is provided, it is taken into account. Once
   the first authentication is successful, all further authentication
@@ -186,8 +186,8 @@ Internals
 * bzrlib API compatability with 0.8 has been dropped, cleaning up some
   code paths. (Robert Collins)
 
-* Change the format of chroot urls so that they can be safely manipulated
-  by generic url utilities without causing the resulting urls to have
+* Change the format of chroot URLS so that they can be safely manipulated
+  by generic URL utilities without causing the resulting URLs to have
   escaped the chroot. A side effect of this is that creating a chroot
   requires an explicit action using a ChrootServer.
   (Robert Collins, Andrew Bennetts)
@@ -358,8 +358,8 @@ Testing
   lightweight checkout for the tree if the ``vfs_transport_factory`` is not
   a LocalURLServer. (Robert Collins, Andrew Bennetts)
 
-* Branch implementation tests have been audited to ensure that all urls
-  passed to Branch APIs use proper urls, except when local-disk paths
+* Branch implementation tests have been audited to ensure that all URLs
+  passed to Branch APIs use proper URLs, except when local-disk paths
   are intended. This is so that tests correctly access the test transport
   which is often not equivalent to local disk in Remote* tests. As part
   of this many tests were adjusted to remove dependencies on local disk

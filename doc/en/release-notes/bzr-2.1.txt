@@ -26,7 +26,7 @@ Bug Fixes
 * Skip the tests that requires respecting the chmod bits when running as root.
   (Vincent Ladeuil, #646133)
 
-* Using bzr with `lp:` urls behind an HTTP proxy should work.
+* Using bzr with `lp:` URLs behind an HTTP proxy should work.
   (Robert Collins, #558343)
 
 Improvements
@@ -919,7 +919,7 @@ path to a 2.1.0. Once again, all bugfixes in 2.0.2 are present in 2.1.0b2.
 
 Key highlights in this release are: improved handling of
 failures-during-cleanup for commit, fixing a long-standing bug with
-``bzr+http`` and shared repositories, all ``lp:`` urls to be resolved
+``bzr+http`` and shared repositories, all ``lp:`` URLs to be resolved
 behind proxies, and a new StaticTuple datatype, allowing us to reduce
 memory consumption (50%) and garbage collector overhead (40% faster) for
 many operations.
@@ -942,7 +942,7 @@ Bug Fixes
   they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
   and similar errors.  (Andrew Bennetts, #429747, #243391)
 
-* Launchpad urls can now be resolved from behind proxies.
+* Launchpad URLs can now be resolved from behind proxies.
   (Gordon Tyler, Vincent Ladeuil, #186920)
 
 * Reduce the strictness for StaticTuple, instead add a debug flag
@@ -1031,7 +1031,7 @@ and several new feature developments. People looking for a stable code
 base with only bugfixes should focus on the 2.0.1 release. All bugfixes
 present in 2.0.1 are present in 2.1.0b1.
 
-Highlights include support for ``bzr+ssh://host/~/homedir`` style urls,
+Highlights include support for ``bzr+ssh://host/~/homedir`` style URLs,
 finer control over the plugin search path via extended BZR_PLUGIN_PATH
 syntax, visible warnings when extension modules fail to load, and improved
 error handling during unlocking.
@@ -1220,7 +1220,7 @@ Testing
 * Tests that try to open a bzr dir on an arbitrary transport will now
   fail unless they have explicitly permitted the transport via
   ``self.permit_url``. The standard test factories such as ``self.get_url``
-  will permit the urls they provide automatically, so only exceptional
+  will permit the URLs they provide automatically, so only exceptional
   tests should need to do this. (Robert Collins)
 
 * The break-in test no longer cares about clean shutdown of the child,

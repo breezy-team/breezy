@@ -228,7 +228,7 @@ Internals
   deprecated in favour of ``MutableTree.smart_add``. (Robert Collins,
   Martin Pool)
 
-* New method ``external_url`` on Transport for obtaining the url to
+* New method ``external_url`` on Transport for obtaining the URL to
   hand to external processes. (Robert Collins)
 
 * Teach windows installers to build pyrex/C extensions.

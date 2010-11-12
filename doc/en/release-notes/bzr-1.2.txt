@@ -66,7 +66,7 @@ Features
   client, and sends less data to the server to request the revisions.
   (Andrew Bennetts, Robert Collins, #178353)
 
-* The launchpad plugin now handles lp urls of the form
+* The launchpad plugin now handles lp URLs of the form
   ``lp://staging/``, ``lp://demo/``, ``lp://dev/`` to use the appropriate
   launchpad instance to do the resolution of the branch identities.
   This is primarily of use to Launchpad developers, but can also
@@ -87,7 +87,7 @@ Improvements
 * The ``--coverage`` option is now global, rather specific to ``bzr
   selftest``.  (Andrew Bennetts)
 
-* The ``register-branch`` command will now use the public url of the branch
+* The ``register-branch`` command will now use the public URL of the branch
   containing the current directory, if one has been set and no explicit
   branch is provided.  (Robert Collins)
 

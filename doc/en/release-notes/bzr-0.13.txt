@@ -70,7 +70,7 @@ Internals
 * New method ``get_branch_reference`` on 'BzrDir' allows the detection of
   branch references - which the smart server component needs.
 
-* New ``ChrootTransportDecorator``, accessible via the ``chroot+`` url
+* New ``ChrootTransportDecorator``, accessible via the ``chroot+`` URL
   prefix.  It disallows any access to locations above a set URL.  (Andrew
   Bennetts)
 
@@ -96,7 +96,7 @@ Bug Fixes
   the death of the transport and propagates that to the clones.
   (Vincent Ladeuil, #62276, #62029).
 
-* Handles user/passwords supplied in url from command
+* Handles user/passwords supplied in URL from command
   line (for the urllib implementation). Don't request already
   known passwords (Vincent Ladeuil, #42383, #44647, #48527)
 
