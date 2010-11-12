@@ -111,6 +111,9 @@ Improved conflict handling
   default behaviour is specified (if needed) by setting the variable to
   ``conflict``.  (Vincent Ladeuil, #323111)
 
+* ``bzr resolve`` now provides more feedback about the conflicts just
+  resolved and the remaining ones. (Vincent Ladeuil)
+
 Documentation
 *************
 
