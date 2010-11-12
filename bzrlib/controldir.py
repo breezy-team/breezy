@@ -106,7 +106,7 @@ class FetchSpecFactory(object):
      * did the caller specify a revision ID?
      * (hypothetically better APIs would allow callers to specify N
         revision IDs)
-     * is there a source branch (need to fetch the tip)
+     * did the caller specify a source branch (need to fetch the tip + tags)
      * is there an existing target repo (don't need to refetch revs it
        already has)
      * target is stacked?  (similar to pre-existing target repo: even if
@@ -126,10 +126,9 @@ class FetchSpecFactory(object):
         
     def make_fetch_spec(self):
         """Build a SearchResult or PendingAncestryResult or etc."""
-        # XXX: there's no way for a caller to specify 'copy just the revs for a
-        # source branch?
         assert self.target_repo_kind is not None
-        if len(self.explicit_rev_ids) == 0:
+        if len(self.explicit_rev_ids) == 0 and self.source_branch is None:
+            # Caller hasn't specified any revisions or source branch
             if self.target_repo_kind == _TargetRepoKinds.EMPTY:
                 return EverythingFetchSpec()
             else:
