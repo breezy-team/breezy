@@ -83,7 +83,6 @@ def load_tests(basic_tests, module, loader):
                      'test_lsprof',
                      'test_merge',
                      'test_merge_directive',
-                     'test_mergetools',
                      'test_missing',
                      'test_modified',
                      'test_mv',
