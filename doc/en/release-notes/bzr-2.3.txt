@@ -18,9 +18,7 @@ External Compatibility Breaks
 New Features
 ************
 
-* External merge tools can now be configured and invoked for files with text
-  conflicts during ``merge`` and ``remerge`` by adding the ``--resolve-using``
-  option.  (Gordon Tyler, #489915)
+.. New commands, options, etc that users may wish to try out.
 
 Improvements
 ************

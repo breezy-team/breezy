@@ -114,10 +114,6 @@ Improved conflict handling
 * ``bzr resolve`` now provides more feedback about the conflicts just
   resolved and the remaining ones. (Vincent Ladeuil)
 
-* External merge tools can now be configured and invoked for files with text
-  conflicts during ``merge`` and ``remerge`` by adding the ``--resolve-using``
-  option.  (Gordon Tyler, #489915)
-
 Documentation
 *************
 
