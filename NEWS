@@ -11,6 +11,8 @@
 
   * Mark as compatible with bzr 2.3. (Jelmer Vernooij)
 
+  * Cope with unknown refs. (Jelmer Vernooij, #666443)
+
  FEATURES
 
   * Remove all remaining dependencies on C git. (Jelmer Vernooij, #348238)

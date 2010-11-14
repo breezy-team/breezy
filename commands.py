@@ -58,6 +58,7 @@ class cmd_git_import(Command):
             GitBranch,
             extract_tags,
             )
+        from bzrlib.plugins.git.refs import ref_to_branch_name
         from bzrlib.plugins.git.repository import GitRepository
 
         if dest_location is None:
@@ -87,7 +88,10 @@ class cmd_git_import(Command):
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for i, (name, ref) in enumerate(refs.iteritems()):
-                if name.startswith("refs/tags/"):
+                try:
+                    ref_to_branch_name(name)
+                except ValueError:
+                    # Not a branch, ignore
                     continue
                 pb.update("creating branches", i, len(refs))
                 head_loc = os.path.join(dest_location, name)
