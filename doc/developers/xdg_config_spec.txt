@@ -11,39 +11,15 @@ specific directory referred to as $XDG_CONFIG_HOME.  This has a default value
 of ~/.config.
 
 Bazaar would like to be a good Unix citizen by using these standard locations
-for configuration files.  This will require a transitional phase while moving
-to the standard location.  Note that the following descriptions do not apply
+for configuration files.  As such, we should support that location, but not
+require it.  Note that the following descriptions do not apply
 to Windows or Mac OS X which can and should use their own native configuration
 locations.
 
-Transitional Phase
-------------------
-
-* If ~/.bazaar exists and $XDG_CONFIG_HOME/bazaar does not:
-
-  - On opening config files, write out a message that users should move
-    their config files to $XDG_CONFIG_HOME/bazaar and give them a command line
-    to do so. Do NOT create new config files in $XDG_CONFIG_HOME/bazaar to
-    avoid fragmentation (two configuration directories in use at the same
-    time).
-
-* If both ~/.bazaar and $XDG_CONFIG_HOME/bazaar exist:
-
-  - Use the config files in $XDG_CONFIG_HOME/bazaar with a warning that those
-    in ~/.bazaar are being ignored.  Don't use a pastiche of files from both
-    directories, again to avoid fragmentation.
-
-* If only $XDG_CONFIG_HOME exists, use it.
-
-
-Final Phase
------------
-
-* If ~/.bazaar exists and $XDG_CONFIG_HOME/bazaar does not:
-
-  - Explain that configuration files are now meant to be found in
-    $XDG_CONFIG_HOME/bazaar and offer to copy the existing files over.
-
-* If both ~/.bazaar and $XDG_CONFIG_HOME/bazaar exist:
-
-  - Warn that the configuration files in .bazaar are being ignored?
+* If $XDG_CONFIG_HOME/bazaar exists, use the files there for configuration,
+  noting in the log that we are doing so.  This allows individuals who would
+  like to use the XDG specification to do so.
+* Due to a lack of consensus on where plugins should live under the XDG Base
+  Directory spec, continue to look for plugins in ~/.bazaar/plugins.  To
+  change this directory to something not under ~/.bazaar, use the environment
+  variable $BZR_PLUGIN_PATH.

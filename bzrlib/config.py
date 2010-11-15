@@ -1118,7 +1118,8 @@ def config_dir():
     """Return per-user configuration directory.
 
     By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
-    and $XDG_CONFIG_HOME/bazaar/ on Linux and other platforms.
+    and Linux.  On Linux, if there is a $XDG_CONFIG_HOME/bazaar directory,
+    that will be used instead.
 
     TODO: Global option --config-dir to override this.
     """
@@ -1139,28 +1140,18 @@ def config_dir():
         return osutils.pathjoin(base, '.bazaar')
     else:
         if base is None:
-            base = os.environ.get('XDG_CONFIG_HOME', None)
-        if base is None:
-            base = osutils.pathjoin(os.path.expanduser("~"), ".config")
 
-        newpath = osutils.pathjoin(base, "bazaar")
-        oldpath = osutils.pathjoin(os.path.expanduser("~"), ".bazaar")
+            xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
+            if xdg_dir is None:
+                xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
+            xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
+            if osutils.isdir(xdg_dir):
+                trace.mutter(
+                    "Using configuration in XDG directory %s." % xdg_dir)
+                return xdg_dir
 
-        if osutils.isdir(oldpath):
-            if not osutils.isdir(newpath):
-                trace.note("""\
-Bazaar now suggests that its configuration live in ~/.config/bazaar,
-but that directory does not exist.  If you would like, you can
-move your configuration files to that directory using the command
-"mv ~/.bazaar ~/.config/bazaar"
-""")
-                return oldpath
-            else:
-                trace.note("Ignoring configuration files in %s in favor of %s"\
-                           % (oldpath, newpath))
-                return newpath
-        else:
-            return newpath
+            base = os.path.expanduser("~")
+        return osutils.pathjoin(base, '.bazaar')
 
 
 def config_filename():

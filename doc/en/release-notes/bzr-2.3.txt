@@ -41,6 +41,9 @@ New Features
 Improvements
 ************
 
+* Read configuration files in $XDG_CONFIG_HOME/bazaar on Unix if there is
+  already a directory there.  (Neil Martinsen-Burrell, #195397)
+
 Bug Fixes
 *********
 
