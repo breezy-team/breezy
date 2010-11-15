@@ -43,7 +43,7 @@ is loaded from the workingtree.py file, eg::
 
 
 This gives us a WorkingTree object, which has various methods spread over
-itself, and its parent classes MutableTree and Tree - its worth having a
+itself, and its parent classes MutableTree and Tree - it's worth having a
 look through these three files (workingtree.py, mutabletree.py and tree.py)
 to see which methods are available.
 
