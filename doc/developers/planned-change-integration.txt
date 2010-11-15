@@ -66,7 +66,7 @@ likely to require changes to their collaborators to be considered 'finished'.
 
  * Network-efficient revision graph API: This influences what questions we will
    want to ask a local repository very quickly; as such it's a driver for the
-   new repository format and should be in place first if possible. Its probably
+   new repository format and should be in place first if possible. It's probably
    not sufficiently different to local operations to make this a hard ordering
    though.
 
@@ -91,14 +91,14 @@ likely to require changes to their collaborators to be considered 'finished'.
  * Repository stacking API: The key dependency/change required for this is that
    repositories must individually be happy with having partial data - e.g. many
    ghosts. However the way the API needs to be used should be driven from the
-   command layer in, because its unclear at the moment what will work best.
+   command layer in, because it's unclear at the moment what will work best.
 
  * Revision stream API: This API will become clear as we streamline commands.
    On the data insertion side commit will want to generate new data. The
    commands pull, bundle, merge, push, possibly uncommit will want to copy
    existing data in a streaming fashion.
 
- * New container format: Its hard to tell what the right way to structure the
+ * New container format: It's hard to tell what the right way to structure the
    layering is. Probably having smooth layering down to the point that code
    wants to operate on the containers directly will make this more clear. As
    bundles will become a read-only branch & repository, the smart server wants
@@ -135,7 +135,7 @@ likely to require changes to their collaborators to be considered 'finished'.
    today, it is likely able to be implemented immediately, but we are not sure
    that its needed anymore, so it is being shelved.
 
- * Removing derivable data: Its very hard to do this while the derived data is
+ * Removing derivable data: It's very hard to do this while the derived data is
    exposed in API's but not used by commands. Implemented the targeted API's
    for our core use cases should allow use to remove accidental use of derived
    data, making only explicit uses of it visible, and isolating the impact of
