@@ -448,8 +448,7 @@ class ControlDir(ControlComponent):
                source_branch=None, create_tree_if_local=True):
         add_cleanup = op.add_cleanup
         fetch_spec_factory = FetchSpecFactory()
-        if source_branch is not None:
-            fetch_spec_factory.source_branch = source_branch
+        fetch_spec_factory.source_branch = source_branch
         if revision_id is not None:
             fetch_spec_factory.add_revision_ids([revision_id])
         target_transport = get_transport(url, possible_transports)
