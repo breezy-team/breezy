@@ -28,6 +28,7 @@ import operator
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    graph,
     tsort,
     versionedfile,
     )
@@ -126,8 +127,16 @@ class RepoFetcher(object):
             resume_tokens, missing_keys = self.sink.insert_stream(
                 stream, from_format, [])
             if self.to_repository._fallback_repositories:
-                missing_keys.update(
-                    self._parent_inventories(search.get_keys()))
+                # XXX: if search is EverythingResult this should be
+                # unnecessary, so we can skip this step.  (so long as it causes
+                # the source to send parent invs for all the revs (or just all
+                # present invs)).
+                # (unless the source is damaged!  but not really worth
+                # optimising for that case.  The pack code will reject bad
+                # streams anyway.)
+                if not isinstance(search, graph.EverythingResult):
+                    missing_keys.update(
+                        self._parent_inventories(search.get_keys()))
             if missing_keys:
                 pb.update("Missing keys")
                 stream = source.get_stream_for_missing_keys(missing_keys)
