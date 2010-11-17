@@ -21,6 +21,7 @@ from bzrlib import (
     commit,
     errors,
     memorytree,
+    revision,
     )
 
 
@@ -197,7 +198,10 @@ class BranchBuilder(object):
             tree = memorytree.MemoryTree.create_on_branch(self._branch)
         tree.lock_write()
         try:
-            if parent_ids is not None:
+            if parent_ids == [revision.NULL_REVISION]:
+                tree.set_parent_ids([],
+                    allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+            elif parent_ids is not None:
                 tree.set_parent_ids(parent_ids,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
             # Unfortunately, MemoryTree.add(directory) just creates an

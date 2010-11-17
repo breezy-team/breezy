@@ -324,6 +324,21 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         # should look like it was not modified in the merge
         self.assertEqual('C-id', d_tree.inventory['c-id'].revision)
 
+    def test_set_parent_to_null(self):
+        builder = self.build_a_rev()
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
+        builder.build_snapshot('B-id', [_mod_revision.NULL_REVISION],
+            [('add', ('', None, 'directory', None))])
+        # We should now have a graph:
+        #   A B
+        # And not A => B
+        repo = builder.get_branch().repository
+        self.assertEqual({'A-id': (_mod_revision.NULL_REVISION,),
+                          'B-id': (_mod_revision.NULL_REVISION,),},
+                         repo.get_parent_map(['A-id', 'B-id']))
+
+    
     def test_start_finish_series(self):
         builder = BranchBuilder(self.get_transport().clone('foo'))
         builder.start_series()
