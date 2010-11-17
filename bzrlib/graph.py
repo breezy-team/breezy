@@ -1690,7 +1690,7 @@ class PendingAncestryResult(object):
         return PendingAncestryResult(referenced - seen, self.repo)
 
 
-def EverythingResult(object):
+class EverythingResult(object):
     """A search result that simply requests everything in the repository."""
 
     def __init__(self, repo):
@@ -1709,7 +1709,7 @@ def EverythingResult(object):
                 # warn developers (not users) not to do this
                 trace.mutter_callsite(
                     2, "EverythingResult(RemoteRepository).get_keys() is slow.")
-        return self._repo.revisions.keys()
+        return self._repo.all_revision_ids()
 
     def is_empty(self):
         # It's ok for this to wrongly return False: the worst that can happen
