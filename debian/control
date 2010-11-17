@@ -3,7 +3,7 @@ Section: vcs
 Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Jeff Bailey <jbailey@raspberryginger.com>, Wouter van Heyst <larstiq@larstiq.dyndns.org>, Reinhard Tartler <siretart@tauware.de>, Jelmer Vernooij <jelmer@debian.org>, John Francesco Ferlito <johnf@inodes.org>
-Build-Depends: debhelper (>> 5.0.0), cdbs, python, python-all-dev, python-central, python-docutils, graphviz, python-pyrex, python-testtools
+Build-Depends: debhelper (>> 5.0.0), cdbs, python, python-all-dev, python-central, python-docutils, graphviz, python-pyrex, python-testtools (>= 0.9.2~)
 Standards-Version: 3.9.1
 XS-Python-Version: >= 2.4
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr/unstable
@@ -14,7 +14,7 @@ Package: bzr
 Architecture: any
 Depends: ${shlibs:Depends}, ${python:Depends}, python (>> 2.5) | python-celementtree | python-elementtree, python-configobj, ${misc:Depends}
 Recommends: bzrtools, python-paramiko, ca-certificates, python-launchpadlib
-Suggests: bzr-gtk, bzr-svn, python-pycurl, xdg-utils, python-kerberos (>= 1.0+svn2455-1), bzr-doc
+Suggests: bzr-gtk, bzr-svn, python-pycurl, xdg-utils, python-kerberos (>= 1.0+svn2455-1), bzr-doc, python-testtools (>= 0.9.2~)
 XB-Python-Version: ${python:Versions}
 Description: easy to use distributed version control system
  Bazaar is a distributed version control system designed to be easy to
