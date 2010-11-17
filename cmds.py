@@ -907,8 +907,9 @@ class cmd_import_upstream(Command):
         else:
             parents = []
         if parents:
-            # See bug lp:309682
-            upstream.repository.fetch(branch.repository, parents[0])
+            if upstream is not None:
+                # See bug lp:309682
+                upstream.repository.fetch(branch.repository, parents[0])
             db.extract_upstream_tree(parents[0], tempdir)
         else:
             db._create_empty_upstream_tree(tempdir)
