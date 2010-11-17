@@ -1759,12 +1759,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return '\n'.join((start_keys, stop_keys, count))
 
     def _serialise_search_result(self, search_result):
-        if isinstance(search_result, graph.PendingAncestryResult):
-            parts = ['ancestry-of']
-            parts.extend(search_result.heads)
-        else:
-            recipe = search_result.get_recipe()
-            parts = [recipe[0], self._serialise_search_recipe(recipe)]
+        parts = search_result.get_network_struct()
         return '\n'.join(parts)
 
     def autopack(self):
@@ -1962,11 +1957,16 @@ class RemoteStreamSource(repository.StreamSource):
         search_bytes = repo._serialise_search_result(search)
         args = (path, self.to_format.network_name())
         candidate_verbs = [
+            ('Repository.get_stream_2.3', (2, 3)),
             ('Repository.get_stream_1.19', (1, 19)),
             ('Repository.get_stream', (1, 13))]
+
         found_verb = False
         for verb, version in candidate_verbs:
             if medium._is_remote_before(version):
+                continue
+            if isinstance(search, graph.EverythingResult) and version < (2, 3):
+                # EverythingResult is new in 2.3
                 continue
             try:
                 response = repo._call_with_body_bytes_expecting_body(
