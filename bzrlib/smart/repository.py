@@ -506,7 +506,7 @@ class SmartServerRepositoryGetStream_2_3(SmartServerRepositoryGetStream_1_19):
     def recreate_search(self, repository, search_bytes, discard_excess=False):
         if search_bytes == 'everything':
             return graph.EverythingResult(repository), None
-        return super(SmartServerRepositoryGetStream_2_3).recreate_search(
+        return super(SmartServerRepositoryGetStream_2_3, self).recreate_search(
             repository, search_bytes, discard_excess=discard_excess)
 
 
