@@ -149,6 +149,7 @@ def create_configs(test):
     test.locations_config = config.LocationConfig(tree.basedir)
     test.bazaar_config = config.GlobalConfig()
 
+
 def create_configs_with_file_option(test):
     """Create configuration files with a ``file`` option set in each.
 
