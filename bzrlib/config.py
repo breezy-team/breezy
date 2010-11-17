@@ -1866,9 +1866,12 @@ class cmd_config(commands.Command):
                 break
             for (oname, value, section, conf_id, parser) in c._get_options():
                 if name == oname:
-                    # Display only the first value and exit (We need to use
-                    # get_user_option to take policies into account and we need
-                    # to make sure the option exists too :-/)
+                    # Display only the first value and exit
+
+                    # FIXME: We need to use get_user_option to take policies
+                    # into account and we need to make sure the option exists
+                    # too (hence the two for loops), this needs a better API
+                    # -- vila 20101117
                     value = c.get_user_option(name)
                     # Quote the value appropriately
                     value = parser._quote(value)
