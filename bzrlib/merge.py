@@ -582,6 +582,7 @@ class Merger(object):
             elif len(lcas) == 1:
                 self.base_rev_id = list(lcas)[0]
             else: # len(lcas) > 1
+                self._is_criss_cross = True
                 if len(lcas) > 2:
                     # find_unique_lca can only handle 2 nodes, so we have to
                     # start back at the beginning. It is a shame to traverse
@@ -592,7 +593,11 @@ class Merger(object):
                 else:
                     self.base_rev_id = self.revision_graph.find_unique_lca(
                                             *lcas)
-                self._is_criss_cross = True
+                sorted_lca_keys = self.revision_graph.find_merge_order(                
+                    revisions[0], lcas)
+                if self.base_rev_id == _mod_revision.NULL_REVISION:
+                    self.base_rev_id = sorted_lca_keys[0]
+                
             if self.base_rev_id == _mod_revision.NULL_REVISION:
                 raise errors.UnrelatedBranches()
             if self._is_criss_cross:
@@ -601,13 +606,15 @@ class Merger(object):
                 trace.mutter('Criss-cross lcas: %r' % lcas)
                 interesting_revision_ids = [self.base_rev_id]
                 interesting_revision_ids.extend(lcas)
+                interesting_revision_ids = list(set(interesting_revision_ids))
                 interesting_trees = dict((t.get_revision_id(), t)
                     for t in self.this_branch.repository.revision_trees(
                         interesting_revision_ids))
                 self._cached_trees.update(interesting_trees)
-                self.base_tree = interesting_trees.pop(self.base_rev_id)
-                sorted_lca_keys = self.revision_graph.find_merge_order(
-                    revisions[0], lcas)
+                if self.base_rev_id in lcas:
+                    self.base_tree = interesting_trees[self.base_rev_id]
+                else:
+                    self.base_tree = interesting_trees.pop(self.base_rev_id)
                 self._lca_trees = [interesting_trees[key]
                                    for key in sorted_lca_keys]
             else:
