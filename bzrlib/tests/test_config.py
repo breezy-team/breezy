@@ -1016,6 +1016,21 @@ class TestLocationConfig(tests.TestCaseInTempDir):
             'http://www.example.com', 'appendpath_option'),
             config.POLICY_APPENDPATH)
 
+    def test__get_options_with_policy(self):
+        self.get_branch_config('/dir/subdir',
+                               location_config="""\
+[/dir]
+other_url = /other-dir
+other_url:policy = appendpath
+[/dir/subdir]
+other_url = /other-subdir
+""")
+        self.assertEqual(
+            [(u'other_url', u'/other-subdir', u'/dir/subdir', 'locations'),
+             (u'other_url', u'/other-dir', u'/dir', 'locations'),
+             (u'other_url:policy', u'appendpath', u'/dir', 'locations')],
+            list(self.my_location_config._get_options()))
+
     def test_location_without_username(self):
         self.get_branch_config('http://www.example.com/ignoreparent')
         self.assertEqual(u'Erik B\u00e5gfors <erik@bagfors.nu>',
@@ -1157,15 +1172,18 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          self.my_config.post_commit())
 
-    def get_branch_config(self, location, global_config=None):
+    def get_branch_config(self, location, global_config=None,
+                          location_config=None):
         my_branch = FakeBranch(location)
         if global_config is None:
             global_config = sample_config_text
+        if location_config is None:
+            location_config = sample_branches_text
 
         my_global_config = config.GlobalConfig.from_string(global_config,
                                                            save=True)
         my_location_config = config.LocationConfig.from_string(
-            sample_branches_text, my_branch.base, save=True)
+            location_config, my_branch.base, save=True)
         my_config = config.BranchConfig(my_branch)
         self.my_config = my_config
         self.my_location_config = my_config._get_location_config()
