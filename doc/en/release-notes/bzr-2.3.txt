@@ -48,6 +48,8 @@ Bug Fixes
 * Better message if there is an error while setting ownership of
   ``.bazaar`` directory. (Parth Malwankar, #657553)
 
+* ``bzr config`` properly displays list values. (Vincent Ladeuil, #672382)
+
 * ``bzr config`` will now respect option policies when displaying the value
   and display the definition sections when appropriate.
   (Vincent Ladeuil, #671050)

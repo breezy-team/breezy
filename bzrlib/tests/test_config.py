@@ -21,6 +21,9 @@ import os
 import sys
 import threading
 
+
+from testtools import matchers
+
 #import bzrlib specific imports here
 from bzrlib import (
     branch,
@@ -123,6 +126,49 @@ check_signatures=ignore
 post_commit=bzrlib.tests.test_config.post_commit
 #testing explicit beats globs
 """
+
+
+def create_configs(test):
+    """Create configuration files for a given test.
+
+    This requires creating a tree (and populate the ``test.tree`` attribute)
+    and its associated branch and will populate the following attributes:
+
+    - branch_config: A BranchConfig for the associated branch.
+
+    - locations_config : A LocationConfig for the associated branch
+
+    - bazaar_config: A GlobalConfig.
+
+    The tree and branch are created in a 'tree' subdirectory so the tests can
+    still use the test directory to stay outside of the branch.
+    """
+    tree = test.make_branch_and_tree('tree')
+    test.tree = tree
+    test.branch_config = config.BranchConfig(tree.branch)
+    test.locations_config = config.LocationConfig(tree.basedir)
+    test.bazaar_config = config.GlobalConfig()
+
+
+def create_configs_with_file_option(test):
+    """Create configuration files with a ``file`` option set in each.
+
+    This builds on ``create_configs`` and add one ``file`` option in each
+    configuration with a value which allows identifying the configuration file.
+    """
+    create_configs(test)
+    test.bazaar_config.set_user_option('file', 'bazaar')
+    test.locations_config.set_user_option('file', 'locations')
+    test.branch_config.set_user_option('file', 'branch')
+
+
+class TestOptionsMixin:
+
+    def assertOptions(self, expected, conf):
+        # We don't care about the parser (as it will make tests hard to write
+        # and error-prone anyway)
+        self.assertThat([opt[:4] for opt in conf._get_options()],
+                        matchers.Equals(expected))
 
 
 class InstrumentedConfigObj(object):
@@ -902,7 +948,7 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
         self.assertIs(None, new_config.get_alias('commit'))
 
 
-class TestLocationConfig(tests.TestCaseInTempDir):
+class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
 
     def test_constructs(self):
         my_config = config.LocationConfig('http://example.com')
@@ -1025,11 +1071,11 @@ other_url:policy = appendpath
 [/dir/subdir]
 other_url = /other-subdir
 """)
-        self.assertEqual(
+        self.assertOptions(
             [(u'other_url', u'/other-subdir', u'/dir/subdir', 'locations'),
              (u'other_url', u'/other-dir', u'/dir', 'locations'),
              (u'other_url:policy', u'appendpath', u'/dir', 'locations')],
-            list(self.my_location_config._get_options()))
+            self.my_location_config)
 
     def test_location_without_username(self):
         self.get_branch_config('http://www.example.com/ignoreparent')
@@ -1485,49 +1531,11 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
-def create_configs(test):
-    """Create configuration files for a given test.
-
-    This requires creating a tree (and populate the ``test.tree`` attribute)
-    and its associated branch and will populate the following attributes:
-
-    - branch_config: A BranchConfig for the associated branch.
-
-    - locations_config : A LocationConfig for the associated branch
-
-    - bazaar_config: A GlobalConfig.
-
-    The tree and branch are created in a 'tree' subdirectory so the tests can
-    still use the test directory to stay outside of the branch.
-    """
-    tree = test.make_branch_and_tree('tree')
-    test.tree = tree
-    test.branch_config = config.BranchConfig(tree.branch)
-    test.locations_config = config.LocationConfig(tree.basedir)
-    test.bazaar_config = config.GlobalConfig()
-
-
-def create_configs_with_file_option(test):
-    """Create configuration files with a ``file`` option set in each.
-
-    This builds on ``create_configs`` and add one ``file`` option in each
-    configuration with a value which allows identifying the configuration file.
-    """
-    create_configs(test)
-    test.bazaar_config.set_user_option('file', 'bazaar')
-    test.locations_config.set_user_option('file', 'locations')
-    test.branch_config.set_user_option('file', 'branch')
-
-
-class TestConfigGetOptions(tests.TestCaseWithTransport):
+class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):
         super(TestConfigGetOptions, self).setUp()
         create_configs(self)
-
-    def assertOptions(self, expected, conf):
-        actual = list(conf._get_options())
-        self.assertEqual(expected, actual)
 
     # One variable in none of the above
     def test_no_variable(self):
@@ -1577,15 +1585,11 @@ class TestConfigGetOptions(tests.TestCaseWithTransport):
             self.branch_config)
 
 
-class TestConfigRemoveOption(tests.TestCaseWithTransport):
+class TestConfigRemoveOption(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):
         super(TestConfigRemoveOption, self).setUp()
         create_configs_with_file_option(self)
-
-    def assertOptions(self, expected, conf):
-        actual = list(conf._get_options())
-        self.assertEqual(expected, actual)
 
     def test_remove_in_locations(self):
         self.locations_config.remove_user_option('file', self.tree.basedir)
