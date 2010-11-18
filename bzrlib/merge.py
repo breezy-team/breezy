@@ -604,6 +604,9 @@ class Merger(object):
                 trace.warning('Warning: criss-cross merge encountered.  See bzr'
                               ' help criss-cross.')
                 trace.mutter('Criss-cross lcas: %r' % lcas)
+                if self.base_rev_id in lcas:
+                    trace.mutter('Unable to find unique lca. '
+                                 'Fallback %r as best option.' % self.base_rev_id)
                 interesting_revision_ids = set(lcas)
                 interesting_revision_ids.add(self.base_rev_id)
                 interesting_trees = dict((t.get_revision_id(), t)
