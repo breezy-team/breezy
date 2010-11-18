@@ -194,7 +194,7 @@ class BasicTags(_Tags):
             branch (if any).  Default is false (so the master will be updated).
             New in bzr 2.3.
 
-        :returns: A list of tags that conflicted, each of which is
+        :returns: A set of tags that conflicted, each of which is
             (tagname, source_target, dest_target), or None if no copying was
             done.
         """
@@ -237,9 +237,8 @@ class BasicTags(_Tags):
             conflicts += self._merge_to(master.tags, source_dict,
                 overwrite)
         # We use set() to remove any duplicate conflicts from the master
-        # branch.  We then use list() to keep the behaviour as close to 2.2.1
-        # and earlier as possible, to minimise potential compatibility issues.
-        return list(set(conflicts))
+        # branch.
+        return set(conflicts)
 
     def _merge_to(self, to_tags, source_dict, overwrite):
         dest_dict = to_tags.get_tag_dict()
