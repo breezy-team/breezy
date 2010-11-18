@@ -29,7 +29,7 @@ Things to keep
 
 Reasonable sizes 'amount read' from remote machines to reconstruct an arbitrary
 text: Reading 5MB for a 100K plain text is not a good trade off. Reading (say)
-500K is probably acceptable. Reading ~100K is ideal. However, its likely that
+500K is probably acceptable. Reading ~100K is ideal. However, it's likely that
 some texts (e.g NEWS versions) can be stored for nearly-no space at all if we
 are willing to have unbounded IO. Profiling to set a good heuristic will be
 important. Also allowing users to choose to optimise for a server environment

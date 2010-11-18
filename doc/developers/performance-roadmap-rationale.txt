@@ -109,7 +109,7 @@ help with, but this looks to be a large project and an overview will be
 of great assistance I think. We want to help everyone that wishes to
 contribute to performance to do so effectively.
 
-Finally, its important to note that coding is not the only contribution
+Finally, it's important to note that coding is not the only contribution
 - testing, giving feedback on current performance, helping with the
 analysis are all extremely important tasks too and we probably want to
 have clear markers of where that should be done to encourage such
