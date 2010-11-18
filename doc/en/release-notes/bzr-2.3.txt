@@ -157,6 +157,11 @@ Bug Fixes
   ``bzrdir.open_repository()`` to propagate.  This is unhelpful at best,
   and at worst can trigger infinite loops in callers.  (Andrew Bennetts)
   
+* The ``branch.tags.merge_to(target_branch)`` API used by plugins such as
+  ``bzr-builddeb`` now propagates changes to the master branch of the
+  target branch (if there is one).  This makes it consistent with the
+  other tag APIs.  (Andrew Bennetts, #603395)
+
 * Windows installers no longer requires the Microsoft vcredist to be
   installed. (Martin [gz], Gary van der Merwe, #632465)
 

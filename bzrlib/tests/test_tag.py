@@ -120,6 +120,9 @@ class TestTagMerging(TestCaseWithTransport):
 
 
 class TestTagsInCheckouts(TestCaseWithTransport):
+    """Tests for how tags are synchronised between the master and child branch
+    of a checkout.
+    """
 
     def test_update_tag_into_checkout(self):
         # checkouts are directly connected to the tags of their master branch:
