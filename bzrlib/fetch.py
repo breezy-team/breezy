@@ -127,14 +127,13 @@ class RepoFetcher(object):
             resume_tokens, missing_keys = self.sink.insert_stream(
                 stream, from_format, [])
             if self.to_repository._fallback_repositories:
-                # XXX: if search is EverythingResult this should be
-                # unnecessary, so we can skip this step.  (so long as it causes
-                # the source to send parent invs for all the revs (or just all
-                # present invs)).
-                # (unless the source is damaged!  but not really worth
-                # optimising for that case.  The pack code will reject bad
-                # streams anyway.)
                 if not isinstance(search, graph.EverythingResult):
+                    # If search is EverythingResult this is be unnecessary,
+                    # so we can skip this step.  The source will send us
+                    # every revision it has, and their parent inventories.
+                    # (Unless the source is damaged!  but not really worth
+                    # optimising for that case.  The pack code will reject bad
+                    # streams anyway.)
                     missing_keys.update(
                         self._parent_inventories(search.get_keys()))
             if missing_keys:
