@@ -71,7 +71,7 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
-* ``BranchBuilder.build_snapshot`` now accepts parent_ids == ['null:'].
+* ``BranchBuilder.build_snapshot`` now accepts parent_ids == [].
   This can be used to create a new root in the graph. (Gary van der Merwe)
 
 Testing

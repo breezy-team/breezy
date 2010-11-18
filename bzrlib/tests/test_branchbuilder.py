@@ -328,7 +328,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         builder = self.build_a_rev()
         builder.start_series()
         self.addCleanup(builder.finish_series)
-        builder.build_snapshot('B-id', [_mod_revision.NULL_REVISION],
+        builder.build_snapshot('B-id', [],
             [('add', ('', None, 'directory', None))])
         # We should now have a graph:
         #   A B
