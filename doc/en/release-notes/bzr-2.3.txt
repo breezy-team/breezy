@@ -60,6 +60,9 @@ Bug Fixes
   is involved in a text conflict (but the conflict is still not
   resolved). (Vincent Ladeuil, #646961)
 
+* Merge will now correctly locate a lca where there is a criss-cross merge
+  of a new root. (Gary van der Merwe, #588698)
+
 * Report error if non-ASCII command option given. (Rory Yorke, #140563)
 
 Documentation
@@ -78,6 +81,9 @@ Internals
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* ``BranchBuilder.build_snapshot`` now accepts parent_ids == [].
+  This can be used to create a new root in the graph. (Gary van der Merwe)
 
 Testing
 *******
