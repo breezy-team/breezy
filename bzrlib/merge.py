@@ -604,9 +604,8 @@ class Merger(object):
                 trace.warning('Warning: criss-cross merge encountered.  See bzr'
                               ' help criss-cross.')
                 trace.mutter('Criss-cross lcas: %r' % lcas)
-                interesting_revision_ids = [self.base_rev_id]
-                interesting_revision_ids.extend(lcas)
-                interesting_revision_ids = list(set(interesting_revision_ids))
+                interesting_revision_ids = set(lcas)
+                interesting_revision_ids.add(self.base_rev_id)
                 interesting_trees = dict((t.get_revision_id(), t)
                     for t in self.this_branch.repository.revision_trees(
                         interesting_revision_ids))
