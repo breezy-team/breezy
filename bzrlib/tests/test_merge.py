@@ -1280,7 +1280,7 @@ class TestMergerInMemory(TestMergerBase):
         builder = self.get_builder()
         builder.build_snapshot('A-id', None,
             [('add', ('', None, 'directory', None))])
-        builder.build_snapshot('B-id', [_mod_revision.NULL_REVISION],
+        builder.build_snapshot('B-id', [],
             [('add', ('', None, 'directory', None))])
         builder.build_snapshot('D-id', ['A-id', 'B-id'], [])
         builder.build_snapshot('C-id', ['A-id', 'B-id'], [])
