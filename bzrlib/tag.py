@@ -192,7 +192,7 @@ class BasicTags(_Tags):
         :param overwrite: Overwrite conflicting tags in the target branch
         :param ignore_master: Do not modify the tags in the target's master
             branch (if any).  Default is false (so the master will be updated).
-            New in bzr 2.2.2 and bzr 2.3.
+            New in bzr 2.3.
 
         :returns: A list of tags that conflicted, each of which is
             (tagname, source_target, dest_target), or None if no copying was
@@ -286,8 +286,8 @@ class BasicTags(_Tags):
 
 def _merge_tags_if_possible(from_branch, to_branch, ignore_master=False):
     # Try hard to support merge_to implementations that don't expect
-    # 'ignore_master' (new in bzr 2.2.2/2.3).  First, if the flag isn't set
-    # then we can safely avoid passing ignore_master at all.
+    # 'ignore_master' (new in bzr 2.3).  First, if the flag isn't set then we
+    # can safely avoid passing ignore_master at all.
     if not ignore_master:
         from_branch.tags.merge_to(to_branch.tags)
         return
@@ -302,7 +302,7 @@ def _merge_tags_if_possible(from_branch, to_branch, ignore_master=False):
         # the ignore_master=False case), but even then there's probably no harm
         # in calling a second time.
         symbol_versioning.warn(
-            symbol_versioning.deprecated_in((2,2,2)) % (
+            symbol_versioning.deprecated_in((2,3)) % (
                 "Tags.merge_to (of %r) that doesn't accept ignore_master kwarg"
                 % (from_branch.tags,),),
             DeprecationWarning)

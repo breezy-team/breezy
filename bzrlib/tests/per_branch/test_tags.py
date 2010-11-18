@@ -234,7 +234,7 @@ class TestTagsMergeToInCheckouts(per_branch.TestCaseWithBranch):
     branch and/or the checkout (child).  It may seem strange to have different
     tags in the child and master, but 'bzr merge' intentionally updates the
     child and not the master (instead the next 'bzr commit', if the user
-    decides to commit, will update the master).  Also, merge_to in bzr < 2.2.2
+    decides to commit, will update the master).  Also, merge_to in bzr < 2.3
     didn't propagate changes to the master, and current bzr versions may find
     themselves operating on checkouts touched by older bzrs
     
