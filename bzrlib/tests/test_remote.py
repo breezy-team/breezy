@@ -3191,7 +3191,7 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         remote_branch.copy_content_into(local)
         self.assertFalse('Branch.revision_history' in self.hpss_calls)
 
-    def test_fetch_everything_avoids_get_parent_map(self):
+    def test_fetch_everything_needs_just_one_call(self):
         local = self.make_branch('local')
         builder = self.make_branch_builder('remote')
         builder.build_commit(message="Commit.")
