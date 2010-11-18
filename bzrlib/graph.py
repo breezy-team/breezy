@@ -1557,6 +1557,19 @@ class SearchResult(object):
         self._recipe = ('search', start_keys, exclude_keys, key_count)
         self._keys = frozenset(keys)
 
+    def __repr__(self):
+        kind, start_keys, exclude_keys, key_count = self._recipe
+        if len(start_keys) > 5:
+            start_keys_repr = repr(list(start_keys)[:5])[:-1] + ', ...]'
+        else:
+            start_keys_repr = repr(start_keys)
+        if len(exclude_keys) > 5:
+            exclude_keys_repr = repr(list(exclude_keys)[:5])[:-1] + ', ...]'
+        else:
+            exclude_keys_repr = repr(exclude_keys)
+        return '<%s %s:(%s, %s, %d)>' % (self.__class__.__name__,
+            kind, start_keys_repr, exclude_keys_repr, key_count)
+
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
 
@@ -1690,6 +1703,12 @@ class PendingAncestryResult(object):
         return PendingAncestryResult(referenced - seen, self.repo)
 
 
+class EmptySearchResult(object):
+
+    def is_empty(self):
+        return True
+    
+
 class EverythingResult(object):
     """A search result that simply requests everything in the repository."""
 
@@ -1722,6 +1741,33 @@ class EverythingResult(object):
         # PendingAncestryResult(
         #   self._repo.revisions.keys() - seen + referenced) ?
         raise NotImplementedError(self.refine)
+
+
+class EverythingNotInOther(object):
+
+    def __init__(self, to_repo, from_repo, find_ghosts=False):
+        self.to_repo = to_repo
+        self.from_repo = from_repo
+        self.find_ghosts = find_ghosts
+
+    def get_search(self):
+        return self.to_repo.search_missing_revision_ids(
+            self.from_repo, find_ghosts=self.find_ghosts)
+
+
+class NotInOtherForRev(object):
+
+    def __init__(self, to_repo, from_repo, last_revision, find_ghosts=False):
+        self.to_repo = to_repo
+        self.from_repo = from_repo
+        self.find_ghosts = find_ghosts
+        self.last_revision = last_revision
+
+    def get_search(self):
+        return self.to_repo.search_missing_revision_ids(
+            self.from_repo, revision_id=self.last_revision,
+            find_ghosts=self.find_ghosts)
+
 
 
 def collapse_linear_regions(parent_map):

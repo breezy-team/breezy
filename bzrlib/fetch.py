@@ -94,7 +94,8 @@ class RepoFetcher(object):
         try:
             pb.update("Finding revisions", 0, 2)
             search = self._revids_to_fetch()
-            if search is None:
+            mutter('fetching: %s', search)
+            if search.is_empty():
                 return
             pb.update("Fetching revisions", 1, 2)
             self._fetch_everything_for_search(search)
@@ -159,17 +160,30 @@ class RepoFetcher(object):
         """Determines the exact revisions needed from self.from_repository to
         install self._last_revision in self.to_repository.
 
-        If no revisions need to be fetched, then this just returns None.
+        :returns: A SearchResult of some sort.  (Possibly a
+        PendingAncestryResult, EmptySearchResult, etc.)
         """
-        if self._fetch_spec is not None:
+        mutter("self._fetch_spec, self._last_revision: %r, %r",
+                self._fetch_spec, self._last_revision)
+        get_search = getattr(self._fetch_spec, 'get_search', None)
+        if get_search is not None:
+            # This is EverythingNotInOther or a similar kind of fetch_spec.
+            # Turn it into a search result.
+            return get_search()
+        elif self._fetch_spec is not None:
+            # The fetch spec is already a concrete search result.
             return self._fetch_spec
-        mutter('fetch up to rev {%s}', self._last_revision)
-        if self._last_revision is NULL_REVISION:
+        elif self._last_revision == NULL_REVISION:
+            # fetch_spec is None + last_revision is null => empty fetch.
             # explicit limit of no revisions needed
-            return None
-        return self.to_repository.search_missing_revision_ids(
-            self.from_repository, self._last_revision,
-            find_ghosts=self.find_ghosts)
+            return graph.EmptySearchResult()
+        elif self._last_revision is not None:
+            return graph.NotInOtherForRev(self.to_repository,
+                self.from_repository, self._last_revision,
+                find_ghosts=self.find_ghosts).get_search()
+        else: # self._last_revision is None:
+            return graph.EverythingNotInOther(self.to_repository,
+                self.from_repository, find_ghosts=self.find_ghosts).get_search()
 
     def _parent_inventories(self, revision_ids):
         # Find all the parent revisions referenced by the stream, but
