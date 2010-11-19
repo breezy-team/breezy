@@ -666,9 +666,14 @@ class TreeTransformBase(object):
         if (self._new_name, self._new_parent) == ({}, {}):
             return conflicts
         for children in by_parent.itervalues():
-            name_ids = [(self.final_name(t), t) for t in children]
-            if not self._case_sensitive_target:
-                name_ids = [(n.lower(), t) for n, t in name_ids]
+            name_ids = []
+            for child_tid in children:
+                name = self.final_name(child_tid)
+                if name is not None:
+                    # Keep children only if they still exist in the end
+                    if not self._case_sensitive_target:
+                        name = name.lower()
+                    name_ids.append((name, child_tid))
             name_ids.sort()
             last_name = None
             last_trans_id = None

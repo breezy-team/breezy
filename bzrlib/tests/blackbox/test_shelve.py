@@ -41,6 +41,14 @@ class TestShelveList(TestCaseWithTransport):
         self.assertEqual('', err)
         self.assertEqual('  1: Foo\n', out)
 
+    def test_shelve_list_via_directory(self):
+        tree = self.make_branch_and_tree('tree')
+        creator = self.make_creator(tree)
+        shelf_id = tree.get_shelf_manager().shelve_changes(creator, 'Foo')
+        out, err = self.run_bzr('shelve -d tree --list', retcode=1)
+        self.assertEqual('', err)
+        self.assertEqual('  1: Foo\n', out)
+
     def test_shelve_no_message(self):
         tree = self.make_branch_and_tree('.')
         creator = self.make_creator(tree)
@@ -124,6 +132,12 @@ class TestShelveRelpath(TestCaseWithTransport):
         tree.add('file')
         os.chdir('tree/dir')
         self.run_bzr('shelve --all ../file')
+
+    def test_shelve_via_directory(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/file', 'tree/dir/'])
+        tree.add('file')
+        self.run_bzr('shelve -d tree/dir --all ../file')
 
 
 class TestShelveUnshelve(TestCaseWithTransport):

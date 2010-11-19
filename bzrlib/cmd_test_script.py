@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,13 +16,16 @@
 
 """Front-end command for shell-like test scripts.
 
-See developers/testing.html for more explanations.
+See doc/developers/testing.txt for more explanations.
 This module should be importable even if testtools aren't available.
 """
 
 import os
 
-from bzrlib import commands
+from bzrlib import (
+    commands,
+    option,
+    )
 
 
 class cmd_test_script(commands.Command):
@@ -30,9 +33,13 @@ class cmd_test_script(commands.Command):
 
     hidden = True
     takes_args = ['infile']
+    takes_options = [
+        option.Option('null-output',
+                       help='Null command outputs match any output.'),
+        ]
 
     @commands.display_command
-    def run(self, infile):
+    def run(self, infile, null_output=False):
         # local imports to defer testtools dependency
         from bzrlib import tests
         from bzrlib.tests.script import TestCaseWithTransportAndScript
@@ -48,7 +55,8 @@ class cmd_test_script(commands.Command):
             script = None # Set before running
 
             def test_it(self):
-                self.run_script(script)
+                self.run_script(script,
+                                null_output_matches_anything=null_output)
 
         runner = tests.TextTestRunner(stream=self.outf)
         test = Test('test_it')

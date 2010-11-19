@@ -5894,7 +5894,7 @@ class cmd_remove_branch(Command):
             location = "."
         branch = Branch.open_containing(location)[0]
         branch.bzrdir.destroy_branch()
-        
+
 
 class cmd_shelve(Command):
     __doc__ = """Temporarily set aside some changes from the current tree.
@@ -5951,9 +5951,9 @@ class cmd_shelve(Command):
     _see_also = ['unshelve', 'configuration']
 
     def run(self, revision=None, all=False, file_list=None, message=None,
-            writer=None, list=False, destroy=False, directory=u'.'):
+            writer=None, list=False, destroy=False, directory=None):
         if list:
-            return self.run_for_list()
+            return self.run_for_list(directory=directory)
         from bzrlib.shelf_ui import Shelver
         if writer is None:
             writer = bzrlib.option.diff_writer_registry.get()
@@ -5967,8 +5967,10 @@ class cmd_shelve(Command):
         except errors.UserAbort:
             return 0
 
-    def run_for_list(self):
-        tree = WorkingTree.open_containing('.')[0]
+    def run_for_list(self, directory=None):
+        if directory is None:
+            directory = u'.'
+        tree = WorkingTree.open_containing(directory)[0]
         self.add_cleanup(tree.lock_read().unlock)
         manager = tree.get_shelf_manager()
         shelves = manager.active_shelves()

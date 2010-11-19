@@ -967,7 +967,6 @@ def failed_to_load_extension(exception):
     # they tend to happen very early in startup when we can't check config
     # files etc, and also we want to report all failures but not spam the user
     # with 10 warnings.
-    from bzrlib import trace
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
         trace.mutter("failed to load compiled extension: %s" % exception_str)
@@ -1875,7 +1874,10 @@ def copy_ownership_from_path(dst, src=None):
         s = os.stat(src)
         chown(dst, s.st_uid, s.st_gid)
     except OSError, e:
-        trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
+        trace.warning(
+            'Unable to copy ownership from "%s" to "%s". '
+            'You may want to set it manually.', src, dst)
+        trace.log_exception_quietly()
 
 
 def path_prefix_key(path):
