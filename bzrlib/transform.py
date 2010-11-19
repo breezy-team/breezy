@@ -708,13 +708,12 @@ class TreeTransformBase(object):
         for parent_id, children in by_parent.iteritems():
             if parent_id is ROOT_PARENT:
                 continue
-            existing = False
+            no_children = True
             for child_id in children:
                 if self.final_kind(child_id) is not None:
-                    existing = True
+                    no_children = False
                     break
-            if not existing:
-                # We have no child
+            if no_children:
                 continue
             # There is at least a child, so we need an existing directory to
             # contain it.
