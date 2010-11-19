@@ -92,6 +92,7 @@ class Branch(controldir.ControlComponent):
         self._revision_id_to_revno_cache = None
         self._partial_revision_id_to_revno_cache = {}
         self._partial_revision_history_cache = []
+        self._tags_bytes = None
         self._last_revision_info_cache = None
         self._merge_sorted_revisions_cache = None
         self._open_hook()
@@ -227,6 +228,7 @@ class Branch(controldir.ControlComponent):
             possible_transports=[self.bzrdir.root_transport])
         return a_branch.repository
 
+    @needs_read_lock
     def _get_tags_bytes(self):
         """Get the bytes of a serialised tags dict.
 
@@ -239,7 +241,9 @@ class Branch(controldir.ControlComponent):
         :return: The bytes of the tags file.
         :seealso: Branch._set_tags_bytes.
         """
-        return self._transport.get_bytes('tags')
+        if self._tags_bytes is None:
+            self._tags_bytes = self._transport.get_bytes('tags')
+        return self._tags_bytes
 
     def _get_nick(self, local=False, possible_transports=None):
         config = self.get_config()
@@ -876,8 +880,12 @@ class Branch(controldir.ControlComponent):
 
         :seealso: Branch._get_tags_bytes.
         """
-        return _run_with_write_locked_target(self, self._transport.put_bytes,
-            'tags', bytes)
+        return _run_with_write_locked_target(self, self._set_tags_bytes_locked,
+                bytes)
+
+    def _set_tags_bytes_locked(self, bytes):
+        self._tags_bytes = bytes
+        return self._transport.put_bytes('tags', bytes)
 
     def _cache_revision_history(self, rev_history):
         """Set the cached revision history to rev_history.
@@ -913,6 +921,7 @@ class Branch(controldir.ControlComponent):
         self._merge_sorted_revisions_cache = None
         self._partial_revision_history_cache = []
         self._partial_revision_id_to_revno_cache = {}
+        self._tags_bytes = None
 
     def _gen_revision_history(self):
         """Return sequence of revision hashes on to this branch.
@@ -1372,7 +1381,8 @@ class Branch(controldir.ControlComponent):
         return format
 
     def create_clone_on_transport(self, to_transport, revision_id=None,
-        stacked_on=None, create_prefix=False, use_existing_dir=False):
+        stacked_on=None, create_prefix=False, use_existing_dir=False,
+        no_tree=None):
         """Create a clone of this branch and its bzrdir.
 
         :param to_transport: The transport to clone onto.
@@ -1391,7 +1401,8 @@ class Branch(controldir.ControlComponent):
             revision_id = self.last_revision()
         dir_to = self.bzrdir.clone_on_transport(to_transport,
             revision_id=revision_id, stacked_on=stacked_on,
-            create_prefix=create_prefix, use_existing_dir=use_existing_dir)
+            create_prefix=create_prefix, use_existing_dir=use_existing_dir,
+            no_tree=no_tree)
         return dir_to.open_branch()
 
     def create_checkout(self, to_location, revision_id=None,
@@ -1522,7 +1533,7 @@ class BranchFormat(object):
      * an open routine.
 
     Formats are placed in an dict by their format string for reference
-    during branch opening. Its not required that these be instances, they
+    during branch opening. It's not required that these be instances, they
     can be classes themselves with class methods - it simply depends on
     whether state is needed for a given format or not.
 
@@ -1819,7 +1830,7 @@ class BranchHooks(Hooks):
             "with a bzrlib.branch.PullResult object and only runs in the "
             "bzr client.", (0, 15), None))
         self.create_hook(HookPoint('pre_commit',
-            "Called after a commit is calculated but before it is is "
+            "Called after a commit is calculated but before it is "
             "completed. pre_commit is called with (local, master, old_revno, "
             "old_revid, future_revno, future_revid, tree_delta, future_tree"
             "). old_revid is NULL_REVISION for the first commit to a branch, "
@@ -3103,8 +3114,12 @@ class PullResult(_Result):
     :ivar tag_conflicts: A list of tag conflicts, see BasicTags.merge_to
     """
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def __int__(self):
-        # DEPRECATED: pull used to return the change in revno
+        """Return the relative change in revno.
+
+        :deprecated: Use `new_revno` and `old_revno` instead.
+        """
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
@@ -3135,8 +3150,12 @@ class BranchPushResult(_Result):
         target, otherwise it will be None.
     """
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def __int__(self):
-        # DEPRECATED: push used to return the change in revno
+        """Return the relative change in revno.
+
+        :deprecated: Use `new_revno` and `old_revno` instead.
+        """
         return self.new_revno - self.old_revno
 
     def report(self, to_file):
@@ -3472,7 +3491,7 @@ class GenericInterBranch(InterBranch):
                 # push into the master from the source branch.
                 self.source._basic_push(master_branch, overwrite, stop_revision)
                 # and push into the target branch from the source. Note that we
-                # push from the source branch again, because its considered the
+                # push from the source branch again, because it's considered the
                 # highest bandwidth repository.
                 result = self.source._basic_push(self.target, overwrite,
                     stop_revision)

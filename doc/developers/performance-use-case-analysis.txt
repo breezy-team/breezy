@@ -38,7 +38,7 @@ should degrade gracefully as trees become huge. The tree basis id should
 be constant time. Retrieval of the annotated text should be roughly
 constant for any text of the same size regardless of the number of
 revisions contributing to its content. Mapping of the revision ids to
-dotted revnos could be done as the text is retrieved, but its completely
+dotted revnos could be done as the text is retrieved, but it's completely
 fine to post-process the annotated text to obtain dotted-revnos.'
 
 What factors should be considered?
@@ -79,7 +79,7 @@ design with are:
 - locality of reference: If an operation requires data that is located
   within a small region at any point, we often get better performance
   than with an implementation of the same operation that requires the
-  same amount of data but with a lower locality of reference. Its
+  same amount of data but with a lower locality of reference. It's
   fairly tricky to add locality of reference after the fact, so I think
   its worth considering up front.
 
@@ -102,8 +102,8 @@ improving network performance via the smart server and thus escape the
 file-level operation latency considerations.
 
 Many performance problems only become visible when changing the scaling knobs
-upwards to large trees. On small trees its our baseline performance that drives
-incremental improvements; on large trees its the amount of processing per item
+upwards to large trees. On small trees it's our baseline performance that drives
+incremental improvements; on large trees it's the amount of processing per item
 that drives performance. A significant goal therefore is to keep the amount of
 data to be processed under control. Ideally we can scale in a sublinear fashion
 for all operations, but we MUST NOT scale even linearly for operations that

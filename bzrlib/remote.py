@@ -214,7 +214,7 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         if len(branch_info) != 2:
             raise errors.UnexpectedSmartServerResponse(response)
         branch_ref, branch_name = branch_info
-        format = bzrdir.network_format_registry.get(control_name)
+        format = controldir.network_format_registry.get(control_name)
         if repo_name:
             format.repository_format = repository.network_format_registry.get(
                 repo_name)
@@ -271,7 +271,8 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._real_bzrdir.destroy_branch(name=name)
         self._next_open_branch_result = None
 
-    def create_workingtree(self, revision_id=None, from_branch=None):
+    def create_workingtree(self, revision_id=None, from_branch=None,
+        accelerator_tree=None, hardlink=False):
         raise errors.NotLocalUrl(self.transport.base)
 
     def find_branch_format(self, name=None):
@@ -2368,7 +2369,13 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         self._ensure_real()
         return self._real_branch._get_tags_bytes()
 
+    @needs_read_lock
     def _get_tags_bytes(self):
+        if self._tags_bytes is None:
+            self._tags_bytes = self._get_tags_bytes_via_hpss()
+        return self._tags_bytes
+
+    def _get_tags_bytes_via_hpss(self):
         medium = self._client._medium
         if medium._is_remote_before((1, 13)):
             return self._vfs_get_tags_bytes()
@@ -2384,6 +2391,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self._real_branch._set_tags_bytes(bytes)
 
     def _set_tags_bytes(self, bytes):
+        if self.is_locked():
+            self._tags_bytes = bytes
         medium = self._client._medium
         if medium._is_remote_before((1, 18)):
             self._vfs_set_tags_bytes(bytes)

@@ -349,28 +349,28 @@ class TestAutoResolve(TestCaseWithTransport):
         self.build_tree_contents([('this/hello', 'Hello World')])
         this.commit('Add World')
         this.merge_from_branch(other.branch)
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '<<<<<<<')])
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '=======')])
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '\n>>>>>>>')])
         remaining, resolved = this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.assertEqual([], resolved)
         self.build_tree_contents([('this/hello', 'hELLO wORLD')])
         remaining, resolved = this.auto_resolve()
         self.assertEqual([], this.conflicts())
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          resolved)
         self.failIfExists('this/hello.BASE')
 
@@ -378,7 +378,7 @@ class TestAutoResolve(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello/'])
         tree.add('hello', 'hello-id')
-        file_conflict = conflicts.TextConflict('file', None, 'hello-id')
+        file_conflict = conflicts.TextConflict('file', 'hello-id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
         tree.auto_resolve()
 

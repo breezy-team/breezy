@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -187,6 +187,14 @@ tabs: \t\t\t
         s = read_stanza([])
         self.assertEqual(s, None)
         self.assertTrue(s is None)
+
+    def test_read_nul_byte(self):
+        """File consisting of a nul byte causes an error."""
+        self.assertRaises(ValueError, read_stanza, ['\0'])
+
+    def test_read_nul_bytes(self):
+        """File consisting of many nul bytes causes an error."""
+        self.assertRaises(ValueError, read_stanza, ['\0' * 100])
 
     def test_read_iter(self):
         """Read several stanzas from file"""

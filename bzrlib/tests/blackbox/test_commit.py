@@ -33,6 +33,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
     probe_bad_non_ascii,
     TestSkipped,
+    UnicodeFilenameFeature,
     )
 from bzrlib.tests import TestCaseWithTransport
 
@@ -112,6 +113,7 @@ class TestCommit(TestCaseWithTransport):
     def test_unicode_commit_message_is_filename(self):
         """Unicode commit message same as a filename (Bug #563646).
         """
+        self.requireFeature(UnicodeFilenameFeature)
         file_name = u'\N{euro sign}'
         self.run_bzr(['init'])
         open(file_name, 'w').write('hello world')
