@@ -124,9 +124,6 @@ New Features
   default format for new branches created with ``bzr init``.
   (Neil Martinsen-Burrell, #484101)
 
-Improvements
-************
-
 Bug Fixes
 *********
 
