@@ -687,7 +687,12 @@ class Command(object):
 
         self._setup_outf()
 
-        return self.run(**all_cmd_args)
+        try:
+            return self.run(**all_cmd_args)
+        finally:
+            # reset it, so that other commands run in the same process won't
+            # inherit state
+            trace.set_verbosity_level(0)
 
     def _setup_run(self):
         """Wrap the defined run method on self with a cleanup.
@@ -810,7 +815,13 @@ def parse_args(command, argv, alias_argv=None):
     else:
         args = argv
 
-    options, args = parser.parse_args(args)
+    # for python 2.5 and later, optparse raises this exception if a non-ascii
+    # option name is given.  See http://bugs.python.org/issue2931
+    try:
+        options, args = parser.parse_args(args)
+    except UnicodeEncodeError,e:
+        raise errors.BzrCommandError('Only ASCII permitted in option names')
+
     opts = dict([(k, v) for k, v in options.__dict__.iteritems() if
                  v is not option.OptionParser.DEFAULT_VALUE])
     return args, opts

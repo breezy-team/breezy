@@ -3,7 +3,7 @@ Simple Setups
 
 Consider the following simple scenario where we will be serving Bazaar branches
 that live on a single server.  Those branches are in the subdirectories of
-``/srv/bzr`` (or ``C:\\bzr``) and they will all be related to a single project
+``/srv/bzr`` (or ``C:\bzr``) and they will all be related to a single project
 called "ProjectX".  ProjectX will have a trunk branch and at least one feature
 branch.  As we get further, we will consider other scenarios, but this will be
 a sufficiently motivating example.

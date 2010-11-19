@@ -149,8 +149,10 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
             return None
         edited_content = msg_transport.get_bytes(basename)
         if edited_content == reference_content:
-            if not ui.ui_factory.get_boolean(
-                "Commit message was not edited, use anyway"):
+            if not ui.ui_factory.confirm_action(
+                "Commit message was not edited, use anyway",
+                "bzrlib.msgeditor.unchanged",
+                {}):
                 # Returning "" makes cmd_commit raise 'empty commit message
                 # specified' which is a reasonable error, given the user has
                 # rejected using the unedited template.
@@ -206,28 +208,25 @@ def edit_commit_message_encoded(infotext, ignoreline=DEFAULT_IGNORE_LINE,
 
 def _create_temp_file_with_commit_template(infotext,
                                            ignoreline=DEFAULT_IGNORE_LINE,
-                                           start_message=None):
+                                           start_message=None,
+                                           tmpdir=None):
     """Create temp file and write commit template in it.
 
-    :param infotext:    Text to be displayed at bottom of message
-                        for the user's reference;
-                        currently similar to 'bzr status'.
-                        The text is already encoded.
+    :param infotext: Text to be displayed at bottom of message for the
+        user's reference; currently similar to 'bzr status'.  The text is
+        already encoded.
 
     :param ignoreline:  The separator to use above the infotext.
 
-    :param start_message:   The text to place above the separator, if any.
-                            This will not be removed from the message
-                            after the user has edited it.
-                            The string is already encoded
+    :param start_message: The text to place above the separator, if any.
+        This will not be removed from the message after the user has edited
+        it.  The string is already encoded
 
     :return:    2-tuple (temp file name, hasinfo)
     """
     import tempfile
     tmp_fileno, msgfilename = tempfile.mkstemp(prefix='bzr_log.',
-                                               dir='.',
-                                               text=True)
-    msgfilename = osutils.basename(msgfilename)
+                                               dir=tmpdir, text=True)
     msgfile = os.fdopen(tmp_fileno, 'w')
     try:
         if start_message is not None:

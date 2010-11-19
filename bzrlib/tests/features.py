@@ -23,12 +23,29 @@ from bzrlib import tests
 from bzrlib.symbol_versioning import deprecated_in
 
 
+class _NotRunningAsRoot(tests.Feature):
+
+    def _probe(self):
+        try:
+            uid = os.getuid()
+        except AttributeError:
+            # If there is no uid, chances are there is no root either
+            return True
+        return uid != 0
+
+    def feature_name(self):
+        return 'Not running as root'
+
+
+not_running_as_root = _NotRunningAsRoot()
+
 apport = tests.ModuleAvailableFeature('apport')
+meliae = tests.ModuleAvailableFeature('meliae')
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 pywintypes = tests.ModuleAvailableFeature('pywintypes')
-subunit = tests.ModuleAvailableFeature('subunit')
 sphinx = tests.ModuleAvailableFeature('sphinx')
+subunit = tests.ModuleAvailableFeature('subunit')
 
 
 class _BackslashDirSeparatorFeature(tests.Feature):
