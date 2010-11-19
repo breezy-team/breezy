@@ -1100,15 +1100,19 @@ class BranchConfig(Config):
 
 
 def ensure_config_dir_exists(path=None):
-    """Make sure a configuration directory (and its parent) exists.
+    """Make sure a configuration directory exists.
+    This makes sure that the directory exists.
+    On windows, since configuration directories are 2 levels deep,
+    it makes sure both the directory and the parent directory exists.
     """
     if path is None:
         path = config_dir()
     if not os.path.isdir(path):
-        parent_dir = os.path.dirname(path)
-        if not os.path.isdir(parent_dir):
-            trace.mutter('creating config parent directory: %r', parent_dir)
-            os.mkdir(parent_dir)
+        if sys.platform == 'win32':
+            parent_dir = os.path.dirname(path)
+            if not os.path.isdir(parent_dir):
+                trace.mutter('creating config parent directory: %r', parent_dir)
+                os.mkdir(parent_dir)
         trace.mutter('creating config directory: %r', path)
         os.mkdir(path)
         osutils.copy_ownership_from_path(path)
@@ -1151,7 +1155,7 @@ def config_dir():
                 return xdg_dir
 
             base = os.path.expanduser("~")
-        return osutils.pathjoin(base, '.bazaar')
+        return osutils.pathjoin(base, ".bazaar")
 
 
 def config_filename():
