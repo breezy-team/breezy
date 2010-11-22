@@ -586,7 +586,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
                                 ]
         repo_a = self.make_repository('a')
         repo_b = self.make_repository('b')
-        is_compatible = repository.InterWeaveRepo.is_compatible
+        is_compatible = weaverepo.InterWeaveRepo.is_compatible
         for source in incompatible_formats:
             # force incompatible left then right
             repo_a._format = source
@@ -598,7 +598,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
             for target in formats:
                 repo_b._format = target
                 self.assertTrue(is_compatible(repo_a, repo_b))
-        self.assertEqual(repository.InterWeaveRepo,
+        self.assertEqual(weaverepo.InterWeaveRepo,
                          repository.InterRepository.get(repo_a,
                                                         repo_b).__class__)
 
