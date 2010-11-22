@@ -363,13 +363,14 @@ class SubprocessVendor(SSHVendor):
             # This platform doesn't support socketpair(), so just use ordinary
             # pipes instead.
             stdin = stdout = subprocess.PIPE
-            sock = None
+            my_sock, subproc_sock = None, None
         else:
             stdin = stdout = subproc_sock
-            sock = my_sock
         proc = subprocess.Popen(argv, stdin=stdin, stdout=stdout,
                                 **os_specific_subprocess_params())
-        return SSHSubprocessConnection(proc, sock=sock)
+        if subproc_sock is not None:
+            subproc_sock.close()
+        return SSHSubprocessConnection(proc, sock=my_sock)
 
     def connect_sftp(self, username, password, host, port):
         try:
@@ -653,25 +654,24 @@ def os_specific_subprocess_params():
 import weakref
 _subproc_weakrefs = set()
 
-def _close_ssh_proc(proc):
+def _close_ssh_proc(proc, sock):
     """Carefully close stdin/stdout and reap the SSH process.
 
     If the pipes are already closed and/or the process has already been
     wait()ed on, that's ok, and no error is raised.  The goal is to do our best
     to clean up (whether or not a clean up was already tried).
     """
-    dotted_names = ['stdin.close', 'stdout.close', 'wait']
-    for dotted_name in dotted_names:
-        attrs = dotted_name.split('.')
+    funcs = []
+    for closeable in (proc.stdin, proc.stdout, sock):
+        # We expect that either proc (a subprocess.Popen) will have stdin and
+        # stdout streams to close, or that we will have been passed a socket to
+        # close, with the option not in use being None.
+        if closeable is not None:
+            funcs.append(closeable.close)
+    funcs.append(proc.wait)
+    for func in funcs:
         try:
-            obj = proc
-            for attr in attrs:
-                obj = getattr(obj, attr)
-        except AttributeError:
-            # It's ok for proc.stdin or proc.stdout to be None.
-            continue
-        try:
-            obj()
+            func()
         except OSError:
             # It's ok for the pipe to already be closed, or the process to
             # already be finished.
@@ -716,7 +716,7 @@ class SSHSubprocessConnection(SSHConnection):
         # to avoid leaving processes lingering indefinitely.
         def terminate(ref):
             _subproc_weakrefs.remove(ref)
-            _close_ssh_proc(proc)
+            _close_ssh_proc(proc, sock)
         _subproc_weakrefs.add(weakref.ref(self, terminate))
 
     def send(self, data):
@@ -732,7 +732,7 @@ class SSHSubprocessConnection(SSHConnection):
             return os.read(self.proc.stdout.fileno(), count)
 
     def close(self):
-        _close_ssh_proc(self.proc)
+        _close_ssh_proc(self.proc, self._sock)
 
     def get_sock_or_pipes(self):
         if self._sock is not None:
