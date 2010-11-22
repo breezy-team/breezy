@@ -3352,34 +3352,19 @@ format_registry.register_lazy(
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatKnitPack6RichRoot',
     )
+format_registry.register_lazy(
+    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
+    'bzrlib.repofmt.groupcompress_repo',
+    'RepositoryFormat2a',
+    )
 
 # Development formats.
-# Obsolete but kept pending a CHK based subtree format.
+# Check their docstrings to see if/when they are obsolete.
 format_registry.register_lazy(
     ("Bazaar development format 2 with subtree support "
         "(needs bzr.dev from before 1.8)\n"),
     'bzrlib.repofmt.pack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
-    )
-
-# 1.14->1.16 go below here
-format_registry.register_lazy(
-    'Bazaar development format - group compression and chk inventory'
-        ' (needs bzr.dev from 1.14)\n',
-    'bzrlib.repofmt.groupcompress_repo',
-    'RepositoryFormatCHK1',
-    )
-
-format_registry.register_lazy(
-    'Bazaar development format - chk repository with bencode revision '
-        'serialization (needs bzr.dev from 1.16)\n',
-    'bzrlib.repofmt.groupcompress_repo',
-    'RepositoryFormatCHK2',
-    )
-format_registry.register_lazy(
-    'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
-    'bzrlib.repofmt.groupcompress_repo',
-    'RepositoryFormat2a',
     )
 format_registry.register_lazy(
     'Bazaar development format 8\n',
