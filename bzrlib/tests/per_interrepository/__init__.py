@@ -128,12 +128,6 @@ def default_test_list():
     add_combo('InterDifferingSerializer',
               groupcompress_repo.RepositoryFormat2a(),
               pack_repo.RepositoryFormatKnitPack6RichRoot())
-    add_combo('InterRepository',
-              groupcompress_repo.RepositoryFormatCHK2(),
-              groupcompress_repo.RepositoryFormat2a())
-    add_combo('InterDifferingSerializer',
-              groupcompress_repo.RepositoryFormatCHK1(),
-              groupcompress_repo.RepositoryFormat2a())
     return result
 
 

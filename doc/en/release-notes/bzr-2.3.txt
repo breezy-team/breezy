@@ -87,6 +87,11 @@ Internals
 * ``BranchBuilder.build_snapshot`` now accepts parent_ids == [].
   This can be used to create a new root in the graph. (Gary van der Merwe)
 
+* Old repository development formats
+  RepositoryFormatCHK1 and RepositoryFormatCHK2 have been removed, and so
+  have the corresponding metadir format options ``development-rich-root``,
+  ``development6-rich-root``, and ``development7-rich-root``.
+
 Testing
 *******
 

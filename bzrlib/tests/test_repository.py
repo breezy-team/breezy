@@ -972,8 +972,7 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
 
     def setUp(self):
         super(TestDevelopment6FindParentIdsOfRevisions, self).setUp()
-        self.builder = self.make_branch_builder('source',
-            format='development6-rich-root')
+        self.builder = self.make_branch_builder('source')
         self.builder.start_series()
         self.builder.build_snapshot('initial', None,
             [('add', ('', 'tree-root', 'directory', None))])
