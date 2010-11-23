@@ -399,7 +399,8 @@ class cmd_lp_find_proposal(Command):
             service = lp_registration.LaunchpadService()
             launchpad = lp_api.login(service)
             pb.update('Finding Launchpad branch')
-            lpb = lp_api.LaunchpadBranch.from_bzr(launchpad, b)
+            lpb = lp_api.LaunchpadBranch.from_bzr(launchpad, b,
+                                                  create_missing=False)
             pb.update('Finding proposals')
             merged = list(lpb.lp.getMergeProposals(status=['Merged'],
                                                    merged_revnos=[revno]))
@@ -433,7 +434,7 @@ class cmd_lp_find_proposal(Command):
     @staticmethod
     def _is_revno_spec(spec):
         try:
-            int(spec.spec)
+            int(spec.user_spec)
         except ValueError:
             return False
         else:
