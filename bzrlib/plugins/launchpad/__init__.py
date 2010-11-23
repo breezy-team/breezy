@@ -47,6 +47,8 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
+    errors,
+    ui,
     trace,
     )
 """)
@@ -365,6 +367,82 @@ class cmd_lp_propose_merge(Command):
 
 
 register_command(cmd_lp_propose_merge)
+
+
+class cmd_lp_find_proposal(Command):
+
+    __doc__ = """Find the proposal to merge this revision.
+
+    Finds the merge proposal(s) that discussed landing the specified revision.
+    This works only if the selected branch was the merge proposal target, and
+    if the merged_revno is recorded for the merge proposal.  The proposal(s)
+    are opened in a web browser.
+
+    Any revision involved in the merge may be specified-- the revision in
+    which the merge was performed, or one of the revisions that was merged.
+
+    So, to find the merge proposal that reviewed line 1 of README::
+
+      bzr lp-find-proposal -r annotate:README:1
+    """
+
+    takes_options = ['revision']
+
+    def run(self, revision=None):
+        from bzrlib.plugins.launchpad import lp_api
+        from launchpadlib.launchpad import Launchpad
+        from launchpadlib.uris import STAGING_SERVICE_ROOT
+        import webbrowser
+        root = STAGING_SERVICE_ROOT.replace('staging', 'qastaging')
+        b = _mod_branch.Branch.open_containing('.')[0]
+        pb = ui.ui_factory.nested_progress_bar()
+        b.lock_read()
+        try:
+            revno = self._find_merged_revno(revision, b, pb)
+            launchpad = Launchpad.login_with('find-review', root)
+            pb.update('Finding Launchpad branch')
+            lpb = lp_api.LaunchpadBranch.from_bzr(launchpad, b)
+            pb.update('Finding proposals')
+            merged = list(lpb.lp.getMergeProposals(status=['Merged'],
+                                                   merged_revnos=[revno]))
+            if len(merged) == 0:
+                raise BzrCommandError('No review found.')
+            trace.note('%d proposals(s) found.' % len(merged))
+            for mp in merged:
+                webbrowser.open(lp_api.canonical_url(mp))
+        finally:
+            b.unlock()
+            pb.finished()
+
+    def _find_merged_revno(self, revision, b, pb):
+        if revision is None:
+            return b.revno()
+        pb.update('Finding revision-id')
+        revision_id = revision[0].as_revision_id(b)
+        # a revno spec is necessarily on the mainline.
+        if self._is_revno_spec(revision[0]):
+            merging_revision = revision_id
+        else:
+            graph = b.repository.get_graph()
+            pb.update('Finding merge')
+            merging_revision = graph.find_lefthand_merger(
+                revision_id, b.last_revision())
+            if merging_revision is None:
+                raise errors.InvalidRevisionSpec(revision[0].user_spec, b)
+        pb.update('Finding revno')
+        return b.revision_id_to_revno(merging_revision)
+
+    @staticmethod
+    def _is_revno_spec(spec):
+        try:
+            int(spec.spec)
+        except ValueError:
+            return False
+        else:
+            return True
+
+
+register_command(cmd_lp_find_proposal)
 
 
 def _register_directory():

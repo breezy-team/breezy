@@ -23,6 +23,7 @@
 
 import os
 import re
+import urlparse
 
 from bzrlib import (
     branch,
@@ -179,6 +180,9 @@ class LaunchpadBranch(object):
     @staticmethod
     def tweak_url(url, launchpad):
         """Adjust a URL to work with staging, if needed."""
+        if 'qastaging' in str(launchpad._root_uri):
+            return url.replace('bazaar.launchpad.net',
+                    'bazaar.qastaging.launchpad.net')
         if str(launchpad._root_uri) != STAGING_SERVICE_ROOT:
             return url
         if url is None:
@@ -280,3 +284,13 @@ def load_branch(launchpad, branch):
         if lp_branch:
             return lp_branch
     raise NotLaunchpadBranch(url)
+
+
+def canonical_url(object):
+    """Return the canonical URL for a branch."""
+    scheme, netloc, path, params, query, fragment = urlparse.urlparse(
+        str(object.self_link))
+    path = '/'.join(path.split('/')[2:])
+    netloc = netloc.replace('api.', 'code.')
+    return urlparse.urlunparse((scheme, netloc, path, params, query,
+                                fragment))
