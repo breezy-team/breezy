@@ -390,16 +390,14 @@ class cmd_lp_find_proposal(Command):
 
     def run(self, revision=None):
         from bzrlib.plugins.launchpad import lp_api
-        from launchpadlib.launchpad import Launchpad
-        from launchpadlib.uris import STAGING_SERVICE_ROOT
         import webbrowser
-        root = STAGING_SERVICE_ROOT.replace('staging', 'qastaging')
         b = _mod_branch.Branch.open_containing('.')[0]
         pb = ui.ui_factory.nested_progress_bar()
         b.lock_read()
         try:
             revno = self._find_merged_revno(revision, b, pb)
-            launchpad = Launchpad.login_with('find-review', root)
+            service = lp_registration.LaunchpadService()
+            launchpad = lp_api.login(service)
             pb.update('Finding Launchpad branch')
             lpb = lp_api.LaunchpadBranch.from_bzr(launchpad, b)
             pb.update('Finding proposals')

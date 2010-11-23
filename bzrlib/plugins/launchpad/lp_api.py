@@ -48,6 +48,10 @@ from launchpadlib.launchpad import (
     STAGING_SERVICE_ROOT,
     Launchpad,
     )
+from launchpadlib.uris import (
+    LPNET_SERVICE_ROOT,
+    )
+
 
 
 # Declare the minimum version of launchpadlib that we need in order to work.
@@ -76,7 +80,7 @@ def check_launchpadlib_compatibility():
 
 
 LAUNCHPAD_API_URLS = {
-    'production': 'https://api.launchpad.net/beta/',
+    'production': LPNET_SERVICE_ROOT,
     'edge': EDGE_SERVICE_ROOT,
     'staging': STAGING_SERVICE_ROOT,
     'dev': 'https://api.launchpad.dev/beta/',
