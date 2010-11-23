@@ -48,10 +48,10 @@ from launchpadlib.launchpad import (
     STAGING_SERVICE_ROOT,
     Launchpad,
     )
-from launchpadlib.uris import (
-    LPNET_SERVICE_ROOT,
-    )
-
+try:
+    from launchpadlib.uris import LPNET_SERVICE_ROOT
+except ImportError:
+    LPNET_SERVICE_ROOT = 'https://api.launchpad.net/beta/'
 
 
 # Declare the minimum version of launchpadlib that we need in order to work.
@@ -191,9 +191,6 @@ class LaunchpadBranch(object):
     @staticmethod
     def tweak_url(url, launchpad):
         """Adjust a URL to work with staging, if needed."""
-        if 'qastaging' in str(launchpad._root_uri):
-            return url.replace('bazaar.launchpad.net',
-                    'bazaar.qastaging.launchpad.net')
         if str(launchpad._root_uri) != STAGING_SERVICE_ROOT:
             return url
         if url is None:

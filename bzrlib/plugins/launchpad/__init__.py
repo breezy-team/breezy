@@ -396,14 +396,7 @@ class cmd_lp_find_proposal(Command):
         b.lock_read()
         try:
             revno = self._find_merged_revno(revision, b, pb)
-            service = lp_registration.LaunchpadService()
-            launchpad = lp_api.login(service)
-            pb.update('Finding Launchpad branch')
-            lpb = lp_api.LaunchpadBranch.from_bzr(launchpad, b,
-                                                  create_missing=False)
-            pb.update('Finding proposals')
-            merged = list(lpb.lp.getMergeProposals(status=['Merged'],
-                                                   merged_revnos=[revno]))
+            merged = self._find_proposals(revno, b, pb)
             if len(merged) == 0:
                 raise BzrCommandError('No review found.')
             trace.note('%d proposals(s) found.' % len(merged))
@@ -430,6 +423,16 @@ class cmd_lp_find_proposal(Command):
                 raise errors.InvalidRevisionSpec(revision[0].user_spec, b)
         pb.update('Finding revno')
         return b.revision_id_to_revno(merging_revision)
+
+    def _find_proposals(self, revno, b, pb):
+        launchpad = lp_api.login(lp_registration.LaunchpadService())
+        pb.update('Finding Launchpad branch')
+        lpb = lp_api.LaunchpadBranch.from_bzr(launchpad, b,
+                                              create_missing=False)
+        pb.update('Finding proposals')
+        return list(lpb.lp.getMergeProposals(status=['Merged'],
+                                             merged_revnos=[revno]))
+
 
     @staticmethod
     def _is_revno_spec(spec):

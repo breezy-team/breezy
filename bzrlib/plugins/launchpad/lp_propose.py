@@ -27,6 +27,7 @@ from bzrlib.plugins.launchpad import (
     lp_registration,
 )
 from bzrlib.plugins.launchpad.lp_api import canonical_url
+
 from lazr.restfulclient import errors as restful_errors
 
 
