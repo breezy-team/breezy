@@ -178,8 +178,8 @@ class RepoFetcher(object):
             # explicit limit of no revisions needed
             return graph.EmptySearchResult()
         elif self._last_revision is not None:
-            return graph.NotInOtherForRev(self.to_repository,
-                self.from_repository, self._last_revision,
+            return graph.NotInOtherForRevs(self.to_repository,
+                self.from_repository, [self._last_revision],
                 find_ghosts=self.find_ghosts).get_search()
         else: # self._last_revision is None:
             return graph.EverythingNotInOther(self.to_repository,

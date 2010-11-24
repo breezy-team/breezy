@@ -1755,19 +1755,18 @@ class EverythingNotInOther(object):
             self.from_repo, find_ghosts=self.find_ghosts)
 
 
-class NotInOtherForRev(object):
+class NotInOtherForRevs(object):
 
-    def __init__(self, to_repo, from_repo, last_revision, find_ghosts=False):
+    def __init__(self, to_repo, from_repo, revision_ids, find_ghosts=False):
         self.to_repo = to_repo
         self.from_repo = from_repo
         self.find_ghosts = find_ghosts
-        self.last_revision = last_revision
+        self.revision_ids = revision_ids
 
     def get_search(self):
         return self.to_repo.search_missing_revision_ids(
-            self.from_repo, revision_id=self.last_revision,
+            self.from_repo, revision_ids=self.revision_ids,
             find_ghosts=self.find_ghosts)
-
 
 
 def collapse_linear_regions(parent_map):

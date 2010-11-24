@@ -1344,15 +1344,28 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return result
 
     @needs_read_lock
-    def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
+    def search_missing_revision_ids(self, other,
+            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
+            find_ghosts=True, revision_ids=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
 
         revision_id: only return revision ids included by revision_id.
         """
-        return repository.InterRepository.get(
-            other, self).search_missing_revision_ids(revision_id, find_ghosts)
+        if symbol_versioning.deprecated_passed(revision_id):
+            symbol_versioning.warn(
+                'search_missing_revision_ids(revision_id=...) was '
+                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                DeprecationWarning, stacklevel=2)
+            if revision_ids is not None:
+                raise AssertionError(
+                    'revision_ids is mutually exclusive with revision_id')
+            if revision_id is not None:
+                revision_ids = [revision_id]
+        inter_repo = repository.InterRepository.get(other, self)
+        return inter_repo.search_missing_revision_ids(
+            find_ghosts=find_ghosts, revision_ids=revision_ids)
 
     def fetch(self, source, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None):
