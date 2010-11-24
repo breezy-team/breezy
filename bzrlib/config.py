@@ -496,7 +496,8 @@ class IniBasedConfig(Config):
         config_id = self.config_id()
         for (section_name, section) in sections:
             for (name, value) in section.iteritems():
-                yield (name, value, section_name, config_id)
+                yield (name, parser._quote(value), section_name,
+                       config_id, parser)
 
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
@@ -1042,7 +1043,8 @@ class BranchConfig(Config):
         config_id = self.config_id()
         for (section_name, section) in sections:
             for (name, value) in section.iteritems():
-                yield (name, value, section_name, config_id)
+                yield (name, value, section_name,
+                       config_id, branch_config._get_parser())
         # Then the global options
         for option in self._get_global_config()._get_options():
             yield option
@@ -1862,10 +1864,18 @@ class cmd_config(commands.Command):
         for c in self._get_configs(directory, scope):
             if displayed:
                 break
-            for (oname, value, section, conf_id) in c._get_options():
+            for (oname, value, section, conf_id, parser) in c._get_options():
                 if name == oname:
                     # Display only the first value and exit
-                    self.outf.write('%s\n' % (value))
+
+                    # FIXME: We need to use get_user_option to take policies
+                    # into account and we need to make sure the option exists
+                    # too (hence the two for loops), this needs a better API
+                    # -- vila 20101117
+                    value = c.get_user_option(name)
+                    # Quote the value appropriately
+                    value = parser._quote(value)
+                    self.outf.write('%s\n' % (value,))
                     displayed = True
                     break
         if not displayed:
@@ -1877,13 +1887,21 @@ class cmd_config(commands.Command):
         # avoid the delay introduced by the lazy regexp.
         name._compile_and_collapse()
         cur_conf_id = None
+        cur_section = None
         for c in self._get_configs(directory, scope):
-            for (oname, value, section, conf_id) in c._get_options():
+            for (oname, value, section, conf_id, parser) in c._get_options():
                 if name.search(oname):
                     if cur_conf_id != conf_id:
                         # Explain where the options are defined
                         self.outf.write('%s:\n' % (conf_id,))
                         cur_conf_id = conf_id
+                        cur_section = None
+                    if (section not in (None, 'DEFAULT')
+                        and cur_section != section):
+                        # Display the section if it's not the default (or only)
+                        # one.
+                        self.outf.write('  [%s]\n' % (section,))
+                        cur_section = section
                     self.outf.write('  %s = %s\n' % (oname, value))
 
     def _set_config_option(self, name, value, directory, scope):

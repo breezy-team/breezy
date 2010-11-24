@@ -23,7 +23,7 @@ from bzrlib import (
     revision,
     trace,
     )
-from bzrlib.symbol_versioning import deprecated_function, deprecated_in, warn
+from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 
 STEP_UNIQUE_SEARCHER_EVERY = 5
 

@@ -21,6 +21,7 @@ from bzrlib import (
     commit,
     errors,
     memorytree,
+    revision,
     )
 
 
@@ -186,7 +187,10 @@ class BranchBuilder(object):
         :return: The revision_id of the new commit
         """
         if parent_ids is not None:
-            base_id = parent_ids[0]
+            if len(parent_ids) == 0:
+                base_id = revision.NULL_REVISION
+            else:
+                base_id = parent_ids[0]
             if base_id != self._branch.last_revision():
                 self._move_branch_pointer(base_id,
                     allow_leftmost_as_ghost=allow_leftmost_as_ghost)
