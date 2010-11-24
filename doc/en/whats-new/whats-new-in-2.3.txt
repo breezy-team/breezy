@@ -119,7 +119,7 @@ Improved conflict handling
   ``conflict``.  (Vincent Ladeuil, #323111)
 
 * ``bzr resolve --take-this`` and ``bzr resolve --take-other`` can now be
-  used for text conflicts. This will ignore the differences that was merged
+  used for text conflicts. This will ignore the differences that were merged
   cleanly and replace the file with its content in the current branch
   (``--take-this``) or with its content in the merged branch
   (``--take-other``). (Vincent Ladeuil, #638451)
