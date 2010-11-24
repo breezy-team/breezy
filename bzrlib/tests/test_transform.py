@@ -3272,15 +3272,20 @@ class TestOrphan(tests.TestCaseWithTransport):
                                                policy)
 
     def _prepare_orphan(self, wt):
-        self.build_tree(['dir/', 'dir/foo'])
-        wt.add(['dir'], ['dir-id'])
-        wt.commit('add dir')
+        self.build_tree(['dir/', 'dir/file', 'dir/foo'])
+        wt.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        wt.commit('add dir and file ignoring foo')
         tt = transform.TreeTransform(wt)
         self.addCleanup(tt.finalize)
+        # dir and bar are deleted
         dir_tid = tt.trans_id_tree_path('dir')
+        file_tid = tt.trans_id_tree_path('dir/file')
         orphan_tid = tt.trans_id_tree_path('dir/foo')
+        tt.delete_contents(file_tid)
+        tt.unversion_file(file_tid)
         tt.delete_contents(dir_tid)
         tt.unversion_file(dir_tid)
+        # There should be a conflict because dir still contain foo
         raw_conflicts = tt.find_conflicts()
         self.assertLength(1, raw_conflicts)
         self.assertEqual(('missing parent', 'new-1'), raw_conflicts[0])
@@ -3290,7 +3295,13 @@ class TestOrphan(tests.TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         self._set_orphan_policy(wt, 'move')
         tt, orphan_tid = self._prepare_orphan(wt)
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
         remaining_conflicts = resolve_conflicts(tt)
+        self.assertEquals(['dir/foo has been orphaned in bzr-orphans'],
+                          warnings)
         # Yeah for resolved conflicts !
         self.assertLength(0, remaining_conflicts)
         # We have a new orphan

@@ -1339,19 +1339,15 @@ def _filter_text_keys(interesting_nodes_iterable, text_keys, bytes_to_text_key):
         yield record
 
 
-
-
-class RepositoryFormatCHK1(RepositoryFormatPack):
-    """A hashed CHK+group compress pack repository."""
+class RepositoryFormat2a(RepositoryFormatPack):
+    """A CHK repository that uses the bencode revision serializer."""
 
     repository_class = CHKInventoryRepository
     supports_external_lookups = True
     supports_chks = True
-    # For right now, setting this to True gives us InterModel1And2 rather
-    # than InterDifferingSerializer
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
-    _serializer = chk_serializer.chk_serializer_255_bigpage
+    _serializer = chk_serializer.chk_bencode_serializer
     _commit_inv_deltas = True
     # What index classes to use
     index_builder_class = BTreeBuilder
@@ -1366,52 +1362,6 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
     _fetch_uses_deltas = False # essentially ignored by the groupcompress code.
     fast_deltas = True
     pack_compresses = True
-
-    def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development6-rich-root')
-
-    def _ignore_setting_bzrdir(self, format):
-        pass
-
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return ('Bazaar development format - group compression and chk inventory'
-                ' (needs bzr.dev from 1.14)\n')
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format - rich roots, group compression"
-            " and chk inventories")
-
-
-class RepositoryFormatCHK2(RepositoryFormatCHK1):
-    """A CHK repository that uses the bencode revision serializer."""
-
-    _serializer = chk_serializer.chk_bencode_serializer
-
-    def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development7-rich-root')
-
-    def _ignore_setting_bzrdir(self, format):
-        pass
-
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return ('Bazaar development format - chk repository with bencode '
-                'revision serialization (needs bzr.dev from 1.16)\n')
-
-
-class RepositoryFormat2a(RepositoryFormatCHK2):
-    """A CHK repository that uses the bencode revision serializer.
-
-    This is the same as RepositoryFormatCHK2 but with a public name.
-    """
-
-    _serializer = chk_serializer.chk_bencode_serializer
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('2a')
