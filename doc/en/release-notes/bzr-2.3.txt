@@ -108,6 +108,10 @@ Testing
   Instead, use '...' as a wildcard if you don't care about the output.
   (Martin Pool, #637830)
 
+* Bump minimum testtools version required to run ``bzr selftest`` from 0.9.2
+  to 0.9.5 which will allow tests that need the fixed unicode handling to be
+  written. (Martin [gz])
+
 
 bzr 2.3b3
 #########
