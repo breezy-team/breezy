@@ -31,7 +31,7 @@ from bzrlib.repofmt.pack_repo import (
     RepositoryFormatKnitPack5,
     )
 from bzrlib.repofmt.groupcompress_repo import (
-    RepositoryFormatCHK1,
+    RepositoryFormat2a,
     )
 from bzrlib.tests import (
     multiply_tests,
@@ -61,7 +61,7 @@ def load_tests(standard_tests, module, loader):
         # with the chosen backing format.
         if isinstance(format, remote.RemoteRepositoryFormat):
             with_support = dict(scenario_info)
-            with_support['repository_format'] = RepositoryFormatCHK1()
+            with_support['repository_format'] = RepositoryFormat2a()
             supported_scenarios.append((test_name + "(Supported)", with_support))
             no_support = dict(scenario_info)
             no_support['repository_format'] = RepositoryFormatKnitPack5()

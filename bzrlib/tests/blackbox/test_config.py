@@ -74,6 +74,40 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         super(TestConfigDisplay, self).setUp()
         _t_config.create_configs(self)
 
+    def test_multiline_all_values(self):
+        self.bazaar_config.set_user_option('multiline', '1\n2\n')
+        script.run_script(self, """\
+            $ bzr config -d tree
+            bazaar:
+              multiline = '''1
+            2
+            '''
+            """)
+
+    def test_multiline_value_only(self):
+        self.bazaar_config.set_user_option('multiline', '1\n2\n')
+        script.run_script(self, """\
+            $ bzr config -d tree multiline
+            '''1
+            2
+            '''
+            """)
+
+    def test_list_all_values(self):
+        self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
+        script.run_script(self, '''\
+            $ bzr config -d tree
+            bazaar:
+              list = 1, a, "with, a comma"
+            ''')
+
+    def test_list_value_only(self):
+        self.bazaar_config.set_user_option('list', [1, 'a', 'with, a comma'])
+        script.run_script(self, '''\
+            $ bzr config -d tree list
+            1, a, "with, a comma"
+            ''')
+
     def test_bazaar_config(self):
         self.bazaar_config.set_user_option('hello', 'world')
         script.run_script(self, '''\
@@ -88,6 +122,7 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
         script.run_script(self, '''\
             $ bzr config -d tree
             locations:
+              [.../tree]
               hello = world
             branch:
               hello = you
@@ -100,6 +135,33 @@ class TestConfigDisplay(tests.TestCaseWithTransport):
             $ bzr config
             bazaar:
               hello = world
+            ''')
+
+class TestConfigDisplayWithPolicy(tests.TestCaseWithTransport):
+
+    def test_location_with_policy(self):
+        # LocationConfig is the only one dealing with policies so far.
+        self.make_branch_and_tree('tree')
+        config_text = """\
+[%(dir)s]
+url = dir
+url:policy = appendpath
+[%(dir)s/tree]
+url = tree
+""" % {'dir': self.test_dir}
+        # We don't use the config directly so we save it to disk
+        config.LocationConfig.from_string(config_text, 'tree', save=True)
+        # policies are displayed with their options since they are part of
+        # their definition, likewise the path is not appended, we are just
+        # presenting the relevant portions of the config files
+        script.run_script(self, '''\
+            $ bzr config -d tree --all url
+            locations:
+              [.../work/tree]
+              url = tree
+              [.../work]
+              url = dir
+              url:policy = appendpath
             ''')
 
 
@@ -162,6 +224,7 @@ class TestConfigSetOption(tests.TestCaseWithTransport):
             $ bzr config -d tree --scope locations hello=world
             $ bzr config -d tree --all hello
             locations:
+              [.../work/tree]
               hello = world
             ''')
 
@@ -197,6 +260,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             $ bzr config --scope bazaar --remove file
             $ bzr config -d tree --all file
             locations:
+              [.../work/tree]
               file = locations
             branch:
               file = branch
@@ -207,6 +271,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             $ bzr config -d tree --scope bazaar --remove file
             $ bzr config -d tree --all file
             locations:
+              [.../work/tree]
               file = locations
             branch:
               file = branch
@@ -243,6 +308,7 @@ class TestConfigRemoveOption(tests.TestCaseWithTransport):
             $ bzr config -d tree --scope branch --remove file
             $ bzr config -d tree --all file
             locations:
+              [.../work/tree]
               file = locations
             bazaar:
               file = bazaar
