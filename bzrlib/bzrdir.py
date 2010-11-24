@@ -3258,36 +3258,6 @@ register_metadir(controldir.format_registry, '1.14-rich-root',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     )
 # The following un-numbered 'development' formats should always just be aliases.
-register_metadir(controldir.format_registry, 'development-rich-root',
-    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK1',
-    help='Current development format. Supports rich roots. Can convert data '
-        'to and from rich-root-pack (and anything compatible with '
-        'rich-root-pack) format repositories. Repositories and branches in '
-        'this format can only be read by bzr.dev. Please read '
-        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
-    experimental=True,
-    alias=True,
-    hidden=True,
-    )
-register_metadir(controldir.format_registry, 'development5-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
-    help='Development format, subtree variant. Can convert data to and '
-        'from pack-0.92-subtree (and anything compatible with '
-        'pack-0.92-subtree) format repositories. Repositories and branches in '
-        'this format can only be read by bzr.dev. Please read '
-        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
-    experimental=True,
-    hidden=True,
-    alias=False,
-    )
-
-
 register_metadir(controldir.format_registry, 'development-subtree',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2aSubtree',
     help='Current development format, subtree variant. Can convert data to and '
@@ -3304,32 +3274,24 @@ register_metadir(controldir.format_registry, 'development-subtree',
                  # This current non-alias status is simply because we did not introduce a
                  # chk based subtree format.
     )
+register_metadir(controldir.format_registry, 'development5-subtree',
+    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
+    help='Development format, subtree variant. Can convert data to and '
+        'from pack-0.92-subtree (and anything compatible with '
+        'pack-0.92-subtree) format repositories. Repositories and branches in '
+        'this format can only be read by bzr.dev. Please read '
+        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
+        'before use.',
+    branch_format='bzrlib.branch.BzrBranchFormat7',
+    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    experimental=True,
+    hidden=True,
+    alias=False,
+    )
 
 # And the development formats above will have aliased one of the following:
-register_metadir(controldir.format_registry, 'development6-rich-root',
-    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK1',
-    help='pack-1.9 with 255-way hashed CHK inv, group compress, rich roots '
-        'Please read '
-        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
-    hidden=True,
-    experimental=True,
-    )
 
-register_metadir(controldir.format_registry, 'development7-rich-root',
-    'bzrlib.repofmt.groupcompress_repo.RepositoryFormatCHK2',
-    help='pack-1.9 with 255-way hashed CHK inv, bencode revision, group compress, '
-        'rich roots. Please read '
-        'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
-        'before use.',
-    branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
-    hidden=True,
-    experimental=True,
-    )
-
+# Finally, the current format.
 register_metadir(controldir.format_registry, '2a',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
     help='First format for bzr 2.0 series.\n'
