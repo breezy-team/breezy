@@ -20,6 +20,13 @@ previous versions.
 Changed Behaviour
 *****************
 
+* Support for some old development formats have been removed:
+  ``development-rich-root``, ``development6-rich-root``, and
+  ``development7-rich-root``.  These formats were always labelled experimental
+  and not used unless the user specifically asked for them.  If you have
+  repositories using these old formats you should upgrade them to ``2a`` using
+  Bazaar 2.2.  (Andrew Bennetts)
+
 * The default ``ignore`` file created by Bazaar will contain ``__pycache__``,
   which is the name of the directory that will be used by Python to store
   bytecode files.

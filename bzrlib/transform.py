@@ -703,26 +703,28 @@ class TreeTransformBase(object):
         return conflicts
 
     def _parent_type_conflicts(self, by_parent):
-        """parents must have directory 'contents'."""
+        """Children must have a directory parent"""
         conflicts = []
         for parent_id, children in by_parent.iteritems():
             if parent_id is ROOT_PARENT:
                 continue
-            if not self._any_contents(children):
+            no_children = True
+            for child_id in children:
+                if self.final_kind(child_id) is not None:
+                    no_children = False
+                    break
+            if no_children:
                 continue
+            # There is at least a child, so we need an existing directory to
+            # contain it.
             kind = self.final_kind(parent_id)
             if kind is None:
+                # The directory will be deleted
                 conflicts.append(('missing parent', parent_id))
             elif kind != "directory":
+                # Meh, we need a *directory* to put something in it
                 conflicts.append(('non-directory parent', parent_id))
         return conflicts
-
-    def _any_contents(self, trans_ids):
-        """Return true if any of the trans_ids, will have contents."""
-        for trans_id in trans_ids:
-            if self.final_kind(trans_id) is not None:
-                return True
-        return False
 
     def _set_executability(self, path, trans_id):
         """Set the executability of versioned files """
@@ -820,9 +822,14 @@ class TreeTransformBase(object):
         """
         orphans = []
         # Find the potential orphans, stop if one item should be kept
-        for c in self.by_parent()[dir_id]:
-            if self.final_file_id(c) is None:
-                orphans.append(c)
+        for child_tid in self.by_parent()[dir_id]:
+            if child_tid in self._removed_contents:
+                # The child is removed as part of the transform. Since it was
+                # versioned before, it's not an orphan
+                continue
+            elif self.final_file_id(child_tid) is None:
+                # The child is not versioned
+                orphans.append(child_tid)
             else:
                 # We have a versioned file here, searching for orphans is
                 # meaningless.
