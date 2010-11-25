@@ -14,7 +14,7 @@ clean::
 
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 common-post-build-indep::
-	./bzr selftest --no-plugins
+	BZR_PLUGIN_PATH=-site:-user ./bzr selftest
 endif
 
 build/bzr:: debian/stamp-doc
