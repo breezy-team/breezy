@@ -8,13 +8,13 @@ Bazaar Release Notes
 bzr 2.2.2
 #########
 
-:2.2.2: NOT RELEASED YET
+:2.2.2: 2010-11-25
+
+This is a bugfix release. None of these bugfixes are critical, but upgrading
+is recommended for all users on earlier 2.2 releases.
 
 Compatibility Breaks
 ********************
-
-New Features
-************
 
 Bug Fixes
 *********
@@ -28,7 +28,7 @@ Bug Fixes
   is a conflict).  (Andrew Bennetts, #603395)
   
 * Correctly set the Content-Type header when http POSTing to comply
-  with stricter web frameworks. (Vincent Ladeuil, #655100)
+  with stricter web frameworks. (Vincent Ladeuil, #665100)
 
 * ``NotBranchError`` no longer allows errors from calling
   ``bzrdir.open_repository()`` to propagate.  This is unhelpful at best,
@@ -51,18 +51,6 @@ Bug Fixes
 
 * Close leaked socket to SSH subprocesses, which caused dput sftp uploads
   to hang.  (Max Bowsher, #659590)
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
 
 Testing
 *******
