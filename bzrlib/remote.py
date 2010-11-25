@@ -1346,15 +1346,28 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return result
 
     @needs_read_lock
-    def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
+    def search_missing_revision_ids(self, other,
+            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
+            find_ghosts=True, revision_ids=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
 
         revision_id: only return revision ids included by revision_id.
         """
-        return repository.InterRepository.get(
-            other, self).search_missing_revision_ids(revision_id, find_ghosts)
+        if symbol_versioning.deprecated_passed(revision_id):
+            symbol_versioning.warn(
+                'search_missing_revision_ids(revision_id=...) was '
+                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                DeprecationWarning, stacklevel=2)
+            if revision_ids is not None:
+                raise AssertionError(
+                    'revision_ids is mutually exclusive with revision_id')
+            if revision_id is not None:
+                revision_ids = [revision_id]
+        inter_repo = repository.InterRepository.get(other, self)
+        return inter_repo.search_missing_revision_ids(
+            find_ghosts=find_ghosts, revision_ids=revision_ids)
 
     def fetch(self, source, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None):
@@ -1761,12 +1774,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return '\n'.join((start_keys, stop_keys, count))
 
     def _serialise_search_result(self, search_result):
-        if isinstance(search_result, graph.PendingAncestryResult):
-            parts = ['ancestry-of']
-            parts.extend(search_result.heads)
-        else:
-            recipe = search_result.get_recipe()
-            parts = [recipe[0], self._serialise_search_recipe(recipe)]
+        parts = search_result.get_network_struct()
         return '\n'.join(parts)
 
     def autopack(self):
@@ -1964,11 +1972,16 @@ class RemoteStreamSource(repository.StreamSource):
         search_bytes = repo._serialise_search_result(search)
         args = (path, self.to_format.network_name())
         candidate_verbs = [
+            ('Repository.get_stream_2.3', (2, 3)),
             ('Repository.get_stream_1.19', (1, 19)),
             ('Repository.get_stream', (1, 13))]
+
         found_verb = False
         for verb, version in candidate_verbs:
             if medium._is_remote_before(version):
+                continue
+            if isinstance(search, graph.EverythingResult) and version < (2, 3):
+                # EverythingResult is new in 2.3
                 continue
             try:
                 response = repo._call_with_body_bytes_expecting_body(

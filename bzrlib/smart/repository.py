@@ -495,6 +495,19 @@ class SmartServerRepositoryGetStream_1_19(SmartServerRepositoryGetStream):
         return False
 
 
+class SmartServerRepositoryGetStream_2_3(SmartServerRepositoryGetStream_1_19):
+    """Adds support for search_bytes == 'everything'.
+    
+    New in 2.3.
+    """
+
+    def recreate_search(self, repository, search_bytes, discard_excess=False):
+        if search_bytes == 'everything':
+            return graph.EverythingResult(repository), None
+        return super(SmartServerRepositoryGetStream_2_3, self).recreate_search(
+            repository, search_bytes, discard_excess=discard_excess)
+
+
 def _stream_to_byte_stream(stream, src_format):
     """Convert a record stream to a self delimited byte stream."""
     pack_writer = pack.ContainerSerialiser()

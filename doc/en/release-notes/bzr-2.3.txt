@@ -78,6 +78,11 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* The ``revision_id`` parameter of
+  ``Repository.search_missing_revision_ids`` and
+  ``InterRepository.search_missing_revision_ids`` is deprecated.  It is
+  replaced by the ``revision_ids`` parameter.  (Andrew Bennetts)
+
 Internals
 *********
 

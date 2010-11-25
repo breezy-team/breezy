@@ -139,9 +139,15 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertFalse(repo_b.has_revision('pizza'))
         # Asking specifically for an absent revision errors.
         self.assertRaises(errors.NoSuchRevision,
-            repo_b.search_missing_revision_ids, repo_a, revision_id='pizza',
+            repo_b.search_missing_revision_ids, repo_a, revision_ids=['pizza'],
             find_ghosts=True)
         self.assertRaises(errors.NoSuchRevision,
+            repo_b.search_missing_revision_ids, repo_a, revision_ids=['pizza'],
+            find_ghosts=False)
+        self.callDeprecated(
+            ['search_missing_revision_ids(revision_id=...) was deprecated in '
+             '2.3.  Use revision_ids=[...] instead.'],
+            self.assertRaises, errors.NoSuchRevision,
             repo_b.search_missing_revision_ids, repo_a, revision_id='pizza',
             find_ghosts=False)
 
@@ -151,7 +157,8 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # make a repository to compare against that is empty
         repo_b = self.make_to_repository('empty')
         repo_a = self.bzrdir.open_repository()
-        result = repo_b.search_missing_revision_ids(repo_a, revision_id='rev1')
+        result = repo_b.search_missing_revision_ids(
+            repo_a, revision_ids=['rev1'])
         self.assertEqual(set(['rev1']), result.get_keys())
         self.assertEqual(('search', set(['rev1']), set([NULL_REVISION]), 1),
             result.get_recipe())

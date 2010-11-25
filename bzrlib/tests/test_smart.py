@@ -25,15 +25,11 @@ Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
 import bz2
-from cStringIO import StringIO
-import tarfile
 
 from bzrlib import (
-    bencode,
     branch as _mod_branch,
     bzrdir,
     errors,
-    pack,
     tests,
     transport,
     urlutils,
@@ -45,7 +41,6 @@ from bzrlib.smart import (
     repository as smart_repo,
     packrepository as smart_packrepo,
     request as smart_req,
-    server,
     vfs,
     )
 from bzrlib.tests import test_server
@@ -1474,7 +1469,7 @@ class TestSmartServerRepositoryGetRevIdForRevno(
             request.execute('stacked', 1, (3, r3)))
 
 
-class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
+class GetStreamTestBase(tests.TestCaseWithMemoryTransport):
 
     def make_two_commit_repo(self):
         tree = self.make_branch_and_memory_tree('.')
@@ -1485,6 +1480,9 @@ class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
         tree.unlock()
         repo = tree.branch.repository
         return repo, r1, r2
+
+
+class TestSmartServerRepositoryGetStream(GetStreamTestBase):
 
     def test_ancestry_of(self):
         """The search argument may be a 'ancestry-of' some heads'."""
@@ -1508,6 +1506,31 @@ class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
         lines = '\n'.join(fetch_spec)
         request.execute('', repo._format.network_name())
         response = request.do_body(lines)
+        self.assertEqual(('ok',), response.args)
+        stream_bytes = ''.join(response.body_stream)
+        self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
+
+    def test_search_does_not_accept_everything(self):
+        """The search argument of the <2.3 verb may not be 'everything'."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetStream(backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        serialised_fetch_spec = 'everything'
+        request.execute('', repo._format.network_name())
+        response = request.do_body(serialised_fetch_spec)
+        self.assertEqual(('BadSearch',), response.args)
+
+
+class TestSmartServerRepositoryGetStream_2_3(GetStreamTestBase):
+
+    def test_search_everything(self):
+        """A search of 'everything' returns a stream."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetStream_2_3(backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        serialised_fetch_spec = 'everything'
+        request.execute('', repo._format.network_name())
+        response = request.do_body(serialised_fetch_spec)
         self.assertEqual(('ok',), response.args)
         stream_bytes = ''.join(response.body_stream)
         self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
@@ -1911,6 +1934,10 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryGetRevisionGraph)
         self.assertHandlerEqual('Repository.get_stream',
             smart_repo.SmartServerRepositoryGetStream)
+        self.assertHandlerEqual('Repository.get_stream_1.19',
+            smart_repo.SmartServerRepositoryGetStream_1_19)
+        self.assertHandlerEqual('Repository.get_stream_2.3',
+            smart_repo.SmartServerRepositoryGetStream_2_3)
         self.assertHandlerEqual('Repository.has_revision',
             smart_repo.SmartServerRequestHasRevision)
         self.assertHandlerEqual('Repository.insert_stream',

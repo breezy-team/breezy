@@ -90,15 +90,6 @@ class _TargetRepoKinds(object):
     EMPTY = 'empty'
 
 
-class EverythingFetchSpec(object):
-    """A 'search result' that just asks the source to send *everything*."""
-
-
-class EverythingNotInOtherFetchSpec(object):
-    """A fetch spec meaning 'fetch all revs in source that are not already
-    present in target'."""
-
-
 class FetchSpecFactory(object):
     """A helper for building the best fetch spec for a sprout call.
 
@@ -127,28 +118,25 @@ class FetchSpecFactory(object):
     def make_fetch_spec(self):
         """Build a SearchResult or PendingAncestryResult or etc."""
         assert self.target_repo_kind is not None
+        assert self.source_repo
         if len(self.explicit_rev_ids) == 0 and self.source_branch is None:
             # Caller hasn't specified any revisions or source branch
             if self.target_repo_kind == _TargetRepoKinds.EMPTY:
-                return EverythingFetchSpec()
+                return graph.EverythingResult(self.source_repo)
             else:
                 # We want everything not already in the target (or target's
                 # fallbacks).
-                return EverythingNotInOtherFetchSpec()
+                return graph.EverythingNotInOther(
+                    self.target_repo, self.source_repo)
         heads_to_fetch = set(self.explicit_rev_ids)
         if self.source_branch is not None:
             heads_to_fetch.update(
                 self.source_branch.tags.get_reverse_tag_dict())
             heads_to_fetch.add(self.source_branch.last_revision())
-        assert self.source_repo
         if self.target_repo_kind == _TargetRepoKinds.EMPTY:
             return graph.PendingAncestryResult(heads_to_fetch, self.source_repo)
-        # The target already has some revisions, quite possibly including most
-        # of the revisions in the ancestries of heads_to_fetch.  So find out
-        # exactly which revisions are new.
-        inter_repo = repository.InterRepository.get(
-            self.source_repo, self.target_repo)
-        return inter_repo._walk_to_common_revisions(heads_to_fetch)
+        return graph.NotInOtherForRevs(self.target_repo, self.source_repo,
+            revision_ids=heads_to_fetch)
 
 
 class ControlDir(ControlComponent):

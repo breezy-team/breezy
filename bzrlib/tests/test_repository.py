@@ -1659,7 +1659,7 @@ class TestCrossFormatPacks(TestCaseWithTransport):
         self.orig_pack = target.pack
         target.pack = self.log_pack
         search = target.search_missing_revision_ids(
-            source_tree.branch.repository, tip)
+            source_tree.branch.repository, revision_ids=[tip])
         stream = source.get_stream(search)
         from_format = source_tree.branch.repository._format
         sink = target._get_sink()
