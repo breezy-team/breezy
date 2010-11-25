@@ -1718,10 +1718,10 @@ class EverythingResult(object):
         return False
 
     def refine(self, seen, referenced):
-        # perhaps:
-        # PendingAncestryResult(
-        #   self._repo.revisions.keys() - seen + referenced) ?
-        raise NotImplementedError(self.refine)
+        heads = set(self._repo.all_revision_ids())
+        heads.difference_update(seen)
+        heads.update(referenced)
+        return PendingAncestryResult(heads, self._repo)
 
 
 def collapse_linear_regions(parent_map):
