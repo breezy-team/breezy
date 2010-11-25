@@ -117,8 +117,9 @@ class FetchSpecFactory(object):
         
     def make_fetch_spec(self):
         """Build a SearchResult or PendingAncestryResult or etc."""
-        assert self.target_repo_kind is not None
-        assert self.source_repo
+        if self.target_repo_kind is None or self.source_repo is None:
+            raise AssertionError(
+                'Incomplete FetchSpecFactory: %r' % (self.__dict__,))
         if len(self.explicit_rev_ids) == 0 and self.source_branch is None:
             # Caller hasn't specified any revisions or source branch
             if self.target_repo_kind == _TargetRepoKinds.EMPTY:
