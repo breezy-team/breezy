@@ -9,9 +9,6 @@ DEB_PYTHON_INSTALL_ARGS_ALL += --install-data=/usr/share
 DEB_PYTHON_BUILD_ARGS += --executable "/usr/bin/python"
 DEB_COMPRESS_EXCLUDE += .svg .pdf
 
-clean::
-	$(MAKE) clean-docs
-
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 common-post-build-indep::
 	BZR_PLUGIN_PATH=-site:-user ./bzr selftest
@@ -22,6 +19,10 @@ build/bzr:: debian/stamp-doc
 debian/stamp-doc:
 	$(MAKE) docs
 	touch $@
+
+clean::
+	$(MAKE) clean-docs
+	rm -f debian/stamp-doc
 
 install/bzr-doc::
 # Install the documentation; since html and txt and intermixed
