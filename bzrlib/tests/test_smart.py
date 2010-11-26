@@ -1510,23 +1510,10 @@ class TestSmartServerRepositoryGetStream(GetStreamTestBase):
         stream_bytes = ''.join(response.body_stream)
         self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
 
-    def test_search_does_not_accept_everything(self):
-        """The search argument of the <2.3 verb may not be 'everything'."""
-        backing = self.get_transport()
-        request = smart_repo.SmartServerRepositoryGetStream(backing)
-        repo, r1, r2 = self.make_two_commit_repo()
-        serialised_fetch_spec = 'everything'
-        request.execute('', repo._format.network_name())
-        response = request.do_body(serialised_fetch_spec)
-        self.assertEqual(('BadSearch',), response.args)
-
-
-class TestSmartServerRepositoryGetStream_2_3(GetStreamTestBase):
-
     def test_search_everything(self):
         """A search of 'everything' returns a stream."""
         backing = self.get_transport()
-        request = smart_repo.SmartServerRepositoryGetStream_2_3(backing)
+        request = smart_repo.SmartServerRepositoryGetStream_1_19(backing)
         repo, r1, r2 = self.make_two_commit_repo()
         serialised_fetch_spec = 'everything'
         request.execute('', repo._format.network_name())
@@ -1936,8 +1923,6 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryGetStream)
         self.assertHandlerEqual('Repository.get_stream_1.19',
             smart_repo.SmartServerRepositoryGetStream_1_19)
-        self.assertHandlerEqual('Repository.get_stream_2.3',
-            smart_repo.SmartServerRepositoryGetStream_2_3)
         self.assertHandlerEqual('Repository.has_revision',
             smart_repo.SmartServerRequestHasRevision)
         self.assertHandlerEqual('Repository.insert_stream',

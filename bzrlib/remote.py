@@ -1970,7 +1970,6 @@ class RemoteStreamSource(repository.StreamSource):
         search_bytes = repo._serialise_search_result(search)
         args = (path, self.to_format.network_name())
         candidate_verbs = [
-            ('Repository.get_stream_2.3', (2, 3)),
             ('Repository.get_stream_1.19', (1, 19)),
             ('Repository.get_stream', (1, 13))]
 
@@ -1978,14 +1977,22 @@ class RemoteStreamSource(repository.StreamSource):
         for verb, version in candidate_verbs:
             if medium._is_remote_before(version):
                 continue
-            if isinstance(search, graph.EverythingResult) and version < (2, 3):
-                # EverythingResult is new in 2.3
-                continue
             try:
                 response = repo._call_with_body_bytes_expecting_body(
                     verb, args, search_bytes)
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before(version)
+            except errors.UnknownErrorFromSmartServer, e:
+                if isinstance(search, graph.EverythingResult):
+                    error_verb = e.error_from_smart_server.error_verb
+                    if error_verb == 'BadSearch':
+                        # Pre-2.3 servers don't support this sort of search.
+                        # XXX: perhaps falling back to VFS on BadSearch is a
+                        # good idea in general?  It might provide a little bit
+                        # of protection against client-side bugs.
+                        medium._remember_remote_is_before((2, 3))
+                        break
+                raise
             else:
                 response_tuple, response_handler = response
                 found_verb = True

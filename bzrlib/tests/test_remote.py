@@ -3200,13 +3200,12 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
         self.hpss_calls = []
         local.repository.fetch(remote_branch.repository,
                 fetch_spec=graph.EverythingResult(remote_branch.repository))
-        self.assertEqual(['Repository.get_stream_2.3'], self.hpss_calls)
+        self.assertEqual(['Repository.get_stream_1.19'], self.hpss_calls)
 
     def test_fetch_everything_backwards_compat(self):
         """Can fetch with EverythingResult even when the server does not have
         the Repository.get_stream_2.3 verb.
         """
-        self.disable_verb('Repository.get_stream_2.3')
         local = self.make_branch('local')
         builder = self.make_branch_builder('remote')
         builder.build_commit(message="Commit.")
