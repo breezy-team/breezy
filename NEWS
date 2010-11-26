@@ -5,6 +5,36 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.2.3
+#########
+
+:2.2.3: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 bzr 2.2.2
 #########
 
@@ -12,9 +42,6 @@ bzr 2.2.2
 
 This is a bugfix release. None of these bugfixes are critical, but upgrading
 is recommended for all users on earlier 2.2 releases.
-
-Compatibility Breaks
-********************
 
 Bug Fixes
 *********
