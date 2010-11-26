@@ -19,7 +19,7 @@
 import os
 import stat
 
-from bzrlib import tests
+from bzrlib import osutils, tests
 from bzrlib.symbol_versioning import deprecated_in
 
 
@@ -114,16 +114,8 @@ class ExecutableFeature(tests.Feature):
         return self._path
 
     def _probe(self):
-        path = os.environ.get('PATH')
-        if path is None:
-            return False
-        for d in path.split(os.pathsep):
-            if d:
-                f = os.path.join(d, self.name)
-                if os.access(f, os.X_OK):
-                    self._path = f
-                    return True
-        return False
+        self._path = osutils.find_executable_on_path(self.name)
+        return self._path is not None
 
     def feature_name(self):
         return '%s executable' % self.name
