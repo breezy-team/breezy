@@ -283,8 +283,8 @@ else:
         # The code it generates re-uses a "local" pointer and
         # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
         # which is NULL safe with PY_DECREF which is not.)
-        # <https://bugs.edge.launchpad.net/bzr/+bug/449372>
-        # <https://bugs.edge.launchpad.net/bzr/+bug/276868>
+        # <https://bugs.launchpad.net/bzr/+bug/449372>
+        # <https://bugs.launchpad.net/bzr/+bug/276868>
         print 'Cannot build extension "bzrlib._dirstate_helpers_pyx" using'
         print 'your version of pyrex "%s". Please upgrade your pyrex' % (
             pyrex_version,)
