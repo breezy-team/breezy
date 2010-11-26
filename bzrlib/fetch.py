@@ -161,10 +161,8 @@ class RepoFetcher(object):
         install self._last_revision in self.to_repository.
 
         :returns: A SearchResult of some sort.  (Possibly a
-        PendingAncestryResult, EmptySearchResult, etc.)
+            PendingAncestryResult, EmptySearchResult, etc.)
         """
-        mutter("self._fetch_spec, self._last_revision: %r, %r",
-                self._fetch_spec, self._last_revision)
         get_search = getattr(self._fetch_spec, 'get_search', None)
         if get_search is not None:
             # This is EverythingNotInOther or a similar kind of fetch_spec.
