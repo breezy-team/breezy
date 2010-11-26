@@ -2378,14 +2378,15 @@ def available_backup_name(base, exists):
     return name
 
 
-def is_executable_on_path(name):
-    """Checks whether an executable can be found on the PATH.
+def find_executable_on_path(name):
+    """Finds an executable on the PATH.
     
     On Windows, this will try to append each extension in the PATHEXT
     environment variable to the name, if it cannot be found with the name
     as given.
     
     :param name: The base name of the executable.
+    :return: The path to the executable found or None.
     """
     path = os.environ.get('PATH')
     if path is None:
@@ -2398,5 +2399,5 @@ def is_executable_on_path(name):
             if d:
                 f = os.path.join(d, name) + ext
                 if os.access(f, os.X_OK):
-                    return True
-    return False
+                    return f
+    return None

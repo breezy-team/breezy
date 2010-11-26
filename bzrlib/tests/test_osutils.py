@@ -2118,14 +2118,18 @@ class TestBackupNames(tests.TestCase):
         self.assertBackupName('file.~2~', 'file')
 
 
-class TestIsExecutableInPath(tests.TestCase):
+class TestFindExecutableInPath(tests.TestCase):
     def test_windows(self):
         if sys.platform != 'win32':
             raise tests.TestSkipped('test requires win32')
-        self.assertTrue(osutils.is_executable_on_path('explorer'))
-        self.assertTrue(osutils.is_executable_on_path('explorer.exe'))
+        self.assertTrue(osutils.find_executable_on_path('explorer') is not None)
+        self.assertTrue(osutils.find_executable_on_path('explorer.exe') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
 
     def test_other(self):
         if sys.platform == 'win32':
             raise tests.TestSkipped('test requires non-win32')
-        self.assertTrue(osutils.is_executable_on_path('sh'))
+        self.assertTrue(osutils.is_executable_on_path('sh') is not None)
+        self.assertTrue(
+            osutils.is_executable_on_path('THIS SHOULD NOT EXIST') is None)
