@@ -710,7 +710,7 @@ class TestErrorFormatting(TestCase):
             str(e), 'Unprintable exception ErrorWithBadFormat')
 
     def test_cannot_bind_address(self):
-        # see <https://bugs.edge.launchpad.net/bzr/+bug/286871>
+        # see <https://bugs.launchpad.net/bzr/+bug/286871>
         e = errors.CannotBindAddress('example.com', 22,
             socket.error(13, 'Permission denied'))
         self.assertContainsRe(str(e),

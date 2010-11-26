@@ -244,7 +244,7 @@ class LockDir(lock.Lock):
         # have a similar bug allowing someone to think they got the lock
         # when it's already held.
         #
-        # See <https://bugs.edge.launchpad.net/bzr/+bug/498378> for one case.
+        # See <https://bugs.launchpad.net/bzr/+bug/498378> for one case.
         #
         # Strictly the check is unnecessary and a waste of time for most
         # people, but probably worth trapping if something is wrong.

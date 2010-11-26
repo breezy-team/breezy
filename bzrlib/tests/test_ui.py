@@ -399,7 +399,7 @@ class TestUIFactoryTests(tests.TestCase):
 
     def test_test_ui_factory_progress(self):
         # there's no output; we just want to make sure this doesn't crash -
-        # see https://bugs.edge.launchpad.net/bzr/+bug/408201
+        # see https://bugs.launchpad.net/bzr/+bug/408201
         ui = tests.TestUIFactory()
         pb = ui.nested_progress_bar()
         pb.update('hello')
