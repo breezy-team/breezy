@@ -53,7 +53,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         branch.set_public_branch(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
              'browser'],
             self.run_open('lp'))
 
@@ -64,7 +64,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         branch.set_push_location(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/push')
         self.assertEqual(
-            ['Opening https://code.edge.launchpad.net/~foo/bar/public in web '
+            ['Opening https://code.launchpad.net/~foo/bar/public in web '
              'browser'],
             self.run_open('lp'))
 
@@ -75,7 +75,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         branch.set_push_location(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
              'browser'],
             self.run_open('lp'))
 
@@ -84,6 +84,6 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         # location and no push location, then just try to look up the
         # Launchpad page for that URL.
         self.assertEqual(
-            ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
              'browser'],
             self.run_open('bzr+ssh://bazaar.launchpad.net/~foo/bar/baz'))
