@@ -68,7 +68,7 @@ class TestShelveList(TestCaseWithTransport):
         self.assertIs(None, tree.get_shelf_manager().last_shelf())
 
     def test_unshelve_keep(self):
-        # https://bugs.edge.launchpad.net/bzr/+bug/492091
+        # https://bugs.launchpad.net/bzr/+bug/492091
         tree = self.make_branch_and_tree('.')
         # shelve apparently unhappy working with a tree with no root yet
         tree.commit('make root')

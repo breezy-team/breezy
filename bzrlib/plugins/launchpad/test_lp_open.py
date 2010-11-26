@@ -96,6 +96,6 @@ class TestLaunchpadOpen(TestCaseWithTransport):
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.build_tree(['lp/a/'])
         self.assertEqual(
-            ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
              'browser'],
             self.run_open('.', working_dir='lp/a'))

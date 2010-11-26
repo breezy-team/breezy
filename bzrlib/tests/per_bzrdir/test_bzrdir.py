@@ -1179,7 +1179,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # for remote formats, there must be no prior assumption about the
         # network name to use - it's possible that this may somehow have got
         # in through an unisolated test though - see
-        # <https://bugs.edge.launchpad.net/bzr/+bug/504102>
+        # <https://bugs.launchpad.net/bzr/+bug/504102>
         self.assertEquals(getattr(self.bzrdir_format,
             '_network_name', None),
             None)
