@@ -15,6 +15,13 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* The ``edge.launchpad.net`` server has been deprecated and all references to
+  it have been removed from the code base. This ensures that users upgrading
+  to bzr 2.0.7 or better will never try to contact the 'edge' server. Users of
+  previous versions can workaround connection problems by setting the
+  ``BZR_LP_XMLRPC_URL`` environment variable to
+  ``http://xmlrpc.launchpad.net/bazaar/``.  (Vincent Ladeuil, #583667)
+
 New Features
 ************
 
