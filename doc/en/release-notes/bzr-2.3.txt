@@ -18,7 +18,8 @@ External Compatibility Breaks
 New Features
 ************
 
-.. New commands, options, etc that users may wish to try out.
+* External merge tools can now be configured in bazaar.conf. See
+  ``bzr help configuration`` for more information.  (Gordon Tyler)
 
 Improvements
 ************
