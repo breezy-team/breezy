@@ -158,3 +158,23 @@ class Splitter(object):
 def split(unsplit, single_quotes_allowed=True):
     splitter = Splitter(unsplit, single_quotes_allowed=single_quotes_allowed)
     return [arg for quoted, arg in splitter]
+
+
+def unsplit(args):
+    return ' '.join([_quote_arg(arg) for arg in args])
+    
+
+def _quote_arg(arg):
+    if u' ' in arg and not _is_arg_quoted(arg):
+        return u'"%s"' % _escape_quotes(arg)
+    else:
+        return arg
+
+
+def _is_arg_quoted(arg):
+    return (arg[0] == u"'" and arg[-1] == u"'") or \
+           (arg[0] == u'"' and arg[-1] == u'"')
+
+
+def _escape_quotes(arg):
+    return arg.replace(u'"', u'\\"')
