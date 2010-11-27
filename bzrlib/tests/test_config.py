@@ -386,6 +386,27 @@ class TestConfigPath(tests.TestCase):
             '/home/bogus/.cache')
 
 
+class TestXDGConfigDir(tests.TestCaseInTempDir):
+    # must be in temp dir because config tests for the existence of the bazaar
+    # subdirectory of $XDG_CONFIG_HOME
+
+    def test_xdg_config_dir_exists(self):
+        if sys.platform in ('darwin', 'win32'):
+            return
+        newdir = osutils.pathjoin(self.test_home_dir, '.config', 'bazaar')
+        os.makedirs(newdir)
+        self.assertEqual(config.config_dir(), newdir)
+
+    def test_xdg_config_home(self):
+        if sys.platform in ('darwin', 'win32'):
+            return
+        xdgconfigdir = osutils.pathjoin(self.test_home_dir, 'xdgconfig')
+        os.environ['XDG_CONFIG_HOME'] = xdgconfigdir
+        newdir = osutils.pathjoin(xdgconfigdir, 'bazaar')
+        os.makedirs(newdir)
+        self.assertEqual(config.config_dir(), newdir)
+
+
 class TestIniConfig(tests.TestCaseInTempDir):
 
     def make_config_parser(self, s):

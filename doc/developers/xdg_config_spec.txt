@@ -13,8 +13,10 @@ of ~/.config.
 Bazaar would like to be a good Unix citizen by using these standard locations
 for configuration files.  As such, we should support that location, but not
 require it.  Note that the following descriptions do not apply
-to Windows or Mac OS X which can and should use their own native configuration
-locations.
+to Windows or Mac OS X which should use their own native configuration
+locations.  (On Windows, we currently do this by working under %APPDATA%.  The
+Mac OS X equivalent would be ~/Library/Application Support/Bazaar but there is
+also cultural support for ~/.bazaar on that platform.)
 
 * If $XDG_CONFIG_HOME/bazaar exists, use the files there for configuration,
   noting in the log that we are doing so.  This allows individuals who would
