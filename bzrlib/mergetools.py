@@ -107,12 +107,8 @@ class MergeTool(object):
         else:
             self._name = name
 
-    def get_commandline(self, quote=False):
-        if quote:
-            args = _quote_args(self._commandline)
-        else:
-            args = self._commandline
-        return u' '.join(args)
+    def get_commandline(self):
+        return cmdline.unsplit(self._commandline)
 
     def get_commandline_as_list(self):
         return self._commandline
@@ -206,7 +202,7 @@ def set_merge_tools(merge_tools, conf=None):
     # set config entries
     for tool in merge_tools:
         oname = 'mergetools.%s' % tool.get_name()
-        value = tool.get_commandline(quote=True)
+        value = tool.get_commandline()
         if oname == '' or value == '':
             continue
         conf.set_user_option(oname, value)
@@ -268,23 +264,3 @@ def resolve_using_merge_tool(tool_name, conflicts):
                                      '  %s' % (tool_name, available))
     for conflict in conflicts:
         merge_tool.invoke(conflict.path)
-
-
-def _quote_args(args):
-    return [_quote_arg(arg) for arg in args]
-
-
-def _quote_arg(arg):
-    if u' ' in arg and not _is_arg_quoted(arg):
-        return u'"%s"' % _escape_quotes(arg)
-    else:
-        return arg
-
-
-def _is_arg_quoted(arg):
-    return (arg[0] == u"'" and arg[-1] == u"'") or \
-           (arg[0] == u'"' and arg[-1] == u'"')
-
-
-def _escape_quotes(arg):
-    return arg.replace(u'"', u'\\"')

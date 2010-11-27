@@ -249,7 +249,7 @@ class TestModuleFunctions(tests.TestCaseInTempDir):
         self.assertEqual('winmergeu %r', tools[1].get_commandline())
         self.assertEqual('funkytool', tools[2].get_name())
         self.assertEqual('funkytool "arg with spaces" %T',
-                          tools[2].get_commandline(quote=True))
+                          tools[2].get_commandline())
 
     def test_set_merge_tools(self):
         conf = config.GlobalConfig()
