@@ -39,15 +39,6 @@ from bzrlib.commands import Command
 from bzrlib.option import Option
 
 
-substitution_help = {
-    u'%b' : u'file.BASE',
-    u'%t' : u'file.THIS',
-    u'%o' : u'file.OTHER',
-    u'%r' : u'file (output)',
-    u'%T' : u'file.THIS (temp copy, used to overwrite "file" if merge succeeds)'
-}
-
-
 def subprocess_invoker(executable, args, cleanup):
     retcode = subprocess.call([executable] + args)
     cleanup(retcode)
@@ -148,29 +139,32 @@ class MergeTool(object):
         return invoker(args[0], args[1:], cleanup)
 
     def _subst_filename(self, args, filename):
+        subst_names = {
+            u'base': filename + u'.BASE',
+            u'this': filename + u'.THIS',
+            u'other': filename + u'.OTHER',
+            u'result': filename,
+        }
         tmp_file = None
         subst_args = []
         for arg in args:
-            arg = arg.replace(u'%b', filename + u'.BASE')
-            arg = arg.replace(u'%t', filename + u'.THIS')
-            arg = arg.replace(u'%o', filename + u'.OTHER')
-            arg = arg.replace(u'%r', filename)
-            if u'%T' in arg:
+            if u'{this_temp}' in arg and not 'this_temp' in subst_names:
                 tmp_file = tempfile.mktemp(u"_bzr_mergetools_%s.THIS" %
                                            os.path.basename(filename))
                 shutil.copy(filename + u".THIS", tmp_file)
-                arg = arg.replace(u'%T', tmp_file)
+                subst_names['this_temp'] = tmp_file
+            arg = arg.format(**subst_names)
             subst_args.append(arg)
         return subst_args, tmp_file
 
 
 _KNOWN_MERGE_TOOLS = (
-    u'bcompare %t %o %b %r',
-    u'kdiff3 %b %t %o -o %r',
-    u'xxdiff -m -O -M %r %t %b %o',
-    u'meld %b %T %o',
-    u'opendiff %t %o -ancestor %b -merge %r',
-    u'winmergeu %r',
+    u'bcompare {this} {other} {base} {result}',
+    u'kdiff3 {base} {this} {other} -o {result}',
+    u'xxdiff -m -O -M {result} {this} {base} {other}',
+    u'meld {base} {this_temp} {other}',
+    u'opendiff {this} {other} -ancestor {base} -merge {result}',
+    u'winmergeu {result}',
 )
 
 

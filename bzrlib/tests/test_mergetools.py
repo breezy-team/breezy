@@ -30,15 +30,17 @@ class TestBasics(tests.TestCase):
     def setUp(self):
         super(TestBasics, self).setUp()
         self.tool = mergetools.MergeTool('sometool',
-            '/path/to/tool --opt %b -x %t %o --stuff %r')
+            '/path/to/tool --opt {base} -x {this} {other} --stuff {result}')
 
     def test_get_commandline(self):
-        self.assertEqual('/path/to/tool --opt %b -x %t %o --stuff %r',
+        self.assertEqual(
+            '/path/to/tool --opt {base} -x {this} {other} --stuff {result}',
             self.tool.get_commandline())
 
     def test_get_commandline_as_list(self):
-        self.assertEqual(['/path/to/tool', '--opt', '%b', '-x', '%t', '%o',
-                          '--stuff', '%r'],
+        self.assertEqual(
+            ['/path/to/tool', '--opt', '{base}', '-x', '{this}', '{other}',
+             '--stuff', '{result}'],
             self.tool.get_commandline_as_list())
 
     def test_get_executable(self):
@@ -56,26 +58,30 @@ class TestBasics(tests.TestCase):
         self.assertEqual('tool', self.tool.get_name())
 
     def test_set_commandline(self):
-        self.tool.set_commandline('/new/path/to/bettertool %b %t %o %r')
-        self.assertEqual(['/new/path/to/bettertool', '%b', '%t', '%o', '%r'],
+        self.tool.set_commandline(
+            '/new/path/to/bettertool {base} {this} {other} {result}')
+        self.assertEqual(
+            ['/new/path/to/bettertool', '{base}', '{this}', '{other}',
+             '{result}'],
             self.tool.get_commandline_as_list())
 
     def test_set_executable(self):
         self.tool.set_executable('othertool')
-        self.assertEqual(['othertool', '--opt', '%b', '-x', '%t', '%o',
-                          '--stuff', '%r'],
+        self.assertEqual(
+            ['othertool', '--opt', '{base}', '-x', '{this}', '{other}',
+             '--stuff', '{result}'],
             self.tool.get_commandline_as_list())
 
     def test_quoted_executable(self):
         self.requireFeature(backslashdir_feature)
-        self.tool.set_commandline(
-            '"C:\\Program Files\\KDiff3\\kdiff3.exe" %b %t %o -o %r')
+        self.tool.set_commandline('"C:\\Program Files\\KDiff3\\kdiff3.exe" '
+                                  '{base} {this} {other} -o {result}')
         self.assertEqual('C:\\Program Files\\KDiff3\\kdiff3.exe',
                          self.tool.get_executable())
 
     def test_comparison(self):
         other_tool = mergetools.MergeTool('sometool',
-            '/path/to/tool --opt %b -x %t %o --stuff %r')
+            '/path/to/tool --opt {base} -x {this} {other} --stuff {result}')
         self.assertTrue(self.tool == other_tool)
         self.assertTrue(self.tool != None)
 
@@ -85,13 +91,13 @@ class TestBasics(tests.TestCase):
 
     def test_comparison_fail_name(self):
         other_tool = mergetools.MergeTool('sometoolx',
-            '/path/to/tool --opt %b -x %t %o --stuff %r')
+            '/path/to/tool --opt {base} -x {this} {other} --stuff {result}')
         self.assertFalse(self.tool == other_tool)
         self.assertTrue(self.tool != other_tool)
 
     def test_comparison_fail_commandline(self):
         other_tool = mergetools.MergeTool('sometool',
-            '/path/to/tool --opt %b -x %t %o --stuff %r extra')
+            '/path/to/tool --opt {base} -x {other} --stuff {result} extra')
         self.assertFalse(self.tool == other_tool)
         self.assertTrue(self.tool != other_tool)
 
@@ -100,15 +106,17 @@ class TestUnicodeBasics(tests.TestCase):
     def setUp(self):
         super(TestUnicodeBasics, self).setUp()
         self.tool = mergetools.MergeTool(u'someb\u0414r',
-            u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r')
+            u'/path/to/b\u0414r --opt {base} -x {this} {other} --stuff {result}')
 
     def test_get_commandline(self):
-        self.assertEqual(u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r',
+        self.assertEqual(
+            u'/path/to/b\u0414r --opt {base} -x {this} {other} --stuff {result}',
             self.tool.get_commandline())
 
     def test_get_commandline_as_list(self):
-        self.assertEqual([u'/path/to/b\u0414r', u'--opt', u'%b', u'-x', u'%t',
-                          u'%o', u'--stuff', u'%r'],
+        self.assertEqual(
+            [u'/path/to/b\u0414r', u'--opt', u'{base}', u'-x', u'{this}',
+             u'{other}', u'--stuff', u'{result}'],
             self.tool.get_commandline_as_list())
 
     def test_get_executable(self):
@@ -126,27 +134,30 @@ class TestUnicodeBasics(tests.TestCase):
         self.assertEqual(u'b\u0414r', self.tool.get_name())
 
     def test_set_commandline(self):
-        self.tool.set_commandline(u'/new/path/to/betterb\u0414r %b %t %o %r')
-        self.assertEqual([u'/new/path/to/betterb\u0414r', u'%b', u'%t', u'%o',
-                          u'%r'],
+        self.tool.set_commandline(
+            u'/new/path/to/betterb\u0414r {base} {this} {other} {result}')
+        self.assertEqual(
+            [u'/new/path/to/betterb\u0414r', u'{base}', u'{this}', u'{other}',
+             u'{result}'],
             self.tool.get_commandline_as_list())
 
     def test_set_executable(self):
         self.tool.set_executable(u'otherb\u0414r')
-        self.assertEqual([u'otherb\u0414r', u'--opt', u'%b', u'-x', u'%t',
-                          u'%o', u'--stuff', u'%r'],
+        self.assertEqual(
+            [u'otherb\u0414r', u'--opt', u'{base}', u'-x', u'{this}',
+             u'{other}', u'--stuff', u'{result}'],
             self.tool.get_commandline_as_list())
 
     def test_quoted_executable(self):
         self.requireFeature(backslashdir_feature)
-        self.tool.set_commandline(
-            u'"C:\\Program Files\\KDiff3\\b\u0414r.exe" %b %t %o -o %r')
+        self.tool.set_commandline(u'"C:\\Program Files\\KDiff3\\b\u0414r.exe" '
+                                  '{base} {this} {other} -o {result}')
         self.assertEqual(u'C:\\Program Files\\KDiff3\\b\u0414r.exe',
                          self.tool.get_executable())
 
     def test_comparison(self):
         other_tool = mergetools.MergeTool(u'someb\u0414r',
-            u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r')
+            u'/path/to/b\u0414r --opt {base} -x {this} {other} --stuff {result}')
         self.assertTrue(self.tool == other_tool)
         self.assertFalse(self.tool != other_tool)
 
@@ -156,13 +167,13 @@ class TestUnicodeBasics(tests.TestCase):
 
     def test_comparison_fail_name(self):
         other_tool = mergetools.MergeTool(u'someb\u0414rx',
-            u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r')
+            u'/path/to/b\u0414r --opt {base} -x {this} {other} --stuff {result}')
         self.assertFalse(self.tool == other_tool)
         self.assertTrue(self.tool != other_tool)
 
     def test_comparison_fail_commandline(self):
         other_tool = mergetools.MergeTool(u'someb\u0414r',
-            u'/path/to/b\u0414r --opt %b -x %t %o --stuff %r extra')
+            u'/path/to/b\u0414r --opt {base} -x {other} --stuff {result} extra')
         self.assertFalse(self.tool == other_tool)
         self.assertTrue(self.tool != other_tool)
 
@@ -172,7 +183,8 @@ class TestMergeToolOperations(tests.TestCaseInTempDir):
         def dummy_invoker(executable, args, cleanup):
             self._commandline = [executable] + args
             cleanup(0)
-        mt = mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r')
+        mt = mergetools.MergeTool('kdiff3',
+                                  'kdiff3 {base} {this} {other} -o {result}')
         mt.invoke('test.txt', dummy_invoker)
         self.assertEqual(
             ['kdiff3',
@@ -209,7 +221,7 @@ class TestMergeToolOperations(tests.TestCaseInTempDir):
             self._tmp_file = args[0]
         self.build_tree(('test.txt', 'test.txt.BASE', 'test.txt.THIS',
                          'test.txt.OTHER'))
-        mt = mergetools.MergeTool('some_tool', 'some_tool %T')
+        mt = mergetools.MergeTool('some_tool', 'some_tool {this_temp}')
         mt.invoke('test.txt', dummy_invoker)
         self.failIfExists(self._tmp_file)
 
@@ -237,71 +249,86 @@ class TestMergeToolOperations(tests.TestCaseInTempDir):
 class TestModuleFunctions(tests.TestCaseInTempDir):
     def test_get_merge_tools(self):
         conf = config.GlobalConfig()
-        conf.set_user_option('mergetools.kdiff3', 'kdiff3 %b %t %o -o %r')
-        conf.set_user_option('mergetools.winmergeu', 'winmergeu %r')
-        conf.set_user_option('mergetools.funkytool', 'funkytool "arg with spaces" %T')
+        conf.set_user_option('mergetools.kdiff3',
+                             'kdiff3 {base} {this} {other} -o {result}')
+        conf.set_user_option('mergetools.winmergeu',
+                             'winmergeu {result}')
+        conf.set_user_option('mergetools.funkytool',
+                             'funkytool "arg with spaces" {this_temp}')
         tools = mergetools.get_merge_tools(conf)
         self.log(repr(tools))
         self.assertEqual(3, len(tools))
         self.assertEqual('kdiff3', tools[0].get_name())
-        self.assertEqual('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
+        self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
+                         tools[0].get_commandline())
         self.assertEqual('winmergeu', tools[1].get_name())
-        self.assertEqual('winmergeu %r', tools[1].get_commandline())
+        self.assertEqual('winmergeu {result}', tools[1].get_commandline())
         self.assertEqual('funkytool', tools[2].get_name())
-        self.assertEqual('funkytool "arg with spaces" %T',
+        self.assertEqual('funkytool "arg with spaces" {this_temp}',
                           tools[2].get_commandline())
 
     def test_set_merge_tools(self):
         conf = config.GlobalConfig()
-        tools = [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
-                 mergetools.MergeTool('winmergeu', 'winmergeu %r'),
+        tools = [mergetools.MergeTool('kdiff3',
+                                      'kdiff3 {base} {this} {other} -o {result}'),
+                 mergetools.MergeTool('winmergeu',
+                                      'winmergeu {result}'),
                  mergetools.MergeTool('funkytool',
-                                      'funkytool "arg with spaces" %T')
+                                      'funkytool "arg with spaces" {this_temp}')
                  ]
         mergetools.set_merge_tools(tools, conf)
-        self.assertEqual('funkytool "arg with spaces" %T',
+        self.assertEqual('funkytool "arg with spaces" {this_temp}',
                           conf.get_user_option('mergetools.funkytool'))
-        self.assertEqual('kdiff3 %b %t %o -o %r',
+        self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
                           conf.get_user_option('mergetools.kdiff3'))
-        self.assertEqual('winmergeu %r',
+        self.assertEqual('winmergeu {result}',
                           conf.get_user_option('mergetools.winmergeu'))
 
     def test_set_merge_tools_duplicates(self):
         conf = config.GlobalConfig()
         mergetools.set_merge_tools(
-            [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
-             mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r')],
+            [mergetools.MergeTool('kdiff3',
+                                  'kdiff3 {base} {this} {other} -o {result}'),
+             mergetools.MergeTool('kdiff3',
+                                  'kdiff3 {base} {this} {other} -o {result}')],
             conf)
         tools = mergetools.get_merge_tools(conf)
         self.assertEqual(1, len(tools))
         self.assertEqual('kdiff3', tools[0].get_name())
-        self.assertEqual('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
+        self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
+                         tools[0].get_commandline())
 
     def test_set_merge_tools_empty_tool(self):
         conf = config.GlobalConfig()
         mergetools.set_merge_tools(
-            [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
+            [mergetools.MergeTool('kdiff3',
+                                  'kdiff3 {base} {this} {other} -o {result}'),
              mergetools.MergeTool('',''),
              mergetools.MergeTool('blah','')],
             conf)
         tools = mergetools.get_merge_tools(conf)
         self.assertEqual(1, len(tools))
         self.assertEqual('kdiff3', tools[0].get_name())
-        self.assertEqual('kdiff3 %b %t %o -o %r', tools[0].get_commandline())
+        self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
+                         tools[0].get_commandline())
 
     def test_set_merge_tools_remove_one(self):
         conf = config.GlobalConfig()
-        tools = [mergetools.MergeTool('kdiff3', 'kdiff3 %b %t %o -o %r'),
-                 mergetools.MergeTool('winmergeu', 'winmergeu %r'),
+        tools = [mergetools.MergeTool('kdiff3',
+                                      'kdiff3 {base} {this} {other} -o {result}'),
+                 mergetools.MergeTool('winmergeu',
+                                      'winmergeu {result}'),
                  mergetools.MergeTool('funkytool',
-                                      'funkytool "arg with spaces" %T')
+                                      'funkytool "arg with spaces" {this_temp}')
                  ]
         mergetools.set_merge_tools(tools, conf)
         del tools[0]
         mergetools.set_merge_tools(tools, conf)
         self.assertEqual(sorted([
-            ('mergetools.funkytool', 'funkytool "arg with spaces" %T', 'DEFAULT', 'bazaar'),
-            ('mergetools.winmergeu', 'winmergeu %r', 'DEFAULT', 'bazaar'),
+            ('mergetools.funkytool',
+             'funkytool "arg with spaces" {this_temp}', 'DEFAULT', 'bazaar'),
+            ('mergetools.winmergeu',
+             'winmergeu {result}', 'DEFAULT', 'bazaar'),
             ]),
             sorted(conf._get_options()))
 

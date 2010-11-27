@@ -598,15 +598,16 @@ executable may omit its path if it can be found on the PATH.
 The following markers can be used in the command-line to substitute filenames
 involved in the merge conflict:
 
-%b -> file.BASE
-%t -> file.THIS
-%o -> file.OTHER
-%r -> file (output)
-%T -> file.THIS (temp copy, used to overwrite "file" if merge succeeds)
+{base}      file.BASE
+{this}      file.THIS
+{other}     file.OTHER
+{result}    output file
+{this_temp} temp copy of file.THIS, used to overwrite output file if merge
+            succeeds.
 
 For example:
 
-  mergetools.kdiff3 = kdiff3 %b %t %o -o %r
+  mergetools.kdiff3 = kdiff3 {base} {this} {other} -o {result}
 
 default_mergetool
 ~~~~~~~~~~~~~~~~~
