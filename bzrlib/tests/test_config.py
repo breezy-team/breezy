@@ -390,16 +390,25 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
     # must be in temp dir because config tests for the existence of the bazaar
     # subdirectory of $XDG_CONFIG_HOME
 
+    def setUp(self):
+        super(TestXDGConfigDir, self).setUp()
+        os.environ['HOME'] = self.test_home_dir
+
     def test_xdg_config_dir_exists(self):
         if sys.platform in ('darwin', 'win32'):
-            return
+            raise tests.TestNotApplicable
+        # this overrides everything we want to test so get rid of it
+        del os.environ['BZR_HOME'] 
         newdir = osutils.pathjoin(self.test_home_dir, '.config', 'bazaar')
         os.makedirs(newdir)
         self.assertEqual(config.config_dir(), newdir)
 
     def test_xdg_config_home(self):
         if sys.platform in ('darwin', 'win32'):
-            return
+            raise tests.TestNotApplicable
+        # this overrides everything we want to test so get rid of it
+        del os.environ['BZR_HOME']
+
         xdgconfigdir = osutils.pathjoin(self.test_home_dir, 'xdgconfig')
         os.environ['XDG_CONFIG_HOME'] = xdgconfigdir
         newdir = osutils.pathjoin(xdgconfigdir, 'bazaar')
