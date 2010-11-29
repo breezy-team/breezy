@@ -38,6 +38,13 @@ Changed Behaviour
   get the old behavior, one can use ``bzr tags --sort=alpha``.
   (Neil Martinsen-Burrell, #640760)
 
+* On platforms other than Windows and Mac OS X, Bazaar will use configuration
+  files that live in $XDG_CONFIG_HOME/bazaar if that directory exists.  This
+  allows interested individuals to conform to the XDG Base Directory
+  specification.  The plugin location has not changed and is still
+  ~/.bazaar/plugins.  To use a different directory for plugins, use the
+  environment variable BZR_PLUGIN_PATH.  (Neil Martinsen-Burrell, #195397)
+
 Launchpad integration
 *********************
 
