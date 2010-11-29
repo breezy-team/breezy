@@ -1704,6 +1704,7 @@ class PendingAncestryResult(object):
 
 
 class EmptySearchResult(object):
+    """An empty search result."""
 
     def is_empty(self):
         return True
