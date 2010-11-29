@@ -110,7 +110,7 @@ class RevisionTree(tree.Tree):
     def is_executable(self, file_id, path=None):
         ie = self._inventory[file_id]
         if ie.kind != "file":
-            return None
+            return False
         return ie.executable
 
     def has_filename(self, filename):

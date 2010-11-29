@@ -2344,7 +2344,7 @@ A_ENTRY = ('a-id', ('a', 'a'), True, (True, True),
                   ('TREE_ROOT', 'TREE_ROOT'), ('a', 'a'), ('file', 'file'),
                   (False, False))
 ROOT_ENTRY = ('TREE_ROOT', ('', ''), False, (True, True), (None, None),
-              ('', ''), ('directory', 'directory'), (False, None))
+              ('', ''), ('directory', 'directory'), (False, False))
 
 
 class TestTransformPreview(tests.TestCaseWithTransport):
@@ -2437,13 +2437,13 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         changes = preview_tree.iter_changes(revision_tree,
                                             specific_files=[''])
-        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
+        self.assertEqual([A_ENTRY], list(changes))
 
     def test_want_unversioned(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         changes = preview_tree.iter_changes(revision_tree,
                                             want_unversioned=True)
-        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
+        self.assertEqual([A_ENTRY], list(changes))
 
     def test_ignore_extra_trees_no_specific_files(self):
         # extra_trees is harmless without specific_files, so we'll silently

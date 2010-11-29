@@ -19,6 +19,9 @@ New Features
 Bug Fixes
 *********
 
+* RevisionTree.is_executable handles directories and symlinks like other types
+  and functions.  (Aaron Bentley, #681885)
+
 Improvements
 ************
 
