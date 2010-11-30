@@ -1686,7 +1686,7 @@ class Repository(_RelockDebugMixin):
                 "May not fetch while in a write group.")
         # fast path same-url fetch operations
         # TODO: lift out to somewhere common with RemoteRepository
-        # <https://bugs.edge.launchpad.net/bzr/+bug/401646>
+        # <https://bugs.launchpad.net/bzr/+bug/401646>
         if (self.has_same_location(source)
             and fetch_spec is None
             and self._has_same_fallbacks(source)):

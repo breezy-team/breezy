@@ -495,7 +495,7 @@ class PackReconciler(RepoReconciler):
     #  - lock the names list
     #  - perform a customised pack() that regenerates data as needed
     #  - unlock the names list
-    # https://bugs.edge.launchpad.net/bzr/+bug/154173
+    # https://bugs.launchpad.net/bzr/+bug/154173
 
     def _reconcile_steps(self):
         """Perform the steps to reconcile this repository."""
