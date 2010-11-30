@@ -3753,14 +3753,14 @@ class cmd_merge(Command):
     work from the other branch, automatically determining an appropriate base
     revision.  If this fails, you may need to give an explicit base.
 
-    To pick a different ending revision, pass "--revision OTHER".  Bzr will
+    To pick a different ending revision, pass "--revision OTHER".  bzr will
     try to merge in all new work up to and including revision OTHER.
 
     If you specify two values, "--revision BASE..OTHER", only revisions BASE
     through OTHER, excluding BASE but including OTHER, will be merged.  If this
     causes some revisions to be skipped, i.e. if the destination branch does
     not already contain revision BASE, such a merge is commonly referred to as
-    "cherrypicking".
+    a "cherrypick".
 
     Revision numbers are always relative to the source branch.
 
