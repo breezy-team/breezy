@@ -142,7 +142,6 @@ class TestPull(TestCaseWithTransport):
         self.run_bzr('pull -r 4')
         self.assertEqual(a.revision_history(), b.revision_history())
 
-
     def test_overwrite_uptodate(self):
         # Make sure pull --overwrite overwrites
         # even if the target branch has merged
