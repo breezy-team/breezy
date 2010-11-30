@@ -3182,11 +3182,36 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
 
     def test_copy_content_into_avoids_revision_history(self):
         local = self.make_branch('local')
-        remote_backing_tree = self.make_branch_and_tree('remote')
-        remote_backing_tree.commit("Commit.")
+        builder = self.make_branch_builder('remote')
+        builder.build_commit(message="Commit.")
         remote_branch_url = self.smart_server.get_url() + 'remote'
         remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
         local.repository.fetch(remote_branch.repository)
         self.hpss_calls = []
         remote_branch.copy_content_into(local)
         self.assertFalse('Branch.revision_history' in self.hpss_calls)
+
+    def test_fetch_everything_needs_just_one_call(self):
+        local = self.make_branch('local')
+        builder = self.make_branch_builder('remote')
+        builder.build_commit(message="Commit.")
+        remote_branch_url = self.smart_server.get_url() + 'remote'
+        remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
+        self.hpss_calls = []
+        local.repository.fetch(remote_branch.repository,
+                fetch_spec=graph.EverythingResult(remote_branch.repository))
+        self.assertEqual(['Repository.get_stream_1.19'], self.hpss_calls)
+
+    def test_fetch_everything_backwards_compat(self):
+        """Can fetch with EverythingResult even when the server does not have
+        the Repository.get_stream_2.3 verb.
+        """
+        local = self.make_branch('local')
+        builder = self.make_branch_builder('remote')
+        builder.build_commit(message="Commit.")
+        remote_branch_url = self.smart_server.get_url() + 'remote'
+        remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
+        self.hpss_calls = []
+        local.repository.fetch(remote_branch.repository,
+                fetch_spec=graph.EverythingResult(remote_branch.repository))
+

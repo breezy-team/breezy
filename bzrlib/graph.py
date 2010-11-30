@@ -1557,6 +1557,19 @@ class SearchResult(object):
         self._recipe = ('search', start_keys, exclude_keys, key_count)
         self._keys = frozenset(keys)
 
+    def __repr__(self):
+        kind, start_keys, exclude_keys, key_count = self._recipe
+        if len(start_keys) > 5:
+            start_keys_repr = repr(list(start_keys)[:5])[:-1] + ', ...]'
+        else:
+            start_keys_repr = repr(start_keys)
+        if len(exclude_keys) > 5:
+            exclude_keys_repr = repr(list(exclude_keys)[:5])[:-1] + ', ...]'
+        else:
+            exclude_keys_repr = repr(exclude_keys)
+        return '<%s %s:(%s, %s, %d)>' % (self.__class__.__name__,
+            kind, start_keys_repr, exclude_keys_repr, key_count)
+
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
 
@@ -1579,6 +1592,12 @@ class SearchResult(object):
             time.
         """
         return self._recipe
+
+    def get_network_struct(self):
+        start_keys = ' '.join(self._recipe[1])
+        stop_keys = ' '.join(self._recipe[2])
+        count = str(self._recipe[3])
+        return (self._recipe[0], '\n'.join((start_keys, stop_keys, count)))
 
     def get_keys(self):
         """Return the keys found in this search.
@@ -1647,6 +1666,11 @@ class PendingAncestryResult(object):
         """
         return ('proxy-search', self.heads, set(), -1)
 
+    def get_network_struct(self):
+        parts = ['ancestry-of']
+        parts.extend(self.heads)
+        return parts
+
     def get_keys(self):
         """See SearchResult.get_keys.
 
@@ -1677,6 +1701,73 @@ class PendingAncestryResult(object):
         """
         referenced = self.heads.union(referenced)
         return PendingAncestryResult(referenced - seen, self.repo)
+
+
+class EmptySearchResult(object):
+    """An empty search result."""
+
+    def is_empty(self):
+        return True
+    
+
+class EverythingResult(object):
+    """A search result that simply requests everything in the repository."""
+
+    def __init__(self, repo):
+        self._repo = repo
+
+    def get_recipe(self):
+        raise NotImplementedError(self.get_recipe)
+
+    def get_network_struct(self):
+        return ('everything',)
+
+    def get_keys(self):
+        if 'evil' in debug.debug_flags:
+            from bzrlib import remote
+            if isinstance(self._repo, remote.RemoteRepository):
+                # warn developers (not users) not to do this
+                trace.mutter_callsite(
+                    2, "EverythingResult(RemoteRepository).get_keys() is slow.")
+        return self._repo.all_revision_ids()
+
+    def is_empty(self):
+        # It's ok for this to wrongly return False: the worst that can happen
+        # is that RemoteStreamSource will initiate a get_stream on an empty
+        # repository.  And almost all repositories are non-empty.
+        return False
+
+    def refine(self, seen, referenced):
+        heads = set(self._repo.all_revision_ids())
+        heads.difference_update(seen)
+        heads.update(referenced)
+        return PendingAncestryResult(heads, self._repo)
+
+
+class EverythingNotInOther(object):
+
+    def __init__(self, to_repo, from_repo, find_ghosts=False):
+        self.to_repo = to_repo
+        self.from_repo = from_repo
+        self.find_ghosts = find_ghosts
+
+    def get_search(self):
+        return self.to_repo.search_missing_revision_ids(
+            self.from_repo, find_ghosts=self.find_ghosts)
+
+
+class NotInOtherForRevs(object):
+
+    def __init__(self, to_repo, from_repo, revision_ids, find_ghosts=False):
+        self.to_repo = to_repo
+        self.from_repo = from_repo
+        self.find_ghosts = find_ghosts
+        self.revision_ids = revision_ids
+
+    def get_search(self):
+        return self.to_repo.search_missing_revision_ids(
+            self.from_repo, revision_ids=self.revision_ids,
+            find_ghosts=self.find_ghosts)
 
 
 def collapse_linear_regions(parent_map):
