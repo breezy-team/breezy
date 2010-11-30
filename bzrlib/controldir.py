@@ -84,7 +84,8 @@ class ControlComponent(object):
 
 
 class _TargetRepoKinds(object):
-    # cheap enum
+    """An enum-like set of constants."""
+    
     PREEXISTING = 'preexisting'
     STACKED = 'stacked'
     EMPTY = 'empty'
@@ -94,15 +95,17 @@ class FetchSpecFactory(object):
     """A helper for building the best fetch spec for a sprout call.
 
     Factors that go into determining the sort of fetch to perform:
-     * did the caller specify a revision ID?
-     * (hypothetically better APIs would allow callers to specify N
-        revision IDs)
+     * did the caller specify any revision IDs?
      * did the caller specify a source branch (need to fetch the tip + tags)
      * is there an existing target repo (don't need to refetch revs it
        already has)
      * target is stacked?  (similar to pre-existing target repo: even if
        the target itself is new don't want to refetch existing revs)
-     * ...?
+
+    :ivar source_branch: the source branch if one specified, else None.
+    :ivar source_repo: the source repository if one found, else None.
+    :ivar target_repo: the target repository acquired by sprout.
+    :ivar target_repo_kind: one of the _TargetRepoKinds constants.
     """
 
     def __init__(self):
@@ -113,6 +116,7 @@ class FetchSpecFactory(object):
         self.target_repo_kind = None
 
     def add_revision_ids(self, revision_ids):
+        """Add revision_ids to the set of revision_ids to be fetched."""
         self.explicit_rev_ids.update(revision_ids)
         
     def make_fetch_spec(self):
