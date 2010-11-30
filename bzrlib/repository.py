@@ -3516,7 +3516,6 @@ class InterRepository(InterObject):
             if revision_id is not None:
                 revision_ids = [revision_id]
         del revision_id
-        mutter('search_missing_revision_ids locals: %r', locals())
         # stop searching at found target revisions.
         if not find_ghosts and revision_ids is not None:
             return self._walk_to_common_revisions(revision_ids)
