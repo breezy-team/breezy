@@ -1,7 +1,7 @@
 bzr (2.3.0~beta3-2) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
-  * Make dependnecy on python-testtools versioned (>= 0.9.2).
+  * Make dependency on python-testtools versioned (>= 0.9.5).
 
   [ Max Bowsher ]
   * Run testsuite for bundled plugins too.
