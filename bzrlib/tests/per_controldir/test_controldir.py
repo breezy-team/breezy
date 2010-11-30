@@ -667,6 +667,26 @@ class TestControlDir(TestCaseWithControlDir):
         target = dir.sprout(self.get_url('target'), revision_id='1')
         self.assertEqual('1', target.open_branch().last_revision())
 
+    def test_sprout_bzrdir_branch_with_tags(self):
+        # when sprouting a branch all revisions named in the tags are copied
+        # too.
+        builder = self.make_branch_builder('source')
+        builder.build_commit(message="Rev 1", rev_id='rev-1')
+        builder.build_commit(message="Rev 2", rev_id='rev-2')
+        source = builder.get_branch()
+        try:
+            source.tags.set_tag('tag-a', 'rev-2')
+        except errors.TagsNotSupported:
+            raise TestNotApplicable('Branch format does not support tags.')
+        source.set_last_revision_info(1, 'rev-1')
+        # Now source has a tag not in its ancestry.  Sprout its controldir.
+        dir = source.bzrdir
+        target = dir.sprout(self.get_url('target'))
+        # The tag is present, and so is its revision.
+        new_branch = target.open_branch()
+        self.assertEqual('rev-2', new_branch.tags.lookup_tag('tag-a'))
+        new_branch.repository.get_revision('rev-2')
+
     def test_sprout_bzrdir_tree_branch_reference(self):
         # sprouting should create a repository if needed and a sprouted branch.
         # the tree state should not be copied.
