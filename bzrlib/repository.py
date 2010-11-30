@@ -3871,7 +3871,12 @@ class InterDifferingSerializer(InterRepository):
             fetch_spec=None):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
-            raise AssertionError("Not implemented yet...")
+            if (isinstance(fetch_spec, graph.NotInOtherForRevs) and
+                    len(fetch_spec.revision_ids) == 1):
+                revision_id = list(fetch_spec.revision_ids)[0]
+                del fetch_spec
+            else:
+                raise AssertionError("Not implemented yet...")
         ui.ui_factory.warn_experimental_format_fetch(self)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
