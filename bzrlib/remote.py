@@ -33,6 +33,7 @@ from bzrlib import (
     revision as _mod_revision,
     static_tuple,
     symbol_versioning,
+    urlutils,
 )
 from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -2130,9 +2131,13 @@ class RemoteBranchFormat(branch.BranchFormat):
         repo_format = response_tuple_to_repo_format(response[3:])
         repo_path = response[2]
         if repository is not None:
-            if repository.bzrdir.root_transport.base != medium.base + repo_path:
+            remote_repo_url = urlutils.join(medium.base, repo_path)
+            url_diff = urlutils.relative_url(repository.user_url,
+                    remote_repo_url)
+            if url_diff != '.':
                 raise AssertionError(
-                    'xxx %r vs. %r %r' % (repository, medium.base, repo_path))
+                    'diff %r: %r vs. (%r + %r)' %
+                    (url_diff, repository.user_url, medium.base, repo_path))
             remote_repo = repository
         else:
             if repo_path == '':
