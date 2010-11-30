@@ -175,7 +175,7 @@ class TestBranch(ExternalBase):
         if same_file:
             pass
         else:
-            # https://bugs.edge.launchpad.net/bzr/+bug/408193
+            # https://bugs.launchpad.net/bzr/+bug/408193
             self.assertContainsRe(err, "hardlinking working copy files is "
                 "not currently supported")
             raise KnownFailure("--hardlink doesn't work in formats "

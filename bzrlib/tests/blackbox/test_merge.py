@@ -375,7 +375,7 @@ class TestMerge(ExternalBase):
     def test_directive_cherrypick(self):
         source = self.make_branch_and_tree('source')
         source.commit("nothing")
-        # see https://bugs.edge.launchpad.net/bzr/+bug/409688 - trying to
+        # see https://bugs.launchpad.net/bzr/+bug/409688 - trying to
         # cherrypick from one branch into another unrelated branch with a
         # different root id will give shape conflicts.  as a workaround we
         # make sure they share the same root id.

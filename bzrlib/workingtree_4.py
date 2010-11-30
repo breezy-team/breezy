@@ -1319,7 +1319,7 @@ class ContentFilteringDirStateWorkingTree(DirStateWorkingTree):
     def _file_content_summary(self, path, stat_result):
         # This is to support the somewhat obsolete path_content_summary method
         # with content filtering: see
-        # <https://bugs.edge.launchpad.net/bzr/+bug/415508>.
+        # <https://bugs.launchpad.net/bzr/+bug/415508>.
         #
         # If the dirstate cache is up to date and knows the hash and size,
         # return that.
@@ -1459,9 +1459,9 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                 # the source tree.
                 if wt.supports_content_filtering():
                     if hardlink:
-                        # see https://bugs.edge.launchpad.net/bzr/+bug/408193
-                        trace.warning("hardlinking working copy files is not currently "
-                            "supported in %r" % (wt,))
+                        # see https://bugs.launchpad.net/bzr/+bug/408193
+                        trace.warning('hardlinking working copy files is not'
+                                      ' currently supported in %r' % (wt,))
                     accelerator_tree = None
                     delta_from_tree = False
                 else:

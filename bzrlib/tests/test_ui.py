@@ -366,7 +366,7 @@ class TestUIFactoryTests(TestCase):
 
     def test_test_ui_factory_progress(self):
         # there's no output; we just want to make sure this doesn't crash -
-        # see https://bugs.edge.launchpad.net/bzr/+bug/408201
+        # see https://bugs.launchpad.net/bzr/+bug/408201
         ui = TestUIFactory()
         pb = ui.nested_progress_bar()
         pb.update('hello')
@@ -375,7 +375,7 @@ class TestUIFactoryTests(TestCase):
 
 
 class CannedInputUIFactoryTests(TestCase):
-    
+
     def test_canned_input_get_input(self):
         uif = CannedInputUIFactory([True, 'mbp', 'password'])
         self.assertEqual(uif.get_boolean('Extra cheese?'), True)
