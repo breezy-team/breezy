@@ -175,7 +175,7 @@ class TestBranchRegistration(TestCaseWithTransport):
         self.assertEquals(out, 'Branch registered.\n')
 
     def test_onto_transport(self):
-        """Test how the request is sent by transmitting across a mock Transport"""
+        """How the request is sent by transmitting across a mock Transport"""
         # use a real transport, but intercept at the http/xml layer
         transport = InstrumentedXMLRPCTransport(self, expect_auth=True)
         service = LaunchpadService(transport)
@@ -188,7 +188,7 @@ class TestBranchRegistration(TestCaseWithTransport):
                 'author@launchpad.net',
                 'product')
         rego.submit(service)
-        self.assertEquals(transport.connected_host, 'xmlrpc.edge.launchpad.net')
+        self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
         self.assertEquals(len(transport.sent_params), 6)
         self.assertEquals(transport.sent_params,
                 ('http://test-server.com/bzr/branch',  # branch_url
@@ -200,12 +200,12 @@ class TestBranchRegistration(TestCaseWithTransport):
         self.assertTrue(transport.got_request)
 
     def test_onto_transport_unauthenticated(self):
-        """Test how an unauthenticated request is transmitted across a mock Transport"""
+        """An unauthenticated request is transmitted across a mock Transport"""
         transport = InstrumentedXMLRPCTransport(self, expect_auth=False)
         service = LaunchpadService(transport)
         resolve = ResolveLaunchpadPathRequest('bzr')
         resolve.submit(service)
-        self.assertEquals(transport.connected_host, 'xmlrpc.edge.launchpad.net')
+        self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
         self.assertEquals(len(transport.sent_params), 1)
         self.assertEquals(transport.sent_params, ('bzr', ))
         self.assertTrue(transport.got_request)
