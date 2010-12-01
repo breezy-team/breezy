@@ -1869,7 +1869,7 @@ class DirStateRevisionTree(Tree):
     def is_executable(self, file_id, path=None):
         ie = self.inventory[file_id]
         if ie.kind != "file":
-            return None
+            return False
         return ie.executable
 
     def is_locked(self):
