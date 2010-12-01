@@ -566,12 +566,11 @@ class Merger(object):
     def _maybe_fetch(self, source, target, revision_id):
         if not source.repository.has_same_location(target.repository):
             try:
-                revs_to_fetch = set(source.tags.get_reverse_tag_dict())
+                tags_to_fetch = set(source.tags.get_reverse_tag_dict())
             except errors.TagsNotSupported:
-                revs_to_fetch = set()
-            revs_to_fetch.add(revision_id)
+                tags_to_fetch = None
             fetch_spec = _mod_graph.NotInOtherForRevs(target.repository,
-                source.repository, revs_to_fetch)
+                source.repository, [revision_id], if_present_ids=tags_to_fetch)
             target.fetch(source, fetch_spec=fetch_spec)
 
     def find_base(self):

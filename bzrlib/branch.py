@@ -1044,11 +1044,13 @@ class Branch(controldir.ControlComponent):
         return InterBranch.get(other, self).update_revisions(stop_revision,
             overwrite, graph, fetch_tags=fetch_tags)
 
+    @deprecated_method(deprecated_in((2, 3, 0)))
     def import_last_revision_info(self, source_repo, revno, revid):
         """Set the last revision info, importing from another repo if necessary.
 
         This is used by the bound branch code to upload a revision to
         the master branch first before updating the tip of the local branch.
+        Revisions referenced by source's tags are also transferred.
 
         :param source_repo: Source repository to optionally fetch from
         :param revno: Revision number of the new tip
@@ -1056,6 +1058,28 @@ class Branch(controldir.ControlComponent):
         """
         if not self.repository.has_same_location(source_repo):
             self.repository.fetch(source_repo, revision_id=revid)
+        self.set_last_revision_info(revno, revid)
+
+    def import_last_revision_info_and_tags(self, source, revno, revid):
+        """Set the last revision info, importing from another repo if necessary.
+
+        This is used by the bound branch code to upload a revision to
+        the master branch first before updating the tip of the local branch.
+        Revisions referenced by source's tags are also transferred.
+
+        :param source_repo: Source repository to optionally fetch from
+        :param revno: Revision number of the new tip
+        :param revid: Revision id of the new tip
+        """
+        if not self.repository.has_same_location(source.repository):
+            try:
+                revs_to_fetch = set(source.tags.get_reverse_tag_dict())
+            except errors.TagsNotSupported:
+                revs_to_fetch = set()
+            revs_to_fetch.add(revid)
+            fetch_spec = _mod_graph.NotInOtherForRevs(self.repository,
+                source.repository, revs_to_fetch)
+            self.repository.fetch(source.repository, fetch_spec=fetch_spec)
         self.set_last_revision_info(revno, revid)
 
     def revision_id_to_revno(self, revision_id):

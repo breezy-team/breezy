@@ -134,17 +134,22 @@ class FetchSpecFactory(object):
                 return graph.EverythingNotInOther(
                     self.target_repo, self.source_repo)
         heads_to_fetch = set(self.explicit_rev_ids)
+        tags_to_fetch = set()
         if self.source_branch is not None:
             try:
-                heads_to_fetch.update(
+                tags_to_fetch.update(
                     self.source_branch.tags.get_reverse_tag_dict())
             except errors.TagsNotSupported:
                 pass
             heads_to_fetch.add(self.source_branch.last_revision())
         if self.target_repo_kind == _TargetRepoKinds.EMPTY:
-            return graph.PendingAncestryResult(heads_to_fetch, self.source_repo)
+            if not tags_to_fetch:
+                return graph.PendingAncestryResult(heads_to_fetch, self.source_repo)
+            else:
+                # XXX: add if_present_ids feature to PendingAncestryResult
+                pass
         return graph.NotInOtherForRevs(self.target_repo, self.source_repo,
-            revision_ids=heads_to_fetch)
+            required_ids=heads_to_fetch, if_present_ids=tags_to_fetch)
 
 
 class ControlDir(ControlComponent):

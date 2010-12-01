@@ -1563,7 +1563,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     @needs_read_lock
     def search_missing_revision_ids(self, other,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
@@ -1581,7 +1581,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             if revision_id is not None:
                 revision_ids = [revision_id]
         return InterRepository.get(other, self).search_missing_revision_ids(
-            find_ghosts=find_ghosts, revision_ids=revision_ids)
+            find_ghosts=find_ghosts, revision_ids=revision_ids,
+            if_present_ids=if_present_ids)
 
     @staticmethod
     def open(base):
@@ -3439,7 +3440,7 @@ class InterRepository(InterObject):
                                fetch_spec=fetch_spec,
                                find_ghosts=find_ghosts)
 
-    def _walk_to_common_revisions(self, revision_ids):
+    def _walk_to_common_revisions(self, revision_ids, if_present_ids=None):
         """Walk out from revision_ids in source to revisions target has.
 
         :param revision_ids: The start point for the search.
@@ -3447,10 +3448,14 @@ class InterRepository(InterObject):
         """
         target_graph = self.target.get_graph()
         revision_ids = frozenset(revision_ids)
+        if if_present_ids:
+            all_wanted_revs = revision_ids.union(if_present_ids)
+        else:
+            all_wanted_revs = revision_ids
         missing_revs = set()
         source_graph = self.source.get_graph()
         # ensure we don't pay silly lookup costs.
-        searcher = source_graph._make_breadth_first_searcher(revision_ids)
+        searcher = source_graph._make_breadth_first_searcher(all_wanted_revs)
         null_set = frozenset([_mod_revision.NULL_REVISION])
         searcher_exhausted = False
         while True:
@@ -3469,8 +3474,12 @@ class InterRepository(InterObject):
             # them, make sure that they are present in the target.
             # We don't care about other ghosts as we can't fetch them and
             # haven't been asked to.
+            mutter('reqd: %r  if-present: %r  ->  ghosts: %r', revision_ids,
+                if_present_ids, ghosts)
             ghosts_to_check = set(revision_ids.intersection(ghosts))
             revs_to_get = set(next_revs).union(ghosts_to_check)
+            mutter('ghosts_to_check: %r  revs_to_get: %r  searcher_exhausted: %r',
+                ghosts_to_check, revs_to_get, searcher_exhausted)
             if revs_to_get:
                 have_revs = set(target_graph.get_parent_map(revs_to_get))
                 # we always have NULL_REVISION present.
@@ -3494,13 +3503,18 @@ class InterRepository(InterObject):
     @needs_read_lock
     def search_missing_revision_ids(self,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
         """Return the revision ids that source has that target does not.
 
         :param revision_id: only return revision ids included by this
-                            revision_id.
-        :param revision_ids: only return revision ids included by these
-                            revision_ids.
+            revision_id.
+        :param revision_ids: return revision ids included by these
+            revision_ids.  NoSuchRevision will be raised if any of these
+            revisions are not present.
+        :param if_present_ids: like revision_ids, but will not cause
+            NoSuchRevision if any of these are absent, instead they will simply
+            not be in the result.  This is useful for e.g. finding revisions
+            to fetch for tags, which may reference absent revisions.
         :param find_ghosts: If True find missing revisions in deep history
             rather than just finding the surface difference.
         :return: A bzrlib.graph.SearchResult.
@@ -3518,8 +3532,10 @@ class InterRepository(InterObject):
         del revision_id
         # stop searching at found target revisions.
         if not find_ghosts and revision_ids is not None:
-            return self._walk_to_common_revisions(revision_ids)
+            return self._walk_to_common_revisions(revision_ids,
+                    if_present_ids=if_present_ids)
         # generic, possibly worst case, slow code path.
+        # XXX: if_present_ids ignored by this fallback
         target_ids = set(self.target.all_revision_ids())
         source_ids = self._present_source_revisions_for(revision_ids)
         result_set = set(source_ids).difference(target_ids)
