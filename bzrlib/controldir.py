@@ -135,8 +135,11 @@ class FetchSpecFactory(object):
                     self.target_repo, self.source_repo)
         heads_to_fetch = set(self.explicit_rev_ids)
         if self.source_branch is not None:
-            heads_to_fetch.update(
-                self.source_branch.tags.get_reverse_tag_dict())
+            try:
+                heads_to_fetch.update(
+                    self.source_branch.tags.get_reverse_tag_dict())
+            except errors.TagsNotSupported:
+                pass
             heads_to_fetch.add(self.source_branch.last_revision())
         if self.target_repo_kind == _TargetRepoKinds.EMPTY:
             return graph.PendingAncestryResult(heads_to_fetch, self.source_repo)
