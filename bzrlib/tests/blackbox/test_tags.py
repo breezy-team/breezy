@@ -18,19 +18,13 @@
 
 from bzrlib import (
     branchbuilder,
-    bzrdir,
-    tag,
     )
 from bzrlib.branch import (
     Branch,
     )
-from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
     script,
     TestCaseWithTransport,
-    )
-from bzrlib.repository import (
-    Repository,
     )
 from bzrlib.workingtree import WorkingTree
 
