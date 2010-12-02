@@ -42,11 +42,11 @@ To start a new release cycle:
    the release branch.
 
 #. If you made a new series, add milestones at
-   <https://edge.launchpad.net/bzr/x.y/+addmilestone> to that series for
+   <https://launchpad.net/bzr/x.y/+addmilestone> to that series for
    the beta release, release candidate and the final release, and their
    expected dates.
 
-#. Create a new milestone <https://edge.launchpad.net/bzr/x.y/+addmilestone>
+#. Create a new milestone <https://launchpad.net/bzr/x.y/+addmilestone>
    and add information about this release.  We will not use it yet, but it
    will be available for targeting or nominating bugs.
 
@@ -137,8 +137,8 @@ Update the source code
 
      ./tools/check-newsbugs.py NEWS
 
-   (But note there will be many false positives, and this script may be
-   flaky <https://bugs.edge.launchpad.net/bzr/+bug/354985>.  Don't let
+   (But note there can be some false positives, and this script may be
+   flaky <https://bugs.launchpad.net/bzr/+bug/354985>.  Don't let
    this slow you down too much.)
 
 #. Commit these changes to the release branch, using a command like::
@@ -236,7 +236,7 @@ Publishing the source tarball
    this changes what the download widget on the Launchpad bzr home
    page shows, so don't stop the release process yet, or platform binary
    installers won't be made and the download list will stay very small!
-   <https://bugs.edge.launchpad.net/launchpad/+bug/586445>
+   <https://bugs.launchpad.net/launchpad/+bug/586445>
 
 
 Announcing the source freeze

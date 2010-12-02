@@ -741,7 +741,7 @@ class TestLockDir(TestCaseWithTransport):
     def test_corrupt_lockdir_info(self):
         """We can cope with corrupt (and thus unparseable) info files."""
         # This seems like a fairly common failure case too - see
-        # <https://bugs.edge.launchpad.net/bzr/+bug/619872> for instance.
+        # <https://bugs.launchpad.net/bzr/+bug/619872> for instance.
         # In particular some systems tend to fill recently created files with
         # nul bytes after recovering from a system crash.
         t = self.get_transport()
