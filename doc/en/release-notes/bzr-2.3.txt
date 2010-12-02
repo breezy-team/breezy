@@ -15,6 +15,7 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+
 New Features
 ************
 
