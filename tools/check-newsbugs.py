@@ -12,7 +12,7 @@ except ImportError:
 try:
     import hydrazine
 except ImportError:
-    print "Please install hydrazine from lp:launchpadlib"
+    print "Please install hydrazine from lp:hydrazine"
     sys.exit(1)
 
 
