@@ -126,7 +126,7 @@ Preparation
 
 * Possibly read some of the `EC2 documentation`_ for background.
    
-.. _`bug 330930`: https://bugs.edge.launchpad.net/ubuntu/+bug/330930 
+.. _`bug 330930`: https://bugs.launchpad.net/ubuntu/+bug/330930 
 .. _`Amazon EC2 API tools`: 
      http://developer.amazonwebservices.com/connect/entry.jspa?externalID=368&categoryID=88
 .. _`EC2 documentation`: http://aws.amazon.com/

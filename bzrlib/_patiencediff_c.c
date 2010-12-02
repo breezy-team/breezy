@@ -47,8 +47,8 @@
 
 
 /* malloc returns NULL on some platforms if you try to allocate nothing,
- * causing <https://bugs.edge.launchpad.net/bzr/+bug/511267> and
- * <https://bugs.edge.launchpad.net/bzr/+bug/331095>.  On glibc it passes, but
+ * causing <https://bugs.launchpad.net/bzr/+bug/511267> and
+ * <https://bugs.launchpad.net/bzr/+bug/331095>.  On glibc it passes, but
  * let's make it fail to aid testing. */
 #define guarded_malloc(x) ( (x) ? malloc(x) : NULL )
 

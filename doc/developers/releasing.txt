@@ -107,7 +107,7 @@ Preparing the tree for release
      ./tools/check-newsbugs.py NEWS
 
    (But note there can be some false positives, and this script may be
-   flaky <https://bugs.edge.launchpad.net/bzr/+bug/354985>.  Don't let
+   flaky <https://bugs.launchpad.net/bzr/+bug/354985>.  Don't let
    this slow you down too much.)
 
 #. Summarize into one or two paragraphs what's new in this release.
