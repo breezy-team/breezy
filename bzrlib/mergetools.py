@@ -177,75 +177,31 @@ def get_merge_tools(conf=None):
     """Returns list of MergeTool objects."""
     if conf is None:
         conf = config.GlobalConfig()
-    tools = []
-    for (oname, value, section, conf_id) in conf._get_options():
-        if oname.startswith('mergetools.'):
-            tools.append(MergeTool(oname[len('mergetools.'):], value))
-    return tools
+    return conf.get_merge_tools()
 
 
-def set_merge_tools(merge_tools, conf=None):
+def set_merge_tools(tools, conf=None):
     if conf is None:
         conf = config.GlobalConfig()
-    # remove entries from config for tools which do not appear in merge_tools
-    tool_names = [tool.get_name() for tool in merge_tools]
-    for (oname, value, section, conf_id) in conf._get_options():
-        if oname.startswith('mergetools.'):
-            if oname[len('mergetools.'):] not in tool_names:
-                conf.remove_user_option(oname)
-    # set config entries
-    for tool in merge_tools:
-        oname = 'mergetools.%s' % tool.get_name()
-        value = tool.get_commandline()
-        if oname == '' or value == '':
-            continue
-        conf.set_user_option(oname, value)
+    conf.set_merge_tools(tools)
 
 
 def find_merge_tool(name, conf=None):
     if conf is None:
         conf = config.GlobalConfig()
-    merge_tools = get_merge_tools(conf)
-    for merge_tool in merge_tools:
-        if merge_tool.get_name() == name:
-            return merge_tool
-    return None
-
-
-def find_first_available_merge_tool(conf=None):
-    if conf is None:
-        conf = config.GlobalConfig()
-    merge_tools = get_merge_tools(conf)
-    for merge_tool in merge_tools:
-        if merge_tool.is_available():
-            return merge_tool
-    return None
+    return conf.find_merge_tool(name)
 
 
 def get_default_merge_tool(conf=None):
     if conf is None:
         conf = config.GlobalConfig()
-    name = conf.get_user_option('default_mergetool')
-    if name is None:
-        trace.mutter('no default merge tool defined')
-        return None
-    merge_tool = find_merge_tool(name, conf)
-    trace.mutter('found default merge tool: %r', merge_tool)
-    return merge_tool
+    return conf.get_default_merge_tool()
 
 
 def set_default_merge_tool(name, conf=None):
     if conf is None:
         conf = config.GlobalConfig()
-    if name is None:
-        conf.remove_user_option('default_mergetool')
-    else:
-        if isinstance(name, MergeTool):
-            name = name.get_name()
-        if find_merge_tool(name, conf) is None:
-            raise errors.BzrError('invalid merge tool name: %r' % name)
-        trace.mutter('setting default merge tool: %s', name)
-        conf.set_user_option('default_mergetool', name)
+    conf.set_default_merge_tool(name)
 
 
 def resolve_using_merge_tool(tool_name, conflicts):
