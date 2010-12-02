@@ -28,7 +28,7 @@ Bug Fixes
   is a conflict).  (Andrew Bennetts, #603395)
   
 * Correctly set the Content-Type header when http POSTing to comply
-  with stricter web frameworks. (Vincent Ladeuil, #655100)
+  with stricter web frameworks. (Vincent Ladeuil, #665100)
 
 * ``NotBranchError`` no longer allows errors from calling
   ``bzrdir.open_repository()`` to propagate.  This is unhelpful at best,
