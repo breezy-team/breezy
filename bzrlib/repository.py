@@ -176,11 +176,27 @@ class CommitBuilder(object):
             self._validate_unicode_text(value,
                                         'revision property (%s)' % (key,))
 
+    def _ensure_fallback_inventories(self):
+        """Ensure that appropriate inventories are available.
+
+        This only applies to repositories that are stacked, and is about
+        enusring the stacking invariants. Namely, that for any revision that is
+        present, we either have all of the file content, or we have the parent
+        inventory and the delta file content.
+        """
+        if not self.repository._fallback_repositories:
+            return
+
+        raise errors.BzrError("Cannot commit from a lightweight checkout "
+            "to a stacked branch. See "
+            "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
+
     def commit(self, message):
         """Make the actual commit.
 
         :return: The revision id of the recorded revision.
         """
+        self._ensure_fallback_inventories()
         self._validate_unicode_text(message, 'commit message')
         rev = _mod_revision.Revision(
                        timestamp=self._timestamp,
@@ -1761,10 +1777,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
-        if self._fallback_repositories:
-            raise errors.BzrError("Cannot commit from a lightweight checkout "
-                "to a stacked branch. See "
-                "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
         result = self._commit_builder_class(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id)
         self.start_write_group()

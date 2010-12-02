@@ -113,6 +113,7 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_repository_reference.test_all_revision_ids',
         'bzrlib.tests.per_repository_reference.test_break_lock',
         'bzrlib.tests.per_repository_reference.test_check',
+        'bzrlib.tests.per_repository_reference.test_commit_with_stacking',
         'bzrlib.tests.per_repository_reference.test_default_stacking',
         'bzrlib.tests.per_repository_reference.test_fetch',
         'bzrlib.tests.per_repository_reference.test_get_record_stream',
