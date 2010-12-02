@@ -1076,7 +1076,6 @@ class Branch(controldir.ControlComponent):
                 tags_to_fetch = set(source.tags.get_reverse_tag_dict())
             except errors.TagsNotSupported:
                 tags_to_fetch = set()
-            revs_to_fetch.add(revid)
             fetch_spec = _mod_graph.NotInOtherForRevs(self.repository,
                 source.repository, [revid], if_present_ids=tags_to_fetch)
             self.repository.fetch(source.repository, fetch_spec=fetch_spec)
