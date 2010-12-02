@@ -40,7 +40,7 @@ To start a new release cycle:
    general development continues on the trunk, and only
    specifically-targeted fixes go into the release branch.
 
-#. Add milestones at <https://edge.launchpad.net/bzr/2.0/+addmilestone> to
+#. Add milestones at <https://launchpad.net/bzr/2.0/+addmilestone> to
    that series for the beta release, release candidate and the final release,
    and their expected dates.
 
