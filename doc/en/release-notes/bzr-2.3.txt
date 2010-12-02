@@ -8,18 +8,27 @@ Bazaar Release Notes
 bzr 2.3b4
 #########
 
-:2.3.b4: NOT RELEASED YET
+:2.3.b4: 2010-12-03
+
+This is the fourth beta of the 2.3 series, leading up to a 2.3.0 release in
+February. Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.
+
+2.3b4 includes bug fixes for the ``config`` command and conflict
+resolution. More changes were made for the test scripts handling to make it
+easier to add reproducing recipes to bugs.
+
+It also includes bug fixes from the 2.2.2 release as well as the bug fixes
+in the upcoming 2.0.7, 2.1.4 and 2.2.3 releases. This means that all known
+fixed bugs at the time of this release are included.
+
 
 External Compatibility Breaks
 *****************************
 
 .. These may require users to change the way they use Bazaar.
 
-
-New Features
-************
-
-.. New commands, options, etc that users may wish to try out.
+  (none)
 
 Improvements
 ************
@@ -71,16 +80,9 @@ Bug Fixes
 
 * Report error if non-ASCII command option given. (Rory Yorke, #140563)
 
-Documentation
-*************
-
-.. Improved or updated documentation.
-
-API Changes
-***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
+* ``tools/check-newsbug.py`` is now based on ``lp:hydrazine`` and no longer
+  crashes when encountering private bugs (they are just displayed as such).
+  (Vincent Ladeuil, #354985)
 
 Internals
 *********
@@ -395,7 +397,7 @@ Testing
   (Andrew Bennetts, #632387)
 
 * Skip tests that needs a bzr source tree when there isn't one. This is
-  needed to succesfully run the test suite for installed versions.
+  needed to successfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).
 
 * Skip the tests that requires respecting the chmod bits when running as root.
@@ -471,7 +473,7 @@ Improvements
 * ``bzr remove`` now just backs up changed files instead of exiting,
   forcing you to choose to either keep or delete them. Bazaar will now delete
   the files if they can easily be recovered using revert, otherwise they
-  will be backed up (adding an extention of the form .~#~).
+  will be backed up (adding an extension of the form .~#~).
   (Marius Kruger, #400554)
 
 * ``bzr revert`` and ``bzr status`` are up to 15% faster on large trees

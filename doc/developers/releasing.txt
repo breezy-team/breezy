@@ -163,7 +163,7 @@ Update the source code
    Double check that ./bzr ``_script_version`` matches ``version_info``. Check
    the output of ``bzr --version``.
 
-   For beta releases use::
+   For betahttps://code.edge.launchpad.net/~knittl/bzr/fix-inventory-r0/+merge/354985 releases use::
 
        version_info = (2, 1, 0, 'beta', SERIAL)
 
@@ -195,9 +195,8 @@ Update the source code
 
      ./tools/check-newsbugs.py doc/en/release-notes/bzr-x.y.txt
 
-   (But note there can be some false positives, and this script may be
-   flaky <https://bugs.launchpad.net/bzr/+bug/354985>.  Don't let
-   this slow you down too much.)
+   (As of 2011-12-03, only a few false positives remain. Don't let this slow
+   you down too much.)
 
 #. Commit these changes to the release branch, using a command like::
 
