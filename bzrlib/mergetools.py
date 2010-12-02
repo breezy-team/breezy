@@ -172,33 +172,3 @@ def detect_merge_tools():
     tools = [MergeTool(None, commandline) for commandline in _KNOWN_MERGE_TOOLS]
     return [tool for tool in tools if tool.is_available()]
 
-
-def get_merge_tools(conf=None):
-    """Returns list of MergeTool objects."""
-    if conf is None:
-        conf = config.GlobalConfig()
-    return conf.get_merge_tools()
-
-
-def set_merge_tools(tools, conf=None):
-    if conf is None:
-        conf = config.GlobalConfig()
-    conf.set_merge_tools(tools)
-
-
-def find_merge_tool(name, conf=None):
-    if conf is None:
-        conf = config.GlobalConfig()
-    return conf.find_merge_tool(name)
-
-
-def get_default_merge_tool(conf=None):
-    if conf is None:
-        conf = config.GlobalConfig()
-    return conf.get_default_merge_tool()
-
-
-def set_default_merge_tool(name, conf=None):
-    if conf is None:
-        conf = config.GlobalConfig()
-    conf.set_default_merge_tool(name)
