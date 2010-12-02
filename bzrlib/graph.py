@@ -1716,6 +1716,9 @@ class EverythingResult(object):
     def __init__(self, repo):
         self._repo = repo
 
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self._repo)
+
     def get_recipe(self):
         raise NotImplementedError(self.get_recipe)
 

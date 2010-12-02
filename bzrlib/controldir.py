@@ -103,6 +103,8 @@ class FetchSpecFactory(object):
        the target itself is new don't want to refetch existing revs)
 
     :ivar source_branch: the source branch if one specified, else None.
+    :ivar source_branch_stop_revision: fetch up to this revision of
+        source_branch, rather than its tip.
     :ivar source_repo: the source repository if one found, else None.
     :ivar target_repo: the target repository acquired by sprout.
     :ivar target_repo_kind: one of the _TargetRepoKinds constants.
@@ -111,6 +113,7 @@ class FetchSpecFactory(object):
     def __init__(self):
         self.explicit_rev_ids = set()
         self.source_branch = None
+        self.source_branch_stop_revision = None
         self.source_repo = None
         self.target_repo = None
         self.target_repo_kind = None
@@ -141,7 +144,10 @@ class FetchSpecFactory(object):
                     self.source_branch.tags.get_reverse_tag_dict())
             except errors.TagsNotSupported:
                 pass
-            heads_to_fetch.add(self.source_branch.last_revision())
+            if self.source_branch_stop_revision is not None:
+                heads_to_fetch.add(self.source_branch_stop_revision)
+            else:
+                heads_to_fetch.add(self.source_branch.last_revision())
         if self.target_repo_kind == _TargetRepoKinds.EMPTY:
             if not tags_to_fetch:
                 return graph.PendingAncestryResult(heads_to_fetch, self.source_repo)

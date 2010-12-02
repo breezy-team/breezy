@@ -1073,12 +1073,12 @@ class Branch(controldir.ControlComponent):
         """
         if not self.repository.has_same_location(source.repository):
             try:
-                revs_to_fetch = set(source.tags.get_reverse_tag_dict())
+                tags_to_fetch = set(source.tags.get_reverse_tag_dict())
             except errors.TagsNotSupported:
-                revs_to_fetch = set()
+                tags_to_fetch = set()
             revs_to_fetch.add(revid)
             fetch_spec = _mod_graph.NotInOtherForRevs(self.repository,
-                source.repository, revs_to_fetch)
+                source.repository, [revid], if_present_ids=tags_to_fetch)
             self.repository.fetch(source.repository, fetch_spec=fetch_spec)
         self.set_last_revision_info(revno, revid)
 
@@ -3458,6 +3458,7 @@ class GenericInterBranch(InterBranch):
         if fetch_tags:
             fetch_spec_factory = controldir.FetchSpecFactory()
             fetch_spec_factory.source_branch = self.source
+            fetch_spec_factory.source_branch_stop_revision = stop_revision
             fetch_spec_factory.source_repo = self.source.repository
             fetch_spec_factory.target_repo = self.target.repository
             fetch_spec_factory.target_repo_kind = controldir._TargetRepoKinds.PREEXISTING

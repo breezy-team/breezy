@@ -163,9 +163,13 @@ class TestFetchFromRepoWithUnconfiguredFallbacks(TestFetchBase):
         # rather than creating a branch-on-disk
         stack_b = self.make_branch('stack-on')
         stack_b.pull(source_b, stop_revision='B-id')
+#        self.assertEqual(['A-id', 'B-id'],
+#            sorted(stack_b.repository.all_revision_ids()))
         stacked_b = self.make_branch('stacked')
         stacked_b.set_stacked_on_url('../stack-on')
         stacked_b.pull(source_b, stop_revision='C-id')
+#        self.assertEqual(['C-id'],
+#            stacked_b.repository.bzrdir.open_repository().all_revision_ids())
         return stacked_b.repository
 
     def test_fetch_everything_includes_parent_invs(self):
