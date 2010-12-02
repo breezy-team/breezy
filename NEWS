@@ -17,9 +17,7 @@ Compatibility Breaks
   deprecated and may be shut down in the future
   <http://blog.launchpad.net/general/edge-is-deprecated>.  Bazaar has therefore
   been updated in this release to talk to the main (``launchpad.net``) servers,
-  rather than the ``edge`` ones. Users of previous versions can workaround
-  connection problems by setting the ``BZR_LP_XMLRPC_URL`` environment variable
-  to ``http://xmlrpc.launchpad.net/bazaar/``.  (Vincent Ladeuil, #583667)
+  rather than the ``edge`` ones. (Vincent Ladeuil, #583667)
 
 New Features
 ************
@@ -148,9 +146,7 @@ Compatibility Breaks
   deprecated and may be shut down in the future
   <http://blog.launchpad.net/general/edge-is-deprecated>.  Bazaar has therefore
   been updated in this release to talk to the main (``launchpad.net``) servers,
-  rather than the ``edge`` ones. Users of previous versions can workaround
-  connection problems by setting the ``BZR_LP_XMLRPC_URL`` environment variable
-  to ``http://xmlrpc.launchpad.net/bazaar/``.  (Vincent Ladeuil, #583667)
+  rather than the ``edge`` ones. (Vincent Ladeuil, #583667)
 
 New Features
 ************
