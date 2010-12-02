@@ -13,12 +13,11 @@ bzr 2.2.3
 Compatibility Breaks
 ********************
 
-* The ``edge.launchpad.net`` server has been deprecated and all references to
-  it have been removed from the code base. This ensures that users upgrading
-  to bzr 2.0.7 or better will never try to contact the 'edge' server. Users of
-  previous versions can workaround connection problems by setting the
-  ``BZR_LP_XMLRPC_URL`` environment variable to
-  ``http://xmlrpc.launchpad.net/bazaar/``.  (Vincent Ladeuil, #583667)
+* Launchpad has announced that the ``edge.launchpad.net`` instance is
+  deprecated and may be shut down in the future
+  <http://blog.launchpad.net/general/edge-is-deprecated>.  Bazaar has therefore
+  been updated in this release to talk to the main (``launchpad.net``) servers,
+  rather than the ``edge`` ones. (Vincent Ladeuil, #583667)
 
 New Features
 ************

@@ -28,7 +28,7 @@ if len(args) == 1:
 
 
 def report_notmarked(bug, task, section):
-    print 
+    print
     print "Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.id, )
     print "Launchpad title: %s" % bug.title
     print "NEWS summary: "
@@ -83,7 +83,7 @@ for bugno, section in bugnos:
             print '%s is private and cannot be accessed' % (bugno,)
             continue
         raise
-     
+
     found_bzr = False
     fix_released = False
     for task in bug.bug_tasks:
