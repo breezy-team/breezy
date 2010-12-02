@@ -5,6 +5,58 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.3b5
+#########
+
+:2.3.b5: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
 bzr 2.3b4
 #########
 
@@ -26,15 +78,10 @@ fixed bugs at the time of this release are included.
 External Compatibility Breaks
 *****************************
 
-.. These may require users to change the way they use Bazaar.
-
   (none)
 
 Improvements
 ************
-
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
 
 * Bazaar now caches a branch's tags while that branch is read-locked.
   This removes 1 network roundtrip from most interactions with a remote
@@ -54,9 +101,6 @@ Improvements
 
 Bug Fixes
 *********
-
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
 
 * Better message if there is an error while setting ownership of
   ``.bazaar`` directory. (Parth Malwankar, #657553)
@@ -87,9 +131,6 @@ Bug Fixes
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
-
 * ``BranchBuilder.build_snapshot`` now accepts parent_ids == [].
   This can be used to create a new root in the graph. (Gary van der Merwe)
 
@@ -100,10 +141,6 @@ Internals
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * Add a null_output_matches_anything keyword argument with default False to
   bzrlib.tests.script.ScriptRunner.run_script to specify that the command
