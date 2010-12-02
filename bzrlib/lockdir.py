@@ -582,7 +582,7 @@ class LockDir(lock.Lock):
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
                 lock_url = self.transport.abspath(self.path)
-                # See <https://bugs.edge.launchpad.net/bzr/+bug/250451>
+                # See <https://bugs.launchpad.net/bzr/+bug/250451>
                 # the URL here is sometimes not one that is useful to the
                 # user, perhaps being wrapped in a lp-%d or chroot decorator,
                 # especially if this error is issued from the server.

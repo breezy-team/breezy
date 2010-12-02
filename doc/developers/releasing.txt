@@ -47,7 +47,7 @@ To start a new release cycle:
    general development continues on the trunk, and only
    specifically-targeted fixes go into the release branch.
 
-#. Add milestones at <https://edge.launchpad.net/bzr/x.y/+addmilestone> to
+#. Add milestones at <https://launchpad.net/bzr/2.0/+addmilestone> to
    that series for the beta release, release candidate and the final release,
    and their expected dates.
 
@@ -117,7 +117,7 @@ Starting the release phase
      ./tools/check-newsbugs.py NEWS
 
    (But note there can be some false positives, and this script may be
-   flaky <https://bugs.edge.launchpad.net/bzr/+bug/354985>.  Don't let
+   flaky <https://bugs.launchpad.net/bzr/+bug/354985>.  Don't let
    this slow you down too much.)
 
 #. Summarize into one or two paragraphs what's new in this release.

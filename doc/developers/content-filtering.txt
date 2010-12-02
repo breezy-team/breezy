@@ -59,7 +59,7 @@ hash and size of the canonical form, and the packed stat fingerprint for
 which that cache is valid.  This implies that the stored size will
 in general be different to the size in the packed stat.  (However, it
 may not always do this correctly - see
-<https://bugs.edge.launchpad.net/bzr/+bug/418439>.)
+<https://bugs.launchpad.net/bzr/+bug/418439>.)
 
 The dirstate is given a SHA1Provider instance by its tree.  This class
 can calculate the (canonical) hash and size given a filename.  This
