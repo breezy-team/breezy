@@ -46,6 +46,9 @@ Improvements
   number of remaining conflicts. This provides a better feedback about the
   whole resolution process. (Vincent Ladeuil)
 
+* Read configuration files in $XDG_CONFIG_HOME/bazaar on Unix if there is
+  already a directory there.  (Neil Martinsen-Burrell, #195397)
+
 Bug Fixes
 *********
 
