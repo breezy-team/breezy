@@ -3531,33 +3531,43 @@ class InterRepository(InterObject):
                 revision_ids = [revision_id]
         del revision_id
         # stop searching at found target revisions.
-        if not find_ghosts and revision_ids is not None:
+        if not find_ghosts and (revision_ids is not None or if_present_ids is
+                not None):
             return self._walk_to_common_revisions(revision_ids,
                     if_present_ids=if_present_ids)
         # generic, possibly worst case, slow code path.
-        # XXX: if_present_ids ignored by this fallback
         target_ids = set(self.target.all_revision_ids())
-        source_ids = self._present_source_revisions_for(revision_ids)
+        source_ids = self._present_source_revisions_for(
+            revision_ids, if_present_ids)
         result_set = set(source_ids).difference(target_ids)
         return self.source.revision_ids_to_search_result(result_set)
 
-    def _present_source_revisions_for(self, revision_ids):
+    def _present_source_revisions_for(self, revision_ids, if_present_ids=None):
         """Returns set of all revisions in ancestry of revision_ids present in
         the source repo.
 
         :param revision_ids: if None, all revisions in source are returned.
+        :param if_present_ids: like revision_ids, but if any/all of these are
+            absent no error is raised.
         """
-        if revision_ids is not None:
+        if revision_ids is not None or if_present_ids is not None:
             # First, ensure all specified revisions exist.  Callers expect
             # NoSuchRevision when they pass absent revision_ids here.
+            if revision_ids is None:
+                revision_ids = set()
+            if if_present_ids is None:
+                if_present_ids = set()
             revision_ids = set(revision_ids)
+            if_present_ids = set(if_present_ids)
+            all_wanted_ids = revision_ids.union(if_present_ids)
             graph = self.source.get_graph()
-            present_revs = set(graph.get_parent_map(revision_ids))
+            present_revs = set(graph.get_parent_map(all_wanted_ids))
             missing = revision_ids.difference(present_revs)
             if missing:
                 raise errors.NoSuchRevision(self.source, missing.pop())
+            found_ids = all_wanted_ids.intersection(present_revs)
             source_ids = [rev_id for (rev_id, parents) in
-                          self.source.get_graph().iter_ancestry(revision_ids)
+                          self.source.get_graph().iter_ancestry(found_ids)
                           if rev_id != _mod_revision.NULL_REVISION
                           and parents is not None]
         else:
@@ -3888,8 +3898,9 @@ class InterDifferingSerializer(InterRepository):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
             if (isinstance(fetch_spec, graph.NotInOtherForRevs) and
-                    len(fetch_spec.revision_ids) == 1):
-                revision_id = list(fetch_spec.revision_ids)[0]
+                    len(fetch_spec.required_ids) == 1 and not
+                    fetch_spec.if_present_ids):
+                revision_id = list(fetch_spec.required_ids)[0]
                 del fetch_spec
             else:
                 raise AssertionError("Not implemented yet...")
