@@ -153,7 +153,7 @@ class TextUIFactory(UIFactory):
         """Construct and return a new ProgressView subclass for this UI.
         """
         # with --quiet, never any progress view
-        # <https://bugs.edge.launchpad.net/bzr/+bug/320035>.  Otherwise if the
+        # <https://bugs.launchpad.net/bzr/+bug/320035>.  Otherwise if the
         # user specifically requests either text or no progress bars, always
         # do that.  otherwise, guess based on $TERM and tty presence.
         if self.is_quiet():
