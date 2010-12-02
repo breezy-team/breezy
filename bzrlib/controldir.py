@@ -456,7 +456,10 @@ class ControlDir(ControlComponent):
         add_cleanup = op.add_cleanup
         fetch_spec_factory = FetchSpecFactory()
         fetch_spec_factory.source_branch = source_branch
+        # XXX: source_branch can change further down
         if revision_id is not None:
+            # XXX: sometimes (always?) we could/should set
+            # source_branch_stop_revision too.
             fetch_spec_factory.add_revision_ids([revision_id])
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
