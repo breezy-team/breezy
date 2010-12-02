@@ -202,15 +202,3 @@ def set_default_merge_tool(name, conf=None):
     if conf is None:
         conf = config.GlobalConfig()
     conf.set_default_merge_tool(name)
-
-
-def resolve_using_merge_tool(tool_name, conflicts):
-    merge_tool = find_merge_tool(tool_name)
-    if merge_tool is None:
-        available = '\n  '.join([mt.get_name() for mt in get_merge_tools()
-                                 if mt.is_available()])
-        raise errors.BzrCommandError('Unrecognized merge tool: %s\n\n'
-                                     'Available merge tools:\n'
-                                     '  %s' % (tool_name, available))
-    for conflict in conflicts:
-        merge_tool.invoke(conflict.path)
