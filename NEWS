@@ -17,6 +17,7 @@ Compatibility Breaks
   deprecated and may be shut down in the future
   <http://blog.launchpad.net/general/edge-is-deprecated>.  Bazaar has therefore
   been updated in this release to talk to the main (``launchpad.net``) servers,
+  rather than the ``edge`` ones. (Vincent Ladeuil, #583667)
 
 New Features
 ************
