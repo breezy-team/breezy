@@ -61,7 +61,8 @@ def read_news_bugnos(path):
         f.close()
 
 
-lp = Launchpad.login_anonymously('bzr-check-newsbugs', 'edge', version='1.0')
+lp = Launchpad.login_anonymously('bzr-check-newsbugs', 'production',
+                                 version='1.0')
 
 bugnos = read_news_bugnos(args[1])
 for bugno, section in bugnos:
