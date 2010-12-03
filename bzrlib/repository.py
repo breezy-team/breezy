@@ -186,6 +186,33 @@ class CommitBuilder(object):
         """
         if not self.repository._fallback_repositories:
             return
+        # This is a stacked repo, we need to make sure we have the parent
+        # inventories for the parents.
+        parent_keys = [(p,) for p in self.parents]
+        parent_map = self.repository.inventories._index.get_parent_map(parent_keys)
+        missing_parent_keys = set([pk for pk in parent_keys
+                                       if pk not in parent_map])
+        fallback_repos = list(reversed(self.repository._fallback_repositories))
+        # Right now, we are already in a write group, and insert_stream needs
+        # its own write group. Ideally we would just share it, but the current
+        # mechanism is suspend+resume.
+        # However, we don't want to immediately resume the write group,
+        # because, insert_stream finalizes the commit.
+        saved_resume_tokens = self.repository.suspend_write_group()
+
+        missing_keys = [('inventories', pk[0])
+                        for pk in missing_parent_keys]
+        resume_tokens = []
+        while missing_keys and fallback_repos:
+            fallback_repo = fallback_repos.pop()
+            source = fallback_repo._get_source(self.repository._format)
+            sink = self.repository._get_sink()
+            stream = source.get_stream_for_missing_keys(missing_keys)
+            resume_tokens, missing_keys = sink.insert_stream(
+                stream, self.repository._format, resume_tokens)
+        if resume_tokens or missing_keys:
+            raise RuntimeError('failure will robinson')
+        self.repository.resume_write_group(saved_resume_tokens)
 
     def commit(self, message):
         """Make the actual commit.

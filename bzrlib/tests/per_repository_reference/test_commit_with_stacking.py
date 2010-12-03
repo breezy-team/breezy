@@ -38,6 +38,8 @@ class TestCommitWithStacking(TestCaseWithRepository):
         # We open the repository without fallbacks to ensure the data is
         # locally true
         stacked_only_repo = stacked_tree.bzrdir.open_repository()
+        stacked_only_repo.lock_read()
+        self.addCleanup(stacked_only_repo.unlock)
         r1_key = ('initial-rev-id',)
         self.assertEqual([r1_key],
             sorted(stacked_only_repo.inventories.get_parent_map([r1_key])))
@@ -51,8 +53,9 @@ class TestCommitWithStacking(TestCaseWithRepository):
     def test_merge_commit(self):
         base_tree, stacked_tree = self.make_stacked_target()
         self.build_tree_contents([('base/f1.txt', 'new content\n')])
-        base_tree.commit('second base', 'base2-rev-id')
-        to_be_merged_tree = base_tree.bzrdir.sprout('merged')
+        base_tree.commit('second base', rev_id='base2-rev-id')
+        to_be_merged_tree = base_tree.bzrdir.sprout('merged'
+            ).open_workingtree()
         self.build_tree(['merged/f2.txt'])
         to_be_merged_tree.add(['f2.txt'], ['f2.txt-id'])
         to_be_merged_tree.commit('new-to-be-merged', rev_id='to-merge-rev-id')
@@ -64,6 +67,8 @@ class TestCommitWithStacking(TestCaseWithRepository):
         # which is in base. So we should have its inventory, but not its
         # revision-id.
         stacked_only_repo = stacked_tree.bzrdir.open_repository()
+        stacked_only_repo.lock_read()
+        self.addCleanup(stacked_only_repo.unlock)
         r1_key = ('initial-rev-id',)
         r2_key = ('base2-rev-id',)
         r3_key = ('to-merge-rev-id',)
@@ -77,7 +82,7 @@ class TestCommitWithStacking(TestCaseWithRepository):
     def test_merge_from_master(self):
         base_tree, stacked_tree = self.make_stacked_target()
         self.build_tree_contents([('base/f1.txt', 'new content\n')])
-        base_tree.commit('second base', 'base2-rev-id')
+        base_tree.commit('second base', rev_id='base2-rev-id')
         stacked_tree.merge_from_branch(base_tree.branch)
         stacked_tree.commit('merge', rev_id='merged-rev-id')
         r1_key = ('initial-rev-id',)
@@ -87,6 +92,8 @@ class TestCommitWithStacking(TestCaseWithRepository):
         # We shouldn't have any of the base revisions in the local repo, but we
         # should have both base inventories.
         stacked_only_repo = stacked_tree.bzrdir.open_repository()
+        stacked_only_repo.lock_read()
+        self.addCleanup(stacked_only_repo.unlock)
         self.assertEqual(sorted([r3_key]),
             sorted(stacked_only_repo.revisions.get_parent_map(all_keys)))
         self.assertEqual(sorted(all_keys),
@@ -99,15 +106,19 @@ class TestCommitWithStacking(TestCaseWithRepository):
         stacked_tree.add(['f2.txt'], ['f2.txt-id'])
         stacked_tree.commit('add f2', rev_id='stacked-rev-id')
         stacked2_tree = stacked_tree.bzrdir.sprout('stacked2',
+                            revision_id='initial-rev-id',
                             stacked=True).open_workingtree()
-        # stacked2 is stacked on stacked, but we revert its content to rev1, so
-        # that it needs to pull the basis information from a
-        # fallback-of-fallback.
-        stacked2_tree.update(revision='initial-rev-id')
+        # stacked2 is stacked on stacked, but its content is rev1, so
+        # it needs to pull the basis information from a fallback-of-fallback.
         self.build_tree(['stacked2/f3.txt'])
         stacked2_tree.add(['f3.txt'], ['f3.txt-id'])
-        stacked_tree.commit('add f3', rev_id='stacked2-rev-id')
+        stacked2_tree.commit('add f3', rev_id='stacked2-rev-id')
         stacked2_only_repo = stacked2_tree.bzrdir.open_repository()
+        stacked2_only_repo.lock_read()
+        self.addCleanup(stacked2_only_repo.unlock)
         r1_key = ('initial-rev-id',)
         self.assertEqual([r1_key],
             sorted(stacked2_only_repo.inventories.get_parent_map([r1_key])))
+
+# TOOD: We need to run the above tests for when the source and/or the target
+#       are remote repositories.
