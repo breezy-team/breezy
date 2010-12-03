@@ -26,6 +26,11 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr resolve`` now accepts ``--take-this`` and ``--take-other`` actions
+  for text conflicts. This *replace* the whole file with the content
+  designated by the action. This will *ignore* all differences that would
+  have been merge cleanly otherwise. (Vincent Ladeuil, #638451)
+
 Bug Fixes
 *********
 
