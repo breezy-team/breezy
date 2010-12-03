@@ -167,6 +167,7 @@ class RepoFetcher(object):
                 self._fetch_spec, self._last_revision)
         get_search = getattr(self._fetch_spec, 'get_search', None)
         if get_search is not None:
+            mutter('resolving fetch_spec into search: %s', self._fetch_spec)
             # This is EverythingNotInOther or a similar kind of fetch_spec.
             # Turn it into a search result.
             return get_search()
