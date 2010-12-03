@@ -187,10 +187,6 @@ class CommitBuilder(object):
         if not self.repository._fallback_repositories:
             return
 
-        raise errors.BzrError("Cannot commit from a lightweight checkout "
-            "to a stacked branch. See "
-            "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
-
     def commit(self, message):
         """Make the actual commit.
 
