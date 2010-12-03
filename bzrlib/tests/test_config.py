@@ -71,6 +71,7 @@ user_global_option=something
 mergetools.kdiff3=kdiff3 {base} {this} {other} -o {result}
 mergetools.winmergeu=winmergeu {result}
 mergetools.funkytool=funkytool "arg with spaces" {this_temp}
+default_mergetool=kdiff3
 [ALIASES]
 h=help
 ll=""" + sample_long_alias + "\n"
@@ -897,6 +898,19 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         self.assertEqual('funkytool "arg with spaces" {this_temp}',
                           tools[2].get_commandline())
 
+    def test_get_default_merge_tool(self):
+        conf = self._get_sample_config()
+        tool = conf.get_default_merge_tool()
+        self.log(repr(tool))
+        self.assertEqual('kdiff3', tool.get_name())
+        self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
+                         tool.get_commandline())
+
+    def test_get_default_merge_tool_empty(self):
+        conf = self._get_empty_config()
+        tool = conf.get_default_merge_tool()
+        self.assertEqual(None, tool)
+
 
 class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
 
@@ -998,6 +1012,20 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
         conf.set_merge_tools(tools)
         conf.set_default_merge_tool('winmergeu')
         self.assertEqual('winmergeu', conf.get_user_option('default_mergetool'))
+
+    def test_set_invalid_default_merge_tool(self):
+        conf = config.GlobalConfig()
+        tools = [
+            mergetools.MergeTool('kdiff3',
+                                 'kdiff3 {base} {this} {other} -o {result}'),
+            mergetools.MergeTool('winmergeu',
+                                 'winmergeu {result}'),
+            mergetools.MergeTool('funkytool',
+                                 'funkytool "arg with spaces" {this_temp}')
+            ]
+        conf.set_merge_tools(tools)
+        self.failUnlessRaises(errors.BzrError, conf.set_default_merge_tool,
+                              'DOES NOT EXIST')
 
 
 class TestLocationConfig(tests.TestCaseInTempDir):
