@@ -19,14 +19,14 @@ See also:
 Links
 *****
 
-* `bzr bugs home page <https://bugs.edge.launchpad.net/bzr>`_.
+* `bzr bugs home page <https://bugs.launchpad.net/bzr>`_.
 
-* `Critical bugs <https://bugs.edge.launchpad.net/bzr/+bugs?search=Search&field.importance=Critical&field.status=New&field.status=Incomplete&field.status=Confirmed&field.status=Triaged&field.status=In+Progress&field.status=Fix+Committed>`_.
+* `Critical bugs <https://bugs.launchpad.net/bzr/+bugs?search=Search&field.importance=Critical&field.status=New&field.status=Incomplete&field.status=Confirmed&field.status=Triaged&field.status=In+Progress&field.status=Fix+Committed>`_.
 
-* `Open bugs by importance <https://bugs.edge.launchpad.net/bzr/+bugs>`_.
+* `Open bugs by importance <https://bugs.launchpad.net/bzr/+bugs>`_.
 
 * `Open bugs most recently changed first
-  <https://bugs.edge.launchpad.net/bzr/+bugs?field.searchtext=&orderby=-date_last_updated&search=Search&field.status%3Alist=NEW&field.status%3Alist=INCOMPLETE_WITH_RESPONSE&field.status%3Alist=INCOMPLETE_WITHOUT_RESPONSE&field.status%3Alist=CONFIRMED&field.status%3Alist=TRIAGED&field.status%3Alist=INPROGRESS&field.status%3Alist=FIXCOMMITTED&field.assignee=&field.bug_reporter=&field.omit_dupes=on&field.has_patch=&field.has_no_package=>`_.
+  <https://bugs.launchpad.net/bzr/+bugs?field.searchtext=&orderby=-date_last_updated&search=Search&field.status%3Alist=NEW&field.status%3Alist=INCOMPLETE_WITH_RESPONSE&field.status%3Alist=INCOMPLETE_WITHOUT_RESPONSE&field.status%3Alist=CONFIRMED&field.status%3Alist=TRIAGED&field.status%3Alist=INPROGRESS&field.status%3Alist=FIXCOMMITTED&field.assignee=&field.bug_reporter=&field.omit_dupes=on&field.has_patch=&field.has_no_package=>`_.
 
 * `Most commonly duplicated bugs <http://tinyurl.com/bzr-bugs-by-dupes>`_.
 
@@ -228,7 +228,7 @@ Targetting Bugs
 ***************
 
 It's possible to target a bug to a milestone, eg
-<https://bugs.edge.launchpad.net/bzr/+milestone/1.16>.  We use this to help the
+<https://bugs.launchpad.net/bzr/+milestone/1.16>.  We use this to help the
 release manager know what **must** be merged to make the release.
 
 Therefore, we don't target bugs that we'd like to have fixed or that could
@@ -313,16 +313,18 @@ transport
     virtual filesystem for http, sftp, etc
 
 trivial
-    should be very easy to fix (10-20 minutes) and easily landed: typically just spelling errors and the like
+    should be very easy to fix (10-20 minutes) and easily landed: typically 
+    just spelling errors and the like
 
 ui
     bugs relating to the bzr user interface, e.g. confusing error messages.
 
 win32
-    bugs that mainly affects Windows. Also there is cygwin and win98 tags for marking specific bugs.
+    bugs that mainly affects Windows. Also there is cygwin and win98 tags for 
+    marking specific bugs.
 
 You can see the full list of tags in use at
-<https://bugs.edge.launchpad.net/bzr/+bugs>.  As of September 2008 the
-list is on the right.
+<https://bugs.launchpad.net/bzr/+bugs>.  As of September 2008 the
+list is on the right. 
 
 .. vim: ft=rst

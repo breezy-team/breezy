@@ -5,6 +5,42 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.0.7
+#########
+
+:2.0.7: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+* Launchpad has announced that the ``edge.launchpad.net`` instance is
+  deprecated and may be shut down in the future
+  <http://blog.launchpad.net/general/edge-is-deprecated>.  Bazaar has therefore
+  been updated in this release to talk to the main (``launchpad.net``) servers,
+  rather than the ``edge`` ones. (Vincent Ladeuil, #583667)
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 bzr 2.0.6
 #########
 
