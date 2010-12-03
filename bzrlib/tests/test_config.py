@@ -985,6 +985,20 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
             ]),
             sorted(conf._get_options()))
 
+    def test_set_default_merge_tool(self):
+        conf = config.GlobalConfig()
+        tools = [
+            mergetools.MergeTool('kdiff3',
+                                 'kdiff3 {base} {this} {other} -o {result}'),
+            mergetools.MergeTool('winmergeu',
+                                 'winmergeu {result}'),
+            mergetools.MergeTool('funkytool',
+                                 'funkytool "arg with spaces" {this_temp}')
+            ]
+        conf.set_merge_tools(tools)
+        conf.set_default_merge_tool('winmergeu')
+        self.assertEqual('winmergeu', conf.get_user_option('default_mergetool'))
+
 
 class TestLocationConfig(tests.TestCaseInTempDir):
 
