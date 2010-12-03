@@ -61,6 +61,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* ``TestDebuntuExpansions`` was escaping the test isolation by calling the
+  wrong base class ``setUp``. (Vincent Ladeuil, #684622)
 
 bzr 2.3b4
 #########
