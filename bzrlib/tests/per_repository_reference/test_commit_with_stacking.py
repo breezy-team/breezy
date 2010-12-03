@@ -74,6 +74,24 @@ class TestCommitWithStacking(TestCaseWithRepository):
         self.assertEqual(sorted(all_keys),
             sorted(stacked_only_repo.inventories.get_parent_map(all_keys)))
 
+    def test_merge_from_master(self):
+        base_tree, stacked_tree = self.make_stacked_target()
+        self.build_tree_contents([('base/f1.txt', 'new content\n')])
+        base_tree.commit('second base', 'base2-rev-id')
+        stacked_tree.merge_from_branch(base_tree.branch)
+        stacked_tree.commit('merge', rev_id='merged-rev-id')
+        r1_key = ('initial-rev-id',)
+        r2_key = ('base2-rev-id',)
+        r3_key = ('merged-rev-id',)
+        all_keys = [r1_key, r2_key, r3_key]
+        # We shouldn't have any of the base revisions in the local repo, but we
+        # should have both base inventories.
+        stacked_only_repo = stacked_tree.bzrdir.open_repository()
+        self.assertEqual(sorted([r3_key]),
+            sorted(stacked_only_repo.revisions.get_parent_map(all_keys)))
+        self.assertEqual(sorted(all_keys),
+            sorted(stacked_only_repo.inventories.get_parent_map(all_keys)))
+
     def test_multi_stack(self):
         """base + stacked + stacked-on-stacked"""
         base_tree, stacked_tree = self.make_stacked_target()
