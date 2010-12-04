@@ -108,7 +108,12 @@ class Convert(object):
         """
         transport = self.transport
         backup_relpath = transport.relpath(self.backup_newpath)
-        transport.delete_tree(backup_relpath)
+        child_pb = ui.ui_factory.nested_progress_bar()
+        child_pb.update('Deleting backup.bzr')
+        try:
+            transport.delete_tree(backup_relpath)
+        finally:
+            child_pb.finished()
 
 
 def upgrade(urls, format=None, clean_up=False, pack=False, dry_run=False):
