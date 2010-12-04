@@ -27,7 +27,7 @@ New Features
 
   * ``--clean`` to remove the backup.dir directory on successful completion.
 
-  (Ian Clatworthy)
+  (Ian Clatworthy, #374734, #422450)
 
 Improvements
 ************
