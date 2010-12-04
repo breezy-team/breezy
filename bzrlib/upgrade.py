@@ -116,7 +116,7 @@ class Convert(object):
             child_pb.finished()
 
 
-def upgrade(url, format=None, clean_up=False, pack=False, dry_run=False):
+def upgrade(url, format=None, clean_up=False, dry_run=False):
     """Upgrade locations to format.
  
     This routine wraps the smart_upgrade() routine with a nicer UI.
@@ -129,13 +129,12 @@ def upgrade(url, format=None, clean_up=False, pack=False, dry_run=False):
     :param format: the format to convert to or None for the best default
     :param clean-up: if True, the backup.bzr directory is removed if the
       upgrade succeeded for a given repo/branch/tree
-    :param pack: pack repositories that successfully upgrade
     :param dry_run: show what would happen but don't actually do any upgrades
     :return: the list of exceptions encountered
     """
     control_dirs = [BzrDir.open_unsupported(url)]
     attempted, succeeded, exceptions = smart_upgrade(control_dirs,
-        format, clean_up=clean_up, pack=pack, dry_run=dry_run)
+        format, clean_up=clean_up, dry_run=dry_run)
     if len(attempted) > 1:
         attempted_count = len(attempted)
         succeeded_count = len(succeeded)
@@ -145,7 +144,7 @@ def upgrade(url, format=None, clean_up=False, pack=False, dry_run=False):
     return exceptions
 
 
-def smart_upgrade(control_dirs, format, clean_up=False, pack=False,
+def smart_upgrade(control_dirs, format, clean_up=False,
     dry_run=False):
     """Convert control directories to a new format intelligently.
 
@@ -157,7 +156,6 @@ def smart_upgrade(control_dirs, format, clean_up=False, pack=False,
     :param format: the format to convert to or None for the best default
     :param clean_up: if True, the backup.bzr directory is removed if the
       upgrade succeeded for a given repo/branch/tree
-    :param pack: pack repositories that successfully upgrade
     :param dry_run: show what would happen but don't actually do any upgrades
     :return: attempted-control-dirs, succeeded-control-dirs, exceptions
     """
@@ -166,14 +164,14 @@ def smart_upgrade(control_dirs, format, clean_up=False, pack=False,
     all_exceptions = []
     for control_dir in control_dirs:
         attempted, succeeded, exceptions = _smart_upgrade_one(control_dir,
-            format, clean_up=clean_up, pack=pack, dry_run=dry_run)
+            format, clean_up=clean_up, dry_run=dry_run)
         all_attempted.extend(attempted)
         all_succeeded.extend(succeeded)
         all_exceptions.extend(exceptions)
     return all_attempted, all_succeeded, all_exceptions
 
 
-def _smart_upgrade_one(control_dir, format, clean_up=False, pack=False,
+def _smart_upgrade_one(control_dir, format, clean_up=False,
     dry_run=False):
     """Convert a control directory to a new format intelligently.
 
@@ -195,14 +193,14 @@ def _smart_upgrade_one(control_dir, format, clean_up=False, pack=False,
     # Do the conversions
     attempted = [control_dir]
     succeeded, exceptions = _convert_items([control_dir], format, clean_up,
-        pack, dry_run, verbose=dependents)
+        dry_run, verbose=dependents)
     if succeeded and dependents:
         note("Found %d dependent branches - upgrading ...", len(dependents))
 
         # Convert dependent branches
         branch_cdirs = [b.bzrdir for b in dependents]
         successes, problems = _convert_items(branch_cdirs, format, clean_up,
-            pack, dry_run, label="branch")
+            dry_run, label="branch")
         attempted.extend(branch_cdirs)
         succeeded.extend(successes)
         exceptions.extend(problems)
@@ -211,7 +209,7 @@ def _smart_upgrade_one(control_dir, format, clean_up=False, pack=False,
     return attempted, succeeded, exceptions
 
 
-def _convert_items(items, format, clean_up, pack, dry_run, label=None,
+def _convert_items(items, format, clean_up, dry_run, label=None,
     verbose=True):
     """Convert a sequence of control directories to the given format.
  
@@ -219,7 +217,6 @@ def _convert_items(items, format, clean_up, pack, dry_run, label=None,
     :param format: the format to convert to or None for the best default
     :param clean-up: if True, the backup.bzr directory is removed if the
       upgrade succeeded for a given repo/branch/tree
-    :param pack: pack repositories that successfully upgrade
     :param dry_run: show what would happen but don't actually do any upgrades
     :param label: the label for these items or None to calculate one
     :param verbose: if True, output a message before starting and
@@ -245,15 +242,6 @@ def _convert_items(items, format, clean_up, pack, dry_run, label=None,
 
         # Do any required post processing
         succeeded.append(control_dir)
-        if pack and isinstance(bzr_object, repository.Repository):
-            note("Packing ...")
-            try:
-                if not dry_run:
-                    bzr_object.pack()
-            except Exception, ex:
-                _verbose_warning(verbose, "failed to pack %s: %s" %
-                    (location, ex))
-                exceptions.append(ex)
         if clean_up:
             try:
                 note("Removing backup ...")
