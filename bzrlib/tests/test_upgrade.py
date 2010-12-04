@@ -443,6 +443,8 @@ class TestSmartUpgrade(TestCaseWithTransport):
         self.assertEqual(1, len(worked))
         self.assertEqual(0, len(issues))
         self.failUnlessExists('branch1/backup.bzr.~1~')
+        self.assertEqual(control.open_repository()._format,
+                         self.to_format._repository_format)
 
     def test_upgrade_standalone_branch_cleanup(self):
         control = self.make_standalone_branch()
@@ -454,6 +456,8 @@ class TestSmartUpgrade(TestCaseWithTransport):
         self.failUnlessExists('branch1')
         self.failUnlessExists('branch1/.bzr')
         self.failIfExists('branch1/backup.bzr.~1~')
+        self.assertEqual(control.open_repository()._format,
+                         self.to_format._repository_format)
 
     def make_repo_with_branches(self):
         repo = self.make_repository('repo', shared=True,
@@ -475,6 +479,10 @@ class TestSmartUpgrade(TestCaseWithTransport):
         self.failUnlessExists('repo/backup.bzr.~1~')
         self.failUnlessExists('repo/branch1/backup.bzr.~1~')
         self.failUnlessExists('repo/branch2/backup.bzr.~1~')
+        self.assertEqual(control.open_repository()._format,
+                         self.to_format._repository_format)
+        b1 = Branch.open('repo/branch1')
+        self.assertEqual(b1._format, self.to_format._branch_format)
 
     def test_upgrade_repo_with_branches_cleanup(self):
         control = self.make_repo_with_branches()
@@ -488,3 +496,7 @@ class TestSmartUpgrade(TestCaseWithTransport):
         self.failIfExists('repo/backup.bzr.~1~')
         self.failIfExists('repo/branch1/backup.bzr.~1~')
         self.failIfExists('repo/branch2/backup.bzr.~1~')
+        self.assertEqual(control.open_repository()._format,
+                         self.to_format._repository_format)
+        b1 = Branch.open('repo/branch1')
+        self.assertEqual(b1._format, self.to_format._branch_format)
