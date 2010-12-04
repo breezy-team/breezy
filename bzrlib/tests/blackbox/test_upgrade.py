@@ -165,7 +165,7 @@ finished
     def test_upgrade_clean_supported(self):
         self._assert_option_legal('--clean')
         self._assert_branch_format('branch-foo', '2a')
-        backup_bzr_dir = os.path.join("branch-foo", "backup.bzr")
+        backup_bzr_dir = os.path.join("branch-foo", "backup.bzr.~1~")
         self.assertFalse(os.path.exists(backup_bzr_dir))
 
     def test_upgrade_dry_run_supported(self):
