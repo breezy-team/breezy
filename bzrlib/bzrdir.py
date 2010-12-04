@@ -1387,7 +1387,7 @@ class BzrDir(ControlComponent):
         try:
             try:
                 br = self.open_branch(unsupported=True, ignore_fallbacks=True)
-            except TypeError:
+            except NotImplementedError:
                 # RemoteRepository doesn't support the unsupported parameter
                 br = self.open_branch(ignore_fallbacks=True)
         except errors.NotBranchError:
