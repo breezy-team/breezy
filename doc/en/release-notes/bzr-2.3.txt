@@ -18,6 +18,8 @@ External Compatibility Breaks
 New Features
 ************
 
+.. New commands, options, etc that users may wish to try out.
+
 * External merge tools can now be configured in bazaar.conf. See
   ``bzr help configuration`` for more information.  (Gordon Tyler)
 
@@ -58,6 +60,9 @@ Documentation
 
 API Changes
 ***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
 
 * Added ``bzrlib.mergetools`` module with helper functions for working with
   the list of external merge tools. (Gordon Tyler)
