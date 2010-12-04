@@ -155,7 +155,7 @@ def smart_upgrade(control_dirs, format, clean_up=False, pack=False,
 
     :param control_dirs: the BzrDirs to upgrade
     :param format: the format to convert to or None for the best default
-    :param clean-up: if True, the backup.bzr directory is removed if the
+    :param clean_up: if True, the backup.bzr directory is removed if the
       upgrade succeeded for a given repo/branch/tree
     :param pack: pack repositories that successfully upgrade
     :param dry_run: show what would happen but don't actually do any upgrades
