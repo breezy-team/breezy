@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,11 +32,14 @@ Interesting module attributes:
 
 
 import tempfile
+import thread
 import threading
 
 from bzrlib import (
     bzrdir,
+    debug,
     errors,
+    osutils,
     registry,
     revision,
     trace,
@@ -86,7 +89,7 @@ class SmartServerRequest(object):
     # XXX: rename this class to BaseSmartServerRequestHandler ?  A request
     # *handler* is a different concept to the request.
 
-    def __init__(self, backing_transport, root_client_path='/'):
+    def __init__(self, backing_transport, root_client_path='/', jail_root=None):
         """Constructor.
 
         :param backing_transport: the base transport to be used when performing
@@ -96,8 +99,13 @@ class SmartServerRequest(object):
             from the client.  Clients will not be able to refer to paths above
             this root.  If root_client_path is None, then no translation will
             be performed on client paths.  Default is '/'.
+        :param jail_root: if specified, the root of the BzrDir.open jail to use
+            instead of backing_transport.
         """
         self._backing_transport = backing_transport
+        if jail_root is None:
+            jail_root = backing_transport
+        self._jail_root = jail_root
         if root_client_path is not None:
             if not root_client_path.startswith('/'):
                 root_client_path = '/' + root_client_path
@@ -155,7 +163,7 @@ class SmartServerRequest(object):
         return self.do_body(body_bytes)
 
     def setup_jail(self):
-        jail_info.transports = [self._backing_transport]
+        jail_info.transports = [self._jail_root]
 
     def teardown_jail(self):
         jail_info.transports = None
@@ -183,7 +191,7 @@ class SmartServerRequest(object):
             relpath = urlutils.joinpath('/', path)
             if not relpath.startswith('/'):
                 raise ValueError(relpath)
-            return '.' + relpath
+            return urlutils.escape('.' + relpath)
         else:
             raise errors.PathNotChild(client_path, self._root_client_path)
 
@@ -265,7 +273,8 @@ class SmartServerRequestHandler(object):
     # TODO: Better way of representing the body for commands that take it,
     # and allow it to be streamed into the server.
 
-    def __init__(self, backing_transport, commands, root_client_path):
+    def __init__(self, backing_transport, commands, root_client_path,
+        jail_root=None):
         """Constructor.
 
         :param backing_transport: a Transport to handle requests for.
@@ -275,9 +284,33 @@ class SmartServerRequestHandler(object):
         self._backing_transport = backing_transport
         self._root_client_path = root_client_path
         self._commands = commands
+        if jail_root is None:
+            jail_root = backing_transport
+        self._jail_root = jail_root
         self.response = None
         self.finished_reading = False
         self._command = None
+        if 'hpss' in debug.debug_flags:
+            self._request_start_time = osutils.timer_func()
+            self._thread_id = thread.get_ident()
+
+    def _trace(self, action, message, extra_bytes=None, include_time=False):
+        # It is a bit of a shame that this functionality overlaps with that of 
+        # ProtocolThreeRequester._trace. However, there is enough difference
+        # that just putting it in a helper doesn't help a lot. And some state
+        # is taken from the instance.
+        if include_time:
+            t = '%5.3fs ' % (osutils.timer_func() - self._request_start_time)
+        else:
+            t = ''
+        if extra_bytes is None:
+            extra = ''
+        else:
+            extra = ' ' + repr(extra_bytes[:40])
+            if len(extra) > 33:
+                extra = extra[:29] + extra[-1] + '...'
+        trace.mutter('%12s: [%s] %s%s%s'
+                     % (action, self._thread_id, t, message, extra))
 
     def accept_body(self, bytes):
         """Accept body data."""
@@ -285,21 +318,17 @@ class SmartServerRequestHandler(object):
             # no active command object, so ignore the event.
             return
         self._run_handler_code(self._command.do_chunk, (bytes,), {})
+        if 'hpss' in debug.debug_flags:
+            self._trace('accept body',
+                        '%d bytes' % (len(bytes),), bytes)
 
     def end_of_body(self):
         """No more body data will be received."""
         self._run_handler_code(self._command.do_end, (), {})
         # cannot read after this.
         self.finished_reading = True
-
-    def dispatch_command(self, cmd, args):
-        """Deprecated compatibility method.""" # XXX XXX
-        try:
-            command = self._commands.get(cmd)
-        except LookupError:
-            raise errors.UnknownSmartMethod(cmd)
-        self._command = command(self._backing_transport, self._root_client_path)
-        self._run_handler_code(self._command.execute, args, {})
+        if 'hpss' in debug.debug_flags:
+            self._trace('end of body', '', include_time=True)
 
     def _run_handler_code(self, callable, args, kwargs):
         """Run some handler specific code 'callable'.
@@ -334,7 +363,8 @@ class SmartServerRequestHandler(object):
 
     def headers_received(self, headers):
         # Just a no-op at the moment.
-        pass
+        if 'hpss' in debug.debug_flags:
+            self._trace('headers', repr(headers))
 
     def args_received(self, args):
         cmd = args[0]
@@ -342,8 +372,20 @@ class SmartServerRequestHandler(object):
         try:
             command = self._commands.get(cmd)
         except LookupError:
+            if 'hpss' in debug.debug_flags:
+                self._trace('hpss unknown request', 
+                            cmd, repr(args)[1:-1])
             raise errors.UnknownSmartMethod(cmd)
-        self._command = command(self._backing_transport)
+        if 'hpss' in debug.debug_flags:
+            from bzrlib.smart import vfs
+            if issubclass(command, vfs.VfsRequest):
+                action = 'hpss vfs req'
+            else:
+                action = 'hpss request'
+            self._trace(action, 
+                        '%s %s' % (cmd, repr(args)[1:-1]))
+        self._command = command(
+            self._backing_transport, self._root_client_path, self._jail_root)
         self._run_handler_code(self._command.execute, args, {})
 
     def end_received(self):
@@ -351,6 +393,8 @@ class SmartServerRequestHandler(object):
             # no active command object, so ignore the event.
             return
         self._run_handler_code(self._command.do_end, (), {})
+        if 'hpss' in debug.debug_flags:
+            self._trace('end', '', include_time=True)
 
     def post_body_error_received(self, error_args):
         # Just a no-op at the moment.
@@ -364,6 +408,9 @@ def _translate_error(err):
         return ('FileExists', err.path)
     elif isinstance(err, errors.DirectoryNotEmpty):
         return ('DirectoryNotEmpty', err.path)
+    elif isinstance(err, errors.IncompatibleRepositories):
+        return ('IncompatibleRepositories', str(err.source), str(err.target),
+            str(err.details))
     elif isinstance(err, errors.ShortReadvError):
         return ('ShortReadvError', err.path, str(err.offset), str(err.length),
                 str(err.actual))
@@ -463,6 +510,8 @@ request_handlers.register_lazy( 'Branch.revision_history',
     'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
 request_handlers.register_lazy( 'Branch.set_config_option',
     'bzrlib.smart.branch', 'SmartServerBranchRequestSetConfigOption')
+request_handlers.register_lazy( 'Branch.set_config_option_dict',
+    'bzrlib.smart.branch', 'SmartServerBranchRequestSetConfigOptionDict')
 request_handlers.register_lazy( 'Branch.set_last_revision',
     'bzrlib.smart.branch', 'SmartServerBranchRequestSetLastRevision')
 request_handlers.register_lazy(
@@ -506,11 +555,16 @@ request_handlers.register_lazy(
 request_handlers.register_lazy(
     'BzrDir.open', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir')
 request_handlers.register_lazy(
+    'BzrDir.open_2.1', 'bzrlib.smart.bzrdir', 'SmartServerRequestOpenBzrDir_2_1')
+request_handlers.register_lazy(
     'BzrDir.open_branch', 'bzrlib.smart.bzrdir',
     'SmartServerRequestOpenBranch')
 request_handlers.register_lazy(
     'BzrDir.open_branchV2', 'bzrlib.smart.bzrdir',
     'SmartServerRequestOpenBranchV2')
+request_handlers.register_lazy(
+    'BzrDir.open_branchV3', 'bzrlib.smart.bzrdir',
+    'SmartServerRequestOpenBranchV3')
 request_handlers.register_lazy(
     'delete', 'bzrlib.smart.vfs', 'DeleteRequest')
 request_handlers.register_lazy(

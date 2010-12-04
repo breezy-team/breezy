@@ -90,8 +90,9 @@ class BDecoder(object):
             raise TypeError
         try:
             r, l = self.decode_func[x[0]](x, 0)
-        except (IndexError, KeyError):
-            raise ValueError
+        except (IndexError, KeyError, OverflowError), e:
+            import sys
+            raise ValueError, ValueError(str(e)), sys.exc_info()[2]
         if l != len(x):
             raise ValueError
         return r
@@ -153,6 +154,15 @@ else:
     def encode_bool(x,r):
         encode_int(int(x), r)
     encode_func[BooleanType] = encode_bool
+
+from bzrlib._static_tuple_py import StaticTuple
+encode_func[StaticTuple] = encode_list
+try:
+    from bzrlib._static_tuple_c import StaticTuple
+except ImportError:
+    pass
+else:
+    encode_func[StaticTuple] = encode_list
 
 
 def bencode(x):

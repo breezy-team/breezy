@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Generate ReStructuredText source for the User Reference Manual.
+"""Generate reStructuredText source for the User Reference Manual.
 Loosely based on the manpage generator autodoc_man.py.
 
 Written by the Bazaar community.
@@ -66,8 +66,7 @@ def _get_body(params, topic_dir):
         output_dir=topic_dir))
     result.append(_get_section(registry, SECT_LIST, "Lists",
         output_dir=topic_dir))
-    result.append(_get_commands_section(registry))
-    #result.append(_get_section(registry, SECT_PLUGIN, "Standard Plug-ins"))
+    result.append(_get_commands_section(registry, output_dir=topic_dir))
     return "\n".join(result)
 
 
@@ -78,68 +77,63 @@ def _get_section(registry, section, title, hdg_level1="#", hdg_level2="=",
     If output_dir is not None, topics are dumped into text files there
     during processing, as well as being included in the return result.
     """
-    topics = sorted(registry.get_topics_for_section(section))
+    file_per_topic = output_dir is not None
     lines = [title, hdg_level1 * len(title), ""]
+    if file_per_topic:
+        lines.extend([".. toctree::", "   :maxdepth: 1", ""])
 
-    # docutils treats section heading as implicit link target.
-    # But in some cases topic and heading are different, e.g.:
-    #
-    # `bugs' vs. `Bug Trackers'
-    # `working-tree' vs. `Working Trees'
-    #
-    # So for building proper cross-reference between topic names
-    # and corresponding sections in document, we need provide
-    # simple glue in the form:
-    #
-    # .. _topic: `heading`_
-    links_glue = []
-
+    topics = sorted(registry.get_topics_for_section(section))
     for topic in topics:
         help = registry.get_detail(topic)
-        heading,text = help.split("\n", 1)
-        lines.append(heading)
+        heading, text = help.split("\n", 1)
         if not text.startswith(hdg_level2):
-            lines.append(hdg_level2 * len(heading))
-        lines.append(text)
-        lines.append('')
-        # check that topic match heading
-        if topic != heading.lower():
-            links_glue.append((topic, heading))
-        # dump the text if requested
-        if output_dir is not None:
-            out_file = bzrlib.osutils.pathjoin(output_dir, topic + ".txt")
-            _dump_text(out_file, help)
-
-    # provide links glue for topics that don't match headings
-    lines.extend([".. _%s: `%s`_" % i for i in links_glue])
-    lines.append('')
+            underline = hdg_level2 * len(heading)
+            help = "%s\n%s\n\n%s\n\n" % (heading, underline, text)
+        else:
+            help = "%s\n%s\n\n" % (heading, text)
+        if file_per_topic:
+            topic_id = _dump_text(output_dir, topic, help)
+            lines.append("   %s" % topic_id)
+        else:
+            lines.append(help)
 
     return "\n" + "\n".join(lines) + "\n"
 
 
-def _dump_text(filename, text):
-    """Dump text to filename."""
-    f =  open(filename, "w")
-    f.writelines(text)
-    f.close()
-
-
 def _get_commands_section(registry, title="Commands", hdg_level1="#",
-                          hdg_level2="="):
+        hdg_level2="=", output_dir=None):
     """Build the commands reference section of the manual."""
+    file_per_topic = output_dir is not None
     lines = [title, hdg_level1 * len(title), ""]
+    if file_per_topic:
+        lines.extend([".. toctree::", "   :maxdepth: 1", ""])
+
     cmds = sorted(bzrlib.commands.builtin_command_names())
     for cmd_name in cmds:
         cmd_object = bzrlib.commands.get_cmd_object(cmd_name)
         if cmd_object.hidden:
             continue
         heading = cmd_name
+        underline = hdg_level2 * len(heading)
         text = cmd_object.get_help_text(plain=False, see_also_as_links=True)
-        lines.append(heading)
-        lines.append(hdg_level2 * len(heading))
-        lines.append(text)
-        lines.append('')
+        help = "%s\n%s\n\n%s\n\n" % (heading, underline, text)
+        if file_per_topic:
+            topic_id = _dump_text(output_dir, cmd_name, help)
+            lines.append("   %s" % topic_id)
+        else:
+            lines.append(help)
+
     return "\n" + "\n".join(lines) + "\n"
+
+
+def _dump_text(output_dir, topic, text):
+    """Dump text for a topic to a file."""
+    topic_id = "%s-%s" % (topic, "help")
+    filename = bzrlib.osutils.pathjoin(output_dir, topic_id + ".txt")
+    f =  open(filename, "w")
+    f.writelines(text)
+    f.close()
+    return topic_id
 
 
 ##
@@ -159,13 +153,6 @@ rstx_head = """\
 #####################
 Bazaar User Reference
 #####################
-
-:Version:   %(version)s
-:Generated: %(datestamp)s
-
-.. contents:: :depth: 3
-
------
 
 About This Manual
 #################
@@ -191,8 +178,8 @@ the online help system, try the following commands.
 
 The following web sites provide further information on Bazaar:
 
-:Home page:                     http://www.bazaar-vcs.org/
-:Official docs:                 http://doc.bazaar-vcs.org/
+:Home page:                     http://bazaar.canonical.com/
+:Official docs:                 http://doc.bazaar.canonical.com/
 :Launchpad:                     https://launchpad.net/bzr/
 """
 

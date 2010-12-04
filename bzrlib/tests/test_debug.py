@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,13 +20,14 @@
 import os
 
 
-from bzrlib import debug
+from bzrlib import (
+    debug,
+    tests,
+    )
 from bzrlib.config import config_filename, ensure_config_dir_exists
-from bzrlib.transport import get_transport
-from bzrlib.tests import TestCaseInTempDir
 
 
-class TestDebugFlags(TestCaseInTempDir):
+class TestDebugFlags(tests.TestCaseInTempDir):
 
     def test_set_debug_flags_from_config(self):
         # test both combinations because configobject automatically splits up

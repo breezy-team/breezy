@@ -128,7 +128,7 @@ Ancestor
 ~~~~~~~~
 
 **ancestor**:*path*
-    specifies the common ancestor between the current branch and a 
+    specifies the common ancestor between the current branch and a
     different branch. This is the same ancestor that would be used for
     merging purposes.
 

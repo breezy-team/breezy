@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,19 +22,20 @@ import re
 
 from bzrlib import (
     branch as _mod_branch,
+    osutils,
     urlutils,
     )
 from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.tests import TestSkipped
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.workingtree import WorkingTree
 
 
-class TestInit(ExternalBase):
+class TestInit(TestCaseWithTransport):
 
     def setUp(self):
-        ExternalBase.setUp(self)
+        TestCaseWithTransport.setUp(self)
         self._default_label = '2a'
 
     def test_init_with_format(self):
@@ -74,8 +75,8 @@ class TestInit(ExternalBase):
 Using shared repository: %s
 """ % (self._default_label, urlutils.local_path_from_url(
             repo.bzrdir.root_transport.external_url())), out)
-        self.assertEndsWith(out, "bzrlib.tests.blackbox.test_init.TestInit."
-            "test_init_at_repository_root/work/repo/\n")
+        cwd = osutils.getcwd()
+        self.assertEndsWith(out, cwd + '/repo/\n')
         self.assertEqual('', err)
         newdir.open_branch()
         newdir.open_workingtree()
@@ -195,9 +196,23 @@ class TestSFTPInit(TestCaseWithSFTPServer):
     def test_init_append_revisions_only(self):
         self.run_bzr('init --dirstate-tags normal_branch6')
         branch = _mod_branch.Branch.open('normal_branch6')
-        self.assertEqual(False, branch._get_append_revisions_only())
+        self.assertEqual(None, branch._get_append_revisions_only())
         self.run_bzr('init --append-revisions-only --dirstate-tags branch6')
         branch = _mod_branch.Branch.open('branch6')
         self.assertEqual(True, branch._get_append_revisions_only())
         self.run_bzr_error(['cannot be set to append-revisions-only'],
                            'init --append-revisions-only --knit knit')
+
+    def test_init_without_username(self):
+        """Ensure init works if username is not set.
+        """
+        # bzr makes user specified whoami mandatory for operations
+        # like commit as whoami is recorded. init however is not so final
+        # and uses whoami only in a lock file. Without whoami the login name
+        # is used. This test is to ensure that init passes even when whoami
+        # is not available.
+        osutils.set_or_unset_env('EMAIL', None)
+        osutils.set_or_unset_env('BZR_EMAIL', None)
+        out, err = self.run_bzr(['init', 'foo'])
+        self.assertEqual(err, '')
+        self.assertTrue(os.path.exists('foo'))

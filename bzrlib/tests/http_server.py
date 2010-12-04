@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +31,7 @@ import urllib
 import urlparse
 
 from bzrlib import transport
+from bzrlib.tests import test_server
 from bzrlib.transport import local
 
 
@@ -87,6 +88,41 @@ class TestingHTTPRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
                 or e.args[0] not in (errno.EPIPE, errno.ECONNRESET,
                                      errno.ECONNABORTED, errno.EBADF)):
                 raise
+
+    error_content_type = 'text/plain'
+    error_message_format = '''\
+Error code: %(code)s.
+Message: %(message)s.
+'''
+
+    def send_error(self, code, message=None):
+        """Send and log an error reply.
+
+        We redefine the python-provided version to be able to set a 
+        ``Content-Length`` header as some http/1.1 clients complain otherwise
+        (see bug #568421).
+
+        :param code: The HTTP error code.
+
+        :param message: The explanation of the error code, Defaults to a short
+             entry.
+        """
+
+        if message is None:
+            try:
+                message = self.responses[code][0]
+            except KeyError:
+                message = '???'
+        self.log_error("code %d, message %s", code, message)
+        content = (self.error_message_format %
+                   {'code': code, 'message': message})
+        self.send_response(code, message)
+        self.send_header("Content-Type", self.error_content_type)
+        self.send_header("Content-Length", "%d" % len(content))
+        self.send_header('Connection', 'close')
+        self.end_headers()
+        if self.command != 'HEAD' and code >= 200 and code not in (204, 304):
+            self.wfile.write(content)
 
     _range_regexp = re.compile(r'^(?P<start>\d+)-(?P<end>\d+)$')
     _tail_regexp = re.compile(r'^-(?P<tail>\d+)$')
@@ -318,7 +354,7 @@ class TestingHTTPServerMixin:
         self.test_case_server = test_case_server
         self._home_dir = test_case_server._home_dir
 
-    def tearDown(self):
+    def stop_server(self):
          """Called to clean-up the server.
 
          Since the server may be (surely is, even) in a blocking listen, we
@@ -347,7 +383,7 @@ class TestingHTTPServerMixin:
              # 'Socket is not connected' can also occur on OSX, with a
              # "regular" ENOTCONN (when something went wrong during test case
              # setup leading to self.setUp() *not* being called but
-             # self.tearDown() still being called -- vila20081106
+             # self.stop_server() still being called -- vila20081106
              if not len(e.args) or e.args[0] not in (errno.ENOTCONN, 10057):
                  raise
          # Let the server properly close the socket
@@ -462,7 +498,7 @@ class HttpServer(transport.Server):
                 raise httplib.UnknownProtocol(proto_vers)
             else:
                 self._httpd = self.create_httpd(serv_cls, rhandler)
-            host, self.port = self._httpd.socket.getsockname()
+            self.host, self.port = self._httpd.socket.getsockname()
         return self._httpd
 
     def _http_start(self):
@@ -494,13 +530,16 @@ class HttpServer(transport.Server):
             except socket.timeout:
                 pass
             except (socket.error, select.error), e:
-               if e[0] == errno.EBADF:
-                   # Starting with python-2.6, handle_request may raise socket
-                   # or select exceptions when the server is shut down (as we
-                   # do).
-                   pass
-               else:
-                   raise
+                if (e[0] == errno.EBADF
+                    or (sys.platform == 'win32' and e[0] == 10038)):
+                    # Starting with python-2.6, handle_request may raise socket
+                    # or select exceptions when the server is shut down (as we
+                    # do).
+                    # 10038 = WSAENOTSOCK
+                    # http://msdn.microsoft.com/en-us/library/ms740668%28VS.85%29.aspx
+                    pass
+                else:
+                    raise
 
     def _get_remote_url(self, path):
         path_parts = path.split(os.path.sep)
@@ -518,8 +557,8 @@ class HttpServer(transport.Server):
         """Capture Server log output."""
         self.logs.append(format % args)
 
-    def setUp(self, backing_transport_server=None):
-        """See bzrlib.transport.Server.setUp.
+    def start_server(self, backing_transport_server=None):
+        """See bzrlib.transport.Server.start_server.
 
         :param backing_transport_server: The transport that requests over this
             protocol should be forwarded to. Note that this is currently not
@@ -527,8 +566,9 @@ class HttpServer(transport.Server):
         """
         # XXX: TODO: make the server back onto vfs_server rather than local
         # disk.
-        if not (backing_transport_server is None or \
-                isinstance(backing_transport_server, local.LocalURLServer)):
+        if not (backing_transport_server is None
+                or isinstance(backing_transport_server,
+                              test_server.LocalURLServer)):
             raise AssertionError(
                 "HTTPServer currently assumes local transport, got %s" % \
                 backing_transport_server)
@@ -554,9 +594,8 @@ class HttpServer(transport.Server):
         self._http_starting.release()
         self.logs = []
 
-    def tearDown(self):
-        """See bzrlib.transport.Server.tearDown."""
-        self._httpd.tearDown()
+    def stop_server(self):
+        self._httpd.stop_server()
         self._http_running = False
         # We don't need to 'self._http_thread.join()' here since the thread is
         # a daemonic one and will be garbage collected anyway. Joining just

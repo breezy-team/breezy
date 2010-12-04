@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,6 @@ from bzrlib import (
     help_topics,
     osutils,
     plugin,
-    symbol_versioning,
     )
 
 
@@ -45,9 +44,9 @@ def help(topic=None, outfile=None):
     try:
         topics = indices.search(topic)
         shadowed_terms = []
-        for index, topic in topics[1:]:
+        for index, topic_obj in topics[1:]:
             shadowed_terms.append('%s%s' % (index.prefix,
-                topic.get_help_topic()))
+                topic_obj.get_help_topic()))
         source = topics[0][1]
         outfile.write(source.get_help_text(shadowed_terms))
     except errors.NoHelpTopic:
@@ -78,7 +77,11 @@ def _help_commands_to_text(topic):
     shown_commands = [(n, o) for n, o in commands if o.hidden == hidden]
     max_name = max(len(n) for n, o in shown_commands)
     indent = ' ' * (max_name + 1)
-    width = osutils.terminal_width() - 1
+    width = osutils.terminal_width()
+    if width is None:
+        width = osutils.default_terminal_width
+    # we need one extra space for terminals that wrap on last char
+    width = width - 1
 
     for cmd_name, cmd_object in sorted(shown_commands):
         plugin_name = cmd_object.plugin_name()

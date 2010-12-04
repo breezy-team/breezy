@@ -17,6 +17,7 @@
 """Helper functions/classes for testing locking"""
 
 from bzrlib import errors
+from bzrlib.decorators import only_raises
 
 
 class TestPreventLocking(errors.LockError):
@@ -68,6 +69,7 @@ class LockWrapper(object):
             return self._other.lock_write()
         raise TestPreventLocking('lock_write disabled')
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         self._sequence.append((self._other_id, 'ul', self._allow_unlock))
         if self._allow_unlock:

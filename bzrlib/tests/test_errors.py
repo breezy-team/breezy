@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,8 @@
 
 """Tests for the formatting and construction of errors."""
 
+import inspect
+import re
 import socket
 import sys
 
@@ -26,10 +28,35 @@ from bzrlib import (
     symbol_versioning,
     urlutils,
     )
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
 
 
 class TestErrors(TestCaseWithTransport):
+
+    def test_no_arg_named_message(self):
+        """Ensure the __init__ and _fmt in errors do not have "message" arg.
+
+        This test fails if __init__ or _fmt in errors has an argument
+        named "message" as this can cause errors in some Python versions.
+        Python 2.5 uses a slot for StandardError.message.
+        See bug #603461
+        """
+        fmt_pattern = re.compile("%\(message\)[sir]")
+        subclasses_present = getattr(errors.BzrError, '__subclasses__', None)
+        if not subclasses_present:
+            raise TestSkipped('__subclasses__ attribute required for classes. '
+                'Requires Python 2.5 or later.')
+        for c in errors.BzrError.__subclasses__():
+            init = getattr(c, '__init__', None)
+            fmt = getattr(c, '_fmt', None)
+            if init:
+                args = inspect.getargspec(init)[0]
+                self.assertFalse('message' in args,
+                    ('Argument name "message" not allowed for '
+                    '"errors.%s.__init__"' % c.__name__))
+            if fmt and fmt_pattern.search(fmt):
+                self.assertFalse(True, ('"message" not allowed in '
+                    '"errors.%s._fmt"' % c.__name__))
 
     def test_bad_filename_encoding(self):
         error = errors.BadFilenameEncoding('bad/filen\xe5me', 'UTF-8')
@@ -542,7 +569,7 @@ class TestErrors(TestCaseWithTransport):
             1/0
         except ZeroDivisionError:
             exc_info = sys.exc_info()
-        err = errors.HookFailed('hook stage', 'hook name', exc_info)
+        err = errors.HookFailed('hook stage', 'hook name', exc_info, warn=False)
         self.assertStartsWith(
             str(err), 'Hook \'hook name\' during hook stage failed:\n')
         self.assertEndsWith(
@@ -623,6 +650,49 @@ class TestErrors(TestCaseWithTransport):
         self.assertEqual(
             'Repository dummy repo cannot suspend a write group.', str(err))
 
+    def test_not_branch_no_args(self):
+        err = errors.NotBranchError('path')
+        self.assertEqual('Not a branch: "path".', str(err))
+
+    def test_not_branch_bzrdir_with_repo(self):
+        bzrdir = self.make_repository('repo').bzrdir
+        err = errors.NotBranchError('path', bzrdir=bzrdir)
+        self.assertEqual(
+            'Not a branch: "path": location is a repository.', str(err))
+
+    def test_not_branch_bzrdir_without_repo(self):
+        bzrdir = self.make_bzrdir('bzrdir')
+        err = errors.NotBranchError('path', bzrdir=bzrdir)
+        self.assertEqual('Not a branch: "path".', str(err))
+
+    def test_not_branch_laziness(self):
+        real_bzrdir = self.make_bzrdir('path')
+        class FakeBzrDir(object):
+            def __init__(self):
+                self.calls = []
+            def open_repository(self):
+                self.calls.append('open_repository')
+                raise errors.NoRepositoryPresent(real_bzrdir)
+        fake_bzrdir = FakeBzrDir()
+        err = errors.NotBranchError('path', bzrdir=fake_bzrdir)
+        self.assertEqual([], fake_bzrdir.calls)
+        str(err)
+        self.assertEqual(['open_repository'], fake_bzrdir.calls)
+        # Stringifying twice doesn't try to open a repository twice.
+        str(err)
+        self.assertEqual(['open_repository'], fake_bzrdir.calls)
+
+    def test_invalid_pattern(self):
+        error = errors.InvalidPattern('Bad pattern msg.')
+        self.assertEqualDiff("Invalid pattern(s) found. Bad pattern msg.",
+            str(error))
+
+    def test_recursive_bind(self):
+        error = errors.RecursiveBind('foo_bar_branch')
+        msg = ('Branch "foo_bar_branch" appears to be bound to itself. '
+            'Please use `bzr unbind` to fix.')
+        self.assertEqualDiff(msg, str(error))
+
 
 class PassThroughError(errors.BzrError):
 
@@ -638,7 +708,7 @@ class ErrorWithBadFormat(errors.BzrError):
 
 
 class ErrorWithNoFormat(errors.BzrError):
-    """This class has a docstring but no format string."""
+    __doc__ = """This class has a docstring but no format string."""
 
 
 class TestErrorFormatting(TestCase):
@@ -671,8 +741,19 @@ class TestErrorFormatting(TestCase):
             str(e), 'Unprintable exception ErrorWithBadFormat')
 
     def test_cannot_bind_address(self):
-        # see <https://bugs.edge.launchpad.net/bzr/+bug/286871>
+        # see <https://bugs.launchpad.net/bzr/+bug/286871>
         e = errors.CannotBindAddress('example.com', 22,
             socket.error(13, 'Permission denied'))
         self.assertContainsRe(str(e),
             r'Cannot bind address "example\.com:22":.*Permission denied')
+
+    def test_file_timestamp_unavailable(self):            
+        e = errors.FileTimestampUnavailable("/path/foo")
+        self.assertEquals("The filestamp for /path/foo is not available.",
+            str(e))
+            
+    def test_transform_rename_failed(self):
+        e = errors.TransformRenameFailed(u"from", u"to", "readonly file", 2)
+        self.assertEquals(
+            u"Failed to rename from to to: readonly file",
+            str(e))

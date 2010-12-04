@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,7 +58,7 @@ class TestTextProgressView(TestCase):
     def make_view(self):
         out = StringIO()
         view = TextProgressView(out)
-        view._width = 80
+        view._avail_width = lambda: 79
         return out, view
     
     def make_task(self, parent_task, view, msg, curr, total):
@@ -70,9 +70,35 @@ class TestTextProgressView(TestCase):
         task.total_cnt = total
         return task
 
+    def test_clear(self):
+        # <https://bugs.launchpad.net/bzr/+bug/611127> clear must actually
+        # send spaces to clear the line
+        out, view = self.make_view()
+        task = self.make_task(None, view, 'reticulating splines', 5, 20)
+        view.show_progress(task)
+        self.assertEqual(
+'\r/ reticulating splines 5/20                                                    \r'
+            , out.getvalue())
+        view.clear()
+        self.assertEqual(
+'\r/ reticulating splines 5/20                                                    \r'
+            + '\r' + 79 * ' ' + '\r',
+            out.getvalue())
+
+    def test_render_progress_no_bar(self):
+        """The default view now has a spinner but no bar."""
+        out, view = self.make_view()
+        # view.enable_bar = False
+        task = self.make_task(None, view, 'reticulating splines', 5, 20)
+        view.show_progress(task)
+        self.assertEqual(
+'\r/ reticulating splines 5/20                                                    \r'
+            , out.getvalue())
+
     def test_render_progress_easy(self):
         """Just one task and one quarter done"""
         out, view = self.make_view()
+        view.enable_bar = True
         task = self.make_task(None, view, 'reticulating splines', 5, 20)
         view.show_progress(task)
         self.assertEqual(
@@ -85,21 +111,23 @@ class TestTextProgressView(TestCase):
         task = self.make_task(None, view, 'reticulating splines', 0, 2)
         task2 = self.make_task(task, view, 'stage2', 1, 2)
         view.show_progress(task2)
+        view.enable_bar = True
         # so we're in the first half of the main task, and half way through
         # that
         self.assertEqual(
-r'[####-               ] reticulating splines:stage2 1/2'
+'[####-               ] reticulating splines:stage2 1/2                         '
             , view._render_line())
         # if the nested task is complete, then we're all the way through the
         # first half of the overall work
         task2.update('stage2', 2, 2)
         self.assertEqual(
-r'[#########\          ] reticulating splines:stage2 2/2'
+'[#########\          ] reticulating splines:stage2 2/2                         '
             , view._render_line())
 
     def test_render_progress_sub_nested(self):
         """Intermediate tasks don't mess up calculation."""
         out, view = self.make_view()
+        view.enable_bar = True
         task_a = ProgressTask(None, progress_view=view)
         task_a.update('a', 0, 2)
         task_b = ProgressTask(task_a, progress_view=view)
@@ -110,5 +138,38 @@ r'[#########\          ] reticulating splines:stage2 2/2'
         # progress indication, just a label; and the bottom one is half done,
         # so the overall fraction is 1/4
         self.assertEqual(
-            r'[####|               ] a:b:c 1/2'
+'[####|               ] a:b:c 1/2                                               '
             , view._render_line())
+
+    def test_render_truncated(self):
+        # when the bar is too long for the terminal, we prefer not to truncate
+        # the counters because they might be interesting, and because
+        # truncating the numbers might be misleading
+        out, view = self.make_view()
+        task_a = ProgressTask(None, progress_view=view)
+        task_a.update('start_' + 'a' * 200 + '_end', 2000, 5000)
+        line = view._render_line()
+        self.assertEqual(
+'- start_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.. 2000/5000',
+           line) 
+        self.assertEqual(len(line), 79)
+
+
+    def test_render_with_activity(self):
+        # if the progress view has activity, it's shown before the spinner
+        out, view = self.make_view()
+        task_a = ProgressTask(None, progress_view=view)
+        view._last_transport_msg = '   123kB   100kB/s '
+        line = view._render_line()
+        self.assertEqual(
+'   123kB   100kB/s /                                                           ',
+           line) 
+        self.assertEqual(len(line), 79)
+
+        task_a.update('start_' + 'a' * 200 + '_end', 2000, 5000)
+        view._last_transport_msg = '   123kB   100kB/s '
+        line = view._render_line()
+        self.assertEqual(
+'   123kB   100kB/s \\ start_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.. 2000/5000',
+           line) 
+        self.assertEqual(len(line), 79)

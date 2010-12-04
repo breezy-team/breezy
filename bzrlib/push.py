@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,8 +17,6 @@
 """UI helper for the push command."""
 
 from bzrlib import (
-    builtins,
-    branch,
     bzrdir,
     errors,
     revision as _mod_revision,
@@ -90,12 +88,19 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             br_to = br_from.create_clone_on_transport(to_transport,
                 revision_id=revision_id, stacked_on=stacked_on,
                 create_prefix=create_prefix, use_existing_dir=use_existing_dir)
-        except errors.FileExists:
+        except errors.FileExists, err:
+            if err.path.endswith('/.bzr'):
+                raise errors.BzrCommandError(
+                    "Target directory %s already contains a .bzr directory, "
+                    "but it is not valid." % (location,))
             if not use_existing_dir:
                 raise errors.BzrCommandError("Target directory %s"
-                     " already exists, but does not have a valid .bzr"
+                     " already exists, but does not have a .bzr"
                      " directory. Supply --use-existing-dir to push"
                      " there anyway." % location)
+            # This shouldn't occur, but if it does the FileExists error will be
+            # more informative than an UnboundLocalError for br_to.
+            raise
         except errors.NoSuchFile:
             if not create_prefix:
                 raise errors.BzrCommandError("Parent directory of %s"
@@ -103,6 +108,12 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
                     "\nYou may supply --create-prefix to create all"
                     " leading parent directories."
                     % location)
+            # This shouldn't occur (because create_prefix is true, so
+            # create_clone_on_transport should be catching NoSuchFile and
+            # creating the missing directories) but if it does the original
+            # NoSuchFile error will be more informative than an
+            # UnboundLocalError for br_to.
+            raise
         except errors.TooManyRedirections:
             raise errors.BzrCommandError("Too many redirections trying "
                                          "to make %s." % location)
@@ -130,6 +141,10 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
             raise errors.BzrCommandError('These branches have diverged.'
                                     '  See "bzr help diverged-branches"'
                                     ' for more information.')
+        except errors.NoRoundtrippingSupport, e:
+            raise errors.BzrCommandError("It is not possible to losslessly "
+                "push to %s. You may want to use dpush instead." % 
+                    e.target_branch.mapping.vcs.abbreviation)
         except errors.NoRepositoryPresent:
             # we have a bzrdir but no branch or repository
             # XXX: Figure out what to do other than complain.

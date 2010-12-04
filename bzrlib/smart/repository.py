@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@ import bz2
 import os
 import Queue
 import sys
-import tarfile
 import tempfile
 import threading
 
@@ -30,6 +29,7 @@ from bzrlib import (
     graph,
     osutils,
     pack,
+    ui,
     versionedfile,
     )
 from bzrlib.bzrdir import BzrDir
@@ -39,6 +39,7 @@ from bzrlib.smart.request import (
     SuccessfulSmartServerResponse,
     )
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
+from bzrlib.recordcounter import RecordCounter
 from bzrlib import revision as _mod_revision
 from bzrlib.versionedfile import (
     NetworkRecordStream,
@@ -392,7 +393,7 @@ class SmartServerRepositoryLockWrite(SmartServerRepositoryRequest):
         if token == '':
             token = None
         try:
-            token = repository.lock_write(token=token)
+            token = repository.lock_write(token=token).repository_token
         except errors.LockContention, e:
             return FailedSmartServerResponse(('LockContention',))
         except errors.UnlockableTransport:
@@ -519,36 +520,132 @@ def _stream_to_byte_stream(stream, src_format):
     yield pack_writer.end()
 
 
-def _byte_stream_to_stream(byte_stream):
+class _ByteStreamDecoder(object):
+    """Helper for _byte_stream_to_stream.
+
+    The expected usage of this class is via the function _byte_stream_to_stream
+    which creates a _ByteStreamDecoder, pops off the stream format and then
+    yields the output of record_stream(), the main entry point to
+    _ByteStreamDecoder.
+
+    Broadly this class has to unwrap two layers of iterators:
+    (type, substream)
+    (substream details)
+
+    This is complicated by wishing to return type, iterator_for_type, but
+    getting the data for iterator_for_type when we find out type: we can't
+    simply pass a generator down to the NetworkRecordStream parser, instead
+    we have a little local state to seed each NetworkRecordStream instance,
+    and gather the type that we'll be yielding.
+
+    :ivar byte_stream: The byte stream being decoded.
+    :ivar stream_decoder: A pack parser used to decode the bytestream
+    :ivar current_type: The current type, used to join adjacent records of the
+        same type into a single stream.
+    :ivar first_bytes: The first bytes to give the next NetworkRecordStream.
+    """
+
+    def __init__(self, byte_stream, record_counter):
+        """Create a _ByteStreamDecoder."""
+        self.stream_decoder = pack.ContainerPushParser()
+        self.current_type = None
+        self.first_bytes = None
+        self.byte_stream = byte_stream
+        self._record_counter = record_counter
+        self.key_count = 0
+
+    def iter_stream_decoder(self):
+        """Iterate the contents of the pack from stream_decoder."""
+        # dequeue pending items
+        for record in self.stream_decoder.read_pending_records():
+            yield record
+        # Pull bytes of the wire, decode them to records, yield those records.
+        for bytes in self.byte_stream:
+            self.stream_decoder.accept_bytes(bytes)
+            for record in self.stream_decoder.read_pending_records():
+                yield record
+
+    def iter_substream_bytes(self):
+        if self.first_bytes is not None:
+            yield self.first_bytes
+            # If we run out of pack records, single the outer layer to stop.
+            self.first_bytes = None
+        for record in self.iter_pack_records:
+            record_names, record_bytes = record
+            record_name, = record_names
+            substream_type = record_name[0]
+            if substream_type != self.current_type:
+                # end of a substream, seed the next substream.
+                self.current_type = substream_type
+                self.first_bytes = record_bytes
+                return
+            yield record_bytes
+
+    def record_stream(self):
+        """Yield substream_type, substream from the byte stream."""
+        def wrap_and_count(pb, rc, substream):
+            """Yield records from stream while showing progress."""
+            counter = 0
+            if rc:
+                if self.current_type != 'revisions' and self.key_count != 0:
+                    # As we know the number of revisions now (in self.key_count)
+                    # we can setup and use record_counter (rc).
+                    if not rc.is_initialized():
+                        rc.setup(self.key_count, self.key_count)
+            for record in substream.read():
+                if rc:
+                    if rc.is_initialized() and counter == rc.STEP:
+                        rc.increment(counter)
+                        pb.update('Estimate', rc.current, rc.max)
+                        counter = 0
+                    if self.current_type == 'revisions':
+                        # Total records is proportional to number of revs
+                        # to fetch. With remote, we used self.key_count to
+                        # track the number of revs. Once we have the revs
+                        # counts in self.key_count, the progress bar changes
+                        # from 'Estimating..' to 'Estimate' above.
+                        self.key_count += 1
+                        if counter == rc.STEP:
+                            pb.update('Estimating..', self.key_count)
+                            counter = 0
+                counter += 1
+                yield record
+
+        self.seed_state()
+        pb = ui.ui_factory.nested_progress_bar()
+        rc = self._record_counter
+        # Make and consume sub generators, one per substream type:
+        while self.first_bytes is not None:
+            substream = NetworkRecordStream(self.iter_substream_bytes())
+            # after substream is fully consumed, self.current_type is set to
+            # the next type, and self.first_bytes is set to the matching bytes.
+            yield self.current_type, wrap_and_count(pb, rc, substream)
+        if rc:
+            pb.update('Done', rc.max, rc.max)
+        pb.finished()
+
+    def seed_state(self):
+        """Prepare the _ByteStreamDecoder to decode from the pack stream."""
+        # Set a single generator we can use to get data from the pack stream.
+        self.iter_pack_records = self.iter_stream_decoder()
+        # Seed the very first subiterator with content; after this each one
+        # seeds the next.
+        list(self.iter_substream_bytes())
+
+
+def _byte_stream_to_stream(byte_stream, record_counter=None):
     """Convert a byte stream into a format and a stream.
 
     :param byte_stream: A bytes iterator, as output by _stream_to_byte_stream.
     :return: (RepositoryFormat, stream_generator)
     """
-    stream_decoder = pack.ContainerPushParser()
-    def record_stream():
-        """Closure to return the substreams."""
-        # May have fully parsed records already.
-        for record in stream_decoder.read_pending_records():
-            record_names, record_bytes = record
-            record_name, = record_names
-            substream_type = record_name[0]
-            substream = NetworkRecordStream([record_bytes])
-            yield substream_type, substream.read()
-        for bytes in byte_stream:
-            stream_decoder.accept_bytes(bytes)
-            for record in stream_decoder.read_pending_records():
-                record_names, record_bytes = record
-                record_name, = record_names
-                substream_type = record_name[0]
-                substream = NetworkRecordStream([record_bytes])
-                yield substream_type, substream.read()
+    decoder = _ByteStreamDecoder(byte_stream, record_counter)
     for bytes in byte_stream:
-        stream_decoder.accept_bytes(bytes)
-        for record in stream_decoder.read_pending_records(max=1):
+        decoder.stream_decoder.accept_bytes(bytes)
+        for record in decoder.stream_decoder.read_pending_records(max=1):
             record_names, src_format_name = record
             src_format = network_format_registry.get(src_format_name)
-            return src_format, record_stream()
+            return src_format, decoder.record_stream()
 
 
 class SmartServerRepositoryUnlock(SmartServerRepositoryRequest):
@@ -614,6 +711,7 @@ class SmartServerRepositoryTarball(SmartServerRepositoryRequest):
             temp.close()
 
     def _tarball_of_dir(self, dirname, compression, ofile):
+        import tarfile
         filename = os.path.basename(ofile.name)
         tarball = tarfile.open(fileobj=ofile, name=filename,
             mode='w|' + compression)

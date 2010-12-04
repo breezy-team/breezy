@@ -19,8 +19,8 @@ repository is usually creating using the ``no-trees`` option, e.g.::
 You can think of this step as similar to setting up a new cvsroot or
 Subversion repository. However, Bazaar gives you more flexibility
 in how branches may be organised in your repository. See
-`Advanced shared repository layouts`_ in the appendices for
-guidelines and examples.
+`Advanced shared repository layouts <shared_repository_layouts.html>`_
+in the appendices for guidelines and examples.
 
 
 Starting a central branch
@@ -55,7 +55,6 @@ Here is an example of the second way::
   bzr add                (populate repository; start version control)
   bzr commit -m "Initial import"
                          (publish to central repository)
-  bzr push sftp://centralhost/srv/bzr/project/trunk
 
 Note that committing inside a working tree created using
 the ``checkout`` command implicitly commits the content to

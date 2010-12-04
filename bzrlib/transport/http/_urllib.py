@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -87,8 +87,8 @@ class HttpTransport_urllib(http.HttpTransportBase):
             self._update_credentials((request.auth, request.proxy_auth))
 
         code = response.code
-        if request.follow_redirections is False \
-                and code in (301, 302, 303, 307):
+        if (request.follow_redirections is False
+            and code in (301, 302, 303, 307)):
             raise errors.RedirectRequested(request.get_full_url(),
                                            request.redirected_to,
                                            is_permanent=(code == 301))

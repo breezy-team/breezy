@@ -21,13 +21,13 @@ import sys
 
 from bzrlib import (
     errors,
-    registry,
     osutils,
+    registry,
+    tests,
     )
-from bzrlib.tests import TestCase, TestCaseInTempDir
 
 
-class TestRegistry(TestCase):
+class TestRegistry(tests.TestCase):
 
     def register_stuff(self, a_registry):
         a_registry.register('one', 1)
@@ -202,7 +202,64 @@ class TestRegistry(TestCase):
         self.assertIs(sftp_object, found_object)
 
 
-class TestRegistryWithDirs(TestCaseInTempDir):
+class TestRegistryIter(tests.TestCase):
+    """Test registry iteration behaviors.
+
+    There are dark corner cases here when the registered objects trigger
+    addition in the iterated registry.
+    """
+
+    def setUp(self):
+        super(TestRegistryIter, self).setUp()
+
+        # We create a registry with "official" objects and "hidden"
+        # objects. The later represent the side effects that led to bug #277048
+        # and #430510
+        self.registry =  registry.Registry()
+
+        def register_more():
+            self.registry.register('hidden', None)
+
+        self.registry.register('passive', None)
+        self.registry.register('active', register_more)
+        self.registry.register('passive-too', None)
+
+        class InvasiveGetter(registry._ObjectGetter):
+
+            def get_obj(inner_self):
+                # Surprise ! Getting a registered object (think lazy loaded
+                # module) register yet another object !
+                self.registry.register('more hidden', None)
+                return inner_self._obj
+
+        self.registry.register('hacky', None)
+        # We peek under the covers because the alternative is to use lazy
+        # registration and create a module that can reference our test registry
+        # it's too much work for such a corner case -- vila 090916
+        self.registry._dict['hacky'] = InvasiveGetter(None)
+
+    def _iter_them(self, iter_func_name):
+        iter_func = getattr(self.registry, iter_func_name, None)
+        self.assertIsNot(None, iter_func)
+        count = 0
+        for name, func in iter_func():
+            count += 1
+            self.assertFalse(name in ('hidden', 'more hidden'))
+            if func is not None:
+                # Using an object register another one as a side effect
+                func()
+        self.assertEqual(4, count)
+
+    def test_iteritems(self):
+        # the dict is modified during the iteration
+        self.assertRaises(RuntimeError, self._iter_them, 'iteritems')
+
+    def test_items(self):
+        # we should be able to iterate even if one item modify the dict
+        self._iter_them('items')
+
+
+class TestRegistryWithDirs(tests.TestCaseInTempDir):
     """Registry tests that require temporary dirs"""
 
     def create_plugin_file(self, contents):

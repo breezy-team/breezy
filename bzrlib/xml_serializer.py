@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 # ElementTree bits
 
 from bzrlib.serializer import Serializer
-from bzrlib.trace import mutter, warning
+from bzrlib.trace import mutter
 
 try:
     try:
@@ -55,7 +55,7 @@ class XMLSerializer(Serializer):
     squashes_xml_invalid_characters = True
 
     def read_inventory_from_string(self, xml_string, revision_id=None,
-                                   entry_cache=None):
+                                   entry_cache=None, return_from_cache=False):
         """Read xml_string into an inventory object.
 
         :param xml_string: The xml to read.
@@ -69,17 +69,25 @@ class XMLSerializer(Serializer):
         :param entry_cache: An optional cache of InventoryEntry objects. If
             supplied we will look up entries via (file_id, revision_id) which
             should map to a valid InventoryEntry (File/Directory/etc) object.
+        :param return_from_cache: Return entries directly from the cache,
+            rather than copying them first. This is only safe if the caller
+            promises not to mutate the returned inventory entries, but it can
+            make some operations significantly faster.
         """
         try:
             return self._unpack_inventory(fromstring(xml_string), revision_id,
-                                          entry_cache=entry_cache)
+                                          entry_cache=entry_cache,
+                                          return_from_cache=return_from_cache)
         except ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 
     def read_inventory(self, f, revision_id=None):
         try:
-            return self._unpack_inventory(self._read_element(f),
-                revision_id=None)
+            try:
+                return self._unpack_inventory(self._read_element(f),
+                    revision_id=None)
+            finally:
+                f.close()
         except ParseError, e:
             raise errors.UnexpectedInventoryFormat(e)
 

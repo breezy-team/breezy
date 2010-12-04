@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@ import os
 import sys
 
 from bzrlib.tests import SymlinkFeature, TestSkipped
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 from bzrlib import osutils
 
@@ -31,7 +31,7 @@ d='d/'
 files=(a, b, c, d)
 
 
-class TestRemove(ExternalBase):
+class TestRemove(TestCaseWithTransport):
 
     def _make_tree_and_add(self, paths):
         tree = self.make_branch_and_tree('.')
@@ -61,15 +61,18 @@ class TestRemove(ExternalBase):
         f.write("\nsome other new content!")
         f.close()
 
-    def run_bzr_remove_changed_files(self, error_regexes, files_to_remove):
+    def run_bzr_remove_changed_files(self, error_regexes, files_to_remove,
+                                     working_dir=None):
         error_regexes.extend(["Can't safely remove modified or unknown files:",
             'Use --keep to not delete them,'
             ' or --force to delete them regardless.'
             ])
         self.run_bzr_error(error_regexes,
-            ['remove'] + list(files_to_remove))
+                           ['remove'] + list(files_to_remove),
+                           working_dir=working_dir)
         #see if we can force it now
-        self.run_bzr(['remove', '--force'] + list(files_to_remove))
+        self.run_bzr(['remove', '--force'] + list(files_to_remove),
+                     working_dir=working_dir)
 
     def test_remove_new_no_files_specified(self):
         tree = self.make_branch_and_tree('.')
@@ -196,10 +199,9 @@ class TestRemove(ExternalBase):
         self.run_bzr("commit -m 'added files'")
         self.changeFile(a)
         self.changeFile(c)
-        os.chdir('b')
-        self.run_bzr_remove_changed_files(['modified:[.\s]*a[.\s]*b/c'],
-            ['../a', 'c', '.', '../d'])
-        os.chdir('..')
+        self.run_bzr_remove_changed_files(
+            ['modified:[.\s]*a[.\s]*b/c'],
+            ['../a', 'c', '.', '../d'], working_dir='b')
         self.assertNotInWorkingTree(files)
         self.failIfExists(files)
 

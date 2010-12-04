@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,5 +38,4 @@ class TestDebugOption(TestCaseInTempDir):
     def test_dash_dlock(self):
         # With -Dlock, locking and unlocking is recorded into the log
         self.run_bzr("-Dlock init foo")
-        trace_messages = self._get_log(keep_log_file=True)
-        self.assertContainsRe(trace_messages, "lock_write")
+        self.assertContainsRe(self.get_log(), "lock_write")

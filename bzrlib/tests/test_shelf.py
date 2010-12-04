@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -107,6 +107,29 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
         creator, tree = self.prepare_shelve_move()
         creator.shelve_change(('rename', 'baz-id', 'foo/baz', 'bar/baz'))
         self.check_shelve_move(creator, tree)
+
+    def test_shelve_changed_root_id(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['foo'])
+        tree.set_root_id('first-root-id')
+        tree.add(['foo'], ['foo-id'])
+        tree.commit('foo')
+        tree.set_root_id('second-root-id')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        self.expectFailure('shelf doesn\'t support shelving root changes yet',
+            self.assertEqual, [
+                ('delete file', 'first-root-id', 'directory', ''),
+                ('add file', 'second-root-id', 'directory', ''),
+                ('rename', 'foo-id', u'foo', u'foo'),
+                ], list(creator.iter_shelvable()))
+
+        self.assertEqual([('delete file', 'first-root-id', 'directory', ''),
+                          ('add file', 'second-root-id', 'directory', ''),
+                          ('rename', 'foo-id', u'foo', u'foo'),
+                         ], list(creator.iter_shelvable()))
 
     def assertShelvedFileEqual(self, expected_content, creator, file_id):
         s_trans_id = creator.shelf_transform.trans_id_file_id(file_id)
@@ -476,6 +499,8 @@ class TestPrepareShelf(tests.TestCaseWithTransport):
     def test_shelve_skips_added_root(self):
         """Skip adds of the root when iterating through shelvable changes."""
         tree = self.make_branch_and_tree('tree')
+        tree.lock_tree_write()
+        self.addCleanup(tree.unlock)
         creator = shelf.ShelfCreator(tree, tree.basis_tree())
         self.addCleanup(creator.finalize)
         self.assertEqual([], list(creator.iter_shelvable()))
@@ -501,6 +526,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
             shelf_file.seek(0)
             unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
             unshelver.make_merger().do_merge()
+            self.addCleanup(unshelver.finalize)
             self.assertFileEqual('bar', 'tree/foo')
         finally:
             shelf_file.close()
@@ -524,6 +550,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.build_tree_contents([('tree/foo', 'z\na\nb\nc\n')])
         shelf_file.seek(0)
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+        self.addCleanup(unshelver.finalize)
         unshelver.make_merger().do_merge()
         self.assertFileEqual('z\na\nb\nd\n', 'tree/foo')
 
@@ -552,6 +579,7 @@ class TestUnshelver(tests.TestCaseWithTransport):
         self.assertFileEqual('baz', 'tree/foo/bar')
         shelf_file.seek(0)
         unshelver = shelf.Unshelver.from_tree_and_shelf(tree, shelf_file)
+        self.addCleanup(unshelver.finalize)
         unshelver.make_merger().do_merge()
         self.assertFalse('foo-id' in tree)
         self.assertFalse('bar-id' in tree)
@@ -697,6 +725,7 @@ class TestShelfManager(tests.TestCaseWithTransport):
         shelf_id = shelf_manager.shelve_changes(creator)
         self.failIfExists('tree/foo')
         unshelver = shelf_manager.get_unshelver(shelf_id)
+        self.addCleanup(unshelver.finalize)
         unshelver.make_merger().do_merge()
         self.assertFileEqual('bar', 'tree/foo')
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -36,11 +36,11 @@ import stat
 from cStringIO import StringIO
 import urllib
 
+from bzrlib import transport
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
 
 
@@ -65,7 +65,7 @@ def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
     :param dir_mode: The mode for all directories
     :param include_base: If false, only check the subdirectories
     """
-    t = get_transport(".")
+    t = transport.get_transport(".")
     if include_base:
         test.assertTransportMode(t, base, dir_mode)
     for root, dirs, files in os.walk(base):
@@ -140,10 +140,10 @@ class TestPermissions(TestCaseWithTransport):
     def test_new_files_group_sticky_bit(self):
         if sys.platform == 'win32':
             raise TestSkipped('chmod has no effect on win32')
-        elif sys.platform == 'darwin':
-            # OS X creates temp dirs with the 'wheel' group, which users are
-            # not likely to be in, and this prevents us from setting the sgid
-            # bit
+        elif sys.platform == 'darwin' or sys.platform.startswith('freebsd'):
+            # OS X (and FreeBSD) create temp dirs with the 'wheel' group, which
+            # users are not likely to be in, and this prevents us from setting
+            # the sgid bit
             os.chown(self.test_dir, os.getuid(), os.getgid())
 
         t = self.make_branch_and_tree('.')
@@ -180,7 +180,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
 
         # bodge around for stubsftpserver not letting use connect
         # more than once
-        _t = get_transport(self.get_url())
+        _t = transport.get_transport(self.get_url())
 
         os.mkdir('local')
         t_local = self.make_branch_and_tree('local')
@@ -257,7 +257,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         original_umask = os.umask(umask)
 
         try:
-            t = get_transport(self.get_url())
+            t = transport.get_transport(self.get_url())
             # Direct access should be masked by umask
             t._sftp_open_exclusive('a', mode=0666).write('foo\n')
             self.assertTransportMode(t, 'a', 0666 &~umask)

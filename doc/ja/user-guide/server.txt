@@ -1,0 +1,94 @@
+スマートサーバーを稼働させる
+============================
+
+BazaarはHTTP、FTPもしくはSFTPを通して動作するので特化したサーバーは\
+必須ではありません。
+SSH、inetd、もしくは専用モードで起動できるスマートサーバー(smart server)\
+の選択肢があります。
+
+ダムサーバー
+-------------
+
+HTTP、FTP、SFTPとHTTP-WebDAVを"ダム(dumb)"サーバーとして記述します。
+これらはBazaarに支援を提供しないからです。
+これらのプロトコルのどれかを通してBazaarリポジトリを利用できるようにする場合、
+Bazaarはリモートからの読み込みを許可します。
+実行しているBazaarコマンドの中でブランチへのURLを入力するだけです。::
+
+    bzr log http://bazaar-vcs.org/bzr/bzr.dev
+
+BazaarはFTP、SFTPと(プラグインを通した)HTTP-WebDAVを通した書き込みをサポートします。
+
+ハイパフォーマンスなスマートサーバー
+-------------------------------------
+
+ハイパフォーマンスなスマートサーバー(hpss - high-performance smart server)は\
+いくつかのオペレーションをダムサーバーよりも遙かに高速に実行します。
+開発者がパフォーマンスのチューニングを継続するので、将来のリリースでは\
+スマートサーバーを利用することで改善されるオペレーションの範囲は増えます。
+
+高度なセキュリティの維持を可能にするために、
+デフォルトでは現在のスマートサーバーはリードオンリーになります。
+読み込みと書き込み権限を有効にするには、 ``--allow-writes`` で動かします。
+SSHアクセスメソッドを利用するとき、bzrは ``--allow-writes`` オプションで\
+自動的に実行します。
+
+次はスマートサーバーの代替の設定方法を説明します。
+
+SSH
+~~~
+
+SSHを通してBazaarを利用する際にサーバー上の特別な設定は必要ありません::
+
+    BZR_REMOTE_PATH=~/bin/bzr bzr log bzr+ssh://host/path/to/branch
+
+``BZR_REMOTE_PATH`` 環境変数はリモートシステムで `bzr` が起動する方法を調整します。
+デフォルトでは単に `bzr` として起動するので、 `bzr` 実行ファイルはデフォルトの\
+検索パス上にあることが要求されます。
+
+``bzr+ssh://`` URLスキームはファイルシステムのrootからの絶対パスだけをサポートします。
+将来のバージョンでは ``sftp://`` URL (https://bugs.launchpad.net/bzr/+bug/109143) と同じように
+``~`` もサポートされる予定です。
+
+inetd
+~~~~~
+
+この例では ``/srv/bzr/repo/branchname`` にブランチがある ``/srv/bzr/repo`` 内の
+共用リポジトリ用に専用ユーザーの `bzruser` で `bzr` を実行する方法を示しています。
+
+inetdからBazaarサーバーを動かすにはinetd.confエントリが必要です::
+
+    4155  stream  tcp  nowait  bzruser  /usr/bin/bzr /usr/bin/bzr serve --inet --directory=/srv/bzr/repo
+
+クライアントコマンドを実行するとき、提供するURLは
+inetd.confに渡される ``--directory`` オプションに相対的な `bzr://` です::
+
+    bzr log bzr://host/branchname
+
+専用サーバー
+~~~~~~~~~~~~~
+
+このモードはinetdモードと同じパスとURLのふるまいを持ちます。
+特定のユーザーとして実行するには、 ``su`` を使うもしくはそのユーザーとしてログインします。
+
+この例では公式のポート番号の `4155` 上でbzrを稼働しすべてのインターフェイス上でリスンします。
+これによってポート `4155` 上のマシンに到達できる世界のどこからでも接続できます。
+
+サーバー::
+
+    bzr serve --directory=/srv/bzr/repo
+
+クライアント::
+
+    bzr log bzr://host/branchname
+
+この例では `localhost` のポート `1234` で ``bzr serve`` が実行されます。
+
+サーバー::
+
+    bzr serve --port=localhost:1234 --directory=/srv/bzr/repo
+
+クライアント::
+
+    bzr log bzr://localhost:1234/branchname
+

@@ -1,4 +1,4 @@
-Log formats
+Log Formats
 ===========
 
 A log format controls how information about each revision is displayed.

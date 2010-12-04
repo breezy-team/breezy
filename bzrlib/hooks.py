@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 """Support for plugin hooking logic."""
 from bzrlib import registry
 from bzrlib.lazy_import import lazy_import
-from bzrlib.symbol_versioning import deprecated_method
 lazy_import(globals(), """
 import textwrap
 
@@ -45,6 +44,8 @@ known_hooks.register_lazy(('bzrlib.info', 'hooks'),
     'bzrlib.info', 'InfoHooks')
 known_hooks.register_lazy(('bzrlib.lock', 'Lock.hooks'), 'bzrlib.lock',
     'LockHooks')
+known_hooks.register_lazy(('bzrlib.merge', 'Merger.hooks'), 'bzrlib.merge',
+    'MergeHooks')
 known_hooks.register_lazy(('bzrlib.msgeditor', 'hooks'), 'bzrlib.msgeditor',
     'MessageEditorHooks')
 known_hooks.register_lazy(('bzrlib.mutabletree', 'MutableTree.hooks'),
@@ -57,7 +58,7 @@ known_hooks.register_lazy(
     ('bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilder.hooks'),
     'bzrlib.version_info_formats.format_rio', 'RioVersionInfoBuilderHooks')
 known_hooks.register_lazy(
-    ('bzrlib.merge_directive', '_BaseMergeDirective.hooks'),
+    ('bzrlib.merge_directive', 'BaseMergeDirective.hooks'),
     'bzrlib.merge_directive', 'MergeDirectiveHooks')
 
 
@@ -219,9 +220,7 @@ class HookPoint(object):
         strings.append('Introduced in: %s' % introduced_string)
         if self.deprecated:
             deprecated_string = _format_version_tuple(self.deprecated)
-        else:
-            deprecated_string = 'Not deprecated'
-        strings.append('Deprecated in: %s' % deprecated_string)
+            strings.append('Deprecated in: %s' % deprecated_string)
         strings.append('')
         strings.extend(textwrap.wrap(self.__doc__,
             break_long_words=False))
@@ -277,9 +276,7 @@ A hook of type *xxx* of class *yyy* needs to be registered using::
 
   yyy.hooks.install_named_hook("xxx", ...)
 
-See `Using hooks`_ in the User Guide for examples.
-
-.. _Using hooks: ../user-guide/index.html#using-hooks
+See :doc:`Using hooks<../user-guide/hooks>` in the User Guide for examples.
 
 The class that contains each hook is given before the hooks it supplies. For
 instance, BranchHooks as the class is the hooks class for

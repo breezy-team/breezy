@@ -42,15 +42,15 @@ loaded by the Windows shell. There is no facility for shell extensions to
 exist in a separate process - DLLs are the only option, and they are loaded
 into other processes which take advantage of the Windows shell (although
 obviously this DLL is free to do whatever it likes).
- 
+
 For the sake of this discussion, there are 2 categories of shell extensions:
- 
+
 * Ones that create a new "namespace". The file-system itself is an example of
   such a namespace, as is the "Recycle Bin". For a user-created example,
   picture a new tree under "My Computer" which allows you to browse a remote
   server - it creates a new, stand-alone tree that doesn't really interact
   with the existing namespaces.
- 
+
 * Ones that enhance existing namespaces, including the filesystem. An example
   would be an extension which uses Icon Overlays to modify how existing files
   on disk are displayed or add items to their context menu, for example.
@@ -71,7 +71,7 @@ double - all without doing anything tortoise specific at all. (In fairness,
 this illustration is contrived - the code from these DLLs are already in
 memory and there is no reason to suggest TSVN adds any other unreasonable
 burden - but the general point remains valid.)
- 
+
 This has wide-ranging implications. It means that such shell extensions
 should be developed using a tool which can never cause conflict with
 arbitrary processes. For this very reason, MS recommend against using .NET
@@ -113,7 +113,7 @@ of TortoiseSvn is "just" a fairly large GUI application implementing many
 commands. The command-line to the app has even been documented for people who
 wish to automate tasks using that GUI. This GUI is also implemented in C++
 using Windows resource files.
- 
+
 TortoiseSvn has an option (enabled by default) which enabled a cache using a
 separate process, aptly named TSVNCache.exe. It uses a named pipe to accept
 connections from other processes for various operations. When enabled, TSVN
@@ -149,11 +149,11 @@ note that the bzr library *is* pulled into the shell, and therefore every
 application using the shell. The GUI in the external application is written
 in PyGTK, which may not offer the best Windows "look and feel", but that
 discussion is beyond the scope of this document.
- 
+
 It has a better story for logging and debugging for the developer - but not
 for diagnosing issues in the field - although again, much of the heavy
 lifting remains done by the external application.
- 
+
 It uses a rudimentary in-memory cache for the status of files and
 directories, the implementation of which isn't really suitable (ie, no
 theoretical upper bound on cache size), and also means that there is no
@@ -261,7 +261,7 @@ server.
 We will also allow all of the above to be disabled via user preferences.
 Thus, Icon Overlays could be disabled if it did cause a problem for some
 people, for example.
- 
+
 RPC options
 ~~~~~~~~~~~
 
@@ -433,7 +433,7 @@ The following is a high-level set of milestones for the implementation:
   version. We will fork the current TSVN sources, including its new
   support for sharing icon overlays (although advice on how to setup this
   fork is needed!)
- 
+
 * Implement property pages and context menus in C++. Expand RPC server as
   necessary.
 

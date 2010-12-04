@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,9 +21,10 @@ from bzrlib.tests import TestCaseWithTransport
 
 class TestLaunchpadOpen(TestCaseWithTransport):
 
-    def run_open(self, location, retcode=0):
-        out, err = self.run_bzr(
-            ['launchpad-open', '--dry-run', location], retcode=retcode)
+    def run_open(self, location, retcode=0, working_dir='.'):
+        out, err = self.run_bzr(['launchpad-open', '--dry-run', location],
+                                retcode=retcode,
+                                working_dir=working_dir)
         return err.splitlines()
 
     def test_non_branch(self):
@@ -53,7 +54,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         branch.set_public_branch(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
              'browser'],
             self.run_open('lp'))
 
@@ -64,7 +65,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         branch.set_push_location(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/push')
         self.assertEqual(
-            ['Opening https://code.edge.launchpad.net/~foo/bar/public in web '
+            ['Opening https://code.launchpad.net/~foo/bar/public in web '
              'browser'],
             self.run_open('lp'))
 
@@ -75,7 +76,7 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         branch.set_push_location(
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
-            ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
              'browser'],
             self.run_open('lp'))
 
@@ -84,6 +85,17 @@ class TestLaunchpadOpen(TestCaseWithTransport):
         # location and no push location, then just try to look up the
         # Launchpad page for that URL.
         self.assertEqual(
-            ['Opening https://code.edge.launchpad.net/~foo/bar/baz in web '
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
              'browser'],
             self.run_open('bzr+ssh://bazaar.launchpad.net/~foo/bar/baz'))
+
+    def test_launchpad_branch_subdirectory(self):
+        # lp-open in a subdirectory of a registered branch should work
+        wt = self.make_branch_and_tree('lp')
+        wt.branch.set_push_location(
+            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
+        self.build_tree(['lp/a/'])
+        self.assertEqual(
+            ['Opening https://code.launchpad.net/~foo/bar/baz in web '
+             'browser'],
+            self.run_open('.', working_dir='lp/a'))

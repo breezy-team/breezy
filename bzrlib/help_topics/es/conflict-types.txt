@@ -1,0 +1,185 @@
+=====================
+Manejo de Conflictos
+=====================
+
+Algunas operaciones, como merge, revert y pull, modifican el contenido de su
+working tree. Estas modificaciones son generadas automaticamente, con lo cual
+pueden tener conflictos con el estado actual de su working tree.  Muchos tipos
+de cambios pueden ser combinados automaticamentem pero a veces solo algunos
+humanos pueden determinar la decision correcta a tomar.  Cuando esto sucede,
+Bazaar lo informara que hay un conflict y pedira que lo resuelva. El comando
+para resolverlo es ``resolve``, pero debe realizar alguna accion antes de
+ejecutarlo.
+
+Cada tipo de conflicto esta explicado a continuacion, y la accion que se debe
+realizar para resolver el conflicto esta detallada.
+
+
+Conflictos de Texto (Text conflicts)
+=====================================
+Mensaje comun::
+
+  Text conflict in ARCHIVO
+
+Estos se producen cuando el texto a unificar no puede ser completamente
+reconciliado entre dos cambios. Bazaar emitira archivos para cada version con
+extensiones THIS, OTHER, y BASE.  THIS es la version del archivo del tree
+de destino, por ejemplo, el tree al que estan unificando los cambios. OTHER
+es la version que estan uniendo al tree de destino. BASE es la version
+anterior que es usado como base para la comparacion.
+
+En la copia principal del archivo, Bazaar incluira los cambios que puede
+reconciliar, y cualquier cambio sin reconciliar son rodeados con marcadores
+"herringbone" como ``<<<<<<<``.
+
+Digamos que el texto inicial es "El lider del proyecto lo lanzo.", y THIS lo
+modifica a "Martin Pool lo lanzo.", mientras que OTHER lo modifica a "El lider
+del proyecto lanzo Bazaar."  Un conflicto se veria asi::
+
+  <<<<<<< TREE
+  Martin Pool lo lanzo.
+  =======
+  El lider del proyecto lanzo Bazaar.
+  >>>>>>> MERGE-SOURCE
+
+La resulucion correcta seria "Martin Pool lanzo Bazaar."
+
+Puede manejar conflictos de texto o editando la copia principal del archivo,
+o invocando herramientas externas on las versiones THIS, OTHER y BASE. Vale
+la pena mencionar que resolver conflictos de texto rara vez involucra elegir
+un conjunto de cambios u otros. Los mas comun es que tenga que combinar
+inteligentemente.
+
+Si modifica la copia principal, asegurese de sacar los marcadores "herringbone".
+Cuando termino de modificar, el archivo debe estar como si nunca hubiese estado
+con conflictos, y estar listo para hacer commit.
+
+Cuando resolvio los conflictos de texto, solo ejecute "bzr resolve", y Bazaar
+detectera automaticamente que resolvio.
+
+
+Conflictos de contenido (Content conflicts)
+============================================
+Mensaje comun::
+
+  Contents conflict in ARCHIVO
+
+Este conflicto sucede cuando hay cambios que crean conflictos en el tree de
+destino y el fuente a unificar, pero los items con conflictos no son archivos
+de texto.  Pueden ser archivos binarios, symlinks o directorios.  Pueden suceder
+con archivos que fueron eliminados en un lado, y modificados en el otro.
+
+Como los conflictos de texto, Bazaar creara archivos THIS, OTHER y BASE.
+(pueden ser archivos normales, symlinks o directorios).  Esto no incluira
+la "copia principal" del archivo con marcadores "herringbone".  Parecera que la
+"copia principal" fue renombrado a THIS o OTHER.
+
+Para resolver esto, utilice "bzr mv" para renombrar el archivo a su nombre
+original, y combine los cambios manualmente. Cuando este satisfecho, ejecute
+"bzr resolve ARCHIVO".  Bazaar no puede detectar cuando cambios de este tipo
+fueron resueltos.
+
+
+Rutas Duplicadas (Duplicate Paths)
+==================================
+Mensaje comun::
+
+  Conflict adding file ARCHIVO.  Moved existing file to ARCHIVO.moved.
+
+Bazaar a veces intentara crear un archivo usando la ruta que ya fue usada.
+El archivo existente ser renombrado a "ARCHIVO.moved".  Si lo desea, puede
+renombrar cualquiera de estos archivos, o combinar su contenido. Cuando
+este satisfecho, puede ejecutar "bzr resolve ARCHIVO" para marcar que el
+conflicto fue resuelto.
+
+
+Padre sin versionar (Unversioned Parent)
+========================================
+Mensajes comunes::
+
+    Conflict because ARCHIVO no esta versionado, pero tiene hijos versionados.
+
+A veces Bazaar intentara crear un archivo cuyo directorio padre no esta
+versionado. Esto sucede cuando el directorio fue eliminado en el destino,
+pero tiene un hijo nuevo en origen, o vice versa. En esta situacion, Bazaar
+versionara al directorio padre tambien.  Resolver este tema depende mucho
+en el escenario particular.  Puede que quiera renombrar o eliminar o renombrar
+cualquier archivo o directorio.  Cuando esta satisfecho, puede ejecutar "bzr
+resolve ARCHIVO" para marcar el conflicto como resuelto.
+
+
+Padre faltante (Missing Parent)
+===============================
+Mensaje comun::
+
+  Conflict adding files to ARCHIVO.  Created directory.
+
+Esto sucede cuando un archivo fue eliminado en el destino, pero tiene hijos
+en el origen.  Esto es similar al conflicto "Padre sin versionar", excepto
+que el directorio padre *no existe*, en vez de no estar versionado. En esta
+situacion, Bazaar creara al padre faltante.  Resolver estos temas depende
+mucho de cada caso particular. Usted puede querer renombrar o eliminar
+cualquiera de los archivos o directorios.  Cuando este satisfecho, puede
+ejecutar "bzr resolve ARCHIVO" para marcar al archivo resuelto.
+
+
+Borrando al Padre (Deleting Parent)
+===================================
+Mensaje comun::
+
+  Conflict: can't delete ARCHIVO because it is not empty.  Not deleting.
+
+Esto es el opuesto a "Padre faltante".  Un directorio es eliminado en el
+origen, pero tiene hijos en el destino.  Bazaar mantiene el directorio.
+Resolver este tema depende mucho de cada escenario particular.  Quizas quiera
+renombrar o eliminar cualquiera de los archivos o directorios.  Cuando esta
+satisfecho, puede ejecutar "bzr resolver ARCHIVO" para marcar al conflicto
+como resuelto.
+
+
+Conflicto de Ruta (Path Conflict)
+=================================
+Mensaje comun::
+
+  Path conflict: RUTA1 / RUTA2
+
+Esto sucede cuando en el origen y el destino han sido modificados el nombre
+o directorio padre de un archivo. Bazaar usara la ruta de los elementos del
+origen. Puede renombrar el archivo, y una vez que lo ha hecho, ejecutar
+"bzr resolve ARCHIVO" para marcarl el conflicto como resuelto.
+
+
+Bucle Padre (Parent Loop)
+=========================
+Mensaje comun::
+
+  Conflict moving ARCHIVO into DIRECTORIO.  Cancelled move.
+
+Esto sucede cuando en el origen y el destino se han movido directorios, de
+tal forma que, si se aplicaran los cambios, el directorios se contendria a
+si mismo.
+Por ejemplo::
+
+  $ bzr init
+  $ bzr mkdir a
+  $ bzr mkdir b
+  $ bzr commit -m "BASE"
+  $ bzr branch . ../other
+  $ bzr mv a b
+  $ bzr commit -m "THIS"
+  $ bzr mv ../other/b ../other/a
+  $ bzr commit ../other -m "OTHER"
+  $ bzr merge ../other
+
+En esta situacion, Bazaar cancelara el movimiento, y dejara "a" en "b".
+Puede renombrar los directorios como desee, y una vez que lo ha hecho,
+ejecute "bzr resolve ARCHIVO" para marcar el conflicto como resuelto.
+
+
+MalformedTransform
+==================
+Es posible (aunque muy raro) que Bazaar de una excepcion MalformedTransform.
+Esto quiere decir que Bazaar encontro un conflicto en el sistema de archivos
+que no le fue posible resolver.  Esto usualmente indica un bug.  Por favor
+haganoslo saber si se encuentra en esta situacion. Nuestro sistema de bugs
+se encuentra en https://launchpad.net/bzr/+bugs

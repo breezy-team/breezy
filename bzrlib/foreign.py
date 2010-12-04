@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ from bzrlib import (
 """)
 
 class VcsMapping(object):
-    """Describes the mapping between the semantics of Bazaar and a foreign vcs.
+    """Describes the mapping between the semantics of Bazaar and a foreign VCS.
 
     """
     # Whether this is an experimental mapping that is still open to changes.
@@ -122,7 +122,17 @@ class ForeignRevision(Revision):
 class ForeignVcs(object):
     """A foreign version control system."""
 
-    def __init__(self, mapping_registry):
+    branch_format = None
+
+    repository_format = None
+
+    def __init__(self, mapping_registry, abbreviation=None):
+        """Create a new foreign vcs instance.
+
+        :param mapping_registry: Registry with mappings for this VCS.
+        :param abbreviation: Optional abbreviation ('bzr', 'svn', 'git', etc)
+        """
+        self.abbreviation = abbreviation
         self.mapping_registry = mapping_registry
 
     def show_foreign_revid(self, foreign_revid):
@@ -132,6 +142,15 @@ class ForeignVcs(object):
         :return: Dictionary mapping string keys to string values.
         """
         return { }
+
+    def serialize_foreign_revid(self, foreign_revid):
+        """Serialize a foreign revision id for this VCS.
+
+        :param foreign_revid: Foreign revision id
+        :return: Bytestring with serialized revid, will not contain any 
+            newlines.
+        """
+        raise NotImplementedError(self.serialize_foreign_revid)
 
 
 class ForeignVcsRegistry(registry.Registry):
@@ -206,29 +225,6 @@ class ForeignRepository(Repository):
         """Get the default mapping for this repository."""
         raise NotImplementedError(self.get_default_mapping)
 
-    def get_inventory_xml(self, revision_id):
-        """See Repository.get_inventory_xml()."""
-        return self.serialise_inventory(self.get_inventory(revision_id))
-
-    def get_inventory_sha1(self, revision_id):
-        """Get the sha1 for the XML representation of an inventory.
-
-        :param revision_id: Revision id of the inventory for which to return
-         the SHA1.
-        :return: XML string
-        """
-
-        return osutils.sha_string(self.get_inventory_xml(revision_id))
-
-    def get_revision_xml(self, revision_id):
-        """Return the XML representation of a revision.
-
-        :param revision_id: Revision for which to return the XML.
-        :return: XML string
-        """
-        return self._serializer.write_revision_to_string(
-            self.get_revision(revision_id))
-
 
 class ForeignBranch(Branch):
     """Branch that exists in a foreign version control system."""
@@ -263,7 +259,7 @@ def update_workingtree_fileids(wt, target_tree):
 
 
 class cmd_dpush(Command):
-    """Push into a different VCS without any custom bzr metadata.
+    __doc__ = """Push into a different VCS without any custom bzr metadata.
 
     This will afterwards rebase the local branch on the remote
     branch unless the --no-rebase option is used, in which case 
@@ -271,20 +267,25 @@ class cmd_dpush(Command):
     """
     hidden = True
     takes_args = ['location?']
-    takes_options = ['remember', Option('directory',
-            help='Branch to push from, '
-                 'rather than the one containing the working directory.',
-            short_name='d',
-            type=unicode,
-            ),
-            Option('no-rebase', help="Do not rebase after push.")]
+    takes_options = [
+        'remember',
+        Option('directory',
+               help='Branch to push from, '
+               'rather than the one containing the working directory.',
+               short_name='d',
+               type=unicode,
+               ),
+        Option('no-rebase', help="Do not rebase after push."),
+        Option('strict',
+               help='Refuse to push if there are uncommitted changes in'
+               ' the working tree, --no-strict disables the check.'),
+        ]
 
-    def run(self, location=None, remember=False, directory=None, 
-            no_rebase=False):
+    def run(self, location=None, remember=False, directory=None,
+            no_rebase=False, strict=None):
         from bzrlib import urlutils
         from bzrlib.bzrdir import BzrDir
         from bzrlib.errors import BzrCommandError, NoWorkingTree
-        from bzrlib.trace import info
         from bzrlib.workingtree import WorkingTree
 
         if directory is None:
@@ -295,6 +296,11 @@ class cmd_dpush(Command):
         except NoWorkingTree:
             source_branch = Branch.open(directory)
             source_wt = None
+        if source_wt is not None:
+            source_wt.check_changed_or_out_of_date(
+                strict, 'dpush_strict',
+                more_error='Use --no-strict to force the push.',
+                more_warning='Uncommitted changes will not be pushed.')
         stored_loc = source_branch.get_push_location()
         if location is None:
             if stored_loc is None:

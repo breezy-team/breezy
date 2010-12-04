@@ -158,7 +158,7 @@ attribute is ``entries``, an iterator of the individual items in the
 record. Each item that the iterator yields is a factory which has metadata
 about the entry and the ability to return the compressed bytes. This
 factory can be decorated to allow obtaining different representations (for
-example from a compressed knit fulltext to a plain fulltext). 
+example from a compressed knit fulltext to a plain fulltext).
 
 In pseudocode::
 

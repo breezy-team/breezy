@@ -41,15 +41,8 @@ class TestBreakin(tests.TestCase):
 
     def setUp(self):
         super(TestBreakin, self).setUp()
-        if breakin.determine_signal() is None:
-            raise tests.TestSkipped('this platform is missing SIGQUIT'
-                                    ' or SIGBREAK')
+        self.requireFeature(tests.BreakinFeature)
         if sys.platform == 'win32':
-            # Windows doesn't have os.kill, and we catch the SIGBREAK signal.
-            # We trigger SIGBREAK via a Console api so we need ctypes to access
-            # the function
-            if not have_ctypes:
-                raise tests.UnavailableFeature('ctypes')
             self._send_signal = self._send_signal_win32
         else:
             self._send_signal = self._send_signal_via_kill
@@ -61,7 +54,11 @@ class TestBreakin(tests.TestCase):
             sig_num = signal.SIGKILL
         else:
             raise ValueError("unknown signal type: %s" % (sig_type,))
-        os.kill(pid, sig_num)
+        try:
+            os.kill(pid, sig_num)
+        except OSError, e:
+            if e.errno != errno.ESRCH:
+                raise
 
     def _send_signal_win32(self, pid, sig_type):
         """Send a 'signal' on Windows.
@@ -110,11 +107,10 @@ class TestBreakin(tests.TestCase):
             raise tests.TestNotApplicable(
                 '%s raises a popup on OSX' % self.id())
 
-    def _wait_for_process(self, pid, sig=None):
+    def _wait_for_process(self, pid, sig=None, count=100):
         # We don't know quite how long waiting for the process 'pid' will take,
         # but if it's more than 10s then it's probably not going to work.
-        for i in range(100):
-            time.sleep(0.1)
+        for i in range(count):
             if sig is not None:
                 self._send_signal(pid, sig)
             # Use WNOHANG to ensure we don't get blocked, doing so, we may
@@ -127,7 +123,7 @@ class TestBreakin(tests.TestCase):
                 #       instead. Most notably, the WNOHANG isn't allowed, so
                 #       this can hang indefinitely.
                 pid_killed, returncode = os.waitpid(pid, opts)
-                if (pid_killed, returncode) != (0, 0):
+                if pid_killed != 0 and returncode != 0:
                     if sig is not None:
                         # high bit in low byte says if core was dumped; we
                         # don't care
@@ -139,6 +135,8 @@ class TestBreakin(tests.TestCase):
                     return True, None
                 else:
                     raise
+            if i + 1 != count:
+                time.sleep(0.1)
 
         return False, None
 
@@ -161,19 +159,18 @@ class TestBreakin(tests.TestCase):
         # os.read(proc.stderr.fileno())?
         err = proc.stderr.readline()
         self.assertContainsRe(err, r'entering debugger')
+        # Try to shutdown cleanly;
         # Now that the debugger is entered, we can ask him to quit
         proc.stdin.write("q\n")
-        # We wait a bit to let the child process handles our query and avoid
-        # triggering deadlocks leading to hangs on multi-core hosts...
-        dead, sig = self._wait_for_process(proc.pid)
+        # But we don't really care if it doesn't.
+        dead, sig = self._wait_for_process(proc.pid, count=3)
         if not dead:
-            # The process didn't finish, let's kill it before reporting failure
-            dead, sig = self._wait_for_process(proc.pid, 'kill')
-            if dead:
-                raise tests.KnownFailure(
-                    "subprocess wasn't terminated, it had to be killed")
-            else:
-                self.fail("subprocess %d wasn't terminated by repeated SIGKILL",
+            # The process didn't finish, let's kill it.
+            dead, sig = self._wait_for_process(proc.pid, 'kill', count=10)
+            if not dead:
+                # process isn't gone, user will have to hunt it down and kill
+                # it.
+                self.fail("subprocess %d wasn't terminated by repeated SIGKILL" %
                           proc.pid)
 
     def test_breakin_harder(self):

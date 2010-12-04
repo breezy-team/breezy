@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,7 +53,7 @@ import bzrlib.ui
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.filters import filtered_input_file, internal_size_sha_file_byname
 from bzrlib.inventory import Inventory, ROOT_ID, entry_factory
-import bzrlib.mutabletree
+from bzrlib.lock import LogicalLockResult
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (
     file_kind,
@@ -568,7 +568,10 @@ class DirStateWorkingTree(WorkingTree3):
             return _mod_revision.NULL_REVISION
 
     def lock_read(self):
-        """See Branch.lock_read, and WorkingTree.unlock."""
+        """See Branch.lock_read, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         self.branch.lock_read()
         try:
             self._control_files.lock_read()
@@ -587,6 +590,7 @@ class DirStateWorkingTree(WorkingTree3):
         except:
             self.branch.unlock()
             raise
+        return LogicalLockResult(self.unlock)
 
     def _lock_self_write(self):
         """This should be called after the branch is locked."""
@@ -607,16 +611,23 @@ class DirStateWorkingTree(WorkingTree3):
         except:
             self.branch.unlock()
             raise
+        return LogicalLockResult(self.unlock)
 
     def lock_tree_write(self):
-        """See MutableTree.lock_tree_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_tree_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         self.branch.lock_read()
-        self._lock_self_write()
+        return self._lock_self_write()
 
     def lock_write(self):
-        """See MutableTree.lock_write, and WorkingTree.unlock."""
+        """See MutableTree.lock_write, and WorkingTree.unlock.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         self.branch.lock_write()
-        self._lock_self_write()
+        return self._lock_self_write()
 
     @needs_tree_write_lock
     def move(self, from_paths, to_dir, after=False):
@@ -1236,7 +1247,8 @@ class DirStateWorkingTree(WorkingTree3):
         # have to change the legacy inventory too.
         if self._inventory is not None:
             for file_id in file_ids:
-                self._inventory.remove_recursive_id(file_id)
+                if self._inventory.has_id(file_id):
+                    self._inventory.remove_recursive_id(file_id)
 
     @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel, after=False):
@@ -1267,9 +1279,17 @@ class DirStateWorkingTree(WorkingTree3):
         if self._dirty:
             raise AssertionError("attempting to write an inventory when the "
                 "dirstate is dirty will lose pending changes")
-        self.current_dirstate().set_state_from_inventory(inv)
-        self._make_dirty(reset_inventory=False)
-        if self._inventory is not None:
+        had_inventory = self._inventory is not None
+        # Setting self._inventory = None forces the dirstate to regenerate the
+        # working inventory. We do this because self.inventory may be inv, or
+        # may have been modified, and either case would prevent a clean delta
+        # being created.
+        self._inventory = None
+        # generate a delta,
+        delta = inv._make_delta(self.inventory)
+        # and apply it.
+        self.apply_inventory_delta(delta)
+        if had_inventory:
             self._inventory = inv
         self.flush()
 
@@ -1310,7 +1330,7 @@ class ContentFilteringDirStateWorkingTree(DirStateWorkingTree):
     def _file_content_summary(self, path, stat_result):
         # This is to support the somewhat obsolete path_content_summary method
         # with content filtering: see
-        # <https://bugs.edge.launchpad.net/bzr/+bug/415508>.
+        # <https://bugs.launchpad.net/bzr/+bug/415508>.
         #
         # If the dirstate cache is up to date and knows the hash and size,
         # return that.
@@ -1364,6 +1384,7 @@ class WorkingTree6(ContentFilteringDirStateWorkingTree):
 
 
 class DirStateWorkingTreeFormat(WorkingTreeFormat3):
+
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize().
@@ -1439,21 +1460,10 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
                 if basis_root_id is not None:
                     wt._set_root_id(basis_root_id)
                     wt.flush()
-                # If content filtering is supported, do not use the accelerator
-                # tree - the cost of transforming the content both ways and
-                # checking for changed content can outweight the gains it gives.
-                # Note: do NOT move this logic up higher - using the basis from
-                # the accelerator tree is still desirable because that can save
-                # a minute or more of processing on large trees!
-                # The original tree may not have the same content filters
-                # applied so we can't safely build the inventory delta from
-                # the source tree.
                 if wt.supports_content_filtering():
-                    if hardlink:
-                        # see https://bugs.edge.launchpad.net/bzr/+bug/408193
-                        trace.warning("hardlinking working copy files is not currently "
-                            "supported in %r" % (wt,))
-                    accelerator_tree = None
+                    # The original tree may not have the same content filters
+                    # applied so we can't safely build the inventory delta from
+                    # the source tree.
                     delta_from_tree = False
                 else:
                     delta_from_tree = True
@@ -1758,7 +1768,11 @@ class DirStateRevisionTree(Tree):
             return None
         parent_index = self._get_parent_index()
         last_changed_revision = entry[1][parent_index][4]
-        return self._repository.get_revision(last_changed_revision).timestamp
+        try:
+            rev = self._repository.get_revision(last_changed_revision)
+        except errors.NoSuchRevision:
+            raise errors.FileTimestampUnavailable(self.id2path(file_id))
+        return rev.timestamp
 
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         entry = self._get_entry(file_id=file_id, path=path)
@@ -1831,7 +1845,8 @@ class DirStateRevisionTree(Tree):
         entry = self._get_entry(file_id=file_id)[1]
         if entry is None:
             raise errors.NoSuchId(tree=self, file_id=file_id)
-        return dirstate.DirState._minikind_to_kind[entry[1][0]]
+        parent_index = self._get_parent_index()
+        return dirstate.DirState._minikind_to_kind[entry[parent_index][0]]
 
     def stored_kind(self, file_id):
         """See Tree.stored_kind"""
@@ -1857,6 +1872,9 @@ class DirStateRevisionTree(Tree):
             return None
         return ie.executable
 
+    def is_locked(self):
+        return self._locked
+
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         # We use a standard implementation, because DirStateRevisionTree is
         # dealing with one of the parents of the current state
@@ -1875,13 +1893,17 @@ class DirStateRevisionTree(Tree):
             yield path, 'V', entry.kind, entry.file_id, entry
 
     def lock_read(self):
-        """Lock the tree for a set of operations."""
+        """Lock the tree for a set of operations.
+
+        :return: A bzrlib.lock.LogicalLockResult.
+        """
         if not self._locked:
             self._repository.lock_read()
             if self._dirstate._lock_token is None:
                 self._dirstate.lock_read()
                 self._dirstate_locked = True
         self._locked += 1
+        return LogicalLockResult(self.unlock)
 
     def _must_be_locked(self):
         if not self._locked:
@@ -1977,12 +1999,11 @@ class InterDirStateTree(InterTree):
         return result
 
     @classmethod
-    def make_source_parent_tree_compiled_dirstate(klass, test_case, source, target):
+    def make_source_parent_tree_compiled_dirstate(klass, test_case, source,
+                                                  target):
         from bzrlib.tests.test__dirstate_helpers import \
-            CompiledDirstateHelpersFeature
-        if not CompiledDirstateHelpersFeature.available():
-            from bzrlib.tests import UnavailableFeature
-            raise UnavailableFeature(CompiledDirstateHelpersFeature)
+            compiled_dirstate_helpers_feature
+        test_case.requireFeature(compiled_dirstate_helpers_feature)
         from bzrlib._dirstate_helpers_pyx import ProcessEntryC
         result = klass.make_source_parent_tree(source, target)
         result[1]._iter_changes = ProcessEntryC
@@ -2019,8 +2040,6 @@ class InterDirStateTree(InterTree):
             output. An unversioned file is defined as one with (False, False)
             for the versioned pair.
         """
-        # NB: show_status depends on being able to pass in non-versioned files
-        # and report them as unknown
         # TODO: handle extra trees in the dirstate.
         if (extra_trees or specific_files == []):
             # we can't fast-path these cases (yet)

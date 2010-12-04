@@ -1,6 +1,0 @@
-Bazaar Migration Guide
-======================
-
-This guide is under development. For notes collected so far, see
-http://bazaar-vcs.org/BzrMigration/.
-

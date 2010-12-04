@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,22 +14,20 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
 import sys
 import time
 
 from bzrlib import (
+    errors,
+    remote,
     revision as _mod_revision,
     tests,
+    transform,
     )
-from bzrlib.errors import IllegalPath, NonAsciiRevisionId
-from bzrlib.tests import TestSkipped
-from bzrlib.tests.per_repository.test_repository import TestCaseWithRepository
-from bzrlib.transform import TreeTransform
-from bzrlib.workingtree import WorkingTree
+from bzrlib.tests import per_repository
 
 
-class FileIdInvolvedBase(TestCaseWithRepository):
+class FileIdInvolvedBase(per_repository.TestCaseWithRepository):
 
     def touch(self, tree, filename):
         # use the trees transport to not depend on the tree's location or type.
@@ -79,13 +77,13 @@ class TestFileIdInvolved(FileIdInvolvedBase):
                                  'c-funky<file-id>quiji%bo'])
         try:
             main_wt.commit("Commit one", rev_id="rev-A")
-        except IllegalPath:
+        except errors.IllegalPath:
             # TODO: jam 20060701 Consider raising a different exception
             #       newer formats do support this, and nothin can done to
             #       correct this test - its not a bug.
             if sys.platform == 'win32':
-                raise TestSkipped('Old repository formats do not'
-                                  ' support file ids with <> on win32')
+                raise tests.TestSkipped('Old repository formats do not'
+                                        ' support file ids with <> on win32')
             # This is not a known error condition
             raise
 
@@ -241,9 +239,9 @@ class TestFileIdInvolvedNonAscii(FileIdInvolvedBase):
         revision_id = u'r\xe9v-a'.encode('utf8')
         try:
             main_wt.commit('a', rev_id=revision_id)
-        except NonAsciiRevisionId:
-            raise TestSkipped('non-ascii revision ids not supported by %s'
-                              % self.repository_format)
+        except errors.NonAsciiRevisionId:
+            raise tests.TestSkipped('non-ascii revision ids not supported by %s'
+                                    % self.repository_format)
 
         repo = main_wt.branch.repository
         repo.lock_read()
@@ -273,13 +271,13 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
                                  'c-funky<file-id>quiji\'"%bo'])
         try:
             main_wt.commit("Commit one", rev_id="rev-A")
-        except IllegalPath:
+        except errors.IllegalPath:
             # TODO: jam 20060701 Consider raising a different exception
             #       newer formats do support this, and nothin can done to
             #       correct this test - its not a bug.
             if sys.platform == 'win32':
-                raise TestSkipped('Old repository formats do not'
-                                  ' support file ids with <> on win32')
+                raise tests.TestSkipped('Old repository formats do not'
+                                        ' support file ids with <> on win32')
             # This is not a known error condition
             raise
 
@@ -318,7 +316,7 @@ class TestFileIdInvolvedSuperset(FileIdInvolvedBase):
         self.assertSubset(l2, l1)
 
 
-class FileIdInvolvedWGhosts(TestCaseWithRepository):
+class FileIdInvolvedWGhosts(per_repository.TestCaseWithRepository):
 
     def create_branch_with_ghost_text(self):
         builder = self.make_branch_builder('ghost')
@@ -342,8 +340,22 @@ class FileIdInvolvedWGhosts(TestCaseWithRepository):
         self.addCleanup(b.unlock)
         b.repository.start_write_group()
         b.repository.add_revision('B-id', new_rev, new_inv)
+        self.disable_commit_write_group_paranoia(b.repository)
         b.repository.commit_write_group()
         return b
+
+    def disable_commit_write_group_paranoia(self, repo):
+        if isinstance(repo, remote.RemoteRepository):
+            # We can't easily disable the checks in a remote repo.
+            repo.abort_write_group()
+            raise tests.TestSkipped(
+                "repository format does not support storing revisions with "
+                "missing texts.")
+        pack_coll = getattr(repo, '_pack_collection', None)
+        if pack_coll is not None:
+            # Monkey-patch the pack collection instance to allow storing
+            # incomplete revisions.
+            pack_coll._check_new_inventories = lambda: []
 
     def test_file_ids_include_ghosts(self):
         b = self.create_branch_with_ghost_text()
@@ -392,7 +404,7 @@ def set_executability(wt, path, executable=True):
     unmark a file as executable.
     """
     file_id = wt.path2id(path)
-    tt = TreeTransform(wt)
+    tt = transform.TreeTransform(wt)
     try:
         tt.set_executability(executable, tt.trans_id_tree_file_id(file_id))
         tt.apply()

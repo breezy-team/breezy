@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ from bzrlib.errors import (
     )
 from bzrlib.symbol_versioning import deprecated_in, deprecated_method
 from bzrlib.trace import mutter
+from bzrlib.static_tuple import StaticTuple
 
 
 class InventoryEntry(object):
@@ -437,7 +438,13 @@ class InventoryDirectory(InventoryEntry):
             self.text_id is not None):
             checker._report_items.append('directory {%s} has text in revision {%s}'
                                 % (self.file_id, rev_id))
-        # Directories are stored as ''.
+        # In non rich root repositories we do not expect a file graph for the
+        # root.
+        if self.name == '' and not checker.rich_roots:
+            return
+        # Directories are stored as an empty file, but the file should exist
+        # to provide a per-fileid log. The hash of every directory content is
+        # "da..." below (the sha1sum of '').
         checker.add_pending_item(rev_id,
             ('texts', self.file_id, self.revision), 'text',
              'da39a3ee5e6b4b0d3255bfef95601890afd80709')
@@ -952,21 +959,21 @@ class CommonInventory(object):
         descend(self.root, u'')
         return accum
 
-    def path2id(self, name):
+    def path2id(self, relpath):
         """Walk down through directories to return entry of last component.
 
-        names may be either a list of path components, or a single
-        string, in which case it is automatically split.
+        :param relpath: may be either a list of path components, or a single
+            string, in which case it is automatically split.
 
         This returns the entry of the last component in the path,
         which may be either a file or a directory.
 
         Returns None IFF the path is not found.
         """
-        if isinstance(name, basestring):
-            name = osutils.splitpath(name)
-
-        # mutter("lookup path %r" % name)
+        if isinstance(relpath, basestring):
+            names = osutils.splitpath(relpath)
+        else:
+            names = relpath
 
         try:
             parent = self.root
@@ -975,7 +982,7 @@ class CommonInventory(object):
             return None
         if parent is None:
             return None
-        for f in name:
+        for f in names:
             try:
                 children = getattr(parent, 'children', None)
                 if children is None:
@@ -1190,6 +1197,14 @@ class Inventory(CommonInventory):
             parent_id, children = children.popitem()
             raise errors.InconsistentDelta("<deleted>", parent_id,
                 "The file id was deleted but its children were not deleted.")
+
+    def create_by_apply_delta(self, inventory_delta, new_revision_id,
+                              propagate_caches=False):
+        """See CHKInventory.create_by_apply_delta()"""
+        new_inv = self.copy()
+        new_inv.apply_delta(inventory_delta)
+        new_inv.revision_id = new_revision_id
+        return new_inv
 
     def _set_root(self, ie):
         self.root = ie
@@ -1540,6 +1555,117 @@ class CHKInventory(CommonInventory):
         else:
             raise ValueError("unknown kind %r" % entry.kind)
 
+    def _expand_fileids_to_parents_and_children(self, file_ids):
+        """Give a more wholistic view starting with the given file_ids.
+
+        For any file_id which maps to a directory, we will include all children
+        of that directory. We will also include all directories which are
+        parents of the given file_ids, but we will not include their children.
+
+        eg:
+          /     # TREE_ROOT
+          foo/  # foo-id
+            baz # baz-id
+            frob/ # frob-id
+              fringle # fringle-id
+          bar/  # bar-id
+            bing # bing-id
+
+        if given [foo-id] we will include
+            TREE_ROOT as interesting parents
+        and 
+            foo-id, baz-id, frob-id, fringle-id
+        As interesting ids.
+        """
+        interesting = set()
+        # TODO: Pre-pass over the list of fileids to see if anything is already
+        #       deserialized in self._fileid_to_entry_cache
+
+        directories_to_expand = set()
+        children_of_parent_id = {}
+        # It is okay if some of the fileids are missing
+        for entry in self._getitems(file_ids):
+            if entry.kind == 'directory':
+                directories_to_expand.add(entry.file_id)
+            interesting.add(entry.parent_id)
+            children_of_parent_id.setdefault(entry.parent_id, []
+                                             ).append(entry.file_id)
+
+        # Now, interesting has all of the direct parents, but not the
+        # parents of those parents. It also may have some duplicates with
+        # specific_fileids
+        remaining_parents = interesting.difference(file_ids)
+        # When we hit the TREE_ROOT, we'll get an interesting parent of None,
+        # but we don't actually want to recurse into that
+        interesting.add(None) # this will auto-filter it in the loop
+        remaining_parents.discard(None) 
+        while remaining_parents:
+            next_parents = set()
+            for entry in self._getitems(remaining_parents):
+                next_parents.add(entry.parent_id)
+                children_of_parent_id.setdefault(entry.parent_id, []
+                                                 ).append(entry.file_id)
+            # Remove any search tips we've already processed
+            remaining_parents = next_parents.difference(interesting)
+            interesting.update(remaining_parents)
+            # We should probably also .difference(directories_to_expand)
+        interesting.update(file_ids)
+        interesting.discard(None)
+        while directories_to_expand:
+            # Expand directories by looking in the
+            # parent_id_basename_to_file_id map
+            keys = [StaticTuple(f,).intern() for f in directories_to_expand]
+            directories_to_expand = set()
+            items = self.parent_id_basename_to_file_id.iteritems(keys)
+            next_file_ids = set([item[1] for item in items])
+            next_file_ids = next_file_ids.difference(interesting)
+            interesting.update(next_file_ids)
+            for entry in self._getitems(next_file_ids):
+                if entry.kind == 'directory':
+                    directories_to_expand.add(entry.file_id)
+                children_of_parent_id.setdefault(entry.parent_id, []
+                                                 ).append(entry.file_id)
+        return interesting, children_of_parent_id
+
+    def filter(self, specific_fileids):
+        """Get an inventory view filtered against a set of file-ids.
+
+        Children of directories and parents are included.
+
+        The result may or may not reference the underlying inventory
+        so it should be treated as immutable.
+        """
+        (interesting,
+         parent_to_children) = self._expand_fileids_to_parents_and_children(
+                                specific_fileids)
+        # There is some overlap here, but we assume that all interesting items
+        # are in the _fileid_to_entry_cache because we had to read them to
+        # determine if they were a dir we wanted to recurse, or just a file
+        # This should give us all the entries we'll want to add, so start
+        # adding
+        other = Inventory(self.root_id)
+        other.root.revision = self.root.revision
+        other.revision_id = self.revision_id
+        if not interesting or not parent_to_children:
+            # empty filter, or filtering entrys that don't exist
+            # (if even 1 existed, then we would have populated
+            # parent_to_children with at least the tree root.)
+            return other
+        cache = self._fileid_to_entry_cache
+        remaining_children = collections.deque(parent_to_children[self.root_id])
+        while remaining_children:
+            file_id = remaining_children.popleft()
+            ie = cache[file_id]
+            if ie.kind == 'directory':
+                ie = ie.copy() # We create a copy to depopulate the .children attribute
+            # TODO: depending on the uses of 'other' we should probably alwyas
+            #       '.copy()' to prevent someone from mutating other and
+            #       invaliding our internal cache
+            other.add(ie)
+            if file_id in parent_to_children:
+                remaining_children.extend(parent_to_children[file_id])
+        return other
+
     @staticmethod
     def _bytes_to_utf8name_key(bytes):
         """Get the file_id, revision_id key out of bytes."""
@@ -1547,7 +1673,7 @@ class CHKInventory(CommonInventory):
         # to filter out empty names because of non rich-root...
         sections = bytes.split('\n')
         kind, file_id = sections[0].split(': ')
-        return (sections[2], file_id, sections[3])
+        return (sections[2], intern(file_id), intern(sections[3]))
 
     def _bytes_to_entry(self, bytes):
         """Deserialise a serialised entry."""
@@ -1575,7 +1701,8 @@ class CHKInventory(CommonInventory):
             result.reference_revision = sections[4]
         else:
             raise ValueError("Not a serialised entry %r" % bytes)
-        result.revision = sections[3]
+        result.file_id = intern(result.file_id)
+        result.revision = intern(sections[3])
         if result.parent_id == '':
             result.parent_id = None
         self._fileid_to_entry_cache[result.file_id] = result
@@ -1679,7 +1806,7 @@ class CHKInventory(CommonInventory):
                         pass
                 deletes.add(file_id)
             else:
-                new_key = (file_id,)
+                new_key = StaticTuple(file_id,)
                 new_value = result._entry_to_bytes(entry)
                 # Update caches. It's worth doing this whether
                 # we're propagating the old caches or not.
@@ -1688,13 +1815,13 @@ class CHKInventory(CommonInventory):
             if old_path is None:
                 old_key = None
             else:
-                old_key = (file_id,)
+                old_key = StaticTuple(file_id,)
                 if self.id2path(file_id) != old_path:
                     raise errors.InconsistentDelta(old_path, file_id,
                         "Entry was at wrong other path %r." %
                         self.id2path(file_id))
                 altered.add(file_id)
-            id_to_entry_delta.append((old_key, new_key, new_value))
+            id_to_entry_delta.append(StaticTuple(old_key, new_key, new_value))
             if result.parent_id_basename_to_file_id is not None:
                 # parent_id, basename changes
                 if old_path is None:
@@ -1787,12 +1914,18 @@ class CHKInventory(CommonInventory):
                 raise errors.BzrError('Duplicate key in inventory: %r\n%r'
                                       % (key, bytes))
             info[key] = value
-        revision_id = info['revision_id']
-        root_id = info['root_id']
-        search_key_name = info.get('search_key_name', 'plain')
-        parent_id_basename_to_file_id = info.get(
-            'parent_id_basename_to_file_id', None)
+        revision_id = intern(info['revision_id'])
+        root_id = intern(info['root_id'])
+        search_key_name = intern(info.get('search_key_name', 'plain'))
+        parent_id_basename_to_file_id = intern(info.get(
+            'parent_id_basename_to_file_id', None))
+        if not parent_id_basename_to_file_id.startswith('sha1:'):
+            raise ValueError('parent_id_basename_to_file_id should be a sha1'
+                             ' key not %r' % (parent_id_basename_to_file_id,))
         id_to_entry = info['id_to_entry']
+        if not id_to_entry.startswith('sha1:'):
+            raise ValueError('id_to_entry should be a sha1'
+                             ' key not %r' % (id_to_entry,))
 
         result = CHKInventory(search_key_name)
         result.revision_id = revision_id
@@ -1801,12 +1934,13 @@ class CHKInventory(CommonInventory):
                             result._search_key_name)
         if parent_id_basename_to_file_id is not None:
             result.parent_id_basename_to_file_id = chk_map.CHKMap(
-                chk_store, (parent_id_basename_to_file_id,),
+                chk_store, StaticTuple(parent_id_basename_to_file_id,),
                 search_key_func=search_key_func)
         else:
             result.parent_id_basename_to_file_id = None
 
-        result.id_to_entry = chk_map.CHKMap(chk_store, (id_to_entry,),
+        result.id_to_entry = chk_map.CHKMap(chk_store,
+                                            StaticTuple(id_to_entry,),
                                             search_key_func=search_key_func)
         if (result.revision_id,) != expected_revision_id:
             raise ValueError("Mismatched revision id and expected: %r, %r" %
@@ -1834,7 +1968,8 @@ class CHKInventory(CommonInventory):
         id_to_entry_dict = {}
         parent_id_basename_dict = {}
         for path, entry in inventory.iter_entries():
-            id_to_entry_dict[(entry.file_id,)] = entry_to_bytes(entry)
+            key = StaticTuple(entry.file_id,).intern()
+            id_to_entry_dict[key] = entry_to_bytes(entry)
             p_id_key = parent_id_basename_key(entry)
             parent_id_basename_dict[p_id_key] = entry.file_id
 
@@ -1863,7 +1998,7 @@ class CHKInventory(CommonInventory):
             parent_id = entry.parent_id
         else:
             parent_id = ''
-        return parent_id, entry.name.encode('utf8')
+        return StaticTuple(parent_id, entry.name.encode('utf8')).intern()
 
     def __getitem__(self, file_id):
         """map a single file_id -> InventoryEntry."""
@@ -1874,16 +2009,38 @@ class CHKInventory(CommonInventory):
             return result
         try:
             return self._bytes_to_entry(
-                self.id_to_entry.iteritems([(file_id,)]).next()[1])
+                self.id_to_entry.iteritems([StaticTuple(file_id,)]).next()[1])
         except StopIteration:
             # really we're passing an inventory, not a tree...
             raise errors.NoSuchId(self, file_id)
+
+    def _getitems(self, file_ids):
+        """Similar to __getitem__, but lets you query for multiple.
+        
+        The returned order is undefined. And currently if an item doesn't
+        exist, it isn't included in the output.
+        """
+        result = []
+        remaining = []
+        for file_id in file_ids:
+            entry = self._fileid_to_entry_cache.get(file_id, None)
+            if entry is None:
+                remaining.append(file_id)
+            else:
+                result.append(entry)
+        file_keys = [StaticTuple(f,).intern() for f in remaining]
+        for file_key, value in self.id_to_entry.iteritems(file_keys):
+            entry = self._bytes_to_entry(value)
+            result.append(entry)
+            self._fileid_to_entry_cache[entry.file_id] = entry
+        return result
 
     def has_id(self, file_id):
         # Perhaps have an explicit 'contains' method on CHKMap ?
         if self._fileid_to_entry_cache.get(file_id, None) is not None:
             return True
-        return len(list(self.id_to_entry.iteritems([(file_id,)]))) == 1
+        return len(list(
+            self.id_to_entry.iteritems([StaticTuple(file_id,)]))) == 1
 
     def is_root(self, file_id):
         return file_id == self.root_id
@@ -2018,35 +2175,41 @@ class CHKInventory(CommonInventory):
             delta.append((old_path, new_path, file_id, entry))
         return delta
 
-    def path2id(self, name):
+    def path2id(self, relpath):
         """See CommonInventory.path2id()."""
         # TODO: perhaps support negative hits?
-        result = self._path_to_fileid_cache.get(name, None)
+        result = self._path_to_fileid_cache.get(relpath, None)
         if result is not None:
             return result
-        if isinstance(name, basestring):
-            names = osutils.splitpath(name)
+        if isinstance(relpath, basestring):
+            names = osutils.splitpath(relpath)
         else:
-            names = name
+            names = relpath
         current_id = self.root_id
         if current_id is None:
             return None
         parent_id_index = self.parent_id_basename_to_file_id
+        cur_path = None
         for basename in names:
-            # TODO: Cache each path we figure out in this function.
+            if cur_path is None:
+                cur_path = basename
+            else:
+                cur_path = cur_path + '/' + basename
             basename_utf8 = basename.encode('utf8')
-            key_filter = [(current_id, basename_utf8)]
-            file_id = None
-            for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
-                key_filter=key_filter):
-                if parent_id != current_id or name_utf8 != basename_utf8:
-                    raise errors.BzrError("corrupt inventory lookup! "
-                        "%r %r %r %r" % (parent_id, current_id, name_utf8,
-                        basename_utf8))
+            file_id = self._path_to_fileid_cache.get(cur_path, None)
             if file_id is None:
-                return None
+                key_filter = [StaticTuple(current_id, basename_utf8)]
+                items = parent_id_index.iteritems(key_filter)
+                for (parent_id, name_utf8), file_id in items:
+                    if parent_id != current_id or name_utf8 != basename_utf8:
+                        raise errors.BzrError("corrupt inventory lookup! "
+                            "%r %r %r %r" % (parent_id, current_id, name_utf8,
+                            basename_utf8))
+                if file_id is None:
+                    return None
+                else:
+                    self._path_to_fileid_cache[cur_path] = file_id
             current_id = file_id
-        self._path_to_fileid_cache[name] = current_id
         return current_id
 
     def to_lines(self):
@@ -2057,16 +2220,16 @@ class CHKInventory(CommonInventory):
             lines.append('search_key_name: %s\n' % (self._search_key_name,))
             lines.append("root_id: %s\n" % self.root_id)
             lines.append('parent_id_basename_to_file_id: %s\n' %
-                self.parent_id_basename_to_file_id.key())
+                (self.parent_id_basename_to_file_id.key()[0],))
             lines.append("revision_id: %s\n" % self.revision_id)
-            lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
+            lines.append("id_to_entry: %s\n" % (self.id_to_entry.key()[0],))
         else:
             lines.append("revision_id: %s\n" % self.revision_id)
             lines.append("root_id: %s\n" % self.root_id)
             if self.parent_id_basename_to_file_id is not None:
                 lines.append('parent_id_basename_to_file_id: %s\n' %
-                    self.parent_id_basename_to_file_id.key())
-            lines.append("id_to_entry: %s\n" % self.id_to_entry.key())
+                    (self.parent_id_basename_to_file_id.key()[0],))
+            lines.append("id_to_entry: %s\n" % (self.id_to_entry.key()[0],))
         return lines
 
     @property
@@ -2113,8 +2276,8 @@ class CHKInventoryDirectory(InventoryDirectory):
         parent_id_index = self._chk_inventory.parent_id_basename_to_file_id
         child_keys = set()
         for (parent_id, name_utf8), file_id in parent_id_index.iteritems(
-            key_filter=[(self.file_id,)]):
-            child_keys.add((file_id,))
+            key_filter=[StaticTuple(self.file_id,)]):
+            child_keys.add(StaticTuple(file_id,))
         cached = set()
         for file_id_key in child_keys:
             entry = self._chk_inventory._fileid_to_entry_cache.get(
@@ -2153,7 +2316,7 @@ def make_entry(kind, name, parent_id, file_id=None):
     try:
         factory = entry_factory[kind]
     except KeyError:
-        raise BzrError("unknown kind %r" % kind)
+        raise errors.BadFileKindError(name, kind)
     return factory(file_id, name, parent_id)
 
 

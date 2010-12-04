@@ -88,7 +88,7 @@ to define several (``user, realm, password``) for a given ``host``. So what is
 really needed is (``user``, ``password``, ``host``, ``path``). The ``realm``
 can be ignored [#ignored_realm]_ as long as it is still presented to the user
 when prompting for the password (unless someone found a way to declare two
-different realms for the same path). 
+different realms for the same path).
 
 ``HTTP proxy`` can be handled as ``HTTP`` (or ``HTTPS``) by explicitly
 specifying the appropriate port.
@@ -260,7 +260,7 @@ The use cases described below use the file format defined above.
         host=r.hobby.net
         user=jim
         password=obvious1234
-        
+
         # Home server
         [home]
         scheme=https
@@ -269,11 +269,11 @@ The use cases described below use the file format defined above.
         password='c2VjcmV0LXBhc3M='
         password_encoding=base64
         verify_certificates=no # Still searching a free certificate provider
-        
+
         [DEFAULT]
         # Our local user is barbaz, on all remote sites we're known as foobar
         user=foobar
-        
+
   * an HTTP server and a proxy::
 
         # development branches on dev server
@@ -283,7 +283,7 @@ The use cases described below use the file format defined above.
         path=/dev
         user=user1
         password=pass1
-        
+
         # toy branches
         [localhost]
         scheme=http
@@ -291,7 +291,7 @@ The use cases described below use the file format defined above.
         path=/
         user=user2
         password=pass2
-        
+
         # proxy
         [proxy]
         scheme=http

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,11 +21,14 @@
 import os
 import re
 
-import bzrlib
-from bzrlib import workingtree
-from bzrlib.branch import Branch
-from bzrlib.tests import TestSkipped
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib import (
+    tests,
+    workingtree,
+    )
+from bzrlib.diff import (
+    DiffTree,
+    format_registry as diff_format_registry,
+    )
 
 
 def subst_dates(string):
@@ -34,7 +37,7 @@ def subst_dates(string):
                   'YYYY-MM-DD HH:MM:SS +ZZZZ', string)
 
 
-class DiffBase(ExternalBase):
+class DiffBase(tests.TestCaseWithTransport):
     """Base class with common setup method"""
 
     def make_example_branch(self):
@@ -132,6 +135,10 @@ class TestDiff(DiffBase):
     def test_diff_illegal_revision_specifiers(self):
         out, err = self.run_bzr('diff -r 1..23..123', retcode=3,
             error_regexes=('one or two revision specifiers',))
+
+    def test_diff_using_and_format(self):
+        out, err = self.run_bzr('diff --format=default --using=mydi', retcode=3,
+            error_regexes=('are mutually exclusive',))
 
     def test_diff_nonexistent_revision(self):
         out, err = self.run_bzr('diff -r 123', retcode=3,
@@ -298,6 +305,22 @@ class TestDiff(DiffBase):
         output = self.run_bzr('diff -r 1.. branch1', retcode=1)
         self.assertContainsRe(output[0], '\n\\-original line\n\\+repo line\n')
 
+    def test_custom_format(self):
+        class BooDiffTree(DiffTree):
+
+            def show_diff(self, specific_files, extra_trees=None):
+                self.to_file.write("BOO!\n")
+                return super(BooDiffTree, self).show_diff(specific_files,
+                    extra_trees)
+
+        diff_format_registry.register("boo", BooDiffTree, 
+            "Scary diff format")
+        self.addCleanup(diff_format_registry.remove, "boo")
+        self.make_example_branch()
+        self.build_tree_contents([('hello', 'hello world!\n')])
+        output = self.run_bzr('diff --format=boo', retcode=1)
+        self.assertTrue("BOO!" in output[0])
+
 
 class TestCheckoutDiff(TestDiff):
 
@@ -355,6 +378,7 @@ class TestExternalDiff(DiffBase):
 
     def test_external_diff(self):
         """Test that we can spawn an external diff process"""
+        self.disable_missing_extensions_warning()
         # We have to use run_bzr_subprocess, because we need to
         # test writing directly to stdout, (there was a bug in
         # subprocess.py that we had to workaround).
@@ -366,7 +390,7 @@ class TestExternalDiff(DiffBase):
                                            universal_newlines=True,
                                            retcode=None)
         if 'Diff is not installed on this machine' in err:
-            raise TestSkipped("No external 'diff' is available")
+            raise tests.TestSkipped("No external 'diff' is available")
         self.assertEqual('', err)
         # We have to skip the stuff in the middle, because it depends
         # on time.time()

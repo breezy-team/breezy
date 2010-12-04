@@ -10,48 +10,105 @@ import thread
 import threading
 from _lsprof import Profiler, profiler_entry
 
+from bzrlib import errors
 
 __all__ = ['profile', 'Stats']
-
-_g_threadmap = {}
-
-
-def _thread_profile(f, *args, **kwds):
-    # we lose the first profile point for a new thread in order to trampoline
-    # a new Profile object into place
-    global _g_threadmap
-    thr = thread.get_ident()
-    _g_threadmap[thr] = p = Profiler()
-    # this overrides our sys.setprofile hook:
-    p.enable(subcalls=True, builtins=True)
-
 
 def profile(f, *args, **kwds):
     """Run a function profile.
 
     Exceptions are not caught: If you need stats even when exceptions are to be
-    raised, passing in a closure that will catch the exceptions and transform
-    them appropriately for your driver function.
+    raised, pass in a closure that will catch the exceptions and transform them
+    appropriately for your driver function.
+
+    Important caveat: only one profile can execute at a time. See BzrProfiler
+    for details.
 
     :return: The functions return value and a stats object.
     """
-    global _g_threadmap
-    p = Profiler()
-    p.enable(subcalls=True)
-    threading.setprofile(_thread_profile)
+    profiler = BzrProfiler()
+    profiler.start()
     try:
         ret = f(*args, **kwds)
     finally:
-        p.disable()
-        for pp in _g_threadmap.values():
-            pp.disable()
-        threading.setprofile(None)
+        stats = profiler.stop()
+    return ret, stats
 
-    threads = {}
-    for tid, pp in _g_threadmap.items():
-        threads[tid] = Stats(pp.getstats(), {})
-    _g_threadmap = {}
-    return ret, Stats(p.getstats(), threads)
+
+class BzrProfiler(object):
+    """Bzr utility wrapper around Profiler.
+    
+    For most uses the module level 'profile()' function will be suitable.
+    However profiling when a simple wrapped function isn't available may
+    be easier to accomplish using this class.
+
+    To use it, create a BzrProfiler and call start() on it. Some arbitrary
+    time later call stop() to stop profiling and retrieve the statistics
+    from the code executed in the interim.
+
+    Note that profiling involves a threading.Lock around the actual profiling.
+    This is needed because profiling involves global manipulation of the python
+    interpreter state. As such you cannot perform multiple profiles at once.
+    Trying to do so will lock out the second profiler unless the global 
+    bzrlib.lsprof.BzrProfiler.profiler_block is set to 0. Setting it to 0 will
+    cause profiling to fail rather than blocking.
+    """
+
+    profiler_block = 1
+    """Serialise rather than failing to profile concurrent profile requests."""
+
+    profiler_lock = threading.Lock()
+    """Global lock used to serialise profiles."""
+
+    def start(self):
+        """Start profiling.
+        
+        This hooks into threading and will record all calls made until
+        stop() is called.
+        """
+        self._g_threadmap = {}
+        self.p = Profiler()
+        permitted = self.__class__.profiler_lock.acquire(
+            self.__class__.profiler_block)
+        if not permitted:
+            raise errors.InternalBzrError(msg="Already profiling something")
+        try:
+            self.p.enable(subcalls=True)
+            threading.setprofile(self._thread_profile)
+        except:
+            self.__class__.profiler_lock.release()
+            raise
+
+    def stop(self):
+        """Stop profiling.
+
+        This unhooks from threading and cleans up the profiler, returning
+        the gathered Stats object.
+
+        :return: A bzrlib.lsprof.Stats object.
+        """
+        try:
+            self.p.disable()
+            for pp in self._g_threadmap.values():
+                pp.disable()
+            threading.setprofile(None)
+            p = self.p
+            self.p = None
+            threads = {}
+            for tid, pp in self._g_threadmap.items():
+                threads[tid] = Stats(pp.getstats(), {})
+            self._g_threadmap = None
+            return Stats(p.getstats(), threads)
+        finally:
+            self.__class__.profiler_lock.release()
+
+    def _thread_profile(self, f, *args, **kwds):
+        # we lose the first profile point for a new thread in order to
+        # trampoline a new Profile object into place
+        thr = thread.get_ident()
+        self._g_threadmap[thr] = p = Profiler()
+        # this overrides our sys.setprofile hook:
+        p.enable(subcalls=True, builtins=True)
 
 
 class Stats(object):

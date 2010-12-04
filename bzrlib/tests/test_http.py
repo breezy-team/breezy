@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     )
 from bzrlib.tests import (
+    features,
     http_server,
     http_utils,
     )
@@ -61,11 +62,8 @@ from bzrlib.transport.http import (
     )
 
 
-try:
+if features.pycurl.available():
     from bzrlib.transport.http._pycurl import PyCurlTransport
-    pycurl_present = True
-except errors.DependencyNotPresent:
-    pycurl_present = False
 
 
 def load_tests(standard_tests, module, loader):
@@ -84,12 +82,24 @@ def load_tests(standard_tests, module, loader):
                         _server=http_server.HttpServer_urllib,
                         _qualified_prefix='http+urllib',)),
         ]
-    if pycurl_present:
+    if features.pycurl.available():
         transport_scenarios.append(
             ('pycurl', dict(_transport=PyCurlTransport,
                             _server=http_server.HttpServer_PyCurl,
                             _qualified_prefix='http+pycurl',)))
     tests.multiply_tests(t_tests, transport_scenarios, result)
+
+    protocol_scenarios = [
+            ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
+            ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
+            ]
+
+    # some tests are parametrized by the protocol version only
+    p_tests, remaining_tests = tests.split_suite_by_condition(
+        remaining_tests, tests.condition_isinstance((
+                TestAuthOnRedirected,
+                )))
+    tests.multiply_tests(p_tests, protocol_scenarios, result)
 
     # each implementation tested with each HTTP version
     tp_tests, remaining_tests = tests.split_suite_by_condition(
@@ -105,10 +115,6 @@ def load_tests(standard_tests, module, loader):
                 TestRanges,
                 TestSpecificRequestHandler,
                 )))
-    protocol_scenarios = [
-            ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
-            ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
-            ]
     tp_scenarios = tests.multiply_scenarios(transport_scenarios,
                                             protocol_scenarios)
     tests.multiply_tests(tp_tests, tp_scenarios, result)
@@ -156,7 +162,7 @@ def load_tests(standard_tests, module, loader):
         activity_scenarios.append(
             ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
                                   _transport=_urllib.HttpTransport_urllib,)),)
-    if pycurl_present:
+    if features.pycurl.available():
         activity_scenarios.append(
             ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
                                  _transport=PyCurlTransport,)),)
@@ -204,7 +210,7 @@ class RecordingServer(object):
     It records the bytes sent to it, and replies with a 200.
     """
 
-    def __init__(self, expect_body_tail=None):
+    def __init__(self, expect_body_tail=None, scheme=''):
         """Constructor.
 
         :type expect_body_tail: str
@@ -215,8 +221,12 @@ class RecordingServer(object):
         self.host = None
         self.port = None
         self.received_bytes = ''
+        self.scheme = scheme
 
-    def setUp(self):
+    def get_url(self):
+        return '%s://%s:%s/' % (self.scheme, self.host, self.port)
+
+    def start_server(self):
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._sock.bind(('127.0.0.1', 0))
         self.host, self.port = self._sock.getsockname()
@@ -245,7 +255,7 @@ class RecordingServer(object):
             # The client may have already closed the socket.
             pass
 
-    def tearDown(self):
+    def stop_server(self):
         try:
             self._sock.close()
         except socket.error:
@@ -265,19 +275,19 @@ class TestAuthHeader(tests.TestCase):
 
     def test_empty_header(self):
         scheme, remainder = self.parse_header('')
-        self.assertEquals('', scheme)
+        self.assertEqual('', scheme)
         self.assertIs(None, remainder)
 
     def test_negotiate_header(self):
         scheme, remainder = self.parse_header('Negotiate')
-        self.assertEquals('negotiate', scheme)
+        self.assertEqual('negotiate', scheme)
         self.assertIs(None, remainder)
 
     def test_basic_header(self):
         scheme, remainder = self.parse_header(
             'Basic realm="Thou should not pass"')
-        self.assertEquals('basic', scheme)
-        self.assertEquals('realm="Thou should not pass"', remainder)
+        self.assertEqual('basic', scheme)
+        self.assertEqual('realm="Thou should not pass"', remainder)
 
     def test_basic_extract_realm(self):
         scheme, remainder = self.parse_header(
@@ -285,13 +295,13 @@ class TestAuthHeader(tests.TestCase):
             _urllib2_wrappers.BasicAuthHandler)
         match, realm = self.auth_handler.extract_realm(remainder)
         self.assertTrue(match is not None)
-        self.assertEquals('Thou should not pass', realm)
+        self.assertEqual('Thou should not pass', realm)
 
     def test_digest_header(self):
         scheme, remainder = self.parse_header(
             'Digest realm="Thou should not pass"')
-        self.assertEquals('digest', scheme)
-        self.assertEquals('realm="Thou should not pass"', remainder)
+        self.assertEqual('digest', scheme)
+        self.assertEqual('realm="Thou should not pass"', remainder)
 
 
 class TestHTTPServer(tests.TestCase):
@@ -304,24 +314,26 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(BogusRequestHandler)
         try:
-            self.assertRaises(httplib.UnknownProtocol,server.setUp)
+            self.assertRaises(httplib.UnknownProtocol, server.start_server)
         except:
-            server.tearDown()
+            server.stop_server()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
 
     def test_force_invalid_protocol(self):
         server = http_server.HttpServer(protocol_version='HTTP/0.1')
         try:
-            self.assertRaises(httplib.UnknownProtocol,server.setUp)
+            self.assertRaises(httplib.UnknownProtocol, server.start_server)
         except:
-            server.tearDown()
+            server.stop_server()
             self.fail('HTTP Server creation did not raise UnknownProtocol')
 
     def test_server_start_and_stop(self):
         server = http_server.HttpServer()
-        server.setUp()
-        self.assertTrue(server._http_running)
-        server.tearDown()
+        server.start_server()
+        try:
+            self.assertTrue(server._http_running)
+        finally:
+            server.stop_server()
         self.assertFalse(server._http_running)
 
     def test_create_http_server_one_zero(self):
@@ -330,8 +342,7 @@ class TestHTTPServer(tests.TestCase):
             protocol_version = 'HTTP/1.0'
 
         server = http_server.HttpServer(RequestHandlerOneZero)
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd, http_server.TestingHTTPServer)
 
     def test_create_http_server_one_one(self):
@@ -340,8 +351,7 @@ class TestHTTPServer(tests.TestCase):
             protocol_version = 'HTTP/1.1'
 
         server = http_server.HttpServer(RequestHandlerOneOne)
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd,
                               http_server.TestingThreadingHTTPServer)
 
@@ -352,8 +362,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneZero,
                                         protocol_version='HTTP/1.1')
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd,
                               http_server.TestingThreadingHTTPServer)
 
@@ -364,8 +373,7 @@ class TestHTTPServer(tests.TestCase):
 
         server = http_server.HttpServer(RequestHandlerOneOne,
                                         protocol_version='HTTP/1.0')
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        self.start_server(server)
         self.assertIsInstance(server._httpd,
                               http_server.TestingHTTPServer)
 
@@ -374,11 +382,8 @@ class TestWithTransport_pycurl(object):
     """Test case to inherit from if pycurl is present"""
 
     def _get_pycurl_maybe(self):
-        try:
-            from bzrlib.transport.http._pycurl import PyCurlTransport
-            return PyCurlTransport
-        except errors.DependencyNotPresent:
-            raise tests.TestSkipped('pycurl not present')
+        self.requireFeature(features.pycurl)
+        return PyCurlTransport
 
     _transport = property(_get_pycurl_maybe)
 
@@ -391,14 +396,14 @@ class TestHttpUrls(tests.TestCase):
     def test_url_parsing(self):
         f = FakeManager()
         url = http.extract_auth('http://example.com', f)
-        self.assertEquals('http://example.com', url)
-        self.assertEquals(0, len(f.credentials))
+        self.assertEqual('http://example.com', url)
+        self.assertEqual(0, len(f.credentials))
         url = http.extract_auth(
-            'http://user:pass@www.bazaar-vcs.org/bzr/bzr.dev', f)
-        self.assertEquals('http://www.bazaar-vcs.org/bzr/bzr.dev', url)
-        self.assertEquals(1, len(f.credentials))
-        self.assertEquals([None, 'www.bazaar-vcs.org', 'user', 'pass'],
-                          f.credentials[0])
+            'http://user:pass@example.com/bzr/bzr.dev', f)
+        self.assertEqual('http://example.com/bzr/bzr.dev', url)
+        self.assertEqual(1, len(f.credentials))
+        self.assertEqual([None, 'example.com', 'user', 'pass'],
+                         f.credentials[0])
 
 
 class TestHttpTransportUrls(tests.TestCase):
@@ -431,12 +436,12 @@ class TestHttpTransportUrls(tests.TestCase):
     def test_http_impl_urls(self):
         """There are servers which ask for particular clients to connect"""
         server = self._server()
+        server.start_server()
         try:
-            server.setUp()
             url = server.get_url()
             self.assertTrue(url.startswith('%s://' % self._qualified_prefix))
         finally:
-            server.tearDown()
+            server.stop_server()
 
 
 class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
@@ -451,34 +456,28 @@ class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
         https by supplying a fake version_info that do not
         support it.
         """
-        try:
-            import pycurl
-        except ImportError:
-            raise tests.TestSkipped('pycurl not present')
+        self.requireFeature(features.pycurl)
+        # Import the module locally now that we now it's available.
+        pycurl = features.pycurl.module
 
-        version_info_orig = pycurl.version_info
-        try:
-            # Now that we have pycurl imported, we can fake its version_info
-            # This was taken from a windows pycurl without SSL
-            # (thanks to bialix)
-            pycurl.version_info = lambda : (2,
-                                            '7.13.2',
-                                            462082,
-                                            'i386-pc-win32',
-                                            2576,
-                                            None,
-                                            0,
-                                            None,
-                                            ('ftp', 'gopher', 'telnet',
-                                             'dict', 'ldap', 'http', 'file'),
-                                            None,
-                                            0,
-                                            None)
-            self.assertRaises(errors.DependencyNotPresent, self._transport,
-                              'https://launchpad.net')
-        finally:
-            # Restore the right function
-            pycurl.version_info = version_info_orig
+        self.overrideAttr(pycurl, 'version_info',
+                          # Fake the pycurl version_info This was taken from
+                          # a windows pycurl without SSL (thanks to bialix)
+                          lambda : (2,
+                                    '7.13.2',
+                                    462082,
+                                    'i386-pc-win32',
+                                    2576,
+                                    None,
+                                    0,
+                                    None,
+                                    ('ftp', 'gopher', 'telnet',
+                                     'dict', 'ldap', 'http', 'file'),
+                                    None,
+                                    0,
+                                    None))
+        self.assertRaises(errors.DependencyNotPresent, self._transport,
+                          'https://launchpad.net')
 
 
 class TestHTTPConnections(http_utils.TestCaseWithWebserver):
@@ -543,11 +542,10 @@ class TestHttpTransportRegistration(tests.TestCase):
 class TestPost(tests.TestCase):
 
     def test_post_body_is_received(self):
-        server = RecordingServer(expect_body_tail='end-of-body')
-        server.setUp()
-        self.addCleanup(server.tearDown)
-        scheme = self._qualified_prefix
-        url = '%s://%s:%s/' % (scheme, server.host, server.port)
+        server = RecordingServer(expect_body_tail='end-of-body',
+            scheme=self._qualified_prefix)
+        self.start_server(server)
+        url = server.get_url()
         http_transport = self._transport(url)
         code, response = http_transport._post('abc def end-of-body')
         self.assertTrue(
@@ -602,7 +600,9 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
                                       protocol_version=self._protocol_version)
 
     def _testing_pycurl(self):
-        return pycurl_present and self._transport == PyCurlTransport
+        # TODO: This is duplicated for lots of the classes in this file
+        return (features.pycurl.available()
+                and self._transport == PyCurlTransport)
 
 
 class WallRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -717,7 +717,7 @@ class TestBadProtocolServer(TestSpecificRequestHandler):
     _req_handler_class = BadProtocolRequestHandler
 
     def setUp(self):
-        if pycurl_present and self._transport == PyCurlTransport:
+        if self._testing_pycurl():
             raise tests.TestNotApplicable(
                 "pycurl doesn't check the protocol version")
         super(TestBadProtocolServer, self).setUp()
@@ -767,21 +767,20 @@ class TestRecordingServer(tests.TestCase):
         self.assertEqual(None, server.host)
         self.assertEqual(None, server.port)
 
-    def test_setUp_and_tearDown(self):
+    def test_setUp_and_stop(self):
         server = RecordingServer(expect_body_tail=None)
-        server.setUp()
+        server.start_server()
         try:
             self.assertNotEqual(None, server.host)
             self.assertNotEqual(None, server.port)
         finally:
-            server.tearDown()
+            server.stop_server()
         self.assertEqual(None, server.host)
         self.assertEqual(None, server.port)
 
     def test_send_receive_bytes(self):
-        server = RecordingServer(expect_body_tail='c')
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        server = RecordingServer(expect_body_tail='c', scheme='http')
+        self.start_server(server)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.connect((server.host, server.port))
         sock.sendall('abc')
@@ -1178,7 +1177,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         if self._testing_pycurl():
             # Oh my ! pycurl does not check for the port as part of
             # no_proxy :-( So we just test the host part
-            self.no_proxy_host = 'localhost'
+            self.no_proxy_host = self.server.host
         else:
             self.no_proxy_host = self.proxy_address
         # The secondary server is the proxy
@@ -1187,7 +1186,9 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
         self._old_env = {}
 
     def _testing_pycurl(self):
-        return pycurl_present and self._transport == PyCurlTransport
+        # TODO: This is duplicated for lots of the classes in this file
+        return (features.pycurl.available()
+                and self._transport == PyCurlTransport)
 
     def create_transport_secondary_server(self):
         """Creates an http server that will serve files with
@@ -1366,6 +1367,10 @@ class RedirectedRequest(_urllib2_wrappers.Request):
         self.follow_redirections = True
 
 
+def install_redirected_request(test):
+    test.overrideAttr(_urllib2_wrappers, 'Request', RedirectedRequest)
+
+
 class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test redirections.
 
@@ -1381,12 +1386,12 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """
 
     def setUp(self):
-        if pycurl_present and self._transport == PyCurlTransport:
+        if (features.pycurl.available()
+            and self._transport == PyCurlTransport):
             raise tests.TestNotApplicable(
                 "pycurl doesn't redirect silently annymore")
         super(TestHTTPSilentRedirections, self).setUp()
-        self.setup_redirected_request()
-        self.addCleanup(self.cleanup_redirected_request)
+        install_redirected_request(self)
         self.build_tree_contents([('a','a'),
                                   ('1/',),
                                   ('1/a', 'redirected once'),
@@ -1402,13 +1407,6 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
         self.old_transport = self._transport(self.old_server.get_url())
 
-    def setup_redirected_request(self):
-        self.original_class = _urllib2_wrappers.Request
-        _urllib2_wrappers.Request = RedirectedRequest
-
-    def cleanup_redirected_request(self):
-        _urllib2_wrappers.Request = self.original_class
-
     def create_transport_secondary_server(self):
         """Create the secondary server, redirections are defined in the tests"""
         return http_utils.HTTPServerRedirecting(
@@ -1418,18 +1416,16 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
         t = self.old_transport
 
         req = RedirectedRequest('GET', t.abspath('a'))
-        req.follow_redirections = True
         new_prefix = 'http://%s:%s' % (self.new_server.host,
                                        self.new_server.port)
         self.old_server.redirections = \
             [('(.*)', r'%s/1\1' % (new_prefix), 301),]
-        self.assertEquals('redirected once',t._perform(req).read())
+        self.assertEqual('redirected once',t._perform(req).read())
 
     def test_five_redirections(self):
         t = self.old_transport
 
         req = RedirectedRequest('GET', t.abspath('a'))
-        req.follow_redirections = True
         old_prefix = 'http://%s:%s' % (self.old_server.host,
                                        self.old_server.port)
         new_prefix = 'http://%s:%s' % (self.new_server.host,
@@ -1441,7 +1437,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
             ('/4(.*)', r'%s/5\1' % (new_prefix), 301),
             ('(/[^/]+)', r'%s/1\1' % (old_prefix), 301),
             ]
-        self.assertEquals('redirected 5 times',t._perform(req).read())
+        self.assertEqual('redirected 5 times',t._perform(req).read())
 
 
 class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
@@ -1460,8 +1456,8 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
         t = self._transport(self.new_server.get_url())
 
         # We use None for redirected so that we fail if redirected
-        self.assertEquals('0123456789',
-                          transport.do_catching_redirections(
+        self.assertEqual('0123456789',
+                         transport.do_catching_redirections(
                 self.get_a, t, None).read())
 
     def test_one_redirection(self):
@@ -1472,10 +1468,10 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
             dir, file = urlutils.split(exception.target)
             return self._transport(dir)
 
-        self.assertEquals('0123456789',
-                          transport.do_catching_redirections(
+        self.assertEqual('0123456789',
+                         transport.do_catching_redirections(
                 self.get_a, self.old_transport, redirected).read())
-        self.assertEquals(1, self.redirections)
+        self.assertEqual(1, self.redirections)
 
     def test_redirection_loop(self):
 
@@ -1509,7 +1505,9 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         return self._auth_server(protocol_version=self._protocol_version)
 
     def _testing_pycurl(self):
-        return pycurl_present and self._transport == PyCurlTransport
+        # TODO: This is duplicated for lots of the classes in this file
+        return (features.pycurl.available()
+                and self._transport == PyCurlTransport)
 
     def get_user_url(self, user, password):
         """Build an url embedding user and password"""
@@ -1580,8 +1578,8 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual('', ui.ui_factory.stdin.readline())
         stderr.seek(0)
         expected_prompt = self._expected_username_prompt(t._unqualified_scheme)
-        self.assertEquals(expected_prompt, stderr.read(len(expected_prompt)))
-        self.assertEquals('', stdout.getvalue())
+        self.assertEqual(expected_prompt, stderr.read(len(expected_prompt)))
+        self.assertEqual('', stdout.getvalue())
         self._check_password_prompt(t._unqualified_scheme, 'joe',
                                     stderr.readline())
 
@@ -1602,7 +1600,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.assertEqual('', ui.ui_factory.stdin.readline())
         self._check_password_prompt(t._unqualified_scheme, 'joe',
                                     stderr.getvalue())
-        self.assertEquals('', stdout.getvalue())
+        self.assertEqual('', stdout.getvalue())
         # And we shouldn't prompt again for a different request
         # against the same transport.
         self.assertEqual('contents of b\n',t.get('b').read())
@@ -1618,7 +1616,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
                               % (scheme.upper(),
                                  user, self.server.host, self.server.port,
                                  self.server.auth_realm)))
-        self.assertEquals(expected_prompt, actual_prompt)
+        self.assertEqual(expected_prompt, actual_prompt)
 
     def _expected_username_prompt(self, scheme):
         return (self._username_prompt_prefix
@@ -1638,7 +1636,7 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         self.server.add_user(user, password)
         t = self.get_user_transport(user, None)
         ui.ui_factory = tests.TestUIFactory(stdin=stdin_content,
-                                            stdout=tests.StringIOWrapper())
+                                            stderr=tests.StringIOWrapper())
         # Create a minimal config file with the right password
         conf = config.AuthenticationConfig()
         conf._get_config().update(
@@ -1856,7 +1854,7 @@ class Test_redirected_to(tests.TestCase):
                              'http://www.example.com/foo/subdir')
         self.assertIsInstance(r, type(t))
         # Both transports share the some connection
-        self.assertEquals(t._get_connection(), r._get_connection())
+        self.assertEqual(t._get_connection(), r._get_connection())
 
     def test_redirected_to_self_with_slash(self):
         t = self._transport('http://www.example.com/foo')
@@ -1866,7 +1864,7 @@ class Test_redirected_to(tests.TestCase):
         # Both transports share the some connection (one can argue that we
         # should return the exact same transport here, but that seems
         # overkill).
-        self.assertEquals(t._get_connection(), r._get_connection())
+        self.assertEqual(t._get_connection(), r._get_connection())
 
     def test_redirected_to_host(self):
         t = self._transport('http://www.example.com/foo')
@@ -1891,7 +1889,7 @@ class Test_redirected_to(tests.TestCase):
         r = t._redirected_to('http://www.example.com/foo',
                              'https://foo.example.com/foo')
         self.assertIsInstance(r, type(t))
-        self.assertEquals(t._user, r._user)
+        self.assertEqual(t._user, r._user)
 
 
 class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
@@ -1956,7 +1954,7 @@ if tests.HTTPSServerFeature.available():
         pass
 
 
-class TestActivity(tests.TestCase):
+class TestActivityMixin(object):
     """Test socket activity reporting.
 
     We use a special purpose server to control the bytes sent and received and
@@ -1966,7 +1964,7 @@ class TestActivity(tests.TestCase):
     def setUp(self):
         tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
-        self.server.setUp()
+        self.server.start_server()
         self.activities = {}
         def report_activity(t, bytes, direction):
             count = self.activities.get(direction, 0)
@@ -1981,7 +1979,7 @@ class TestActivity(tests.TestCase):
 
     def tearDown(self):
         self._transport._report_activity = self.orig_report_activity
-        self.server.tearDown()
+        self.server.stop_server()
         tests.TestCase.tearDown(self)
 
     def get_transport(self):
@@ -2100,3 +2098,136 @@ lalala whatever as long as itsssss
         code, f = t._post('abc def end-of-body\n')
         self.assertEqual('lalala whatever as long as itsssss\n', f.read())
         self.assertActivitiesMatch()
+
+
+class TestActivity(tests.TestCase, TestActivityMixin):
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        self.server = self._activity_server(self._protocol_version)
+        self.server.start_server()
+        self.activities = {}
+        def report_activity(t, bytes, direction):
+            count = self.activities.get(direction, 0)
+            count += bytes
+            self.activities[direction] = count
+
+        # We override at class level because constructors may propagate the
+        # bound method and render instance overriding ineffective (an
+        # alternative would be to define a specific ui factory instead...)
+        self.orig_report_activity = self._transport._report_activity
+        self._transport._report_activity = report_activity
+
+    def tearDown(self):
+        self._transport._report_activity = self.orig_report_activity
+        self.server.stop_server()
+        tests.TestCase.tearDown(self)
+
+
+class TestNoReportActivity(tests.TestCase, TestActivityMixin):
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        # Unlike TestActivity, we are really testing ReportingFileSocket and
+        # ReportingSocket, so we don't need all the parametrization. Since
+        # ReportingFileSocket and ReportingSocket are wrappers, it's easier to
+        # test them through their use by the transport than directly (that's a
+        # bit less clean but far more simpler and effective).
+        self.server = ActivityHTTPServer('HTTP/1.1')
+        self._transport=_urllib.HttpTransport_urllib
+
+        self.server.start_server()
+
+        # We override at class level because constructors may propagate the
+        # bound method and render instance overriding ineffective (an
+        # alternative would be to define a specific ui factory instead...)
+        self.orig_report_activity = self._transport._report_activity
+        self._transport._report_activity = None
+
+    def tearDown(self):
+        self._transport._report_activity = self.orig_report_activity
+        self.server.stop_server()
+        tests.TestCase.tearDown(self)
+
+    def assertActivitiesMatch(self):
+        # Nothing to check here
+        pass
+
+
+class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
+    """Test authentication on the redirected http server."""
+
+    _auth_header = 'Authorization'
+    _password_prompt_prefix = ''
+    _username_prompt_prefix = ''
+    _auth_server = http_utils.HTTPBasicAuthServer
+    _transport = _urllib.HttpTransport_urllib
+
+    def create_transport_readonly_server(self):
+        return self._auth_server(protocol_version=self._protocol_version)
+
+    def create_transport_secondary_server(self):
+        """Create the secondary server redirecting to the primary server"""
+        new = self.get_readonly_server()
+
+        redirecting = http_utils.HTTPServerRedirecting(
+            protocol_version=self._protocol_version)
+        redirecting.redirect_to(new.host, new.port)
+        return redirecting
+
+    def setUp(self):
+        super(TestAuthOnRedirected, self).setUp()
+        self.build_tree_contents([('a','a'),
+                                  ('1/',),
+                                  ('1/a', 'redirected once'),
+                                  ],)
+        new_prefix = 'http://%s:%s' % (self.new_server.host,
+                                       self.new_server.port)
+        self.old_server.redirections = [
+            ('(.*)', r'%s/1\1' % (new_prefix), 301),]
+        self.old_transport = self._transport(self.old_server.get_url())
+        self.new_server.add_user('joe', 'foo')
+
+    def get_a(self, transport):
+        return transport.get('a')
+
+    def test_auth_on_redirected_via_do_catching_redirections(self):
+        self.redirections = 0
+
+        def redirected(transport, exception, redirection_notice):
+            self.redirections += 1
+            dir, file = urlutils.split(exception.target)
+            return self._transport(dir)
+
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
+                                            stdout=stdout, stderr=stderr)
+        self.assertEqual('redirected once',
+                         transport.do_catching_redirections(
+                self.get_a, self.old_transport, redirected).read())
+        self.assertEqual(1, self.redirections)
+        # stdin should be empty
+        self.assertEqual('', ui.ui_factory.stdin.readline())
+        # stdout should be empty, stderr will contains the prompts
+        self.assertEqual('', stdout.getvalue())
+
+    def test_auth_on_redirected_via_following_redirections(self):
+        self.new_server.add_user('joe', 'foo')
+        stdout = tests.StringIOWrapper()
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stdin='joe\nfoo\n',
+                                            stdout=stdout, stderr=stderr)
+        t = self.old_transport
+        req = RedirectedRequest('GET', t.abspath('a'))
+        new_prefix = 'http://%s:%s' % (self.new_server.host,
+                                       self.new_server.port)
+        self.old_server.redirections = [
+            ('(.*)', r'%s/1\1' % (new_prefix), 301),]
+        self.assertEqual('redirected once',t._perform(req).read())
+        # stdin should be empty
+        self.assertEqual('', ui.ui_factory.stdin.readline())
+        # stdout should be empty, stderr will contains the prompts
+        self.assertEqual('', stdout.getvalue())
+
+

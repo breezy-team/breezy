@@ -392,6 +392,14 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
             try:
                 if shape.root.revision is None:
                     shape.root.revision = revid
+                # Create the text records for this inventory.
+                for path, ie in shape.iter_entries():
+                    if ie.text_size:
+                        lines = ['a' * ie.text_size]
+                    else:
+                        lines = []
+                    tree.branch.repository.texts.add_lines(
+                        (ie.file_id, ie.revision), [], lines)
                 sha1 = tree.branch.repository.add_inventory(revid, shape, [])
                 rev = Revision(timestamp=0,
                                timezone=None,
@@ -400,11 +408,10 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                                inventory_sha1=sha1,
                                revision_id=revid)
                 tree.branch.repository.add_revision(revid, rev)
+                tree.branch.repository.commit_write_group()
             except:
                 tree.branch.repository.abort_write_group()
                 raise
-            else:
-                tree.branch.repository.commit_write_group()
         finally:
             tree.unlock()
 

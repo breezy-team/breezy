@@ -1,0 +1,164 @@
+Advanced Topics
+===============
+
+System Monitoring
+-----------------
+
+Capacity Planning Tips
+----------------------
+
+Clustering
+----------
+
+Multi-site Setups
+-----------------
+
+The "distributed" in distributed version control system should indicate that
+Bazaar is  well suited for multi-site development situations and indeed, that
+is the case.  The advantage comes from the ease and transparency of managing
+merges between branches with divergent history.  Note that there are many,
+many different ways to manage widely-flung development setups using Bazaar and
+its branching and merging capabilities.  These can be discovered and tested
+before being implemented as policy.  We will describe one such possible setup
+here.
+
+Consider ProjectX Corp's international expansion with a new branch office in
+Darwin, Australia, in addition to the company's headquarters in Austin, Texas,
+USA.  One of the difficulties of a far-flung multi-site development
+environment such as this is that the network connection between Australia and
+Texas is slow and unreliable.  So, each branch office would like the master
+branch to be local to them.  (In situations with good network connectivity, a
+local branch bound to the remote master may be all that is needed to support
+multi-site development.)
+
+Of course, with two master branches, there is always the question of which one
+is authoritative.  Given Bazaar's facility at managing multiple branches, we
+suggest that it is best not to privilege either the Texas or Australia
+branches, but to merge both of them into a separate master branch (which may
+reside at either site).  For definiteness, we will locate the master branch at
+the Texas site.  So, we will have three branches stored on two servers:
+trunk and texas-integration at the Texas site and australia-integration at the
+Darwin site.  These branches are named in terms of the sites where the 
+development takes place, but in many cases it may make more sense to name
+branches after the functional teams rather their geographical locations.
+Since we are trying illustrate the issues with multi-*site* development, we
+will persist in this naming scheme.
+
+Setup
+~~~~~
+
+Using our previous setup at the Texas site, we will simply rename the old
+trunk branch as trunk and branch a copy as texas-integration.
+
+::
+ 
+  $ cd /srv/bzr/projectx
+  $ mv trunk trunk              # can simply rename on the filesystem
+  $ bzr branch trunk texas-integration   # very fast in a shared repository
+
+In Australia, we need to set up the ``/srv/bzr/projectx`` directory and get a
+copy of the current trunk as australia-integration::
+
+  $ mkdir -p /srv/bzr
+  $ cd /srv/bzr
+  $ bzr init-repo --no-trees projectx
+  $ cd projectx
+  $ bzr branch bzr+ssh://server.example.com/srv/bzr/trunk
+  $ bzr branch trunk australia-integration
+
+Merging to master
+~~~~~~~~~~~~~~~~~
+
+Then, each office works with their local copy of the trunk.  At some point,
+sooner or later depending on the pace of development in the two locations, the
+two local trunks need to be merged.  (In general, sooner beats later when
+merging, since there is no penalty for multiple merges.)  In this example,
+Alice at the Texas office will do the merging on her local machine using
+branches on the server::
+
+  # Get a copy of the Australia branch in Texas.  After the initial branch
+  # command, use pull to keep the branch up to date.  With a slow network,
+  # this is the only slow part
+  $ bzr branch bzr+ssh://autralia.example.com/srv/bzr/projectx/australia-integration \
+    bzr+ssh://server.example.com/srv/bzr/projectx/australia-integration
+  
+  # Check out the master branch locally for doing the merge
+  $ cd ~/projectx
+  $ bzr checkout bzr+ssh://server.example.com/srv/bzr/projectx/trunk
+  $ cd trunk
+  $ bzr merge bzr+ssh://server.example.com/srv/bzr/projectx/texas-integration
+  # Run the test suite and resolve any conflicts
+  $ bzr commit -m "Merge Texas branch to master"
+  
+  # Now, merge from Australia using the local copy of that branch
+  $ bzr merge bzr+ssh://server.example.com/srv/bzr/projectx/australia-integration
+  # Run the test suite and resolve any conflicts between the two offices
+  $ bzr commit -m "Merge Australia branch to master"
+
+Note that Bazaar does not commit even cleanly applied merges by default.  This
+is because although a merge may apply cleanly, the merged state still needs to
+be checked before it is committed.  (Just because there are no text conflicts
+does not mean that everything will work after a merge.)  An alternative that 
+can pull when possible and merge otherwise is available with 
+``bzr merge --pull``.
+
+Merging back to local trunks
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Now the trunk branch is the most up-to-date version of the software and
+both of the local trunks need to reincorporate the changes from the master.
+If no new commits have been made to texas-integration, then that can happen using
+``bzr pull``::
+
+  $ cd ~/projectx
+  $ bzr checkout bzr+ssh://server.example.com/srv/bzr/projectx/texas-integration
+  $ cd texas-integration
+  $ bzr pull ../trunk  # Use trunk from the local disk
+                              # No need to commit
+
+If new changes have happened on texas-integration since the integration with
+trunk, then the above pull will produce an error suggesting to use
+merge::
+
+  $ bzr merge ../trunk
+  # Run test suite, resolve conflicts
+  $ bzr commit -m "Merging Australian changes"
+
+In Australia, they will need to update their local copy of trunk::
+
+  $ cd /srv/bzr/projectx/trunk
+  $ bzr pull     # parent location is used by default
+
+Then, they need to pull or merge the changes from trunk into the local trunk.
+This should be done by a developer with a checkout of australia-integration so
+that they can run the test suite::
+
+  $ cd ~/projectx
+  $ bzr co bzr+ssh://australia.example.com/srv/bzr/projectx/australia-integration
+  $ cd australia-integration
+  $ bzr merge bzr+ssh://australia.example.com/srv/bzr/projectx/trunk
+  # Run test suite and integrate Texan changes with only recent local
+  # development
+  $ bzr commit -m "Integrate work from Texas"
+
+
+Other Considerations
+~~~~~~~~~~~~~~~~~~~~
+
+Multi-site deployments can be complicated, due to the many possible variations
+of development velocity, divisions of labor, network connectivity, resources
+for integration, etc.  The preceding description is meant to be one possible
+way to do fairly symmetric multi-site development.  (Neither Texas or
+Australia is privileged in this structure.)  In a situation where there is one
+main site and other smaller sites, one of the local trunk branches can be
+eliminated and trunk can be used directly for development at the main
+site.
+
+It is also up to the particular situation how frequently the local trunks are
+integrated into the master trunk.  Given resources specifically for
+integration, it is conceivable that a developer may be constantly responsible
+for integrating changes from the two teams.  Alternatively, the two sites
+could work on well-separated, well-defined features and merge to the master
+trunk only when their respective features are complete.  Given the difficulty
+of resolving conflicts in very large merges and the ease of merge handling in
+Bazaar, we suggest that merges be done more frequently, rather than less.

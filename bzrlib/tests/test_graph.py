@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1580,6 +1580,24 @@ class TestCollapseLinearRegions(tests.TestCase):
         # 2 and 3 cannot be removed because 1 has 2 parents
         d = {1:[2, 3], 2:[4], 4:[6], 3:[5], 5:[6], 6:[7], 7:[]}
         self.assertCollapsed(d, d)
+
+
+class TestGraphThunkIdsToKeys(tests.TestCase):
+
+    def test_heads(self):
+        # A
+        # |\
+        # B C
+        # |/
+        # D
+        d = {('D',): [('B',), ('C',)], ('C',):[('A',)],
+             ('B',): [('A',)], ('A',): []}
+        g = _mod_graph.Graph(_mod_graph.DictParentsProvider(d))
+        graph_thunk = _mod_graph.GraphThunkIdsToKeys(g)
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'A'])))
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'B'])))
+        self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'C'])))
+        self.assertEqual(['B', 'C'], sorted(graph_thunk.heads(['B', 'C'])))
 
 
 class TestPendingAncestryResultGetKeys(TestCaseWithMemoryTransport):

@@ -188,7 +188,7 @@ class TestBranchRegistration(TestCaseWithTransport):
                 'author@launchpad.net',
                 'product')
         rego.submit(service)
-        self.assertEquals(transport.connected_host, 'xmlrpc.edge.launchpad.net')
+        self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
         self.assertEquals(len(transport.sent_params), 6)
         self.assertEquals(transport.sent_params,
                 ('http://test-server.com/bzr/branch',  # branch_url
@@ -205,7 +205,7 @@ class TestBranchRegistration(TestCaseWithTransport):
         service = LaunchpadService(transport)
         resolve = ResolveLaunchpadPathRequest('bzr')
         resolve.submit(service)
-        self.assertEquals(transport.connected_host, 'xmlrpc.edge.launchpad.net')
+        self.assertEquals(transport.connected_host, 'xmlrpc.launchpad.net')
         self.assertEquals(len(transport.sent_params), 1)
         self.assertEquals(transport.sent_params, ('bzr', ))
         self.assertTrue(transport.got_request)

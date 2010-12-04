@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2008 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -74,6 +74,7 @@ from cStringIO import StringIO
 
 import bzrlib
 from bzrlib import (
+    atomicfile,
     debug,
     errors,
     mail_client,
@@ -153,6 +154,15 @@ class Config(object):
         """Get the users pop up editor."""
         raise NotImplementedError
 
+    def get_change_editor(self, old_tree, new_tree):
+        from bzrlib import diff
+        cmd = self._get_change_editor()
+        if cmd is None:
+            return None
+        return diff.DiffFromTool.from_string(cmd, old_tree, new_tree,
+                                             sys.stdout)
+
+
     def get_mail_client(self):
         """Get a mail client to use"""
         selected_client = self.get_user_option('mail_client')
@@ -181,10 +191,30 @@ class Config(object):
         """Get a generic option as a boolean - no special process, no default.
 
         :return None if the option doesn't exist or its value can't be
-            interpreted as a boolean. Returns True or False ortherwise.
+            interpreted as a boolean. Returns True or False otherwise.
         """
         s = self._get_user_option(option_name)
-        return ui.bool_from_string(s)
+        if s is None:
+            # The option doesn't exist
+            return None
+        val = ui.bool_from_string(s)
+        if val is None:
+            # The value can't be interpreted as a boolean
+            trace.warning('Value "%s" is not a boolean for "%s"',
+                          s, option_name)
+        return val
+
+    def get_user_option_as_list(self, option_name):
+        """Get a generic option as a list - no special process, no default.
+
+        :return None if the option doesn't exist. Returns the value as a list
+            otherwise.
+        """
+        l = self._get_user_option(option_name)
+        if isinstance(l, (str, unicode)):
+            # A single value, most probably the user forgot the final ','
+            l = [l]
+        return l
 
     def gpg_signing_command(self):
         """What program should be used to sign signatures?"""
@@ -228,12 +258,10 @@ class Config(object):
 
         Something similar to 'Martin Pool <mbp@sourcefrog.net>'
 
-        $BZR_EMAIL can be set to override this (as well as the
-        deprecated $BZREMAIL), then
+        $BZR_EMAIL can be set to override this, then
         the concrete policy type is checked, and finally
         $EMAIL is examined.
-        If none is found, a reasonable default is (hopefully)
-        created.
+        If no username can be found, errors.NoWhoami exception is raised.
 
         TODO: Check it's reasonably well-formed.
         """
@@ -249,11 +277,14 @@ class Config(object):
         if v:
             return v.decode(osutils.get_user_encoding())
 
-        name, email = _auto_user_id()
-        if name:
-            return '%s <%s>' % (name, email)
-        else:
-            return email
+        raise errors.NoWhoami()
+
+    def ensure_username(self):
+        """Raise errors.NoWhoami if username is not set.
+
+        This method relies on the username() function raising the error.
+        """
+        self.username()
 
     def signature_checking(self):
         """What is the current policy for signature checking?."""
@@ -304,6 +335,19 @@ class Config(object):
                 path = 'bzr'
             return path
 
+    def suppress_warning(self, warning):
+        """Should the warning be suppressed or emitted.
+
+        :param warning: The name of the warning being tested.
+
+        :returns: True if the warning should be suppressed, False otherwise.
+        """
+        warnings = self.get_user_option_as_list('suppress_warnings')
+        if warnings is None or warning not in warnings:
+            return False
+        else:
+            return True
+
 
 class IniBasedConfig(Config):
     """A configuration policy that draws from ini files."""
@@ -345,6 +389,9 @@ class IniBasedConfig(Config):
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
         return POLICY_NONE
+
+    def _get_change_editor(self):
+        return self.get_user_option('change_editor')
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
@@ -431,6 +478,14 @@ class IniBasedConfig(Config):
     def _get_nickname(self):
         return self.get_user_option('nickname')
 
+    def _write_config_file(self):
+        filename = self._get_filename()
+        atomic_file = atomicfile.AtomicFile(filename)
+        self._get_parser().write(atomic_file)
+        atomic_file.commit()
+        atomic_file.close()
+        osutils.copy_ownership_from_path(filename)
+
 
 class GlobalConfig(IniBasedConfig):
     """The configuration that should be used for a specific location."""
@@ -471,11 +526,6 @@ class GlobalConfig(IniBasedConfig):
         ensure_config_dir_exists(conf_dir)
         self._get_parser().setdefault(section, {})[option] = value
         self._write_config_file()
-
-    def _write_config_file(self):
-        f = open(self._get_filename(), 'wb')
-        self._get_parser().write(f)
-        f.close()
 
 
 class LocationConfig(IniBasedConfig):
@@ -616,7 +666,7 @@ class LocationConfig(IniBasedConfig):
         self._get_parser()[location][option]=value
         # the allowed values of store match the config policies
         self._set_option_policy(location, option, store)
-        self._get_parser().write(file(self._get_filename(), 'wb'))
+        self._write_config_file()
 
 
 class BranchConfig(Config):
@@ -678,6 +728,9 @@ class BranchConfig(Config):
             pass
 
         return self._get_best_value('_get_user_id')
+
+    def _get_change_editor(self):
+        return self._get_best_value('_get_change_editor')
 
     def _get_signature_checking(self):
         """See Config._get_signature_checking."""
@@ -770,6 +823,7 @@ def ensure_config_dir_exists(path=None):
             os.mkdir(parent_dir)
         trace.mutter('creating config directory: %r', path)
         os.mkdir(path)
+        osutils.copy_ownership_from_path(path)
 
 
 def config_dir():
@@ -790,7 +844,6 @@ def config_dir():
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
     else:
-        # cygwin, linux, and darwin all have a $HOME directory
         if base is None:
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, ".bazaar")
@@ -826,12 +879,16 @@ def crash_dir():
 
     This doesn't implicitly create it.
 
-    On Windows it's in the config directory; elsewhere in the XDG cache directory.
+    On Windows it's in the config directory; elsewhere it's /var/crash
+    which may be monitored by apport.  It can be overridden by
+    $APPORT_CRASH_DIR.
     """
     if sys.platform == 'win32':
         return osutils.pathjoin(config_dir(), 'Crash')
     else:
-        return osutils.pathjoin(xdg_cache_dir(), 'crash')
+        # XXX: hardcoded in apport_python_hook.py; therefore here too -- mbp
+        # 2010-01-31
+        return os.environ.get('APPORT_CRASH_DIR', '/var/crash')
 
 
 def xdg_cache_dir():
@@ -842,79 +899,6 @@ def xdg_cache_dir():
         return e
     else:
         return os.path.expanduser('~/.cache')
-
-
-def _auto_user_id():
-    """Calculate automatic user identification.
-
-    Returns (realname, email).
-
-    Only used when none is set in the environment or the id file.
-
-    This previously used the FQDN as the default domain, but that can
-    be very slow on machines where DNS is broken.  So now we simply
-    use the hostname.
-    """
-    import socket
-
-    if sys.platform == 'win32':
-        name = win32utils.get_user_name_unicode()
-        if name is None:
-            raise errors.BzrError("Cannot autodetect user name.\n"
-                                  "Please, set your name with command like:\n"
-                                  'bzr whoami "Your Name <name@domain.com>"')
-        host = win32utils.get_host_name_unicode()
-        if host is None:
-            host = socket.gethostname()
-        return name, (name + '@' + host)
-
-    try:
-        import pwd
-        uid = os.getuid()
-        try:
-            w = pwd.getpwuid(uid)
-        except KeyError:
-            raise errors.BzrCommandError('Unable to determine your name.  '
-                'Please use "bzr whoami" to set it.')
-
-        # we try utf-8 first, because on many variants (like Linux),
-        # /etc/passwd "should" be in utf-8, and because it's unlikely to give
-        # false positives.  (many users will have their user encoding set to
-        # latin-1, which cannot raise UnicodeError.)
-        try:
-            gecos = w.pw_gecos.decode('utf-8')
-            encoding = 'utf-8'
-        except UnicodeError:
-            try:
-                encoding = osutils.get_user_encoding()
-                gecos = w.pw_gecos.decode(encoding)
-            except UnicodeError:
-                raise errors.BzrCommandError('Unable to determine your name.  '
-                   'Use "bzr whoami" to set it.')
-        try:
-            username = w.pw_name.decode(encoding)
-        except UnicodeError:
-            raise errors.BzrCommandError('Unable to determine your name.  '
-                'Use "bzr whoami" to set it.')
-
-        comma = gecos.find(',')
-        if comma == -1:
-            realname = gecos
-        else:
-            realname = gecos[:comma]
-        if not realname:
-            realname = username
-
-    except ImportError:
-        import getpass
-        try:
-            user_encoding = osutils.get_user_encoding()
-            realname = username = getpass.getuser().decode(user_encoding)
-        except UnicodeDecodeError:
-            raise errors.BzrError("Can't decode username as %s." % \
-                    user_encoding)
-
-    return realname, (username + '@' + socket.gethostname())
 
 
 def parse_username(username):
@@ -1008,7 +992,11 @@ class AuthenticationConfig(object):
         """Save the config file, only tests should use it for now."""
         conf_dir = os.path.dirname(self._filename)
         ensure_config_dir_exists(conf_dir)
-        self._get_config().write(file(self._filename, 'wb'))
+        f = file(self._filename, 'wb')
+        try:
+            self._get_config().write(f)
+        finally:
+            f.close()
 
     def _set_option(self, section_name, option_name, value):
         """Set an authentication configuration option"""
@@ -1362,7 +1350,7 @@ class CredentialStore(object):
 
 
 class PlainTextCredentialStore(CredentialStore):
-    """Plain text credential store for the authentication.conf file."""
+    __doc__ = """Plain text credential store for the authentication.conf file"""
 
     def decode_password(self, credentials):
         """See CredentialStore.decode_password."""
@@ -1457,12 +1445,16 @@ class TransportConfig(object):
 
     def _get_config_file(self):
         try:
-            return self._transport.get(self._filename)
+            return StringIO(self._transport.get_bytes(self._filename))
         except errors.NoSuchFile:
             return StringIO()
 
     def _get_configobj(self):
-        return ConfigObj(self._get_config_file(), encoding='utf-8')
+        f = self._get_config_file()
+        try:
+            return ConfigObj(f, encoding='utf-8')
+        finally:
+            f.close()
 
     def _set_configobj(self, configobj):
         out_file = StringIO()

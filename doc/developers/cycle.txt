@@ -2,7 +2,7 @@
 Bazaar Release Cycles
 *********************
 
-:status: Current policy, as of 2009-08. 
+:status: Current policy, as of 2009-08.
 :blueprint: <https://blueprints.launchpad.net/bzr/+spec/6m-cycle>
 
 
@@ -18,51 +18,8 @@ See also:
 
 * `Bazaar Developer Document Catalog <index.html>`_
 
-* `Releasing Bazaar <releasing.html>`_ -- the process for actually making 
+* `Releasing Bazaar <releasing.html>`_ -- the process for actually making
   a release or release candidate.
-
-The Problem Situation
-*********************
-
-Bazaar makes a release every month, preceded by a one-week
-release-candidate test.  
-
-In any release we may fix bugs, add formats, change the default format,
-improve performance, add new commands or change command line behaviour,
-change the network protocol, or deprecate APIs.  We sometimes also
-introduce new bugs, regress existing behaviour or performance, remove
-existing features or formats, or break behaviour or APIs depended upon by
-plugins, external programs or users.
-
-Some users are happy upgrading every month and consider the overall
-positive balance of changes is worth some amount of churn.  But there are
-some serious problems:
-
-* You cannot get bug fixes without also getting disruptive changes.
-
-* Bazaar is seen as unstable.
-
-* Many releases cause some plugin breakage.
-
-* One month is not a very long window for dependent programs or systems
-  to catch up to changes in Bazaar before the release goes out of date.
-
-* There's no clear indication to distributions which version they should
-  package.
-
-* If people (or their distributions) just pick an arbitrary version, they
-  may all be on different arbitrary versions, therefore they will have
-  different behaviour and different bugs, and sometimes interoperation
-  problems.
-
-* Any effort we, or distributors, wanted to put into backporting fixes
-  would be dissipated across many possible backport target releases.
-
-* When in the past we've tried either stalling releases for particular
-  features, or having trunk frozen for some weeks, it causes churn and
-  waste.  People rush features in, or already landed features wait a long
-  time to be released, or branches go out of date because they cannot
-  land.
 
 
 The Process
@@ -97,15 +54,15 @@ Schedule
 
 ::
 
- 2.0 --- 2.0.1 -- 2.0.2 -- ...
+ 2.0.0 --- 2.0.1 -- 2.0.2 -- ...
   \
-   +--2.1beta1 -- 2.1beta2 -- ... -- 2.1rc1 -- 2.1 -- 2.1.1 -- ...
-                                                \
-                                                 \
-                                                  +-- 3.0beta1 ...
+   +--2.1.0beta1 -- 2.1.0beta2 -- ... -- 2.1.0rc1 -- 2.1.0 -- 2.1.1 -- ...
+                                                      \
+                                                       \
+                                                        +-- 3.0.0beta1 ...
 
 
-Starting from the date of a major release: 
+Starting from the date of a major release:
 
 At four-week intervals we make a new beta release.  There will be no
 separate release candidate, but if a serious problem is discovered we may
@@ -121,7 +78,7 @@ have landed.
 We will then make a release candidate for the next major release, and at
 this point create a release branch for it.  We will iterate release
 candidates at approximately weekly intervals until there are no bugs
-blocking the final major release. 
+blocking the final major release.
 
 Compared to the current process this has approximately the same amount of
 release-related work, because the extra releases from the stable branch
@@ -144,26 +101,32 @@ Numbering
 ---------
 
 The number for a six-month cycle is chosen at the start, with an increment
-to either the first field (3.0) or second field (3.1) depending on what we
-expect to be the user impact of the release.  We expect releases that
-culminate in a new disk format or that require changes in how people use
-the tool will get a new major number.  We can change (forward only) if it
-turns out that we land larger changes than were expected.
+to either the first field (3.0.0) or second field (3.1.0) depending on
+what we expect to be the user impact of the release.  We expect releases
+that culminate in a new disk format or that require changes in how people
+use the tool will get a new major number.  We can change (forward only) if
+it turns out that we land larger changes than were expected.
+
+We will always use the 3-digit form (major.minor.micro) even when
+referring to the initial major release. This should help clarify where a
+patch is intended to land. (eg, "I propose this for 2.0.0" is clear, while
+"I propose this for 2.0" could mean you want to make the 2.0.0 release, or
+that you just want to land on the 2.0.x stable release series.)
 
 
 Terminology
 -----------
 
-Major releases (2.0 or 2.1)
+Major releases (2.0.0 or 2.1.0)
     The big ones, every six months, intended to ship in distributions and
     to be used by stability-oriented users.
 
-Release candidate (2.0rc1)
+Release candidate (2.0.0rc1)
     A preview of a major release, made one or a few weeks beforehand at
     the time the release branch is created.  There should be few if any
     changes from the rc to the stable release.  We should avoid the
-    confusing phrasing "release candidate 2.0rc1 is released"; instead use
-    "available."
+    confusing phrasing "release candidate 2.0.0rc1 is released"; instead
+    use "available."
 
 Bugfix releases (2.0.1)
     Based on the previous major release or bugfix; contains only bugfixes
@@ -175,7 +138,7 @@ Stable series
 Stable release
     Either a major release or a bugfix release.
 
-Beta release (3.0beta1)
+Beta release (3.0.0beta1)
     Made from trunk every month, except for the month there's a major
     release.  Stable and suitable for users who want the latest code and
     can live with some changes from month to month.
@@ -186,7 +149,7 @@ Development series
 Bug Work
 --------
 
-Bug fixes should normally be done first against the stable branch, 
+Bug fixes should normally be done first against the stable branch,
 reviewed against that branch, and then merged forward to trunk.
 
 It may not always be easy to do this, if fixing the bug requires large
@@ -234,7 +197,7 @@ We will no longer focus on letting old plugin code work with new versions
 of bzrlib, which is an elusive target in Python.
 
 This may mean that in cases where today a plugin would keep running but
-give warnings, it will now fail altogether with an error.   
+give warnings, it will now fail altogether with an error.
 
 In return we expect more freedom to change and cleanup bzrlib code without
 needing to keep old code around, or write extra compatibility shims, or
@@ -246,7 +209,7 @@ Discussion of plugins here includes programs that import and use bzrlib
 but that aren't technically plugins.  The same approach, though the
 technical considerations are different, should apply to other extensions
 such as programs that use bzr through the shell interface.
-  
+
 
 
 Data and Network Formats
@@ -260,7 +223,7 @@ able to interoperate with all previous releases as at present.
 Each major release will have one recommended data format which will be the
 default.  The name of the format will indicate which release series (not
 specific release) it comes from: '2a' is the first supported format for
-the 2.0 series, '2b' the second, etc.  We don't mention the particular
+the 2.0.x series, '2b' the second, etc.  We don't mention the particular
 release that introduced it so as to avoid problems predicting precisely
 when it will land.
 
@@ -290,7 +253,7 @@ release and development release.
 This can be handled in various ways either at the OS packaging or the
 Python level.  We don't propose to directly address it in the upstream
 source.  (For example, we will not change the bzrlib library name from one
-release to the next.)  
+release to the next.)
 
 The issue already exists with people who may want to use for example the
 previous bzr release and the trunk.  There is a related issue that plugins
@@ -321,9 +284,10 @@ Some platforms with relatively less active packagers may choose to ship
 only the stable releases.  This is probably better than having them only
 intermittently or slowly ship the monthly releases.
 
-Binary installers should use a version number like '2.0-1' or '2.0beta1-1'
-so that the last component just reflects the packaging version, and can be
-incremented if a new installer is made with no upstream source changes.
+Binary installers should use a version number like '2.0.0-1' or
+'2.0.0beta1-1' so that the last component just reflects the packaging
+version, and can be incremented if a new installer is made with no
+upstream source changes.
 
 
 Code Freeze vs Announcement
@@ -343,7 +307,7 @@ covering these points (as appropriate):
 
 * Early communication about changing dependencies or defaults
 
-* Reminder re lifecycle and where we're up to right now, in particular the 
+* Reminder re lifecycle and where we're up to right now, in particular the
   dates for the next release and/or candidate.
 
 * Summary of recent successes and pending work.
@@ -357,11 +321,11 @@ covering these points (as appropriate):
 Questions
 *********
 
-Do users actually want this?  
+Do users actually want this?
     Apparently yes, because it's often requested and often raised as a
     problem.
 
-Would this confuse users?  
+Would this confuse users?
     It shouldn't, because it's a fairly standard scheme.
 
 Won't it take more time to fix bugs in multiple places?
@@ -381,7 +345,7 @@ Will anyone test the beta releases?
     really rather not test them, forcing them is not helpful.
 
 Isn't this a step backwards to a slower, less-agile process?
-    No, our trunk stays releasable, and we ship every month.  We're just 
+    No, our trunk stays releasable, and we ship every month.  We're just
     cutting out things that hold us back (continuous rather than episodic
     API stability; RCs every month) and giving users what they demand.
 
@@ -399,7 +363,7 @@ don't occur, we'll think again:
   and stable releases, indicating that each has value.
 
 * API changes are easier or safer to make during beta periods, without
-  being held back by fears of compatibility or 
+  being held back by fears of compatibility or
 
 * The stable releases are actually stable and don't introduce regressions
   or break plugins.
@@ -414,11 +378,52 @@ don't occur, we'll think again:
 
 * Users like it.
 
+After doing this for the 2.0 cycle (September 2009 through to early
+2010), it seems to be going well.
+
+
+Reviewing for the Stable Branch
+*******************************
+
+These are guidelines and can be interpreted case-by-case.
+
+* All changes to the stable branch should fix a bug, even if you would not
+  normally file a bug for the change.  The bug description should if at
+  all possible explain how to manually verify the bug in a way that will
+  fail before and pass after the change.  (These are requirements for the
+  SRU process.)
+
+* The change should be reasonably small and conservative.  
+
+* Remember that the patch will be read during the SRU
+  process and so keeping the patch small is useful even beyond keeping the
+  logical changes small.  Avoid doing mechanical bulk changes on the
+  stable branch.
+
+* Use particular care for things that may behave differently across
+  platforms, encodings or locales.  It's harder to thoroughly test these
+  things before a release.
+
+* Generally speaking, just cleaning things up is not a sufficient reason
+  to make changes to the stable branch.  It has to actually fix a bug.
+
+* Changes to the stable branch should include tests as usual.  
+
+* Don't change or remove existing APIs that might be used by plugins, even
+  if they are underscore-prefixed.  Adding APIs that are also being added
+  to the trunk branch may make sense.
+
+* Keeping consistency with trunk is useful, but less important than
+  keeping the stable branch stable.
+
+* (more items welcome)
+
 References
 **********
 
-#. List thread "[rfc] six-month stable release cycles", July 2009.
+#. List thread "`[rfc] six-month stable release cycles`__", July 2009.
+
+.. __: https://lists.ubuntu.com/archives/bazaar/2009q3/060882.html
 
 ..
    vim: filetype=rst textwidth=74 ai shiftwidth=4
-

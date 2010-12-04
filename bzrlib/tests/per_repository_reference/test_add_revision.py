@@ -40,6 +40,7 @@ class TestAddRevision(TestCaseWithExternalReferenceRepository):
             repo.start_write_group()
             try:
                 rev = tree.branch.repository.get_revision(revid)
+                repo.texts.add_lines((inv.root.file_id, revid), [], [])
                 repo.add_revision(revid, rev, inv=inv)
             except:
                 repo.abort_write_group()

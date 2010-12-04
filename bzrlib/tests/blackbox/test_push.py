@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,7 +31,12 @@ from bzrlib import (
     workingtree
     )
 from bzrlib.repofmt import knitrepo
-from bzrlib.tests import http_server
+from bzrlib.tests import (
+    blackbox,
+    http_server,
+    test_foreign,
+    test_server,
+    )
 from bzrlib.transport import memory
 
 
@@ -253,6 +258,22 @@ class TestPush(tests.TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(11, self.hpss_calls)
 
+    def test_push_smart_incremental_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        rev_id1 = t.commit(allow_pointless=True, message='first commit')
+        rev_id2 = t.commit(allow_pointless=True, message='second commit')
+        self.run_bzr(
+            ['push', self.get_url('to-one'), '-r1'], working_dir='from')
+        self.reset_smart_call_log()
+        self.run_bzr(['push', self.get_url('to-one')], working_dir='from')
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(11, self.hpss_calls)
+
     def test_push_smart_with_default_stacking_url_path_segment(self):
         # If the default stacked-on location is a path element then branches
         # we push there over the smart server are stacked and their
@@ -318,6 +339,17 @@ class TestPush(tests.TestCaseWithTransport):
         self.assertEqual(tree.last_revision(), new_tree.last_revision())
         # The push should have created target/a
         self.failUnlessExists('target/a')
+
+    def test_push_use_existing_into_empty_bzrdir(self):
+        """'bzr push --use-existing-dir' into a dir with an empty .bzr dir
+        fails.
+        """
+        tree = self.create_simple_tree()
+        self.build_tree(['target/', 'target/.bzr/'])
+        self.run_bzr_error(
+            ['Target directory ../target already contains a .bzr directory, '
+             'but it is not valid.'],
+            'push ../target --use-existing-dir', working_dir='tree')
 
     def test_push_onto_repo(self):
         """We should be able to 'bzr push' into an existing bzrdir."""
@@ -553,7 +585,7 @@ class RedirectingMemoryTransport(memory.MemoryTransport):
 
 class RedirectingMemoryServer(memory.MemoryServer):
 
-    def setUp(self):
+    def start_server(self):
         self._dirs = {'/': None}
         self._files = {}
         self._locks = {}
@@ -567,7 +599,7 @@ class RedirectingMemoryServer(memory.MemoryServer):
         result._locks = self._locks
         return result
 
-    def tearDown(self):
+    def stop_server(self):
         transport.unregister_transport(self._scheme, self._memory_factory)
 
 
@@ -576,9 +608,7 @@ class TestPushRedirect(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
         self.memory_server = RedirectingMemoryServer()
-        self.memory_server.setUp()
-        self.addCleanup(self.memory_server.tearDown)
-
+        self.start_server(self.memory_server)
         # Make the branch and tree that we'll be pushing.
         t = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
@@ -631,21 +661,35 @@ class TestPushStrictMixin(object):
     _default_wd = 'local'
     _default_errors = ['Working tree ".*/local/" has uncommitted '
                        'changes \(See bzr status\)\.',]
-    _default_pushed_revid = 'modified'
+    _default_additional_error = 'Use --no-strict to force the push.\n'
+    _default_additional_warning = 'Uncommitted changes will not be pushed.'
+
 
     def assertPushFails(self, args):
-        self.run_bzr_error(self._default_errors, self._default_command + args,
-                           working_dir=self._default_wd, retcode=3)
+        out, err = self.run_bzr_error(self._default_errors,
+                                      self._default_command + args,
+                                      working_dir=self._default_wd, retcode=3)
+        self.assertContainsRe(err, self._default_additional_error)
 
-    def assertPushSucceeds(self, args, pushed_revid=None):
-        self.run_bzr(self._default_command + args,
-                     working_dir=self._default_wd)
-        if pushed_revid is None:
-            pushed_revid = self._default_pushed_revid
-        tree_to = workingtree.WorkingTree.open('to')
-        repo_to = tree_to.branch.repository
-        self.assertTrue(repo_to.has_revision(pushed_revid))
-        self.assertEqual(tree_to.branch.last_revision_info()[1], pushed_revid)
+    def assertPushSucceeds(self, args, with_warning=False, revid_to_push=None):
+        if with_warning:
+            error_regexes = self._default_errors
+        else:
+            error_regexes = []
+        out, err = self.run_bzr(self._default_command + args,
+                                working_dir=self._default_wd,
+                                error_regexes=error_regexes)
+        if with_warning:
+            self.assertContainsRe(err, self._default_additional_warning)
+        else:
+            self.assertNotContainsRe(err, self._default_additional_warning)
+        branch_from = branch.Branch.open(self._default_wd)
+        if revid_to_push is None:
+            revid_to_push = branch_from.last_revision()
+        branch_to = branch.Branch.open('to')
+        repo_to = branch_to.repository
+        self.assertTrue(repo_to.has_revision(revid_to_push))
+        self.assertEqual(revid_to_push, branch_to.last_revision())
 
 
 
@@ -681,6 +725,8 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
 
     def setUp(self):
         super(TestPushStrictWithChanges, self).setUp()
+        # Apply the changes defined in load_tests: one of _uncommitted_changes,
+        # _pending_merges or _out_of_sync_trees
         getattr(self, self._changes_type)()
 
     def _uncommitted_changes(self):
@@ -710,13 +756,12 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self._default_wd = 'checkout'
         self._default_errors = ["Working tree is out of date, please run"
                                 " 'bzr update'\.",]
-        self._default_pushed_revid = 'modified-in-local'
 
     def test_push_default(self):
-        self.assertPushFails([])
+        self.assertPushSucceeds([], with_warning=True)
 
     def test_push_with_revision(self):
-        self.assertPushSucceeds(['-r', 'revid:added'], pushed_revid='added')
+        self.assertPushSucceeds(['-r', 'revid:added'], revid_to_push='added')
 
     def test_push_no_strict(self):
         self.assertPushSucceeds(['--no-strict'])
@@ -730,7 +775,7 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
 
     def test_push_bogus_config_var_ignored(self):
         self.set_config_push_strict("I don't want you to be strict")
-        self.assertPushFails([])
+        self.assertPushSucceeds([], with_warning=True)
 
     def test_push_no_strict_command_line_override_config(self):
         self.set_config_push_strict('yES')
@@ -741,3 +786,26 @@ class TestPushStrictWithChanges(tests.TestCaseWithTransport,
         self.set_config_push_strict('oFF')
         self.assertPushFails(['--strict'])
         self.assertPushSucceeds([])
+
+
+class TestPushForeign(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestPushForeign, self).setUp()
+        test_foreign.register_dummy_foreign_for_test(self)
+
+    def make_dummy_builder(self, relpath):
+        builder = self.make_branch_builder(
+            relpath, format=test_foreign.DummyForeignVcsDirFormat())
+        builder.build_snapshot('revid', None,
+            [('add', ('', 'TREE_ROOT', 'directory', None)),
+             ('add', ('foo', 'fooid', 'file', 'bar'))])
+        return builder
+
+    def test_no_roundtripping(self):
+        target_branch = self.make_dummy_builder('dp').get_branch()
+        source_tree = self.make_branch_and_tree("dc")
+        output, error = self.run_bzr("push -d dc dp", retcode=3)
+        self.assertEquals("", output)
+        self.assertEquals(error, "bzr: ERROR: It is not possible to losslessly"
+            " push to dummy. You may want to use dpush instead.\n")

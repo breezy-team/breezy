@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,11 @@
 
 """Tests for the core Hooks logic."""
 
-from bzrlib import branch, errors
+from bzrlib import (
+    branch,
+    errors,
+    tests,
+    )
 from bzrlib.hooks import (
     HookPoint,
     Hooks,
@@ -24,14 +28,9 @@ from bzrlib.hooks import (
     known_hooks_key_to_object,
     known_hooks_key_to_parent_and_attribute,
     )
-from bzrlib.errors import (
-    UnknownHook,
-    )
-
-from bzrlib.tests import TestCase
 
 
-class TestHooks(TestCase):
+class TestHooks(tests.TestCase):
 
     def test_create_hook_first(self):
         hooks = Hooks()
@@ -80,7 +79,6 @@ class TestHooks(TestCase):
             "~~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 1.4\n"
-            "Deprecated in: Not deprecated\n"
             "\n"
             "Invoked after the tip of a branch changes. Called with a\n"
             "ChangeBranchTipParams object.\n"
@@ -89,7 +87,6 @@ class TestHooks(TestCase):
             "~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 1.6\n"
-            "Deprecated in: Not deprecated\n"
             "\n"
             "Invoked before the tip of a branch changes. Called with a\n"
             "ChangeBranchTipParams object. Hooks should raise TipChangeRejected to\n"
@@ -97,7 +94,7 @@ class TestHooks(TestCase):
 
     def test_install_named_hook_raises_unknown_hook(self):
         hooks = Hooks()
-        self.assertRaises(UnknownHook, hooks.install_named_hook, 'silly',
+        self.assertRaises(errors.UnknownHook, hooks.install_named_hook, 'silly',
                           None, "")
 
     def test_install_named_hook_appends_known_hook(self):
@@ -113,7 +110,7 @@ class TestHooks(TestCase):
         self.assertEqual("demo", hooks.get_hook_name(None))
 
 
-class TestHook(TestCase):
+class TestHook(tests.TestCase):
 
     def test___init__(self):
         doc = ("Invoked after changing the tip of a branch object. Called with"
@@ -133,7 +130,6 @@ class TestHook(TestCase):
             "~~~~~~~~~~~~~~~\n"
             "\n"
             "Introduced in: 0.15\n"
-            "Deprecated in: Not deprecated\n"
             "\n"
             "Invoked after changing the tip of a branch object. Called with a\n"
             "bzrlib.branch.PostChangeBranchTipParams object\n", hook.docs())
@@ -157,7 +153,7 @@ class TestHook(TestCase):
             callback_repr, repr(hook))
 
 
-class TestHookRegistry(TestCase):
+class TestHookRegistry(tests.TestCase):
 
     def test_items_are_reasonable_keys(self):
         # All the items in the known_hooks registry need to map from
@@ -173,6 +169,7 @@ class TestHookRegistry(TestCase):
             new_hooks = factory()
             self.assertIsInstance(obj, Hooks)
             self.assertEqual(type(obj), type(new_hooks))
+            self.assertEqual("No hook name", new_hooks.get_hook_name(None))
 
     def test_known_hooks_key_to_object(self):
         self.assertIs(branch.Branch.hooks,

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -31,6 +31,7 @@ from bzrlib import (
     knit as _mod_knit,
     osutils,
     progress,
+    transport,
     ui,
     )
 from bzrlib.errors import (
@@ -56,7 +57,6 @@ from bzrlib.tests import (
     )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.tsort import topo_sort
 from bzrlib.tuned_gzip import GzipFile
@@ -734,11 +734,10 @@ class VersionedFileTestMixIn(object):
         # the ordering here is to make a tree so that dumb searches have
         # more changes to muck up.
 
-        class InstrumentedProgress(progress.DummyProgress):
+        class InstrumentedProgress(progress.ProgressTask):
 
             def __init__(self):
-
-                progress.DummyProgress.__init__(self)
+                progress.ProgressTask.__init__(self)
                 self.updates = []
 
             def update(self, msg=None, current=None, total=None):
@@ -850,10 +849,10 @@ class VersionedFileTestMixIn(object):
         self.assertEquals(('references_ghost', 'line_c\n'), origins[2])
 
     def test_readonly_mode(self):
-        transport = get_transport(self.get_url('.'))
+        t = transport.get_transport(self.get_url('.'))
         factory = self.get_factory()
-        vf = factory('id', transport, 0777, create=True, access_mode='w')
-        vf = factory('id', transport, access_mode='r')
+        vf = factory('id', t, 0777, create=True, access_mode='w')
+        vf = factory('id', t, access_mode='r')
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'base', [], [])
         self.assertRaises(errors.ReadOnlyError,
                           vf.add_lines_with_ghosts,
@@ -881,12 +880,14 @@ class VersionedFileTestMixIn(object):
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, get_transport(self.get_url('.')), create=True,
-            get_scope=self.get_transaction)
+        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+                         create=True,
+                         get_scope=self.get_transaction)
 
     def get_file_corrupted_text(self):
-        w = WeaveFile('foo', get_transport(self.get_url('.')), create=True,
-            get_scope=self.get_transaction)
+        w = WeaveFile('foo', transport.get_transport(self.get_url('.')),
+                      create=True,
+                      get_scope=self.get_transaction)
         w.add_lines('v1', [], ['hello\n'])
         w.add_lines('v2', ['v1'], ['hello\n', 'there\n'])
 
@@ -920,14 +921,15 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         return w
 
     def reopen_file(self, name='foo', create=False):
-        return WeaveFile(name, get_transport(self.get_url('.')), create=create,
-            get_scope=self.get_transaction)
+        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+                         create=create,
+                         get_scope=self.get_transaction)
 
     def test_no_implicit_create(self):
         self.assertRaises(errors.NoSuchFile,
                           WeaveFile,
                           'foo',
-                          get_transport(self.get_url('.')),
+                          transport.get_transport(self.get_url('.')),
                           get_scope=self.get_transaction)
 
     def get_factory(self):
@@ -1000,13 +1002,20 @@ class TestReadonlyHttpMixin(object):
         # we should be able to read from http with a versioned file.
         vf = self.get_file()
         # try an empty file access
-        readonly_vf = self.get_factory()('foo', get_transport(self.get_readonly_url('.')))
+        readonly_vf = self.get_factory()('foo', transport.get_transport(
+                self.get_readonly_url('.')))
         self.assertEqual([], readonly_vf.versions())
+
+    def test_readonly_http_works_with_feeling(self):
+        # we should be able to read from http with a versioned file.
+        vf = self.get_file()
         # now with feeling.
         vf.add_lines('1', [], ['a\n'])
         vf.add_lines('2', ['1'], ['b\n', 'a\n'])
-        readonly_vf = self.get_factory()('foo', get_transport(self.get_readonly_url('.')))
+        readonly_vf = self.get_factory()('foo', transport.get_transport(
+                self.get_readonly_url('.')))
         self.assertEqual(['1', '2'], vf.versions())
+        self.assertEqual(['1', '2'], readonly_vf.versions())
         for version in readonly_vf.versions():
             readonly_vf.get_lines(version)
 
@@ -1014,8 +1023,9 @@ class TestReadonlyHttpMixin(object):
 class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_file(self):
-        return WeaveFile('foo', get_transport(self.get_url('.')), create=True,
-            get_scope=self.get_transaction)
+        return WeaveFile('foo', transport.get_transport(self.get_url('.')),
+                         create=True,
+                         get_scope=self.get_transaction)
 
     def get_factory(self):
         return WeaveFile
@@ -1265,7 +1275,8 @@ class MergeCasesMixin(object):
 class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, get_transport(self.get_url('.')), create=True)
+        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+                         create=True)
 
     def log_contents(self, w):
         self.log('weave is:')
@@ -1470,7 +1481,7 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             transport.mkdir('.')
         files = self.factory(transport)
         if self.cleanup is not None:
-            self.addCleanup(lambda:self.cleanup(files))
+            self.addCleanup(self.cleanup, files)
         return files
 
     def get_simple_key(self, suffix):
@@ -1580,6 +1591,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             files.get_parent_map(keys), require_fulltext=True)
         # All texts should be output.
         self.assertEqual(set(keys), seen)
+
+    def test_clear_cache(self):
+        files = self.get_versionedfiles()
+        files.clear_cache()
 
     def test_construct(self):
         """Each parameterised test can be constructed on a transport."""
@@ -1755,6 +1770,29 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         f.add_lines(key_c, [key_a, key_b], ['\n'])
         kg = f.get_known_graph_ancestry([key_c])
         self.assertIsInstance(kg, _mod_graph.KnownGraph)
+        self.assertEqual([key_a, key_b, key_c], list(kg.topo_sort()))
+
+    def test_known_graph_with_fallbacks(self):
+        f = self.get_versionedfiles('files')
+        if not self.graph:
+            raise TestNotApplicable('ancestry info only relevant with graph.')
+        if getattr(f, 'add_fallback_versioned_files', None) is None:
+            raise TestNotApplicable("%s doesn't support fallbacks"
+                                    % (f.__class__.__name__,))
+        key_a = self.get_simple_key('a')
+        key_b = self.get_simple_key('b')
+        key_c = self.get_simple_key('c')
+        # A     only in fallback
+        # |\
+        # | B
+        # |/
+        # C
+        g = self.get_versionedfiles('fallback')
+        g.add_lines(key_a, [], ['\n'])
+        f.add_fallback_versioned_files(g)
+        f.add_lines(key_b, [key_a], ['\n'])
+        f.add_lines(key_c, [key_a, key_b], ['\n'])
+        kg = f.get_known_graph_ancestry([key_c])
         self.assertEqual([key_a, key_b, key_c], list(kg.topo_sort()))
 
     def test_get_record_stream_empty(self):
@@ -2411,6 +2449,43 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         else:
             self.assertIdenticalVersionedFile(source, files)
 
+    def test_insert_record_stream_long_parent_chain_out_of_order(self):
+        """An out of order stream can either error or work."""
+        if not self.graph:
+            raise TestNotApplicable('ancestry info only relevant with graph.')
+        # Create a reasonably long chain of records based on each other, where
+        # most will be deltas.
+        source = self.get_versionedfiles('source')
+        parents = ()
+        keys = []
+        content = [('same same %d\n' % n) for n in range(500)]
+        for letter in 'abcdefghijklmnopqrstuvwxyz':
+            key = ('key-' + letter,)
+            if self.key_length == 2:
+                key = ('prefix',) + key
+            content.append('content for ' + letter + '\n')
+            source.add_lines(key, parents, content)
+            keys.append(key)
+            parents = (key,)
+        # Create a stream of these records, excluding the first record that the
+        # rest ultimately depend upon, and insert it into a new vf.
+        streams = []
+        for key in reversed(keys):
+            streams.append(source.get_record_stream([key], 'unordered', False))
+        deltas = chain(*streams[:-1])
+        files = self.get_versionedfiles()
+        try:
+            files.insert_record_stream(deltas)
+        except RevisionNotPresent:
+            # Must not have corrupted the file.
+            files.check()
+        else:
+            # Must only report either just the first key as a missing parent,
+            # no key as missing (for nodelta scenarios).
+            missing = set(files.get_missing_compression_parent_keys())
+            missing.discard(keys[0])
+            self.assertEqual(set(), missing)
+
     def get_knit_delta_source(self):
         """Get a source that can produce a stream with knit delta records,
         regardless of this test's scenario.
@@ -2484,11 +2559,10 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
         # the ordering here is to make a tree so that dumb searches have
         # more changes to muck up.
 
-        class InstrumentedProgress(progress.DummyProgress):
+        class InstrumentedProgress(progress.ProgressTask):
 
             def __init__(self):
-
-                progress.DummyProgress.__init__(self)
+                progress.ProgressTask.__init__(self)
                 self.updates = []
 
             def update(self, msg=None, current=None, total=None):

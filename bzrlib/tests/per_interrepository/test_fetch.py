@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,7 +45,15 @@ from bzrlib.tests.per_interrepository.test_interrepository import (
     )
 
 
+
 class TestInterRepository(TestCaseWithInterRepository):
+
+    def disable_commit_write_group_paranoia(self, repo):
+        pack_coll = getattr(repo, '_pack_collection', None)
+        if pack_coll is not None:
+            # Monkey-patch the pack collection instance to allow storing
+            # incomplete revisions.
+            pack_coll._check_new_inventories = lambda: []
 
     def test_fetch(self):
         tree_a = self.make_branch_and_tree('a')
@@ -125,6 +133,44 @@ class TestInterRepository(TestCaseWithInterRepository):
         self.assertEqual('contents',
             to_repo.texts.get_record_stream([('foo', revid)],
             'unordered', True).next().get_bytes_as('fulltext'))
+
+    def test_fetch_from_stacked_smart(self):
+        self.setup_smart_server_with_call_log()
+        self.test_fetch_from_stacked()
+
+    def test_fetch_from_stacked_smart_old(self):
+        self.setup_smart_server_with_call_log()
+        self.disable_verb('Repository.get_stream_1.19')
+        self.test_fetch_from_stacked()
+
+    def test_fetch_from_stacked(self):
+        """Fetch from a stacked branch succeeds."""
+        if not self.repository_format.supports_external_lookups:
+            raise TestNotApplicable("Need stacking support in the source.")
+        builder = self.make_branch_builder('full-branch')
+        builder.start_series()
+        builder.build_snapshot('first', None, [
+            ('add', ('', 'root-id', 'directory', '')),
+            ('add', ('file', 'file-id', 'file', 'content\n'))])
+        builder.build_snapshot('second', ['first'], [
+            ('modify', ('file-id', 'second content\n'))])
+        builder.build_snapshot('third', ['second'], [
+            ('modify', ('file-id', 'third content\n'))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        repo = self.make_repository('stacking-base')
+        trunk = repo.bzrdir.create_branch()
+        trunk.repository.fetch(branch.repository, 'second')
+        repo = self.make_repository('stacked')
+        stacked_branch = repo.bzrdir.create_branch()
+        stacked_branch.set_stacked_on_url(trunk.base)
+        stacked_branch.repository.fetch(branch.repository, 'third')
+        target = self.make_to_repository('target')
+        target.fetch(stacked_branch.repository, 'third')
+        target.lock_read()
+        self.addCleanup(target.unlock)
+        all_revs = set(['first', 'second', 'third'])
+        self.assertEqual(all_revs, set(target.get_parent_map(all_revs)))
 
     def test_fetch_parent_inventories_at_stacking_boundary_smart(self):
         self.setup_smart_server_with_call_log()
@@ -365,11 +411,16 @@ class TestInterRepository(TestCaseWithInterRepository):
         to_repo.lock_write()
         try:
             to_repo.start_write_group()
-            inv = tree.branch.repository.get_inventory('rev-one')
-            to_repo.add_inventory('rev-one', inv, [])
-            rev = tree.branch.repository.get_revision('rev-one')
-            to_repo.add_revision('rev-one', rev, inv=inv)
-            to_repo.commit_write_group()
+            try:
+                inv = tree.branch.repository.get_inventory('rev-one')
+                to_repo.add_inventory('rev-one', inv, [])
+                rev = tree.branch.repository.get_revision('rev-one')
+                to_repo.add_revision('rev-one', rev, inv=inv)
+                self.disable_commit_write_group_paranoia(to_repo)
+                to_repo.commit_write_group()
+            except:
+                to_repo.abort_write_group(suppress_errors=True)
+                raise
         finally:
             to_repo.unlock()
 
@@ -424,7 +475,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         source_tree.add(['id'], ['id'])
         source_tree.commit('a', rev_id='a')
         # now we manually insert a revision with an inventory referencing
-        # 'id' at revision 'b', but we do not insert revision b.
+        # file 'id' at revision 'b', but we do not insert revision b.
         # this should ensure that the new versions of files are being checked
         # for during pull operations
         inv = source.get_inventory('a')
@@ -442,6 +493,7 @@ class TestInterRepository(TestCaseWithInterRepository):
                        revision_id='b')
         rev.parent_ids = ['a']
         source.add_revision('b', rev)
+        self.disable_commit_write_group_paranoia(source)
         source.commit_write_group()
         self.assertRaises(errors.RevisionNotPresent, target.fetch, source)
         self.assertFalse(target.has_revision('b'))
@@ -463,7 +515,7 @@ class TestInterRepository(TestCaseWithInterRepository):
         from_tree.commit('foo', rev_id='foo-id')
         to_repo = self.make_to_repository('to')
         to_repo.fetch(from_tree.branch.repository)
-        recorded_inv_sha1 = to_repo.get_inventory_sha1('foo-id')
+        recorded_inv_sha1 = to_repo.get_revision('foo-id').inventory_sha1
         to_repo.lock_read()
         self.addCleanup(to_repo.unlock)
         stream = to_repo.inventories.get_record_stream([('foo-id',)],

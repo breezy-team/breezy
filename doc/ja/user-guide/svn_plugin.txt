@@ -1,0 +1,112 @@
+bzr-svn
+=======
+
+概要
+-----
+
+bzr-svnによって集中型のSubversionリポジトリをまだ利用しているプロジェクトで\
+BazaarをVCSクライアントとして使うことができます。
+Subversionリポジトリへのアクセスは大部分は透明、\
+すなわちネイティブのBazaarブランチで ``bzr`` を使用するようにSubversion\
+リポジトリで大部分の ``bzr`` コマンドを直接利用できます。
+
+多くのbzr-svnユーザーは集中型のSubversionトランクのローカルミラーを作成し、\
+機能ブランチに取り組み、準備ができたときに変更をすべててSubversionに戻します。
+これによって既存のチーム規模のプロセスとSubversionの上に現在組み込まれている\
+ツール統合フックを妨げずに分散型VCSツールの多くの利点を得られます。
+本当に、これはBazaarを採用しようとしているがタイミングもしくは非技術的な\
+利用からまだ採用していないチームのための共通の暫定ステップです
+
+インストールの手引きに関しては、bzr-svnのホームページをご覧ください:
+http://bazaar-vcs.org/BzrForeignBranches/Subversion.
+
+
+シンプルな例
+-------------
+
+GNOMEプロジェクトの **beagle** でのシンプルな使い方です。
+最初に、ブランチの保存用のローカルな共用リポジトリをセットアップして\
+トランクをチェックアウトします::
+
+  bzr init-repo --rich-root-pack beagle-repo
+  cd beagle-repo
+  bzr checkout svn+ssh://svn.gnome.org/svn/beagle/trunk beagle-trunk
+
+
+``init-repo`` に対して ``rich-root-pack`` オプションを使うことが重要です。
+bzr-svnは追加のメタデータがいくつか必要ですが、Bazaarのデフォルトのリポジトリフォーマットではまだサポートされないからです。
+(訳注: Bazaar 2.0以降を使っているのであれば、 --rich-root-pack オプションは不要です。)
+次に、フィーチャブランチを作成してハックします::
+
+  bzr branch beagle-trunk beagle-feature1
+  cd beagle-feature1
+  (hack, hack, hack)
+  bzr commit -m "blah blah blah"
+  (hack, hack, hack)
+  bzr commit -m "blah blah blah"
+
+機能がクックされたとき、トランクをリフレッシュして変更をマージします::
+
+  cd ../beagle-trunk
+  bzr update
+  bzr merge ../beagle-feature1
+  bzr commit -m "Complete comment for SVN commit"
+
+トランクミラーはチェックアウトなので、それにコミットすれば実際のSubversionトランクにコミットされます。
+以上です！
+
+
+集中型のミラーを利用する
+-------------------------
+
+大きなプロジェクトに関しては、上記のレシピを調整すれば役立つことがしばしあります。
+とりわけ、初期のチェックアウトはとても遅い可能性があるので\
+プロジェクトに関するすべてのSubversionリポジトリをBazaarリポジトリに一旦インポートして、
+そのネイティブのBazaarリポジトリからブランチを作成します。
+bzr-svnはリポジトリからリポジトリへの変換を行うために ``svn-import`` コマンドを提供します。
+使い方の例です::
+
+  bzr svn-import svn+ssh://svn.gnome.org/svn/beagle
+
+中央のBazaarミラーを利用するために更新された上記からのレシピです::
+
+  bzr init-repo --rich-root-pack beagle-repo
+  cd beagle-repo
+  bzr branch bzr+ssh://bzr.gnome.org/beagle.bzr/trunk beagle-trunk
+  bzr branch beagle-trunk beagle-feature1
+  cd beagle-feature1
+  (hack, hack, hack)
+  bzr commit -m "blah blah blah"
+  (hack, hack, hack)
+  bzr commit -m "blah blah blah"
+  cd ../beagle-trunk
+  bzr pull
+  bzr merge ../beagle-feature1
+  bzr commit -m "Complete comment for SVN commit"
+  bzr push
+
+この場合、トランクへのコミットをしてもローカルでマージをコミットするだけです。
+マスターのSubversionトランクにコミットを戻すには、追加コマンド(``bzr push``)が必要です。
+
+注:  トランクブランチで ``pull`` と ``push`` のコマンドを最初に使う際に
+これらのコマンドに関連URLを渡す必要があります。
+その後で、bzrはそれらを記憶します。
+
+このセットアップの最後のピースはSubversionのものと同期される中心のBazaarミラーを\
+Subversionのリポジトリと同期し続けるためにスクリプトを適切な場所に設置することです。
+これはcronジョブを追加したり、Subversionフックを利用するなどによって行われます。
+
+
+bzr-svnの制限
+--------------
+
+BazaarとはSubversionは異なる機能を持つ異なるツールなので\
+何らかの相互運用問題が常に存在します。
+bzr-svn 0.5.4 に関するいくつかの例です:
+
+ * Bazaarはversioned propertiesをサポートしません
+
+ * Bazaarはファイルのコピーのトラッキングをサポートしません
+
+現在の制約の一覧に関しては、bzr-svnのウェブページ、\
+http://bazaar-vcs.org/BzrForeignBranches/Subversion を参照してください。

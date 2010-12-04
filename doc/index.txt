@@ -3,47 +3,47 @@ Bazaar Main Document Catalog
 ============================
 
 The latest version of these documents are available from Bazaar's
-documentation site, <http://doc.bazaar-vcs.org/>, and more documentation
+documentation site, <http://doc.bazaar.canonical.com/>, and more documentation
 may be linked from <http://bazaar-vcs.org/Documentation>.
 
 Core Documentation
 ==================
 
-* `User Guide <en/user-guide/index.html>`_ 
+* `User Guide <en/user-guide/index-plain.html>`_
 
-* `User Reference <en/user-reference/bzr_man.html>`_ 
+* `User Reference <en/user-reference/bzr_man.html>`_
 
-* `Quick Start Card <_static/en/quick-reference/bzr-quick-reference.svg>`_
-  (`PDF <_static/en/quick-reference/bzr-quick-reference.pdf>`_,
-  `PNG <_static/en/quick-reference/bzr-quick-reference.png>`_)
+* `Quick Start Card <en/_static/en/bzr-en-quick-reference.svg>`_
+  (`PDF <en/_static/en/bzr-en-quick-reference.pdf>`_,
+  `PNG <en/_static/en/bzr-en-quick-reference.png>`_)
 
 * `Release Notes <en/release-notes/NEWS.html>`_
 
-* `2.0 Upgrade Guide <en/upgrade-guide/index.html>`_ 
+* `2.0 Upgrade Guide <en/upgrade-guide/index.html>`_
 
 
 Tutorials
 =========
 
-* `Bazaar in five minutes <en/mini-tutorial/index.html>`_ 
+* `Bazaar in five minutes <en/mini-tutorial/index.html>`_
 
-* `A longer tutorial <en/tutorials/tutorial.html>`_ 
+* `A longer tutorial <en/tutorials/tutorial.html>`_
 
-* `Using Bazaar with Launchpad <en/tutorials/using_bazaar_with_launchpad.html>`_ 
+* `Using Bazaar with Launchpad <en/tutorials/using_bazaar_with_launchpad.html>`_
 
-* `Centralized workflow <en/tutorials/centralized_workflow.html>`_ 
+* `Centralized workflow <en/tutorials/centralized_workflow.html>`_
 
 
 Developer Documentation
 =======================
 
-* `Developer Document Catalog <developers/index.html>`_ |--| for developers
+* `Developer Document Catalog <developers/index-plain.html>`_ |--| for developers
   of Bazaar and plugins
 
 Web links
 =========
 
-* `Switching Guides <http://bazaar-vcs.org/BzrSwitching>`_ 
+* `Switching Guides <http://bazaar-vcs.org/BzrSwitching>`_
   |--| for users moving from another VCS tool
 
 * `Migration Guide <http://bazaar-vcs.org/BzrMigration>`_
@@ -59,6 +59,7 @@ Other Languages
 
 * `Spanish Documentation <index.es.html>`_
 * `Russian Documentation <index.ru.html>`_ |--| документация на русском
+* `Japanese Documentation <index.ja.html>`_ |--| 日本語のドキュメント
 
 .. |--| unicode:: U+2014
 

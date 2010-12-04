@@ -106,7 +106,7 @@ Future ideas and open issues
 
 * In a future workingtree format, it might be better not to separately
   store the working-copy hash and size, but rather just a stat fingerprint
-  at which point it was known to have the same canonical form as the 
+  at which point it was known to have the same canonical form as the
   basis tree.
 
 * It may be worthwhile to have a virtual Tree-like object that does

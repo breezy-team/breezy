@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -15,9 +15,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import re
+
+from bzrlib import errors
 from bzrlib.globbing import (
     Globster,
+    ExceptionGlobster,
     _OrderedGlobster,
+    normalize_pattern
     )
 from bzrlib.tests import (
     TestCase,
@@ -306,6 +311,39 @@ class TestGlobster(TestCase):
             self.assertEqual(patterns[x],globster.match(filename))
         self.assertEqual(None,globster.match('foobar.300'))
 
+    def test_bad_pattern(self):
+        """Ensure that globster handles bad patterns cleanly."""
+        patterns = [u'RE:[', u'/home/foo', u'RE:*.cpp']
+        g = Globster(patterns)
+        e = self.assertRaises(errors.InvalidPattern, g.match, 'filename')
+        self.assertContainsRe(e.msg,
+            "File.*ignore.*contains error.*RE:\[.*RE:\*\.cpp", flags=re.DOTALL)
+
+
+class TestExceptionGlobster(TestCase):
+
+    def test_exclusion_patterns(self):
+        """test that exception patterns are not matched"""
+        patterns = [ u'*', u'!./local', u'!./local/**/*', u'!RE:\.z.*',u'!!./.zcompdump' ]
+        globster = ExceptionGlobster(patterns)
+        self.assertEqual(u'*', globster.match('tmp/foo.txt'))
+        self.assertEqual(None, globster.match('local'))
+        self.assertEqual(None, globster.match('local/bin/wombat'))
+        self.assertEqual(None, globster.match('.zshrc'))
+        self.assertEqual(None, globster.match('.zfunctions/fiddle/flam'))
+        self.assertEqual(u'!!./.zcompdump', globster.match('.zcompdump'))
+
+    def test_exclusion_order(self):
+        """test that ordering of exclusion patterns does not matter"""
+        patterns = [ u'static/**/*.html', u'!static/**/versionable.html']
+        globster = ExceptionGlobster(patterns)
+        self.assertEqual(u'static/**/*.html', globster.match('static/foo.html'))
+        self.assertEqual(None, globster.match('static/versionable.html'))
+        self.assertEqual(None, globster.match('static/bar/versionable.html'))
+        globster = ExceptionGlobster(reversed(patterns))
+        self.assertEqual(u'static/**/*.html', globster.match('static/foo.html'))
+        self.assertEqual(None, globster.match('static/versionable.html'))
+        self.assertEqual(None, globster.match('static/bar/versionable.html'))
 
 class TestOrderedGlobster(TestCase):
 
@@ -318,3 +356,30 @@ class TestOrderedGlobster(TestCase):
         globster = _OrderedGlobster(reversed(patterns))
         self.assertEqual(u'bar.*', globster.match('bar.foo'))
         self.assertEqual(None, globster.match('foo.bar'))
+
+
+class TestNormalizePattern(TestCase):
+
+    def test_backslashes(self):
+        """tests that backslashes are converted to forward slashes, multiple
+        backslashes are collapsed to single forward slashes and trailing
+        backslashes are removed"""
+        self.assertEqual(u'/', normalize_pattern(u'\\'))
+        self.assertEqual(u'/', normalize_pattern(u'\\\\'))
+        self.assertEqual(u'/foo/bar', normalize_pattern(u'\\foo\\bar'))
+        self.assertEqual(u'foo/bar', normalize_pattern(u'foo\\bar\\'))
+        self.assertEqual(u'/foo/bar', normalize_pattern(u'\\\\foo\\\\bar\\\\'))
+
+    def test_forward_slashes(self):
+        """tests that multiple foward slashes are collapsed to single forward
+        slashes and trailing forward slashes are removed"""
+        self.assertEqual(u'/', normalize_pattern(u'/'))
+        self.assertEqual(u'/', normalize_pattern(u'//'))
+        self.assertEqual(u'/foo/bar', normalize_pattern(u'/foo/bar'))
+        self.assertEqual(u'foo/bar', normalize_pattern(u'foo/bar/'))
+        self.assertEqual(u'/foo/bar', normalize_pattern(u'//foo//bar//'))
+
+    def test_mixed_slashes(self):
+        """tests that multiple mixed slashes are collapsed to single forward
+        slashes and trailing mixed slashes are removed"""
+        self.assertEqual(u'/foo/bar', normalize_pattern(u'\\/\\foo//\\///bar/\\\\/'))

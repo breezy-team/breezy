@@ -36,7 +36,7 @@ from Bazaar 1.x to Bazaar 2.0 compared to upgrading from Bazaar 1.x
 to Bazaar 1.y. In either case, a brief outline of the steps is given
 below.
 
-To upgrade Bazaar on Linux:
+To upgrade Bazaar on Ubuntu:
 
 1. Ensure your package manager is configured with the required
    software sources, e.g. the official release PPA for Ubuntu:
@@ -72,10 +72,10 @@ upgrading them is optional. Other plugins, notably bzrtools and
 bzr-svn, are more tightly associated with Bazaar's APIs so these
 typically need to be upgraded in lockstep with the core software.
 
-For Windows and OS X users, bzrtools and bzr-svn are typically
-included in the installer so no special steps are required to upgrade
-these. For Linux and UNIX users, bztrools, bzr-svn and many other
-popular plugins can be installed and upgraded using your
+For Windows and OS X users, bzrtools and bzr-svn are typically included in
+the installer so no special steps are required to upgrade these. For
+Ubuntu and other GNU/Linux or Unix systems users, bztrools, bzr-svn and
+many other popular plugins can be installed and upgraded using your
 platform's package manager, e.g. Synaptic on Ubuntu.
 
 

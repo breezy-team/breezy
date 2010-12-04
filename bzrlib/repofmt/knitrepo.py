@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ from bzrlib import (
     lockdir,
     osutils,
     revision as _mod_revision,
+    trace,
     transactions,
     versionedfile,
     xml5,
@@ -37,12 +38,12 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     CommitBuilder,
+    IsInWriteGroupError,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
     RootCommitBuilder,
     )
-from bzrlib.trace import mutter, mutter_callsite
 
 
 class _KnitParentsProvider(object):
@@ -210,6 +211,8 @@ class KnitRepository(MetaDirRepository):
     def _refresh_data(self):
         if not self.is_locked():
             return
+        if self.is_in_write_group():
+            raise IsInWriteGroupError(self)
         # Create a new transaction to force all knits to see the scope change.
         # This is safe because we're outside a write group.
         self.control_files._finish_transaction()
@@ -342,7 +345,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         :param shared: If true the repository will be initialized as a shared
                        repository.
         """
-        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        trace.mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['knits']
         files = []
         utf8_files = [('format', self.get_format_string())]
@@ -360,6 +363,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         result.revisions.get_parent_map([('A',)])
         result.signatures.get_parent_map([('A',)])
         result.unlock()
+        self._run_post_repo_init_hooks(result, a_bzrdir, shared)
         return result
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
@@ -444,6 +448,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     repository_class = KnitRepository
     _commit_builder_class = RootCommitBuilder
     rich_root_data = True
+    experimental = True
     supports_tree_reference = True
     @property
     def _serializer(self):

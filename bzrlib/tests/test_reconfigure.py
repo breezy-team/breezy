@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2008, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,6 +38,19 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file'])
         tree.add('file')
+        reconfiguration = reconfigure.Reconfigure.to_branch(tree.bzrdir)
+        self.assertRaises(errors.UncommittedChanges, reconfiguration.apply)
+        reconfiguration.apply(force=True)
+        self.assertRaises(errors.NoWorkingTree, workingtree.WorkingTree.open,
+                          'tree')
+
+    def test_tree_with_pending_merge_to_branch(self):
+        tree = self.make_branch_and_tree('tree')
+        other_tree = tree.bzrdir.sprout('other').open_workingtree()
+        self.build_tree(['other/file'])
+        other_tree.add('file')
+        other_tree.commit('file added')
+        tree.merge_from_branch(other_tree.branch)
         reconfiguration = reconfigure.Reconfigure.to_branch(tree.bzrdir)
         self.assertRaises(errors.UncommittedChanges, reconfiguration.apply)
         reconfiguration.apply(force=True)

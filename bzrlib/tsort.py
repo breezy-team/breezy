@@ -459,9 +459,15 @@ class MergeSorter(object):
             left_subtree_pushed_stack_append(False)
             pending_parents_stack_append(list(parents))
             # as we push it, check if it is the first child
+            parent_info = None
             if parents:
                 # node has parents, assign from the left most parent.
-                parent_info = revnos[parents[0]]
+                try:
+                    parent_info = revnos[parents[0]]
+                except KeyError:
+                    # Left-hand parent is a ghost, consider it not to exist
+                    pass
+            if parent_info is not None:
                 first_child = parent_info[1]
                 parent_info[1] = False
             else:
@@ -495,9 +501,15 @@ class MergeSorter(object):
             pending_parents_stack_pop()
 
             parents = original_graph[node_name]
+            parent_revno = None
             if parents:
                 # node has parents, assign from the left most parent.
-                parent_revno = revnos[parents[0]][0]
+                try:
+                    parent_revno = revnos[parents[0]][0]
+                except KeyError:
+                    # left-hand parent is a ghost, treat it as not existing
+                    pass
+            if parent_revno is not None:
                 if not first_child:
                     # not the first child, make a new branch
                     base_revno = parent_revno[0]
@@ -628,10 +640,15 @@ class MergeSorter(object):
         self._left_subtree_pushed_stack.append(False)
         self._pending_parents_stack.append(list(parents))
         # as we push it, figure out if this is the first child
-        parents = self._original_graph[node_name]
+        parent_info = None
         if parents:
             # node has parents, assign from the left most parent.
-            parent_info = self._revnos[parents[0]]
+            try:
+                parent_info = self._revnos[parents[0]]
+            except KeyError:
+                # Left-hand parent is a ghost, consider it not to exist
+                pass
+        if parent_info is not None:
             first_child = parent_info[1]
             parent_info[1] = False
         else:
@@ -655,9 +672,15 @@ class MergeSorter(object):
         self._pending_parents_stack.pop()
 
         parents = self._original_graph[node_name]
+        parent_revno = None
         if parents:
             # node has parents, assign from the left most parent.
-            parent_revno = self._revnos[parents[0]][0]
+            try:
+                parent_revno = self._revnos[parents[0]][0]
+            except KeyError:
+                # left-hand parent is a ghost, treat it as not existing
+                pass
+        if parent_revno is not None:
             if not first_child:
                 # not the first child, make a new branch
                 base_revno = parent_revno[0]

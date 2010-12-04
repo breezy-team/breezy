@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
 
 import os
 
-from bzrlib import ignores
+from bzrlib import ignores, osutils
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -54,6 +54,7 @@ class TestLS(TestCaseWithTransport):
     def test_ls_basic(self):
         """Test the abilities of 'bzr ls'"""
         self.ls_equals('.bzrignore\na\n')
+        self.ls_equals('.bzrignore\na\n', './')
         self.ls_equals('?        .bzrignore\n'
                        '?        a\n',
                        '--verbose')
@@ -234,3 +235,12 @@ class TestLS(TestCaseWithTransport):
                        '%s/a\n'
                        % (self.test_dir, self.test_dir),
                        self.test_dir, recursive=False)
+
+    def test_ls_directory(self):
+        """Test --directory option"""
+        self.wt = self.make_branch_and_tree('dir')
+        self.build_tree(['dir/sub/', 'dir/sub/file'])
+        self.wt.add(['sub', 'sub/file'])
+        self.wt.commit('commit')
+        self.ls_equals('sub/\nsub/file\n', '--directory=dir')
+        self.ls_equals('sub/file\n', '-d dir sub')

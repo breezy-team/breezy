@@ -174,7 +174,7 @@ others new to Bazaar ...
      happened several commits back. There are several edge cases to be
      handled here, like if both branches modified the same file, or if
      just one branch modified it.
-     
+
   b) The trickier case is when a file appears unmodified since last
      commit, but it was modified versus one of the merged branches. I
      believe there are a few ways this can happen, like if a merged
@@ -291,7 +291,7 @@ may need to retrieve file or inventory texts from the repository.
 It is desirable to avoid roundtrips to the Repository during commit,
 particularly because it may be remote.  If the WorkingTree can determine
 by itself that a text was in the parent and therefore should be in the
-Repository that avoids one roundtrip per file.  
+Repository that avoids one roundtrip per file.
 
 There is a possibility here that the parent revision is not stored, or not
 correctly stored, in the repository the tree is being committed into, and
@@ -311,9 +311,9 @@ Caller starts a commit
 This creates a CommitBuilder object matched to the Branch, Repository and
 Tree.  It can vary depending on model differences or by knowledge of what
 is efficient with the Repository and Tree.  Model differences might
-include whether no-text-change merges need to be reported, and whether the 
+include whether no-text-change merges need to be reported, and whether the
 
-The basic CommitBuilder.commit structure can be 
+The basic CommitBuilder.commit structure can be
 
 1. Ask the branch if it is ready to commit (up to date with master if
    any.)
@@ -358,10 +358,10 @@ may be activated or deactivated by options.
 
 * the working tree basis is up to date with the branch tip
 
-* the local branch is up to date with the master branch, if there 
+* the local branch is up to date with the master branch, if there
   is one and --local is not specified
 
-* an empty commit message is given, 
+* an empty commit message is given,
 
 * a hook flags an error
 
@@ -396,7 +396,7 @@ Other complications:
 * if there are tree references and recursing into them is enabled, then
   do so
 
-Commit needs to protect against duplicated file ids 
+Commit needs to protect against duplicated file ids
 
 
 Updates that need to be made in the working tree, either on conclusion
@@ -429,13 +429,13 @@ The command interface passes:
 * or an indication that it should be read interactively from the ui object;
 * a list of files to commit
 * an option for a dry-run commit
-* verbose option, or callback to indicate 
+* verbose option, or callback to indicate
 * timestamp, timezone, committer, chosen revision id
 * config (for what?)
 * option for local-only commit on a bound branch
 * option for strict commits (fail if there are unknown or missing files)
 * option to allow "pointless" commits (with no tree changes)
- 
+
 (This is rather a lot of options to pass individually and just for code tidyness maybe some of them should be combine into objects.)
 
 >>> Branch.commit(from_tree, message, files_to_commit, ...)
@@ -466,10 +466,10 @@ bar for each directory that's scanned, even if no changes are observed.
 This needs to collect a list of added/changed/removed files, each of which
 must have its text stored (if any) and containing directory updated.  This
 can be done by calling Tree._iter_changes on the source tree, asking for
-changes 
+changes
 
 In the 0.17 model the commit operation needs to know the per-file parents
-and per-file last-changed revision.  
+and per-file last-changed revision.
 
 (In this and other operations we must avoid having multiple layers walk
 over the tree separately.  For example, it is no good to have the Command
@@ -530,8 +530,8 @@ Information from the tree to repository
 The main things the tree needs to tell the Branch about are:
 
 * A file is modified from its parent revision (in text, permissions,
-  other), and so its text may need to be stored.  
-  
+  other), and so its text may need to be stored.
+
   Files should also be reported if they have more than one unique parent
   revision, for repositories that store per-file graphs or last-change
   revisions.  Perhaps this behaviour should be optional.
@@ -540,11 +540,11 @@ The main things the tree needs to tell the Branch about are:
 
 * The complete contents of a modified directory, so that its inventory
   text may be stored.  This should be done after all the contained files
-  and directories have been reported.  If there are unmodified files, 
-  or unselected files carried through from 
+  and directories have been reported.  If there are unmodified files,
+  or unselected files carried through from
 
-  XXX: Actually perhaps not grouped by directory, but rather grouped 
-  appropriately for the shape of inventory storage in the repository. 
+  XXX: Actually perhaps not grouped by directory, but rather grouped
+  appropriately for the shape of inventory storage in the repository.
 
   In a zoomed-in checkout the workingtree may not have all the shape data
   for the entire tree.
@@ -577,7 +577,7 @@ allow the workingtree to get it in whatever order it wants.
 This might be construed as an enhanced version of ``set_parent_trees``.
 We can avoid a stat on each file by using the value that was observed when
 it was first read.
- 
+
 
 
 Selective commit
@@ -591,7 +591,7 @@ general filter that selects paths from one tree into another?
 However, the tree walking code does probably need to know about selected
 paths to avoid examining unselected files or directories.
 
-We never refuse selective file commits (except of merges).  
+We never refuse selective file commits (except of merges).
 
 
 

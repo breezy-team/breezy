@@ -23,11 +23,8 @@ from bzrlib import (
     errors,
     merge,
     merge3,
-    osutils,
     pack,
     transform,
-    ui,
-    workingtree,
 )
 
 

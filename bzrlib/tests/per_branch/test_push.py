@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,22 +26,25 @@ from bzrlib import (
     check,
     debug,
     errors,
+    memorytree,
     push,
     repository,
+    revision,
     tests,
+    transport,
     )
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
-from bzrlib.memorytree import MemoryTree
-from bzrlib.revision import NULL_REVISION
-from bzrlib.smart import client, server
-from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
-from bzrlib.transport import get_transport
-from bzrlib.transport.local import LocalURLServer
+from bzrlib.smart import (
+    client,
+    server,
+    repository as _mod_smart_repo,
+    )
+from bzrlib.tests import (
+    per_branch,
+    test_server,
+    )
 
 
-class TestPush(TestCaseWithBranch):
+class TestPush(per_branch.TestCaseWithBranch):
 
     def test_push_convergence_simple(self):
         # when revisions are pushed, the left-most accessible parents must
@@ -148,10 +151,11 @@ class TestPush(TestCaseWithBranch):
         try:
             tree = a_branch.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            if self.vfs_transport_factory is LocalURLServer:
+            if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
-                local_controldir= bzrdir.BzrDir.open(self.get_vfs_only_url('repo/tree'))
+                local_controldir= bzrdir.BzrDir.open(
+                    self.get_vfs_only_url('repo/tree'))
                 tree = local_controldir.create_workingtree()
             else:
                 tree = a_branch.create_checkout('repo/tree', lightweight=True)
@@ -223,74 +227,16 @@ class TestPush(TestCaseWithBranch):
         push._show_push_branch(trunk, 'rev-2', self.get_url('remote'), output)
         # Push rev-3 onto "remote".  If "remote" not stacked and is missing the
         # fulltext record for f-id @ rev-1, then this will fail.
-        remote_branch = Branch.open(self.get_url('remote'))
+        remote_branch = branch.Branch.open(self.get_url('remote'))
         trunk.push(remote_branch)
         check.check_dwim(remote_branch.base, False, True, True)
 
-    def test_no_get_parent_map_after_insert_stream(self):
-        # Effort test for bug 331823
-        self.setup_smart_server_with_call_log()
-        # Make a local branch with four revisions.  Four revisions because:
-        # one to push, one there for _walk_to_common_revisions to find, one we
-        # don't want to access, one for luck :)
-        if isinstance(self.branch_format, branch.BranchReferenceFormat):
-            # This test could in principle apply to BranchReferenceFormat, but
-            # make_branch_builder doesn't support it.
-            raise tests.TestSkipped(
-                "BranchBuilder can't make reference branches.")
-        try:
-            builder = self.make_branch_builder('local')
-        except (errors.TransportNotPossible, errors.UninitializableFormat):
-            raise tests.TestNotApplicable('format not directly constructable')
-        builder.start_series()
-        builder.build_snapshot('first', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('second', ['first'], [])
-        builder.build_snapshot('third', ['second'], [])
-        builder.build_snapshot('fourth', ['third'], [])
-        builder.finish_series()
-        local = builder.get_branch()
-        local = branch.Branch.open(self.get_vfs_only_url('local'))
-        # Initial push of three revisions
-        remote_bzrdir = local.bzrdir.sprout(
-            self.get_url('remote'), revision_id='third')
-        remote = remote_bzrdir.open_branch()
-        # Push fourth revision
-        self.reset_smart_call_log()
-        self.disableOptimisticGetParentMap()
-        self.assertFalse(local.is_locked())
-        local.push(remote)
-        hpss_call_names = [item.call.method for item in self.hpss_calls]
-        self.assertTrue('Repository.insert_stream_1.19' in hpss_call_names)
-        insert_stream_idx = hpss_call_names.index(
-            'Repository.insert_stream_1.19')
-        calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
-        # After inserting the stream the client has no reason to query the
-        # remote graph any further.
-        self.assertEqual(
-            ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
-             'get', 'Branch.set_last_revision_info', 'Branch.unlock'],
-            calls_after_insert_stream)
 
-    def disableOptimisticGetParentMap(self):
-        # Tweak some class variables to stop remote get_parent_map calls asking
-        # for or receiving more data than the caller asked for.
-        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
-        inter_class = repository.InterRepository
-        old_batch_size = inter_class._walk_to_common_revisions_batch_size
-        inter_class._walk_to_common_revisions_batch_size = 1
-        SmartServerRepositoryGetParentMap.no_extra_results = True
-        def reset_values():
-            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
-            inter_class._walk_to_common_revisions_batch_size = old_batch_size
-        self.addCleanup(reset_values)
-
-
-class TestPushHook(TestCaseWithBranch):
+class TestPushHook(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         self.hook_calls = []
-        TestCaseWithBranch.setUp(self)
+        super(TestPushHook, self).setUp()
 
     def capture_post_push_hook(self, result):
         """Capture post push hook calls to self.hook_calls.
@@ -314,14 +260,14 @@ class TestPushHook(TestCaseWithBranch):
     def test_post_push_empty_history(self):
         target = self.make_branch('target')
         source = self.make_branch('source')
-        Branch.hooks.install_named_hook('post_push',
-                                        self.capture_post_push_hook, None)
+        branch.Branch.hooks.install_named_hook(
+            'post_push', self.capture_post_push_hook, None)
         source.push(target)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
         self.assertEqual([
-            ('post_push', source, None, target.base, 0, NULL_REVISION,
-             0, NULL_REVISION, True, None, True)
+            ('post_push', source, None, target.base, 0, revision.NULL_REVISION,
+             0, revision.NULL_REVISION, True, None, True)
             ],
             self.hook_calls)
 
@@ -340,17 +286,18 @@ class TestPushHook(TestCaseWithBranch):
             # remotebranches can't be bound.  Let's instead make a new local
             # branch of the default type, which does allow binding.
             # See https://bugs.launchpad.net/bzr/+bug/112020
-            local = BzrDir.create_branch_convenience('local2')
+            local = bzrdir.BzrDir.create_branch_convenience('local2')
             local.bind(target)
         source = self.make_branch('source')
-        Branch.hooks.install_named_hook('post_push',
-                                        self.capture_post_push_hook, None)
+        branch.Branch.hooks.install_named_hook(
+            'post_push', self.capture_post_push_hook, None)
         source.push(local)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
         self.assertEqual([
-            ('post_push', source, local.base, target.base, 0, NULL_REVISION,
-             0, NULL_REVISION, True, True, True)
+            ('post_push', source, local.base, target.base, 0,
+             revision.NULL_REVISION, 0, revision.NULL_REVISION,
+             True, True, True)
             ],
             self.hook_calls)
 
@@ -361,10 +308,10 @@ class TestPushHook(TestCaseWithBranch):
         rev1 = target.commit('rev 1')
         target.unlock()
         sourcedir = target.bzrdir.clone(self.get_url('source'))
-        source = MemoryTree.create_on_branch(sourcedir.open_branch())
+        source = memorytree.MemoryTree.create_on_branch(sourcedir.open_branch())
         rev2 = source.commit('rev 2')
-        Branch.hooks.install_named_hook('post_push',
-                                        self.capture_post_push_hook, None)
+        branch.Branch.hooks.install_named_hook(
+            'post_push', self.capture_post_push_hook, None)
         source.branch.push(target.branch)
         # with nothing there we should still get a notification, and
         # have both branches locked at the notification time.
@@ -375,7 +322,7 @@ class TestPushHook(TestCaseWithBranch):
             self.hook_calls)
 
 
-class EmptyPushSmartEffortTests(TestCaseWithBranch):
+class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
     """Tests that a push of 0 revisions should make a limited number of smart
     protocol RPCs.
     """
@@ -393,9 +340,8 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         super(EmptyPushSmartEffortTests, self).setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
-        self.smart_server = server.SmartTCPServer_for_testing()
-        self.smart_server.setUp(self.get_server())
-        self.addCleanup(self.smart_server.tearDown)
+        self.smart_server = test_server.SmartTCPServer_for_testing()
+        self.start_server(self.smart_server, self.get_server())
         # Make two empty branches, 'empty' and 'target'.
         self.empty_branch = self.make_branch('empty')
         self.make_branch('target')
@@ -410,12 +356,12 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
     def test_empty_branch_api(self):
         """The branch_obj.push API should make a limited number of HPSS calls.
         """
-        transport = get_transport(self.smart_server.get_url()).clone('target')
-        target = Branch.open_from_transport(transport)
+        t = transport.get_transport(self.smart_server.get_url()).clone('target')
+        target = branch.Branch.open_from_transport(t)
         self.empty_branch.push(target)
         self.assertEqual(
-            ['BzrDir.open',
-             'BzrDir.open_branchV2',
+            ['BzrDir.open_2.1',
+             'BzrDir.open_branchV3',
              'BzrDir.find_repositoryV3',
              'Branch.get_stacked_on_url',
              'Branch.lock_write',
@@ -438,11 +384,11 @@ class EmptyPushSmartEffortTests(TestCaseWithBranch):
         self.assertTrue(len(self.hpss_calls) <= 9, self.hpss_calls)
 
 
-class TestLossyPush(TestCaseWithBranch):
+class TestLossyPush(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         self.hook_calls = []
-        TestCaseWithBranch.setUp(self)
+        super(TestLossyPush, self).setUp()
 
     def test_lossy_push_raises_same_vcs(self):
         target = self.make_branch('target')

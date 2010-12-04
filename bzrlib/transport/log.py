@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,18 +26,10 @@ import time
 import types
 
 from bzrlib.trace import mutter
-from bzrlib.transport.decorator import (
-    TransportDecorator,
-    )
-from bzrlib.transport.trace import (
-    DecoratorServer,
-    TransportTraceDecorator,
-    )
+from bzrlib.transport import decorator
 
 
-
-
-class TransportLogDecorator(TransportDecorator):
+class TransportLogDecorator(decorator.TransportDecorator):
     """Decorator for Transports that logs interesting operations to .bzr.log.
 
     In general we want to log things that usually take a network round trip
@@ -136,8 +128,10 @@ class TransportLogDecorator(TransportDecorator):
         if False:
             elapsed = time.time() - before
             if result_len and elapsed > 0:
-                # this is the rate of higher-level data, not the raw network speed
-                mutter("      %9.03fs %8dKB/s" % (elapsed, result_len/elapsed/1024))
+                # this is the rate of higher-level data, not the raw network
+                # speed using base-10 units (see HACKING.txt).
+                mutter("      %9.03fs %8dkB/s"
+                       % (elapsed, result_len/elapsed/1000))
             else:
                 mutter("      %9.03fs" % (elapsed))
         return return_result
@@ -154,13 +148,7 @@ class TransportLogDecorator(TransportDecorator):
         return t
 
 
-class LogDecoratorServer(DecoratorServer):
-    """Server for testing."""
-
-    def get_decorator_class(self):
-        return TransportLogDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(TransportLogDecorator, LogDecoratorServer)]
+    from bzrlib.tests import test_server
+    return [(TransportLogDecorator, test_server.LogDecoratorServer)]

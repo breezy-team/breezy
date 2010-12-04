@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -71,6 +71,7 @@ from bzrlib import (
     trace,
     transport,
     ui,
+    urlutils,
     )
 
 
@@ -80,10 +81,13 @@ class _ReportingFileSocket(object):
         self.filesock = filesock
         self._report_activity = report_activity
 
+    def report_activity(self, size, direction):
+        if self._report_activity:
+            self._report_activity(size, direction)
 
     def read(self, size=1):
         s = self.filesock.read(size)
-        self._report_activity(len(s), 'read')
+        self.report_activity(len(s), 'read')
         return s
 
     def readline(self):
@@ -93,7 +97,7 @@ class _ReportingFileSocket(object):
         #  don't *need* the size parameter we'll stay with readline(self)
         #  --  vila 20090209
         s = self.filesock.readline()
-        self._report_activity(len(s), 'read')
+        self.report_activity(len(s), 'read')
         return s
 
     def __getattr__(self, name):
@@ -106,13 +110,17 @@ class _ReportingSocket(object):
         self.sock = sock
         self._report_activity = report_activity
 
+    def report_activity(self, size, direction):
+        if self._report_activity:
+            self._report_activity(size, direction)
+
     def sendall(self, s, *args):
         self.sock.sendall(s, *args)
-        self._report_activity(len(s), 'write')
+        self.report_activity(len(s), 'write')
 
     def recv(self, *args):
         s = self.sock.recv(*args)
-        self._report_activity(len(s), 'read')
+        self.report_activity(len(s), 'read')
         return s
 
     def makefile(self, mode='r', bufsize=-1):
@@ -219,8 +227,7 @@ class AbstractHTTPConnection:
     # we want to warn. But not below a given thresold.
     _range_warning_thresold = 1024 * 1024
 
-    def __init__(self,
-                 report_activity=None):
+    def __init__(self, report_activity=None):
         self._response = None
         self._report_activity = report_activity
         self._ranges_received_whole_file = None
@@ -360,8 +367,22 @@ class Request(urllib2.Request):
 
     def set_proxy(self, proxy, type):
         """Set the proxy and remember the proxied host."""
-        self.proxied_host = self.get_host()
+        host, port = urllib.splitport(self.get_host())
+        if port is None:
+            # We need to set the default port ourselves way before it gets set
+            # in the HTTP[S]Connection object at build time.
+            if self.type == 'https':
+                conn_class = HTTPSConnection
+            else:
+                conn_class = HTTPConnection
+            port = conn_class.default_port
+        self.proxied_host = '%s:%s' % (host, port)
         urllib2.Request.set_proxy(self, proxy, type)
+        # When urllib2 makes a https request with our wrapper code and a proxy,
+        # it sets Host to the https proxy, not the host we want to talk to.
+        # I'm fairly sure this is our fault, but what is the cause is an open
+        # question. -- Robert Collins May 8 2010.
+        self.add_unredirected_header('Host', self.proxied_host)
 
 
 class _ConnectRequest(Request):
@@ -695,7 +716,7 @@ class HTTPSHandler(AbstractHTTPHandler):
             connect = _ConnectRequest(request)
             response = self.parent.open(connect)
             if response.code != 200:
-                raise ConnectionError("Can't connect to %s via proxy %s" % (
+                raise errors.ConnectionError("Can't connect to %s via proxy %s" % (
                         connect.proxied_host, self.host))
             # Housekeeping
             connection.cleanup_pipe()
@@ -852,21 +873,19 @@ class ProxyHandler(urllib2.ProxyHandler):
                 print 'Will unbind %s_open for %r' % (type, proxy)
             delattr(self, '%s_open' % type)
 
+        def bind_scheme_request(proxy, scheme):
+            if proxy is None:
+                return
+            scheme_request = scheme + '_request'
+            if self._debuglevel >= 3:
+                print 'Will bind %s for %r' % (scheme_request, proxy)
+            setattr(self, scheme_request,
+                lambda request: self.set_proxy(request, scheme))
         # We are interested only by the http[s] proxies
         http_proxy = self.get_proxy_env_var('http')
+        bind_scheme_request(http_proxy, 'http')
         https_proxy = self.get_proxy_env_var('https')
-
-        if http_proxy is not None:
-            if self._debuglevel >= 3:
-                print 'Will bind http_request for %r' % http_proxy
-            setattr(self, 'http_request',
-                    lambda request: self.set_proxy(request, 'http'))
-
-        if https_proxy is not None:
-            if self._debuglevel >= 3:
-                print 'Will bind http_request for %r' % https_proxy
-            setattr(self, 'https_request',
-                    lambda request: self.set_proxy(request, 'https'))
+        bind_scheme_request(https_proxy, 'https')
 
     def get_proxy_env_var(self, name, default_to='all'):
         """Get a proxy env var.
@@ -1051,6 +1070,14 @@ class AbstractAuthHandler(urllib2.BaseHandler):
 
         auth = self.get_auth(request)
         auth['modified'] = False
+        # Put some common info in auth if the caller didn't
+        if auth.get('path', None) is None:
+            (protocol, _, _,
+             host, port, path) = urlutils.parse_url(request.get_full_url())
+            self.update_auth(auth, 'protocol', protocol)
+            self.update_auth(auth, 'host', host)
+            self.update_auth(auth, 'port', port)
+            self.update_auth(auth, 'path', path)
         # FIXME: the auth handler should be selected at a single place instead
         # of letting all handlers try to match all headers, but the current
         # design doesn't allow a simple implementation.
@@ -1152,8 +1179,8 @@ class AbstractAuthHandler(urllib2.BaseHandler):
             and then during dialog with the server).
         """
         auth_conf = config.AuthenticationConfig()
-        user = auth['user']
-        password = auth['password']
+        user = auth.get('user', None)
+        password = auth.get('password', None)
         realm = auth['realm']
 
         if user is None:
@@ -1293,7 +1320,8 @@ class BasicAuthHandler(AbstractAuthHandler):
             # Put useful info into auth
             self.update_auth(auth, 'scheme', scheme)
             self.update_auth(auth, 'realm', realm)
-            if auth['user'] is None or auth['password'] is None:
+            if (auth.get('user', None) is None
+                or auth.get('password', None) is None):
                 user, password = self.get_user_password(auth)
                 self.update_auth(auth, 'user', user)
                 self.update_auth(auth, 'password', password)
@@ -1358,7 +1386,7 @@ class DigestAuthHandler(AbstractAuthHandler):
         # Put useful info into auth
         self.update_auth(auth, 'scheme', scheme)
         self.update_auth(auth, 'realm', realm)
-        if auth['user'] is None or auth['password'] is None:
+        if auth.get('user', None) is None or auth.get('password', None) is None:
             user, password = self.get_user_password(auth)
             self.update_auth(auth, 'user', user)
             self.update_auth(auth, 'password', password)

@@ -9,5 +9,5 @@ if [ -z "$UBUNTU_RELEASES" ]; then
 fi
 
 for DISTRO in $UBUNTU_RELEASES; do
-    (cd "packaging-$DISTRO" && bzr builddeb -S)
+    (cd "$PACKAGE-$DISTRO" && bzr builddeb -S)
 done

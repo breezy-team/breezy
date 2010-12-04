@@ -1,0 +1,843 @@
+.. This file is in Python ReStructuredText format - it can be formatted
+.. into HTML or text.  In the future we plan to extract the example commands
+.. and automatically test them.
+
+.. This text was previously on the wiki at
+.. http://bazaar.canonical.com/IntroductionToBzr
+.. but has been moved into the source tree so it can be kept in sync with
+.. the source and possibly automatically checked.
+
+======================
+Bazaar チュートリアル
+======================
+
+
+.. Introduction
+
+はじめに
+============
+
+もし、もう分散型バージョン管理に慣れ親しんでいるなら、
+"Bazaarに自己紹介する" の節までとばしてください。
+もし、分散型でないバージョン管理に慣れ親しんでいるけれど分散型バージョン管理は\
+よくわからないのであれば、"分散バージョン管理と分散でないバージョン管理の違い"まで\
+とばしてください。
+それ以外の場合、コーヒーか紅茶(訳注:日本茶でもいいですよ)を用意して、\
+リラックスして読み始めてください。
+
+バージョン管理の目的
+====================
+
+なにかのテキストデータ(プログラムのソースコード、Webサイト、Unixシステムでの\
+設定ファイルなど)を扱う作業をしているとしましょう。
+なにかミスをして、重大なデグレードを引き起こしてしまうかもしれません。
+例えばメールサーバーの設定ファイルを消してしまったり、だいじなプロジェクトの\
+ソースコードを壊してしまったりすることがあります。
+だいじな情報を失って、何が何でも取り戻したいと思った経験があるのであれば、\
+きっとあなたはBazaarを使う準備ができています。
+
+Bazaarをはじめとするバージョン管理システムは、ディレクトリに起こった変更を\
+**ブランチ (branch)** というディレクトリよりも複雑なものの中に入れて\
+追跡します。
+ブランチはディレクトリの中に何が入っているかだけでなく、過去のいろいろな\
+時点でのディレクトリの中身を格納しています。
+なので、望まぬ変更をしてしまったときには過去の時点の状態に戻すことができます。
+
+バージョン管理システムは、ユーザーが "**リビジョン (revision)** をコミット"
+することで変更をブランチに保存します。
+このときに生成されるリビジョンとは、本質的にいって、前回保存したときからの\
+変更点になります。
+
+リビジョンはそれ以外のものも持っています(原文:These revisions have other
+uses as well.)
+たとえば、オプションのログメッセージをつけることで、変更が何を意味して\
+いるのかというコメントを残すことができます。
+実際に利用されるログメッセージは、 "Webテンプレートをテーブルを閉じるように\
+修正" とか "sftpに対応した。 #595 を修正。" といったものです。
+
+こういったログが保存されているおかげで、たとえば後になって sftp に問題が発生\
+したときに、問題が発生するようになったのがどの時点なのか目星をつけることが\
+できます。
+
+
+分散バージョン管理と分散でないバージョン管理の違い
+===================================================
+
+多くのバージョン管理システムはサーバーに配置されています。
+バージョン管理されているコードに対して作業をしたい場合、サーバーに接続して\
+コードを "チェックアウト (checkout)" する必要があります。
+そうすると、変更やコミットができるディレクトリができます。
+バージョン管理システムのクライアントは、バージョン管理システムのサーバーに\
+コミットされた変更を保存します。この方式は集中型として知られています。
+
+集中型にはいくつかの欠点があります。
+集中型バージョン管理システムは、動作するためにサーバーとの接続を要求します。
+このことは、サーバーがどこかインターネット上にあって、あなたのマシンが\
+インターネットに接続できないときに問題になります。
+もしくは、あなたのマシンがインターネットに接続できてもサーバーが落ちている\
+ときにもやはり問題になります。
+
+分散バージョン管理システムは、ブランチをクライアントと同じマシンに置くことで\
+この問題を解決しています。
+Bazaarの場合、ブランチはバージョン管理されているコードと同じディレクトリに\
+保存されます。
+これにより、ユーザーは(たとえオフラインであったとしても)好きなときに変更を保存\
+(**コミット (commit)**)することができます。
+インターネット接続が必要になるのは、どこか別の場所にあるブランチの変更にアクセス\
+するときだけです。
+
+.. TODO:
+.. Performing this tracking by hand is a awkward process that over time
+.. becomes unwieldy. の部分の訳が判らない。
+
+多くの人が必要としていることは、ディレクトリ内でおこったファイルやサブディレクトリ\
+の変更を追跡することです。
+この追跡を手でおこなうのは面倒で不恰好な作業です。
+これは、Bazaarのようなバージョン管理システムの目的のひとつです。
+バージョン管理システムはユーザーが指示したときにディレクトリツリーの
+**リビジョン (revision)** を作ることでこの作業を自動化します。
+
+バージョン管理システムは単に保存したりundoしたりするだけではありません。
+たとえばBazaarでは、ソフトウェアのあるブランチから変更を取り出して、\
+関連する別のブランチに適用することができます。このとき、変更を取り出す\
+ブランチは別の人のものであってもかまいません。これにより、開発者のグループは\
+お互いに書き込み権を与えることなく共同作業することができます。
+
+.. Bazaar remembers the ''ancestry'' of a revision: the previous revisions
+.. that it is based upon.  A single revision may have more than one direct
+.. descendant, each with different changes, representing a divergence in the
+.. evolution of the tree. By branching, Bazaar allows multiple people to
+.. cooperate on the evolution of a project, without all needing to work in
+.. strict lock-step.  Branching can be useful even for a single developer.
+
+Bazaarではリビジョンの ''親 (ancestry)'' 、つまりそのリビジョンの元になった\
+リビジョンを記録しています。
+ひとつのリビジョンは複数の、それぞれ別の変更を含む子供リビジョンを持つことが\
+あり、それはツリーの進化が分岐していることを意味しています。
+Bazaarではブランチを作ることによって、複数の人が厳しい lock-step をとらなくても\
+協力することができます。
+ブランチを作ることは個人での開発でも便利です。
+
+.. Introducing yourself to Bazaar
+
+Bazaarに自己紹介する
+=====================
+
+.. Bazaar installs a single new command, **bzr**.  Everything else is a
+   subcommand of this.  You can get some help with ``bzr help``. Some arguments
+   are grouped in topics: ``bzr help topics`` to see which topics are available.
+
+Bazaarは **bzr** という新しいコマンドをひとつインストールします。
+他の全ては bzr のサブコマンドになります。
+``bzr help`` コマンドでいくつかのヘルプを見られます。
+幾つかの話題は topic にまとめられていて、 ``bzr help topics`` で\
+利用可能なトピックの一覧を見られます。
+
+バージョン管理システムの一つの機能は、誰が何を変更したのかを追跡することです。
+分散型バージョン管理システムでは、各開発者がグローバルユニークなIDを持つ\
+必要があります。
+ほとんどの人はこのIDとして利用できる eメールアドレス を持っています。
+Bazaarはコンピュータのユーザー名とホスト名から自動でメールアドレスを\
+生成します。Bazaarが自動で作成したメールアドレス以外のものを使いたい\
+場合、３つの選択肢があります。
+
+1. ``bzr whoami`` を使ってメールアドレスを設定します。これはグローバルなIDを設定\
+   する最も簡単な方法です。グローバルなIDを設定するには::
+
+      % bzr whoami "Your Name <email@example.com>"
+
+   特定のブランチでべつのアドレスを使いたい場合、そのブランチのディレクトリの\
+   なかで次のコマンドを実行します::
+
+      % bzr whoami --branch "Your Name <email@example.com>"
+
+#. ``?/.bazaar/bazaar.conf`` [1]_ の中のメールアドレスを、以下のようにして\
+   設定します。 ``[DEFAULT]`` の部分が大文字と小文字を区別するので注意して\
+   ください::
+
+       [DEFAULT]
+       email=Your Name <email@isp.com>
+
+   特定のブランチにおける設定は、 ``?/.bazaar/locations.conf``
+   にブランチのセクションを作成して次のように書くことができます。 ::
+
+       [/the/path/to/the/branch]
+       email=Your Name <email@isp.com>
+
+
+#. 環境変数 ``$BZR_EMAIL`` もしくは ``$EMAIL`` (``$BZR_EMAIL`` の方が優先\
+   されます)にメールアドレスを設定することで、上の二つの方法で設定された\
+   オプションを上書きすることができます。
+
+.. [1] Windowsではユーザー設定ファイルはアプリケーションデータディレクトリに\
+   おかれます。なので、設定ファイルの場所は ``?/.bazaar/branch.conf`` ではなく\
+   ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0\branch.conf``
+   になります。
+   同じことが ``locations.conf``, ``ignore``, ``plugins`` ディレクトリも\
+   同じです。
+
+ブランチを作る
+==============
+
+履歴はデフォルトではブランチの .bzr ディレクトリの中に保存されます。
+
+.. これは現行のバージョンでできるのでは？: In a
+   future version of Bazaar, there will be a facility to store it in a
+   separate repository, which may be remote.
+
+既存のディレクトリの中で ``bzr init`` をすると新しいブランチを作成できます::
+
+    % mkdir tutorial
+    % cd tutorial
+    % ls -a
+    ./  ../
+    % pwd
+    /home/mbp/work/bzr.test/tutorial
+    %
+    % bzr init
+    % ls -aF
+    ./  ../  .bzr/
+    %
+
+ファイルには３つのクラス、 unknown, ignored, versioned があります。
+**add** コマンドはファイルを versioned にし、そのファイルへの変更の記録を\
+開始します::
+
+    % echo 'hello world' > hello.txt
+    % bzr status
+    unknown:
+      hello.txt
+    % bzr add hello.txt
+    added hello.txt
+    % bzr status
+    added:
+      hello.txt
+
+もし間違えたファイルを add してしまった場合、そのファイルを unversioned
+状態に戻すために ``bzr remove`` してください。
+この場合の ``bzr remove`` は、ほかの場合 [2]_ とちがってファイルを削除\
+しません。
+
+.. [2] ``bzr remove`` はファイルがバージョン管理されていて何も変更されて\
+   いない場合に、そのファイルを削除します。 ``--keep`` オプションで常に\
+   ファイルを残すことができます。 ``--force`` オプションで常にファイルを\
+   削除することもできます。
+
+.. Branch locations
+
+ブランチの場所
+===============
+
+すべての履歴はブランチに格納されます。ブランチとは、管理用のファイルを\
+含んだただのディレクトリです。デフォルトでは、svnやsvkのような、分離した\
+リポジトリやデータベースはありません。分離したリポジトリを作成することも\
+できます(``bzr init-repo`` コマンドを参照してください)。大規模なブランチを\
+利用する場合や、中規模のブランチをたくさん利用する場合にはリポジトリを\
+分離するといいでしょう。
+
+自分のコンピュータのファイルシステム上にあるブランチを参照するときは\
+ブランチを格納しているディレクトリ名で指定できます。 bzr は http や ftp\
+経由でブランチにアクセスすることもできます。例::
+
+    % bzr log http://bazaar-vcs.org/bzr/bzr.dev/
+    % bzr log sftp://bazaar-vcs.org/bzr/bzr.dev/
+
+プラグインをインストールすれば、 rsync プロトコルを使ってブランチにアクセス\
+することもできます。
+
+ブランチを指定した場所に置く方法については、 `ブランチを公開する`_ 節を\
+ご覧ください。
+
+.. Reviewing changes
+
+変更をレビューする
+===================
+
+一仕事終えたら、それを履歴に **コミット (commit)** しましょう。
+新しい機能を追加したり、バグを直したり、コードやドキュメントを更新したら\
+いつでもコミットするのは良いことです。
+すべてのリビジョンが良い状態であるようにするために、コミットする前にコードを\
+コンパイルしたりテストスイートを実行するのも良い習慣です。
+コミットする前にコミットしようとしているものを確認するためにレビューすることが\
+できます。
+
+この目的で便利な二つのコマンドがあります。 **status** と **diff** です。
+
+bzr status
+----------
+
+**status** コマンドは、今の作業ツリーが最後のリビジョンからどのように\
+変更されたのかを教えてくれます::
+
+    % bzr status
+    modified:
+       foo
+
+``bzr status`` は変更が無かったり無視されているファイルを隠します。
+status コマンドはオプションとして、確認対象となる複数のファイル名やディレクトリ名を\
+渡すことができます。
+
+bzr diff
+--------
+
+**diff** コマンドは通常の unified diff フォーマットですべてのファイルの\
+テキストの変更を表示します。
+このコマンドの出力を pipe 経由で、''patch'', ''diffstat'', ''fileterdiff'',
+''colordiff'' といったコマンドに渡すことができます。 ::
+
+    % bzr diff
+    === added file 'hello.txt'
+    --- hello.txt   1970-01-01 00:00:00 +0000
+    +++ hello.txt   2005-10-18 14:23:29 +0000
+    @@ -0,0 +1,1 @@
+    +hello world
+
+
+``-r`` オプションをつけると、作業ツリーを古いリビジョンと比較したり、\
+二つのリビジョン間の差分を見ることができます。 ::
+
+    % bzr diff -r 1000..          # everything since r1000
+    % bzr diff -r 1000..1100      # changes from 1000 to 1100
+
+``--diff-options`` オプションをつけると、 bzr は外部の diff プログラムに\
+オプションをつけて起動します。 例::
+
+    % bzr diff --diff-options --side-by-side foo
+
+プロジェクトによっては二つのファイルに接頭辞がついた patch が好まれます。
+``--prefix`` オプションでそのような接頭辞をつけることができます。
+ショートカットとして、 ``bzr diff -p1`` は ``patch -p1`` コマンドが受け付ける\
+形で差分を出力します。
+
+
+.. Committing changes
+
+変更をコミットする
+==================
+
+作業ツリーの状態に満足したら、ブランチに **コミット (commit)** しましょう。
+コミットとは作業ツリーの状態のスナップショットを保持するリビジョンを新しく作ることです。
+
+bzr commit
+----------
+
+.. The **commit** command takes a message describing the changes in the
+.. revision.  It also records your userid, the current time and timezone, and
+.. the inventory and contents of the tree.  The commit message is specified
+.. by the ``-m`` or ``--message`` option. You can enter a multi-line commit
+.. message; in most shells you can enter this just by leaving the quotes open
+.. at the end of the line.
+
+**commit** コマンドはそのリビジョンの変更を説明するメッセージを受け取ります。
+また、あなたのユーザーID、今の時間とタイムゾーン、ツリーの内容をあわせて記録します。
+コミットメッセージは ``-m`` もしくは ``--message`` オプションで指定できます。
+複数行のコメントも利用できます。多くのシェルはクォートを開いたままで改行する\
+ことで複数行の入力が可能です。
+
+::
+
+    % bzr commit -m "added my first file"
+
+.. You can also use the ``-F`` option to take the message from a file.  Some
+.. people like to make notes for a commit message while they work, then
+.. review the diff to make sure they did what they said they did.  (This file
+.. can also be useful when you pick up your work after a break.)
+
+メッセージをファイルで渡すには ``-F`` オプションを使います。
+コミットメッセージを先に作成し、それとdiffを合わせてレビューすることで、
+コミットメッセージとコミット内容が一致していることを確認する人もいます。
+(このファイルは休憩から戻ってきて作業を思い出すときにも役に立つでしょう)
+
+.. Message from an editor
+
+エディタからメッセージを入力する
+----------------------------------
+
+.. If you use neither the ``-m`` nor the ``-F`` option then bzr will open an
+.. editor for you to enter a message.  The editor to run is controlled by
+.. your ``$VISUAL`` or ``$EDITOR`` environment variable, which can be overridden
+.. by the ``editor`` setting in ``?/.bazaar/bazaar.conf``; ``$BZR_EDITOR`` will
+.. override either of the above mentioned editor options.  If you quit the
+.. editor without making any changes, the commit will be cancelled.
+
+``-m`` オプションも ``-F`` オプションも指定しなかった場合、 bzr はメッセージを\
+入力するためにエディタを立ち上げます。
+このエディタは ``$VISUAL`` か ``$EDITOR`` 環境変数で制御することができます。
+この環境変数を `` /.bazaar/bazaar.conf`` 内の ``editor`` を設定して上書き\
+することができ、さらに ``$BZR_EDITOR`` 環境変数がそれらすべてを上書きします。
+もし何も変更せずにエディタを閉じたなら、コミットはキャンセルされます。
+
+.. The file that is opened in the editor contains a horizontal line. The part
+.. of the file below this line is included for information only, and will not
+.. form part of the commit message. Below the separator is shown the list of
+.. files that are changed in the commit. You should write your message above
+.. the line, and then save the file and exit.
+
+エディタで開かれるファイルには水平線が含まれています。この線より下の部分は\
+参考用であり、コミットメッセージには含まれません。
+水平線の下にはコミットで変更されるファイルのリストが表示されます。
+メッセージは水平線の上に書く必要があります。そうしたら、ファイルを保存して\
+エディタを終了してください。
+
+.. If you would like to see the diff that will be committed as you edit the
+.. message you can use the ``--show-diff`` option to ``commit``. This will include
+.. the diff in the editor when it is opened, below the separator and the
+.. information about the files that will be committed. This means that you can
+.. read it as you write the message, but the diff itself wont be seen in the
+.. commit message when you have finished. If you would like parts to be
+.. included in the message you can copy and paste them above the separator.
+
+``commit`` コマンドに ``--show-diff`` オプションをつけると、コミットされる\
+変更の diff を見ることができます。この diff はエディタが開いたときに水平線\
+やコミットされるファイルの情報よりも下に含まれます。
+なので、コミットメッセージを書くときに diff を見ることができますが、\
+コミットメッセージ自体には diff が含まれません。
+コミットメッセージに diff を含めたい場合は、水平線より上にコピーペースト\
+してください。
+
+.. Selective commit
+
+選択コミット
+----------------
+
+.. If you give file or directory names on the commit command line then only
+.. the changes to those files will be committed.  For example::
+
+commit コマンドにファイル名やディレクトリ名を渡したとき、それらのファイルの\
+変更だけがコミットされます。 例 ::
+
+    % bzr commit -m "documentation fix" commit.py
+
+.. By default bzr always commits all changes to the tree, even if run from a
+.. subdirectory.  To commit from only the current directory down, use::
+
+デフォルトでは bzr は、サブディレクトリから実行される場合でもすべての変更を\
+コミットします。
+カレントディレクトリ以下だけをコミットする場合は、次のようにします ::
+
+    % bzr commit .
+
+
+.. Removing uncommitted changes
+
+コミットされていない変更を削除する
+===================================
+
+.. If you've made some changes and don't want to keep them, use the
+.. **revert** command to go back to the previous head version.  It's a good
+.. idea to use ``bzr diff`` first to see what will be removed. By default the
+.. revert command reverts the whole tree; if file or directory names are
+.. given then only those ones will be affected. ``bzr revert`` also clears the
+.. list of pending merges revisions.
+
+不要な変更がある場合、 **revert** コマンドで最後のリビジョンの状態に戻る\
+ことができます。
+revert するまえに ``bzr diff`` で何が削除されるのかを確認しておくと良いでしょう。
+デフォルトでは revert コマンドはツリー全体を revert します。ファイル名や\
+ディレクトリ名が指定されている場合は、そのファイルだけが revert されます。
+``bzr revert`` はマージ待ちリビジョンのリストも削除します。
+
+
+.. Ignoring files
+
+ファイルを無視する
+===================
+
+.. The .bzrignore file
+
+.bzrignore ファイル
+-------------------
+
+.. Many source trees contain some files that do not need to be versioned,
+.. such as editor backups, object or bytecode files, and built programs.  You
+.. can simply not add them, but then they'll always crop up as unknown files.
+.. You can also tell bzr to ignore these files by adding them to a file
+.. called ``.bzrignore`` at the top of the tree.
+
+多くのソースツリーはバージョン管理する必要のないファイルをたくさん含んでいます。
+たとえば、エディタのバックアップファイルや、オブジェクトファイル、バイトコード、
+ビルドされたプログラムなどです。
+こういったファイルを単に add しないこともできますが、そうすると毎回 unknown file
+としてたびたび出現することになります。
+ツリートップにある ``.bzrignore`` とよばれるファイルにそれらのファイルを追加する\
+ことで、bzrにそれらのファイルを無視させることができます。
+
+.. This file contains a list of file wildcards (or "globs"), one per line.
+.. Typical contents are like this::
+
+このファイルは行ごとにワイルドカード (もしくは"glob") のリストを含みます。
+典型的な内容の例です::
+
+    *.o
+    *?
+    *.tmp
+    *.py[co]
+
+.. If a glob contains a slash, it is matched against the whole path from the
+.. top of the tree; otherwise it is matched against only the filename.  So
+.. the previous example ignores files with extension ``.o`` in all
+.. subdirectories, but this example ignores only ``config.h`` at the top level
+.. and HTML files in ``doc/``::
+
+glob がスラッシュを含む場合、ツリーのトップからのパス全体にマッチします。
+そうでない場合は、単にファイル名にマッチします。
+なので、上の例はすべてのサブディレクトリの ``.o`` 拡張子を持つファイルを無視\
+しますが、次の例ではツリーのトップにある ``config.h`` ファイルと、 ``doc/``
+ディレクトリ以下のHTMLファイルだけを無視します::
+
+    ./config.h
+    doc/*.html
+
+.. To get a list of which files are ignored and what pattern they matched,
+.. use ``bzr ignored``::
+
+どのファイルがどのパターンにマッチして無視されているのかを、 ``bzr ignored``
+コマンドで表示することができます::
+
+    % bzr ignored
+    config.h                 ./config.h
+    configure.in?            *?
+
+.. It is OK to have either an ignore pattern match a versioned file, or to
+.. add an ignored file.  Ignore patterns have no effect on versioned files;
+.. they only determine whether unversioned files are reported as unknown or
+.. ignored.
+
+バージョン管理されているファイルが無視パターンにマッチしたり無視リストに\
+入っていても大丈夫です。無視パターンはバージョン管理されたファイルには\
+影響しません。バージョン管理されていないファイルを 'unknown' として扱うか\
+'ignored' として扱うかを決めるためだけに使われます。
+
+
+.. The ``.bzrignore`` file should normally be versioned, so that new copies
+.. of the branch see the same patterns::
+
+``.bzrignore`` ファイルは普通はバージョン管理されます。なのでそのブランチの\
+コピーでも同じパターンが無視されます。 ::
+
+    % bzr add .bzrignore
+    % bzr commit -m "Add ignore patterns"
+
+
+.. Global ignores
+
+グローバルの無視設定
+---------------------
+
+.. There are some ignored files which are not project specific, but more user
+.. specific. Things like editor temporary files, or personal temporary files.
+.. Rather than add these ignores to every project, bzr supports a global
+.. ignore file in ``?/.bazaar/ignore`` [1]_. It has the same syntax as the
+.. per-project ignore file.
+
+エディタの一時ファイルや個人の一時ファイルなど、\
+幾つかの無視ファイルはプロジェクト依存ではなくてユーザー依存です。
+こういったファイルを全プロジェクトで無視設定するかわりに、グローバルの\
+無視設定ファイル ``~/.bazaar/ignore`` を利用できます。
+これはプロジェクトの ignore ファイルと同じ文法で記述します。
+
+
+.. Examining history
+
+履歴を閲覧する
+===============
+
+bzr log
+-------
+
+.. The ``bzr log`` command shows a list of previous revisions. The ``bzr log
+.. --forward`` command does the same in chronological order to get most
+.. recent revisions printed at last.
+
+``bzr log`` コマンドは過去のリビジョンのリストを表示します。
+``bzr log --forward`` コマンドは同じ内容を、時系列順で最新のものが最後に\
+くるように出力します。
+
+.. As with ``bzr diff``, ``bzr log`` supports the ``-r`` argument::
+
+``bzr diff`` と同じように、 ``bzr log`` も ``-r`` 引数をサポートします::
+
+    % bzr log -r 1000..          # リビジョン r1000 とそれ以降すべて
+    % bzr log -r ..1000          # r1000 とそれ以前のすべて
+    % bzr log -r 1000..1100      # r1000 から r1100 まで
+    % bzr log -r 1000            # リビジョン r1000 だけ
+
+..    % bzr log -r 1000..          # Revision 1000 and everything after it
+..    % bzr log -r ..1000          # Everything up to and including r1000
+..    % bzr log -r 1000..1100      # changes from 1000 to 1100
+..    % bzr log -r 1000            # The changes in only revision 1000
+
+
+.. Branch statistics
+
+ブランチの情報
+=================
+
+.. The ``bzr info`` command shows some summary information about the working
+.. tree and the branch history.
+
+``bzr info`` コマンドは作業ツリーとブランチの履歴に関する情報の要約を表示します。
+
+
+.. Versioning directories
+
+ディレクトリをバージョン管理する
+================================
+
+.. bzr versions files and directories in a way that can keep track of renames
+.. and intelligently merge them::
+
+bzr はファイルとディレクトリを、名前の変更を追跡して賢くマージできるように\
+バージョン管理します::
+
+    % mkdir src
+    % echo 'int main() {}' > src/simple.c
+    % bzr add src
+    added src
+    added src/simple.c
+    % bzr status
+    added:
+      src/
+      src/simple.c
+
+
+.. Deleting and removing files
+
+ファイルを削除する
+===================
+
+.. You can delete files or directories by just deleting them from the working
+.. directory.  This is a bit different to CVS, which requires that you also
+.. do ``cvs remove``.
+
+ファイルを削除するのは、単純に作業ツリーからファイルを削除するだけでできます。
+これは、 ``cvs remove`` が必要な CVS とは少し異なります。
+
+.. ``bzr remove`` makes the file un-versioned, but may or may not delete the
+.. working copy [2]_.  This is useful when you add the wrong file, or decide that
+.. a file should actually not be versioned.
+
+``bzr remove`` はファイルをバージョン管理対象からはずしますが、作業ツリーから\
+削除することも削除しないこともできます。 [2]_
+これは間違ったファイルを追加してしまったり、あるファイルをバージョン管理するのを\
+やめる場合に便利です。
+
+::
+
+    % rm -r src
+    % bzr remove -v hello.txt
+    ?       hello.txt
+    % bzr status
+    removed:
+      hello.txt
+      src/
+      src/simple.c
+    unknown:
+      hello.txt
+
+.. If you remove the wrong file by accident, you can use ``bzr revert`` to
+.. restore it.
+
+もし間違ってファイルを削除してしまった場合、 ``bzr revert`` でリストアできます。
+
+
+.. Branching
+
+ブランチを作る
+==============
+
+.. Often rather than starting your own project, you will want to submit a
+.. change to an existing project.  To do this, you'll need to get a copy of
+.. the existing branch.  Because this new copy is potentially a new branch,
+.. the command is called **branch**::
+
+自分でプロジェクトを始めるのではなく、既存のプロジェクトに変更を加えたい場合があります。
+この場合、既存のブランチのコピーを取得する必要があります。
+このコピーは新しいブランチになるので、このコマンドは **branch** という名前になっています::
+
+    % bzr branch http://bazaar-vcs.org/bzr/bzr.dev
+    % cd bzr.dev
+
+.. This copies down the complete history of this branch, so we can do all
+.. operations on it locally: log, annotate, making and merging branches.
+.. There will be an option to get only part of the history if you wish.
+
+.. XXX: There will be の訳これでいい？
+
+これでブランチの完全な履歴をコピーできたので、すべての操作 (log, annotate,
+branch の作成とマージなど) をローカルで実行できます。
+履歴の一部だけを取得するオプションも追加される予定です。
+
+.. You can also get a copy of an existing branch by copying its directory,
+.. expanding a tarball, or by a remote copy using something like rsync.
+
+既存のブランチをコピーするには、普通にディレクトリをコピーしたり、tarballを\
+展開したり、リモートから rsync のような方法でコピーすることもできます。
+
+.. Following upstream changes
+
+上流の変更を追いかける
+==========================
+
+.. You can stay up-to-date with the parent branch by "pulling" in their
+   changes::
+
+変更を "pull" することで手元のブランチを上流のブランチに対して最新に保つことが\
+できます。
+
+    % bzr pull
+
+.. After this change, the local directory will be a mirror of the source. This
+.. includes the ''revision-history'' - which is a list of the commits done in
+.. this branch, rather than merged from other branches.
+
+.. XXX This includes～がわからない.
+
+このコマンドを実行した後、ローカルディレクトリはpull元のミラーになります。
+ミラーするものには、 ''revision-history'' を含みます。つまり、別のブランチから\
+マージするのではなくて、このブランチに対してコミットした履歴になります。
+
+.. This command only works if your local (destination) branch is either an
+.. older copy of the parent branch with no new commits of its own, or if the
+.. most recent commit in your local branch has been merged into the parent
+.. branch.
+
+このコマンドはローカルの(pull先)ブランチが親ブランチの古いコピーで独自の\
+あたらしいリビジョンを一切含まないか、ローカルブランチへの最新のコミットが\
+親ブランチにマージされているときにのみ成功します。
+
+.. Merging from related branches
+
+関連ブランチからマージする
+=============================
+
+.. If two branches have diverged (both have unique changes) then ``bzr
+.. merge`` is the appropriate command to use. Merge will automatically
+.. calculate the changes that exist in the branch you're merging from that
+.. are not in your branch and attempt to apply them in your branch.
+
+二つのブランチが分岐している(互いに異なる変更を持っている)とき、
+``bzr merge`` コマンドの出番です。
+merge はマージ元ブランチにあって手元のブランチにない変更を自動で探して、\
+その変更を手元に適用しようと試みます。
+
+::
+
+  % bzr merge URL
+
+
+.. If there is a conflict during a merge, 3 files with the same basename
+.. are created. The filename of the common base is appended with ".BASE",
+.. the filename of the file containing your changes is appended with
+.. ".THIS" and the filename with the changes from the other tree is
+.. appended with ".OTHER".  Using a program such as kdiff3, you can now
+.. comfortably merge them into one file.  In order to commit you have to
+.. rename the merged file (".THIS") to the original file name.  To
+.. complete the conflict resolution you must use the resolve command,
+.. which will remove the ".OTHER" and ".BASE" files.  As long as there
+.. exist files with .BASE, .THIS or .OTHER the commit command will
+.. report an error.
+
+マージ中に衝突(conflict)が発生した場合、同じ基本名(basename)をもつ\
+3つのファイルが作成されます。
+共通の祖先になるファイルのファイル名には ".BASE" が、
+手元のブランチの変更を含むファイル名には ".THIS" が、
+マージ元の変更を含むファイル名には ".OTHER" が末尾に追加されます。
+kdiff3 のようなプログラムを利用してこれらのファイルをひとつに\
+マージすることができます。
+コミットするには、マージされた ".THIS" ファイルを元のファイル名に\
+リネームします。
+衝突の解決を完了するには、 resolve コマンドを使います。
+このコマンドは ".OTHER" と ".BASE" ファイルを削除します。
+.BASE, .THIS, .OTHER ファイルが残っている場合、 commit コマンドは\
+エラーを報告します。
+
+::
+
+  % kdiff3 file.BASE file.OTHER file.THIS
+  % mv file.THIS file
+  % bzr resolve file
+
+[**TODO**: explain conflict markers within files]
+
+
+ブランチを公開する
+======================
+
+.. You don't need a special server to publish a bzr branch, just a normal web
+.. server.  Just mirror the files to your server, including the .bzr
+.. directory.  One can push a branch (or the changes for a branch) by one of
+.. the following three methods:
+
+bzrのブランチを公開するには特別なサーバーは必要ありません、普通のWebサーバーが\
+使えます。
+.bzr ディレクトリを含めてファイルをサーバーにミラーしてください。
+ブランチをpush(やブランチに対する操作)するのに以下の3つの方法があります。
+
+.. * The best method is to use bzr itself to do it.
+
+* 最良の方法は bzr 自体を使うことです。
+
+  ::
+
+    % bzr push sftp://servername.com/path/to/directory
+
+..   (The destination directory must already exist unless the
+..   ``--create-prefix`` option is used.)
+
+  (push先ディレクトリがすでに存在するか、 ``--create-prefix`` オプションを\
+  利用する必要があります。)
+
+.. * Another option is the ``rspush`` plugin that comes with BzrTools, which
+..   uses rsync to push the changes to the revision history and the working
+..   tree.
+
+* 別の選択肢は bzrtools に含まれる ``rspush`` プラグインを利用することです。
+  これはリモートの履歴と作業ツリーに変更を push するのに rsync を利用します。
+
+.. * You can also copy the files around manually, by sending a tarball, or using
+..   rsync, or other related file transfer methods.  This is usually less safe
+..   than using ``push``, but may be faster or easier in some situations.
+
+* 手動で、 tarball を送ったり rsync を使ったりほかの転送方法を利用してファイルを\
+  送ることで
+
+
+.. Moving changes between trees
+
+変更をツリー間で移動する
+============================
+
+.. It happens to the best of us: sometimes you'll make changes in the wrong
+.. tree.  Maybe because you've accidentally started work in the wrong directory,
+.. maybe because as you're working, the change turns out to be bigger than you
+.. expected, so you start a new branch for it.
+
+どんな人にでもありえることですが、適切ではないツリー上で変更してしまうことがあります。
+単純に作業するディレクトリを間違えたり、変更がよそうよりも大きくなってしまったりして、
+その変更のために新しいブランチを作りなおすことがあります。
+
+.. To move your changes from one tree to another, use
+
+変更をあるツリーから別のツリーに移動するには
+
+::
+
+  % cd NEWDIR
+  % bzr merge --uncommitted OLDDIR
+
+.. This will apply all of the uncommitted changes you made in OLDDIR to NEWDIR.
+.. It will not apply committed changes, even if they could be applied to NEWDIR
+.. with a regular merge.  The changes will remain in OLDDIR, but you can use ``bzr
+.. revert OLDDIR`` to remove them, once you're satisfied with NEWDIR.
+
+これですべてのコミットされていないOLDDIR上の変更がNEWDIRに適用されます。
+コミットされていない変更は、通常のmergeでNEWDIRに適用することができる場合でも適用されません。
+OLDDIR上の変更はそのまま残りますが、NEWDIRの状態に満足したら ``bzr revert OLDDIR``
+で削除することができます。
+
+.. NEWDIR does not have to be a copy of OLDDIR, but they should be related.
+.. The more different they are, the greater the chance of conflicts.
+
+NEWDIRはOLDDIRのコピーである必要はありませんが、関連しているべきです。
+両者の違いが大きければそれだけ衝突が起こる可能性が大きくなります。

@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -109,7 +109,7 @@ cdef object _get_name(WIN32_FIND_DATAW *data):
                                  wcslen(data.cFileName))
 
 
-cdef int _get_mode_bits(WIN32_FIND_DATAW *data):
+cdef int _get_mode_bits(WIN32_FIND_DATAW *data): # cannot_raise
     cdef int mode_bits
 
     mode_bits = 0100666 # writeable file, the most common
@@ -121,13 +121,13 @@ cdef int _get_mode_bits(WIN32_FIND_DATAW *data):
     return mode_bits
 
 
-cdef __int64 _get_size(WIN32_FIND_DATAW *data):
+cdef __int64 _get_size(WIN32_FIND_DATAW *data): # cannot_raise
     # Pyrex casts a DWORD into a PyLong anyway, so it is safe to do << 32
     # on a DWORD
     return ((<__int64>data.nFileSizeHigh) << 32) + data.nFileSizeLow
 
 
-cdef double _ftime_to_timestamp(FILETIME *ft):
+cdef double _ftime_to_timestamp(FILETIME *ft): # cannot_raise
     """Convert from a FILETIME struct into a floating point timestamp.
 
     The fields of a FILETIME structure are the hi and lo part
@@ -147,7 +147,7 @@ cdef double _ftime_to_timestamp(FILETIME *ft):
     return (val * 1.0e-7) - 11644473600.0
 
 
-cdef int _should_skip(WIN32_FIND_DATAW *data):
+cdef int _should_skip(WIN32_FIND_DATAW *data): # cannot_raise
     """Is this '.' or '..' so we should skip it?"""
     if (data.cFileName[0] != c'.'):
         return 0

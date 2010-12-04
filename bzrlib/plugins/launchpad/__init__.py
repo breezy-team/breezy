@@ -1,4 +1,4 @@
-# Copyright (C) 2006 - 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 """Launchpad.net integration plugin for Bazaar."""
 
 # The XMLRPC server address can be overridden by setting the environment
-# variable $BZR_LP_XMLRPL_URL
+# variable $BZR_LP_XMLRPC_URL
 
 # see http://bazaar-vcs.org/Specs/BranchRegistrationTool
 
@@ -32,23 +32,28 @@ from bzrlib import (
     )
 """)
 
-from bzrlib.commands import Command, Option, register_command
+from bzrlib import bzrdir
+from bzrlib.commands import (
+        Command,
+        register_command,
+)
 from bzrlib.directory_service import directories
 from bzrlib.errors import (
     BzrCommandError,
+    DependencyNotPresent,
     InvalidURL,
     NoPublicBranch,
     NotBranchError,
     )
 from bzrlib.help_topics import topic_registry
-from bzrlib.plugins.launchpad.lp_registration import (
-    LaunchpadService,
-    NotLaunchpadBranch,
-    )
+from bzrlib.option import (
+        Option,
+        ListOption,
+)
 
 
 class cmd_register_branch(Command):
-    """Register a branch with launchpad.net.
+    __doc__ = """Register a branch with launchpad.net.
 
     This command lists a bzr branch in the directory of branches on
     launchpad.net.  Registration allows the branch to be associated with
@@ -111,8 +116,8 @@ class cmd_register_branch(Command):
             link_bug=None,
             dry_run=False):
         from bzrlib.plugins.launchpad.lp_registration import (
-            LaunchpadService, BranchRegistrationRequest, BranchBugLinkRequest,
-            DryRunLaunchpadService)
+            BranchRegistrationRequest, BranchBugLinkRequest,
+            DryRunLaunchpadService, LaunchpadService)
         if public_url is None:
             try:
                 b = _mod_branch.Branch.open_containing('.')[0]
@@ -147,16 +152,16 @@ class cmd_register_branch(Command):
             # Run on service entirely in memory
             service = DryRunLaunchpadService()
         service.gather_user_credentials()
-        branch_object_url = rego.submit(service)
+        rego.submit(service)
         if link_bug:
-            link_bug_url = linko.submit(service)
+            linko.submit(service)
         print 'Branch registered.'
 
 register_command(cmd_register_branch)
 
 
 class cmd_launchpad_open(Command):
-    """Open a Launchpad branch page in your web browser."""
+    __doc__ = """Open a Launchpad branch page in your web browser."""
 
     aliases = ['lp-open']
     takes_options = [
@@ -170,7 +175,7 @@ class cmd_launchpad_open(Command):
         """Yield possible external locations for the branch at 'location'."""
         yield location
         try:
-            branch = _mod_branch.Branch.open(location)
+            branch = _mod_branch.Branch.open_containing(location)[0]
         except NotBranchError:
             return
         branch_url = branch.get_public_branch()
@@ -181,6 +186,8 @@ class cmd_launchpad_open(Command):
             yield branch_url
 
     def _get_web_url(self, service, location):
+        from bzrlib.plugins.launchpad.lp_registration import (
+            NotLaunchpadBranch)
         for branch_url in self._possible_locations(location):
             try:
                 return service.get_web_url_from_branch_url(branch_url)
@@ -189,6 +196,8 @@ class cmd_launchpad_open(Command):
         raise NotLaunchpadBranch(branch_url)
 
     def run(self, location=None, dry_run=False):
+        from bzrlib.plugins.launchpad.lp_registration import (
+            LaunchpadService)
         if location is None:
             location = u'.'
         web_url = self._get_web_url(LaunchpadService(), location)
@@ -202,7 +211,7 @@ register_command(cmd_launchpad_open)
 
 
 class cmd_launchpad_login(Command):
-    """Show or set the Launchpad user ID.
+    __doc__ = """Show or set the Launchpad user ID.
 
     When communicating with Launchpad, some commands need to know your
     Launchpad user ID.  This command can be used to set or show the
@@ -226,6 +235,7 @@ class cmd_launchpad_login(Command):
         ]
 
     def run(self, name=None, no_check=False, verbose=False):
+        # This is totally separate from any launchpadlib login system.
         from bzrlib.plugins.launchpad import account
         check_account = not no_check
 
@@ -255,6 +265,89 @@ class cmd_launchpad_login(Command):
 register_command(cmd_launchpad_login)
 
 
+# XXX: cmd_launchpad_mirror is untested
+class cmd_launchpad_mirror(Command):
+    __doc__ = """Ask Launchpad to mirror a branch now."""
+
+    aliases = ['lp-mirror']
+    takes_args = ['location?']
+
+    def run(self, location='.'):
+        from bzrlib.plugins.launchpad import lp_api
+        from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
+        branch = _mod_branch.Branch.open(location)
+        service = LaunchpadService()
+        launchpad = lp_api.login(service)
+        lp_branch = lp_api.load_branch(launchpad, branch)
+        lp_branch.requestMirror()
+
+
+register_command(cmd_launchpad_mirror)
+
+
+class cmd_lp_propose_merge(Command):
+    __doc__ = """Propose merging a branch on Launchpad.
+
+    This will open your usual editor to provide the initial comment.  When it
+    has created the proposal, it will open it in your default web browser.
+
+    The branch will be proposed to merge into SUBMIT_BRANCH.  If SUBMIT_BRANCH
+    is not supplied, the remembered submit branch will be used.  If no submit
+    branch is remembered, the development focus will be used.
+
+    By default, the SUBMIT_BRANCH's review team will be requested to review
+    the merge proposal.  This can be overriden by specifying --review (-R).
+    The parameter the launchpad account name of the desired reviewer.  This
+    may optionally be followed by '=' and the review type.  For example:
+
+      bzr lp-propose-merge --review jrandom --review review-team=qa
+
+    This will propose a merge,  request "jrandom" to perform a review of
+    unspecified type, and request "review-team" to perform a "qa" review.
+    """
+
+    takes_options = [Option('staging',
+                            help='Propose the merge on staging.'),
+                     Option('message', short_name='m', type=unicode,
+                            help='Commit message.'),
+                     Option('approve',
+                            help='Mark the proposal as approved immediately.'),
+                     ListOption('review', short_name='R', type=unicode,
+                            help='Requested reviewer and optional type.')]
+
+    takes_args = ['submit_branch?']
+
+    aliases = ['lp-submit', 'lp-propose']
+
+    def run(self, submit_branch=None, review=None, staging=False,
+            message=None, approve=False):
+        from bzrlib.plugins.launchpad import lp_propose
+        tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
+            '.')
+        if review is None:
+            reviews = None
+        else:
+            reviews = []
+            for review in review:
+                if '=' in review:
+                    reviews.append(review.split('=', 2))
+                else:
+                    reviews.append((review, ''))
+            if submit_branch is None:
+                submit_branch = branch.get_submit_branch()
+        if submit_branch is None:
+            target = None
+        else:
+            target = _mod_branch.Branch.open(submit_branch)
+        proposer = lp_propose.Proposer(tree, branch, target, message,
+                                       reviews, staging, approve=approve)
+        proposer.check_proposal()
+        proposer.create_proposal()
+
+
+register_command(cmd_lp_propose_merge)
+
+
 def _register_directory():
     directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_directory',
                               'LaunchpadDirectory',
@@ -262,30 +355,20 @@ def _register_directory():
 _register_directory()
 
 
-def test_suite():
-    """Called by bzrlib to fetch tests for this plugin"""
-    from unittest import TestSuite, TestLoader
-    from bzrlib.plugins.launchpad import (
-        test_account,
-        test_lp_directory,
-        test_lp_login,
-        test_lp_open,
-        test_lp_service,
-        test_register,
-        )
+def load_tests(basic_tests, module, loader):
+    testmod_names = [
+        'test_account',
+        'test_register',
+        'test_lp_api',
+        'test_lp_directory',
+        'test_lp_login',
+        'test_lp_open',
+        'test_lp_service',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests
 
-    loader = TestLoader()
-    suite = TestSuite()
-    for module in [
-        test_account,
-        test_register,
-        test_lp_directory,
-        test_lp_login,
-        test_lp_open,
-        test_lp_service,
-        ]:
-        suite.addTests(loader.loadTestsFromModule(module))
-    return suite
 
 _launchpad_help = """Integration with Launchpad.net
 

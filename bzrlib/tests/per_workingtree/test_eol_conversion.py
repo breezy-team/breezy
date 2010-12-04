@@ -67,10 +67,8 @@ class TestEolConversion(TestCaseWithWorkingTree):
 
     def prepare_tree(self, content, eol=None):
         """Prepare a working tree and commit some content."""
-        def restore_real_rules_searcher():
-            WorkingTree._get_rules_searcher = self.real_rules_searcher
-        self.real_rules_searcher = WorkingTree._get_rules_searcher
-        self.addCleanup(restore_real_rules_searcher)
+        self.real_rules_searcher = self.overrideAttr(
+            WorkingTree, '_get_rules_searcher')
         self.patch_rules_searcher(eol)
         t = self.make_branch_and_tree('tree1')
         self.build_tree_contents([('tree1/file1', content)])

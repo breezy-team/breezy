@@ -1,0 +1,56 @@
+===========================
+Bazaarのメインドキュメント
+===========================
+
+これらのドキュメントの最新版はBazaarのドキュメントのサイト、 http://doc.bazaar-vcs.org/ から入手可能で、
+詳しい情報は http://bazaar-vcs.org/Documentation のページからリンクされています。
+
+
+目次
+=====
+
+.. toctree::
+   :maxdepth: 1
+
+   tutorials/index
+   user-guide/index
+   user-reference/bzr_man
+
+
+ウェブリンク
+=============
+
+* `切り替えガイド <http://bazaar-vcs.org/BzrSwitching>`_
+  |--| 別のVCSツールから移ってきたユーザー用
+
+* `移行ガイド <http://bazaar-vcs.org/BzrMigration>`_
+  |--| 別のVCSツールから履歴を移行するチーム用
+
+* `用語 <http://bazaar-vcs.org/BzrGlossary>`_
+
+* `よく聞かれる質問 <http://bazaar-vcs.org/FAQ>`_
+
+
+TortoiseBzrをインストールするには？
+===================================
+
+https://launchpad.net/bzr/+download からbzr-setup-x.xxx.exeを入手し、
+ファイルをダブルクリックをしてインストールウィザードを起動させます。
+その後の作業はインストールウィザードに従います。
+インストールウィザードが終了した後で再起動します。
+
+最新バージョンでも正常に動作しないことがあるので、
+その場合は古いバージョンをインストールします。
+2009年1月時点で筆者はbzr-setup-1.9.exeの基本的な動作を確認しています。
+
+もしPythonインタープリタにbzrをインストールした場合、インストールしたディレクトリによって
+bzr.exe(デフォルトでは ``C:\Program Files\Bazaar`` )よりもbzr.bat(``C:\PythonXX\Scripts``)が
+優先されるので、コマンドプロンプトでbzrと入力したときにbzr.exeが実行されるようにするには、
+bzr.batをbzr.txtなどにリネームします。
+
+
+
+.. |--| unicode:: U+2014
+
+..
+   vim: ft=rst tw=74 ai

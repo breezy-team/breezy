@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,9 +47,10 @@ def shellcomplete_on_command(cmdname, outfile=None):
 
 def shellcomplete_on_options(options, outfile=None):
     for opt in options:
-        if opt.short_name:
+        short_name = opt.short_name()
+        if short_name:
             outfile.write('"(--%s -%s)"{--%s,-%s}\n'
-                    % (opt.name, opt.short_name(), opt.name, opt.short_name()))
+                    % (opt.name, short_name, opt.name, short_name))
         else:
             outfile.write('--%s\n' % opt.name)
 

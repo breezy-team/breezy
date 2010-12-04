@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,43 +14,44 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import errno
 import os
 import re
 import stat
-from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
-                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import sys
 import time
+import codecs
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 from datetime import datetime
-import errno
-from ntpath import (abspath as _nt_abspath,
-                    join as _nt_join,
-                    normpath as _nt_normpath,
-                    realpath as _nt_realpath,
-                    splitdrive as _nt_splitdrive,
-                    )
+import getpass
+import ntpath
 import posixpath
+# We need to import both shutil and rmtree as we export the later on posix
+# and need the former on windows
 import shutil
-from shutil import (
-    rmtree,
-    )
+from shutil import rmtree
+import socket
 import subprocess
+# We need to import both tempfile and mkdtemp as we export the later on posix
+# and need the former on windows
 import tempfile
-from tempfile import (
-    mkdtemp,
-    )
+from tempfile import mkdtemp
 import unicodedata
 
 from bzrlib import (
     cache_utf8,
     errors,
+    trace,
     win32utils,
     )
 """)
+
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 # sha and md5 modules are deprecated in python2.6 but hashlib is available as
 # of 2.5
@@ -70,12 +71,24 @@ import bzrlib
 from bzrlib import symbol_versioning
 
 
+# Cross platform wall-clock time functionality with decent resolution.
+# On Linux ``time.clock`` returns only CPU time. On Windows, ``time.time()``
+# only has a resolution of ~15ms. Note that ``time.clock()`` is not
+# synchronized with ``time.time()``, this is only meant to be used to find
+# delta times by subtracting from another call to this function.
+timer_func = time.time
+if sys.platform == 'win32':
+    timer_func = time.clock
+
 # On win32, O_BINARY is used to indicate the file should
 # be opened in binary mode, rather than text mode.
 # On other platforms, O_BINARY doesn't exist, because
 # they always open in binary mode, so it is okay to
-# OR with 0 on those platforms
+# OR with 0 on those platforms.
+# O_NOINHERIT and O_TEXT exists only on win32 too.
 O_BINARY = getattr(os, 'O_BINARY', 0)
+O_TEXT = getattr(os, 'O_TEXT', 0)
+O_NOINHERIT = getattr(os, 'O_NOINHERIT', 0)
 
 
 def get_unicode_argv():
@@ -168,7 +181,9 @@ def kind_marker(kind):
     try:
         return _kind_marker_map[kind]
     except KeyError:
-        raise errors.BzrError('invalid file kind %r' % kind)
+        # Slightly faster than using .get(, '') when the common case is that
+        # kind will be found
+        return ''
 
 
 lexists = getattr(os.path, 'lexists', None)
@@ -191,13 +206,17 @@ def fancy_rename(old, new, rename_func, unlink_func):
     :param old: The old path, to rename from
     :param new: The new path, to rename to
     :param rename_func: The potentially non-atomic rename function
-    :param unlink_func: A way to delete the target file if the full rename succeeds
+    :param unlink_func: A way to delete the target file if the full rename
+        succeeds
     """
-
     # sftp rename doesn't allow overwriting, so play tricks:
     base = os.path.basename(new)
     dirname = os.path.dirname(new)
-    tmp_name = u'tmp.%s.%.9f.%d.%s' % (base, time.time(), os.getpid(), rand_chars(10))
+    # callers use different encodings for the paths so the following MUST
+    # respect that. We rely on python upcasting to unicode if new is unicode
+    # and keeping a str if not.
+    tmp_name = 'tmp.%s.%.9f.%d.%s' % (base, time.time(),
+                                      os.getpid(), rand_chars(10))
     tmp_name = pathjoin(dirname, tmp_name)
 
     # Rename the file out of the way, but keep track if it didn't exist
@@ -223,6 +242,7 @@ def fancy_rename(old, new, rename_func, unlink_func):
     else:
         file_existed = True
 
+    failure_exc = None
     success = False
     try:
         try:
@@ -234,8 +254,12 @@ def fancy_rename(old, new, rename_func, unlink_func):
             # source and target may be aliases of each other (e.g. on a
             # case-insensitive filesystem), so we may have accidentally renamed
             # source by when we tried to rename target
-            if not (file_existed and e.errno in (None, errno.ENOENT)):
-                raise
+            failure_exc = sys.exc_info()
+            if (file_existed and e.errno in (None, errno.ENOENT)
+                and old.lower() == new.lower()):
+                # source and target are the same file on a case-insensitive
+                # filesystem, so we don't generate an exception
+                failure_exc = None
     finally:
         if file_existed:
             # If the file used to exist, rename it back into place
@@ -244,6 +268,8 @@ def fancy_rename(old, new, rename_func, unlink_func):
                 unlink_func(tmp_name)
             else:
                 rename_func(tmp_name, new)
+    if failure_exc is not None:
+        raise failure_exc[0], failure_exc[1], failure_exc[2]
 
 
 # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
@@ -272,13 +298,13 @@ def _win32_fixdrive(path):
     running python.exe under cmd.exe return capital C:\\
     running win32 python inside a cygwin shell returns lowercase c:\\
     """
-    drive, path = _nt_splitdrive(path)
+    drive, path = ntpath.splitdrive(path)
     return drive.upper() + path
 
 
 def _win32_abspath(path):
-    # Real _nt_abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
+    # Real ntpath.abspath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(ntpath.abspath(unicode(path)).replace('\\', '/'))
 
 
 def _win98_abspath(path):
@@ -295,30 +321,30 @@ def _win98_abspath(path):
     #   /path       => C:/path
     path = unicode(path)
     # check for absolute path
-    drive = _nt_splitdrive(path)[0]
+    drive = ntpath.splitdrive(path)[0]
     if drive == '' and path[:2] not in('//','\\\\'):
         cwd = os.getcwdu()
         # we cannot simply os.path.join cwd and path
         # because os.path.join('C:','/path') produce '/path'
         # and this is incorrect
         if path[:1] in ('/','\\'):
-            cwd = _nt_splitdrive(cwd)[0]
+            cwd = ntpath.splitdrive(cwd)[0]
             path = path[1:]
         path = cwd + '\\' + path
-    return _win32_fixdrive(_nt_normpath(path).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
 
 
 def _win32_realpath(path):
-    # Real _nt_realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(_nt_realpath(unicode(path)).replace('\\', '/'))
+    # Real ntpath.realpath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(ntpath.realpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
-    return _nt_join(*args).replace('\\', '/')
+    return ntpath.join(*args).replace('\\', '/')
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(_nt_normpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_getcwd():
@@ -363,7 +389,7 @@ dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
 splitext = os.path.splitext
-# These were already imported into local scope
+# These were already lazily imported into local scope
 # mkdtemp = tempfile.mkdtemp
 # rmtree = shutil.rmtree
 
@@ -409,7 +435,7 @@ elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
 
 
-def get_terminal_encoding():
+def get_terminal_encoding(trace=False):
     """Find the best encoding for printing to the screen.
 
     This attempts to check both sys.stdout and sys.stdin to see
@@ -421,6 +447,8 @@ def get_terminal_encoding():
 
     On my standard US Windows XP, the preferred encoding is
     cp1252, but the console is cp437
+
+    :param trace: If True trace the selected encoding via mutter().
     """
     from bzrlib.trace import mutter
     output_encoding = getattr(sys.stdout, 'encoding', None)
@@ -428,17 +456,22 @@ def get_terminal_encoding():
         input_encoding = getattr(sys.stdin, 'encoding', None)
         if not input_encoding:
             output_encoding = get_user_encoding()
-            mutter('encoding stdout as osutils.get_user_encoding() %r',
+            if trace:
+                mutter('encoding stdout as osutils.get_user_encoding() %r',
                    output_encoding)
         else:
             output_encoding = input_encoding
-            mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
+            if trace:
+                mutter('encoding stdout as sys.stdin encoding %r',
+                    output_encoding)
     else:
-        mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+        if trace:
+            mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
     if output_encoding == 'cp0':
         # invalid encoding (cp0 means 'no codepage' on Windows)
         output_encoding = get_user_encoding()
-        mutter('cp0 is invalid encoding.'
+        if trace:
+            mutter('cp0 is invalid encoding.'
                ' encoding stdout as osutils.get_user_encoding() %r',
                output_encoding)
     # check encoding
@@ -470,7 +503,7 @@ def normalizepath(f):
 def isdir(f):
     """True if f is an accessible directory."""
     try:
-        return S_ISDIR(os.lstat(f)[ST_MODE])
+        return stat.S_ISDIR(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
@@ -478,14 +511,14 @@ def isdir(f):
 def isfile(f):
     """True if f is a regular file."""
     try:
-        return S_ISREG(os.lstat(f)[ST_MODE])
+        return stat.S_ISREG(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
 def islink(f):
     """True if f is a symlink."""
     try:
-        return S_ISLNK(os.lstat(f)[ST_MODE])
+        return stat.S_ISLNK(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
@@ -639,7 +672,7 @@ def size_sha_file(f):
 def sha_file_by_name(fname):
     """Calculate the SHA1 of a file by reading the full text"""
     s = sha()
-    f = os.open(fname, os.O_RDONLY | O_BINARY)
+    f = os.open(fname, os.O_RDONLY | O_BINARY | O_NOINHERIT)
     try:
         while True:
             b = os.read(f, 1<<16)
@@ -687,6 +720,8 @@ def local_time_offset(t=None):
     return offset.days * 86400 + offset.seconds
 
 weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+_default_format_by_weekday_num = [wd + " %Y-%m-%d %H:%M:%S" for wd in weekdays]
+
 
 def format_date(t, offset=0, timezone='original', date_fmt=None,
                 show_offset=True):
@@ -706,6 +741,32 @@ def format_date(t, offset=0, timezone='original', date_fmt=None,
     date_str = time.strftime(date_fmt, tt)
     return date_str + offset_str
 
+
+# Cache of formatted offset strings
+_offset_cache = {}
+
+
+def format_date_with_offset_in_original_timezone(t, offset=0,
+    _cache=_offset_cache):
+    """Return a formatted date string in the original timezone.
+
+    This routine may be faster then format_date.
+
+    :param t: Seconds since the epoch.
+    :param offset: Timezone offset in seconds east of utc.
+    """
+    if offset is None:
+        offset = 0
+    tt = time.gmtime(t + offset)
+    date_fmt = _default_format_by_weekday_num[tt[6]]
+    date_str = time.strftime(date_fmt, tt)
+    offset_str = _cache.get(offset, None)
+    if offset_str is None:
+        offset_str = ' %+03d%02d' % (offset / 3600, (offset / 60) % 60)
+        _cache[offset] = offset_str
+    return date_str + offset_str
+
+
 def format_local_date(t, offset=0, timezone='original', date_fmt=None,
                       show_offset=True):
     """Return an unicode date string formatted according to the current locale.
@@ -724,6 +785,7 @@ def format_local_date(t, offset=0, timezone='original', date_fmt=None,
     if not isinstance(date_str, unicode):
         date_str = date_str.decode(get_user_encoding(), 'replace')
     return date_str + offset_str
+
 
 def _format_date(t, offset, timezone, date_fmt, show_offset):
     if timezone == 'utc':
@@ -802,7 +864,7 @@ def format_delta(delta):
 
 def filesize(f):
     """Return size of given open file."""
-    return os.fstat(f.fileno())[ST_SIZE]
+    return os.fstat(f.fileno())[stat.ST_SIZE]
 
 
 # Define rand_bytes based on platform.
@@ -870,7 +932,7 @@ def joinpath(p):
 
 def parent_directories(filename):
     """Return the list of parent directories, deepest first.
-    
+
     For example, parent_directories("a/b/c") -> ["a/b", "a"].
     """
     parents = []
@@ -881,9 +943,57 @@ def parent_directories(filename):
     return parents
 
 
+_extension_load_failures = []
+
+
+def failed_to_load_extension(exception):
+    """Handle failing to load a binary extension.
+
+    This should be called from the ImportError block guarding the attempt to
+    import the native extension.  If this function returns, the pure-Python
+    implementation should be loaded instead::
+
+    >>> try:
+    >>>     import bzrlib._fictional_extension_pyx
+    >>> except ImportError, e:
+    >>>     bzrlib.osutils.failed_to_load_extension(e)
+    >>>     import bzrlib._fictional_extension_py
+    """
+    # NB: This docstring is just an example, not a doctest, because doctest
+    # currently can't cope with the use of lazy imports in this namespace --
+    # mbp 20090729
+
+    # This currently doesn't report the failure at the time it occurs, because
+    # they tend to happen very early in startup when we can't check config
+    # files etc, and also we want to report all failures but not spam the user
+    # with 10 warnings.
+    from bzrlib import trace
+    exception_str = str(exception)
+    if exception_str not in _extension_load_failures:
+        trace.mutter("failed to load compiled extension: %s" % exception_str)
+        _extension_load_failures.append(exception_str)
+
+
+def report_extension_load_failures():
+    if not _extension_load_failures:
+        return
+    from bzrlib.config import GlobalConfig
+    if GlobalConfig().get_user_option_as_bool('ignore_missing_extensions'):
+        return
+    # the warnings framework should by default show this only once
+    from bzrlib.trace import warning
+    warning(
+        "bzr: warning: some compiled extensions could not be loaded; "
+        "see <https://answers.launchpad.net/bzr/+faq/703>")
+    # we no longer show the specific missing extensions here, because it makes
+    # the message too long and scary - see
+    # https://bugs.launchpad.net/bzr/+bug/430529
+
+
 try:
     from bzrlib._chunks_to_lines_pyx import chunks_to_lines
-except ImportError:
+except ImportError, e:
+    failed_to_load_extension(e)
     from bzrlib._chunks_to_lines_py import chunks_to_lines
 
 
@@ -928,8 +1038,8 @@ def link_or_copy(src, dest):
 
 
 def delete_any(path):
-    """Delete a file, symlink or directory.  
-    
+    """Delete a file, symlink or directory.
+
     Will delete even if readonly.
     """
     try:
@@ -1021,7 +1131,7 @@ def contains_linebreaks(s):
 
 
 def relpath(base, path):
-    """Return path relative to base, or raise exception.
+    """Return path relative to base, or raise PathNotChild exception.
 
     The path may be either an absolute path or a path relative to the
     current working directory.
@@ -1029,6 +1139,9 @@ def relpath(base, path):
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem.
+
+    NOTE: `base` should not have a trailing slash otherwise you'll get
+    PathNotChild exceptions regardless of `path`.
     """
 
     if len(base) < MIN_ABS_PATHLENGTH:
@@ -1083,7 +1196,14 @@ def _cicp_canonical_relpath(base, path):
     bit_iter = iter(rel.split('/'))
     for bit in bit_iter:
         lbit = bit.lower()
-        for look in _listdir(current):
+        try:
+            next_entries = _listdir(current)
+        except OSError: # enoent, eperm, etc
+            # We can't find this in the filesystem, so just append the
+            # remaining bits.
+            current = pathjoin(current, bit, *list(bit_iter))
+            break
+        for look in next_entries:
             if lbit == look.lower():
                 current = pathjoin(current, look)
                 break
@@ -1093,7 +1213,7 @@ def _cicp_canonical_relpath(base, path):
             # the target of a move, for example).
             current = pathjoin(current, bit, *list(bit_iter))
             break
-    return current[len(abs_base)+1:]
+    return current[len(abs_base):].lstrip('/')
 
 # XXX - TODO - we need better detection/integration of case-insensitive
 # file-systems; Linux often sees FAT32 devices (or NFS-mounted OSX
@@ -1113,6 +1233,22 @@ def canonical_relpaths(base, paths):
     """
     # but for now, we haven't optimized...
     return [canonical_relpath(base, p) for p in paths]
+
+
+def decode_filename(filename):
+    """Decode the filename using the filesystem encoding
+
+    If it is unicode, it is returned.
+    Otherwise it is decoded from the the filesystem's encoding. If decoding
+    fails, a errors.BadFilenameEncoding exception is raised.
+    """
+    if type(filename) is unicode:
+        return filename
+    try:
+        return filename.decode(_fs_enc)
+    except UnicodeDecodeError:
+        raise errors.BadFilenameEncoding(filename, _fs_enc)
+
 
 def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
@@ -1202,7 +1338,7 @@ if sys.platform == 'darwin':
 def normalizes_filenames():
     """Return True if this platform normalizes unicode filenames.
 
-    Mac OSX does, Windows/Linux do not.
+    Only Mac OSX.
     """
     return _platform_normalizes_filenames
 
@@ -1213,7 +1349,7 @@ def _accessible_normalized_filename(path):
     On platforms where the system normalizes filenames (Mac OSX),
     you can access a file by any path which will normalize correctly.
     On platforms where the system does not normalize filenames
-    (Windows, Linux), you have to access a file by its exact path.
+    (everything else), you have to access a file by its exact path.
 
     Internally, bzr only supports NFC normalization, since that is
     the standard for XML documents.
@@ -1238,27 +1374,163 @@ else:
     normalized_filename = _inaccessible_normalized_filename
 
 
+def set_signal_handler(signum, handler, restart_syscall=True):
+    """A wrapper for signal.signal that also calls siginterrupt(signum, False)
+    on platforms that support that.
+
+    :param restart_syscall: if set, allow syscalls interrupted by a signal to
+        automatically restart (by calling `signal.siginterrupt(signum,
+        False)`).  May be ignored if the feature is not available on this
+        platform or Python version.
+    """
+    try:
+        import signal
+        siginterrupt = signal.siginterrupt
+    except ImportError:
+        # This python implementation doesn't provide signal support, hence no
+        # handler exists
+        return None
+    except AttributeError:
+        # siginterrupt doesn't exist on this platform, or for this version
+        # of Python.
+        siginterrupt = lambda signum, flag: None
+    if restart_syscall:
+        def sig_handler(*args):
+            # Python resets the siginterrupt flag when a signal is
+            # received.  <http://bugs.python.org/issue8354>
+            # As a workaround for some cases, set it back the way we want it.
+            siginterrupt(signum, False)
+            # Now run the handler function passed to set_signal_handler.
+            handler(*args)
+    else:
+        sig_handler = handler
+    old_handler = signal.signal(signum, sig_handler)
+    if restart_syscall:
+        siginterrupt(signum, False)
+    return old_handler
+
+
+default_terminal_width = 80
+"""The default terminal width for ttys.
+
+This is defined so that higher levels can share a common fallback value when
+terminal_width() returns None.
+"""
+
+# Keep some state so that terminal_width can detect if _terminal_size has
+# returned a different size since the process started.  See docstring and
+# comments of terminal_width for details.
+# _terminal_size_state has 3 possible values: no_data, unchanged, and changed.
+_terminal_size_state = 'no_data'
+_first_terminal_size = None
+
 def terminal_width():
-    """Return estimated terminal width."""
-    if sys.platform == 'win32':
-        return win32utils.get_console_size()[0]
-    width = 0
+    """Return terminal width.
+
+    None is returned if the width can't established precisely.
+
+    The rules are:
+    - if BZR_COLUMNS is set, returns its value
+    - if there is no controlling terminal, returns None
+    - query the OS, if the queried size has changed since the last query,
+      return its value,
+    - if COLUMNS is set, returns its value,
+    - if the OS has a value (even though it's never changed), return its value.
+
+    From there, we need to query the OS to get the size of the controlling
+    terminal.
+
+    On Unices we query the OS by:
+    - get termios.TIOCGWINSZ
+    - if an error occurs or a negative value is obtained, returns None
+
+    On Windows we query the OS by:
+    - win32utils.get_console_size() decides,
+    - returns None on error (provided default value)
+    """
+    # Note to implementors: if changing the rules for determining the width,
+    # make sure you've considered the behaviour in these cases:
+    #  - M-x shell in emacs, where $COLUMNS is set and TIOCGWINSZ returns 0,0.
+    #  - bzr log | less, in bash, where $COLUMNS not set and TIOCGWINSZ returns
+    #    0,0.
+    #  - (add more interesting cases here, if you find any)
+    # Some programs implement "Use $COLUMNS (if set) until SIGWINCH occurs",
+    # but we don't want to register a signal handler because it is impossible
+    # to do so without risking EINTR errors in Python <= 2.6.5 (see
+    # <http://bugs.python.org/issue8354>).  Instead we check TIOCGWINSZ every
+    # time so we can notice if the reported size has changed, which should have
+    # a similar effect.
+
+    # If BZR_COLUMNS is set, take it, user is always right
+    try:
+        return int(os.environ['BZR_COLUMNS'])
+    except (KeyError, ValueError):
+        pass
+
+    isatty = getattr(sys.stdout, 'isatty', None)
+    if isatty is None or not isatty():
+        # Don't guess, setting BZR_COLUMNS is the recommended way to override.
+        return None
+
+    # Query the OS
+    width, height = os_size = _terminal_size(None, None)
+    global _first_terminal_size, _terminal_size_state
+    if _terminal_size_state == 'no_data':
+        _first_terminal_size = os_size
+        _terminal_size_state = 'unchanged'
+    elif (_terminal_size_state == 'unchanged' and
+          _first_terminal_size != os_size):
+        _terminal_size_state = 'changed'
+
+    # If the OS claims to know how wide the terminal is, and this value has
+    # ever changed, use that.
+    if _terminal_size_state == 'changed':
+        if width is not None and width > 0:
+            return width
+
+    # If COLUMNS is set, use it.
+    try:
+        return int(os.environ['COLUMNS'])
+    except (KeyError, ValueError):
+        pass
+
+    # Finally, use an unchanged size from the OS, if we have one.
+    if _terminal_size_state == 'unchanged':
+        if width is not None and width > 0:
+            return width
+
+    # The width could not be determined.
+    return None
+
+
+def _win32_terminal_size(width, height):
+    width, height = win32utils.get_console_size(defaultx=width, defaulty=height)
+    return width, height
+
+
+def _ioctl_terminal_size(width, height):
     try:
         import struct, fcntl, termios
         s = struct.pack('HHHH', 0, 0, 0, 0)
         x = fcntl.ioctl(1, termios.TIOCGWINSZ, s)
-        width = struct.unpack('HHHH', x)[1]
-    except IOError:
+        height, width = struct.unpack('HHHH', x)[0:2]
+    except (IOError, AttributeError):
         pass
-    if width <= 0:
-        try:
-            width = int(os.environ['COLUMNS'])
-        except:
-            pass
-    if width <= 0:
-        width = 80
+    return width, height
 
-    return width
+_terminal_size = None
+"""Returns the terminal size as (width, height).
+
+:param width: Default value for width.
+:param height: Default value for height.
+
+This is defined specifically for each OS and query the size of the controlling
+terminal. If any error occurs, the provided default values should be returned.
+"""
+if sys.platform == 'win32':
+    _terminal_size = _win32_terminal_size
+else:
+    _terminal_size = _ioctl_terminal_size
 
 
 def supports_executable():
@@ -1389,7 +1661,7 @@ def walkdirs(top, prefix=""):
         dirblock = []
         append = dirblock.append
         try:
-            names = sorted(_listdir(top))
+            names = sorted(map(decode_filename, _listdir(top)))
         except OSError, e:
             if not _is_error_enotdir(e):
                 raise
@@ -1466,7 +1738,8 @@ def _walkdirs_utf8(top, prefix=""):
             try:
                 from bzrlib._readdir_pyx import UTF8DirReader
                 _selected_dir_reader = UTF8DirReader()
-            except ImportError:
+            except ImportError, e:
+                failed_to_load_extension(e)
                 pass
 
     if _selected_dir_reader is None:
@@ -1583,6 +1856,28 @@ def copy_tree(from_path, to_path, handlers={}):
             real_handlers[kind](abspath, relpath)
 
 
+def copy_ownership_from_path(dst, src=None):
+    """Copy usr/grp ownership from src file/dir to dst file/dir.
+
+    If src is None, the containing directory is used as source. If chown
+    fails, the error is ignored and a warning is printed.
+    """
+    chown = getattr(os, 'chown', None)
+    if chown is None:
+        return
+
+    if src == None:
+        src = os.path.dirname(dst)
+        if src == '':
+            src = '.'
+
+    try:
+        s = os.stat(src)
+        chown(dst, s.st_uid, s.st_gid)
+    except OSError, e:
+        trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
+
+
 def path_prefix_key(path):
     """Generate a prefix-order path key for path.
 
@@ -1674,6 +1969,10 @@ def get_user_encoding(use_cache=True):
     return user_encoding
 
 
+def get_diff_header_encoding():
+    return get_terminal_encoding()
+
+
 def get_host_name():
     """Return the current unicode host name.
 
@@ -1688,40 +1987,82 @@ def get_host_name():
         return socket.gethostname().decode(get_user_encoding())
 
 
-def recv_all(socket, bytes):
+# We must not read/write any more than 64k at a time from/to a socket so we
+# don't risk "no buffer space available" errors on some platforms.  Windows in
+# particular is likely to throw WSAECONNABORTED or WSAENOBUFS if given too much
+# data at once.
+MAX_SOCKET_CHUNK = 64 * 1024
+
+def read_bytes_from_socket(sock, report_activity=None,
+        max_read_size=MAX_SOCKET_CHUNK):
+    """Read up to max_read_size of bytes from sock and notify of progress.
+
+    Translates "Connection reset by peer" into file-like EOF (return an
+    empty string rather than raise an error), and repeats the recv if
+    interrupted by a signal.
+    """
+    while 1:
+        try:
+            bytes = sock.recv(max_read_size)
+        except socket.error, e:
+            eno = e.args[0]
+            if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
+                # The connection was closed by the other side.  Callers expect
+                # an empty string to signal end-of-stream.
+                return ""
+            elif eno == errno.EINTR:
+                # Retry the interrupted recv.
+                continue
+            raise
+        else:
+            if report_activity is not None:
+                report_activity(len(bytes), 'read')
+            return bytes
+
+
+def recv_all(socket, count):
     """Receive an exact number of bytes.
 
     Regular Socket.recv() may return less than the requested number of bytes,
-    dependning on what's in the OS buffer.  MSG_WAITALL is not available
+    depending on what's in the OS buffer.  MSG_WAITALL is not available
     on all platforms, but this should work everywhere.  This will return
     less than the requested amount if the remote end closes.
 
     This isn't optimized and is intended mostly for use in testing.
     """
     b = ''
-    while len(b) < bytes:
-        new = until_no_eintr(socket.recv, bytes - len(b))
+    while len(b) < count:
+        new = read_bytes_from_socket(socket, None, count - len(b))
         if new == '':
             break # eof
         b += new
     return b
 
 
-def send_all(socket, bytes, report_activity=None):
+def send_all(sock, bytes, report_activity=None):
     """Send all bytes on a socket.
 
-    Regular socket.sendall() can give socket error 10053 on Windows.  This
-    implementation sends no more than 64k at a time, which avoids this problem.
+    Breaks large blocks in smaller chunks to avoid buffering limitations on
+    some platforms, and catches EINTR which may be thrown if the send is
+    interrupted by a signal.
+
+    This is preferred to socket.sendall(), because it avoids portability bugs
+    and provides activity reporting.
 
     :param report_activity: Call this as bytes are read, see
         Transport._report_activity
     """
-    chunk_size = 2**16
-    for pos in xrange(0, len(bytes), chunk_size):
-        block = bytes[pos:pos+chunk_size]
-        if report_activity is not None:
-            report_activity(len(block), 'write')
-        until_no_eintr(socket.sendall, block)
+    sent_total = 0
+    byte_count = len(bytes)
+    while sent_total < byte_count:
+        try:
+            sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
+        except socket.error, e:
+            if e.args[0] != errno.EINTR:
+                raise
+        else:
+            sent_total += sent
+            report_activity(sent, 'write')
 
 
 def dereference_path(path):
@@ -1768,9 +2109,11 @@ def resource_string(package, resource_name):
     base = dirname(bzrlib.__file__)
     if getattr(sys, 'frozen', None):    # bzr.exe
         base = abspath(pathjoin(base, '..', '..'))
-    filename = pathjoin(base, resource_relpath)
-    return open(filename, 'rU').read()
-
+    f = file(pathjoin(base, resource_relpath), "rU")
+    try:
+        return f.read()
+    finally:
+        f.close()
 
 def file_kind_from_stat_mode_thunk(mode):
     global file_kind_from_stat_mode
@@ -1778,7 +2121,9 @@ def file_kind_from_stat_mode_thunk(mode):
         try:
             from bzrlib._readdir_pyx import UTF8DirReader
             file_kind_from_stat_mode = UTF8DirReader().kind_from_mode
-        except ImportError:
+        except ImportError, e:
+            # This is one time where we won't warn that an extension failed to
+            # load. The extension is never available on Windows anyway.
             from bzrlib._readdir_py import (
                 _kind_from_mode as file_kind_from_stat_mode
                 )
@@ -1796,7 +2141,18 @@ def file_kind(f, _lstat=os.lstat):
 
 
 def until_no_eintr(f, *a, **kw):
-    """Run f(*a, **kw), retrying if an EINTR error occurs."""
+    """Run f(*a, **kw), retrying if an EINTR error occurs.
+
+    WARNING: you must be certain that it is safe to retry the call repeatedly
+    if EINTR does occur.  This is typically only true for low-level operations
+    like os.read.  If in any doubt, don't use this.
+
+    Keep in mind that this is not a complete solution to EINTR.  There is
+    probably code in the Python standard library and other dependencies that
+    may encounter EINTR if a signal arrives (and there is signal handler for
+    that signal).  So this function can reduce the impact for IO that bzrlib
+    directly controls, but it is not a complete solution.
+    """
     # Borrowed from Twisted's twisted.python.util.untilConcludes function.
     while True:
         try:
@@ -1806,6 +2162,8 @@ def until_no_eintr(f, *a, **kw):
                 continue
             raise
 
+
+@deprecated_function(deprecated_in((2, 2, 0)))
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.
 
@@ -1821,12 +2179,12 @@ def re_compile_checked(re_string, flags=0, where=""):
         re_obj = re.compile(re_string, flags)
         re_obj.search("")
         return re_obj
-    except re.error, e:
+    except errors.InvalidPattern, e:
         if where:
             where = ' in ' + where
         # despite the name 'error' is a type
-        raise errors.BzrCommandError('Invalid regular expression%s: %r: %s'
-            % (where, re_string, e))
+        raise errors.BzrCommandError('Invalid regular expression%s: %s'
+            % (where, e.msg))
 
 
 if sys.platform == "win32":
@@ -1886,13 +2244,16 @@ def local_concurrency(use_cache=True):
     anything goes wrong.
     """
     global _cached_local_concurrency
+
     if _cached_local_concurrency is not None and use_cache:
         return _cached_local_concurrency
 
-    try:
-        concurrency = _local_concurrency()
-    except (OSError, IOError):
-        concurrency = None
+    concurrency = os.environ.get('BZR_CONCURRENCY', None)
+    if concurrency is None:
+        try:
+            concurrency = _local_concurrency()
+        except (OSError, IOError):
+            pass
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):
@@ -1900,3 +2261,73 @@ def local_concurrency(use_cache=True):
     if use_cache:
         _cached_concurrency = concurrency
     return concurrency
+
+
+class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
+    """A stream writer that doesn't decode str arguments."""
+
+    def __init__(self, encode, stream, errors='strict'):
+        codecs.StreamWriter.__init__(self, stream, errors)
+        self.encode = encode
+
+    def write(self, object):
+        if type(object) is str:
+            self.stream.write(object)
+        else:
+            data, _ = self.encode(object, self.errors)
+            self.stream.write(data)
+
+if sys.platform == 'win32':
+    def open_file(filename, mode='r', bufsize=-1):
+        """This function is used to override the ``open`` builtin.
+
+        But it uses O_NOINHERIT flag so the file handle is not inherited by
+        child processes.  Deleting or renaming a closed file opened with this
+        function is not blocking child processes.
+        """
+        writing = 'w' in mode
+        appending = 'a' in mode
+        updating = '+' in mode
+        binary = 'b' in mode
+
+        flags = O_NOINHERIT
+        # see http://msdn.microsoft.com/en-us/library/yeby3zcb%28VS.71%29.aspx
+        # for flags for each modes.
+        if binary:
+            flags |= O_BINARY
+        else:
+            flags |= O_TEXT
+
+        if writing:
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_WRONLY
+            flags |= os.O_CREAT | os.O_TRUNC
+        elif appending:
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_WRONLY
+            flags |= os.O_CREAT | os.O_APPEND
+        else: #reading
+            if updating:
+                flags |= os.O_RDWR
+            else:
+                flags |= os.O_RDONLY
+
+        return os.fdopen(os.open(filename, flags), mode, bufsize)
+else:
+    open_file = open
+
+
+def getuser_unicode():
+    """Return the username as unicode.
+    """
+    try:
+        user_encoding = get_user_encoding()
+        username = getpass.getuser().decode(user_encoding)
+    except UnicodeDecodeError:
+        raise errors.BzrError("Can't decode username as %s." % \
+                user_encoding)
+    return username

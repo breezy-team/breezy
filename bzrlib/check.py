@@ -46,16 +46,12 @@ check_refs are tuples (kind, value). Currently defined kinds are:
   indicating that the revision was found/not found.
 """
 
-from bzrlib import errors, osutils
-from bzrlib import repository as _mod_repository
-from bzrlib import revision
+from bzrlib import errors
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import BzrCheckError
-from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
-from bzrlib.trace import log_error, note
+from bzrlib.trace import note
 import bzrlib.ui
 from bzrlib.workingtree import WorkingTree
 
@@ -192,8 +188,8 @@ class Check(object):
 
     def _report_repo_results(self, verbose):
         note('checked repository %s format %s',
-             self.repository.bzrdir.root_transport,
-             self.repository._format)
+            self.repository.user_url,
+            self.repository._format)
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d file-ids', len(self.checked_weaves))
         if verbose:
@@ -201,7 +197,7 @@ class Check(object):
                 len(self.unreferenced_versions))
         if verbose and len(self.unreferenced_versions):
                 for file_id, revision_id in self.unreferenced_versions:
-                    log_error('unreferenced version: {%s} in %s', revision_id,
+                    note('unreferenced version: {%s} in %s', revision_id,
                         file_id)
         if self.missing_inventory_sha_cnt:
             note('%6d revisions are missing inventory_sha1',
@@ -445,23 +441,23 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
                     if do_branch:
                         scan_branch(branch, needed_refs, to_unlock)
             if do_branch and not branches:
-                log_error("No branch found at specified location.")
+                note("No branch found at specified location.")
             if do_tree and base_tree is None and not saw_tree:
-                log_error("No working tree found at specified location.")
+                note("No working tree found at specified location.")
             if do_repo or do_branch or do_tree:
                 if do_repo:
                     note("Checking repository at '%s'."
-                         % (repo.bzrdir.root_transport.base,))
+                         % (repo.user_url,))
                 result = repo.check(None, callback_refs=needed_refs,
                     check_repo=do_repo)
                 result.report_results(verbose)
         else:
             if do_tree:
-                log_error("No working tree found at specified location.")
+                note("No working tree found at specified location.")
             if do_branch:
-                log_error("No branch found at specified location.")
+                note("No branch found at specified location.")
             if do_repo:
-                log_error("No repository found at specified location.")
+                note("No repository found at specified location.")
     finally:
         for thing in to_unlock:
             thing.unlock()

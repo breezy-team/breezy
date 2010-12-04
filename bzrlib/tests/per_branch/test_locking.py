@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,18 +16,22 @@
 
 """Test locks across all branch implemenations"""
 
-from bzrlib import errors
-from bzrlib.branch import BzrBranchFormat4
-from bzrlib.bzrdir import RemoteBzrDirFormat
-from bzrlib.tests import TestSkipped
-from bzrlib.tests.lock_helpers import TestPreventLocking, LockWrapper
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
+from bzrlib import (
+    branch as _mod_branch,
+    errors,
+    tests,
+    )
+from bzrlib.tests import (
+    lock_helpers,
+    per_branch,
+    )
+from bzrlib.tests.matchers import *
 
 
-class TestBranchLocking(TestCaseWithBranch):
+class TestBranchLocking(per_branch.TestCaseWithBranch):
 
     def setUp(self):
-        TestCaseWithBranch.setUp(self)
+        super(TestBranchLocking, self).setUp()
         self.reduceLockdirTimeout()
 
     def get_instrumented_branch(self):
@@ -37,8 +41,8 @@ class TestBranchLocking(TestCaseWithBranch):
         # not there. But assuming it has them lets us test the exact
         # lock/unlock order.
         self.locks = []
-        b = LockWrapper(self.locks, self.get_branch(), 'b')
-        b.repository = LockWrapper(self.locks, b.repository, 'r')
+        b = lock_helpers.LockWrapper(self.locks, self.get_branch(), 'b')
+        b.repository = lock_helpers.LockWrapper(self.locks, b.repository, 'r')
         bcf = b.control_files
         rcf = getattr(b.repository, 'control_files', None)
         if rcf is None:
@@ -47,16 +51,18 @@ class TestBranchLocking(TestCaseWithBranch):
             # Look out for branch types that reuse their control files
             self.combined_control = bcf is rcf
         try:
-            b.control_files = LockWrapper(self.locks, b.control_files, 'bc')
+            b.control_files = lock_helpers.LockWrapper(
+                self.locks, b.control_files, 'bc')
         except AttributeError:
             # RemoteBranch seems to trigger this.
-            raise TestSkipped("Could not instrument branch control files.")
+            raise tests.TestSkipped(
+                'Could not instrument branch control files.')
         if self.combined_control:
             # instrument the repository control files too to ensure its worked
             # with correctly. When they are not shared, we trust the repository
             # API and only instrument the repository itself.
-            b.repository.control_files = \
-                LockWrapper(self.locks, b.repository.control_files, 'rc')
+            b.repository.control_files = lock_helpers.LockWrapper(
+                self.locks, b.repository.control_files, 'rc')
         return b
 
     def test_01_lock_read(self):
@@ -139,7 +145,7 @@ class TestBranchLocking(TestCaseWithBranch):
         try:
             self.assertTrue(b.is_locked())
             self.assertTrue(b.repository.is_locked())
-            self.assertRaises(TestPreventLocking, b.unlock)
+            self.assertLogsError(lock_helpers.TestPreventLocking, b.unlock)
             if self.combined_control:
                 self.assertTrue(b.is_locked())
             else:
@@ -183,7 +189,7 @@ class TestBranchLocking(TestCaseWithBranch):
         try:
             self.assertTrue(b.is_locked())
             self.assertTrue(b.repository.is_locked())
-            self.assertRaises(TestPreventLocking, b.unlock)
+            self.assertLogsError(lock_helpers.TestPreventLocking, b.unlock)
             self.assertTrue(b.is_locked())
             self.assertTrue(b.repository.is_locked())
 
@@ -216,7 +222,7 @@ class TestBranchLocking(TestCaseWithBranch):
         b = self.get_instrumented_branch()
         b.repository.disable_lock_read()
 
-        self.assertRaises(TestPreventLocking, b.lock_read)
+        self.assertRaises(lock_helpers.TestPreventLocking, b.lock_read)
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
@@ -229,7 +235,7 @@ class TestBranchLocking(TestCaseWithBranch):
         b = self.get_instrumented_branch()
         b.repository.disable_lock_write()
 
-        self.assertRaises(TestPreventLocking, b.lock_write)
+        self.assertRaises(lock_helpers.TestPreventLocking, b.lock_write)
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
@@ -242,7 +248,7 @@ class TestBranchLocking(TestCaseWithBranch):
         b = self.get_instrumented_branch()
         b.control_files.disable_lock_read()
 
-        self.assertRaises(TestPreventLocking, b.lock_read)
+        self.assertRaises(lock_helpers.TestPreventLocking, b.lock_read)
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
 
@@ -266,7 +272,7 @@ class TestBranchLocking(TestCaseWithBranch):
         b = self.get_instrumented_branch()
         b.control_files.disable_lock_write()
 
-        self.assertRaises(TestPreventLocking, b.lock_write)
+        self.assertRaises(lock_helpers.TestPreventLocking, b.lock_write)
         self.assertFalse(b.is_locked())
         self.assertFalse(b.repository.is_locked())
         if self.combined_control:
@@ -286,7 +292,7 @@ class TestBranchLocking(TestCaseWithBranch):
 
     def test_lock_write_returns_None_refuses_token(self):
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is not None:
                 # This test does not apply, because this lockable supports
@@ -299,7 +305,7 @@ class TestBranchLocking(TestCaseWithBranch):
 
     def test_reentering_lock_write_raises_on_token_mismatch(self):
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this lockable refuses
@@ -316,7 +322,7 @@ class TestBranchLocking(TestCaseWithBranch):
 
     def test_lock_write_with_nonmatching_token(self):
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this branch refuses
@@ -339,7 +345,7 @@ class TestBranchLocking(TestCaseWithBranch):
         """Test that a branch can be locked with a token, if it is already
         locked by that token."""
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this branch refuses tokens.
@@ -363,7 +369,7 @@ class TestBranchLocking(TestCaseWithBranch):
         # If lock_write did not physically acquire the lock (because it was
         # passed some tokens), then unlock should not physically release it.
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this lockable refuses
@@ -385,19 +391,17 @@ class TestBranchLocking(TestCaseWithBranch):
         # to lock with a token that is no longer valid (because the original
         # lock was released).
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         branch.unlock()
         if token is None:
             # This test does not apply, because this lockable refuses
             # tokens.
             return
-
-        self.assertRaises(errors.TokenMismatch,
-                          branch.lock_write, token=token)
+        self.assertRaises(errors.TokenMismatch, branch.lock_write, token=token)
 
     def test_lock_write_reenter_with_token(self):
         branch = self.make_branch('b')
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this lockable refuses
@@ -419,7 +423,7 @@ class TestBranchLocking(TestCaseWithBranch):
         branch = self.make_branch('b')
         # Lock the branch, then use leave_lock_in_place so that when we
         # unlock the branch the lock is still held on disk.
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this repository refuses lock
@@ -440,7 +444,7 @@ class TestBranchLocking(TestCaseWithBranch):
     def test_dont_leave_lock_in_place(self):
         branch = self.make_branch('b')
         # Create a lock on disk.
-        token = branch.lock_write()
+        token = branch.lock_write().branch_token
         try:
             if token is None:
                 # This test does not apply, because this branch refuses lock
@@ -492,8 +496,12 @@ class TestBranchLocking(TestCaseWithBranch):
         branch.lock_read()
         branch.unlock()
 
+    def test_lock_read_returns_unlockable(self):
+        branch = self.make_branch('b')
+        self.assertThat(branch.lock_read, ReturnsUnlockable(branch))
+
     def test_lock_write_locks_repo_too(self):
-        if isinstance(self.branch_format, BzrBranchFormat4):
+        if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
             # Branch format 4 is combined with the repository, so this test
             # doesn't apply.
             return
@@ -517,6 +525,16 @@ class TestBranchLocking(TestCaseWithBranch):
             branch.repository.unlock()
         finally:
             branch.unlock()
+
+    def test_lock_write_returns_unlockable(self):
+        branch = self.make_branch('b')
+        self.assertThat(branch.lock_write, ReturnsUnlockable(branch))
+
+    def test_lock_write_raises_in_lock_read(self):
+        branch = self.make_branch('b')
+        branch.lock_read()
+        self.addCleanup(branch.unlock)
+        err = self.assertRaises(errors.ReadOnlyError, branch.lock_write)
 
     def test_lock_and_unlock_leaves_repo_unlocked(self):
         branch = self.make_branch('b')

@@ -97,6 +97,8 @@ class TestEmacsMail(tests.TestCase):
         # We won't be able to know the temporary file name at this stage
         # so we can't raise an assertion with assertEqual
         cmdline = eclient._get_compose_commandline(None, None, 'file%')
+        if eclient.elisp_tmp_file is not None:
+            self.addCleanup(osutils.delete_any, eclient.elisp_tmp_file)
         commandline = ' '.join(cmdline)
         self.assertContainsRe(commandline, '--eval')
         self.assertContainsRe(commandline, '(compose-mail nil nil)')
@@ -107,6 +109,8 @@ class TestEmacsMail(tests.TestCase):
         eclient = mail_client.EmacsMail(None)
         commandline = eclient._get_compose_commandline(u'jrandom@example.org',
             u'Hi there!', u'file%')
+        if eclient.elisp_tmp_file is not None:
+            self.addCleanup(osutils.delete_any, eclient.elisp_tmp_file)
         for item in commandline:
             self.assertFalse(isinstance(item, unicode),
                 'Command-line item %r is unicode!' % item)

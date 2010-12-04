@@ -34,11 +34,11 @@ and can be processed much like branches can on the receiving end.
 Creating a merge directive
 --------------------------
 
-To create and optionally send a merge directive, use the ``send`` command. 
+To create and optionally send a merge directive, use the ``send`` command.
 
 By default, ``send`` will email the merge directive to the "submission
 address" for the branch, which is typically the lead developer or the
-development mailing list.  
+development mailing list.
 ``send`` without options will create a merge directive, fire up your email
 tool and attach it, ready for you to add the explanatory text bit.
 (See the online help for ``send`` and

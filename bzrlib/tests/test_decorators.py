@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,11 +23,15 @@ from bzrlib import decorators
 from bzrlib.tests import TestCase
 
 
-def create_decorator_sample(style, except_in_unlock=False):
+class SampleUnlockError(Exception):
+    pass
+
+
+def create_decorator_sample(style, unlock_error=None):
     """Create a DecoratorSample object, using specific lock operators.
 
     :param style: The type of lock decorators to use (fast/pretty/None)
-    :param except_in_unlock: If True, raise an exception during unlock
+    :param unlock_error: If specified, an error to raise from unlock.
     :return: An instantiated DecoratorSample object.
     """
 
@@ -58,10 +62,11 @@ def create_decorator_sample(style, except_in_unlock=False):
         def lock_write(self):
             self.actions.append('lock_write')
 
+        @decorators.only_raises(SampleUnlockError)
         def unlock(self):
-            if except_in_unlock:
+            if unlock_error:
                 self.actions.append('unlock_fail')
-                raise KeyError('during unlock')
+                raise unlock_error
             else:
                 self.actions.append('unlock')
 
@@ -119,28 +124,28 @@ class TestDecoratorActions(TestCase):
 
     def test_read_lock_raises_original_error(self):
         sam = create_decorator_sample(self._decorator_style,
-                                      except_in_unlock=True)
+                                      unlock_error=SampleUnlockError())
         self.assertRaises(TypeError, sam.fail_during_read)
         self.assertEqual(['lock_read', 'fail_during_read', 'unlock_fail'],
                          sam.actions)
 
     def test_write_lock_raises_original_error(self):
         sam = create_decorator_sample(self._decorator_style,
-                                      except_in_unlock=True)
+                                      unlock_error=SampleUnlockError())
         self.assertRaises(TypeError, sam.fail_during_write)
         self.assertEqual(['lock_write', 'fail_during_write', 'unlock_fail'],
                          sam.actions)
 
     def test_read_lock_raises_unlock_error(self):
         sam = create_decorator_sample(self._decorator_style,
-                                      except_in_unlock=True)
-        self.assertRaises(KeyError, sam.frob)
+                                      unlock_error=SampleUnlockError())
+        self.assertRaises(SampleUnlockError, sam.frob)
         self.assertEqual(['lock_read', 'frob', 'unlock_fail'], sam.actions)
 
     def test_write_lock_raises_unlock_error(self):
         sam = create_decorator_sample(self._decorator_style,
-                                      except_in_unlock=True)
-        self.assertRaises(KeyError, sam.bank, 'bar', biz='bing')
+                                      unlock_error=SampleUnlockError())
+        self.assertRaises(SampleUnlockError, sam.bank, 'bar', biz='bing')
         self.assertEqual(['lock_write', ('bank', 'bar', 'bing'),
                           'unlock_fail'], sam.actions)
 
@@ -162,14 +167,14 @@ class TestDecoratorDocs(TestCase):
         """@needs_read_lock exposes underlying name and doc."""
         sam = create_decorator_sample(None)
         self.assertEqual('frob', sam.frob.__name__)
-        self.assertEqual('Frob the sample object', sam.frob.__doc__)
+        self.assertDocstring('Frob the sample object', sam.frob)
 
     def test_write_lock_passthrough(self):
         """@needs_write_lock exposes underlying name and doc."""
         sam = create_decorator_sample(None)
         self.assertEqual('bank', sam.bank.__name__)
-        self.assertEqual('Bank the sample, but using bar and biz.',
-                         sam.bank.__doc__)
+        self.assertDocstring('Bank the sample, but using bar and biz.',
+                             sam.bank)
 
     def test_argument_passthrough(self):
         """Test that arguments get passed around properly."""
@@ -203,8 +208,8 @@ class TestPrettyDecorators(TestCase):
                          my_function.func_code.co_name)
         self.assertEqual('(foo, bar, baz=None, biz=1)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test__fast_needs_read_lock(self):
         """Test the output of _fast_needs_read_lock."""
@@ -217,8 +222,8 @@ class TestPrettyDecorators(TestCase):
         self.assertEqual('read_locked', my_function.func_code.co_name)
         self.assertEqual('(self, *args, **kwargs)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test__pretty_needs_write_lock(self):
         """Test that _pretty_needs_write_lock generates a nice wrapper."""
@@ -232,8 +237,8 @@ class TestPrettyDecorators(TestCase):
                          my_function.func_code.co_name)
         self.assertEqual('(foo, bar, baz=None, biz=1)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test__fast_needs_write_lock(self):
         """Test the output of _fast_needs_write_lock."""
@@ -246,8 +251,8 @@ class TestPrettyDecorators(TestCase):
         self.assertEqual('write_locked', my_function.func_code.co_name)
         self.assertEqual('(self, *args, **kwargs)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test_use_decorators(self):
         """Test that you can switch the type of the decorators."""
@@ -276,3 +281,21 @@ class TestPrettyDecorators(TestCase):
         finally:
             decorators.needs_read_lock = cur_read
             decorators.needs_write_lock = cur_write
+
+
+class TestOnlyRaisesDecorator(TestCase):
+
+    def raise_ZeroDivisionError(self):
+        1/0
+        
+    def test_raises_approved_error(self):
+        decorator = decorators.only_raises(ZeroDivisionError)
+        decorated_meth = decorator(self.raise_ZeroDivisionError)
+        self.assertRaises(ZeroDivisionError, decorated_meth)
+
+    def test_quietly_logs_unapproved_errors(self):
+        decorator = decorators.only_raises(IOError)
+        decorated_meth = decorator(self.raise_ZeroDivisionError)
+        self.assertLogsError(ZeroDivisionError, decorated_meth)
+        
+

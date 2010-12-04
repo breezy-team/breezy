@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.osutils import sha_string
-from bzrlib.tests.test__groupcompress import CompiledGroupCompressFeature
+from bzrlib.tests.test__groupcompress import compiled_groupcompress_feature
 
 
 def load_tests(standard_tests, module, loader):
@@ -39,7 +39,7 @@ def load_tests(standard_tests, module, loader):
     scenarios = [
         ('python', {'compressor': groupcompress.PythonGroupCompressor}),
         ]
-    if CompiledGroupCompressFeature.available():
+    if compiled_groupcompress_feature.available():
         scenarios.append(('C',
             {'compressor': groupcompress.PyrexGroupCompressor}))
     return tests.multiply_tests(to_adapt, scenarios, result)
@@ -135,7 +135,7 @@ class TestAllGroupCompressors(TestGroupCompressor):
 
 class TestPyrexGroupCompressor(TestGroupCompressor):
 
-    _test_needs_features = [CompiledGroupCompressFeature]
+    _test_needs_features = [compiled_groupcompress_feature]
     compressor = groupcompress.PyrexGroupCompressor
 
     def test_stats(self):
@@ -418,8 +418,12 @@ class TestGroupCompressBlock(tests.TestCase):
         # And the decompressor is finalized
         self.assertIs(None, block._z_content_decompressor)
 
-    def test_partial_decomp_no_known_length(self):
+    def test__ensure_all_content(self):
         content_chunks = []
+        # We need a sufficient amount of data so that zlib.decompress has
+        # partial decompression to work with. Most auto-generated data
+        # compresses a bit too well, we want a combination, so we combine a sha
+        # hash with compressible data.
         for i in xrange(2048):
             next_content = '%d\nThis is a bit of duplicate text\n' % (i,)
             content_chunks.append(next_content)
@@ -433,30 +437,13 @@ class TestGroupCompressBlock(tests.TestCase):
         block._z_content = z_content
         block._z_content_length = len(z_content)
         block._compressor_name = 'zlib'
-        block._content_length = None # Don't tell the decompressed length
+        block._content_length = 158634
         self.assertIs(None, block._content)
-        block._ensure_content(100)
-        self.assertIsNot(None, block._content)
-        # We have decompressed at least 100 bytes
-        self.assertTrue(len(block._content) >= 100)
-        # We have not decompressed the whole content
-        self.assertTrue(len(block._content) < 158634)
-        self.assertEqualDiff(content[:len(block._content)], block._content)
-        # ensuring content that we already have shouldn't cause any more data
-        # to be extracted
-        cur_len = len(block._content)
-        block._ensure_content(cur_len - 10)
-        self.assertEqual(cur_len, len(block._content))
-        # Now we want a bit more content
-        cur_len += 10
-        block._ensure_content(cur_len)
-        self.assertTrue(len(block._content) >= cur_len)
-        self.assertTrue(len(block._content) < 158634)
-        self.assertEqualDiff(content[:len(block._content)], block._content)
-        # And now lets finish
-        block._ensure_content()
+        # The first _ensure_content got all of the required data
+        block._ensure_content(158634)
         self.assertEqualDiff(content, block._content)
-        # And the decompressor is finalized
+        # And we should have released the _z_content_decompressor since it was
+        # fully consumed
         self.assertIs(None, block._z_content_decompressor)
 
     def test__dump(self):
@@ -472,7 +459,8 @@ class TestGroupCompressBlock(tests.TestCase):
                          ], block._dump())
 
 
-class TestCaseWithGroupCompressVersionedFiles(tests.TestCaseWithTransport):
+class TestCaseWithGroupCompressVersionedFiles(
+        tests.TestCaseWithMemoryTransport):
 
     def make_test_vf(self, create_graph, keylength=1, do_cleanup=True,
                      dir='.', inconsistency_fatal=True):
@@ -538,7 +526,7 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                     'as-requested', False)]
         self.assertEqual([('b',), ('a',), ('d',), ('c',)], keys)
 
-    def test_insert_record_stream_re_uses_blocks(self):
+    def test_insert_record_stream_reuses_blocks(self):
         vf = self.make_test_vf(True, dir='source')
         def grouped_stream(revision_ids, first_parents=()):
             parents = first_parents
@@ -582,8 +570,14 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         vf2 = self.make_test_vf(True, dir='target')
         # ordering in 'groupcompress' order, should actually swap the groups in
         # the target vf, but the groups themselves should not be disturbed.
-        vf2.insert_record_stream(vf.get_record_stream(
-            [(r,) for r in 'abcdefgh'], 'groupcompress', False))
+        def small_size_stream():
+            for record in vf.get_record_stream([(r,) for r in 'abcdefgh'],
+                                               'groupcompress', False):
+                record._manager._full_enough_block_size = \
+                    record._manager._block._content_length
+                yield record
+                        
+        vf2.insert_record_stream(small_size_stream())
         stream = vf2.get_record_stream([(r,) for r in 'abcdefgh'],
                                        'groupcompress', False)
         vf2.writer.end()
@@ -592,6 +586,44 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
             num_records += 1
             self.assertEqual(block_bytes[record.key],
                              record._manager._block._z_content)
+        self.assertEqual(8, num_records)
+
+    def test_insert_record_stream_packs_on_the_fly(self):
+        vf = self.make_test_vf(True, dir='source')
+        def grouped_stream(revision_ids, first_parents=()):
+            parents = first_parents
+            for revision_id in revision_ids:
+                key = (revision_id,)
+                record = versionedfile.FulltextContentFactory(
+                    key, parents, None,
+                    'some content that is\n'
+                    'identical except for\n'
+                    'revision_id:%s\n' % (revision_id,))
+                yield record
+                parents = (key,)
+        # One group, a-d
+        vf.insert_record_stream(grouped_stream(['a', 'b', 'c', 'd']))
+        # Second group, e-h
+        vf.insert_record_stream(grouped_stream(['e', 'f', 'g', 'h'],
+                                               first_parents=(('d',),)))
+        # Now copy the blocks into another vf, and see that the
+        # insert_record_stream rebuilt a new block on-the-fly because of
+        # under-utilization
+        vf2 = self.make_test_vf(True, dir='target')
+        vf2.insert_record_stream(vf.get_record_stream(
+            [(r,) for r in 'abcdefgh'], 'groupcompress', False))
+        stream = vf2.get_record_stream([(r,) for r in 'abcdefgh'],
+                                       'groupcompress', False)
+        vf2.writer.end()
+        num_records = 0
+        # All of the records should be recombined into a single block
+        block = None
+        for record in stream:
+            num_records += 1
+            if block is None:
+                block = record._manager._block
+            else:
+                self.assertIs(block, record._manager._block)
         self.assertEqual(8, num_records)
 
     def test__insert_record_stream_no_reuse_block(self):
@@ -701,20 +733,140 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                               " \('b',\) \('42 32 0 8', \(\(\),\)\) \('74 32"
                               " 0 8', \(\(\('a',\),\),\)\)")
 
+    def test_clear_cache(self):
+        vf = self.make_source_with_b(True, 'source')
+        vf.writer.end()
+        for record in vf.get_record_stream([('a',), ('b',)], 'unordered',
+                                           True):
+            pass
+        self.assertTrue(len(vf._group_cache) > 0)
+        vf.clear_cache()
+        self.assertEqual(0, len(vf._group_cache))
+
+
+
+class StubGCVF(object):
+    def __init__(self, canned_get_blocks=None):
+        self._group_cache = {}
+        self._canned_get_blocks = canned_get_blocks or []
+    def _get_blocks(self, read_memos):
+        return iter(self._canned_get_blocks)
+    
+
+class Test_BatchingBlockFetcher(TestCaseWithGroupCompressVersionedFiles):
+    """Simple whitebox unit tests for _BatchingBlockFetcher."""
+    
+    def test_add_key_new_read_memo(self):
+        """Adding a key with an uncached read_memo new to this batch adds that
+        read_memo to the list of memos to fetch.
+        """
+        # locations are: index_memo, ignored, parents, ignored
+        # where index_memo is: (idx, offset, len, factory_start, factory_end)
+        # and (idx, offset, size) is known as the 'read_memo', identifying the
+        # raw bytes needed.
+        read_memo = ('fake index', 100, 50)
+        locations = {
+            ('key',): (read_memo + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(StubGCVF(), locations)
+        total_size = batcher.add_key(('key',))
+        self.assertEqual(50, total_size)
+        self.assertEqual([('key',)], batcher.keys)
+        self.assertEqual([read_memo], batcher.memos_to_get)
+
+    def test_add_key_duplicate_read_memo(self):
+        """read_memos that occur multiple times in a batch will only be fetched
+        once.
+        """
+        read_memo = ('fake index', 100, 50)
+        # Two keys, both sharing the same read memo (but different overall
+        # index_memos).
+        locations = {
+            ('key1',): (read_memo + (0, 1), None, None, None),
+            ('key2',): (read_memo + (1, 2), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(StubGCVF(), locations)
+        total_size = batcher.add_key(('key1',))
+        total_size = batcher.add_key(('key2',))
+        self.assertEqual(50, total_size)
+        self.assertEqual([('key1',), ('key2',)], batcher.keys)
+        self.assertEqual([read_memo], batcher.memos_to_get)
+
+    def test_add_key_cached_read_memo(self):
+        """Adding a key with a cached read_memo will not cause that read_memo
+        to be added to the list to fetch.
+        """
+        read_memo = ('fake index', 100, 50)
+        gcvf = StubGCVF()
+        gcvf._group_cache[read_memo] = 'fake block'
+        locations = {
+            ('key',): (read_memo + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(gcvf, locations)
+        total_size = batcher.add_key(('key',))
+        self.assertEqual(0, total_size)
+        self.assertEqual([('key',)], batcher.keys)
+        self.assertEqual([], batcher.memos_to_get)
+
+    def test_yield_factories_empty(self):
+        """An empty batch yields no factories."""
+        batcher = groupcompress._BatchingBlockFetcher(StubGCVF(), {})
+        self.assertEqual([], list(batcher.yield_factories()))
+
+    def test_yield_factories_calls_get_blocks(self):
+        """Uncached memos are retrieved via get_blocks."""
+        read_memo1 = ('fake index', 100, 50)
+        read_memo2 = ('fake index', 150, 40)
+        gcvf = StubGCVF(
+            canned_get_blocks=[
+                (read_memo1, groupcompress.GroupCompressBlock()),
+                (read_memo2, groupcompress.GroupCompressBlock())])
+        locations = {
+            ('key1',): (read_memo1 + (None, None), None, None, None),
+            ('key2',): (read_memo2 + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(gcvf, locations)
+        batcher.add_key(('key1',))
+        batcher.add_key(('key2',))
+        factories = list(batcher.yield_factories(full_flush=True))
+        self.assertLength(2, factories)
+        keys = [f.key for f in factories]
+        kinds = [f.storage_kind for f in factories]
+        self.assertEqual([('key1',), ('key2',)], keys)
+        self.assertEqual(['groupcompress-block', 'groupcompress-block'], kinds)
+
+    def test_yield_factories_flushing(self):
+        """yield_factories holds back on yielding results from the final block
+        unless passed full_flush=True.
+        """
+        fake_block = groupcompress.GroupCompressBlock()
+        read_memo = ('fake index', 100, 50)
+        gcvf = StubGCVF()
+        gcvf._group_cache[read_memo] = fake_block
+        locations = {
+            ('key',): (read_memo + (None, None), None, None, None)}
+        batcher = groupcompress._BatchingBlockFetcher(gcvf, locations)
+        batcher.add_key(('key',))
+        self.assertEqual([], list(batcher.yield_factories()))
+        factories = list(batcher.yield_factories(full_flush=True))
+        self.assertLength(1, factories)
+        self.assertEqual(('key',), factories[0].key)
+        self.assertEqual('groupcompress-block', factories[0].storage_kind)
+
 
 class TestLazyGroupCompress(tests.TestCaseWithTransport):
 
     _texts = {
         ('key1',): "this is a text\n"
-                   "with a reasonable amount of compressible bytes\n",
+                   "with a reasonable amount of compressible bytes\n"
+                   "which can be shared between various other texts\n",
         ('key2',): "another text\n"
-                   "with a reasonable amount of compressible bytes\n",
+                   "with a reasonable amount of compressible bytes\n"
+                   "which can be shared between various other texts\n",
         ('key3',): "yet another text which won't be extracted\n"
-                   "with a reasonable amount of compressible bytes\n",
+                   "with a reasonable amount of compressible bytes\n"
+                   "which can be shared between various other texts\n",
         ('key4',): "this will be extracted\n"
                    "but references most of its bytes from\n"
                    "yet another text which won't be extracted\n"
-                   "with a reasonable amount of compressible bytes\n",
+                   "with a reasonable amount of compressible bytes\n"
+                   "which can be shared between various other texts\n",
     }
     def make_block(self, key_to_text):
         """Create a GroupCompressBlock, filling it with the given texts."""
@@ -731,6 +883,13 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
     def add_key_to_manager(self, key, locations, block, manager):
         start, end = locations[key]
         manager.add_factory(key, (), start, end)
+
+    def make_block_and_full_manager(self, texts):
+        locations, block = self.make_block(texts)
+        manager = groupcompress._LazyGroupContentManager(block)
+        for key in sorted(texts):
+            self.add_key_to_manager(key, locations, block, manager)
+        return block, manager
 
     def test_get_fulltexts(self):
         locations, block = self.make_block(self._texts)
@@ -788,8 +947,8 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         header_len = int(header_len)
         block_len = int(block_len)
         self.assertEqual('groupcompress-block', storage_kind)
-        self.assertEqual(33, z_header_len)
-        self.assertEqual(25, header_len)
+        self.assertEqual(34, z_header_len)
+        self.assertEqual(26, header_len)
         self.assertEqual(len(block_bytes), block_len)
         z_header = rest[:z_header_len]
         header = zlib.decompress(z_header)
@@ -829,13 +988,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         self.assertEqual([('key1',), ('key4',)], result_order)
 
     def test__check_rebuild_no_changes(self):
-        locations, block = self.make_block(self._texts)
-        manager = groupcompress._LazyGroupContentManager(block)
-        # Request all the keys, which ensures that we won't rebuild
-        self.add_key_to_manager(('key1',), locations, block, manager)
-        self.add_key_to_manager(('key2',), locations, block, manager)
-        self.add_key_to_manager(('key3',), locations, block, manager)
-        self.add_key_to_manager(('key4',), locations, block, manager)
+        block, manager = self.make_block_and_full_manager(self._texts)
         manager._check_rebuild_block()
         self.assertIs(block, manager._block)
 
@@ -866,3 +1019,50 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
             self.assertEqual(('key4',), record.key)
             self.assertEqual(self._texts[record.key],
                              record.get_bytes_as('fulltext'))
+
+    def test_check_is_well_utilized_all_keys(self):
+        block, manager = self.make_block_and_full_manager(self._texts)
+        self.assertFalse(manager.check_is_well_utilized())
+        # Though we can fake it by changing the recommended minimum size
+        manager._full_enough_block_size = block._content_length
+        self.assertTrue(manager.check_is_well_utilized())
+        # Setting it just above causes it to fail
+        manager._full_enough_block_size = block._content_length + 1
+        self.assertFalse(manager.check_is_well_utilized())
+        # Setting the mixed-block size doesn't do anything, because the content
+        # is considered to not be 'mixed'
+        manager._full_enough_mixed_block_size = block._content_length
+        self.assertFalse(manager.check_is_well_utilized())
+
+    def test_check_is_well_utilized_mixed_keys(self):
+        texts = {}
+        f1k1 = ('f1', 'k1')
+        f1k2 = ('f1', 'k2')
+        f2k1 = ('f2', 'k1')
+        f2k2 = ('f2', 'k2')
+        texts[f1k1] = self._texts[('key1',)]
+        texts[f1k2] = self._texts[('key2',)]
+        texts[f2k1] = self._texts[('key3',)]
+        texts[f2k2] = self._texts[('key4',)]
+        block, manager = self.make_block_and_full_manager(texts)
+        self.assertFalse(manager.check_is_well_utilized())
+        manager._full_enough_block_size = block._content_length
+        self.assertTrue(manager.check_is_well_utilized())
+        manager._full_enough_block_size = block._content_length + 1
+        self.assertFalse(manager.check_is_well_utilized())
+        manager._full_enough_mixed_block_size = block._content_length
+        self.assertTrue(manager.check_is_well_utilized())
+
+    def test_check_is_well_utilized_partial_use(self):
+        locations, block = self.make_block(self._texts)
+        manager = groupcompress._LazyGroupContentManager(block)
+        manager._full_enough_block_size = block._content_length
+        self.add_key_to_manager(('key1',), locations, block, manager)
+        self.add_key_to_manager(('key2',), locations, block, manager)
+        # Just using the content from key1 and 2 is not enough to be considered
+        # 'complete'
+        self.assertFalse(manager.check_is_well_utilized())
+        # However if we add key3, then we have enough, as we only require 75%
+        # consumption
+        self.add_key_to_manager(('key4',), locations, block, manager)
+        self.assertTrue(manager.check_is_well_utilized())

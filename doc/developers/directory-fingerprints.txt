@@ -8,7 +8,7 @@ Introduction
 
 The basic idea is that for a directory in a tree (committed or otherwise), we
 will have a single scalar value.  If these values are the same, the contents of
-the subtree under that directory are necessarily the same.  
+the subtree under that directory are necessarily the same.
 
 This is intended to help with these use cases, by allowing them to quickly skip
 over directories with no relevant changes, and to detect when a directory has
@@ -26,7 +26,7 @@ Use-case oriented APIs
 
 Most of this will be hidden behind the Tree interface.  This should cover
 ``log -v``, ``diff``, ``status``, ``merge`` (and implicit merge during
-push, pull, update):: 
+push, pull, update)::
 
   tree.iter_changes(other_tree)
   tree.get_file_lines(file_id)   # and get_file, get_file_text
@@ -38,7 +38,7 @@ Commit is similar to ``iter_changes``, but different because it needs to
 compare to all the trees.  Commit currently needs to compare the working
 tree to all the parent trees, which is needed to update the last_modified
 field and would be unnecessary if we removed that field (for both files
-and directories) and did not store per-file graphs.  
+and directories) and did not store per-file graphs.
 This would potentially speed up commit after merge.
 
 Verbose commit also displays the merged files, which does
@@ -49,7 +49,7 @@ to the left-hand parent.
 ~~~~~~~
 
 Log is interested in two operations: finding the revisions that touched
-anything inside a directory, and getting the differences between 
+anything inside a directory, and getting the differences between
 consecutive revisions (possibly filtered to a directory)::
 
   find_touching_revisions(branch, file_id) # should be on Branch?
@@ -90,9 +90,9 @@ Open questions
   Hashes converge: if you modify and then modify back, you get the same
   hash.  This is a pro because you can detect that there were ultimately
   no significant changes.  And also a con: you cannot use these hashes to form a graph
-  because they get cycles.  
+  because they get cycles.
 
-  
+
 * Are the values unique across the whole tree, or only when comparing
   different versions of the same object?
 
@@ -107,7 +107,7 @@ Open questions
 
 
 * Is it reasonable to assume hashes won't collide?
-  
+
   The odds of SHA-1 hashes colliding "accidentally" are vanishingly small.
 
   It is possible that a `preimage attack`_ against SHA-1 may be discovered
@@ -132,7 +132,7 @@ Open questions
 
   It is desirable that we have a hash that covers all data, to guard
   against bugs, transmission errors, or users trying to hand-hack files.
-  Since we need one hash of everything in the tree, perhaps we should also 
+  Since we need one hash of everything in the tree, perhaps we should also
   use it for the fingerprint.
 
   Testaments explicitly separate the form used for hashing/signing from
@@ -143,7 +143,7 @@ Open questions
   stored data which is not protected by the signature: this data is less
   important, but corruption of it would still cause problems.
   We have encountered some specific problems with disagreement between
-  inventories as to the last-change of files, which is currently unsigned. 
+  inventories as to the last-change of files, which is currently unsigned.
   These problems can be introduced by ghosts.
 
   If we hash the representation, there is still a way to support old
@@ -156,16 +156,16 @@ Open questions
 * Is hashing substantially slower than other possible approaches?
 
   We already hash all the plain files.  Except in unusual cases, the
-  directory metadata will be substantially smaller: perhaps 200:1 as a 
+  directory metadata will be substantially smaller: perhaps 200:1 as a
   rule of thumb.
 
   When building a bzr tree, we spend on the order of 100ms hashing all the
   source lines to validate them (about 13MB of source).
 
 
-* Can you calculate one from a directory in the working tree?  Without a basis?  
+* Can you calculate one from a directory in the working tree?  Without a basis?
 
-  This seems possible with either hashes or revision ids.  
+  This seems possible with either hashes or revision ids.
 
   Using last_changed means that calculating the fingerprint from a working
   tree necessarily requires reading the inventory for the basis
@@ -199,30 +199,30 @@ Open questions
   This does rule out for example using ``last_modified=None`` or
   ``='current:'`` to mean "changed in the working tree."  Even if this is
   not supported there seems some risk that we would get the same
-  fingerprint for trees that are actually different.  
-  
-  We could assign a 
+  fingerprint for trees that are actually different.
+
+  We could assign a
   hypothetical revision id to the tree for uncommitted files.  In that
   case there is some risk that the not-yet-committed id would become
   visible or committed.
 
-  
+
 * Can we use an "approximate basis"?
 
   When using radix trees, you may need context beyond the specific
-  directory being compared.  
+  directory being compared.
 
 
-* Can you get the fingerprint of parents directories with only selected file ids 
+* Can you get the fingerprint of parents directories with only selected file ids
   taken from the working tree?
 
   With hashes, we'd want to carry through the unselected files and
-  directories from the values they had in the parent revision.  
+  directories from the values they had in the parent revision.
 
 
-* Are unbalanced trees a significant problem?  Trees can be unbalanced by having 
-  many directories (deep or wide), or many files per directory.  
-  
+* Are unbalanced trees a significant problem?  Trees can be unbalanced by having
+  many directories (deep or wide), or many files per directory.
+
   For small trees like bzr, 744 of 874 are in the bzrlib subtree.  In
   general, larger trees are more balanced, because humans, editors and
   other tools have trouble managing very unbalanced trees.  But there are
@@ -230,7 +230,7 @@ Open questions
   entries in one directory.
 
 
-* Should we use a radix tree approach where fingerprints are calculated on a synthetic 
+* Should we use a radix tree approach where fingerprints are calculated on a synthetic
   tree that is by definition balanced, even when the actual tree is unbalanced?
 
 
@@ -268,10 +268,10 @@ Open questions
      This has some consequences for how we can upgrade it in future: all
      the changed directories need to be rewritten up to the revision level.
 
-  1. If we address directories by hash we need hash-addressed 
+  1. If we address directories by hash we need hash-addressed
      storage.
 
-  1. If we address directories by hash then for consistency we'd probably 
+  1. If we address directories by hash then for consistency we'd probably
      (not necessarily) want to address file texts by hash.
 
   1. The per-file graph can't be indexed by hash because they can converge, so we
@@ -316,8 +316,8 @@ Open questions
   If the version of a file or directory is identified by a hash, we can't
   use that to point into a per-file graph.  We can have a graph indexed by
   ``(file_id, hash, revision_id)``.  The last-modified could be stored as
-  part of this graph.  
-  
+  part of this graph.
+
   The graph would no longer be core data; it could be always present but
   might be rebuilt.  Treating it as non-core data may make some changes
   like shallow branches easier?
@@ -354,6 +354,6 @@ API changes
 -----------
 
 
-..  
+..
   vim: filetype=rst textwidth=78 expandtab spelllang=en spell
 

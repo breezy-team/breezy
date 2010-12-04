@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import codecs
@@ -32,12 +30,7 @@ from bzrlib import (
 """)
 
 from bzrlib.decorators import (
-    needs_read_lock,
-    needs_write_lock,
-    )
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
+    only_raises,
     )
 
 
@@ -221,6 +214,7 @@ class LockableFiles(object):
         """Setup a write transaction."""
         self._set_transaction(transactions.WriteTransaction())
 
+    @only_raises(errors.LockNotHeld, errors.LockBroken)
     def unlock(self):
         if not self._lock_mode:
             return lock.cant_unlock_not_held(self)

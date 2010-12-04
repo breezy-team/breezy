@@ -8,7 +8,7 @@ Before someone else can get a copy of your work, you need to
 agree on a transfer technology.
 You may decide to make the top level directory of your branch
 a network share, an approach familiar to Windows users.
-Linux and OS X users might prefer access to be
+Unix users might prefer access to be
 via SFTP, a secure protocol built-in to most SSH servers.
 Bazaar is *very* flexible in this regard with support for
 lots of protocols some of which are given below.
@@ -16,11 +16,11 @@ lots of protocols some of which are given below.
   ===========         ======================================================
   Prefix              Description
   ===========         ======================================================
-  file://             Access using the standard filesystem (default)
-  sftp://             Access using SFTP (most SSH servers provide SFTP).
-  bzr://              Fast access using the Bazaar smart server.
-  ftp://              Access using passive FTP.
-  http://             Read-only access to branches exported by a web server.
+  \file://            Access using the standard filesystem (default)
+  \sftp://            Access using SFTP (most SSH servers provide SFTP).
+  \bzr://             Fast access using the Bazaar smart server.
+  \ftp://             Access using passive FTP.
+  \http://            Read-only access to branches exported by a web server.
   ===========         ======================================================
 
 As indicated above, branches are identified using URLs with the
@@ -30,6 +30,17 @@ protocols, see the ``urlspec`` online help topic or the
 `URL Identifiers <../user-reference/bzr_man.html#url-identifiers>`_
 section of the Bazaar User Reference.
 
+URLs are normally resolved relative to the root directory of the server,
+so ``ftp://example.com/repo/foo`` means the ``/repo/foo`` directory of
+that host.  (We say 'normally' because some server software like Apache
+can be configured to remap URLs arbitrarily, in which case you'll need to
+look at the server configuration to find out which URL corresponds to
+which directory.)
+
+To address a path relative to your home directory on the server, use a
+tilde like so: ``sftp://example.com/~/public_html`` should map to
+``public_html`` within your home directory.
+
 A reminder about shared repositories
 ------------------------------------
 
@@ -37,9 +48,10 @@ Before getting a copy of a branch, have a quick think about
 where to put it on your filesystem. For maximum storage
 efficiency down the track, it is recommended that branches
 be created somewhere under a directory that has been set up
-as a shared repository. (See `Feature branches`_ in
-n `Organizing your workspace`_ for a commonly used layout.)
-For example::
+as a shared repository. (See `Feature branches
+<organizing_your_workspace.html#feature-branches>`_ in
+`Organizing your workspace <organizing_your_workspace.html>`_
+for a commonly used layout.) For example::
 
   bzr init-repo my-repo
   cd my-repo
@@ -91,7 +103,7 @@ will take up less disk space than the working copy of
 the latest version.
 
 As explained in later chapters, Bazaar also has support for
-`lightweight checkouts <#getting-a-lightweight-checkout>`_ 
+`lightweight checkouts <using_checkouts.html#getting-a-lightweight-checkout>`_
 of a branch, i.e. working trees with
 no local storage of history. Of course, disconnected usage
 is not available then but that's a tradeoff you can decide

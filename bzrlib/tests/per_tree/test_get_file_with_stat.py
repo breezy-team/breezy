@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ import os
 from bzrlib.tests.per_tree import TestCaseWithTree
 
 
+
 class TestGetFileWithStat(TestCaseWithTree):
 
     def test_get_file_with_stat_id_only(self):
@@ -31,6 +32,7 @@ class TestGetFileWithStat(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         file_obj, statvalue = tree.get_file_with_stat('foo-id')
+        self.addCleanup(file_obj.close)
         if statvalue is not None:
             expected = os.lstat('foo')
             self.assertEqualStat(expected, statvalue)
@@ -44,7 +46,7 @@ class TestGetFileWithStat(TestCaseWithTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         file_obj, statvalue = tree.get_file_with_stat('foo-id', 'foo')
-        expected = os.lstat('foo')
+        self.addCleanup(file_obj.close)
         if statvalue is not None:
             expected = os.lstat('foo')
             self.assertEqualStat(expected, statvalue)

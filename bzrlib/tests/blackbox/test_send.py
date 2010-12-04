@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -26,6 +26,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.bundle import serializer
+from bzrlib.transport import memory
 
 
 def load_tests(standard_tests, module, loader):
@@ -67,7 +68,7 @@ class TestSendMixin(object):
 
     def get_MD(self, args, cmd=None, wd='branch'):
         out = StringIO(self.run_send(args, cmd=cmd, wd=wd)[0])
-        return merge_directive.MergeDirective.from_lines(out.readlines())
+        return merge_directive.MergeDirective.from_lines(out)
 
     def assertBundleContains(self, revs, args, cmd=None, wd='branch'):
         md = self.get_MD(args, cmd=cmd, wd=wd)
@@ -280,10 +281,8 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertEqual('rev3', md.revision_id)
 
     def test_nonexistant_branch(self):
-        if sys.platform == "win32":
-            location = "C:/i/do/not/exist/"
-        else:
-            location = "/i/do/not/exist/"
+        self.vfs_transport_factory = memory.MemoryServer
+        location = self.get_url('absentdir/')
         out, err = self.run_bzr(["send", "--from", location], retcode=3)
         self.assertEqual(out, '')
         self.assertEqual(err, 'bzr: ERROR: Not a branch: "%s".\n' % location)
@@ -308,6 +307,8 @@ class TestSendStrictMixin(TestSendMixin):
     _default_sent_revs = ['local']
     _default_errors = ['Working tree ".*/local/" has uncommitted '
                        'changes \(See bzr status\)\.',]
+    _default_additional_error = 'Use --no-strict to force the send.\n'
+    _default_additional_warning = 'Uncommitted changes will not be sent.'
 
     def set_config_send_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
@@ -316,16 +317,24 @@ class TestSendStrictMixin(TestSendMixin):
         conf.set_user_option('send_strict', value)
 
     def assertSendFails(self, args):
-        self.run_send(args, rc=3, err_re=self._default_errors)
+        out, err = self.run_send(args, rc=3, err_re=self._default_errors)
+        self.assertContainsRe(err, self._default_additional_error)
 
-    def assertSendSucceeds(self, args, revs=None):
+    def assertSendSucceeds(self, args, revs=None, with_warning=False):
+        if with_warning:
+            err_re = self._default_errors
+        else:
+            err_re = []
         if revs is None:
             revs = self._default_sent_revs
-        out, err = self.run_send(args)
-        self.assertEquals(
-            'Bundling %d revision(s).\n' % len(revs), err)
-        md = merge_directive.MergeDirective.from_lines(
-                StringIO(out).readlines())
+        out, err = self.run_send(args, err_re=err_re)
+        bundling_revs = 'Bundling %d revision(s).\n' % len(revs)
+        if with_warning:
+            self.assertContainsRe(err, self._default_additional_warning)
+            self.assertEndsWith(err, bundling_revs)
+        else:
+            self.assertEquals(bundling_revs, err)
+        md = merge_directive.MergeDirective.from_lines(StringIO(out))
         self.assertEqual('parent', md.base_revision_id)
         br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
         self.assertEqual(set(revs), set(r.revision_id for r in br.revisions))
@@ -398,7 +407,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self._default_sent_revs = ['modified-in-local', 'local']
 
     def test_send_default(self):
-        self.assertSendFails([])
+        self.assertSendSucceeds([], with_warning=True)
 
     def test_send_with_revision(self):
         self.assertSendSucceeds(['-r', 'revid:local'], revs=['local'])
@@ -414,18 +423,16 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self.assertSendFails([])
         self.assertSendSucceeds(['--no-strict'])
 
-
     def test_send_bogus_config_var_ignored(self):
         self.set_config_send_strict("I'm unsure")
-        self.assertSendFails([])
-
+        self.assertSendSucceeds([], with_warning=True)
 
     def test_send_no_strict_command_line_override_config(self):
         self.set_config_send_strict('true')
         self.assertSendFails([])
         self.assertSendSucceeds(['--no-strict'])
 
-    def test_push_strict_command_line_override_config(self):
+    def test_send_strict_command_line_override_config(self):
         self.set_config_send_strict('false')
         self.assertSendSucceeds([])
         self.assertSendFails(['--strict'])

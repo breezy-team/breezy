@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,7 +28,6 @@ from bzrlib import (
     symbol_versioning,
     )
 from bzrlib.osutils import contains_whitespace
-from bzrlib.progress import DummyProgress
 
 NULL_REVISION="null:"
 CURRENT_REVISION="current:"
@@ -54,8 +53,11 @@ class Revision(object):
 
     def __init__(self, revision_id, properties=None, **args):
         self.revision_id = revision_id
-        self.properties = properties or {}
-        self._check_properties()
+        if properties is None:
+            self.properties = {}
+        else:
+            self.properties = properties
+            self._check_properties()
         self.committer = None
         self.parent_ids = []
         self.parent_sha1s = []
@@ -88,7 +90,7 @@ class Revision(object):
                 raise ValueError("invalid property name %r" % name)
             if not isinstance(value, basestring):
                 raise ValueError("invalid property value %r for %r" %
-                                 (name, value))
+                                 (value, name))
 
     def get_history(self, repository):
         """Return the canonical line-of-history for this revision.

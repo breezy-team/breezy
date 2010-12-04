@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@ protocol, as implemented in bzr 0.11 and later.
 import os
 
 from bzrlib import errors
+from bzrlib import urlutils
 from bzrlib.smart import request
 
 
@@ -58,6 +59,14 @@ class VfsRequest(request.SmartServerRequest):
     def _check_enabled(self):
         if not vfs_enabled():
             raise errors.DisabledMethod(self.__class__.__name__)
+
+    def translate_client_path(self, relpath):
+        # VFS requests are made with escaped paths so the escaping done in
+        # SmartServerRequest.translate_client_path leads to double escaping.
+        # Remove it here -- the fact that the result is still escaped means
+        # that the str() will not fail on valid input.
+        x = request.SmartServerRequest.translate_client_path(self, relpath)
+        return str(urlutils.unescape(x))
 
 
 class HasRequest(VfsRequest):

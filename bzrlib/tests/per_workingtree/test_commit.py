@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -168,7 +168,7 @@ class TestCommit(TestCaseWithWorkingTree):
         tree_a.commit('change n in A')
 
         # Merging from A should introduce conflicts because 'n' was modified
-        # and removed, so 'a' needs to be restored.
+        # (in A) and removed (in B), so 'a' needs to be restored.
         num_conflicts = tree_b.merge_from_branch(tree_a.branch)
         self.assertEqual(3, num_conflicts)
         paths = [(path, ie.file_id)
@@ -505,8 +505,9 @@ class TestCommit(TestCaseWithWorkingTree):
 
 class TestCommitProgress(TestCaseWithWorkingTree):
 
-    def restoreDefaults(self):
-        ui.ui_factory = self.old_ui_factory
+    def setUp(self):
+        super(TestCommitProgress, self).setUp()
+        ui.ui_factory = CapturingUIFactory()
 
     def test_commit_progress_steps(self):
         # during commit we one progress update for every entry in the
@@ -525,8 +526,6 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         f.close()
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
         factory = CapturingUIFactory()
         ui.ui_factory = factory
         # TODO RBC 20060421 it would be nice to merge the reporter output
@@ -548,8 +547,6 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
         factory = CapturingUIFactory()
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6):
@@ -573,8 +570,6 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         # set a progress bar that captures the calls so we can see what is
         # emitted
-        self.old_ui_factory = ui.ui_factory
-        self.addCleanup(self.restoreDefaults)
         factory = CapturingUIFactory()
         ui.ui_factory = factory
         def a_hook(_, _2, _3, _4, _5, _6, _7, _8):
@@ -611,3 +606,23 @@ class TestCommitProgress(TestCaseWithWorkingTree):
         revid = tree.commit('first post')
         committed_tree = tree.basis_tree()
         self.assertTrue(committed_tree.has_filename("newfile"))
+
+    def test_post_commit_hook(self):
+        """Make sure a post_commit hook is called after a commit."""
+        def post_commit_hook_test_params(params):
+            self.assertTrue(isinstance(params,
+                mutabletree.PostCommitHookParams))
+            self.assertTrue(isinstance(params.mutable_tree,
+                mutabletree.MutableTree))
+            open(tree.abspath("newfile"), 'w').write("data")
+            params.mutable_tree.add(["newfile"])
+        tree = self.make_branch_and_tree('.')
+        mutabletree.MutableTree.hooks.install_named_hook(
+            'post_commit',
+            post_commit_hook_test_params,
+            None)
+        self.assertFalse(tree.has_filename("newfile"))
+        revid = tree.commit('first post')
+        self.assertTrue(tree.has_filename("newfile"))
+        committed_tree = tree.basis_tree()
+        self.assertFalse(committed_tree.has_filename("newfile"))

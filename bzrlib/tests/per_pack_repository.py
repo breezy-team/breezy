@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,7 +45,6 @@ from bzrlib.repofmt import (
 from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 from bzrlib.smart import (
     client,
-    server,
     )
 from bzrlib.tests import (
     TestCase,
@@ -54,10 +53,10 @@ from bzrlib.tests import (
     TestSkipped,
     )
 from bzrlib.transport import (
-    fakenfs,
-    memory,
     get_transport,
+    memory,
     )
+from bzrlib.tests import test_server
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -239,40 +238,46 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertTrue(large_pack_name in pack_names)
 
     def test_commit_write_group_returns_new_pack_names(self):
+        # This test doesn't need real disk.
+        self.vfs_transport_factory = memory.MemoryServer
         format = self.get_format()
-        tree = self.make_branch_and_tree('foo', format=format)
-        tree.commit('first post')
-        repo = tree.branch.repository
+        repo = self.make_repository('foo', format=format)
         repo.lock_write()
         try:
-            repo.start_write_group()
-            try:
-                inv = inventory.Inventory(revision_id="A")
-                inv.root.revision = "A"
-                repo.texts.add_lines((inv.root.file_id, "A"), [], [])
-                rev = _mod_revision.Revision(timestamp=0, timezone=None,
-                    committer="Foo Bar <foo@example.com>", message="Message",
-                    revision_id="A")
-                rev.parent_ids = ()
-                repo.add_revision("A", rev, inv=inv)
-            except:
-                repo.abort_write_group()
-                raise
-            else:
-                old_names = repo._pack_collection._names.keys()
-                result = repo.commit_write_group()
-                cur_names = repo._pack_collection._names.keys()
-                new_names = list(set(cur_names) - set(old_names))
-                self.assertEqual(new_names, result)
+            # All current pack repository styles autopack at 10 revisions; and
+            # autopack as well as regular commit write group needs to return
+            # the new pack name. Looping is a little ugly, but we don't have a
+            # clean way to test both the autopack logic and the normal code
+            # path without doing this loop.
+            for pos in range(10):
+                revid = str(pos)
+                repo.start_write_group()
+                try:
+                    inv = inventory.Inventory(revision_id=revid)
+                    inv.root.revision = revid
+                    repo.texts.add_lines((inv.root.file_id, revid), [], [])
+                    rev = _mod_revision.Revision(timestamp=0, timezone=None,
+                        committer="Foo Bar <foo@example.com>", message="Message",
+                        revision_id=revid)
+                    rev.parent_ids = ()
+                    repo.add_revision(revid, rev, inv=inv)
+                except:
+                    repo.abort_write_group()
+                    raise
+                else:
+                    old_names = repo._pack_collection._names.keys()
+                    result = repo.commit_write_group()
+                    cur_names = repo._pack_collection._names.keys()
+                    new_names = list(set(cur_names) - set(old_names))
+                    self.assertEqual(new_names, result)
         finally:
             repo.unlock()
 
     def test_fail_obsolete_deletion(self):
         # failing to delete obsolete packs is not fatal
         format = self.get_format()
-        server = fakenfs.FakeNFSServer()
-        server.setUp()
-        self.addCleanup(server.tearDown)
+        server = test_server.FakeNFSServer()
+        self.start_server(server)
         transport = get_transport(server.get_url())
         bzrdir = self.get_format().initialize_on_transport(transport)
         repo = bzrdir.create_repository()
@@ -282,6 +287,23 @@ class TestPackRepository(TestCaseWithTransport):
         repo_transport.put_bytes('obsolete_packs/.nfsblahblah', 'contents')
         repo._pack_collection._clear_obsolete_packs()
         self.assertTrue(repo_transport.has('obsolete_packs/.nfsblahblah'))
+
+    def test_pack_collection_sets_sibling_indices(self):
+        """The CombinedGraphIndex objects in the pack collection are all
+        siblings of each other, so that search-order reorderings will be copied
+        to each other.
+        """
+        repo = self.make_repository('repo')
+        pack_coll = repo._pack_collection
+        indices = set([pack_coll.revision_index, pack_coll.inventory_index,
+                pack_coll.text_index, pack_coll.signature_index])
+        if pack_coll.chk_index is not None:
+            indices.add(pack_coll.chk_index)
+        combined_indices = set(idx.combined_index for idx in indices)
+        for combined_index in combined_indices:
+            self.assertEqual(
+                combined_indices.difference([combined_index]),
+                combined_index._sibling_indices)
 
     def test_pack_after_two_commits_packs_everything(self):
         format = self.get_format()
@@ -539,6 +561,42 @@ class TestPackRepository(TestCaseWithTransport):
         finally:
             tree.unlock()
 
+    def test_concurrent_pack_during_autopack(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        try:
+            for i in xrange(9):
+                tree.commit('rev %d' % (i,))
+            r2 = repository.Repository.open('tree')
+            r2.lock_write()
+            try:
+                # Monkey patch so that pack occurs while the other repo is
+                # autopacking. This is slightly bad, but all current pack
+                # repository implementations have a _pack_collection, and we
+                # test that it gets triggered. So if a future format changes
+                # things, the test will fail rather than succeed accidentally.
+                autopack_count = [0]
+                r1 = tree.branch.repository
+                orig = r1._pack_collection.pack_distribution
+                def trigger_during_auto(*args, **kwargs):
+                    ret = orig(*args, **kwargs)
+                    if not autopack_count[0]:
+                        r2.pack()
+                    autopack_count[0] += 1
+                    return ret
+                r1._pack_collection.pack_distribution = trigger_during_auto
+                tree.commit('autopack-rev')
+                # This triggers 2 autopacks. The first one causes r2.pack() to
+                # fire, but r2 doesn't see the new pack file yet. The
+                # autopack restarts and sees there are 2 files and there
+                # should be only 1 for 10 commits. So it goes ahead and
+                # finishes autopacking.
+                self.assertEqual([2], autopack_count)
+            finally:
+                r2.unlock()
+        finally:
+            tree.unlock()
+
     def test_lock_write_does_not_physically_lock(self):
         repo = self.make_repository('.', format=self.get_format())
         repo.lock_write()
@@ -548,10 +606,6 @@ class TestPackRepository(TestCaseWithTransport):
     def prepare_for_break_lock(self):
         # Setup the global ui factory state so that a break-lock method call
         # will find usable input in the input stream.
-        old_factory = ui.ui_factory
-        def restoreFactory():
-            ui.ui_factory = old_factory
-        self.addCleanup(restoreFactory)
         ui.ui_factory = ui.CannedInputUIFactory([True])
 
     def test_break_lock_breaks_physical_lock(self):
@@ -666,6 +720,16 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(self.format_supports_external_lookups,
             repo._format.supports_external_lookups)
 
+    def _lock_write(self, write_lockable):
+        """Lock write_lockable, add a cleanup and return the result.
+        
+        :param write_lockable: An object with a lock_write method.
+        :return: The result of write_lockable.lock_write().
+        """
+        result = write_lockable.lock_write()
+        self.addCleanup(result.unlock)
+        return result
+
     def test_abort_write_group_does_not_raise_when_suppressed(self):
         """Similar to per_repository.test_write_group's test of the same name.
 
@@ -673,25 +737,23 @@ class TestPackRepository(TestCaseWithTransport):
         """
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         # Damage the repository on the filesystem
         self.get_transport('').rename('repo', 'foo')
         # abort_write_group will not raise an error
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
         # But it does log an error
-        log_file = self._get_log(keep_log_file=True)
-        self.assertContainsRe(log_file, 'abort_write_group failed')
-        self.assertContainsRe(log_file, r'INFO  bzr: ERROR \(ignored\):')
+        log = self.get_log()
+        self.assertContainsRe(log, 'abort_write_group failed')
+        self.assertContainsRe(log, r'INFO  bzr: ERROR \(ignored\):')
         if token is not None:
             repo.leave_lock_in_place()
 
     def test_abort_write_group_does_raise_when_not_suppressed(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         # Damage the repository on the filesystem
         self.get_transport('').rename('repo', 'foo')
@@ -703,8 +765,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_suspend_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         repo.texts.add_lines(('file-id', 'revid'), (), ['lines'])
         wg_tokens = repo.suspend_write_group()
@@ -725,8 +786,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         if repo.chk_bytes is None:
             raise TestNotApplicable('no chk_bytes for this repository')
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         text = 'a bit of text\n'
         key = ('sha1:' + osutils.sha_string(text),)
@@ -747,8 +807,7 @@ class TestPackRepository(TestCaseWithTransport):
         # Create a repo, start a write group, insert some data, suspend.
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
@@ -768,8 +827,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_commit_resumed_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
@@ -797,16 +855,14 @@ class TestPackRepository(TestCaseWithTransport):
         self.vfs_transport_factory = memory.MemoryServer
         # Make a repository with a suspended write group
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
         wg_tokens = repo.suspend_write_group()
         # Make a new repository
         new_repo = self.make_repository('new_repo', format=self.get_format())
-        token = new_repo.lock_write()
-        self.addCleanup(new_repo.unlock)
+        token = self._lock_write(new_repo).repository_token
         hacked_wg_token = (
             '../../../../repo/.bzr/repository/upload/' + wg_tokens[0])
         self.assertRaises(
@@ -965,7 +1021,7 @@ class TestKeyDependencies(TestCaseWithTransport):
             ('add', ('', 'root-id', 'directory', None))])
         builder.build_snapshot('B-id', ['A-id', 'ghost-id'], [])
         builder.finish_series()
-        repo = self.make_repository('target')
+        repo = self.make_repository('target', format=self.get_format())
         b = builder.get_branch()
         b.lock_read()
         self.addCleanup(b.unlock)
@@ -1003,8 +1059,19 @@ class TestKeyDependencies(TestCaseWithTransport):
         source_repo, target_repo = self.create_source_and_target()
         target_repo.start_write_group()
         try:
-            stream = source_repo.revisions.get_record_stream([('B-id',)],
-                                                             'unordered', True)
+            # Copy all texts, inventories, and chks so that nothing is missing
+            # for revision B-id.
+            for vf_name in ['texts', 'chk_bytes', 'inventories']:
+                source_vf = getattr(source_repo, vf_name, None)
+                if source_vf is None:
+                    continue
+                target_vf = getattr(target_repo, vf_name)
+                stream = source_vf.get_record_stream(
+                    source_vf.keys(), 'unordered', True)
+                target_vf.insert_record_stream(stream)
+            # Copy just revision B-id
+            stream = source_repo.revisions.get_record_stream(
+                [('B-id',)], 'unordered', True)
             target_repo.revisions.insert_record_stream(stream)
             key_refs = target_repo.revisions._index._key_dependencies
             self.assertEqual([('B-id',)], sorted(key_refs.get_referrers()))
@@ -1019,9 +1086,8 @@ class TestSmartServerAutopack(TestCaseWithTransport):
         super(TestSmartServerAutopack, self).setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
-        self.smart_server = server.SmartTCPServer_for_testing()
-        self.smart_server.setUp(self.get_server())
-        self.addCleanup(self.smart_server.tearDown)
+        self.smart_server = test_server.SmartTCPServer_for_testing()
+        self.start_server(self.smart_server, self.get_server())
         # Log all HPSS calls into self.hpss_calls.
         client._SmartClient.hooks.install_named_hook(
             'call', self.capture_hpss_call, None)

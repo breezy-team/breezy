@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -131,6 +131,25 @@ class SSHVendorManagerTests(TestCase):
 
         # Last cached value always checked first
         self.assertIs(manager.get_vendor({}), vendor)
+
+    def test_get_vendor_from_path_win32_plink(self):
+        manager = TestSSHVendorManager()
+        manager.set_ssh_version_string("plink: Release 0.60")
+        plink_path = "C:/Program Files/PuTTY/plink.exe"
+        vendor = manager.get_vendor({"BZR_SSH": plink_path})
+        self.assertIsInstance(vendor, PLinkSubprocessVendor)
+        args = vendor._get_vendor_specific_argv("user", "host", 22, ["bzr"])
+        self.assertEqual(args[0], plink_path)
+
+    def test_get_vendor_from_path_nix_openssh(self):
+        manager = TestSSHVendorManager()
+        manager.set_ssh_version_string(
+            "OpenSSH_5.1p1 Debian-5, OpenSSL, 0.9.8g 19 Oct 2007")
+        openssh_path = "/usr/bin/ssh"
+        vendor = manager.get_vendor({"BZR_SSH": openssh_path})
+        self.assertIsInstance(vendor, OpenSSHSubprocessVendor)
+        args = vendor._get_vendor_specific_argv("user", "host", 22, ["bzr"])
+        self.assertEqual(args[0], openssh_path)
 
 
 class SubprocessVendorsTests(TestCase):

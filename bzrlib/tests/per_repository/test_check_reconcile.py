@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -198,10 +198,9 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         repo, scenario = self.prepare_test_repository()
         check_result = repo.check()
         check_result.report_results(verbose=True)
+        log = self.get_log()
         for pattern in scenario.check_regexes(repo):
-            self.assertContainsRe(
-                self._get_log(keep_log_file=True),
-                pattern)
+            self.assertContainsRe(log, pattern)
 
     def test_find_text_key_references(self):
         """Test that find_text_key_references finds erroneous references."""

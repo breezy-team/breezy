@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,13 +21,13 @@ import errno
 from itertools import izip
 import os
 from stat import S_ISDIR
-import sys
 
 import bzrlib.branch
 from bzrlib import (
     bzrdir,
     check,
     errors,
+    gpg,
     lockdir,
     osutils,
     repository,
@@ -55,7 +55,6 @@ from bzrlib.tests import (
                           )
 from bzrlib.tests.per_bzrdir import TestCaseWithBzrDir
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
 from bzrlib.transport.local import LocalTransport
 from bzrlib.ui import (
     CannedInputUIFactory,
@@ -202,7 +201,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         A simple wrapper for from_bzrdir.sprout that translates NotLocalUrl into
         TestSkipped.  Returns the newly sprouted bzrdir.
         """
-        to_transport = get_transport(to_url)
+        to_transport = transport.get_transport(to_url)
         if not isinstance(to_transport, LocalTransport):
             raise TestSkipped('Cannot sprout to remote bzrdirs.')
         target = from_bzrdir.sprout(to_url, revision_id=revision_id,
@@ -247,7 +246,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         try:
             bzrdir.destroy_branch()
         except (errors.UnsupportedOperation, errors.TransportNotPossible):
-            raise TestNotApplicable('Format does not support destroying tree')
+            raise TestNotApplicable('Format does not support destroying branch')
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
         bzrdir.create_branch()
         bzrdir.open_branch()
@@ -432,6 +431,27 @@ class TestBzrDir(TestCaseWithBzrDir):
         target = dir.clone(self.get_url('target'), revision_id='2')
         raise TestSkipped('revision limiting not strict yet')
 
+    def test_clone_bzrdir_branch_and_repo_fixed_user_id(self):
+        # Bug #430868 is about an email containing '.sig'
+        os.environ['BZR_EMAIL'] = 'murphy@host.sighup.org'
+        tree = self.make_branch_and_tree('commit_tree')
+        self.build_tree(['commit_tree/foo'])
+        tree.add('foo')
+        rev1 = tree.commit('revision 1')
+        tree_repo = tree.branch.repository
+        tree_repo.lock_write()
+        tree_repo.start_write_group()
+        tree_repo.sign_revision(rev1, gpg.LoopbackGPGStrategy(None))
+        tree_repo.commit_write_group()
+        tree_repo.unlock()
+        target = self.make_branch('target')
+        tree.branch.repository.copy_content_into(target.repository)
+        tree.branch.copy_content_into(target)
+        self.assertTrue(target.repository.has_revision(rev1))
+        self.assertEqual(
+            tree_repo.get_signature_text(rev1),
+            target.repository.get_signature_text(rev1))
+
     def test_clone_bzrdir_branch_and_repo(self):
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['commit_tree/foo'])
@@ -502,7 +522,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -605,7 +625,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -670,7 +690,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -756,13 +776,16 @@ class TestBzrDir(TestCaseWithBzrDir):
                                      './.bzr/repository/inventory.knit',
                                      ])
         try:
+            local_inventory = dir.transport.local_abspath('inventory')
+        except errors.NotLocalUrl:
+            return
+        try:
             # If we happen to have a tree, we'll guarantee everything
             # except for the tree root is the same.
-            inventory_f = file(dir.transport.base+'inventory', 'rb')
+            inventory_f = file(local_inventory, 'rb')
+            self.addCleanup(inventory_f.close)
             self.assertContainsRe(inventory_f.read(),
-                                  '<inventory file_id="TREE_ROOT[^"]*"'
-                                  ' format="5">\n</inventory>\n')
-            inventory_f.close()
+                                  '<inventory format="5">\n</inventory>\n')
         except IOError, e:
             if e.errno != errno.ENOENT:
                 raise
@@ -942,7 +965,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -962,7 +985,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_tree.branch)
+                target_branch=referenced_tree.branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -988,7 +1011,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_tree.branch)
+                target_branch=referenced_tree.branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -1053,7 +1076,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -1079,7 +1102,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         dir = self.make_bzrdir('source')
         try:
             reference = bzrlib.branch.BranchReferenceFormat().initialize(dir,
-                referenced_branch)
+                target_branch=referenced_branch)
         except errors.IncompatibleFormat:
             # this is ok too, not all formats have to support references.
             return
@@ -1144,6 +1167,29 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.assertEqual(tree.branch.last_revision(),
                          target.open_branch().last_revision())
 
+    def test_sprout_with_revision_id_uses_default_stack_on(self):
+        # Make a branch with three commits to stack on.
+        builder = self.make_branch_builder('stack-on')
+        builder.start_series()
+        builder.build_commit(message='Rev 1.', rev_id='rev-1')
+        builder.build_commit(message='Rev 2.', rev_id='rev-2')
+        builder.build_commit(message='Rev 3.', rev_id='rev-3')
+        builder.finish_series()
+        stack_on = builder.get_branch()
+        # Make a bzrdir with a default stacking policy to stack on that branch.
+        config = self.make_bzrdir('policy-dir').get_config()
+        try:
+            config.set_default_stack_on(self.get_url('stack-on'))
+        except errors.BzrError:
+            raise TestNotApplicable('Only relevant for stackable formats.')
+        # Sprout the stacked-on branch into the bzrdir.
+        sprouted = stack_on.bzrdir.sprout(
+            self.get_url('policy-dir/sprouted'), revision_id='rev-3')
+        # Not all revisions are copied into the sprouted repository.
+        repo = sprouted.open_repository()
+        self.addCleanup(repo.lock_read().unlock)
+        self.assertEqual(None, repo.get_parent_map(['rev-1']).get('rev-1'))
+
     def test_format_initialize_find_open(self):
         # loopback test to check the current format initializes to itself.
         if not self.bzrdir_format.is_supported():
@@ -1151,9 +1197,16 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
+        # for remote formats, there must be no prior assumption about the
+        # network name to use - it's possible that this may somehow have got
+        # in through an unisolated test though - see
+        # <https://bugs.launchpad.net/bzr/+bug/504102>
+        self.assertEquals(getattr(self.bzrdir_format,
+            '_network_name', None),
+            None)
         # supported formats must be able to init and open
-        t = get_transport(self.get_url())
-        readonly_t = get_transport(self.get_readonly_url())
+        t = transport.get_transport(self.get_url())
+        readonly_t = transport.get_transport(self.get_readonly_url())
         made_control = self.bzrdir_format.initialize(t.base)
         self.failUnless(isinstance(made_control, bzrdir.BzrDir))
         self.assertEqual(self.bzrdir_format,
@@ -1210,9 +1263,6 @@ class TestBzrDir(TestCaseWithBzrDir):
             return
         self.assertNotEqual(repo.bzrdir.root_transport.base,
             made_repo.bzrdir.root_transport.base)
-        # New repositories are write locked.
-        self.assertTrue(made_repo.is_write_locked())
-        made_repo.unlock()
 
     def test_format_initialize_on_transport_ex_force_new_repo_False(self):
         t = self.get_transport('repo')
@@ -1245,9 +1295,6 @@ class TestBzrDir(TestCaseWithBzrDir):
             # uninitialisable format
             return
         self.assertLength(1, repo._fallback_repositories)
-        # New repositories are write locked.
-        self.assertTrue(repo.is_write_locked())
-        repo.unlock()
 
     def test_format_initialize_on_transport_ex_default_stack_on(self):
         # When initialize_on_transport_ex uses a stacked-on branch because of
@@ -1270,6 +1317,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         repo_name = repo_fmt.repository_format.network_name()
         repo, control = self.assertInitializeEx(
             t, need_meta=True, repo_format_name=repo_name, stacked_on=None)
+        # self.addCleanup(repo.unlock)
         if control is None:
             # uninitialisable format
             return
@@ -1301,9 +1349,6 @@ class TestBzrDir(TestCaseWithBzrDir):
             # must stay with the all-in-one-format.
             repo_name = self.bzrdir_format.network_name()
         self.assertEqual(repo_name, repo._format.network_name())
-        # New repositories are write locked.
-        self.assertTrue(repo.is_write_locked())
-        repo.unlock()
 
     def assertInitializeEx(self, t, need_meta=False, **kwargs):
         """Execute initialize_on_transport_ex and check it succeeded correctly.
@@ -1321,6 +1366,10 @@ class TestBzrDir(TestCaseWithBzrDir):
             return None, None
         repo, control, require_stacking, repo_policy = \
             self.bzrdir_format.initialize_on_transport_ex(t, **kwargs)
+        if repo is not None:
+            # Repositories are open write-locked
+            self.assertTrue(repo.is_write_locked())
+            self.addCleanup(repo.unlock)
         self.assertIsInstance(control, bzrdir.BzrDir)
         opened = bzrdir.BzrDir.open(t.base)
         expected_format = self.bzrdir_format
@@ -1367,7 +1416,7 @@ class TestBzrDir(TestCaseWithBzrDir):
         # test the formats specific behaviour for no-content or similar dirs.
         self.assertRaises(NotBranchError,
                           self.bzrdir_format.open,
-                          get_transport(self.get_readonly_url()))
+                          transport.get_transport(self.get_readonly_url()))
 
     def test_create_branch(self):
         # a bzrdir can construct a branch and repository for itself.
@@ -1376,7 +1425,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
@@ -1389,7 +1438,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
@@ -1398,6 +1447,26 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.failUnless(isinstance(opened_branch, made_branch.__class__))
         self.failUnless(isinstance(opened_branch._format, made_branch._format.__class__))
 
+    def test_list_branches(self):
+        if not self.bzrdir_format.is_supported():
+            # unsupported formats are not loopback testable
+            # because the default open will not open them and
+            # they may not be initializable.
+            return
+        t = transport.get_transport(self.get_url())
+        made_control = self.bzrdir_format.initialize(t.base)
+        made_repo = made_control.create_repository()
+        made_branch = made_control.create_branch()
+        branches = made_control.list_branches()
+        self.assertEquals(1, len(branches))
+        self.assertEquals(made_branch.base, branches[0].base)
+        try:
+            made_control.destroy_branch()
+        except errors.UnsupportedOperation:
+            pass # Not all bzrdirs support destroying directories
+        else:
+            self.assertEquals([], made_control.list_branches())
+
     def test_create_repository(self):
         # a bzrdir can construct a repository for itself.
         if not self.bzrdir_format.is_supported():
@@ -1405,7 +1474,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
@@ -1420,7 +1489,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         try:
             made_repo = made_control.create_repository(shared=True)
@@ -1437,7 +1506,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository(shared=False)
         self.assertFalse(made_repo.is_shared())
@@ -1448,7 +1517,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         opened_repo = made_control.open_repository()
@@ -1576,7 +1645,7 @@ class TestBzrDir(TestCaseWithBzrDir):
     def test_root_transport(self):
         dir = self.make_bzrdir('.')
         self.assertEqual(dir.root_transport.base,
-                         get_transport(self.get_url('.')).base)
+                         transport.get_transport(self.get_url('.')).base)
 
     def test_find_repository_no_repo_under_standalone_branch(self):
         # finding a repo stops at standalone branches even if there is a
@@ -1587,8 +1656,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             # need a shared repository to test this.
             return
         url = self.get_url('intermediate')
-        get_transport(self.get_url()).mkdir('intermediate')
-        get_transport(self.get_url()).mkdir('intermediate/child')
+        transport.get_transport(self.get_url()).mkdir('intermediate')
+        transport.get_transport(self.get_url()).mkdir('intermediate/child')
         made_control = self.bzrdir_format.initialize(url)
         made_control.create_repository()
         innermost_control = self.bzrdir_format.initialize(
@@ -1612,7 +1681,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # need a shared repository to test this.
             return
         url = self.get_url('childbzrdir')
-        get_transport(self.get_url()).mkdir('childbzrdir')
+        transport.get_transport(self.get_url()).mkdir('childbzrdir')
         made_control = self.bzrdir_format.initialize(url)
         try:
             child_repo = made_control.open_repository()
@@ -1646,7 +1715,7 @@ class TestBzrDir(TestCaseWithBzrDir):
             # need a shared repository to test this.
             return
         url = self.get_url('childrepo')
-        get_transport(self.get_url()).mkdir('childrepo')
+        transport.get_transport(self.get_url()).mkdir('childrepo')
         child_control = self.bzrdir_format.initialize(url)
         child_repo = child_control.create_repository(shared=True)
         opened_control = bzrdir.BzrDir.open(self.get_url('childrepo'))
@@ -1665,8 +1734,8 @@ class TestBzrDir(TestCaseWithBzrDir):
             # need a shared repository to test this.
             return
         url = self.get_url('intermediate')
-        get_transport(self.get_url()).mkdir('intermediate')
-        get_transport(self.get_url()).mkdir('intermediate/child')
+        transport.get_transport(self.get_url()).mkdir('intermediate')
+        transport.get_transport(self.get_url()).mkdir('intermediate/child')
         made_control = self.bzrdir_format.initialize(url)
         try:
             child_repo = made_control.open_repository()
@@ -1769,17 +1838,6 @@ class TestBzrDir(TestCaseWithBzrDir):
 
 class TestBreakLock(TestCaseWithBzrDir):
 
-    def setUp(self):
-        super(TestBreakLock, self).setUp()
-        # we want a UI factory that accepts canned input for the tests:
-        # while SilentUIFactory still accepts stdin, we need to customise
-        # ours
-        self.old_factory = bzrlib.ui.ui_factory
-        self.addCleanup(self.restoreFactory)
-
-    def restoreFactory(self):
-        bzrlib.ui.ui_factory = self.old_factory
-
     def test_break_lock_empty(self):
         # break lock on an empty bzrdir should work silently.
         dir = self.make_bzrdir('.')
@@ -1822,7 +1880,7 @@ class TestBreakLock(TestCaseWithBzrDir):
         thisdir = self.make_bzrdir('this')
         try:
             bzrlib.branch.BranchReferenceFormat().initialize(
-                thisdir, master)
+                thisdir, target_branch=master)
         except errors.IncompatibleFormat:
             return
         unused_repo = thisdir.create_repository()
@@ -1922,7 +1980,7 @@ class ChrootedBzrDirTests(ChrootedTestCase):
         # - do the vfs initialisation over the basic vfs transport
         # XXX: TODO this should become a 'bzrdirlocation' api call.
         url = self.get_vfs_only_url('subdir')
-        get_transport(self.get_vfs_only_url()).mkdir('subdir')
+        transport.get_transport(self.get_vfs_only_url()).mkdir('subdir')
         made_control = self.bzrdir_format.initialize(self.get_url('subdir'))
         try:
             repo = made_control.open_repository()
@@ -1935,3 +1993,15 @@ class ChrootedBzrDirTests(ChrootedTestCase):
         self.assertRaises(errors.NoRepositoryPresent,
                           made_control.find_repository)
 
+
+class TestBzrDirControlComponent(TestCaseWithBzrDir):
+    """BzrDir implementations adequately implement ControlComponent."""
+
+    def test_urls(self):
+        bd = self.make_bzrdir('bd')
+        self.assertIsInstance(bd.user_url, str)
+        self.assertEqual(bd.user_url, bd.user_transport.base)
+        # for all current bzrdir implementations the user dir must be 
+        # above the control dir but we might need to relax that?
+        self.assertEqual(bd.control_url.find(bd.user_url), 0)
+        self.assertEqual(bd.control_url, bd.control_transport.base)

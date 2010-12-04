@@ -49,7 +49,7 @@ Overall efficiency and scaling is constrained by the bottom level structure
 that an inventory is stored as. We have a number of goals we want to achieve:
 
  1. Allow commit to write less than the full tree's data in to the repository
-    in the general case. 
+    in the general case.
  2. Allow the data that is written to be calculated without examining every
     versioned path in the tree.
  3. Generate the exact same representation for a given inventory regardless of
@@ -83,7 +83,7 @@ Current situation
 -----------------
 
 The xml based implementation we use today layers the inventory as a bytestring
-which is stored under a single key; the bytestring is then compressed as a 
+which is stored under a single key; the bytestring is then compressed as a
 delta against the bytestring of its left hand parent by the knit code.
 
 Gap analysis:
@@ -140,8 +140,8 @@ Design elements to achieve the goals in a future inventory implementation
 -------------------------------------------------------------------------
 
  * Split up the logical document into smaller serialised fragements. For
-   instance hash buckets or nodes in a tree of some sort. By serialising in 
-   smaller units, we can increase the number of smaller units rather than 
+   instance hash buckets or nodes in a tree of some sort. By serialising in
+   smaller units, we can increase the number of smaller units rather than
    their size as the tree grows; as long as two similar trees have similar
    serialised forms, the amount of different content should be quite high.
 
@@ -166,7 +166,7 @@ Design elements to achieve the goals in a future inventory implementation
 
  * Working tree to arbitrary history revision deltas/comparisons can be scaled
    up by doing a two-step (fixed at two!) delta combining - delta(tree, basis)
-   and then combine that with delta(basis, arbitrary_revision) using the 
+   and then combine that with delta(basis, arbitrary_revision) using the
    repositories ability to get a delta cheaply.
 
  * The key primitives we need seem to be:
@@ -263,7 +263,7 @@ For content maps, VALUE::
 
 The path and content maps are populated simply by serialising every inventory
 entry and inserting them into both the path map and the content map. The maps
-start with just a single leaf node with an empty prefix. 
+start with just a single leaf node with an empty prefix.
 
 
 Apply
@@ -439,10 +439,10 @@ Insertion
    formerly linked. (This will normally bubble down due to keeping densely
    packed nodes).
    To shrink the prefix of a leaf node, create an internal node with the same
-   prefix, then choose a width for the internal node such that the contents 
+   prefix, then choose a width for the internal node such that the contents
    of the leaf all fit into new leaves obeying the min_size and max_size rules.
    The largest prefix possible should be chosen, to obey the
-   higher-nodes-are-denser rule. That rule also gives room in leaf nodes for 
+   higher-nodes-are-denser rule. That rule also gives room in leaf nodes for
    growth without affecting the parent node packing.
 #. Update the CHK pointers - serialise every altered node to generate a CHK,
    and update the CHK placeholder in the nodes parent; then reserialise the
@@ -590,7 +590,7 @@ the user sometimes when things they didn't explicitly request are committed.
 
 Different trees can use different algorithms to expand the request as long as
 they produce consistent deltas. As part of getting a consistent UI we require
-that all trees expand the paths requested downwards. Beyond that as long as 
+that all trees expand the paths requested downwards. Beyond that as long as
 the delta is consistent it is up to the tree.
 
 Given two trees, source and target, and a set of selected file ids to check for
@@ -598,7 +598,7 @@ changes and if changed in a delta between them, we have to expand that set by
 the following rules, to get consistent deltas. The test for consistency is that
 if the resulting delta is applied to source, to create a third tree 'output',
 and the paths in the delta match the paths in source and output, only one file
-id is at each path in output, and no file ids are missing parents, then the 
+id is at each path in output, and no file ids are missing parents, then the
 delta is consistent.
 
 Firstly, the parent ids to the root for all of the file ids that have actually

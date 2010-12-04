@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,9 +17,13 @@
 
 """Test operations that check the repository for corruption"""
 
+import os
 
 from bzrlib import (
+    check,
+    config as _mod_config,
     errors,
+    inventory,
     revision as _mod_revision,
     )
 from bzrlib.tests import TestNotApplicable
@@ -42,8 +46,7 @@ class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
         revid2 = tree.commit('2')
         check_object = tree.branch.repository.check([revid1, revid2])
         check_object.report_results(verbose=True)
-        log = self._get_log(keep_log_file=True)
-        self.assertContainsRe(log, "0 unreferenced text versions")
+        self.assertContainsRe(self.get_log(), "0 unreferenced text versions")
 
 
 class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
@@ -86,13 +89,11 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         # contents of it!
         check_object = repo.check(['ignored'])
         check_object.report_results(verbose=False)
-        log = self._get_log(keep_log_file=True)
-        self.assertContainsRe(
-            log, '1 revisions have incorrect parents in the revision index')
+        self.assertContainsRe(self.get_log(),
+            '1 revisions have incorrect parents in the revision index')
         check_object.report_results(verbose=True)
-        log = self._get_log(keep_log_file=True)
         self.assertContainsRe(
-            log,
+            self.get_log(),
             "revision-id has wrong parents in index: "
             r"\('incorrect-parent',\) should be \(\)")
 
@@ -125,3 +126,23 @@ class TestCallbacks(TestCaseWithRepository):
     def branch_callback(self, refs):
         self.callbacks.append(('branch', refs))
         return self.branch_check(refs)
+
+
+class TestCleanRepository(TestCaseWithRepository):
+
+    def test_new_repo(self):
+        repo = self.make_repository('foo')
+        repo.lock_write()
+        self.addCleanup(repo.unlock)
+        config = _mod_config.Config()
+        os.environ['BZR_EMAIL'] = 'foo@sample.com'
+        builder = repo.get_commit_builder(None, [], config)
+        list(builder.record_iter_changes(None, _mod_revision.NULL_REVISION, [
+            ('TREE_ROOT', (None, ''), True, (False, True), (None, None),
+            (None, ''), (None, 'directory'), (None, False))]))
+        builder.finish_inventory()
+        rev_id = builder.commit('first post')
+        result = repo.check(None, check_repo=True)
+        result.report_results(True)
+        log = self.get_log()
+        self.assertFalse('Missing' in log, "Something was missing in %r" % log)

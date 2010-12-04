@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -58,12 +58,12 @@ class SmartRequestHandler(http_server.TestingHTTPRequestHandler):
         """Hand the request off to a smart server instance."""
         backing = get_transport(self.server.test_case_server._home_dir)
         chroot_server = chroot.ChrootServer(backing)
-        chroot_server.setUp()
+        chroot_server.start_server()
         try:
             t = get_transport(chroot_server.get_url())
             self.do_POST_inner(t)
         finally:
-            chroot_server.tearDown()
+            chroot_server.stop_server()
 
     def do_POST_inner(self, chrooted_transport):
         self.send_response(200)
@@ -106,9 +106,19 @@ class TestCaseWithWebserver(tests.TestCaseWithTransport):
     one. This will currently fail if the primary transport is not
     backed by regular disk files.
     """
+
+    # This can be overriden or parametrized by daughter clasess if needed, but
+    # it must exist so that the create_transport_readonly_server() method can
+    # propagate it.
+    _protocol_version = None
+
     def setUp(self):
         super(TestCaseWithWebserver, self).setUp()
         self.transport_readonly_server = http_server.HttpServer
+
+    def create_transport_readonly_server(self):
+        return self.transport_readonly_server(
+            protocol_version=self._protocol_version)
 
 
 class TestCaseWithTwoWebservers(TestCaseWithWebserver):
@@ -127,14 +137,14 @@ class TestCaseWithTwoWebservers(TestCaseWithWebserver):
 
         This is mostly a hook for daughter classes.
         """
-        return self.transport_secondary_server()
+        return self.transport_secondary_server(
+            protocol_version=self._protocol_version)
 
     def get_secondary_server(self):
         """Get the server instance for the secondary transport."""
         if self.__secondary_server is None:
             self.__secondary_server = self.create_transport_secondary_server()
-            self.__secondary_server.setUp()
-            self.addCleanup(self.__secondary_server.tearDown)
+            self.start_server(self.__secondary_server)
         return self.__secondary_server
 
 
@@ -219,7 +229,8 @@ class TestCaseWithRedirectedWebserver(TestCaseWithTwoWebservers):
    def create_transport_secondary_server(self):
        """Create the secondary server redirecting to the primary server"""
        new = self.get_readonly_server()
-       redirecting = HTTPServerRedirecting()
+       redirecting = HTTPServerRedirecting(
+           protocol_version=self._protocol_version)
        redirecting.redirect_to(new.host, new.port)
        return redirecting
 

@@ -1,6 +1,6 @@
 .. This document describes _how_ to do use case analyses and what we want
 .. to get out of them; for the specific cases see the files referenced by
-.. performance-roadmap.txt 
+.. performance-roadmap.txt
 
 Analysing a specific use case
 =============================
@@ -55,7 +55,7 @@ design with are:
 - scaling: how does performance change when any of the follow aspects
   of the system are ratcheted massively up or down:
 
-   - number of files/dirs/symlinks/subtrees in a tree (both working and 
+   - number of files/dirs/symlinks/subtrees in a tree (both working and
      revision trees)
    - size of any particular file
    - number of elements within a single directory
@@ -77,9 +77,9 @@ design with are:
    - bandwidth when performing semantic operations.
 
 - locality of reference: If an operation requires data that is located
-  within a small region at any point, we often get better performance 
+  within a small region at any point, we often get better performance
   than with an implementation of the same operation that requires the
-  same amount of data but with a lower locality of reference. Its 
+  same amount of data but with a lower locality of reference. Its
   fairly tricky to add locality of reference after the fact, so I think
   its worth considering up front.
 
@@ -89,7 +89,7 @@ the branch object, and two to the repository. In file-operation level
 measurements, in an ideal world there would be no more than one round
 trip for each semantic operation. What there must not be is one round
 trip per revision involved in the revisionid->dotted number mapping, nor
-per each revision id attributed to a line in the text. 
+per each revision id attributed to a line in the text.
 
 Not all the items mentioned above are created equal. The analysis should
 include the parameters considered and the common case values for each - the

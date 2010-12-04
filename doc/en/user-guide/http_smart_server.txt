@@ -1,8 +1,8 @@
-Serving Bazaar with FastCGI
-===========================
+Serving Bazaar with Apache
+==========================
 
 This document describes one way to set up a Bazaar HTTP smart server,
-using Apache 2.0 and FastCGI or mod_python.
+using Apache 2.0 and FastCGI or mod_python or mod_wsgi.
 
 For more information on the smart server, and other ways to configure it
 see the main `smart server documentation`_.
@@ -30,7 +30,7 @@ httpd.conf::
 
     LoadModule fastcgi_module /usr/lib/apache2/modules/mod_fastcgi.so
     FastCgiIpcDir /var/lib/apache2/fastcgi
-    
+
 In our example, we're already serving `/srv/example.com/www/code` at
 `http://example.com/code`, so our existing Apache configuration would look
 like::
@@ -51,7 +51,7 @@ will look like::
         RewriteBase /code
         RewriteRule ^(.*/|)\.bzr/smart$ /srv/example.com/scripts/bzr-smart.fcgi
     </Directory>
-    
+
     # bzr-smart.fcgi isn't under the DocumentRoot, so Alias it into the URL
     # namespace so it can be executed.
     Alias /srv/example.com/scripts/bzr-smart.fcgi /srv/example.com/scripts/bzr-smart.fcgi
@@ -61,7 +61,7 @@ will look like::
             SetHandler fastcgi-script
         </Files>
     </Directory>
-    
+
 This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
 inside `/code` to a Bazaar smart server via FastCGI.
 
@@ -117,6 +117,32 @@ Refer to the mod_python_ documentation for further information.
 .. _mod_python: http://www.modpython.org/
 
 
+mod_wsgi
+~~~~~~~~
+
+First, configure mod_wsgi, e.g. enabling the mod with a2enmod wsgi.
+We need to change it to handle all requests for URLs ending in `.bzr/smart`.  It
+will look like::
+
+    WSGIScriptAliasMatch ^/code/.*/\.bzr/smart$ /srv/example.com/scripts/bzr.wsgi
+
+    #The three next lines allow regular GETs to work too
+    RewriteEngine On
+    RewriteCond %{REQUEST_URI} !^/code/.*/\.bzr/smart$
+    RewriteRule ^/code/(.*/\.bzr/.*)$ /srv/example.com/www/code/$1 [L]
+
+    <Directory /srv/example.com/www/code>
+        WSGIApplicationGroup %{GLOBAL}
+    </Directory>
+
+This instructs Apache to hand requests for any URL ending with `/.bzr/smart`
+inside `/code` to a Bazaar smart server via WSGI, and any other URL inside
+`/code` to be served directly by Apache.
+
+Refer to the mod_wsgi_ documentation for further information.
+
+.. _mod_wsgi: http://code.google.com/p/modwsgi/
+
 Configuring Bazaar
 ------------------
 
@@ -136,11 +162,11 @@ Here's what it looks like::
         prefix='/code/',
         path_var='REQUEST_URI',
         readonly=True,
-        load_plugins=True, 
+        load_plugins=True,
         enable_logging=True)
 
     fcgi.WSGIServer(smart_server_app).run()
-        
+
 The `fcgi` module can be found at http://svn.saddi.com/py-lib/trunk/fcgi.py.  It
 is part of flup_.
 
@@ -162,32 +188,50 @@ Here's what it looks like::
         prefix='/code/',
         path_var='REQUEST_URI',
         readonly=True,
-        load_plugins=True, 
+        load_plugins=True,
         enable_logging=True)
 
     def handler(request):
         """Handle a single request."""
         wsgi_server = modpywsgi.WSGIServer(smart_server_app)
         return wsgi_server.run(request)
-        
+
 The `modpywsgi` module can be found at
-http://dev.pocoo.org/projects/pocoo/browser/pocoo/wrappers/modpy.py. It is
+http://ice.usq.edu.au/svn/ice/trunk/apps/ice-server/modpywsgi.py. It was
 part of pocoo_. You sould make sure you place modpywsgi.py in the same
 directory as bzr-smart.py (ie. /srv/example.com/scripts/).
 
 .. _pocoo: http://dev.pocoo.org/projects/pocoo/
 
+
+mod_wsgi
+~~~~~~~~
+
+We've configured Apache to run the smart server at
+`/srv/example.com/scripts/bzr.wsgi`.  This is just a simple script we need
+to write to configure a smart server, and glue it to the WSGI gateway.
+Here's what it looks like::
+
+    from bzrlib.transport.http import wsgi
+
+    def application(environ, start_response):
+        app = wsgi.make_app(
+            root="/srv/example.com/www/code/",
+            prefix="/code",
+            readonly=True,
+            enable_logging=False)
+        return app(environ, start_response)
+
 Clients
 -------
 
-Now you can use `bzr+http://` URLs, e.g.::
+Now you can use `bzr+http://` URLs or just `http://` URLs, e.g.::
 
     bzr log bzr+http://example.com/code/my-branch
 
 Plain HTTP access should continue to work::
 
     bzr log http://example.com/code/my-branch
-
 
 Advanced configuration
 ----------------------
@@ -216,21 +260,41 @@ standard`_ for further information.
 .. _WSGI standard: http://www.python.org/dev/peps/pep-0333/
 
 
-Pushing over ``bzr+http://``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Pushing over the http smart server
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 It is possible to allow pushing data over the http smart server. The
 easiest way to do this, is to just supply ``readonly=False`` to the
 ``wsgi.make_app()`` call. But be careful, because the smart protocol does
 not contain any Authentication. So if you enable write support, you will
 want to restrict access to ``.bzr/smart`` URLs to restrict who can
-actually write data on your system.  At this time, it is not possible to
-allow some people to have read-only access and others to have read-write
-access to the same urls. Because at the HTTP layer (which is doing the
-Authenticating), everything is just a POST request.  However, it would
-certainly be possible to have HTTPS require authentication and use a
-writable server, and plain HTTP allow read-only access.
+actually write data on your system, e.g. in apache it looks like::
 
+    <Location /code>
+        AuthType Basic
+        AuthName "example"
+        AuthUserFile /srv/example.com/conf/auth.passwd
+        <LimitExcept GET>
+            Require valid-user
+        </LimitExcept>
+    </Location>
 
-.. 
+At this time, it is not possible to allow some people to have read-only
+access and others to have read-write access to the same urls. Because at
+the HTTP layer (which is doing the Authenticating), everything is just a
+POST request.  However, it would certainly be possible to have HTTPS
+require authentication and use a writable server, and plain HTTP allow
+read-only access.
+
+If bzr gives an error like this when accessing your HTTPS site::
+
+  bzr: ERROR: Connection error: curl connection error (server certificate verification failed.
+  CAfile:/etc/ssl/certs/ca-certificates.crt CRLfile: none)
+
+You can workaround it by using ``https+urllib`` rather than ``http`` in your
+URL, or by uninstalling pycurl.  See `bug 82086`_ for more details.
+
+.. _bug 82086: https://bugs.launchpad.net/bzr/+bug/82086
+
+..
    vim: ft=rst tw=74 et

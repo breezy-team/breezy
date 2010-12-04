@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,10 +20,9 @@
 
 import types
 
-
+from bzrlib import transport
 from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport
 from bzrlib.transport.log import TransportLogDecorator
 
 
@@ -31,15 +30,15 @@ class TestTransportLog(TestCaseWithMemoryTransport):
 
     def test_log_transport(self):
         base_transport = self.get_transport('')
-        logging_transport = get_transport('log+' + base_transport.base)
+        logging_transport = transport.get_transport(
+            'log+' + base_transport.base)
 
         # operations such as mkdir are logged
         mutter('where are you?')
         logging_transport.mkdir('subdir')
-        self.assertContainsRe(self._get_log(True),
-            r'mkdir memory\+\d+://.*subdir')
-        self.assertContainsRe(self._get_log(True),
-            '  --> None')
+        log = self.get_log()
+        self.assertContainsRe(log, r'mkdir memory\+\d+://.*subdir')
+        self.assertContainsRe(log, '  --> None')
         # they have the expected effect
         self.assertTrue(logging_transport.has('subdir'))
         # and they operate on the underlying transport

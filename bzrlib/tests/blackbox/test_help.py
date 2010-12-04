@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,11 +20,11 @@
 
 
 import bzrlib
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.config import (ensure_config_dir_exists, config_filename)
 
 
-class TestHelp(ExternalBase):
+class TestHelp(TestCaseWithTransport):
 
     def test_help_basic(self):
         for cmd in ['--help', 'help', '-h', '-?']:
@@ -105,8 +105,23 @@ class TestHelp(ExternalBase):
         self.assertEquals(dash_help, qmark_cmds)
 
     def test_hidden(self):
-        commands = self.run_bzr('help commands')[0]
-        hidden = self.run_bzr('help hidden-commands')[0]
+        help_commands = self.run_bzr('help commands')[0]
+        help_hidden = self.run_bzr('help hidden-commands')[0]
+
+        def extract_cmd_names(help_output):
+            # keep only the command names to avoid matching on help text (there
+            # is a high risk to fail a test when a plugin get installed
+            # otherwise)
+            cmds = []
+            for line in help_output.split('\n'):
+                if line.startswith(' '):
+                    continue # help on more than one line
+                cmd = line.split(' ')[0]
+                if line:
+                    cmds.append(cmd)
+            return cmds
+        commands = extract_cmd_names(help_commands)
+        hidden = extract_cmd_names(help_hidden)
         self.assertTrue('commit' in commands)
         self.assertTrue('commit' not in hidden)
         self.assertTrue('rocks' in hidden)

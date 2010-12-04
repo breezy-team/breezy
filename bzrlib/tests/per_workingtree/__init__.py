@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 
 """WorkingTree implementation tests for bzr.
 
-These test the conformance of all the workingtre variations to the expected API.
+This test the conformance of all the workingtre variations to the expected API.
 Specific tests for individual formats are in the tests/test_workingtree file
 rather than in tests/per_workingtree/*.py.
 """
@@ -101,6 +101,7 @@ def load_tests(standard_tests, module, loader):
         'revision_tree',
         'set_root_id',
         'smart_add',
+        'symlinks',
         'uncommit',
         'unversion',
         'views',

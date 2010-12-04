@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #       Author: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -71,6 +71,18 @@ class TestSuite(unittest.TestSuite):
         current callbacks are visitSuite and visitCase."""
         visitor.visitSuite(self)
         visitTests(self, visitor)
+
+    def run(self, result):
+        """Run the tests in the suite, discarding references after running."""
+        tests = list(self)
+        tests.reverse()
+        self._tests = []
+        while tests:
+            if result.shouldStop:
+                self._tests = reversed(tests)
+                break
+            tests.pop().run(result)
+        return result
 
 
 class TestLoader(unittest.TestLoader):

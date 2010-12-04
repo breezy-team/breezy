@@ -4,43 +4,52 @@ Bazaar Architectural Overview
 
 This document describes the key classes and concepts within Bazaar.  It is
 intended to be useful to people working on the Bazaar codebase, or to
-people writing plugins.
+people writing plugins.  People writing plugins may also like to read the 
+guide to `Integrating with Bazaar <integrating.html>`_ for some specific
+recipes.
 
 If you have any questions, or if something seems to be incorrect, unclear
 or missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write
-to the Bazaar mailing list.  To propose a correction or addition to this
-document, send a merge request or new text to the mailing list.
+to the Bazaar mailing list.  
 
-The current version of this document is available in the file
-``doc/developers/overview.txt`` in the source tree, and from 
-<http://doc.bazaar-vcs.org/bzr.dev/>.
 
-See also:
+Using bzrlib
+############
 
- * `Bazaar Developer Documentation Catalog <index.html>`_.
- * `Bazaar Developer Guide <../en/developer-guide/HACKING.html>`_
-   (particularly the *Coding Style Guidelines* section.)
+Within bzr
+==========
 
-.. contents::
+When using bzrlib within the ``bzr`` program (for instance as a bzr
+plugin), bzrlib's global state is already available for use.
 
-Essential Domain Classes
-########################
+From outside bzr
+================
 
-The core domain objects within the bazaar model are:
+To use bzrlib outside of ``bzr`` some global state needs to be setup.
+bzrlib needs ways to handle user input, passwords, a place to emit
+progress bars, logging setup appropriately for your program. The easiest
+way to set all this up in the same fashion ``bzr`` does is to call
+``bzrlib.initialize``. This returns a context manager within which bzrlib
+functions will work correctly. See the pydoc for ``bzrlib.initialize`` for
+more information. In Python 2.4 the ``with`` keyword is not supported and
+so you need to use the context manager manually::
 
-* Transport
+  # This sets up your ~/.bzr.log, ui factory and so on and so forth. It is
+  # not safe to use as a doctest.
+  library_state = bzrlib.initialize()
+  library_state.__enter__()
+  try:
+      pass
+      # do stuff here
+  finally:
+      library_state.__exit__(None, None, None)
 
-* Branch
 
-* Repository
-
-* WorkingTree
-
-Transports are explained below. See http://bazaar-vcs.org/Classes/
-for an introduction to the other key classes.
+Core classes
+############
 
 Transport
-#########
+=========
 
 The ``Transport`` layer handles access to local or remote directories.
 Each Transport object acts as a logical connection to a particular
@@ -53,7 +62,7 @@ working trees are always local and they are accessed through the regular
 Python file I/O mechanisms.
 
 Filenames vs URLs
-=================
+-----------------
 
 Transports work in terms of URLs.  Take note that URLs are by definition
 only ASCII - the decision of how to encode a Unicode string into a URL
@@ -90,14 +99,66 @@ elsewhere.  Information that Transports return, such as from ``list_dir``,
 is also in the form of URL components.
 
 
+WorkingTree
+===========
+
+A workingtree is a special type of Tree that's associated with a working
+directory on disk, where the user can directly modify the files. 
+
+Responsibilities:
+
+ * Maintaining a WorkingTree on disk at a file path.
+ * Maintaining the basis inventory (the inventory of the last commit done)
+ * Maintaining the working inventory.
+ * Maintaining the pending merges list.
+ * Maintaining the stat cache.
+ * Maintaining the last revision the working tree was updated to.
+ * Knows where its Branch is located.
+
+Dependencies:
+
+ * a Branch
+ * an MutableInventory
+ * local access to the working tree
+
+Branch
+======
+
+A Branch is a key user concept - its a single line of history that one or
+more people have been committing to. 
+
+A Branch is responsible for:
+
+ * Holding user preferences that are set in a Branch.
+ * Holding the 'tip': the last revision to be committed to this Branch. (And the revno of that revision.)
+ * Knowing how to open the Repository that holds its history.
+ * Allowing write locks to be taken out to prevent concurrent alterations to the branch.
+
+Depends on:
+ * URL access to its base directory.
+ * A Transport to access its files.
+ * A Repository to hold its history.
+
 Repository
-##########
+==========
 
 Repositories store committed history: file texts, revisions, inventories,
-and graph relationships between them.
+and graph relationships between them.  A repository holds a bag of
+revision data that can be pointed to by various branches:
+
+ * Maintains storage of various history data at a URL:
+   * Revisions (Must have a matching inventory)
+   * Digital Signatures
+   * Inventories for each Revision. (Must have all the file texts available).
+   * File texts
+
+ * Synchronizes concurrent access to the repository by different
+   processes.  (Most repository implementations use a physical 
+   mutex only for a short period, and effectively support multiple readers
+   and writers.)
 
 Stacked Repositories
-====================
+--------------------
 
 A repository can be configured to refer to a list of "fallback"
 repositories.  If a particular revision is not present in the original
@@ -108,11 +169,11 @@ first commit to a new, empty repository with fallback repositories will
 store a full text of the inventory, and of every new file text.
 
 At runtime, repository stacking is actually configured by the branch, not
-the repository.  So doing ``a_bzrdir.open_repository()`` 
-gets you just the single physical repository, while 
-``a_bzrdir.open_branch().repository`` gets one configured with a stacking. 
+the repository.  So doing ``a_bzrdir.open_repository()``
+gets you just the single physical repository, while
+``a_bzrdir.open_branch().repository`` gets one configured with a stacking.
 Therefore, to permanently change the fallback repository stored on disk,
-you must use ``Branch.set_stacked_on_url``.  
+you must use ``Branch.set_stacked_on_url``.
 
 Changing away from an existing stacked-on URL will copy across any
 necessary history so that the repository remains usable.

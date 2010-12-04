@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -80,10 +80,10 @@ def preview_tree_post(testcase, tree):
     basis = tree.basis_tree()
     tt = TransformPreview(basis)
     testcase.addCleanup(tt.finalize)
-    pp = progress.ProgressPhase('', 1, progress.DummyProgress())
     tree.lock_read()
     testcase.addCleanup(tree.unlock)
-    transform._prepare_revert_transform(basis, tree, tt, None, False, pp,
+    pp = None
+    transform._prepare_revert_transform(basis, tree, tt, None, False, None,
                                         basis, {})
     preview_tree = tt.get_preview_tree()
     preview_tree.set_parent_ids(tree.get_parent_ids())
@@ -386,6 +386,7 @@ def load_tests(standard_tests, module, loader):
         'inv',
         'iter_search_rules',
         'list_files',
+        'locking',
         'path_content_summary',
         'revision_tree',
         'test_trees',

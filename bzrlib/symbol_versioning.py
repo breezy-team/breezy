@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ def deprecated_in(version_tuple):
     """Generate a message that something was deprecated in a release.
 
     >>> deprecated_in((1, 4, 0))
-    '%s was deprecated in version 1.4.'
+    '%s was deprecated in version 1.4.0.'
     """
     return ("%%s was deprecated in version %s."
             % bzrlib._format_version_tuple(version_tuple))
@@ -314,6 +314,7 @@ def suppress_deprecation_warnings(override=True):
 
     :param override: If True, always set the ignore, if False, only set the
         ignore if there isn't already a filter.
+    :return: A callable to remove the new warnings this added.
     """
     import warnings
     if not override and _check_for_filter(error_only=False):
@@ -321,6 +322,10 @@ def suppress_deprecation_warnings(override=True):
         # then skip it.
         return
     warnings.filterwarnings('ignore', category=DeprecationWarning)
+    filter = warnings.filters[0]
+    def cleanup():
+        warnings.filters.remove(filter)
+    return cleanup
 
 
 def activate_deprecation_warnings(override=True):

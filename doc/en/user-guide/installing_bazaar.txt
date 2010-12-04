@@ -1,11 +1,11 @@
 Installing Bazaar
 =================
 
-Linux
------
+GNU/Linux
+---------
 
-Bazaar packages are available for most popular Linux distributions
-including Ubuntu/Debian, Red Hat and Gentoo.
+Bazaar packages are available for most popular GNU/Linux distributions
+including Ubuntu, Debian, Red Hat and Gentoo.
 See http://bazaar-vcs.org/Download for the latest instructions.
 
 Windows
@@ -85,9 +85,9 @@ Here are the steps to follow:
 
   2. Get a copy of the development version like this::
 
-       bzr branch http://bazaar-vcs.org/bzr/bzr.dev
+       bzr branch lp:bzr
 
-  3. Put the created directory (bzr.dev) on your PATH.
+  3. Put the created directory on your PATH.
 
 Advanced users may also wish to build the optional C extensions for greater
 speed. This can be done using ``make`` and requires ``pyrex`` and a C compiler.

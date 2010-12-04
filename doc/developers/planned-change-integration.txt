@@ -37,7 +37,7 @@ likely to require changes to their collaborators to be considered 'finished'.
    provide strong feedback to the design process for those things which are
    considered optional or removable, so these APIs should be implemented
    before removing or making optional existing data.
- 
+
  * Deprecating versioned files as a supported API: This collaborates with the
    Repository API but can probably be done by adding a replacement API for
    places where the versioned-file api is used. We may well want to keep a
@@ -54,7 +54,7 @@ likely to require changes to their collaborators to be considered 'finished'.
    layer changes to inventories so while we can create a revision validator
    API, we cannot create the final one until we have the inventory structural
    changes completed.
- 
+
  * Annotation caching API: This API is a prerequisite for new repository
    formats. If written after they are introduced we may find that the
    repository is lacking in functionality, so the API should be implemented
@@ -73,7 +73,7 @@ likely to require changes to their collaborators to be considered 'finished'.
  * Working tree disk ordering: Knowing the expected order for disk operations
    may influence the needed use case specific APIs, so having a solid
    understanding of what is optimal - and why - and whether it is pessimal on
-   non linux platforms is rather important.
+   non-Linux-kernel platforms is rather important.
 
  * Be able to version files greater than memory in size: This cannot be
    achieved until all parts of the library which deal with user files are able
@@ -87,7 +87,7 @@ likely to require changes to their collaborators to be considered 'finished'.
    of the newer API for accessing data about a file over time. It can be a
    separate step easily; but as it's in the same area of the library should not
    be done in parallel.
-  
+
  * Repository stacking API: The key dependency/change required for this is that
    repositories must individually be happy with having partial data - e.g. many
    ghosts. However the way the API needs to be used should be driven from the
@@ -97,7 +97,7 @@ likely to require changes to their collaborators to be considered 'finished'.
    On the data insertion side commit will want to generate new data. The
    commands pull, bundle, merge, push, possibly uncommit will want to copy
    existing data in a streaming fashion.
- 
+
  * New container format: Its hard to tell what the right way to structure the
    layering is. Probably having smooth layering down to the point that code
    wants to operate on the containers directly will make this more clear. As
@@ -129,7 +129,7 @@ likely to require changes to their collaborators to be considered 'finished'.
  * Delta storage optimisation: This has a strict dependency on a new repository
    format. Optimisation takes many forms - we probably cannot complete the
    desired optimisations under knits though we could use xdelta within a
-   knit-variation. 
+   knit-variation.
 
  * Greatest distance from origin cache: The potential users of this exist
    today, it is likely able to be implemented immediately, but we are not sure

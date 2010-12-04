@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,22 +19,24 @@
 import sys
 
 from bzrlib import (
+    branch,
     bzrdir,
     errors,
     graph,
     memorytree,
     osutils,
     remote,
+    tests,
     versionedfile,
     )
-from bzrlib.branch import BzrBranchFormat7
-from bzrlib.inventory import InventoryDirectory
-from bzrlib.transport import local, memory
-from bzrlib.tests import KnownFailure, TestNotApplicable
-from bzrlib.tests.per_repository import TestCaseWithRepository
+from bzrlib.tests import (
+    per_repository,
+    test_server,
+    )
+from bzrlib.transport import memory
 
 
-class TestWriteGroup(TestCaseWithRepository):
+class TestWriteGroup(per_repository.TestCaseWithRepository):
 
     def test_start_write_group_unlocked_needs_write_lock(self):
         repo = self.make_repository('.')
@@ -85,7 +87,7 @@ class TestWriteGroup(TestCaseWithRepository):
         # don't need a specific exception for now - this is
         # really to be sure it's used right, not for signalling
         # semantic information.
-        self.assertRaises(errors.BzrError, repo.unlock)
+        self.assertLogsError(errors.BzrError, repo.unlock)
         # after this error occurs, the repository is unlocked, and the write
         # group is gone.  you've had your chance, and you blew it. ;-)
         self.assertFalse(repo.is_locked())
@@ -115,7 +117,7 @@ class TestWriteGroup(TestCaseWithRepository):
         repo.unlock()
 
     def test_abort_write_group_does_not_raise_when_suppressed(self):
-        if self.transport_server is local.LocalURLServer:
+        if self.transport_server is test_server.LocalURLServer:
             self.transport_server = None
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo')
@@ -132,7 +134,7 @@ class TestWriteGroup(TestCaseWithRepository):
         self.assertEqual(None, repo.abort_write_group(suppress_errors=True))
 
 
-class TestGetMissingParentInventories(TestCaseWithRepository):
+class TestGetMissingParentInventories(per_repository.TestCaseWithRepository):
 
     def test_empty_get_missing_parent_inventories(self):
         """A new write group has no missing parent inventories."""
@@ -184,8 +186,8 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         else:
             repo = self.make_repository(relpath)
         if not repo._format.supports_external_lookups:
-            raise TestNotApplicable('format not stackable')
-        repo.bzrdir._format.set_branch_format(BzrBranchFormat7())
+            raise tests.TestNotApplicable('format not stackable')
+        repo.bzrdir._format.set_branch_format(branch.BzrBranchFormat7())
         return repo
 
     def reopen_repo_and_resume_write_group(self, repo):
@@ -335,7 +337,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         repo = self.make_repository('test-repo')
         if (not repo._format.supports_external_lookups or
             isinstance(repo, remote.RemoteRepository)):
-            raise TestNotApplicable(
+            raise tests.TestNotApplicable(
                 'only valid for direct connections to resumable repos')
         # log calls to get_missing_parent_inventories, so that we can assert it
         # is called with the correct parameters
@@ -362,7 +364,7 @@ class TestGetMissingParentInventories(TestCaseWithRepository):
         self.assertEqual([True], call_log)
 
 
-class TestResumeableWriteGroup(TestCaseWithRepository):
+class TestResumeableWriteGroup(per_repository.TestCaseWithRepository):
 
     def make_write_locked_repo(self, relpath='repo'):
         repo = self.make_repository(relpath)
@@ -385,7 +387,7 @@ class TestResumeableWriteGroup(TestCaseWithRepository):
             wg_tokens = repo.suspend_write_group()
         except errors.UnsuspendableWriteGroup:
             repo.abort_write_group()
-            raise TestNotApplicable(reason)
+            raise tests.TestNotApplicable(reason)
 
     def test_suspend_write_group(self):
         repo = self.make_write_locked_repo()

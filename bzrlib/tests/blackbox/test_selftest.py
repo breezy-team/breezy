@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,19 +16,13 @@
 
 """UI tests for the test framework."""
 
-import bzrlib.transport
 from bzrlib import (
-    benchmarks,
     tests,
     )
-from bzrlib.errors import ParamikoNotPresent
 from bzrlib.tests import (
-                          SubUnitFeature,
-                          TestCase,
-                          TestCaseInTempDir,
-                          TestSkipped,
-                          )
-
+    features,
+    )
+from bzrlib.transport import memory
 
 class SelfTestPatch:
 
@@ -51,25 +45,7 @@ class SelfTestPatch:
             tests.selftest = original_selftest
 
 
-class TestOptionsWritingToDisk(TestCaseInTempDir, SelfTestPatch):
-
-    def test_benchmark_runs_benchmark_tests(self):
-        """selftest --benchmark should change the suite factory."""
-        params = self.get_params_passed_to_core('selftest --benchmark')
-        self.assertEqual(benchmarks.test_suite,
-            params[1]['test_suite_factory'])
-        self.assertNotEqual(None, params[1]['bench_history'])
-        benchfile = open(".perf_history", "rt")
-        try:
-            lines = benchfile.readlines()
-        finally:
-            benchfile.close()
-        # Because we don't run the actual test code no output is made to the
-        # file.
-        self.assertEqual(0, len(lines))
-
-
-class TestOptions(TestCase, SelfTestPatch):
+class TestOptions(tests.TestCase, SelfTestPatch):
 
     def test_load_list(self):
         params = self.get_params_passed_to_core('selftest --load-list foo')
@@ -78,21 +54,17 @@ class TestOptions(TestCase, SelfTestPatch):
     def test_transport_set_to_sftp(self):
         # Test that we can pass a transport to the selftest core - sftp
         # version.
-        try:
-            import bzrlib.transport.sftp
-        except ParamikoNotPresent:
-            raise TestSkipped("Paramiko not present")
+        self.requireFeature(features.paramiko)
+        from bzrlib.tests import stub_sftp
         params = self.get_params_passed_to_core('selftest --transport=sftp')
-        self.assertEqual(bzrlib.transport.sftp.SFTPAbsoluteServer,
+        self.assertEqual(stub_sftp.SFTPAbsoluteServer,
             params[1]["transport"])
 
     def test_transport_set_to_memory(self):
         # Test that we can pass a transport to the selftest core - memory
         # version.
-        import bzrlib.transport.memory
         params = self.get_params_passed_to_core('selftest --transport=memory')
-        self.assertEqual(bzrlib.transport.memory.MemoryServer,
-            params[1]["transport"])
+        self.assertEqual(memory.MemoryServer, params[1]["transport"])
 
     def test_parameters_passed_to_core(self):
         params = self.get_params_passed_to_core('selftest --list-only')
@@ -116,7 +88,7 @@ class TestOptions(TestCase, SelfTestPatch):
         self.assertEqual(['foo', 'bar'], params[1]['starting_with'])
 
     def test_subunit(self):
-        self.requireFeature(SubUnitFeature)
+        self.requireFeature(features.subunit)
         params = self.get_params_passed_to_core('selftest --subunit')
         self.assertEqual(tests.SubUnitBzrRunner, params[1]['runner_class'])
 
@@ -172,3 +144,7 @@ class TestOptions(TestCase, SelfTestPatch):
             outputs_nothing(['selftest', '--list-only', '--exclude', 'selftest'])
         finally:
             tests.selftest = original_selftest
+
+    def test_lsprof_tests(self):
+        params = self.get_params_passed_to_core('selftest --lsprof-tests')
+        self.assertEqual(True, params[1]["lsprof_tests"])

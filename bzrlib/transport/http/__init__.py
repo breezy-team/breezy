@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -154,7 +154,7 @@ class HttpTransportBase(ConnectedTransport):
                                  None, None, self._host, self._port, path)
 
     def _create_auth(self):
-        """Returns a dict returning the credentials provided at build time."""
+        """Returns a dict containing the credentials provided at build time."""
         auth = dict(host=self._host, port=self._port,
                     user=self._user, password=self._password,
                     protocol=self._unqualified_scheme,

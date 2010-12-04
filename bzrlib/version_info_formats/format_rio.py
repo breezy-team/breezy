@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -84,6 +84,7 @@ class RioVersionInfoBuilderHooks(hooks.Hooks):
     """Hooks for rio-formatted version-info output."""
 
     def __init__(self):
+        super(RioVersionInfoBuilderHooks, self).__init__()
         self.create_hook(hooks.HookPoint('revision',
             "Invoked when adding information about a revision to the"
             " RIO stanza that is printed. revision is called with a"

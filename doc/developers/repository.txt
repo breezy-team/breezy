@@ -44,7 +44,7 @@ Fetching            Revision graph difference, ghost identification, stream data
                     introduced by a set of revisions in some cheap form, insert
                     data from a stream, validate data during insertion.
 Garbage Collection  Exclusive lock the repository preventing readers.
-Revert              Delta from working tree to historical tree, and then 
+Revert              Delta from working tree to historical tree, and then
                     arbitrary file access to obtain the texts of differing
                     files.
 Uncommit            Revision graph access.
@@ -98,7 +98,7 @@ Fetching             Revision-graph searching to find the graph difference.
                      Scan the inventory data introduced during the selected
                      revisions, and grab the on disk data for the found
                      file texts, annotation region data, per-file-graph
-                     data, piling all this into a stream. 
+                     data, piling all this into a stream.
 Garbage Collection   Basically a mass fetch of all the revisions which
                      branches point at, then a bait and switch with the old
                      repository thus removing unreferenced data.
@@ -106,14 +106,14 @@ Revert               Revision graph access for the revision being reverted
                      to, inventory extraction of that revision,
                      dirblock-order file text extract for files that were
                      different.
-Uncommit             Revision graph access to synthesise pending-merges 
+Uncommit             Revision graph access to synthesise pending-merges
                      linear access down left-hand-side, with is_ancestor
                      checks between all the found non-left-hand-side
                      parents.
 Status               Lookup the revisions added by pending merges and their
                      commit messages. Then an inventory difference between
                      the trees involved, which may include a working tree.
-                     If there is a working tree involved then the file 
+                     If there is a working tree involved then the file
                      fingerprint for cache-misses on files will be needed.
                      Note that dirstate caches most of this making
                      repository performance largely irrelevant: but if it
@@ -256,7 +256,7 @@ support a pointer to a parent compressed text as revisions.knit is not
 delta-compressed ever. Likewise signatures do not need the parent pointers
 at all as there is no 'signature graph'.
 
-Data 
+Data
 ----
 
 Moving to pack based repositories
@@ -273,7 +273,7 @@ specific problems we have solved by doing that, and doing so would require
 hashing the full file. OTOH hashing the full file is a cheap way to detect
 bit-errors in transfer (such as windows corruption). Non-reused file names
 are required for data integrity, as clients having read an index will
-readv at arbitrary times later. 
+readv at arbitrary times later.
 
 Discovery of files
 ~~~~~~~~~~~~~~~~~~
@@ -304,7 +304,7 @@ Caching and writeing of data
 ============================
 
 Repositories try to provide a consistent view of the data within them
-within a 'lock context'. 
+within a 'lock context'.
 
 Locks
 -----
@@ -318,7 +318,7 @@ Write locks provide a cache of repository data during the period of the
 write lock, and allow write_groups to be acquired. For some repositories
 the presence of a write lock is exclusive to a single client, for others
 which are lock free or use server side locks (e.g.  svn), the write lock
-simply provides the cache context. 
+simply provides the cache context.
 
 Write Groups
 ------------

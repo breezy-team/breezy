@@ -4,9 +4,9 @@
 
 import getopt, re, sys
 try:
-    from launchpadbugs import connector
+    from launchpadlib.launchpad import Launchpad
 except ImportError:
-    print "Please install launchpadbugs from lp:python-launchpad-bugs"
+    print "Please install launchpadlib from lp:launchpadlib"
     sys.exit(1)
 
 options, args = getopt.gnu_getopt(sys.argv, "l", ["launchpad"])
@@ -22,13 +22,13 @@ if len(args) == 1:
 
 def report_notmarked(bug, task, section):
     print 
-    print "Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.bugnumber, )
+    print "Bug %d was mentioned in NEWS but is not marked fix released:" % (bug.id, )
     print "Launchpad title: %s" % bug.title
     print "NEWS summary: "
     print section
     if "--launchpad" in options or "-l" in options:
-        print "  bug %d" % bug.bugnumber
-        print "  affects bzr"
+        print "  bug %d" % bug.id
+        print "  affects %s" % task.bug_target_name
         print "  status fixreleased"
 
 
@@ -60,14 +60,15 @@ def read_news_bugnos(path):
     finally:
         f.close()
 
-open_bug = connector.ConnectBug("TEXT")
+
+lp = Launchpad.login_anonymously('bzr-check-newsbugs', 'edge', version='1.0')
 
 bugnos = read_news_bugnos(args[1])
 for bugno, section in bugnos:
-    bug = open_bug(url="https://bugs.launchpad.net/bzr/+bug/%d" % bugno)
+    bug = lp.bugs[bugno]
     found_bzr = False
-    for task in bug.infotable:
-        if task.affects == "bzr":
+    for task in bug.bug_tasks:
+        if task.bug_target_name == "bzr":
             found_bzr = True
             if task.status != "Fix Released":
                 report_notmarked(bug, task, section)

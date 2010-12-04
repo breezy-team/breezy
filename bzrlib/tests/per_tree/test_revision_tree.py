@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +16,14 @@
 
 """Tests for Tree.revision_tree."""
 
-from bzrlib import errors
-from bzrlib.tests.per_tree import TestCaseWithTree
+from bzrlib import (
+    errors,
+    tests,
+    )
+from bzrlib.tests import per_tree
 
 
-class TestRevisionTree(TestCaseWithTree):
+class TestRevisionTree(per_tree.TestCaseWithTree):
 
     def create_tree_no_parents_no_content(self):
         tree = self.make_branch_and_tree('.')

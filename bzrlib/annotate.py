@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,11 +28,16 @@
 import sys
 import time
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import (
+    patiencediff,
+    tsort,
+    )
+""")
 from bzrlib import (
     errors,
     osutils,
-    patiencediff,
-    tsort,
     )
 from bzrlib.config import extract_email_address
 from bzrlib.repository import _strip_NULL_ghosts
@@ -312,8 +317,7 @@ def _reannotate(parent_lines, new_lines, new_revision_id,
 
 
 def _get_matching_blocks(old, new):
-    matcher = patiencediff.PatienceSequenceMatcher(None,
-        old, new)
+    matcher = patiencediff.PatienceSequenceMatcher(None, old, new)
     return matcher.get_matching_blocks()
 
 
@@ -458,5 +462,6 @@ def _reannotate_annotated(right_parent_lines, new_lines, new_revision_id,
 
 try:
     from bzrlib._annotator_pyx import Annotator
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._annotator_py import Annotator

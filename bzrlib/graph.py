@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@ import time
 from bzrlib import (
     debug,
     errors,
+    osutils,
     revision,
     trace,
     )
@@ -1678,8 +1679,28 @@ def collapse_linear_regions(parent_map):
     return result
 
 
+class GraphThunkIdsToKeys(object):
+    """Forwards calls about 'ids' to be about keys internally."""
+
+    def __init__(self, graph):
+        self._graph = graph
+
+    def topo_sort(self):
+        return [r for (r,) in self._graph.topo_sort()]
+
+    def heads(self, ids):
+        """See Graph.heads()"""
+        as_keys = [(i,) for i in ids]
+        head_keys = self._graph.heads(as_keys)
+        return set([h[0] for h in head_keys])
+
+    def merge_sort(self, tip_revision):
+        return self._graph.merge_sort((tip_revision,))
+
+
 _counters = [0,0,0,0,0,0,0]
 try:
     from bzrlib._known_graph_pyx import KnownGraph
-except ImportError:
+except ImportError, e:
+    osutils.failed_to_load_extension(e)
     from bzrlib._known_graph_py import KnownGraph

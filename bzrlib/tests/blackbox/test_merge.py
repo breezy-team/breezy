@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,23 +21,26 @@
 
 import os
 
-from bzrlib import merge_directive
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
-from bzrlib.conflicts import ConflictList, ContentsConflict
-from bzrlib.osutils import abspath, file_kind, pathjoin
-from bzrlib.tests.blackbox import ExternalBase
-import bzrlib.urlutils as urlutils
-from bzrlib.workingtree import WorkingTree
+from bzrlib import (
+    branch,
+    bzrdir,
+    conflicts,
+    errors,
+    merge_directive,
+    osutils,
+    tests,
+    urlutils,
+    workingtree,
+    )
 
 
-class TestMerge(ExternalBase):
+class TestMerge(tests.TestCaseWithTransport):
 
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
         self.build_tree_contents([
-            (pathjoin(path, 'hello'), 'foo'),
-            (pathjoin(path, 'goodbye'), 'baz')])
+            (osutils.pathjoin(path, 'hello'), 'foo'),
+            (osutils.pathjoin(path, 'goodbye'), 'baz')])
         tree.add('hello')
         tree.commit(message='setup')
         tree.add('goodbye')
@@ -63,13 +66,11 @@ class TestMerge(ExternalBase):
         return tree, other
 
     def test_merge_reprocess(self):
-        d = BzrDir.create_standalone_workingtree('.')
+        d = bzrdir.BzrDir.create_standalone_workingtree('.')
         d.commit('h')
         self.run_bzr('merge . --reprocess --merge-type weave')
 
     def test_merge(self):
-        from bzrlib.branch import Branch
-
         a_tree = self.example_branch('a')
         ancestor = a_tree.branch.revno()
         b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
@@ -80,7 +81,7 @@ class TestMerge(ExternalBase):
         # We can't merge when there are in-tree changes
         os.chdir('a')
         self.run_bzr('merge ../b', retcode=3)
-        a = WorkingTree.open('.')
+        a = workingtree.WorkingTree.open('.')
         a_tip = a.commit("Like an epidemic of u's")
         self.run_bzr('merge ../b -r last:1..last:1 --merge-type blooof',
                     retcode=3)
@@ -99,7 +100,7 @@ class TestMerge(ExternalBase):
         self.run_bzr('merge ../b -r last:1')
         self.check_file_contents('goodbye', 'quux')
         # Merging a branch pulls its revision into the tree
-        b = Branch.open('../b')
+        b = branch.Branch.open('../b')
         b_tip = b.last_revision()
         self.failUnless(a.branch.repository.has_revision(b_tip))
         self.assertEqual([a_tip, b_tip], a.get_parent_ids())
@@ -210,6 +211,22 @@ class TestMerge(ExternalBase):
         self.failUnlessExists('sub/a.txt.OTHER')
         self.failUnlessExists('sub/a.txt.BASE')
 
+    def test_conflict_leaves_base_this_other_files(self):
+        tree, other = self.create_conflicting_branches()
+        self.run_bzr('merge ../other', working_dir='tree',
+                     retcode=1)
+        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
+
+    def test_weave_conflict_leaves_base_this_other_files(self):
+        tree, other = self.create_conflicting_branches()
+        self.run_bzr('merge ../other --weave', working_dir='tree',
+                     retcode=1)
+        self.assertFileEqual('a\nb\nc\n', 'tree/fname.BASE')
+        self.assertFileEqual('a\nB\nD\n', 'tree/fname.OTHER')
+        self.assertFileEqual('a\nB\nC\n', 'tree/fname.THIS')
+
     def test_merge_remember(self):
         """Merge changes from one branch to another, test submit location."""
         tree_a = self.make_branch_and_tree('branch_a')
@@ -249,8 +266,8 @@ class TestMerge(ExternalBase):
 
         base = urlutils.local_path_from_url(branch_a.base)
         self.assertEndsWith(err, '+N  b\nAll changes applied successfully.\n')
-        self.assertEquals(abspath(branch_b.get_submit_branch()),
-                          abspath(parent))
+        self.assertEquals(osutils.abspath(branch_b.get_submit_branch()),
+                          osutils.abspath(parent))
         # test implicit --remember when committing new file
         self.build_tree(['e'])
         tree_b.add('e')
@@ -265,8 +282,8 @@ class TestMerge(ExternalBase):
         out, err = self.run_bzr('merge ../branch_c --remember')
         self.assertEquals(out, '')
         self.assertEquals(err, '+N  c\nAll changes applied successfully.\n')
-        self.assertEquals(abspath(branch_b.get_submit_branch()),
-                          abspath(branch_c.bzrdir.root_transport.base))
+        self.assertEquals(osutils.abspath(branch_b.get_submit_branch()),
+                          osutils.abspath(branch_c.bzrdir.root_transport.base))
         # re-open tree as external run_bzr modified it
         tree_b = branch_b.bzrdir.open_workingtree()
         tree_b.commit('merge branch_c')
@@ -294,7 +311,7 @@ class TestMerge(ExternalBase):
                                               tree_b.get_parent_ids()[0])
         self.assertEqualDiff(testament_a.as_text(),
                          testament_b.as_text())
-        tree_a.set_conflicts(ConflictList())
+        tree_a.set_conflicts(conflicts.ConflictList())
         tree_a.commit('message')
         # it is legal to attempt to merge an already-merged bundle
         output = self.run_bzr('merge ../bundle')[1]
@@ -349,7 +366,7 @@ class TestMerge(ExternalBase):
         os.chdir('a')
         (out, err) = self.run_bzr('merge --pull ../b')
         self.assertContainsRe(out, 'Now on revision 2\\.')
-        tree_a = WorkingTree.open('.')
+        tree_a = workingtree.WorkingTree.open('.')
         self.assertEqual([self.id2], tree_a.get_parent_ids())
 
     def test_merge_kind_change(self):
@@ -363,19 +380,20 @@ class TestMerge(ExternalBase):
         tree_a.commit('changed file to directory')
         os.chdir('tree_b')
         self.run_bzr('merge ../tree_a')
-        self.assertEqual('directory', file_kind('file'))
+        self.assertEqual('directory', osutils.file_kind('file'))
         tree_b.revert()
-        self.assertEqual('file', file_kind('file'))
+        self.assertEqual('file', osutils.file_kind('file'))
         self.build_tree_contents([('file', 'content_2')])
         tree_b.commit('content change')
         self.run_bzr('merge ../tree_a', retcode=1)
         self.assertEqual(tree_b.conflicts(),
-                         [ContentsConflict('file', file_id='file-id')])
+                         [conflicts.ContentsConflict('file',
+                                                     file_id='file-id')])
 
     def test_directive_cherrypick(self):
         source = self.make_branch_and_tree('source')
         source.commit("nothing")
-        # see https://bugs.edge.launchpad.net/bzr/+bug/409688 - trying to
+        # see https://bugs.launchpad.net/bzr/+bug/409688 - trying to
         # cherrypick from one branch into another unrelated branch with a
         # different root id will give shape conflicts.  as a workaround we
         # make sure they share the same root id.
@@ -496,18 +514,6 @@ class TestMerge(ExternalBase):
         out, err = self.run_bzr(['merge', '-d', 'a', 'b'])
         self.assertContainsRe(err, 'Warning: criss-cross merge encountered.')
 
-    def test_merge_force(self):
-        tree_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/foo'])
-        tree_a.add(['foo'])
-        tree_a.commit('add file')
-        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
-        self.build_tree_contents([('a/foo', 'change 1')])
-        tree_a.commit('change file')
-        tree_b.merge_from_branch(tree_a.branch)
-        tree_a.commit('empty change to allow merge to run')
-        self.run_bzr(['merge', '../a', '--force'], working_dir='b')
-
     def test_merge_from_submit(self):
         tree_a = self.make_branch_and_tree('a')
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
@@ -560,11 +566,11 @@ class TestMerge(ExternalBase):
         tree_a.merge_from_branch(tree_b.branch)
         self.build_tree_contents([('a/file',
                                    'base-contents\nthis-contents\n')])
-        tree_a.set_conflicts(ConflictList())
+        tree_a.set_conflicts(conflicts.ConflictList())
         tree_b.merge_from_branch(tree_a.branch)
         self.build_tree_contents([('b/file',
                                    'base-contents\nother-contents\n')])
-        tree_b.set_conflicts(ConflictList())
+        tree_b.set_conflicts(conflicts.ConflictList())
         tree_a.commit('', rev_id='rev3a')
         tree_b.commit('', rev_id='rev3b')
         out, err = self.run_bzr(['merge', '-d', 'a', 'b', '--lca'], retcode=1)
@@ -598,3 +604,53 @@ class TestMerge(ExternalBase):
         other.commit('rev1b')
         self.run_bzr('merge -d this other -r0..')
         self.failUnlessExists('this/other_file')
+
+    def test_merge_interactive_unlocks_branch(self):
+        this = self.make_branch_and_tree('this')
+        other = self.make_branch_and_tree('other')
+        other.commit('empty commit')
+        self.run_bzr('merge -i -d this other')
+        this.lock_write()
+        this.unlock()
+
+    def test_merge_reversed_revision_range(self):
+        tree = self.make_branch_and_tree(".")
+        for f in ("a", "b"):
+            self.build_tree([f])
+            tree.add(f)
+            tree.commit("added "+f)
+        for context in (".", "", "a"):
+            self.run_bzr("merge -r 1..0 " + context)
+            self.failIfExists("a")
+            tree.revert()
+            self.failUnlessExists("a")
+
+
+class TestMergeForce(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestMergeForce, self).setUp()
+        self.tree_a = self.make_branch_and_tree('a')
+        self.build_tree(['a/foo'])
+        self.tree_a.add(['foo'])
+        self.tree_a.commit('add file')
+        self.tree_b = self.tree_a.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([('a/foo', 'change 1')])
+        self.tree_a.commit('change file')
+        self.tree_b.merge_from_branch(self.tree_a.branch)
+
+    def test_merge_force(self):
+        self.tree_a.commit('empty change to allow merge to run')
+        # Second merge on top of the uncommitted one
+        self.run_bzr(['merge', '../a', '--force'], working_dir='b')
+
+
+    def test_merge_with_uncommitted_changes(self):
+        self.run_bzr_error(['Working tree .* has uncommitted changes'],
+                           ['merge', '../a'], working_dir='b')
+
+    def test_merge_with_pending_merges(self):
+        # Revert the changes keeping the pending merge
+        self.run_bzr(['revert', 'b'])
+        self.run_bzr_error(['Working tree .* has uncommitted changes'],
+                           ['merge', '../a'], working_dir='b')

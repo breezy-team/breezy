@@ -27,7 +27,6 @@ from bzrlib import (
     repository,
     remote,
     )
-from bzrlib.bzrdir import BzrDir
 from bzrlib.repofmt.pack_repo import (
     RepositoryFormatKnitPack5,
     )
@@ -36,7 +35,6 @@ from bzrlib.repofmt.groupcompress_repo import (
     )
 from bzrlib.tests import (
     multiply_tests,
-    TestSuite,
     )
 from bzrlib.tests.per_repository import (
     all_repository_format_scenarios,
@@ -46,8 +44,8 @@ from bzrlib.tests.per_repository import (
 
 class TestCaseWithRepositoryCHK(TestCaseWithRepository):
 
-    def make_repository(self, path):
-        TestCaseWithRepository.make_repository(self, path)
+    def make_repository(self, path, format=None):
+        TestCaseWithRepository.make_repository(self, path, format=format)
         return repository.Repository.open(self.get_transport(path).base)
 
 

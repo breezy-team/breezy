@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,11 +16,15 @@
 
 """Tests for the (un)lock interfaces on all working tree implemenations."""
 
+import sys
+
 from bzrlib import (
     branch,
     errors,
     lockdir,
     )
+from bzrlib.tests import TestSkipped
+from bzrlib.tests.matchers import *
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -41,6 +45,10 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
 
+    def test_lock_read_returns_unlocker(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertThat(wt.lock_read, ReturnsUnlockable(wt))
+
     def test_trivial_lock_write_unlock(self):
         """Locking for write and unlocking should work trivially."""
         wt = self.make_branch_and_tree('.')
@@ -56,6 +64,10 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
 
+    def test_lock_write_returns_unlocker(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertThat(wt.lock_write, ReturnsUnlockable(wt))
+
     def test_trivial_lock_tree_write_unlock(self):
         """Locking for tree write is ok when the branch is not locked."""
         wt = self.make_branch_and_tree('.')
@@ -70,6 +82,10 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
             wt.unlock()
         self.assertFalse(wt.is_locked())
         self.assertFalse(wt.branch.is_locked())
+
+    def test_lock_tree_write_returns_unlocker(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertThat(wt.lock_tree_write, ReturnsUnlockable(wt))
 
     def test_trivial_lock_tree_write_branch_read_locked(self):
         """It is ok to lock_tree_write when the branch is read locked."""
@@ -105,8 +121,14 @@ class TestWorkingTreeLocking(TestCaseWithWorkingTree):
 
         :param methodname: The lock method to use to establish locks.
         """
-        # This write locks the local tree, and then grabs a read lock on a
-        # copy, which is bogus and the test just needs to be rewritten.
+        if sys.platform == "win32":
+            raise TestSkipped("don't use oslocks on win32 in unix manner")
+        # This helper takes a write lock on the source tree, then opens a
+        # second copy and tries to grab a read lock. This works on Unix and is
+        # a reasonable way to detect when the file is actually written to, but
+        # it won't work (as a test) on Windows. It might be nice to instead
+        # stub out the functions used to write and that way do both less work
+        # and also be able to execute on Windows.
         self.thisFailsStrictLockCheck()
         # when unlocking the last lock count from tree_write_lock,
         # the tree should do a flush().

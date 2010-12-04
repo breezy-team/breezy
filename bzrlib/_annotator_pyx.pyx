@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -83,7 +83,14 @@ cdef int _check_match_ranges(parent_annotations, annotations,
     return 0
 
 
-cdef PyObject *_next_tuple_entry(object tpl, Py_ssize_t *pos):
+cdef PyObject *_next_tuple_entry(object tpl, Py_ssize_t *pos): # cannot_raise
+    """Return the next entry from this tuple.
+
+    :param tpl: The tuple we are investigating, *must* be a PyTuple
+    :param pos: The last item we found. Will be updated to the new position.
+    
+    This cannot raise an exception, as it does no error checking.
+    """
     pos[0] = pos[0] + 1
     if pos[0] >= PyTuple_GET_SIZE(tpl):
         return NULL

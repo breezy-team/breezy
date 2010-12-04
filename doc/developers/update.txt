@@ -1,7 +1,7 @@
 "bzr update" performance analysis
 =================================
 
-There are 5 different slightly different situations in which bzr update 
+There are 5 different slightly different situations in which bzr update
 can be used:
 
 * local only (no-op)
@@ -27,7 +27,7 @@ No local changes, only new revisions
 
 potential issue w/ serialized is having 50k files in limbo/
 
-the limbo/ directory could be avoided in some cases, for example when 
+the limbo/ directory could be avoided in some cases, for example when
 adding new files in new directories.
 
 modifying in place: reduces fragmentation of fs, not atomic
@@ -36,9 +36,9 @@ w/o should be safe
 
 "local mod" is diff between disk and last commit, not merge base
 
-Detecting name conflicts should be O(siblings). Alternatively, conflicts 
-with existing files can be detected using stat() and conflicts with new files 
-can be detected by examining the pending transform. This changes 
+Detecting name conflicts should be O(siblings). Alternatively, conflicts
+with existing files can be detected using stat() and conflicts with new files
+can be detected by examining the pending transform. This changes
 complexity to O(changes).
 
 out of date heavyweight checkout, out of date w/master
