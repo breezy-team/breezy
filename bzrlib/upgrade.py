@@ -116,7 +116,7 @@ class Convert(object):
             child_pb.finished()
 
 
-def upgrade(urls, format=None, clean_up=False, pack=False, dry_run=False):
+def upgrade(url, format=None, clean_up=False, pack=False, dry_run=False):
     """Upgrade locations to format.
  
     This routine wraps the smart_upgrade() routine with a nicer UI.
@@ -125,9 +125,7 @@ def upgrade(urls, format=None, clean_up=False, pack=False, dry_run=False):
     This routine is useful for command line tools. Other bzrlib clients
     probably ought to use smart_upgrade() instead.
 
-    :param urls: a sequence of URLs to the locations to upgrade.
-      For backwards compatibility, if urls is a string, it is treated
-      as a single URL.
+    :param url: a URL of the locations to upgrade.
     :param format: the format to convert to or None for the best default
     :param clean-up: if True, the backup.bzr directory is removed if the
       upgrade succeeded for a given repo/branch/tree
@@ -135,9 +133,7 @@ def upgrade(urls, format=None, clean_up=False, pack=False, dry_run=False):
     :param dry_run: show what would happen but don't actually do any upgrades
     :return: the list of exceptions encountered
     """
-    if isinstance(urls, basestring):
-        urls = [urls]
-    control_dirs = [BzrDir.open_unsupported(url) for url in urls]
+    control_dirs = [BzrDir.open_unsupported(url)]
     attempted, succeeded, exceptions = smart_upgrade(control_dirs,
         format, clean_up=clean_up, pack=pack, dry_run=dry_run)
     if len(attempted) > 1:
