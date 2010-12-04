@@ -585,6 +585,29 @@ consistent delta.
 
 Currently we attempt to expand/interpret the request so that the user is not
 required to understand all the internal constraints of the system: if they
-request 'foo/bar' we automatically include foo. This works to an extent but on
-review we are creating inconsistent deltas by the way we do this. We need to
-avoid all the known causes of inconsistency in our delta creation logic.
+request 'foo/bar' we automatically include foo. This works but can surprise
+the user sometimes when things they didn't explicitly request are committed.
+
+Different trees can use different algorithms to expand the request as long as
+they produce consistent deltas. As part of getting a consistent UI we require
+that all trees expand the paths requested downwards. Beyond that as long as 
+the delta is consistent it is up to the tree.
+
+Given two trees, source and target, and a set of selected file ids to check for
+changes and if changed in a delta between them, we have to expand that set by
+the following rules, to get consistent deltas. The test for consistency is that
+if the resulting delta is applied to source, to create a third tree 'output',
+and the paths in the delta match the paths in source and output, only one file
+id is at each path in output, and no file ids are missing parents, then the 
+delta is consistent.
+
+Firstly, the parent ids to the root for all of the file ids that have actually
+changed must be considered. Unless they are all examined the paths in the delta
+may be wrong.
+
+Secondly, when an item included in the delta has a new path which is the same
+as a path in source, the fileid of that path in source must be included.
+Failing to do this leads to multiple ids tryin to share a path in output.
+
+Thirdly, when an item changes its kind from 'directory' to anything else in the
+delta, all of the direct children of the directory in source must be included.

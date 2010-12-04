@@ -207,7 +207,7 @@ finished
         self.assertEqual('', err)
 
 
-class UpgradeRecommendedTests(TestCaseInTempDir):
+class UpgradeRecommendedTests(TestCaseWithTransport):
 
     def test_recommend_upgrade_wt4(self):
         # using a deprecated format gives a warning
@@ -223,3 +223,9 @@ class UpgradeRecommendedTests(TestCaseInTempDir):
         out, err = self.run_bzr('revno a')
         if err.find('upgrade') > -1:
             self.fail("message shouldn't suggest upgrade:\n%s" % err)
+
+    def test_upgrade_shared_repo(self):
+        repo = self.make_repository('repo', format='2a', shared=True)
+        branch = self.make_branch_and_tree('repo/branch', format="pack-0.92")
+        self.get_transport('repo/branch/.bzr/repository').delete_tree('.')
+        out, err = self.run_bzr(['upgrade'], working_dir='repo/branch')

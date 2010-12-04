@@ -43,6 +43,25 @@ def _lowercase(chunks, context=None):
     return _converter_helper(chunks, 'lower')
 
 
+_trailer_string = '\nend string\n'
+
+
+def _append_text(chunks, context=None):
+    """A content filter that appends a string to the end of the file.
+
+    This tests filters that change the length."""
+    return chunks + [_trailer_string]
+
+
+def _remove_appended_text(chunks, context=None):
+    """Remove the appended text."""
+
+    text = ''.join(chunks)
+    if text.endswith(_trailer_string):
+        text = text[:-len(_trailer_string)]
+    return [text]
+
+
 class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
 
     def create_cf_tree(self, txt_reader, txt_writer, dir='.'):
@@ -159,3 +178,34 @@ class TestWorkingTreeWithContentFilters(TestCaseWithWorkingTree):
         self.assertFileEqual("fOO tXT", 'target/file1.txt')
         changes = target.changes_from(source.basis_tree())
         self.assertFalse(changes.has_changed())
+
+    def test_path_content_summary(self):
+        """path_content_summary should always talk about the canonical form."""
+        # see https://bugs.edge.launchpad.net/bzr/+bug/415508
+        #
+        # set up a tree where the canonical form has a string added to the
+        # end
+        source, txt_fileid, bin_fileid = self.create_cf_tree(
+            txt_reader=_append_text,
+            txt_writer=_remove_appended_text,
+            dir='source')
+        if not source.supports_content_filtering():
+            return
+        source.lock_read()
+        self.addCleanup(source.unlock)
+
+        expected_canonical_form = 'Foo Txt\nend string\n'
+        self.assertEquals(source.get_file(txt_fileid, filtered=True).read(),
+            expected_canonical_form)
+        self.assertEquals(source.get_file(txt_fileid, filtered=False).read(),
+            'Foo Txt')
+
+        # results are: kind, size, executable, sha1_or_link_target
+        result = source.path_content_summary('file1.txt')
+
+        self.assertEquals(result,
+            ('file', None, False, None))
+
+        # we could give back the length of the canonical form, but in general
+        # that will be expensive to compute, so it's acceptable to just return
+        # None.

@@ -19,7 +19,13 @@
 
 import os
 
-from bzrlib import (branch, bzrdir, errors, repository)
+from bzrlib import (
+    branch,
+    bzrdir,
+    errors,
+    repository,
+    revision as _mod_revision,
+    )
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests.blackbox import ExternalBase
 from bzrlib.tests import (
@@ -51,6 +57,72 @@ class TestBranch(ExternalBase):
         # previously was erroneously created by branching
         self.assertFalse(b._transport.has('branch-name'))
         b.bzrdir.open_workingtree().commit(message='foo', allow_pointless=True)
+
+    def test_branch_switch_no_branch(self):
+        # No branch in the current directory:
+        #  => new branch will be created, but switch fails
+        self.example_branch('a')
+        self.make_repository('current')
+        self.run_bzr_error(['No WorkingTree exists for'],
+            'branch --switch ../a ../b', working_dir='current')
+        a = branch.Branch.open('a')
+        b = branch.Branch.open('b')
+        self.assertEqual(a.last_revision(), b.last_revision())
+
+    def test_branch_switch_no_wt(self):
+        # No working tree in the current directory:
+        #  => new branch will be created, but switch fails and the current
+        #     branch is unmodified
+        self.example_branch('a')
+        self.make_branch('current')
+        self.run_bzr_error(['No WorkingTree exists for'],
+            'branch --switch ../a ../b', working_dir='current')
+        a = branch.Branch.open('a')
+        b = branch.Branch.open('b')
+        self.assertEqual(a.last_revision(), b.last_revision())
+        work = branch.Branch.open('current')
+        self.assertEqual(work.last_revision(), _mod_revision.NULL_REVISION)
+
+    def test_branch_switch_no_checkout(self):
+        # Standalone branch in the current directory:
+        #  => new branch will be created, but switch fails and the current
+        #     branch is unmodified
+        self.example_branch('a')
+        self.make_branch_and_tree('current')
+        self.run_bzr_error(['Cannot switch a branch, only a checkout'],
+            'branch --switch ../a ../b', working_dir='current')
+        a = branch.Branch.open('a')
+        b = branch.Branch.open('b')
+        self.assertEqual(a.last_revision(), b.last_revision())
+        work = branch.Branch.open('current')
+        self.assertEqual(work.last_revision(), _mod_revision.NULL_REVISION)
+
+    def test_branch_switch_checkout(self):
+        # Checkout in the current directory:
+        #  => new branch will be created and checkout bound to the new branch
+        self.example_branch('a')
+        self.run_bzr('checkout a current')
+        out, err = self.run_bzr('branch --switch ../a ../b', working_dir='current')
+        a = branch.Branch.open('a')
+        b = branch.Branch.open('b')
+        self.assertEqual(a.last_revision(), b.last_revision())
+        work = WorkingTree.open('current')
+        self.assertEndsWith(work.branch.get_bound_location(), '/b/')
+        self.assertContainsRe(err, "Switched to branch: .*/b/")
+
+    def test_branch_switch_lightweight_checkout(self):
+        # Lightweight checkout in the current directory:
+        #  => new branch will be created and lightweight checkout pointed to
+        #     the new branch
+        self.example_branch('a')
+        self.run_bzr('checkout --lightweight a current')
+        out, err = self.run_bzr('branch --switch ../a ../b', working_dir='current')
+        a = branch.Branch.open('a')
+        b = branch.Branch.open('b')
+        self.assertEqual(a.last_revision(), b.last_revision())
+        work = WorkingTree.open('current')
+        self.assertEndsWith(work.branch.base, '/b/')
+        self.assertContainsRe(err, "Switched to branch: .*/b/")
 
     def test_branch_only_copies_history(self):
         # Knit branches should only push the history for the current revision.

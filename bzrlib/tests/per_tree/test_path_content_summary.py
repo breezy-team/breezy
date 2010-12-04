@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,6 +33,18 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         result.lock_read()
         self.addCleanup(result.unlock)
         return result
+
+    def check_content_summary_size(self, tree, summary, expected_size):
+        # if the tree supports content filters, then it's allowed to leave out
+        # the size because it might be difficult to compute.  otherwise, it
+        # must be present and correct
+        returned_size = summary[1]
+        if returned_size == expected_size or (
+            tree.supports_content_filtering()
+            and returned_size is None):
+            pass
+        else:
+            self.fail("invalid size in summary: %r" % (returned_size,))
 
     def test_symlink_content_summary(self):
         self.requireFeature(tests.SymlinkFeature)
@@ -76,8 +88,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         summary = self._convert_tree(tree).path_content_summary('path')
         self.assertEqual(4, len(summary))
         self.assertEqual('file', summary[0])
-        # size must be known
-        self.assertEqual(22, summary[1])
+        self.check_content_summary_size(tree, summary, 22)
         # executable
         self.assertEqual(True, summary[2])
         # may have hash,
@@ -91,8 +102,7 @@ class TestPathContentSummary(per_tree.TestCaseWithTree):
         summary = self._convert_tree(tree).path_content_summary('path')
         self.assertEqual(4, len(summary))
         self.assertEqual('file', summary[0])
-        # size must be known
-        self.assertEqual(22, summary[1])
+        self.check_content_summary_size(tree, summary, 22)
         # not executable
         if osutils.supports_executable:
             self.assertEqual(False, summary[2])

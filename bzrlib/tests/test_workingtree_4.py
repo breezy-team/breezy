@@ -490,7 +490,8 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         subtree = self.make_branch_and_tree('dir')
         # the most primitive operation: kind
         self.assertEqual('directory', tree.kind('dir-id'))
-        # a diff against the basis should give us a directory
+        # a diff against the basis should give us a directory and the root (as
+        # the root is new too).
         tree.lock_read()
         expected = [('dir-id',
             (None, u'dir'),
@@ -499,7 +500,9 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
             (None, 'root'),
             (None, u'dir'),
             (None, 'directory'),
-            (None, False))]
+            (None, False)),
+            ('root', (None, u''), True, (False, True), (None, None),
+            (None, u''), (None, 'directory'), (None, 0))]
         self.assertEqual(expected, list(tree.iter_changes(tree.basis_tree(),
             specific_files=['dir'])))
         tree.unlock()

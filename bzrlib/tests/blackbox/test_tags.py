@@ -74,7 +74,6 @@ class TestTagging(TestCaseWithTransport):
         out, err = self.run_bzr('tag -d branch NEWTAG --force')
 
     def test_branch_push_pull_merge_copies_tags(self):
-        self.thisFailsStrictLockCheck()
         t = self.make_branch_and_tree('branch1')
         t.commit(allow_pointless=True, message='initial commit',
             rev_id='first-revid')

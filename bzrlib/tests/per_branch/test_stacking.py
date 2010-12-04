@@ -226,7 +226,6 @@ class TestStacking(TestCaseWithBranch):
         return stacked_bzrdir
 
     def test_clone_from_stacked_branch_preserve_stacking(self):
-        self.thisFailsStrictLockCheck()
         # We can clone from the bzrdir of a stacked branch. If
         # preserve_stacking is True, the cloned branch is stacked on the
         # same branch as the original.
@@ -243,7 +242,6 @@ class TestStacking(TestCaseWithBranch):
             pass
 
     def test_clone_from_branch_stacked_on_relative_url_preserve_stacking(self):
-        self.thisFailsStrictLockCheck()
         # If a branch's stacked-on url is relative, we can still clone
         # from it with preserve_stacking True and get a branch stacked
         # on an appropriately adjusted relative url.
@@ -258,7 +256,6 @@ class TestStacking(TestCaseWithBranch):
             cloned_bzrdir.open_branch().get_stacked_on_url())
 
     def test_clone_from_stacked_branch_no_preserve_stacking(self):
-        self.thisFailsStrictLockCheck()
         try:
             stacked_bzrdir = self.make_stacked_bzrdir()
         except unstackable_format_errors, e:
@@ -272,7 +269,6 @@ class TestStacking(TestCaseWithBranch):
 
     def test_no_op_preserve_stacking(self):
         """With no stacking, preserve_stacking should be a no-op."""
-        self.thisFailsStrictLockCheck()
         branch = self.make_branch('source')
         cloned_bzrdir = branch.bzrdir.clone('cloned', preserve_stacking=True)
         self.assertRaises((errors.NotStacked, errors.UnstackableBranchFormat),
@@ -309,7 +305,6 @@ class TestStacking(TestCaseWithBranch):
         """Obey policy where possible, ignore otherwise."""
         if isinstance(self.branch_format, branch.BzrBranchFormat4):
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
-        self.thisFailsStrictLockCheck()
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')
@@ -467,7 +462,6 @@ class TestStacking(TestCaseWithBranch):
         self.assertEqual(['../stack-on'], hook_calls)
 
     def test_stack_on_repository_branch(self):
-        self.thisFailsStrictLockCheck()
         # Stacking should work when the repo isn't co-located with the
         # stack-on branch.
         try:

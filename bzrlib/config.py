@@ -821,6 +821,29 @@ def user_ignore_config_filename():
     return osutils.pathjoin(config_dir(), 'ignore')
 
 
+def crash_dir():
+    """Return the directory name to store crash files.
+
+    This doesn't implicitly create it.
+
+    On Windows it's in the config directory; elsewhere in the XDG cache directory.
+    """
+    if sys.platform == 'win32':
+        return osutils.pathjoin(config_dir(), 'Crash')
+    else:
+        return osutils.pathjoin(xdg_cache_dir(), 'crash')
+
+
+def xdg_cache_dir():
+    # See http://standards.freedesktop.org/basedir-spec/latest/ar01s03.html
+    # Possibly this should be different on Windows?
+    e = os.environ.get('XDG_CACHE_DIR', None)
+    if e:
+        return e
+    else:
+        return os.path.expanduser('~/.cache')
+
+
 def _auto_user_id():
     """Calculate automatic user identification.
 

@@ -123,12 +123,15 @@ class SSHVendorManager(object):
         elif 'SSH Secure Shell' in version:
             trace.mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
-        elif 'plink' in version and args[0] == 'plink':
-            # Checking if "plink" was the executed argument as Windows
-            # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
-            # version.  See https://bugs.launchpad.net/bzr/+bug/107155
-            trace.mutter("ssh implementation is Putty's plink.")
-            vendor = PLinkSubprocessVendor()
+        # Auto-detect of plink vendor disabled, on Windows recommended
+        # default ssh-client is paramiko
+        # see https://bugs.launchpad.net/bugs/414743
+        #~elif 'plink' in version and args[0] == 'plink':
+        #~    # Checking if "plink" was the executed argument as Windows
+        #~    # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
+        #~    # version.  See https://bugs.launchpad.net/bzr/+bug/107155
+        #~    trace.mutter("ssh implementation is Putty's plink.")
+        #~    vendor = PLinkSubprocessVendor()
         return vendor
 
     def _get_vendor_by_inspection(self):

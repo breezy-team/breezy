@@ -46,6 +46,7 @@ DEBUG = 0
 # actual code more or less do that, tests should be written to
 # ensure that.
 
+import errno
 import httplib
 try:
     import kerberos
@@ -541,6 +542,10 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                         request.get_full_url(),
                         'Bad status line received',
                         orig_error=exc_val)
+                elif (isinstance(exc_val, socket.error) and len(exc_val.args)
+                      and exc_val.args[0] in (errno.ECONNRESET, 10054)):
+                    raise errors.ConnectionReset(
+                        "Connection lost while sending request.")
                 else:
                     # All other exception are considered connection related.
 

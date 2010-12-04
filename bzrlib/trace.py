@@ -478,26 +478,5 @@ def report_user_error(exc_info, err_file, advice=None):
 
 def report_bug(exc_info, err_file):
     """Report an exception that probably indicates a bug in bzr"""
-    import platform
-    print_exception(exc_info, err_file)
-    err_file.write('\n')
-    err_file.write('bzr %s on python %s %s\n' % \
-                       (bzrlib.__version__,
-                        bzrlib._format_version_tuple(sys.version_info),
-                        platform.platform(aliased=1)))
-    err_file.write('arguments: %r\n' % sys.argv)
-    err_file.write(
-        'encoding: %r, fsenc: %r, lang: %r\n' % (
-            osutils.get_user_encoding(), sys.getfilesystemencoding(),
-            os.environ.get('LANG')))
-    err_file.write("plugins:\n")
-    for name, a_plugin in sorted(plugin.plugins().items()):
-        err_file.write("  %-20s %s [%s]\n" %
-            (name, a_plugin.path(), a_plugin.__version__))
-    err_file.write(
-"""\
-*** Bazaar has encountered an internal error.
-    Please report a bug at https://bugs.launchpad.net/bzr/+filebug
-    including this traceback, and a description of what you
-    were doing when the error occurred.
-""")
+    from bzrlib.crash import report_bug
+    report_bug(exc_info, err_file)

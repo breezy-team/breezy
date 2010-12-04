@@ -18,6 +18,7 @@
 """
 
 from bzrlib import (
+    errors,
     revision,
     )
 
@@ -38,6 +39,18 @@ class _KnownGraphNode(object):
         return '%s(%s  gdfo:%s par:%s child:%s)' % (
             self.__class__.__name__, self.key, self.gdfo,
             self.parent_keys, self.child_keys)
+
+
+class _MergeSortNode(object):
+    """Information about a specific node in the merge graph."""
+
+    __slots__ = ('key', 'merge_depth', 'revno', 'end_of_merge')
+
+    def __init__(self, key, merge_depth, revno, end_of_merge):
+        self.key = key
+        self.merge_depth = merge_depth
+        self.revno = revno
+        self.end_of_merge = end_of_merge
 
 
 class KnownGraph(object):
@@ -171,3 +184,51 @@ class KnownGraph(object):
             self._known_heads[heads_key] = heads
         return heads
 
+    def topo_sort(self):
+        """Return the nodes in topological order.
+
+        All parents must occur before all children.
+        """
+        for node in self._nodes.itervalues():
+            if node.gdfo is None:
+                raise errors.GraphCycleError(self._nodes)
+        pending = self._find_tails()
+        pending_pop = pending.pop
+        pending_append = pending.append
+
+        topo_order = []
+        topo_order_append = topo_order.append
+
+        num_seen_parents = dict.fromkeys(self._nodes, 0)
+        while pending:
+            node = pending_pop()
+            if node.parent_keys is not None:
+                # We don't include ghost parents
+                topo_order_append(node.key)
+            for child_key in node.child_keys:
+                child_node = self._nodes[child_key]
+                seen_parents = num_seen_parents[child_key] + 1
+                if seen_parents == len(child_node.parent_keys):
+                    # All parents have been processed, enqueue this child
+                    pending_append(child_node)
+                    # This has been queued up, stop tracking it
+                    del num_seen_parents[child_key]
+                else:
+                    num_seen_parents[child_key] = seen_parents
+        # We started from the parents, so we don't need to do anymore work
+        return topo_order
+
+    def merge_sort(self, tip_key):
+        """Compute the merge sorted graph output."""
+        from bzrlib import tsort
+        as_parent_map = dict((node.key, node.parent_keys)
+                             for node in self._nodes.itervalues()
+                              if node.parent_keys is not None)
+        # We intentionally always generate revnos and never force the
+        # mainline_revisions
+        # Strip the sequence_number that merge_sort generates
+        return [_MergeSortNode(key, merge_depth, revno, end_of_merge)
+                for _, key, merge_depth, revno, end_of_merge
+                 in tsort.merge_sort(as_parent_map, tip_key,
+                                     mainline_revisions=None,
+                                     generate_revno=True)]

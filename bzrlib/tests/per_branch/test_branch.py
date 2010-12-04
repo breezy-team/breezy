@@ -306,7 +306,6 @@ class TestBranch(TestCaseWithBranch):
                          branch.repository.get_signature_text('A'))
 
     def test_branch_keeps_signatures(self):
-        self.thisFailsStrictLockCheck()
         wt = self.make_branch_and_tree('source')
         wt.commit('A', allow_pointless=True, rev_id='A')
         repo = wt.branch.repository

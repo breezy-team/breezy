@@ -242,28 +242,35 @@ class InterCHKRevisionTree(tree.InterTree):
         lookup_trees = [self.source]
         if extra_trees:
              lookup_trees.extend(extra_trees)
+        # The ids of items we need to examine to insure delta consistency.
+        precise_file_ids = set()
+        discarded_changes = {}
         if specific_files == []:
             specific_file_ids = []
         else:
             specific_file_ids = self.target.paths2ids(specific_files,
                 lookup_trees, require_versioned=require_versioned)
-
         # FIXME: It should be possible to delegate include_unchanged handling
         # to CHKInventory.iter_changes and do a better job there -- vila
         # 20090304
-        if include_unchanged:
-            changed_file_ids = []
+        changed_file_ids = set()
         for result in self.target.inventory.iter_changes(self.source.inventory):
-            if (specific_file_ids is not None
-                and not result[0] in specific_file_ids):
-                # CHKMap.iter_changes is clean and fast. Better filter out
-                # the specific files *after* it did its job.
-                continue
+            if specific_file_ids is not None:
+                file_id = result[0]
+                if file_id not in specific_file_ids:
+                    # A change from the whole tree that we don't want to show yet.
+                    # We may find that we need to show it for delta consistency, so
+                    # stash it.
+                    discarded_changes[result[0]] = result
+                    continue
+                new_parent_id = result[4][1]
+                precise_file_ids.add(new_parent_id)
             yield result
-            if include_unchanged:
-                # Keep track of yielded results (cheaper than building the
-                # whole inventory).
-                changed_file_ids.append(result[0])
+            changed_file_ids.add(result[0])
+        if specific_file_ids is not None:
+            for result in self._handle_precise_ids(precise_file_ids,
+                changed_file_ids, discarded_changes=discarded_changes):
+                yield result
         if include_unchanged:
             # CHKMap avoid being O(tree), so we go to O(tree) only if
             # required to.

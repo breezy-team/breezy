@@ -21,7 +21,6 @@ from bzrlib import (
     errors,
     revision,
     trace,
-    tsort,
     )
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 
@@ -926,6 +925,7 @@ class Graph(object):
         An ancestor may sort after a descendant if the relationship is not
         visible in the supplied list of revisions.
         """
+        from bzrlib import tsort
         sorter = tsort.TopoSorter(self.get_parent_map(revisions))
         return sorter.iter_topo_order()
 

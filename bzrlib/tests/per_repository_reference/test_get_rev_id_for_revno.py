@@ -24,7 +24,6 @@ from bzrlib.tests.per_repository_reference import (
 class TestGetRevIdForRevno(TestCaseWithExternalReferenceRepository):
 
     def test_uses_fallback(self):
-        self.thisFailsStrictLockCheck()
         tree = self.make_branch_and_tree('base')
         base = tree.branch.repository
         revid = tree.commit('one')

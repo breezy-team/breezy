@@ -188,6 +188,10 @@ def _expand_annotations(annotations, branch, current_rev=None):
         # or something.
         last_revision = current_rev.revision_id
         # XXX: Partially Cloned from branch, uses the old_get_graph, eep.
+        # XXX: The main difficulty is that we need to inject a single new node
+        #      (current_rev) into the graph before it gets numbered, etc.
+        #      Once KnownGraph gets an 'add_node()' function, we can use
+        #      VF.get_known_graph_ancestry().
         graph = repository.get_graph()
         revision_graph = dict(((key, value) for key, value in
             graph.iter_ancestry(current_rev.parent_ids) if value is not None))

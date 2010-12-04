@@ -3207,6 +3207,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
              starting_with=None,
              runner_class=None,
              suite_decorators=None,
+             stream=None,
              ):
     """Run the whole test suite under the enhanced runner"""
     # XXX: Very ugly way to do this...
@@ -3230,9 +3231,14 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
         else:
             keep_only = load_test_id_list(load_list)
         if test_suite_factory is None:
+            # Reduce loading time by loading modules based on the starting_with
+            # patterns.
             suite = test_suite(keep_only, starting_with)
         else:
             suite = test_suite_factory()
+        if starting_with:
+            # But always filter as requested.
+            suite = filter_suite_by_id_startswith(suite, starting_with)
         return run_suite(suite, 'testbzr', verbose=verbose, pattern=pattern,
                      stop_on_failure=stop_on_failure,
                      transport=transport,
@@ -3245,6 +3251,7 @@ def selftest(verbose=False, pattern=".*", stop_on_failure=True,
                      strict=strict,
                      runner_class=runner_class,
                      suite_decorators=suite_decorators,
+                     stream=stream,
                      )
     finally:
         default_transport = old_transport
@@ -3434,6 +3441,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.per_repository',
                    'bzrlib.tests.per_repository_chk',
                    'bzrlib.tests.per_repository_reference',
+                   'bzrlib.tests.per_versionedfile',
                    'bzrlib.tests.per_workingtree',
                    'bzrlib.tests.test__annotator',
                    'bzrlib.tests.test__chk_map',
@@ -3467,6 +3475,7 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_config',
                    'bzrlib.tests.test_conflicts',
                    'bzrlib.tests.test_counted_lock',
+                   'bzrlib.tests.test_crash',
                    'bzrlib.tests.test_decorators',
                    'bzrlib.tests.test_delta',
                    'bzrlib.tests.test_debug',
@@ -3585,7 +3594,6 @@ def test_suite(keep_only=None, starting_with=None):
                    'bzrlib.tests.test_urlutils',
                    'bzrlib.tests.test_version',
                    'bzrlib.tests.test_version_info',
-                   'bzrlib.tests.test_versionedfile',
                    'bzrlib.tests.test_weave',
                    'bzrlib.tests.test_whitebox',
                    'bzrlib.tests.test_win32utils',
@@ -3681,9 +3689,6 @@ def test_suite(keep_only=None, starting_with=None):
                 sys.getdefaultencoding())
             reload(sys)
             sys.setdefaultencoding(default_encoding)
-
-    if starting_with:
-        suite = filter_suite_by_id_startswith(suite, starting_with)
 
     if keep_only is not None:
         # Now that the referred modules have loaded their tests, keep only the
