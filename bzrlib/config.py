@@ -360,7 +360,7 @@ class Config(object):
 
     def get_merge_tools(self):
         tools = []
-        for (oname, value, section, conf_id) in self._get_options():
+        for (oname, value, section, conf_id, parser) in self._get_options():
             if oname.startswith('mergetool.'):
                 tools.append(mergetools.MergeTool(oname[len('mergetool.'):],
                                                   value))
@@ -370,7 +370,7 @@ class Config(object):
     def set_merge_tools(self, tools):
         # remove entries from config for tools which do not appear in merge_tools
         tool_names = [tool.get_name() for tool in tools]
-        for (oname, value, section, conf_id) in self._get_options():
+        for (oname, value, section, conf_id, parser) in self._get_options():
             if oname.startswith('mergetool.'):
                 if oname[len('mergetool.'):] not in tool_names:
                     self.remove_user_option(oname)

@@ -1065,13 +1065,7 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
         conf.set_merge_tools(tools)
         del tools[0]
         conf.set_merge_tools(tools)
-        self.assertEqual(sorted([
-            ('mergetool.funkytool',
-             'funkytool "arg with spaces" {this_temp}', 'DEFAULT', 'bazaar'),
-            ('mergetool.winmergeu',
-             'winmergeu {result}', 'DEFAULT', 'bazaar'),
-            ]),
-            sorted(conf._get_options()))
+        self.assertEqual(None, conf.get_user_option('mergetool.kdiff3'))
 
     def test_set_default_merge_tool(self):
         conf = config.GlobalConfig()
