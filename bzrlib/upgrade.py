@@ -225,12 +225,17 @@ def _convert_items(items, format, clean_up, dry_run, label=None,
     """
     succeeded = []
     exceptions = []
+    child_pb = ui.ui_factory.nested_progress_bar()
+    i = 0
+    child_pb.update('Upgrading bzrdirs', i, len(items))
     for control_dir in items:
+        i += 1
         # Do the conversion
         location = control_dir.root_transport.base
         bzr_object, bzr_label = control_dir._get_object_and_label()
+        type_label = label or bzr_label
+        child_pb.update("Upgrading %s" % (type_label), i, len(items))
         if verbose:
-            type_label = label or bzr_label
             note("Upgrading %s %s ...", type_label, location)
         try:
             if not dry_run:
@@ -251,6 +256,8 @@ def _convert_items(items, format, clean_up, dry_run, label=None,
                 _verbose_warning(verbose, "failed to clean-up %s: %s" %
                     (location, ex))
                 exceptions.append(ex)
+
+    child_pb.finished()
 
     # Return the result
     return succeeded, exceptions
