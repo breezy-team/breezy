@@ -23,6 +23,7 @@
 
 import os
 import re
+import urlparse
 
 from bzrlib import (
     branch,
@@ -43,10 +44,13 @@ except ImportError, e:
     raise errors.DependencyNotPresent('launchpadlib', e)
 
 from launchpadlib.launchpad import (
-    EDGE_SERVICE_ROOT,
     STAGING_SERVICE_ROOT,
     Launchpad,
     )
+try:
+    from launchpadlib.uris import LPNET_SERVICE_ROOT
+except ImportError:
+    LPNET_SERVICE_ROOT = 'https://api.launchpad.net/beta/'
 
 
 # Declare the minimum version of launchpadlib that we need in order to work.
@@ -75,8 +79,7 @@ def check_launchpadlib_compatibility():
 
 
 LAUNCHPAD_API_URLS = {
-    'production': 'https://api.launchpad.net/beta/',
-    'edge': EDGE_SERVICE_ROOT,
+    'production': LPNET_SERVICE_ROOT,
     'staging': STAGING_SERVICE_ROOT,
     'dev': 'https://api.launchpad.dev/beta/',
     }
@@ -85,8 +88,8 @@ LAUNCHPAD_API_URLS = {
 def _get_api_url(service):
     """Return the root URL of the Launchpad API.
 
-    e.g. For the 'edge' Launchpad service, this function returns
-    launchpadlib.launchpad.EDGE_SERVICE_ROOT.
+    e.g. For the 'staging' Launchpad service, this function returns
+    launchpadlib.launchpad.STAGING_SERVICE_ROOT.
 
     :param service: A `LaunchpadService` object.
     :return: A URL as a string.
@@ -99,6 +102,13 @@ def _get_api_url(service):
         return LAUNCHPAD_API_URLS[lp_instance]
     except KeyError:
         raise InvalidLaunchpadInstance(lp_instance)
+
+
+class NoLaunchpadBranch(errors.BzrError):
+    _fmt = 'No launchpad branch could be found for branch "%(url)s".'
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
 def login(service, timeout=None, proxy_info=None):
@@ -187,7 +197,7 @@ class LaunchpadBranch(object):
                            'bazaar.staging.launchpad.net')
 
     @classmethod
-    def from_bzr(cls, launchpad, bzr_branch):
+    def from_bzr(cls, launchpad, bzr_branch, create_missing=True):
         """Find a Launchpad branch from a bzr branch."""
         check_update = True
         for url in cls.candidate_urls(bzr_branch):
@@ -198,6 +208,8 @@ class LaunchpadBranch(object):
             if lp_branch is not None:
                 break
         else:
+            if not create_missing:
+                raise NoLaunchpadBranch(bzr_branch)
             lp_branch = cls.create_now(launchpad, bzr_branch)
             check_update = False
         return cls(lp_branch, bzr_branch.base, bzr_branch, check_update)
@@ -280,3 +292,13 @@ def load_branch(launchpad, branch):
         if lp_branch:
             return lp_branch
     raise NotLaunchpadBranch(url)
+
+
+def canonical_url(object):
+    """Return the canonical URL for a branch."""
+    scheme, netloc, path, params, query, fragment = urlparse.urlparse(
+        str(object.self_link))
+    path = '/'.join(path.split('/')[2:])
+    netloc = netloc.replace('api.', 'code.')
+    return urlparse.urlunparse((scheme, netloc, path, params, query,
+                                fragment))

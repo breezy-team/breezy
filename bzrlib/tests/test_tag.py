@@ -111,15 +111,18 @@ class TestTagMerging(TestCaseWithTransport):
         # conflicting merge
         a.tags.set_tag('tag-2', 'z')
         conflicts = a.tags.merge_to(b.tags)
-        self.assertEqual(conflicts, [('tag-2', 'z', 'y')])
+        self.assertEqual(list(conflicts), [('tag-2', 'z', 'y')])
         self.assertEqual('y', b.tags.lookup_tag('tag-2'))
         # overwrite conflicts
         conflicts = a.tags.merge_to(b.tags, overwrite=True)
-        self.assertEqual(conflicts, [])
+        self.assertEqual(list(conflicts), [])
         self.assertEqual('z', b.tags.lookup_tag('tag-2'))
 
 
 class TestTagsInCheckouts(TestCaseWithTransport):
+    """Tests for how tags are synchronised between the master and child branch
+    of a checkout.
+    """
 
     def test_update_tag_into_checkout(self):
         # checkouts are directly connected to the tags of their master branch:
