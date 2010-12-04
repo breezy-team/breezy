@@ -68,9 +68,9 @@ change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
 log_format=short
 user_global_option=something
-mergetools.kdiff3=kdiff3 {base} {this} {other} -o {result}
-mergetools.winmergeu=winmergeu {result}
-mergetools.funkytool=funkytool "arg with spaces" {this_temp}
+mergetool.kdiff3=kdiff3 {base} {this} {other} -o {result}
+mergetool.winmergeu=winmergeu {result}
+mergetool.funkytool=funkytool "arg with spaces" {this_temp}
 default_mergetool=kdiff3
 [ALIASES]
 h=help
@@ -944,11 +944,11 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
                                  'funkytool "arg with spaces" {this_temp}')
             ])
         self.assertEqual('funkytool "arg with spaces" {this_temp}',
-                          conf.get_user_option('mergetools.funkytool'))
+                          conf.get_user_option('mergetool.funkytool'))
         self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
-                          conf.get_user_option('mergetools.kdiff3'))
+                          conf.get_user_option('mergetool.kdiff3'))
         self.assertEqual('winmergeu {result}',
-                          conf.get_user_option('mergetools.winmergeu'))
+                          conf.get_user_option('mergetool.winmergeu'))
 
     def test_set_merge_tools_duplicates(self):
         conf = config.GlobalConfig()
@@ -992,9 +992,9 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
         del tools[0]
         conf.set_merge_tools(tools)
         self.assertEqual(sorted([
-            ('mergetools.funkytool',
+            ('mergetool.funkytool',
              'funkytool "arg with spaces" {this_temp}', 'DEFAULT', 'bazaar'),
-            ('mergetools.winmergeu',
+            ('mergetool.winmergeu',
              'winmergeu {result}', 'DEFAULT', 'bazaar'),
             ]),
             sorted(conf._get_options()))

@@ -361,8 +361,8 @@ class Config(object):
     def get_merge_tools(self):
         tools = []
         for (oname, value, section, conf_id) in self._get_options():
-            if oname.startswith('mergetools.'):
-                tools.append(mergetools.MergeTool(oname[len('mergetools.'):],
+            if oname.startswith('mergetool.'):
+                tools.append(mergetools.MergeTool(oname[len('mergetool.'):],
                                                   value))
         trace.mutter('loaded merge tools: %r' % tools)
         return tools
@@ -371,19 +371,19 @@ class Config(object):
         # remove entries from config for tools which do not appear in merge_tools
         tool_names = [tool.get_name() for tool in tools]
         for (oname, value, section, conf_id) in self._get_options():
-            if oname.startswith('mergetools.'):
-                if oname[len('mergetools.'):] not in tool_names:
+            if oname.startswith('mergetool.'):
+                if oname[len('mergetool.'):] not in tool_names:
                     self.remove_user_option(oname)
         # set config entries
         for tool in tools:
-            oname = 'mergetools.%s' % tool.get_name()
+            oname = 'mergetool.%s' % tool.get_name()
             value = tool.get_commandline()
             if oname == '' or value == '':
                 continue
             self.set_user_option(oname, value)
 
     def find_merge_tool(self, name):
-        commandline = self.get_user_option('mergetools.%s' % name)
+        commandline = self.get_user_option('mergetool.%s' % name)
         if commandline is None:
             return None
         return mergetools.MergeTool(name, commandline)
