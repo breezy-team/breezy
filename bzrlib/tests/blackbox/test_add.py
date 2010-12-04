@@ -23,6 +23,9 @@ from bzrlib import (
     osutils,
     tests,
     )
+from bzrlib.tests import (
+    script,
+    )
 
 
 def load_tests(standard_tests, module, loader):
@@ -31,7 +34,7 @@ def load_tests(standard_tests, module, loader):
         standard_tests, tests.condition_isinstance(TestAdd))
     scenarios = [
         ('pre-views', {'branch_tree_format': 'pack-0.92'}),
-        ('view-aware', {'branch_tree_format': 'development6-rich-root'}),
+        ('view-aware', {'branch_tree_format': '2a'}),
         ]
     return tests.multiply_tests(to_adapt, scenarios, result)
 
@@ -217,3 +220,14 @@ class TestAdd(tests.TestCaseWithTransport):
         os.symlink(osutils.abspath('target'), 'tree/link')
         out = self.run_bzr(['add', 'tree/link'])[0]
         self.assertEquals(out, 'adding link\n')
+
+    def test_add_not_child(self):
+        # https://bugs.launchpad.net/bzr/+bug/98735
+        sr = script.ScriptRunner()
+        self.make_branch_and_tree('tree1')
+        self.make_branch_and_tree('tree2')
+        self.build_tree(['tree1/a', 'tree2/b'])
+        sr.run_script(self, '''
+        $ bzr add tree1/a tree2/b
+        2>bzr: ERROR: Path "...tree2/b" is not a child of path "...tree1"
+        ''')

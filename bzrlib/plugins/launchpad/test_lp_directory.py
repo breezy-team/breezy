@@ -36,11 +36,8 @@ from bzrlib.plugins.launchpad import (
     )
 from bzrlib.plugins.launchpad.lp_directory import (
     LaunchpadDirectory)
-from bzrlib.plugins.launchpad.account import get_lp_login
-from bzrlib.tests import (
-    http_server,
-    http_utils,
-    )
+from bzrlib.plugins.launchpad.account import get_lp_login, set_lp_login
+from bzrlib.tests import http_server
 
 
 def load_tests(standard_tests, module, loader):
@@ -199,6 +196,29 @@ class DirectoryUrlTests(TestCaseInTempDir):
         self.assertRaises(errors.InvalidURL,
             directory._resolve, 'lp://ratotehunoahu')
 
+    def test_resolve_tilde_to_user(self):
+        factory = FakeResolveFactory(
+            self, '~username/apt/test', dict(urls=[
+                    'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
+        directory = LaunchpadDirectory()
+        self.assertEquals(
+            'bzr+ssh://bazaar.launchpad.net/~username/apt/test',
+            directory._resolve('lp:~/apt/test', factory, _lp_login='username'))
+        # Should also happen when the login is just set by config
+        set_lp_login('username')
+        self.assertEquals(
+            'bzr+ssh://bazaar.launchpad.net/~username/apt/test',
+            directory._resolve('lp:~/apt/test', factory))
+
+    def test_tilde_fails_no_login(self):
+        factory = FakeResolveFactory(
+            self, '~username/apt/test', dict(urls=[
+                    'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
+        self.assertIs(None, get_lp_login())
+        directory = LaunchpadDirectory()
+        self.assertRaises(errors.InvalidURL,
+                          directory._resolve, 'lp:~/apt/test', factory)
+
 
 class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
 
@@ -214,6 +234,8 @@ class DirectoryOpenBranchTests(TestCaseWithMemoryTransport):
                 return '!unexpected look_up value!'
 
         directories.remove('lp:')
+        directories.remove('ubuntu:')
+        directories.remove('debianlp:')
         directories.register('lp:', FooService, 'Map lp URLs to local urls')
         self.addCleanup(_register_directory)
         self.addCleanup(directories.remove, 'lp:')
@@ -236,11 +258,11 @@ class PredefinedRequestHandler(http_server.TestingHTTPRequestHandler):
     def handle_one_request(self):
         tcs = self.server.test_case_server
         requestline = self.rfile.readline()
-        headers = self.MessageClass(self.rfile, 0)
+        self.MessageClass(self.rfile, 0)
         if requestline.startswith('POST'):
             # The body should be a single line (or we don't know where it ends
             # and we don't want to issue a blocking read)
-            body = self.rfile.readline()
+            self.rfile.readline()
 
         self.wfile.write(tcs.canned_response)
 
@@ -333,3 +355,125 @@ Content-Type: text/plain; charset=UTF-8\r
     # FIXME: we need to test with a real proxy, I can't find a way so simulate
     # CONNECT without leaving one server hanging the test :-/ Since that maybe
     # related to the leaking tests problems, I'll punt for now -- vila 20091030
+
+
+class TestDebuntuExpansions(TestCaseInTempDir):
+    """Test expansions for ubuntu: and debianlp: schemes."""
+
+    def setUp(self):
+        tests.TestCase.setUp(self)
+        self.directory = LaunchpadDirectory()
+
+    def _make_factory(self, package='foo', distro='ubuntu', series=None):
+        if series is None:
+            path = '%s/%s' % (distro, package)
+            url_suffix = '~branch/%s/%s' % (distro, package)
+        else:
+            path = '%s/%s/%s' % (distro, series, package)
+            url_suffix = '~branch/%s/%s/%s' % (distro, series, package)
+        return FakeResolveFactory(
+            self, path, dict(urls=[
+                'http://bazaar.launchpad.net/' + url_suffix]))
+
+    def assertURL(self, expected_url, shortcut, package='foo', distro='ubuntu',
+                  series=None):
+        factory = self._make_factory(package=package, distro=distro,
+                                     series=series)
+        self.assertEqual('http://bazaar.launchpad.net/~branch/' + expected_url,
+                         self.directory._resolve(shortcut, factory))
+
+    # Bogus distro.
+
+    def test_bogus_distro(self):
+        self.assertRaises(errors.InvalidURL,
+                          self.directory._resolve, 'gentoo:foo')
+
+    def test_trick_bogus_distro_u(self):
+        self.assertRaises(errors.InvalidURL,
+                          self.directory._resolve, 'utube:foo')
+
+    def test_trick_bogus_distro_d(self):
+        self.assertRaises(errors.InvalidURL,
+                          self.directory._resolve, 'debuntu:foo')
+
+    def test_missing_ubuntu_distroseries_without_project(self):
+        # Launchpad does not hold source packages for Intrepid.  Missing or
+        # bogus distroseries with no project name is treated like a project.
+        self.assertURL('ubuntu/intrepid', 'ubuntu:intrepid', package='intrepid')
+
+    def test_missing_ubuntu_distroseries_with_project(self):
+        # Launchpad does not hold source packages for Intrepid.  Missing or
+        # bogus distroseries with a project name is treated like an unknown
+        # series (i.e. we keep it verbatim).
+        self.assertURL('ubuntu/intrepid/foo',
+                       'ubuntu:intrepid/foo', series='intrepid')
+
+    def test_missing_debian_distroseries(self):
+        # Launchpad does not hold source packages for unstable.  Missing or
+        # bogus distroseries is treated like a project.
+        self.assertURL('debian/sid',
+                       'debianlp:sid', package='sid', distro='debian')
+
+    # Ubuntu Default distro series.
+
+    def test_ubuntu_default_distroseries_expansion(self):
+        self.assertURL('ubuntu/foo', 'ubuntu:foo')
+
+    def test_ubuntu_natty_distroseries_expansion(self):
+        self.assertURL('ubuntu/natty/foo', 'ubuntu:natty/foo', series='natty')
+
+    def test_ubuntu_n_distroseries_expansion(self):
+        self.assertURL('ubuntu/natty/foo', 'ubuntu:n/foo', series='natty')
+
+    def test_ubuntu_maverick_distroseries_expansion(self):
+        self.assertURL('ubuntu/maverick/foo', 'ubuntu:maverick/foo',
+                       series='maverick')
+
+    def test_ubuntu_m_distroseries_expansion(self):
+        self.assertURL('ubuntu/maverick/foo', 'ubuntu:m/foo', series='maverick')
+
+    def test_ubuntu_lucid_distroseries_expansion(self):
+        self.assertURL('ubuntu/lucid/foo', 'ubuntu:lucid/foo', series='lucid')
+
+    def test_ubuntu_l_distroseries_expansion(self):
+        self.assertURL('ubuntu/lucid/foo', 'ubuntu:l/foo', series='lucid')
+
+    def test_ubuntu_karmic_distroseries_expansion(self):
+        self.assertURL('ubuntu/karmic/foo', 'ubuntu:karmic/foo',
+                       series='karmic')
+
+    def test_ubuntu_k_distroseries_expansion(self):
+        self.assertURL('ubuntu/karmic/foo', 'ubuntu:k/foo', series='karmic')
+
+    def test_ubuntu_jaunty_distroseries_expansion(self):
+        self.assertURL('ubuntu/jaunty/foo', 'ubuntu:jaunty/foo',
+                       series='jaunty')
+
+    def test_ubuntu_j_distroseries_expansion(self):
+        self.assertURL('ubuntu/jaunty/foo', 'ubuntu:j/foo', series='jaunty')
+
+    def test_ubuntu_hardy_distroseries_expansion(self):
+        self.assertURL('ubuntu/hardy/foo', 'ubuntu:hardy/foo', series='hardy')
+
+    def test_ubuntu_h_distroseries_expansion(self):
+        self.assertURL('ubuntu/hardy/foo', 'ubuntu:h/foo', series='hardy')
+
+    def test_ubuntu_dapper_distroseries_expansion(self):
+        self.assertURL('ubuntu/dapper/foo', 'ubuntu:dapper/foo',
+                       series='dapper')
+
+    def test_ubuntu_d_distroseries_expansion(self):
+        self.assertURL('ubuntu/dapper/foo', 'ubuntu:d/foo', series='dapper')
+
+    # Debian default distro series.
+
+    def test_debian_default_distroseries_expansion(self):
+        self.assertURL('debian/foo', 'debianlp:foo', distro='debian')
+
+    def test_debian_squeeze_distroseries_expansion(self):
+        self.assertURL('debian/squeeze/foo', 'debianlp:squeeze/foo',
+                       distro='debian', series='squeeze')
+
+    def test_debian_lenny_distroseries_expansion(self):
+        self.assertURL('debian/lenny/foo', 'debianlp:lenny/foo',
+                       distro='debian', series='lenny')

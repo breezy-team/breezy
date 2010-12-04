@@ -61,6 +61,7 @@ class TreeDelta(object):
         self.modified = []
         self.unchanged = []
         self.unversioned = []
+        self.missing = []
 
     def __eq__(self, other):
         if not isinstance(other, TreeDelta):
@@ -137,7 +138,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
             else:
                 delta.removed.append((path[0], file_id, kind[0]))
         elif fully_present[0] is False:
-            continue
+            delta.missing.append((path[1], file_id, kind[1]))
         elif name[0] != name[1] or parent_id[0] != parent_id[1]:
             # If the name changes, or the parent_id changes, we have a rename
             # (if we move a parent, that doesn't count as a rename for the
@@ -160,6 +161,7 @@ def _compare_trees(old_tree, new_tree, want_unchanged, specific_files,
     delta.removed.sort()
     delta.added.sort()
     delta.renamed.sort()
+    delta.missing.sort()
     # TODO: jam 20060529 These lists shouldn't need to be sorted
     #       since we added them in alphabetical order.
     delta.modified.sort()
@@ -202,7 +204,9 @@ class _ChangeReporter(object):
                              'unchanged': ' ',
                              'created': 'N',
                              'modified': 'M',
-                             'deleted': 'D'}
+                             'deleted': 'D',
+                             'missing': '!',
+                             }
         self.versioned_map = {'added': '+', # versioned target
                               'unchanged': ' ', # versioned in both
                               'removed': '-', # versioned in source
@@ -325,6 +329,8 @@ def report_changes(change_iterator, reporter):
         else:
             if content_change:
                 modified = "modified"
+            elif kind[0] is None:
+                modified = "missing"
             else:
                 modified = "unchanged"
             if kind[1] == "file":
@@ -417,6 +423,7 @@ def report_delta(to_file, delta, short_status=False, show_ids=False,
 
     show_list(delta.removed, 'removed', 'D')
     show_list(delta.added, 'added', 'A')
+    show_list(delta.missing, 'missing', '!')
     extra_modified = []
     # Reorder delta.renamed tuples so that all lists share the same
     # order for their 3 first fields and that they also begin like

@@ -32,6 +32,7 @@ from bzrlib import (
     hooks,
     osutils,
     revisiontree,
+    inventory,
     symbol_versioning,
     trace,
     tree,
@@ -415,6 +416,10 @@ class MutableTree(tree.Tree):
             for c in self.conflicts():
                 conflicts_related.update(c.associated_filenames())
 
+        # expand any symlinks in the directory part, while leaving the
+        # filename alone
+        file_list = map(osutils.normalizepath, file_list)
+
         # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
         # than to convert an abspath to tree relative, and it's cheaper to
@@ -540,6 +545,13 @@ class MutableTree(tree.Tree):
                         this_ie = None
                     else:
                         this_ie = inv[this_id]
+                        # Same as in _add_one below, if the inventory doesn't
+                        # think this is a directory, update the inventory
+                        if this_ie.kind != 'directory':
+                            this_ie = inventory.make_entry('directory',
+                                this_ie.name, this_ie.parent_id, this_id)
+                            del inv[this_id]
+                            inv.add(this_ie)
 
                 for subf in sorted(os.listdir(abspath)):
                     # here we could use TreeDirectory rather than
@@ -719,6 +731,17 @@ def _add_one(tree, inv, parent_ie, path, kind, file_id_callback):
         file_id or None to generate a new file id
     :returns: None
     """
+    # if the parent exists, but isn't a directory, we have to do the
+    # kind change now -- really the inventory shouldn't pretend to know
+    # the kind of wt files, but it does.
+    if parent_ie.kind != 'directory':
+        # nb: this relies on someone else checking that the path we're using
+        # doesn't contain symlinks.
+        new_parent_ie = inventory.make_entry('directory', parent_ie.name,
+            parent_ie.parent_id, parent_ie.file_id)
+        del inv[parent_ie.file_id]
+        inv.add(new_parent_ie)
+        parent_ie = new_parent_ie
     file_id = file_id_callback(inv, parent_ie, path, kind)
     entry = inv.make_entry(kind, path.base_path, parent_ie.file_id,
         file_id=file_id)

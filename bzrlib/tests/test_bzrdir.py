@@ -26,11 +26,13 @@ import sys
 from bzrlib import (
     branch,
     bzrdir,
+    controldir,
     errors,
     help_topics,
     repository,
     osutils,
     remote,
+    symbol_versioning,
     urlutils,
     win32utils,
     workingtree,
@@ -69,37 +71,37 @@ class TestDefaultFormat(TestCase):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         # default is BzrDirFormat6
         self.failUnless(isinstance(old_format, bzrdir.BzrDirMetaFormat1))
-        bzrdir.BzrDirFormat._set_default_format(SampleBzrDirFormat())
+        controldir.ControlDirFormat._set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
         try:
             result = bzrdir.BzrDir.create('memory:///')
             self.failUnless(isinstance(result, SampleBzrDir))
         finally:
-            bzrdir.BzrDirFormat._set_default_format(old_format)
+            controldir.ControlDirFormat._set_default_format(old_format)
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
 
 
 class TestFormatRegistry(TestCase):
 
     def make_format_registry(self):
-        my_format_registry = bzrdir.BzrDirFormatRegistry()
+        my_format_registry = controldir.ControlDirFormatRegistry()
         my_format_registry.register('weave', bzrdir.BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True)
         my_format_registry.register_lazy('lazy', 'bzrlib.bzrdir',
             'BzrDirFormat6', 'Format registered lazily', deprecated=True)
-        my_format_registry.register_metadir('knit',
+        bzrdir.register_metadir(my_format_registry, 'knit',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
             )
         my_format_registry.set_default('knit')
-        my_format_registry.register_metadir(
+        bzrdir.register_metadir(my_format_registry,
             'branch6',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='bzrlib.branch.BzrBranchFormat6',
             experimental=True)
-        my_format_registry.register_metadir(
+        bzrdir.register_metadir(my_format_registry,
             'hidden format',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
@@ -174,7 +176,7 @@ class TestFormatRegistry(TestCase):
             bzrdir.format_registry.set_default_repository(old_default)
 
     def test_aliases(self):
-        a_registry = bzrdir.BzrDirFormatRegistry()
+        a_registry = controldir.ControlDirFormatRegistry()
         a_registry.register('weave', bzrdir.BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True)
@@ -789,13 +791,27 @@ class ChrootedTests(TestCaseWithTransport):
         self.build_tree(['tree1/subtree/file'])
         sub_tree.add('file')
         tree.commit('Initial commit')
+        # The following line force the orhaning to reveal bug #634470
+        tree.branch.get_config().set_user_option(
+            'bzr.transform.orphan_policy', 'move')
         tree.bzrdir.destroy_workingtree()
+        # FIXME: subtree/.bzr is left here which allows the test to pass (or
+        # fail :-( ) -- vila 20100909
         repo = self.make_repository('repo', shared=True,
             format='dirstate-with-subtree')
         repo.set_make_working_trees(False)
-        tree.bzrdir.sprout('repo/tree2')
-        self.failUnlessExists('repo/tree2/subtree')
-        self.failIfExists('repo/tree2/subtree/file')
+        # FIXME: we just deleted the workingtree and now we want to use it ????
+        # At a minimum, we should use tree.branch below (but this fails too
+        # currently) or stop calling this test 'treeless'. Specifically, I've
+        # turn the line below into an assertRaises when 'subtree/.bzr' is
+        # orphaned and sprout tries to access the branch there (which is left
+        # by bzrdir.BzrDirMeta1.destroy_workingtree when it ignores the
+        # [DeletingParent('Not deleting', u'subtree', None)] conflict). See bug
+        # #634470.  -- vila 20100909
+        self.assertRaises(errors.NotBranchError,
+                          tree.bzrdir.sprout, 'repo/tree2')
+#        self.failUnlessExists('repo/tree2/subtree')
+#        self.failIfExists('repo/tree2/subtree/file')
 
     def make_foo_bar_baz(self):
         foo = bzrdir.BzrDir.create_branch_convenience('foo').bzrdir
@@ -1058,7 +1074,9 @@ class NotBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
     def _known_formats(self):
         return set([NotBzrDirFormat()])
 
-    @classmethod
+
+class NotBzrDirProber(controldir.Prober):
+
     def probe_transport(self, transport):
         """Our format is present if the transport ends in '.not/'."""
         if transport.has('.not'):
@@ -1078,16 +1096,17 @@ class TestNotBzrDir(TestCaseWithTransport):
         dir = format.initialize(self.get_url())
         self.assertIsInstance(dir, NotBzrDir)
         # now probe for it.
-        bzrlib.bzrdir.BzrDirFormat.register_control_format(format)
+        controldir.ControlDirFormat.register_prober(NotBzrDirProber)
         try:
             found = bzrlib.bzrdir.BzrDirFormat.find_format(
                 get_transport(self.get_url()))
             self.assertIsInstance(found, NotBzrDirFormat)
         finally:
-            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(format)
+            controldir.ControlDirFormat.unregister_prober(NotBzrDirProber)
 
     def test_included_in_known_formats(self):
-        bzrlib.bzrdir.BzrDirFormat.register_control_format(NotBzrDirFormat)
+        not_format = NotBzrDirFormat()
+        bzrlib.controldir.ControlDirFormat.register_format(not_format)
         try:
             formats = bzrlib.bzrdir.BzrDirFormat.known_formats()
             for format in formats:
@@ -1095,7 +1114,7 @@ class TestNotBzrDir(TestCaseWithTransport):
                     return
             self.fail("No NotBzrDirFormat in %s" % formats)
         finally:
-            bzrlib.bzrdir.BzrDirFormat.unregister_control_format(NotBzrDirFormat)
+            bzrlib.controldir.ControlDirFormat.unregister_format(not_format)
 
 
 class NonLocalTests(TestCaseWithTransport):
@@ -1401,3 +1420,37 @@ class TestBzrDirHooks(TestCaseWithMemoryTransport):
         self.assertIsInstance(params, RepoInitHookParams)
         self.assertTrue(hasattr(params, 'bzrdir'))
         self.assertTrue(hasattr(params, 'repository'))
+
+    def test_post_repo_init_hook_repr(self):
+        param_reprs = []
+        bzrdir.BzrDir.hooks.install_named_hook('post_repo_init',
+            lambda params: param_reprs.append(repr(params)), None)
+        self.make_repository('foo')
+        self.assertLength(1, param_reprs)
+        param_repr = param_reprs[0]
+        self.assertStartsWith(param_repr, '<RepoInitHookParams for ')
+
+
+class TestGenerateBackupName(TestCaseWithMemoryTransport):
+    # FIXME: This may need to be unified with test_osutils.TestBackupNames or
+    # moved to per_bzrdir or per_transport for better coverage ?
+    # -- vila 20100909
+
+    def setUp(self):
+        super(TestGenerateBackupName, self).setUp()
+        self._transport = get_transport(self.get_url())
+        bzrdir.BzrDir.create(self.get_url(),
+            possible_transports=[self._transport])
+        self._bzrdir = bzrdir.BzrDir.open_from_transport(self._transport)
+
+    def test_deprecated_generate_backup_name(self):
+        res = self.applyDeprecated(
+                symbol_versioning.deprecated_in((2, 3, 0)),
+                self._bzrdir.generate_backup_name, 'whatever')
+
+    def test_new(self):
+        self.assertEqual("a.~1~", self._bzrdir._available_backup_name("a"))
+
+    def test_exiting(self):
+        self._transport.put_bytes("a.~1~", "some content")
+        self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))

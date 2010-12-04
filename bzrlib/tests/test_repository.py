@@ -31,6 +31,7 @@ from bzrlib.errors import (NoSuchFile,
                            UnsupportedFormatError,
                            )
 from bzrlib import (
+    btree_index,
     graph,
     tests,
     )
@@ -585,7 +586,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
                                 ]
         repo_a = self.make_repository('a')
         repo_b = self.make_repository('b')
-        is_compatible = repository.InterWeaveRepo.is_compatible
+        is_compatible = weaverepo.InterWeaveRepo.is_compatible
         for source in incompatible_formats:
             # force incompatible left then right
             repo_a._format = source
@@ -597,7 +598,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
             for target in formats:
                 repo_b._format = target
                 self.assertTrue(is_compatible(repo_a, repo_b))
-        self.assertEqual(repository.InterWeaveRepo,
+        self.assertEqual(weaverepo.InterWeaveRepo,
                          repository.InterRepository.get(repo_a,
                                                         repo_b).__class__)
 
@@ -680,6 +681,21 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
 
 
 class Test2a(tests.TestCaseWithMemoryTransport):
+
+    def test_chk_bytes_uses_custom_btree_parser(self):
+        mt = self.make_branch_and_memory_tree('test', format='2a')
+        mt.lock_write()
+        self.addCleanup(mt.unlock)
+        mt.add([''], ['root-id'])
+        mt.commit('first')
+        index = mt.branch.repository.chk_bytes._index._graph_index._indices[0]
+        self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
+        # It should also work if we re-open the repo
+        repo = mt.branch.repository.bzrdir.open_repository()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        index = repo.chk_bytes._index._graph_index._indices[0]
+        self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
 
     def test_fetch_combines_groups(self):
         builder = self.make_branch_builder('source', format='2a')
@@ -956,8 +972,7 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
 
     def setUp(self):
         super(TestDevelopment6FindParentIdsOfRevisions, self).setUp()
-        self.builder = self.make_branch_builder('source',
-            format='development6-rich-root')
+        self.builder = self.make_branch_builder('source')
         self.builder.start_series()
         self.builder.build_snapshot('initial', None,
             [('add', ('', 'tree-root', 'directory', None))])

@@ -33,6 +33,7 @@ from bzrlib import (
     errors,
     push,
     repository,
+    symbol_versioning,
     tests,
     )
 from bzrlib.branch import Branch
@@ -68,7 +69,10 @@ class TestPush(TestCaseWithInterBranch):
         self.assertEqual(result.old_revid, 'M1')
         self.assertEqual(result.new_revid, 'P2')
         # and it can be treated as an integer for compatibility
-        self.assertEqual(int(result), 0)
+        self.assertEqual(self.applyDeprecated(
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            result.__int__),
+            0)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another

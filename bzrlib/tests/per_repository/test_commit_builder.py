@@ -1288,6 +1288,16 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.assertRaises(ValueError, builder.commit,
             u'Invalid\r\ncommit message\r\n')
 
+    def test_non_ascii_str_committer_rejected(self):
+        """Ensure an error is raised on a non-ascii byte string committer"""
+        branch = self.make_branch('.')
+        branch.repository.lock_write()
+        self.addCleanup(branch.repository.unlock)
+        self.assertRaises(UnicodeDecodeError,
+            branch.repository.get_commit_builder,
+            branch, [], branch.get_config(),
+            committer="Erik B\xe5gfors <erik@example.com>")
+
     def test_stacked_repositories_reject_commit_builder(self):
         # As per bug 375013, committing to stacked repositories is currently
         # broken, so repositories with fallbacks refuse to hand out a commit
@@ -1303,3 +1313,27 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.addCleanup(repo_local.unlock)
         self.assertRaises(errors.BzrError, repo_local.get_commit_builder,
             branch, [], branch.get_config())
+
+    def test_committer_no_username(self):
+        # Ensure that when no username is available but a committer is
+        # supplied, commit works.
+        del os.environ['EMAIL']
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            # Make sure no username is available.
+            self.assertRaises(errors.NoWhoami, tree.branch.get_commit_builder,
+                              [])
+            builder = tree.branch.get_commit_builder(
+                [], committer='me@example.com')
+            try:
+                list(builder.record_iter_changes(tree, tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree())))
+                builder.finish_inventory()
+            except:
+                builder.abort()
+                raise
+            repo = tree.branch.repository
+            repo.commit_write_group()
+        finally:
+            tree.unlock()

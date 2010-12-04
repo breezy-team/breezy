@@ -54,11 +54,6 @@ class LaunchpadServiceTests(TestCase):
         self.assertEqual('https://xmlrpc.staging.launchpad.net/bazaar/',
                          service.service_url)
 
-    def test_edge_service(self):
-        service = LaunchpadService(lp_instance='edge')
-        self.assertEqual('https://xmlrpc.edge.launchpad.net/bazaar/',
-                         service.service_url)
-
     def test_dev_service(self):
         service = LaunchpadService(lp_instance='dev')
         self.assertEqual('https://xmlrpc.launchpad.dev/bazaar/',
@@ -170,13 +165,6 @@ class TestURLInference(TestCase):
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
             'https://code.staging.launchpad.net/~foo/bar/baz', web_url)
-
-    def test_edge_url(self):
-        service = LaunchpadService(lp_instance='edge')
-        web_url = service.get_web_url_from_branch_url(
-            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
-        self.assertEqual(
-            'https://code.edge.launchpad.net/~foo/bar/baz', web_url)
 
     def test_dev_url(self):
         service = LaunchpadService(lp_instance='dev')

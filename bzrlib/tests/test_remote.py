@@ -30,26 +30,28 @@ from bzrlib import (
     branch,
     bzrdir,
     config,
+    controldir,
     errors,
     graph,
     inventory,
     inventory_delta,
-    pack,
     remote,
     repository,
     tests,
     transport,
     treebuilder,
-    urlutils,
     versionedfile,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir, BzrDirFormat
+from bzrlib.bzrdir import (
+    BzrDir,
+    BzrDirFormat,
+    RemoteBzrProber,
+    )
 from bzrlib.remote import (
     RemoteBranch,
     RemoteBranchFormat,
     RemoteBzrDir,
-    RemoteBzrDirFormat,
     RemoteRepository,
     RemoteRepositoryFormat,
     )
@@ -89,10 +91,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.transport = self.get_transport()
         # make a branch that can be opened over the smart transport
         self.local_wt = BzrDir.create_standalone_workingtree('.')
-
-    def tearDown(self):
-        self.transport.disconnect()
-        tests.TestCaseWithTransport.tearDown(self)
+        self.addCleanup(self.transport.disconnect)
 
     def test_create_remote_bzrdir(self):
         b = remote.RemoteBzrDir(self.transport, remote.RemoteBzrDirFormat())
@@ -122,8 +121,8 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
     def test_find_correct_format(self):
         """Should open a RemoteBzrDir over a RemoteTransport"""
         fmt = BzrDirFormat.find_format(self.transport)
-        self.assertTrue(RemoteBzrDirFormat
-                        in BzrDirFormat._control_server_formats)
+        self.assertTrue(bzrdir.RemoteBzrProber
+                        in controldir.ControlDirFormat._server_probers)
         self.assertIsInstance(fmt, remote.RemoteBzrDirFormat)
 
     def test_open_detected_smart_format(self):
@@ -686,7 +685,7 @@ class TestBzrDirOpenBranch(TestRemote):
         old.
         """
         self.assertRaises(errors.NotBranchError,
-            RemoteBzrDirFormat.probe_transport, OldServerTransport())
+            RemoteBzrProber.probe_transport, OldServerTransport())
 
 
 class TestBzrDirCreateBranch(TestRemote):
@@ -1868,7 +1867,7 @@ class TestBranchFormat(tests.TestCase):
 class TestRepositoryFormat(TestRemoteRepository):
 
     def test_fast_delta(self):
-        true_name = groupcompress_repo.RepositoryFormatCHK1().network_name()
+        true_name = groupcompress_repo.RepositoryFormat2a().network_name()
         true_format = RemoteRepositoryFormat()
         true_format._network_name = true_name
         self.assertEqual(True, true_format.fast_deltas)

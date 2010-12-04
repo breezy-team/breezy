@@ -187,9 +187,11 @@ class TestRequestJail(TestCaseWithMemoryTransport):
 
 class TestJailHook(TestCaseWithMemoryTransport):
 
-    def tearDown(self):
-        request.jail_info.transports = None
-        TestCaseWithMemoryTransport.tearDown(self)
+    def setUp(self):
+        super(TestJailHook, self).setUp()
+        def clear_jail_info():
+            request.jail_info.transports = None
+        self.addCleanup(clear_jail_info)
 
     def test_jail_hook(self):
         request.jail_info.transports = None

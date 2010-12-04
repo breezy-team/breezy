@@ -193,6 +193,41 @@ combinations including testing plugins.  See
 <http://babune.ladeuil.net:24842/>.  (Babune = Bazaar Buildbot Network.)
 
 
+Running tests in parallel
+-------------------------
+
+Bazaar can use subunit to spawn multiple test processes.  There is
+slightly more chance you will hit ordering or timing-dependent bugs but
+it's much faster::
+
+  $ ./bzr selftest --parallel=fork
+
+Note that you will need the Subunit library
+<https://launchpad.net/subunit/> to use this, which is in
+``python-subunit`` on Ubuntu.
+
+
+Running tests from a ramdisk
+----------------------------
+
+The tests create and delete a lot of temporary files.  In some cases you
+can make the test suite run much faster by running it on a ramdisk.  For
+example::
+
+  $ sudo mkdir /ram
+  $ sudo mount -t tmpfs none /ram
+  $ TMPDIR=/ram ./bzr selftest ...
+
+You could also change ``/tmp`` in ``/etc/fstab`` to have type ``tmpfs``,
+if you don't mind possibly losing other files in there when the machine
+restarts.  Add this line (if there is none for ``/tmp`` already)::
+
+  none           /tmp            tmpfs  defaults        0       0
+
+With a 6-core machine and ``--parallel=fork`` using a tmpfs doubles the
+test execution speed.
+
+
 Writing Tests
 =============
 
@@ -305,9 +340,9 @@ Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 Shell-like tests
 ----------------
 
-``bzrlib/tests/script.py`` allows users to write tests in a syntax very close to a shell session,
-using a restricted and limited set of commands that should be enough to mimic
-most of the behaviours.
+``bzrlib/tests/script.py`` allows users to write tests in a syntax very
+close to a shell session, using a restricted and limited set of commands
+that should be enough to mimic most of the behaviours.
 
 A script is a set of commands, each command is composed of:
 
@@ -332,8 +367,9 @@ the line.
 The execution stops as soon as an expected output or an expected error is not
 matched.
 
-When no output is specified, any ouput from the command is accepted
-and execution continue.
+If output occurs and no output is expected, the execution stops and the
+test fails.  If unexpected output occurs on the standard error, then
+execution stops and the test fails.
 
 If an error occurs and no expected error is specified, the execution stops.
 
@@ -353,6 +389,12 @@ The following will succeeds only if 'bzr add' outputs 'adding file'::
 If you want the command to succeed for any output, just use::
 
   $ bzr add file
+  ...
+  2>...
+
+or use the ``--quiet`` option::
+
+  $ bzr add -q file
 
 The following will stop with an error::
 
@@ -392,6 +434,12 @@ the file doesn't exist::
 
   $ cat file
 
+You can run files containing shell-like scripts with::
+
+  $ bzr test-script <script>
+
+where ``<script>`` is the path to the file containing the shell-like script.
+
 The actual use of ScriptRunner within a TestCase looks something like
 this::
 
@@ -400,17 +448,42 @@ this::
     def test_unshelve_keep(self):
         # some setup here
         script.run_script(self, '''
-            $ bzr add file
-            $ bzr shelve --all -m Foo
+            $ bzr add -q file
+            $ bzr shelve -q --all -m Foo
             $ bzr shelve --list
             1: Foo
-            $ bzr unshelve --keep
+            $ bzr unshelve -q --keep
             $ bzr shelve --list
             1: Foo
             $ cat file
             contents of file
             ''')
 
+You can also test commands that read user interaction::
+
+    def test_confirm_action(self):
+        """You can write tests that demonstrate user confirmation"""
+        commands.builtin_command_registry.register(cmd_test_confirm)
+        self.addCleanup(commands.builtin_command_registry.remove, 'test-confirm')
+        self.run_script("""
+            $ bzr test-confirm
+            2>Really do it? [y/n]: 
+            <yes
+            yes
+            """)
+
+To avoid having to specify "-q" for all commands whose output is
+irrelevant, the run_script() method may be passed the keyword argument
+``null_output_matches_anything=True``.  For example::
+
+    def test_ignoring_null_output(self):
+        self.run_script("""
+            $ bzr init
+            $ bzr ci -m 'first revision' --unchanged
+            $ bzr log --line
+            1: ...
+            """, null_output_matches_anything=True)
+           
 
 Import tariff tests
 -------------------
@@ -664,6 +737,22 @@ new feature instance with::
         _test_needs_features = [features.apport]
 
 
+Testing deprecated code
+-----------------------
+
+When code is deprecated, it is still supported for some length of time,
+usually until the next major version. The ``applyDeprecated`` helper
+wraps calls to deprecated code to verify that it is correctly issuing the
+deprecation warning, and also prevents the warnings from being printed
+during test runs.
+
+Typically patches that apply the ``@deprecated_function`` decorator should
+update the accompanying tests to use the ``applyDeprecated`` wrapper.
+
+``applyDeprecated`` is defined in ``bzrlib.tests.TestCase``. See the API
+docs for more details.
+
+
 Testing exceptions and errors
 -----------------------------
 
@@ -742,17 +831,11 @@ with only one particular transport.  Once it's isolated, we can consider
 whether a test should be added for that particular implementation,
 or for all implementations of the interface.
 
-The multiplication of tests for different implementations is normally
-accomplished by overriding the ``load_tests`` function used to load tests
-from a module.  This function typically loads all the tests, then applies
-a TestProviderAdapter to them, which generates a longer suite containing
-all the test variations.
-
 See also `Per-implementation tests`_ (above).
 
 
-Test scenarios
---------------
+Test scenarios and variations
+-----------------------------
 
 Some utilities are provided for generating variations of tests.  This can
 be used for per-implementation tests, or other cases where the same test
@@ -763,8 +846,24 @@ which depend on attributes of the test object being pre-set with the
 values to which the test should be applied.  The test suite should then
 also provide a list of scenarios in which to run the tests.
 
-Typically ``multiply_tests_from_modules`` should be called from the test
-module's ``load_tests`` function.
+A single *scenario* is defined by a `(name, parameter_dict)` tuple.  The
+short string name is combined with the name of the test method to form the
+test instance name.  The parameter dict is merged into the instance's
+attributes.
+
+For example::
+
+    load_tests = load_tests_apply_scenarios
+
+    class TestCheckout(TestCase):
+
+    variations = multiply_scenarios(
+        VaryByRepositoryFormat(), 
+        VaryByTreeFormat(),
+        )
+
+The `load_tests` declaration or definition should be near the top of the
+file so its effect can be seen.
 
 
 Test support
@@ -868,6 +967,63 @@ method of ``TestCaseWithMemoryTransport``) or ``make_branch_and_tree`` (a
 method of ``TestCaseWithTransport``).
 
 Please see bzrlib.treebuilder for more details.
+
+
+Temporarily changing state
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If your test needs to temporarily mutate some global state, and you need
+it restored at the end, you can say for example::
+
+    self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
+
+Cleaning up
+~~~~~~~~~~~
+
+Our base ``TestCase`` class provides an ``addCleanup`` method, which
+should be used instead of ``tearDown``.  All the cleanups are run when the
+test finishes, regardless of whether it passes or fails.  If one cleanup
+fails, later cleanups are still run.
+
+(The same facility is available outside of tests through
+``bzrlib.cleanup``.)
+
+
+Manual testing
+==============
+
+Generally we prefer automated testing but sometimes a manual test is the
+right thing, especially for performance tests that want to measure elapsed
+time rather than effort.
+
+Simulating slow networks
+------------------------
+
+To get realistically slow network performance for manually measuring
+performance, we can simulate 500ms latency (thus 1000ms round trips)::
+
+  $ sudo tc qdisc add dev lo root netem delay 500ms
+
+Normal system behaviour is restored with ::
+
+  $ sudo tc qdisc del dev lo root
+
+A more precise version that only filters traffic to port 4155 is::
+
+    tc qdisc add dev lo root handle 1: prio
+    tc qdisc add dev lo parent 1:3 handle 30: netem delay 500ms 
+    tc qdisc add dev lo parent 30:1 handle 40: prio
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip dport 4155 0xffff flowid 1:3 handle 800::800
+    tc filter add dev lo protocol ip parent 1:0 prio 3 u32 match ip sport 4155 0xffff flowid 1:3 handle 800::801
+
+and to remove this::
+
+    tc filter del dev lo protocol ip parent 1: pref 3 u32
+    tc qdisc del dev lo root handle 1:
+
+You can use similar code to add additional delay to a real network
+interface, perhaps only when talking to a particular server or pointing at
+a VM.  For more information see <http://lartc.org/>.
 
 
 .. |--| unicode:: U+2014

@@ -39,8 +39,14 @@ extensions:
 check: docs check-nodocs
 
 check-nodocs: extensions
+	set -e
 	# Generate a stream for PQM to watch.
+	-$(RM) -f selftest.log
 	$(PYTHON) -Werror -O ./bzr selftest --subunit $(tests) | tee selftest.log
+	# An empty log file should catch errors in the $(PYTHON)
+	# command above (the '|' swallow any errors since 'make'
+	# sees the 'tee' exit code for the whole line
+	if [ ! -s selftest.log ] ; then exit 1 ; fi
 	# Check that there were no errors reported.
 	subunit-stats < selftest.log
 
@@ -133,11 +139,13 @@ SPHINX_DEPENDENCIES = \
 	doc/developers/Makefile \
 	doc/developers/make.bat
 
+NEWS_FILES = $(wildcard doc/en/release-notes/bzr-*.txt)
+
 doc/en/user-reference/index.txt: $(MAN_DEPENDENCIES)
 	$(PYTHON) tools/generate_docs.py -o $@ rstx
 
-doc/en/release-notes/index.txt: NEWS tools/generate_release_notes.py
-	$(PYTHON) tools/generate_release_notes.py NEWS $@
+doc/en/release-notes/index.txt: $(NEWS_FILES) tools/generate_release_notes.py
+	$(PYTHON) tools/generate_release_notes.py $@ $(NEWS_FILES)
 
 doc/%/Makefile: doc/en/Makefile
 	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
@@ -296,10 +304,10 @@ doc/index.%.html: doc/index.%.txt
 	$(rst2html) --stylesheet=default.css $< $@
 
 %.html: %.txt
-	$(rst2html) --stylesheet=../../default.css $< $@
+	$(rst2html) --stylesheet=../../default.css $< "$@"
 
-doc/en/release-notes/NEWS.txt: NEWS
-	$(PYTHON) -c "import shutil; shutil.copyfile('$<', '$@')"
+doc/en/release-notes/NEWS.txt: $(NEWS_FILES) tools/generate_release_notes.py
+	$(PYTHON) tools/generate_release_notes.py "$@" $(NEWS_FILES)
 
 upgrade_guide_dependencies =  $(wildcard $(addsuffix /*.txt, doc/en/upgrade-guide)) 
 

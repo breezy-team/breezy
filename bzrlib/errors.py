@@ -680,7 +680,7 @@ class PathNotChild(PathError):
 
     _fmt = 'Path "%(path)s" is not a child of path "%(base)s"%(extra)s'
 
-    internal_error = True
+    internal_error = False
 
     def __init__(self, path, base, extra=None):
         BzrError.__init__(self)
@@ -722,6 +722,15 @@ class NotBranchError(PathError):
                 try:
                     self.bzrdir.open_repository()
                 except NoRepositoryPresent:
+                    self.detail = ''
+                except Exception:
+                    # Just ignore unexpected errors.  Raising arbitrary errors
+                    # during str(err) can provoke strange bugs.  Concretely
+                    # Launchpad's codehosting managed to raise NotBranchError
+                    # here, and then get stuck in an infinite loop/recursion
+                    # trying to str() that error.  All this error really cares
+                    # about that there's no working repository there, and if
+                    # open_repository() fails, there probably isn't.
                     self.detail = ''
                 else:
                     self.detail = ': location is a repository'
@@ -782,6 +791,8 @@ class FileInWrongBranch(BzrError):
 
     _fmt = 'File "%(path)s" is not in branch %(branch_base)s.'
 
+    # use PathNotChild instead
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 3, 0)))
     def __init__(self, branch, path):
         BzrError.__init__(self)
         self.branch = branch
@@ -1070,6 +1081,18 @@ class LockBreakMismatch(LockError):
         self.target = target
 
 
+class LockCorrupt(LockError):
+
+    _fmt = ("Lock is apparently held, but corrupted: %(corruption_info)s\n"
+            "Use 'bzr break-lock' to clear it")
+
+    internal_error = False
+
+    def __init__(self, corruption_info, file_data=None):
+        self.corruption_info = corruption_info
+        self.file_data = file_data
+
+
 class LockNotHeld(LockError):
 
     _fmt = "Lock not held: %(lock)s"
@@ -1175,10 +1198,11 @@ class NoSuchRevisionInTree(NoSuchRevision):
 class InvalidRevisionSpec(BzrError):
 
     _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
-            " %(branch)s%(extra)s")
+            " %(branch_url)s%(extra)s")
 
     def __init__(self, spec, branch, extra=None):
         BzrError.__init__(self, branch=branch, spec=spec)
+        self.branch_url = getattr(branch, 'user_url', str(branch))
         if extra:
             self.extra = '\n' + str(extra)
         else:
@@ -1380,7 +1404,7 @@ class WeaveParentMismatch(WeaveError):
 
 class WeaveInvalidChecksum(WeaveError):
 
-    _fmt = "Text did not match it's checksum: %(msg)s"
+    _fmt = "Text did not match its checksum: %(msg)s"
 
 
 class WeaveTextDiffers(WeaveError):
@@ -1981,6 +2005,8 @@ class BzrRemoveChangedFilesError(BzrError):
         "Use --keep to not delete them, or --force to delete them regardless.")
 
     def __init__(self, tree_delta):
+        symbol_versioning.warn(symbol_versioning.deprecated_in((2, 3, 0)) %
+            "BzrRemoveChangedFilesError", DeprecationWarning, stacklevel=2)
         BzrError.__init__(self)
         self.changes_as_text = tree_delta.get_changes_as_text()
         #self.paths_as_string = '\n'.join(changed_files)
@@ -2840,8 +2866,11 @@ class UncommittedChanges(BzrError):
         else:
             more = ' ' + more
         import bzrlib.urlutils as urlutils
-        display_url = urlutils.unescape_for_display(
-            tree.user_url, 'ascii')
+        user_url = getattr(tree, "user_url", None)
+        if user_url is None:
+            display_url = str(tree)
+        else:
+            display_url = urlutils.unescape_for_display(user_url, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
 
 
@@ -2923,6 +2952,22 @@ class UnableEncodePath(BzrError):
         self.path = path
         self.kind = kind
         self.user_encoding = osutils.get_user_encoding()
+
+
+class NoSuchConfig(BzrError):
+
+    _fmt = ('The "%(config_id)s" configuration does not exist.')
+
+    def __init__(self, config_id):
+        BzrError.__init__(self, config_id=config_id)
+
+
+class NoSuchConfigOption(BzrError):
+
+    _fmt = ('The "%(option_name)s" configuration option does not exist.')
+
+    def __init__(self, option_name):
+        BzrError.__init__(self, option_name=option_name)
 
 
 class NoSuchAlias(BzrError):

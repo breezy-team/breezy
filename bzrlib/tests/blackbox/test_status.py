@@ -33,6 +33,7 @@ from bzrlib import (
     conflicts,
     errors,
     osutils,
+    status,
     )
 import bzrlib.branch
 from bzrlib.osutils import pathjoin
@@ -43,6 +44,14 @@ from bzrlib.workingtree import WorkingTree
 
 
 class BranchStatus(TestCaseWithTransport):
+
+    def setUp(self):
+        super(BranchStatus, self).setUp()
+        # As TestCase.setUp clears all hooks, we install this default
+        # post_status hook handler for the test.
+        status.hooks.install_named_hook('post_status',
+            status._show_shelve_summary,
+            'bzr status')
 
     def assertStatus(self, expected_lines, working_tree,
         revision=None, short=False, pending=True, verbose=False):
@@ -202,12 +211,18 @@ class BranchStatus(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
 
-        self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
+        self.build_tree(['directory/','directory/hello.c',
+                         'bye.c','test.c','dir2/',
+                         'missing.c'])
         wt.add('directory')
         wt.add('test.c')
         wt.commit('testing')
+        wt.add('missing.c')
+        unlink('missing.c')
 
         self.assertStatus([
+                'missing:\n',
+                '  missing.c\n',
                 'unknown:\n',
                 '  bye.c\n',
                 '  dir2/\n',
@@ -218,6 +233,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertStatus([
                 '?   bye.c\n',
                 '?   dir2/\n',
+                '+!  missing.c\n',
                 '?   directory/hello.c\n'
                 ],
                 wt, short=True)
@@ -259,6 +275,20 @@ class BranchStatus(TestCaseWithTransport):
                          short=True, revision=revs)
         tof.seek(0)
         self.assertEquals(tof.readlines(), ['+N  test.c\n'])
+
+        tof = StringIO()
+        show_tree_status(wt, specific_files=['missing.c'], to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['missing:\n',
+                           '  missing.c\n'])
+
+        tof = StringIO()
+        show_tree_status(wt, specific_files=['missing.c'], to_file=tof,
+                         short=True)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['+!  missing.c\n'])
 
     def test_specific_files_conflicts(self):
         tree = self.make_branch_and_tree('.')
@@ -520,6 +550,22 @@ class BranchStatus(TestCaseWithTransport):
         out, err = self.run_bzr('status branch1 -rbranch:branch2')
         self.assertEqual('', out)
 
+    def test_status_with_shelves(self):
+        """Ensure that _show_shelve_summary handler works.
+        """
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['hello.c'])
+        wt.add('hello.c')
+        self.run_bzr(['shelve', '--all', '-m', 'foo'])
+        self.build_tree(['bye.c'])
+        wt.add('bye.c')
+        self.assertStatus([
+                'added:\n',
+                '  bye.c\n',
+                '1 shelves exist. See "bzr shelve --list" for details.\n',
+            ],
+            wt)
+
 
 class CheckoutStatus(BranchStatus):
 
@@ -704,16 +750,6 @@ class TestStatus(TestCaseWithTransport):
 
 class TestStatusEncodings(TestCaseWithTransport):
 
-    def setUp(self):
-        TestCaseWithTransport.setUp(self)
-        self.user_encoding = osutils._cached_user_encoding
-        self.stdout = sys.stdout
-
-    def tearDown(self):
-        osutils._cached_user_encoding = self.user_encoding
-        sys.stdout = self.stdout
-        TestCaseWithTransport.tearDown(self)
-
     def make_uncommitted_tree(self):
         """Build a branch with uncommitted unicode named changes in the cwd."""
         working_tree = self.make_branch_and_tree(u'.')
@@ -727,8 +763,7 @@ class TestStatusEncodings(TestCaseWithTransport):
         return working_tree
 
     def test_stdout_ascii(self):
-        sys.stdout = StringIO()
-        osutils._cached_user_encoding = 'ascii'
+        self.overrideAttr(osutils, '_cached_user_encoding', 'ascii')
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 
@@ -738,8 +773,7 @@ added:
 """)
 
     def test_stdout_latin1(self):
-        sys.stdout = StringIO()
-        osutils._cached_user_encoding = 'latin-1'
+        self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr('status')
 

@@ -66,6 +66,7 @@ PKG_DATA = {# install files from selftest suite
             'package_data': {'bzrlib': ['doc/api/*.txt',
                                         'tests/test_patches_data/*',
                                         'help_topics/en/*.txt',
+                                        'tests/ssl_certs/ca.crt',
                                         'tests/ssl_certs/server_without_pass.key',
                                         'tests/ssl_certs/server_with_pass.key',
                                         'tests/ssl_certs/server.crt'
@@ -290,11 +291,11 @@ else:
         # The code it generates re-uses a "local" pointer and
         # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
         # which is NULL safe with PY_DECREF which is not.)
-        # <https://bugs.edge.launchpad.net/bzr/+bug/449372>
-        # <https://bugs.edge.launchpad.net/bzr/+bug/276868>
+        # <https://bugs.launchpad.net/bzr/+bug/449372>
+        # <https://bugs.launchpad.net/bzr/+bug/276868>
         print('Cannot build extension "bzrlib._dirstate_helpers_pyx" using')
-        print('your version of pyrex "%s". Please upgrade your pyrex' % (
-            pyrex_version,))
+        print('your version of pyrex "%s". Please upgrade your pyrex'
+              % (pyrex_version,))
         print('install. For now, the non-compiled (python) version will')
         print('be used instead.')
     else:
@@ -688,7 +689,11 @@ elif 'py2exe' in sys.argv:
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
-    dll_excludes.extend(["MSWSOCK.dll", "MSVCP60.dll", "powrprof.dll"])
+    dll_excludes.extend(["MSWSOCK.dll",
+                         "MSVCP60.dll",
+                         "MSVCP90.dll",
+                         "powrprof.dll",
+                         "SHFOLDER.dll"])
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes,
                                "excludes": excludes,
@@ -726,19 +731,6 @@ else:
         # generate and install bzr.1 only with plain install, not the
         # easy_install one
         DATA_FILES = [('man/man1', ['bzr.1'])]
-
-    if sys.platform != 'win32':
-        # see https://wiki.kubuntu.org/Apport/DeveloperHowTo
-        #
-        # checking the paths and hardcoding the check for root is a bit gross,
-        # but I don't see a cleaner way to find out the locations in a way
-        # that's going to align with the hardcoded paths in apport.
-        if os.geteuid() == 0:
-            DATA_FILES += [
-                ('/usr/share/apport/package-hooks',
-                    ['apport/source_bzr.py']),
-                ('/etc/apport/crashdb.conf.d/',
-                    ['apport/bzr-crashdb.conf']),]
 
     # std setup
     ARGS = {'scripts': ['bzr'],

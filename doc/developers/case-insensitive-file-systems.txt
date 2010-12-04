@@ -32,7 +32,7 @@ As can be implied by the above descriptions, only the first two are considered
 relevant to a modern Bazaar.
 
 For more details, including use cases, please see
-http://bazaar-vcs.org/CasePreservingWorkingTreeUseCases
+http://wiki.bazaar.canonical.com/CasePreservingWorkingTreeUseCases
 
 Handling these file-systems
 ---------------------------

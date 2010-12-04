@@ -40,8 +40,8 @@ Bazaarユーザーリファレンス
 
 次のウェブサイトはBazaarに関する詳細な情報を提供します:
 
-:ホームページ:                     http://www.bazaar-vcs.org/
-:公式ドキュメント:                 http://doc.bazaar-vcs.org/
+:ホームページ:                     http://bazaar.canonical.com/
+:公式ドキュメント:                 http://doc.bazaar.canonical.com/
 :Launchpad:                     https://launchpad.net/bzr/
 
 概念
@@ -614,7 +614,7 @@ bugzilla_<tracker_abbreviation>_url
 存在するのであれば、Bugzillaのバグトラッカーの位置は <tracker_abbreviation> によって参照されます。
 そのバグトラッカーのバグをそのコミットで修正されたものとしてマークするためにはこのオプションは ``bzr commit --fixes`` と一緒に使用できます::
 
-    bugzilla_squid_url = http://www.squid-cache.org/bugs
+    bugzilla_squid_url = http://bugs.squid-cache.org
 
 上記の例はSquidのバグ 1234が修正されたものとしてマークするために ``bzr commit --fixes squid:1234`` を許可します。
 
@@ -838,7 +838,7 @@ bazaar.confに対して現時点で唯一有効なセクションヘッダーは
     create_signatures = always
     check_signatures  = always
 
-    [http://bazaar-vcs.org/bzr/*]
+    [http://bazaar.launchpad.net/*/bzr/*]
     check_signatures  = require
 
 認証用の設定ファイル、authentication.conf
@@ -1223,7 +1223,7 @@ Bazaarに例外のMalformedTransformを起動させること可能です(非常�
     dirstate-tagsフォーマットリポジトリと互換性のあるデータを持つパックベースのフォーマット。
     0.92以前のbzrリポジトリと相互運用できますが0.92以前のbzrでは読めません。
     以前はknitpack-experimentalと呼ばれていました。詳細な情報に関しては、
-    http://doc.bazaar-vcs.org/latest/developers/packrepo.html を参照。
+    http://doc.bazaar.canonical.com/latest/developers/packrepo.html を参照。
 
 :1.6:
     (ネイティブ) スタックをサポートするディレクトリに基づいたブランチとパック。
@@ -1596,7 +1596,7 @@ commit_message_template (msgeditor)
     (ネイティブ) 現在の開発フォーマット。
     pack-0.92 (とpack-0.92と互換性のある)フォーマットリポジトリにデータを変換できます。
     このフォーマットのリポジトリとブランチはbzr.devによってのみ読み込みできます。
-    使用する前に http://doc.bazaar-vcs.org/latest/developers/development-repo.html
+    使用する前に http://doc.bazaar.canonical.com/latest/developers/development-repo.html
     をご覧下さるようお願いします。
 
 
@@ -1605,7 +1605,7 @@ commit_message_template (msgeditor)
     pack-0.92-subtree (pack-0.92-subtreeと互換性のあるものなら何でも)フォーマットリポジトリ
     から/へのデータの変換ができる。このフォーマットのリポジトリとブランチは
     bzr.devによってのみ読み込みできます。
-    使用する前に http://doc.bazaar-vcs.org/latest/developers/development-repo.html
+    使用する前に http://doc.bazaar.canonical.com/latest/developers/development-repo.html
     をご覧下さるようお願いします。
 
 
@@ -2500,17 +2500,17 @@ init
                         0.92以前のbzrリポジトリと相互運用しますが
                         bzr < 0.92では読むことができません。
                         以前はknitpack-experimentalと呼ばれていました。
-                        詳細な情報は http://doc.bazaar-vcs.org/latest/developers/packrepo.html を参照。
+                        詳細な情報は http://doc.bazaar.canonical.com/latest/developers/packrepo.html を参照。
     --development       現在の開発フォーマット。データをpack-0.92 (とpack-0.92と互換性のある)
                         フォーマットリポジトリに変換できる。
                         このフォーマットのリポジトリとブランチはbzr.devによってのみ読み込みできます。
-                        使用する前に http://doc.bazaar-vcs.org/latest/developers/development-repo.html を参照して頂くようお願いします。
+                        使用する前に http://doc.bazaar.canonical.com/latest/developers/development-repo.html を参照して頂くようお願いします。
     --development-subtree
                         現在の開発フォーマットで、subtreeバリアント。
                         データをpack-0.92-subtree(とpack-0.92-subtreeと互換性のある)
                         フォーマットリポジトリに変換できる。
                         このフォーマットのリポジトリとブランチはbzr.devでのみ読み込みできる。
-                        使用する前に http://doc.bazaar-vcs.org/latest/developers/development-
+                        使用する前に http://doc.bazaar.canonical.com/latest/developers/development-
                         repo.html をご覧いただくようお願いします。
     --dirstate          0.15の新しいフォーマット: 速いローカルオペレーション。
                         ネットワークを通したアクセスのときbzr 0.8とそれ以降と互換性がある。
@@ -2523,8 +2523,7 @@ init
                         互換性のあるデータを持つパックベースのフォーマット。
                         0.92以前のbzrリポジトリと相互運用できるがbzr < 0.92.によって読み込みできない。
                         以前はknitpack-experimentalと呼ばれていた。
-                        詳細な情報に関しては、 http://doc
-                        .bazaar-vcs.org/latest/developers/packrepo.html を参照。
+                        詳細な情報に関しては、 http://doc.bazaar.canonical.com/latest/developers/packrepo.html を参照。
     --rich-root         1.0の新しいフォーマット。ツリーrootのベターな扱い。
                         bzr < 1.0と互換性がない。
     --rich-root-pack    1.0の新しいフォーマット: rich-rootデータをサポートする
@@ -2580,17 +2579,17 @@ init-repository
                         0.92以前のbzrリポジトリと相互運用しますが
                         bzr < 0.92では読むことができません。
                         以前はknitpack-experimentalと呼ばれていました。
-                        詳細な情報は http://doc.bazaar-vcs.org/latest/developers/packrepo.html を参照。
+                        詳細な情報は http://doc.bazaar.canonical.com/latest/developers/packrepo.html を参照。
     --development       現在の開発フォーマット。データをpack-0.92 (とpack-0.92と互換性のある)
                         フォーマットリポジトリに変換できる。
                         このフォーマットのリポジトリとブランチはbzr.devによってのみ読み込みできます。
-                        使用する前に http://doc.bazaar-vcs.org/latest/developers/development-repo.html を参照して頂くようお願いします。
+                        使用する前に http://doc.bazaar.canonical.com/latest/developers/development-repo.html を参照して頂くようお願いします。
     --development-subtree
                         現在の開発フォーマットで、subtreeバリアント。
                         データをpack-0.92-subtree(とpack-0.92-subtreeと互換性のある)
                         フォーマットリポジトリに変換できる。
                         このフォーマットのリポジトリとブランチはbzr.devでのみ読み込みできる。
-                        使用する前に http://doc.bazaar-vcs.org/latest/developers/development-
+                        使用する前に http://doc.bazaar.canonical.com/latest/developers/development-
                         repo.html をご覧いただくようお願いします。
     --dirstate          0.15の新しいフォーマット: 速いローカルオペレーション。
                         ネットワークを通したアクセスのときbzr 0.8とそれ以降と互換性がある。
@@ -2603,8 +2602,7 @@ init-repository
                         互換性のあるデータを持つパックベースのフォーマット。
                         0.92以前のbzrリポジトリと相互運用できるがbzr < 0.92.によって読み込みできない。
                         以前はknitpack-experimentalと呼ばれていた。
-                        詳細な情報に関しては、 http://doc
-                        .bazaar-vcs.org/latest/developers/packrepo.html を参照。
+                        詳細な情報に関しては、 http://doc.bazaar.canonical.com/latest/developers/packrepo.html を参照。
     --rich-root         1.0の新しいフォーマット。ツリーrootのベターな扱い。
                         bzr < 1.0と互換性がない。
     --rich-root-pack    1.0の新しいフォーマット: rich-rootデータをサポートする
@@ -2924,7 +2922,7 @@ plugins
   プラグインはさまざまなことを行うことができます。
 
   プラグインを見つけてインストール方法を含めた詳細な情報に関しては、
-  Bazaarのウェブサイト、http://bazaar-vcs.org を参照してください。
+  Bazaarのウェブサイト、http://bazaar.canonical.com を参照してください。
   プログラミング言語のPyhonを利用して
   新しいコマンドを作成する方法に関する手引きもあります。
 
@@ -3731,17 +3729,17 @@ upgrade
                         0.92以前のbzrリポジトリと相互運用しますが
                         bzr < 0.92では読むことができません。
                         以前はknitpack-experimentalと呼ばれていました。
-                        詳細な情報は http://doc.bazaar-vcs.org/latest/developers/packrepo.html を参照。
+                        詳細な情報は http://doc.bazaar.canonical.com/latest/developers/packrepo.html を参照。
     --development       現在の開発フォーマット。データをpack-0.92 (とpack-0.92と互換性のある)
                         フォーマットリポジトリに変換できる。
                         このフォーマットのリポジトリとブランチはbzr.devによってのみ読み込みできます。
-                        使用する前に http://doc.bazaar-vcs.org/latest/developers/development-repo.html を参照して頂くようお願いします。
+                        使用する前に http://doc.bazaar.canonical.com/latest/developers/development-repo.html を参照して頂くようお願いします。
     --development-subtree
                         現在の開発フォーマットで、subtreeバリアント。
                         データをpack-0.92-subtree(とpack-0.92-subtreeと互換性のある)
                         フォーマットリポジトリに変換できる。
                         このフォーマットのリポジトリとブランチはbzr.devでのみ読み込みできる。
-                        使用する前に http://doc.bazaar-vcs.org/latest/developers/development-
+                        使用する前に http://doc.bazaar.canonical.com/latest/developers/development-
                         repo.html をご覧いただくようお願いします。
     --dirstate          0.15の新しいフォーマット: 速いローカルオペレーション。
                         ネットワークを通したアクセスのときbzr 0.8とそれ以降と互換性がある。
@@ -3754,8 +3752,7 @@ upgrade
                         互換性のあるデータを持つパックベースのフォーマット。
                         0.92以前のbzrリポジトリと相互運用できるがbzr < 0.92.によって読み込みできない。
                         以前はknitpack-experimentalと呼ばれていた。
-                        詳細な情報に関しては、 http://doc
-                        .bazaar-vcs.org/latest/developers/packrepo.html を参照。
+                        詳細な情報に関しては、 http://doc.bazaar.canonical.com/latest/developers/packrepo.html を参照。
     --rich-root         1.0の新しいフォーマット。ツリーrootのベターな扱い。
                         bzr < 1.0と互換性がない。
     --rich-root-pack    1.0の新しいフォーマット: rich-rootデータをサポートする

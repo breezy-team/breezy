@@ -23,11 +23,12 @@ rather than in tests/per_workingtree/*.py.
 """
 
 from bzrlib import (
+    branchbuilder,
     errors,
     tests,
     workingtree,
     )
-from bzrlib.tests import per_bzrdir
+from bzrlib.tests import per_controldir
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -50,13 +51,20 @@ def make_scenario(transport_server, transport_readonly_server,
         }
 
 
-class TestCaseWithWorkingTree(per_bzrdir.TestCaseWithBzrDir):
+class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath, format=None):
         made_control = self.make_bzrdir(relpath, format=format)
         made_control.create_repository()
         made_control.create_branch()
         return self.workingtree_format.initialize(made_control)
+
+    def make_branch_builder(self, relpath, format=None):
+        if format is None:
+            format = self.bzrdir_format
+        builder = branchbuilder.BranchBuilder(self.get_transport(relpath),
+                                              format=format)
+        return builder
 
 
 def workingtree_formats():

@@ -380,7 +380,9 @@ class Commit(object):
         self.pb_stage_count = 0
         self.pb_stage_total = 5
         if self.bound_branch:
-            self.pb_stage_total += 1
+            # 2 extra stages: "Uploading data to master branch" and "Merging
+            # tags to master branch"
+            self.pb_stage_total += 2
         self.pb.show_pct = False
         self.pb.show_spinner = False
         self.pb.show_eta = False
@@ -449,6 +451,15 @@ class Commit(object):
 
         # and now do the commit locally.
         self.branch.set_last_revision_info(new_revno, self.rev_id)
+
+        # Merge local tags to remote
+        if self.bound_branch:
+            self._set_progress_stage("Merging tags to master branch")
+            tag_conflicts = self.branch.tags.merge_to(self.master_branch.tags)
+            if tag_conflicts:
+                warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
+                note("Conflicting tags in bound branch:\n" +
+                    "\n".join(warning_lines))
 
         # Make the working tree be up to date with the branch. This
         # includes automatic changes scheduled to be made to the tree, such

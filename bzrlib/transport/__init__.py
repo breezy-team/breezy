@@ -1286,6 +1286,12 @@ class Transport(object):
         # should be asked to ConnectedTransport only.
         return None
 
+    def disconnect(self):
+        # This is really needed for ConnectedTransport only, but it's easier to
+        # have Transport do nothing than testing that the disconnect should be
+        # asked to ConnectedTransport only.
+        pass
+
     def _redirected_to(self, source, target):
         """Returns a transport suitable to re-issue a redirected request.
 
@@ -1550,8 +1556,15 @@ class ConnectedTransport(Transport):
             transport = self.__class__(other_base, _from_transport=self)
         return transport
 
+    def disconnect(self):
+        """Disconnect the transport.
 
-def get_transport(base, possible_transports=None):
+        If and when required the transport willl reconnect automatically.
+        """
+        raise NotImplementedError(self.disconnect)
+
+
+def _get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
 
     :param base: either a URL or a directory name.
@@ -1616,6 +1629,15 @@ def get_transport(base, possible_transports=None):
     transport, last_err = _try_transport_factories(base, factory_list)
 
     return transport
+
+# GZ 2010-10-18: Temporary hack to put the real get_transport behind a layer
+#                if indirection so it can be safely overriden for the test
+#                suite. If you are reading this comment in the final 2.3
+#                release, phone me up and yell at me.
+def get_transport(base, possible_transports=None):
+    return _get_transport(base, possible_transports)
+
+get_transport.__doc__ = _get_transport.__doc__
 
 
 def _try_transport_factories(base, factory_list):

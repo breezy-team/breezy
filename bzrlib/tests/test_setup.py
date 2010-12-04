@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,30 +43,34 @@ class TestSetup(TestCase):
         This tests that the build process and man generator run correctly.
         It also can catch new subdirectories that weren't added to setup.py.
         """
-        if not os.path.isfile('setup.py'):
-            raise TestSkipped('There is no setup.py file in current directory')
+        # setup.py must be run from the root source directory, but the tests
+        # are not necessarily invoked from there
+        self.source_dir = os.path.dirname(os.path.dirname(bzrlib.__file__))
+        if not os.path.isfile(os.path.join(self.source_dir, 'setup.py')):
+            raise TestSkipped(
+                'There is no setup.py file adjacent to the bzrlib directory')
         try:
             import distutils.sysconfig
             makefile_path = distutils.sysconfig.get_makefile_filename()
             if not os.path.exists(makefile_path):
-                raise TestSkipped('You must have the python Makefile installed to run this test.'
-                                  ' Usually this can be found by installing "python-dev"')
+                raise TestSkipped(
+                    'You must have the python Makefile installed to run this'
+                    ' test. Usually this can be found by installing'
+                    ' "python-dev"')
         except ImportError:
-            raise TestSkipped('You must have distutils installed to run this test.'
-                              ' Usually this can be found by installing "python-dev"')
+            raise TestSkipped(
+                'You must have distutils installed to run this test.'
+                ' Usually this can be found by installing "python-dev"')
         self.log('test_build running in %s' % os.getcwd())
-        install_dir = osutils.mkdtemp()
-        # setup.py must be run from the root source directory, but the tests
-        # are not necessarily invoked from there
-        self.source_dir = os.path.dirname(os.path.dirname(bzrlib.__file__))
+        root_dir = osutils.mkdtemp()
         try:
             self.run_setup(['clean'])
             # build is implied by install
             ## self.run_setup(['build'])
-            self.run_setup(['install', '--prefix', install_dir])
+            self.run_setup(['install', '--root', root_dir])
             self.run_setup(['clean'])
         finally:
-            osutils.rmtree(install_dir)
+            osutils.rmtree(root_dir)
 
     def run_setup(self, args):
         args = [sys.executable, './setup.py', ] + args
@@ -74,9 +78,11 @@ class TestSetup(TestCase):
         self.log('args: %r', args)
         p = subprocess.Popen(args,
                              cwd=self.source_dir,
-                             stdout=self._log_file,
-                             stderr=self._log_file,
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE,
                              )
-        s = p.communicate()
+        stdout, stderr = p.communicate()
+        self.log('stdout: %r', stdout)
+        self.log('stderr: %r', stderr)
         self.assertEqual(0, p.returncode,
                          'invocation of %r failed' % args)

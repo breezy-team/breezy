@@ -40,6 +40,16 @@ from bzrlib.plugins.launchpad.account import get_lp_login
 register_urlparse_netloc_protocol('bzr+ssh')
 register_urlparse_netloc_protocol('lp')
 
+_ubuntu_series_shortcuts = {
+    'n': 'natty',
+    'm': 'maverick',
+    'l': 'lucid',
+    'k': 'karmic',
+    'j': 'jaunty',
+    'h': 'hardy',
+    'd': 'dapper',
+    }
+
 
 class LaunchpadDirectory(object):
 
@@ -62,9 +72,54 @@ class LaunchpadDirectory(object):
                  _request_factory=ResolveLaunchpadPathRequest,
                  _lp_login=None):
         """Resolve the base URL for this transport."""
+        # Do ubuntu: and debianlp: expansions.
+        scheme, netloc, path, query, fragment = urlsplit(url)
+        if scheme in ('ubuntu', 'debianlp'):
+            if scheme == 'ubuntu':
+                distro = 'ubuntu'
+                distro_series = _ubuntu_series_shortcuts
+            elif scheme == 'debianlp':
+                distro = 'debian'
+                # No shortcuts for Debian distroseries.
+                distro_series = {}
+            else:
+                raise AssertionError('scheme should be ubuntu: or debianlp:')
+            # Split the path.  It's either going to be 'project' or
+            # 'series/project', but recognize that it may be a series we don't
+            # know about.
+            path_parts = path.split('/')
+            if len(path_parts) == 1:
+                # It's just a project name.
+                lp_url_template = 'lp:%(distro)s/%(project)s'
+                project = path_parts[0]
+                series = None
+            elif len(path_parts) == 2:
+                # It's a series and project.
+                lp_url_template = 'lp:%(distro)s/%(series)s/%(project)s'
+                series, project = path_parts
+            else:
+                # There are either 0 or > 2 path parts, neither of which is
+                # supported for these schemes.
+                raise errors.InvalidURL('Bad path: %s' % result.path)
+            # Expand any series shortcuts, but keep unknown series.
+            series = distro_series.get(series, series)
+            # Hack the url and let the following do the final resolution.
+            url = lp_url_template % dict(
+                distro=distro,
+                series=series,
+                project=project)
+            scheme, netloc, path, query, fragment = urlsplit(url)
         service = LaunchpadService.for_url(url)
-        result = urlsplit(url)
-        resolve = _request_factory(result[2].strip('/'))
+        if _lp_login is None:
+            _lp_login = get_lp_login()
+        path = path.strip('/')
+        if path.startswith('~/'):
+            if _lp_login is None:
+                raise errors.InvalidURL(path=url,
+                    extra='Cannot resolve "~" to your username.'
+                          ' See "bzr help launchpad-login"')
+            path = '~' + _lp_login + path[1:]
+        resolve = _request_factory(path)
         try:
             result = resolve.submit(service)
         except xmlrpclib.Fault, fault:
@@ -74,8 +129,6 @@ class LaunchpadDirectory(object):
         if 'launchpad' in debug.debug_flags:
             trace.mutter("resolve_lp_path(%r) == %r", url, result)
 
-        if _lp_login is None:
-            _lp_login = get_lp_login()
         _warned_login = False
         for url in result['urls']:
             scheme, netloc, path, query, fragment = urlsplit(url)

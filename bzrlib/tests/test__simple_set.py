@@ -379,3 +379,13 @@ class TestSimpleSet(tests.TestCase):
         # And even removing an item still causes it to fail
         obj.discard(k2)
         self.assertRaises(RuntimeError, iterator.next)
+
+    def test__sizeof__(self):
+        # SimpleSet needs a custom sizeof implementation, because it allocates
+        # memory that Python cannot directly see (_table).
+        # Too much variability in platform sizes for us to give a fixed size
+        # here. However without a custom implementation, __sizeof__ would give
+        # us only the size of the object, and not its table. We know the table
+        # is at least 4bytes*1024entries in size.
+        obj = self.module.SimpleSet()
+        self.assertTrue(obj.__sizeof__() > 4096)
