@@ -1013,6 +1013,11 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
         conf.set_default_merge_tool('winmergeu')
         self.assertEqual('winmergeu', conf.get_user_option('default_mergetool'))
 
+    def test_set_default_merge_tool_none(self):
+        conf = config.GlobalConfig.from_string(sample_config_text)
+        conf.set_default_merge_tool(None)
+        self.assertEqual(None, conf.get_user_option('default_mergetool'))
+
     def test_set_invalid_default_merge_tool(self):
         conf = config.GlobalConfig()
         tools = [
