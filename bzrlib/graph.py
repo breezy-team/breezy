@@ -1536,7 +1536,57 @@ class _BreadthFirstSearcher(object):
             return revs, ghosts
 
 
-class SearchResult(object):
+class AbstractSearchResult(object):
+
+    def get_recipe(self):
+        """Return a recipe that can be used to replay this search.
+
+        The recipe allows reconstruction of the same results at a later date.
+
+        :return: A tuple of (search_kind_str, *details).  The details vary by
+            kind of search result.
+        """
+        raise NotImplementedError(self.get_recipe)
+
+    def get_network_struct(self):
+        """Return a tuple that can be transmitted via the HPSS protocol."""
+        raise NotImplementedError(self.get_network_struct)
+
+    def get_keys(self):
+        """Return the keys found in this search.
+
+        :return: A set of keys.
+        """
+        raise NotImplementedError(self.get_keys)
+
+    def is_empty(self):
+        """Return false if the search lists 1 or more revisions."""
+        raise NotImplementedError(self.is_empty)
+
+    def refine(self, seen, referenced):
+        """Create a new search by refining this search.
+
+        :param seen: Revisions that have been satisfied.
+        :param referenced: Revision references observed while satisfying some
+            of this search.
+        :return: A search result.
+        """
+        raise NotImplementedError(self.refine)
+
+
+class AbstractSearch(object):
+
+    def get_search_result(self):
+        """Construct a network-ready search result from this search description.
+
+        This may take some time to search repositories, etc.
+
+        :return: A search result.
+        """
+        raise NotImplementedError(self.get_search_result)
+
+
+class SearchResult(AbstractSearchResult):
     """The result of a breadth first search.
 
     A SearchResult provides the ability to reconstruct the search or access a
@@ -1636,7 +1686,7 @@ class SearchResult(object):
         return SearchResult(pending_refs, exclude, count, keys)
 
 
-class PendingAncestryResult(object):
+class PendingAncestryResult(AbstractSearchResult):
     """A search result that will reconstruct the ancestry for some graph heads.
 
     Unlike SearchResult, this doesn't hold the complete search result in
@@ -1703,18 +1753,21 @@ class PendingAncestryResult(object):
         return PendingAncestryResult(referenced - seen, self.repo)
 
 
-class EmptySearchResult(object):
+class EmptySearchResult(AbstractSearchResult):
     """An empty search result."""
 
     def is_empty(self):
         return True
     
 
-class EverythingResult(object):
+class EverythingResult(AbstractSearchResult):
     """A search result that simply requests everything in the repository."""
 
     def __init__(self, repo):
         self._repo = repo
+
+    def __repr__(self):
+        return '%s(%r)' % (self.__class__.__name__, self._repo)
 
     def get_recipe(self):
         raise NotImplementedError(self.get_recipe)
@@ -1744,30 +1797,58 @@ class EverythingResult(object):
         return PendingAncestryResult(heads, self._repo)
 
 
-class EverythingNotInOther(object):
+class EverythingNotInOther(AbstractSearch):
+    """Find all revisions in that are in one repo but not the other."""
 
     def __init__(self, to_repo, from_repo, find_ghosts=False):
         self.to_repo = to_repo
         self.from_repo = from_repo
         self.find_ghosts = find_ghosts
 
-    def get_search(self):
+    def get_search_result(self):
         return self.to_repo.search_missing_revision_ids(
             self.from_repo, find_ghosts=self.find_ghosts)
 
 
-class NotInOtherForRevs(object):
+class NotInOtherForRevs(AbstractSearch):
+    """Find all revisions missing in one repo for a some specific heads."""
 
-    def __init__(self, to_repo, from_repo, revision_ids, find_ghosts=False):
+    def __init__(self, to_repo, from_repo, required_ids, if_present_ids=None,
+            find_ghosts=False):
+        """Constructor.
+
+        :param required_ids: revision IDs of heads that must be found, or else
+            the search will fail with NoSuchRevision.  All revisions in their
+            ancestry not already in the other repository will be included in
+            the search result.
+        :param if_present_ids: revision IDs of heads that may be absent in the
+            source repository.  If present, then their ancestry not already
+            found in other will be included in the search result.
+        """
         self.to_repo = to_repo
         self.from_repo = from_repo
         self.find_ghosts = find_ghosts
-        self.revision_ids = revision_ids
+        self.required_ids = required_ids
+        self.if_present_ids = if_present_ids
 
-    def get_search(self):
+    def __repr__(self):
+        if len(self.required_ids) > 5:
+            reqd_revs_repr = repr(list(self.required_ids)[:5])[:-1] + ', ...]'
+        else:
+            reqd_revs_repr = repr(self.required_ids)
+        if self.if_present_ids and len(self.if_present_ids) > 5:
+            ifp_revs_repr = repr(list(self.if_present_ids)[:5])[:-1] + ', ...]'
+        else:
+            ifp_revs_repr = repr(self.if_present_ids)
+
+        return "<%s from:%r to:%r find_ghosts:%r req'd:%r if-present:%r>" % (
+            self.__class__.__name__, self.from_repo, self.to_repo,
+            self.find_ghosts, reqd_revs_repr, ifp_revs_repr)
+
+    def get_search_result(self):
         return self.to_repo.search_missing_revision_ids(
-            self.from_repo, revision_ids=self.revision_ids,
-            find_ghosts=self.find_ghosts)
+            self.from_repo, revision_ids=self.required_ids,
+            if_present_ids=self.if_present_ids, find_ghosts=self.find_ghosts)
 
 
 def collapse_linear_regions(parent_map):

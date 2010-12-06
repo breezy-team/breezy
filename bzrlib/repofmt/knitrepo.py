@@ -537,7 +537,7 @@ class InterKnitRepo(InterSameDataRepository):
     @needs_read_lock
     def search_missing_revision_ids(self,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
         """See InterRepository.searcH_missing_revision_ids()."""
         if symbol_versioning.deprecated_passed(revision_id):
             symbol_versioning.warn(
@@ -550,7 +550,8 @@ class InterKnitRepo(InterSameDataRepository):
             if revision_id is not None:
                 revision_ids = [revision_id]
         del revision_id
-        source_ids_set = self._present_source_revisions_for(revision_ids)
+        source_ids_set = self._present_source_revisions_for(
+            revision_ids, if_present_ids)
         # source_ids is the worst possible case we may need to pull.
         # now we want to filter source_ids against what we actually
         # have in target, but don't try to check for existence where we know
