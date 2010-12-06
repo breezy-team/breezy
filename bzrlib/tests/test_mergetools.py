@@ -146,20 +146,6 @@ class TestUnicodeBasics(tests.TestCase):
              u'{result}'],
             self.tool.get_commandline_as_list())
 
-    def test_set_executable(self):
-        self.tool.set_executable(u'otherb\u0414r')
-        self.assertEqual(
-            [u'otherb\u0414r', u'--opt', u'{base}', u'-x', u'{this}',
-             u'{other}', u'--stuff', u'{result}'],
-            self.tool.get_commandline_as_list())
-
-    def test_quoted_executable(self):
-        self.requireFeature(backslashdir_feature)
-        self.tool.set_commandline(u'"C:\\Program Files\\KDiff3\\b\u0414r.exe" '
-                                  '{base} {this} {other} -o {result}')
-        self.assertEqual(u'C:\\Program Files\\KDiff3\\b\u0414r.exe',
-                         self.tool.get_executable())
-
     def test_comparison(self):
         other_tool = mergetools.MergeTool(u'someb\u0414r',
             u'/path/to/b\u0414r --opt {base} -x {this} {other} --stuff {result}')

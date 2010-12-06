@@ -60,59 +60,15 @@ def tool_name_from_executable(executable):
 
 class MergeTool(object):
 
-    def __init__(self, name, commandline):
+    def __init__(self, name, command_line):
         """Initializes the merge tool with a name and a command-line (a string
         or sequence of strings).
         """
-        self.set_commandline(commandline)
-        self.set_name(name) # needs commandline set first when name is None
+        self.name = name
+        self.command_line = command_line
 
     def __repr__(self):
-        return '<MergeTool %s: %r>' % (self._name, self._commandline)
-
-    def __eq__(self, other):
-        if type(other) == MergeTool:
-            return cmp(self, other) == 0
-        else:
-            return False
-
-    def __ne__(self, other):
-        if type(other) == MergeTool:
-            return cmp(self, other) != 0
-        else:
-            return True
-
-    def __cmp__(self, other):
-        if type(other == MergeTool):
-            return cmp((self._name, self._commandline),
-                (other._name, other._commandline))
-
-    def __str__(self):
-        return self.get_commandline()
-
-    def get_name(self):
-        return self._name
-
-    def set_name(self, name):
-        if name is None:
-            self._name = tool_name_from_executable(self.get_executable())
-        else:
-            self._name = name
-
-    def get_commandline(self):
-        return cmdline.unsplit(self._commandline)
-
-    def get_commandline_as_list(self):
-        return self._commandline
-
-    def set_commandline(self, commandline):
-        if isinstance(commandline, basestring):
-            self._commandline = cmdline.split(commandline)
-        elif isinstance(commandline, (tuple, list)):
-            self._commandline = list(commandline)
-        else:
-            raise TypeError('%r is not valid for commandline; must be string '
-                            'or sequence of strings' % commandline)
+        return '<%s(%s, %s)>' % (self.__class__, self.name, self.command_line)
 
     def get_executable(self):
         if len(self._commandline) < 1:
@@ -124,8 +80,8 @@ class MergeTool(object):
 
     def is_available(self):
         executable = self.get_executable()
-        return os.path.exists(executable) or \
-               osutils.find_executable_on_path(executable) is not None
+        return (os.path.exists(executable)
+                or osutils.find_executable_on_path(executable) is not None)
 
     def invoke(self, filename, invoker=None):
         if invoker is None:
