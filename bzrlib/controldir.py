@@ -149,11 +149,13 @@ class FetchSpecFactory(object):
             else:
                 heads_to_fetch.add(self.source_branch.last_revision())
         if self.target_repo_kind == _TargetRepoKinds.EMPTY:
-            if not tags_to_fetch:
-                return graph.PendingAncestryResult(heads_to_fetch, self.source_repo)
-            else:
-                # XXX: add if_present_ids feature to PendingAncestryResult
-                pass
+            # PendingAncestryResult does not raise errors if a requested head
+            # is absent.  Ideally it would support the
+            # required_ids/if_present_ids distinction, but in practice
+            # heads_to_fetch will almost certainly be present so this doesn't
+            # matter much.
+            all_heads = heads_to_fetch.union(tags_to_fetch)
+            return graph.PendingAncestryResult(all_heads, self.source_repo)
         return graph.NotInOtherForRevs(self.target_repo, self.source_repo,
             required_ids=heads_to_fetch, if_present_ids=tags_to_fetch)
 

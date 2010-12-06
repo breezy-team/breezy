@@ -705,6 +705,24 @@ class TestControlDir(TestCaseWithControlDir):
         new_branch = target.open_branch()
         self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
+    def test_sprout_bzrdir_passing_source_branch_with_absent_tag(self):
+        # tags referencing absent revisions are copied (and those absent
+        # revisions do not prevent the sprout.)
+        builder = self.make_branch_builder('source')
+        builder.build_commit(message="Rev 1", rev_id='rev-1')
+        source = builder.get_branch()
+        try:
+            source.tags.set_tag('tag-a', 'missing-rev')
+        except errors.TagsNotSupported:
+            raise TestNotApplicable('Branch format does not support tags.')
+        # Now source has a tag pointing to an absent revision.  Sprout its
+        # controldir.
+        dir = source.bzrdir
+        target = dir.sprout(self.get_url('target'), source_branch=source)
+        # The tag is present in the target
+        new_branch = target.open_branch()
+        self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
+
     def test_sprout_bzrdir_tree_branch_reference(self):
         # sprouting should create a repository if needed and a sprouted branch.
         # the tree state should not be copied.
