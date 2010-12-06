@@ -49,15 +49,6 @@ _WIN32_PATH_EXT = [unicode(ext.lower())
                    for ext in os.getenv('PATHEXT', '').split(';')]
 
 
-def tool_name_from_executable(executable):
-    name = os.path.basename(executable)
-    if sys.platform == 'win32':
-        root, ext = os.path.splitext(name)
-        if ext.lower() in _WIN32_PATH_EXT:
-            name = root
-    return name
-
-
 class MergeTool(object):
 
     def __init__(self, name, command_line):
@@ -66,27 +57,20 @@ class MergeTool(object):
         """
         self.name = name
         self.command_line = command_line
+        self._cmd_list = cmdline.split(self.command_line)
 
     def __repr__(self):
         return '<%s(%s, %s)>' % (self.__class__, self.name, self.command_line)
 
-    def get_executable(self):
-        if len(self._commandline) < 1:
-            return u''
-        return self._commandline[0]
-
-    def set_executable(self, executable):
-        self._commandline[:1] = [executable]
-
     def is_available(self):
-        executable = self.get_executable()
-        return (os.path.exists(executable)
-                or osutils.find_executable_on_path(executable) is not None)
+        exe = self._cmd_list[0]
+        return (os.path.exists(exe)
+                or osutils.find_executable_on_path(exe) is not None)
 
     def invoke(self, filename, invoker=None):
         if invoker is None:
             invoker = subprocess_invoker
-        args, tmp_file = self._subst_filename(self._commandline, filename)
+        args, tmp_file = self._subst_filename(self._cmd_list, filename)
         def cleanup(retcode):
             if tmp_file is not None:
                 if retcode == 0: # on success, replace file with temp file
