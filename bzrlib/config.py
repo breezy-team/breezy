@@ -399,15 +399,10 @@ class Config(object):
         return tool
 
     def set_default_merge_tool(self, name):
-        if name is None:
-            self.remove_user_option('bzr.default_mergetool')
-        else:
-            if isinstance(name, mergetools.MergeTool):
-                name = name.get_name()
-            if self._find_merge_tool(name) is None:
-                raise errors.BzrError('invalid merge tool name: %r' % name)
-            trace.mutter('setting default merge tool: %s', name)
-            self.set_user_option('bzr.default_mergetool', name)
+        if self._find_merge_tool(name) is None:
+            raise errors.BzrError('invalid merge tool name: %r' % name)
+        trace.mutter('setting default merge tool: %s', name)
+        self.set_user_option('bzr.default_mergetool', name)
 
 
 class IniBasedConfig(Config):
