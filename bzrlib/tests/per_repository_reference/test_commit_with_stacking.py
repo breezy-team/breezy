@@ -133,6 +133,9 @@ class TestCommitWithStacking(TestCaseWithRepository):
         stacked_tree.add(['f3.txt'], ['f3.txt-id'])
         stacked_key = ('stacked-rev-id',)
         stacked_tree.commit('add f3', rev_id=stacked_key[0])
+        stacked_only_repo = self.get_only_repo(stacked_tree)
+        self.assertPresent([self.r2_key], stacked_only_repo.inventories,
+                           [self.r1_key, self.r2_key])
         # This ensures we get a Remote URL, rather than a local one.
         stacked2_url = urlutils.join(base_tree.branch.base, '../stacked2')
         stacked2_bzrdir = stacked_tree.bzrdir.sprout(stacked2_url,
@@ -148,13 +151,14 @@ class TestCommitWithStacking(TestCaseWithRepository):
         # it needs to pull the basis information from a fallback-of-fallback.
         self.build_tree(['stacked2/f3.txt'])
         stacked2_only_repo = self.get_only_repo(stacked2_tree)
-        self.assertPresent([], stacked2_only_repo.inventories, [self.r1_key])
+        self.assertPresent([], stacked2_only_repo.inventories,
+                           [self.r1_key, self.r2_key])
         stacked2_tree.add(['f3.txt'], ['f3.txt-id'])
         stacked2_tree.commit('add f3', rev_id='stacked2-rev-id')
         # We added data to this read-locked repo, so refresh it
         stacked2_only_repo.refresh_data()
-        self.assertPresent([self.r1_key],
-                           stacked2_only_repo.inventories, [self.r1_key])
+        self.assertPresent([self.r1_key], stacked2_only_repo.inventories,
+                           [self.r1_key, self.r2_key])
 
 # TOOD: We need to run the above tests for when the source and/or the target
 #       are remote repositories.
