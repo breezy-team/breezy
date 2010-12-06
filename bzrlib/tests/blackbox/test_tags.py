@@ -145,6 +145,7 @@ class TestTagging(TestCaseWithTransport):
         fork = self.make_fork(master)
         fork.tags.set_tag('new-tag', fork.last_revision())
         fork.tags.set_tag('non-ancestry-tag', 'fork-0')
+        fork.tags.set_tag('absent-tag', 'absent-rev')
         script.run_script(self, """
             $ cd child
             $ bzr merge ../fork
@@ -156,6 +157,7 @@ class TestTagging(TestCaseWithTransport):
         expected_tag_dict = {
             'new-tag': fork.last_revision(),
             'non-ancestry-tag': 'fork-0',
+            'absent-tag': 'absent-rev',
             }
         self.assertEqual(expected_tag_dict, child.branch.tags.get_tag_dict())
         self.assertEqual(expected_tag_dict, master.tags.get_tag_dict())
