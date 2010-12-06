@@ -271,13 +271,14 @@ Making the source tarball
 #. Now we'll try expanding this tarball and running the test suite
    to check for packaging problems::
 
-     make check-dist-tarball
+     make check-dist-tarball | subunit2pyunit
 
-   You may encounter failures while running the test suite caused
-   by your locally installed plugins. Use your own judgment to
-   decide if you can release with these failures. When in doubt,
-   disable the faulty plugins one by one until you get no more
-   failures.
+   You may encounter failures while running the test suite caused by your
+   locally installed plugins. Use your own judgment to decide if you can
+   release with these failures. When in doubt, disable the faulty plugins
+   one by one until you get no more failures. Alternatively, you can use
+   ``BZR_DISABLE_PLUGINS`` or ``BZR_PLUGIN_PATH=-site`` to disable one or
+   all plugins.
 
    Remember that PQM has just tested everything too, this step is
    particularly testing that the pyrex extensions, which are updated
