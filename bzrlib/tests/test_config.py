@@ -71,10 +71,10 @@ change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
 log_format=short
 user_global_option=something
-mergetool.kdiff3=kdiff3 {base} {this} {other} -o {result}
-mergetool.winmergeu=winmergeu {result}
-mergetool.funkytool=funkytool "arg with spaces" {this_temp}
-default_mergetool=kdiff3
+bzr.mergetool.kdiff3=kdiff3 {base} {this} {other} -o {result}
+bzr.mergetool.winmergeu=winmergeu {result}
+bzr.mergetool.funkytool=funkytool "arg with spaces" {this_temp}
+bzr.default_mergetool=kdiff3
 [ALIASES]
 h=help
 ll=""" + sample_long_alias + "\n"
@@ -1018,11 +1018,11 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
                                  'funkytool "arg with spaces" {this_temp}')
             ])
         self.assertEqual('funkytool "arg with spaces" {this_temp}',
-                          conf.get_user_option('mergetool.funkytool'))
+                          conf.get_user_option('bzr.mergetool.funkytool'))
         self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
-                          conf.get_user_option('mergetool.kdiff3'))
+                          conf.get_user_option('bzr.mergetool.kdiff3'))
         self.assertEqual('winmergeu {result}',
-                          conf.get_user_option('mergetool.winmergeu'))
+                          conf.get_user_option('bzr.mergetool.winmergeu'))
 
     def test_set_merge_tools_duplicates(self):
         conf = config.GlobalConfig()
@@ -1079,12 +1079,13 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
             ]
         conf.set_merge_tools(tools)
         conf.set_default_merge_tool('winmergeu')
-        self.assertEqual('winmergeu', conf.get_user_option('default_mergetool'))
+        self.assertEqual('winmergeu',
+                         conf.get_user_option('bzr.default_mergetool'))
 
     def test_set_default_merge_tool_none(self):
         conf = config.GlobalConfig.from_string(sample_config_text)
         conf.set_default_merge_tool(None)
-        self.assertEqual(None, conf.get_user_option('default_mergetool'))
+        self.assertEqual(None, conf.get_user_option('bzr.default_mergetool'))
 
     def test_set_invalid_default_merge_tool(self):
         conf = config.GlobalConfig()

@@ -588,8 +588,8 @@ uncommitted changes before sending a merge directive.
 External Merge Tools
 --------------------
 
-mergetool.<name>
-~~~~~~~~~~~~~~~~
+bzr.mergetool.<name>
+~~~~~~~~~~~~~~~~~~~~
 
 Defines an external merge tool called <name> with the given command-line.
 Arguments containing spaces should be quoted using single or double quotes. The
@@ -607,9 +607,9 @@ involved in the merge conflict:
 
 For example:
 
-  mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}
+  bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}
 
-default_mergetool
+bzr.default_mergetool
 ~~~~~~~~~~~~~~~~~
 
 Specifies which external merge tool (as defined above) should be selected by
@@ -617,4 +617,4 @@ default in tools such as ``bzr qconflicts``.
 
 For example:
 
-  default_mergetool = kdiff3
+  bzr.default_mergetool = kdiff3
