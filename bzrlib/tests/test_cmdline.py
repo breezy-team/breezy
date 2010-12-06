@@ -113,13 +113,3 @@ class TestSplitter(tests.TestCase):
         self.assertAsTokens([(False, r'\\"'), (False, r'*.py')],
                             r'\\\\\" *.py')
         self.assertAsTokens([(True, u'\\\\')], u'"\\\\')
-
-
-class TestUnSplit(tests.TestCase):
-
-    def test_unsplit(self):
-        self.assertEquals('foo bar', cmdline.unsplit(['foo', 'bar']))
-
-    def test_unsplit_quotes(self):
-        self.assertEquals('foo "woo hoo" bar',
-                          cmdline.unsplit(['foo', 'woo hoo', 'bar']))

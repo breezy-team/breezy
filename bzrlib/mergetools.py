@@ -52,9 +52,7 @@ _WIN32_PATH_EXT = [unicode(ext.lower())
 class MergeTool(object):
 
     def __init__(self, name, command_line):
-        """Initializes the merge tool with a name and a command-line (a string
-        or sequence of strings).
-        """
+        """Initializes the merge tool with a name and a command-line."""
         self.name = name
         self.command_line = command_line
         self._cmd_list = cmdline.split(self.command_line)
