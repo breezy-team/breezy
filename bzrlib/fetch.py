@@ -163,12 +163,13 @@ class RepoFetcher(object):
         :returns: A SearchResult of some sort.  (Possibly a
             PendingAncestryResult, EmptySearchResult, etc.)
         """
-        get_search = getattr(self._fetch_spec, 'get_search', None)
-        if get_search is not None:
-            mutter('resolving fetch_spec into search: %s', self._fetch_spec)
+        get_search_result = getattr(self._fetch_spec, 'get_search_result', None)
+        if get_search_result is not None:
+            mutter(
+                'resolving fetch_spec into search result: %s', self._fetch_spec)
             # This is EverythingNotInOther or a similar kind of fetch_spec.
             # Turn it into a search result.
-            return get_search()
+            return get_search_result()
         elif self._fetch_spec is not None:
             # The fetch spec is already a concrete search result.
             return self._fetch_spec
@@ -179,10 +180,11 @@ class RepoFetcher(object):
         elif self._last_revision is not None:
             return graph.NotInOtherForRevs(self.to_repository,
                 self.from_repository, [self._last_revision],
-                find_ghosts=self.find_ghosts).get_search()
+                find_ghosts=self.find_ghosts).get_search_result()
         else: # self._last_revision is None:
             return graph.EverythingNotInOther(self.to_repository,
-                self.from_repository, find_ghosts=self.find_ghosts).get_search()
+                self.from_repository,
+                find_ghosts=self.find_ghosts).get_search_result()
 
     def _parent_inventories(self, revision_ids):
         # Find all the parent revisions referenced by the stream, but

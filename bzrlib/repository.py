@@ -3567,7 +3567,7 @@ class InterRepository(InterObject):
                 raise errors.NoSuchRevision(self.source, missing.pop())
             found_ids = all_wanted_ids.intersection(present_revs)
             source_ids = [rev_id for (rev_id, parents) in
-                          self.source.get_graph().iter_ancestry(found_ids)
+                          graph.iter_ancestry(found_ids)
                           if rev_id != _mod_revision.NULL_REVISION
                           and parents is not None]
         else:
