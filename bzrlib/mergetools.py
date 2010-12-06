@@ -35,9 +35,6 @@ from bzrlib import (
 )
 """)
 
-from bzrlib.commands import Command
-from bzrlib.option import Option
-
 
 def subprocess_invoker(executable, args, cleanup):
     retcode = subprocess.call([executable] + args)
@@ -97,17 +94,20 @@ class MergeTool(object):
         return subst_args, tmp_file
 
 
-_KNOWN_MERGE_TOOLS = (
-    u'bcompare {this} {other} {base} {result}',
-    u'kdiff3 {base} {this} {other} -o {result}',
-    u'xxdiff -m -O -M {result} {this} {base} {other}',
-    u'meld {base} {this_temp} {other}',
-    u'opendiff {this} {other} -ancestor {base} -merge {result}',
-    u'winmergeu {result}',
-)
+_KNOWN_MERGE_TOOLS = {
+    'bcompare': 'bcompare {this} {other} {base} {result}',
+    'kdiff3': 'kdiff3 {base} {this} {other} -o {result}',
+    'xdiff': 'xxdiff -m -O -M {result} {this} {base} {other}',
+    'meld': 'meld {base} {this_temp} {other}',
+    'opendiff': 'opendiff {this} {other} -ancestor {base} -merge {result}',
+    'winmergeu': 'winmergeu {result}',
+}
 
 
 def detect_merge_tools():
-    tools = [MergeTool(None, commandline) for commandline in _KNOWN_MERGE_TOOLS]
-    return [tool for tool in tools if tool.is_available()]
-
+    available_merge_tools = []
+    for name, cmd_line in _KNOWN_MERGE_TOOLS.iteritems():
+        merge_tool = MergeTool(name, cmd_line)
+        if merge_tool.is_available():
+            available_merge_tools.append(merge_tool)
+    return available_merge_tools
