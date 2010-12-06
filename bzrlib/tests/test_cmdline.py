@@ -116,6 +116,7 @@ class TestSplitter(tests.TestCase):
 
 
 class TestUnSplit(tests.TestCase):
+
     def test_unsplit(self):
         self.assertEquals('foo bar', cmdline.unsplit(['foo', 'bar']))
 

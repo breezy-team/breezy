@@ -59,6 +59,7 @@ def tool_name_from_executable(executable):
 
 
 class MergeTool(object):
+
     def __init__(self, name, commandline):
         """Initializes the merge tool with a name and a command-line (a string
         or sequence of strings).

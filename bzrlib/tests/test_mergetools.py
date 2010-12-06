@@ -27,6 +27,7 @@ from bzrlib.tests.features import backslashdir_feature
 
 
 class TestBasics(tests.TestCase):
+
     def setUp(self):
         super(TestBasics, self).setUp()
         self.tool = mergetools.MergeTool('sometool',
@@ -103,14 +104,18 @@ class TestBasics(tests.TestCase):
 
 
 class TestUnicodeBasics(tests.TestCase):
+
     def setUp(self):
         super(TestUnicodeBasics, self).setUp()
-        self.tool = mergetools.MergeTool(u'someb\u0414r',
-            u'/path/to/b\u0414r --opt {base} -x {this} {other} --stuff {result}')
+        self.tool = mergetools.MergeTool(
+            u'someb\u0414r',
+            u'/path/to/b\u0414r --opt {base} -x {this} {other}'
+            ' --stuff {result}')
 
     def test_get_commandline(self):
         self.assertEqual(
-            u'/path/to/b\u0414r --opt {base} -x {this} {other} --stuff {result}',
+            u'/path/to/b\u0414r --opt {base} -x {this} {other}'
+            ' --stuff {result}',
             self.tool.get_commandline())
 
     def test_get_commandline_as_list(self):
@@ -179,6 +184,7 @@ class TestUnicodeBasics(tests.TestCase):
 
 
 class TestMergeToolOperations(tests.TestCaseInTempDir):
+
     def test_filename_substitution(self):
         def dummy_invoker(executable, args, cleanup):
             self._commandline = [executable] + args
@@ -247,6 +253,7 @@ class TestMergeToolOperations(tests.TestCaseInTempDir):
 
 
 class TestModuleFunctions(tests.TestCaseInTempDir):
+
     def test_detect(self):
         # only way to reliably test detection is to add a known existing
         # executable to the list used for detection

@@ -2119,6 +2119,7 @@ class TestBackupNames(tests.TestCase):
 
 
 class TestFindExecutableInPath(tests.TestCase):
+
     def test_windows(self):
         if sys.platform != 'win32':
             raise tests.TestSkipped('test requires win32')
