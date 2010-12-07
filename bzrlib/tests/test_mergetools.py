@@ -17,6 +17,7 @@
 import os
 import re
 import sys
+import tempfile
 
 from bzrlib import (
     config,
@@ -120,6 +121,16 @@ class TestMergeToolOperations(tests.TestCaseInTempDir):
     def test_is_available_nonexistent(self):
         mt = mergetools.MergeTool(None, "ThisExecutableShouldReallyNotExist")
         self.assertFalse(mt.is_available())
+
+    def test_is_available_non_executable(self):
+        f, name = tempfile.mkstemp()
+        try:
+            self.log('temp filename: %s', name)
+            mt = mergetools.MergeTool('temp', name)
+            self.assertFalse(mt.is_available())
+        finally:
+            os.close(f)
+            os.unlink(name)
 
 
 class TestModuleFunctions(tests.TestCaseInTempDir):

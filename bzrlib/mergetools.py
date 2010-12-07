@@ -43,7 +43,7 @@ def subprocess_invoker(executable, args, cleanup):
 
 
 _WIN32_PATH_EXT = [unicode(ext.lower())
-                   for ext in os.getenv('PATHEXT', '').split(';')]
+                   for ext in os.getenv('PATHEXT', '').split(os.pathsep)]
 
 
 class MergeTool(object):
@@ -59,8 +59,15 @@ class MergeTool(object):
 
     def is_available(self):
         exe = self._cmd_list[0]
-        return (os.path.exists(exe)
-                or osutils.find_executable_on_path(exe) is not None)
+        if sys.platform == 'win32':
+            if os.path.isabs(exe):
+                base, ext = os.path.splitext(exe)
+                return os.path.exists(exe) and ext in _WIN32_PATH_EXT
+            else:
+                return osutils.find_executable_on_path(exe) is not None
+        else:
+            return (os.access(exe, os.X_OK)
+                    or osutils.find_executable_on_path(exe) is not None)
 
     def invoke(self, filename, invoker=None):
         if invoker is None:
