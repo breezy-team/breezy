@@ -1703,6 +1703,14 @@ class PendingAncestryResult(AbstractSearchResult):
         self.heads = frozenset(heads)
         self.repo = repo
 
+    def __repr__(self):
+        if len(self.heads) > 5:
+            heads_repr = repr(list(self.heads)[:5] + ', ...]')
+        else:
+            heads_repr = repr(self.heads)
+        return '<%s heads:%s repo:%r>' % (
+            self.__class__.__name__, heads_repr, self.repo)
+
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
 
