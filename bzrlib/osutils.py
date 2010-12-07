@@ -2391,9 +2391,12 @@ def find_executable_on_path(name):
     path = os.environ.get('PATH')
     if path is None:
         return None
-    exts = os.environ.get('PATHEXT', '').split(os.pathsep)
-    if '' not in exts:
-        exts.insert(0, '')
+    if sys.platform == 'win32':
+        exts = os.environ.get('PATHEXT', '').split(os.pathsep)
+        if '' not in exts:
+            exts.insert(0, '')
+    else:
+        exts = ['']
     for ext in exts:
         for d in path.split(os.pathsep):
             if d:
