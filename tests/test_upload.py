@@ -199,6 +199,19 @@ class UploadUtilsMixin(object):
         self.tree.add(path)
         self.tree.commit('change %s from file to dir' % path)
 
+    def add_symlink(self, path, target, base=branch_dir):
+        self.requireFeature(tests.SymlinkFeature)
+        os.symlink(target, osutils.pathjoin(base, path))
+        self.tree.add(path)
+        self.tree.commit('add symlink %s -> %s' % (path, target))
+
+    def modify_symlink(self, path, target, base=branch_dir):
+        self.requireFeature(tests.SymlinkFeature)
+        full_path = osutils.pathjoin(base, path)
+        os.unlink(full_path)
+        os.symlink(target, full_path)
+        self.tree.commit('modify symlink %s -> %s' % (path, target))
+
     def _get_cmd_upload(self):
         cmd = upload.cmd_upload()
         # We don't want to use run_bzr here because redirected output are a
@@ -411,6 +424,27 @@ class TestUploadMixin(UploadUtilsMixin):
 
     def test_unicode_make_file_executable(self):
         self._test_make_file_executable(u'hello\u00d8')
+
+    def test_create_symlink(self):
+        self.make_branch_and_working_tree()
+        self.do_full_upload()
+        self.add_symlink('link', 'target')
+
+        self.do_upload()
+
+        self.failIfUpFileExists('link')
+
+    def test_rename_symlink(self):
+        self.make_branch_and_working_tree()
+        old_name, new_name = 'old-link', 'new-link'
+        self.add_symlink(old_name, 'target')
+        self.do_full_upload()
+        self.rename_any(old_name, new_name)
+
+        self.do_upload()
+
+        self.failIfUpFileExists(old_name)
+        self.failIfUpFileExists(new_name)
 
     def get_upload_auto(self):
         return upload.get_upload_auto(self.tree.branch)
@@ -671,6 +705,16 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.failIfUpFileExists('dir/a')
         self.failIfUpFileExists('dir')
         self.assertUpFileEqual('foo', 'a')
+
+    def test_delete_symlink(self):
+        self.make_branch_and_working_tree()
+        self.add_symlink('link', 'target')
+        self.do_full_upload()
+        self.delete_any('link')
+
+        self.do_upload()
+
+        self.failIfUpFileExists('link')
 
     def test_upload_for_the_first_time_do_a_full_upload(self):
         self.make_branch_and_working_tree()

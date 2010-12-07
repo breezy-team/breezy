@@ -49,6 +49,9 @@ Bug Fixes
   get_user_option_as_bool().
   (Vincent Ladeuil, #423791)
 
+* Emit warnings instead of backtrace when symlinks are encountered.
+ (Vincent Ladeuil, #477224)
+
 Improvements
 ************
 
