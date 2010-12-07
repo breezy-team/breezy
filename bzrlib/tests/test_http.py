@@ -2216,3 +2216,38 @@ class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
         self.assertEqual('', stdout.getvalue())
 
 
+class TestBug686008(tests.TestCase):
+
+    _test_needs_features = [tests.HTTPSServerFeature]
+
+    def test_it(self):
+        from bzrlib.tests import https_server
+        import ssl
+        trigger_bug = False
+        class RequestHandler(http_server.TestingHTTPRequestHandler):
+
+            def handle_one_request(self):
+                if trigger_bug:
+                    # Now, break the ssl socket
+                    sock = socket.socket(socket.AF_INET)
+                    self.connection = ssl.wrap_socket(sock)
+                    self.rfile = self.connection.makefile('rb', self.rbufsize)
+                http_server.TestingHTTPRequestHandler.handle_one_request(self)
+
+            def do_HEAD(self):
+                # Always succeds, leaving the connection open
+                self.close_connection = 0
+                self.send_response(200)
+                self.end_headers()
+
+        server = https_server.HTTPSServer(RequestHandler)
+        self.start_server(server)
+        self.assertIsInstance(server.server,
+                              https_server.TestingThreadingHTTPSServer)
+        t = _urllib.HttpTransport_urllib(server.get_url())
+        self.addCleanup(t.disconnect)
+        # We need a first clean request
+        t.has('foo')
+        # Now we force the server to choke
+        trigger_bug = True
+        server.stop_server()
