@@ -136,7 +136,7 @@ And change anything you'd like, and file a merge proposal on Launchpad.
 Known Issues
 ------------
 
- * Symlinks are not supported
+ * Symlinks are not supported (warnings are emitted when they are encountered).
 
 
 """
@@ -463,6 +463,11 @@ class BzrUploader(object):
                     self.upload_file_robustly(relpath, ie.file_id)
                 elif ie.kind == 'directory':
                     self.make_remote_dir_robustly(relpath)
+                elif ie.kind == 'symlink':
+                    if not self.quiet:
+                        target = self.tree.path_content_summary(path)[3]
+                        self.outf.write('Not uploading symlink %s -> %s\n'
+                                        % (path, target))
                 else:
                     raise NotImplementedError
             self.set_uploaded_revid(self.rev_id)
@@ -504,6 +509,11 @@ class BzrUploader(object):
                     self.delete_remote_file(path)
                 elif kind is  'directory':
                     self.delete_remote_dir_maybe(path)
+                elif kind == 'symlink':
+                    if not self.quiet:
+                        target = self.tree.path_content_summary(path)[3]
+                        self.outf.write('Not deleting remote symlink %s -> %s\n'
+                                        % (path, target))
                 else:
                     raise NotImplementedError
 
@@ -518,7 +528,12 @@ class BzrUploader(object):
                     # We update the old_path content because renames and
                     # deletions are differed.
                     self.upload_file(old_path, id)
-                self.rename_remote(old_path, new_path)
+                if kind == 'symlink':
+                    if not self.quiet:
+                        self.outf.write('Not renaming remote symlink %s to %s\n'
+                                        % (old_path, new_path))
+                else:
+                    self.rename_remote(old_path, new_path)
             self.finish_renames()
             self.finish_deletions()
 
@@ -527,14 +542,14 @@ class BzrUploader(object):
                     if not self.quiet:
                         self.outf.write('Ignoring %s\n' % path)
                     continue
-                if old_kind is 'file':
+                if old_kind == 'file':
                     self.delete_remote_file(path)
-                elif old_kind is  'directory':
+                elif old_kind ==  'directory':
                     self.delete_remote_dir(path)
                 else:
                     raise NotImplementedError
 
-                if new_kind is 'file':
+                if new_kind == 'file':
                     self.upload_file(path, id)
                 elif new_kind is 'directory':
                     self.make_remote_dir(path)
@@ -546,10 +561,15 @@ class BzrUploader(object):
                     if not self.quiet:
                         self.outf.write('Ignoring %s\n' % path)
                     continue
-                if kind is 'file':
+                if kind == 'file':
                     self.upload_file(path, id)
-                elif kind is 'directory':
+                elif kind == 'directory':
                     self.make_remote_dir(path)
+                elif kind == 'symlink':
+                    if not self.quiet:
+                        target = self.tree.path_content_summary(path)[3]
+                        self.outf.write('Not uploading symlink %s -> %s\n'
+                                        % (path, target))
                 else:
                     raise NotImplementedError
 
