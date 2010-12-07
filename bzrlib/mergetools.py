@@ -35,9 +35,6 @@ from bzrlib import (
 )
 """)
 
-from bzrlib.commands import Command
-from bzrlib.option import Option
-
 
 def subprocess_invoker(executable, args, cleanup):
     retcode = subprocess.call([executable] + args)
@@ -49,87 +46,26 @@ _WIN32_PATH_EXT = [unicode(ext.lower())
                    for ext in os.getenv('PATHEXT', '').split(';')]
 
 
-def tool_name_from_executable(executable):
-    name = os.path.basename(executable)
-    if sys.platform == 'win32':
-        root, ext = os.path.splitext(name)
-        if ext.lower() in _WIN32_PATH_EXT:
-            name = root
-    return name
-
-
 class MergeTool(object):
-    def __init__(self, name, commandline):
-        """Initializes the merge tool with a name and a command-line (a string
-        or sequence of strings).
-        """
-        self.set_commandline(commandline)
-        self.set_name(name) # needs commandline set first when name is None
+
+    def __init__(self, name, command_line):
+        """Initializes the merge tool with a name and a command-line."""
+        self.name = name
+        self.command_line = command_line
+        self._cmd_list = cmdline.split(self.command_line)
 
     def __repr__(self):
-        return '<MergeTool %s: %r>' % (self._name, self._commandline)
-
-    def __eq__(self, other):
-        if type(other) == MergeTool:
-            return cmp(self, other) == 0
-        else:
-            return False
-
-    def __ne__(self, other):
-        if type(other) == MergeTool:
-            return cmp(self, other) != 0
-        else:
-            return True
-
-    def __cmp__(self, other):
-        if type(other == MergeTool):
-            return cmp((self._name, self._commandline),
-                (other._name, other._commandline))
-
-    def __str__(self):
-        return self.get_commandline()
-
-    def get_name(self):
-        return self._name
-
-    def set_name(self, name):
-        if name is None:
-            self._name = tool_name_from_executable(self.get_executable())
-        else:
-            self._name = name
-
-    def get_commandline(self):
-        return cmdline.unsplit(self._commandline)
-
-    def get_commandline_as_list(self):
-        return self._commandline
-
-    def set_commandline(self, commandline):
-        if isinstance(commandline, basestring):
-            self._commandline = cmdline.split(commandline)
-        elif isinstance(commandline, (tuple, list)):
-            self._commandline = list(commandline)
-        else:
-            raise TypeError('%r is not valid for commandline; must be string '
-                            'or sequence of strings' % commandline)
-
-    def get_executable(self):
-        if len(self._commandline) < 1:
-            return u''
-        return self._commandline[0]
-
-    def set_executable(self, executable):
-        self._commandline[:1] = [executable]
+        return '<%s(%s, %s)>' % (self.__class__, self.name, self.command_line)
 
     def is_available(self):
-        executable = self.get_executable()
-        return os.path.exists(executable) or \
-               osutils.find_executable_on_path(executable) is not None
+        exe = self._cmd_list[0]
+        return (os.path.exists(exe)
+                or osutils.find_executable_on_path(exe) is not None)
 
     def invoke(self, filename, invoker=None):
         if invoker is None:
             invoker = subprocess_invoker
-        args, tmp_file = self._subst_filename(self._commandline, filename)
+        args, tmp_file = self._subst_filename(self._cmd_list, filename)
         def cleanup(retcode):
             if tmp_file is not None:
                 if retcode == 0: # on success, replace file with temp file
@@ -158,17 +94,20 @@ class MergeTool(object):
         return subst_args, tmp_file
 
 
-_KNOWN_MERGE_TOOLS = (
-    u'bcompare {this} {other} {base} {result}',
-    u'kdiff3 {base} {this} {other} -o {result}',
-    u'xxdiff -m -O -M {result} {this} {base} {other}',
-    u'meld {base} {this_temp} {other}',
-    u'opendiff {this} {other} -ancestor {base} -merge {result}',
-    u'winmergeu {result}',
-)
+_KNOWN_MERGE_TOOLS = {
+    'bcompare': 'bcompare {this} {other} {base} {result}',
+    'kdiff3': 'kdiff3 {base} {this} {other} -o {result}',
+    'xdiff': 'xxdiff -m -O -M {result} {this} {base} {other}',
+    'meld': 'meld {base} {this_temp} {other}',
+    'opendiff': 'opendiff {this} {other} -ancestor {base} -merge {result}',
+    'winmergeu': 'winmergeu {result}',
+}
 
 
 def detect_merge_tools():
-    tools = [MergeTool(None, commandline) for commandline in _KNOWN_MERGE_TOOLS]
-    return [tool for tool in tools if tool.is_available()]
-
+    available_merge_tools = []
+    for name, cmd_line in _KNOWN_MERGE_TOOLS.iteritems():
+        merge_tool = MergeTool(name, cmd_line)
+        if merge_tool.is_available():
+            available_merge_tools.append(merge_tool)
+    return available_merge_tools

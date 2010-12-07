@@ -361,52 +361,48 @@ class Config(object):
     def get_merge_tools(self):
         tools = []
         for (oname, value, section, conf_id, parser) in self._get_options():
-            if oname.startswith('mergetool.'):
-                tools.append(mergetools.MergeTool(oname[len('mergetool.'):],
+            if oname.startswith('bzr.mergetool.'):
+                tools.append(mergetools.MergeTool(oname[len('bzr.mergetool.'):],
                                                   value))
         trace.mutter('loaded merge tools: %r' % tools)
         return tools
 
     def set_merge_tools(self, tools):
-        # remove entries from config for tools which do not appear in merge_tools
-        tool_names = [tool.get_name() for tool in tools]
+        # remove entries from config for tools which do not appear in
+        # merge_tools
+        tool_names = [tool.name for tool in tools]
         for (oname, value, section, conf_id, parser) in self._get_options():
-            if oname.startswith('mergetool.'):
-                if oname[len('mergetool.'):] not in tool_names:
+            if oname.startswith('bzr.mergetool.'):
+                if oname[len('bzr.mergetool.'):] not in tool_names:
                     self.remove_user_option(oname)
         # set config entries
         for tool in tools:
-            oname = 'mergetool.%s' % tool.get_name()
-            value = tool.get_commandline()
+            oname = 'bzr.mergetool.%s' % tool.name
+            value = tool.command_line
             if oname == '' or value == '':
                 continue
             self.set_user_option(oname, value)
 
-    def find_merge_tool(self, name):
-        commandline = self.get_user_option('mergetool.%s' % name)
+    def _find_merge_tool(self, name):
+        commandline = self.get_user_option('bzr.mergetool.%s' % name)
         if commandline is None:
             return None
         return mergetools.MergeTool(name, commandline)
 
     def get_default_merge_tool(self):
-        name = self.get_user_option('default_mergetool')
+        name = self.get_user_option('bzr.default_mergetool')
         if name is None:
             trace.mutter('no default merge tool defined')
             return None
-        tool = self.find_merge_tool(name)
+        tool = self._find_merge_tool(name)
         trace.mutter('found default merge tool: %r', tool)
         return tool
 
     def set_default_merge_tool(self, name):
-        if name is None:
-            self.remove_user_option('default_mergetool')
-        else:
-            if isinstance(name, mergetools.MergeTool):
-                name = name.get_name()
-            if self.find_merge_tool(name) is None:
-                raise errors.BzrError('invalid merge tool name: %r' % name)
-            trace.mutter('setting default merge tool: %s', name)
-            self.set_user_option('default_mergetool', name)
+        if self._find_merge_tool(name) is None:
+            raise errors.BzrError('invalid merge tool name: %r' % name)
+        trace.mutter('setting default merge tool: %s', name)
+        self.set_user_option('bzr.default_mergetool', name)
 
 
 class IniBasedConfig(Config):

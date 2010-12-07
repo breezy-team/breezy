@@ -19,7 +19,10 @@
 import os
 import stat
 
-from bzrlib import osutils, tests
+from bzrlib import (
+    osutils,
+    tests,
+    )
 from bzrlib.symbol_versioning import deprecated_in
 
 
