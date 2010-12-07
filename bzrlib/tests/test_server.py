@@ -531,7 +531,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         # Update the client description
         self.clients.pop()
         self.clients.append((request, client_address, t))
-        # Propagate the exception handler since we must use the same one than
+        # Propagate the exception handler since we must use the same one as
         # TestingTCPServer for connections running in their own threads.
         t.set_ignored_exceptions(self.ignored_exceptions)
         t.start()
