@@ -553,21 +553,20 @@ class ControlDir(ControlComponent):
         """
         if source_branch is not None:
             add_cleanup(source_branch.lock_read().unlock)
+            return source_branch, source_branch.repository
+        try:
+            source_branch = self.open_branch()
             source_repository = source_branch.repository
-        else:
+        except errors.NotBranchError:
+            source_branch = None
             try:
-                source_branch = self.open_branch()
-                source_repository = source_branch.repository
-            except errors.NotBranchError:
-                source_branch = None
-                try:
-                    source_repository = self.open_repository()
-                except errors.NoRepositoryPresent:
-                    source_repository = None
-                else:
-                    add_cleanup(source_repository.lock_read().unlock)
+                source_repository = self.open_repository()
+            except errors.NoRepositoryPresent:
+                source_repository = None
             else:
-                add_cleanup(source_branch.lock_read().unlock)
+                add_cleanup(source_repository.lock_read().unlock)
+        else:
+            add_cleanup(source_branch.lock_read().unlock)
         return source_branch, source_repository
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
