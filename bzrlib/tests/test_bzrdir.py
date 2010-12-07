@@ -31,6 +31,7 @@ from bzrlib import (
     help_topics,
     lock,
     repository,
+    revision as _mod_revision,
     osutils,
     remote,
     symbol_versioning,
@@ -1343,6 +1344,9 @@ class _TestBranch(bzrlib.branch.Branch):
 
     def copy_content_into(self, destination, revision_id=None):
         self.calls.append('copy_content_into')
+
+    def last_revision(self):
+        return _mod_revision.NULL_REVISION
 
     def get_parent(self):
         return self._parent
