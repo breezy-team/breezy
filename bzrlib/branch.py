@@ -3457,7 +3457,6 @@ class GenericInterBranch(InterBranch):
             fetch_spec_factory.source_repo = self.source.repository
             fetch_spec_factory.target_repo = self.target.repository
             fetch_spec_factory.target_repo_kind = controldir._TargetRepoKinds.PREEXISTING
-            fetch_spec_factory.add_revision_ids([stop_revision])
             fetch_spec = fetch_spec_factory.make_fetch_spec()
         else:
             fetch_spec = _mod_graph.NotInOtherForRevs(self.target.repository,
