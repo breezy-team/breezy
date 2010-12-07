@@ -1065,7 +1065,7 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
         conf.set_merge_tools(tools)
         del tools[0]
         conf.set_merge_tools(tools)
-        self.assertEqual(None, conf.get_user_option('mergetool.kdiff3'))
+        self.assertEqual(None, conf.get_user_option('bzr.mergetool.kdiff3'))
 
     def test_set_default_merge_tool(self):
         conf = config.GlobalConfig()
