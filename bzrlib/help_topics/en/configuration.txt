@@ -322,7 +322,7 @@ for. The '?' and '*' wildcards are supported::
     create_signatures = always
     check_signatures  = always
 
-    [http://bazaar-vcs.org/bzr/*]
+    [http://example.com/bzr/*]
     check_signatures  = require
 
 The authentication configuration file, authentication.conf

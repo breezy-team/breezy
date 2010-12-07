@@ -133,9 +133,6 @@ class MockLaunchpadService(LaunchpadService):
 
 
 class TestBranchRegistration(TestCaseWithTransport):
-    SAMPLE_URL = 'http://bazaar-vcs.org/bzr/bzr.dev/'
-    SAMPLE_OWNER = 'jhacker@foo.com'
-    SAMPLE_BRANCH_ID = 'bzr.dev'
 
     def setUp(self):
         super(TestBranchRegistration, self).setUp()
