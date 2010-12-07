@@ -313,7 +313,7 @@ class ThreadWithException(threading.Thread):
             self.ready.set()
 
 
-    def join(self, timeout=2000):
+    def join(self, timeout=5):
         """Overrides Thread.join to raise any exception caught.
 
 
