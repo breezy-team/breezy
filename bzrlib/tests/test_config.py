@@ -983,7 +983,19 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
     def test_get_default_merge_tool_empty(self):
         conf = self._get_empty_config()
         tool = conf.get_default_merge_tool()
-        self.assertEqual(None, tool)
+        self.assertIs(tool, None)
+
+    def test_find_merge_tool(self):
+        conf = self._get_sample_config()
+        tool = conf.find_merge_tool('kdiff3')
+        self.assertEqual('kdiff3', tool.name)
+        self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
+                         tool.command_line)
+
+    def test_find_merge_tool_not_found(self):
+        conf = self._get_sample_config()
+        tool = conf.find_merge_tool('DOES NOT EXIST')
+        self.assertIs(tool, None)
 
 
 class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
