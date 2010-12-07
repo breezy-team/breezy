@@ -723,6 +723,47 @@ class TestControlDir(TestCaseWithControlDir):
         new_branch = target.open_branch()
         self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
+    def test_sprout_bzrdir_passing_rev_not_source_branch_copies_tags(self):
+        # dir.sprout(..., revision_id='rev1') copies rev1, the tip of the
+        # branch, all the tags of the branch at that bzrdir, the ancestry of
+        # all of those, but no other revs.
+        builder = self.make_branch_builder('source')
+        builder.build_commit(message="Base", rev_id='base-rev')
+        # Make three parallel lines of ancestry off this base.
+        source = builder.get_branch()
+        builder.build_commit(message="Rev A1", rev_id='rev-a1')
+        builder.build_commit(message="Rev A2", rev_id='rev-a2')
+        builder.build_commit(message="Rev A3", rev_id='rev-a3')
+        source.set_last_revision_info(1, 'base-rev')
+        builder.build_commit(message="Rev B1", rev_id='rev-b1')
+        builder.build_commit(message="Rev B2", rev_id='rev-b2')
+        builder.build_commit(message="Rev B3", rev_id='rev-b3')
+        source.set_last_revision_info(1, 'base-rev')
+        builder.build_commit(message="Rev C1", rev_id='rev-c1')
+        builder.build_commit(message="Rev C2", rev_id='rev-c2')
+        builder.build_commit(message="Rev C3", rev_id='rev-c3')
+        # Set the branch tip to A2
+        source.set_last_revision_info(3, 'rev-a2')
+        try:
+            # Create a tag for B2, and for an absent rev
+            source.tags.set_tag('tag-non-ancestry', 'rev-b2')
+            source.tags.set_tag('tag-absent', 'absent-rev')
+        except errors.TagsNotSupported:
+            raise TestNotApplicable('Branch format does not support tags.')
+        # And ask sprout for C2
+        dir = source.bzrdir
+        target = dir.sprout(self.get_url('target'), revision_id='rev-c2')
+        # The tags are present
+        new_branch = target.open_branch()
+        self.assertEqual(
+            {'tag-absent': 'absent-rev', 'tag-non-ancestry': 'rev-b2'},
+            new_branch.tags.get_tag_dict())
+        # And the revs for A2, B2 and C2's ancestries are present, but no
+        # others.
+        self.assertEqual(
+            ['base-rev', 'rev-a1', 'rev-a2', 'rev-b1', 'rev-b2', 'rev-c1',
+             'rev-c2'], sorted(new_branch.repository.all_revision_ids()))
+
     def test_sprout_bzrdir_tree_branch_reference(self):
         # sprouting should create a repository if needed and a sprouted branch.
         # the tree state should not be copied.

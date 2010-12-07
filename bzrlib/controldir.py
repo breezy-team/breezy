@@ -457,8 +457,6 @@ class ControlDir(ControlComponent):
                source_branch=None, create_tree_if_local=True):
         add_cleanup = op.add_cleanup
         fetch_spec_factory = FetchSpecFactory()
-        fetch_spec_factory.source_branch = source_branch
-        # XXX: source_branch can change further down
         if revision_id is not None:
             # XXX: sometimes (always?) we could/should set
             # source_branch_stop_revision too.
@@ -470,6 +468,7 @@ class ControlDir(ControlComponent):
         result = cloning_format.initialize_on_transport(target_transport)
         source_branch, source_repository = self._find_source_repo(
             add_cleanup, source_branch)
+        fetch_spec_factory.source_branch = source_branch
         # if a stacked branch wasn't requested, we don't create one
         # even if the origin was stacked
         if stacked and source_branch is not None:
