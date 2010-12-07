@@ -61,7 +61,7 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
-* Catch exceptions realted to bug #637821 during test cleanup to avoid
+* Catch exceptions related to bug #637821 during test cleanup to avoid
   spurious failures. (Vincent Ladeuil, #686008).
 
 * ``TestDebuntuExpansions`` was escaping the test isolation by calling the
