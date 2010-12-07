@@ -17,13 +17,15 @@
 """bzr upgrade logic."""
 
 
-from bzrlib import osutils, repository
+from bzrlib import (
+    errors,
+    osutils,
+    repository,
+    ui,
+    )
 from bzrlib.bzrdir import BzrDir, format_registry
-import bzrlib.errors as errors
 from bzrlib.remote import RemoteBzrDir
-from bzrlib.transport import get_transport
 from bzrlib.trace import mutter, note, warning
-import bzrlib.ui as ui
 
 
 class Convert(object):
