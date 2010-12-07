@@ -3357,7 +3357,7 @@ class cmd_upgrade(Command):
     tried.
 
     For more information on upgrades, see the Bazaar 2.0 Upgrade Guide,
-    http://doc.bazaar-vcs.org/latest/en/upgrade-guide/.
+    http://doc.bazaar.canonical.com/latest/en/upgrade-guide/.
     """
 
     _see_also = ['check', 'reconcile', 'formats']
