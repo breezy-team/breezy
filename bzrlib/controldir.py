@@ -457,12 +457,9 @@ class ControlDir(ControlComponent):
                source_branch=None, create_tree_if_local=True):
         add_cleanup = op.add_cleanup
         fetch_spec_factory = FetchSpecFactory()
-        fetch_spec_factory.source_branch = source_branch
-        # XXX: source_branch can change further down
         if revision_id is not None:
-            # XXX: sometimes (always?) we could/should set
-            # source_branch_stop_revision too.
             fetch_spec_factory.add_revision_ids([revision_id])
+            fetch_spec_factory.source_branch_stop_revision = revision_id
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir(stacked)
@@ -470,6 +467,7 @@ class ControlDir(ControlComponent):
         result = cloning_format.initialize_on_transport(target_transport)
         source_branch, source_repository = self._find_source_repo(
             add_cleanup, source_branch)
+        fetch_spec_factory.source_branch = source_branch
         # if a stacked branch wasn't requested, we don't create one
         # even if the origin was stacked
         if stacked and source_branch is not None:
@@ -553,21 +551,20 @@ class ControlDir(ControlComponent):
         """
         if source_branch is not None:
             add_cleanup(source_branch.lock_read().unlock)
+            return source_branch, source_branch.repository
+        try:
+            source_branch = self.open_branch()
             source_repository = source_branch.repository
-        else:
+        except errors.NotBranchError:
+            source_branch = None
             try:
-                source_branch = self.open_branch()
-                source_repository = source_branch.repository
-            except errors.NotBranchError:
-                source_branch = None
-                try:
-                    source_repository = self.open_repository()
-                except errors.NoRepositoryPresent:
-                    source_repository = None
-                else:
-                    add_cleanup(source_repository.lock_read().unlock)
+                source_repository = self.open_repository()
+            except errors.NoRepositoryPresent:
+                source_repository = None
             else:
-                add_cleanup(source_branch.lock_read().unlock)
+                add_cleanup(source_repository.lock_read().unlock)
+        else:
+            add_cleanup(source_branch.lock_read().unlock)
         return source_branch, source_repository
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
