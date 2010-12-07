@@ -131,16 +131,3 @@ class TestMergeToolOperations(tests.TestCaseInTempDir):
         finally:
             os.close(f)
             os.unlink(name)
-
-
-class TestModuleFunctions(tests.TestCaseInTempDir):
-
-    def test_detect(self):
-        # only way to reliably test detection is to add a known existing
-        # executable to the list used for detection
-        self.overrideAttr(mergetools, '_KNOWN_MERGE_TOOLS',
-                          {'sh': 'sh', 'cmd': 'cmd'})
-        tools = mergetools.detect_merge_tools()
-        tools_commandlines = [mt.command_line for mt in tools]
-        self.assertTrue('sh' in tools_commandlines or
-                        'cmd' in tools_commandlines)

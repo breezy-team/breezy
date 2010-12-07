@@ -359,13 +359,17 @@ class Config(object):
             return True
 
     def get_merge_tools(self):
-        tools = []
+        tools = {}
         for (oname, value, section, conf_id, parser) in self._get_options():
             if oname.startswith('bzr.mergetool.'):
-                tools.append(mergetools.MergeTool(oname[len('bzr.mergetool.'):],
-                                                  value))
+                tool_name = oname[len('bzr.mergetool.'):]
+                tools[tool_name] = mergetools.MergeTool(tool_name, value)
+        for tool_name in mergetools.known_merge_tools:
+            if not tool_name in tools:
+                tools[tool_name] = mergetools.MergeTool(tool_name,
+                    mergetools.known_merge_tools[tool_name])
         trace.mutter('loaded merge tools: %r' % tools)
-        return tools
+        return tools.values()
 
     def set_merge_tools(self, tools):
         # remove entries from config for tools which do not appear in
@@ -384,7 +388,8 @@ class Config(object):
             self.set_user_option(oname, value)
 
     def find_merge_tool(self, name):
-        commandline = self.get_user_option('bzr.mergetool.%s' % name)
+        commandline = (self.get_user_option('bzr.mergetool.%s' % name)
+                       or mergetools.known_merge_tools.get(name, None))
         if commandline is None:
             return None
         return mergetools.MergeTool(name, commandline)

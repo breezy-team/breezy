@@ -71,10 +71,9 @@ change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
 log_format=short
 user_global_option=something
-bzr.mergetool.kdiff3=kdiff3 {base} {this} {other} -o {result}
-bzr.mergetool.winmergeu=winmergeu {result}
+bzr.mergetool.sometool=sometool {base} {this} {other} -o {result}
 bzr.mergetool.funkytool=funkytool "arg with spaces" {this_temp}
-bzr.default_mergetool=kdiff3
+bzr.default_mergetool=sometool
 [ALIASES]
 h=help
 ll=""" + sample_long_alias + "\n"
@@ -959,23 +958,59 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         self.assertIs(None, change_editor)
 
     def test_get_merge_tools(self):
+        def cmptool(a, b):
+            return cmp(a.name, b.name)
         conf = self._get_sample_config()
-        tools = conf.get_merge_tools()
+        tools = sorted(conf.get_merge_tools(), cmptool)
         self.log(repr(tools))
-        self.assertEqual(3, len(tools))
-        self.assertEqual('kdiff3', tools[0].name)
-        self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
-                         tools[0].command_line)
-        self.assertEqual('winmergeu', tools[1].name)
-        self.assertEqual('winmergeu {result}', tools[1].command_line)
-        self.assertEqual('funkytool', tools[2].name)
-        self.assertEqual('funkytool "arg with spaces" {this_temp}',
-                          tools[2].command_line)
+        tools = [(tool.name, tool.command_line) for tool in tools]
+        self.assertEqual([
+            ('bcompare', 'bcompare {this} {other} {base} {result}'),
+            ('funkytool', 'funkytool "arg with spaces" {this_temp}'),
+            ('kdiff3', 'kdiff3 {base} {this} {other} -o {result}'),
+            ('meld', 'meld {base} {this_temp} {other}'),
+            ('opendiff', 'opendiff {this} {other} -ancestor {base} -merge {result}'),
+            ('sometool', 'sometool {base} {this} {other} -o {result}'),
+            ('winmergeu', 'winmergeu {result}'),
+            ('xdiff', 'xxdiff -m -O -M {result} {this} {base} {other}'),
+            ],
+            tools)
+
+    def test_get_merge_tools_override_known(self):
+        def cmptool(a, b):
+            return cmp(a.name, b.name)
+        conf = self._get_empty_config()
+        conf.set_merge_tools([
+            mergetools.MergeTool('kdiff3', 'kdiff3 blah blah blah')
+        ])
+        tools = sorted(conf.get_merge_tools(), cmptool)
+        self.log(repr(tools))
+        tools = [(tool.name, tool.command_line) for tool in tools]
+        self.assertEqual([
+            ('bcompare', 'bcompare {this} {other} {base} {result}'),
+            ('kdiff3', 'kdiff3 blah blah blah'),
+            ('meld', 'meld {base} {this_temp} {other}'),
+            ('opendiff', 'opendiff {this} {other} -ancestor {base} -merge {result}'),
+            ('winmergeu', 'winmergeu {result}'),
+            ('xdiff', 'xxdiff -m -O -M {result} {this} {base} {other}'),
+            ],
+            tools)
 
     def test_get_default_merge_tool(self):
         conf = self._get_sample_config()
         tool = conf.get_default_merge_tool()
         self.log(repr(tool))
+        self.assertIsNot(tool, None)
+        self.assertEqual('sometool', tool.name)
+        self.assertEqual('sometool {base} {this} {other} -o {result}',
+                         tool.command_line)
+
+    def test_get_default_merge_tool_known(self):
+        conf = self._get_sample_config()
+        conf.set_default_merge_tool('kdiff3')
+        tool = conf.get_default_merge_tool()
+        self.log(repr(tool))
+        self.assertIsNot(tool, None)
         self.assertEqual('kdiff3', tool.name)
         self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
                          tool.command_line)
@@ -987,15 +1022,32 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_find_merge_tool(self):
         conf = self._get_sample_config()
-        tool = conf.find_merge_tool('kdiff3')
-        self.assertEqual('kdiff3', tool.name)
-        self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
+        tool = conf.find_merge_tool('sometool')
+        self.assertIsNot(tool, None)
+        self.assertEqual('sometool', tool.name)
+        self.assertEqual('sometool {base} {this} {other} -o {result}',
                          tool.command_line)
 
     def test_find_merge_tool_not_found(self):
         conf = self._get_sample_config()
         tool = conf.find_merge_tool('DOES NOT EXIST')
         self.assertIs(tool, None)
+
+    def test_find_merge_tool_known(self):
+        conf = self._get_empty_config()
+        tool = conf.find_merge_tool('kdiff3')
+        self.assertIsNot(tool, None)
+        
+    def test_find_merge_tool_override_known(self):
+        conf = self._get_empty_config()
+        conf.set_merge_tools([
+            mergetools.MergeTool('kdiff3', 'kdiff3 blah blah blah')
+        ])
+        tool = conf.find_merge_tool('kdiff3')
+        self.assertIsNot(tool, None)
+        self.assertEqual('kdiff3', tool.name)
+        self.assertEqual('kdiff3 blah blah blah',
+                         tool.command_line)
 
 
 class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
@@ -1042,13 +1094,10 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
             mergetools.MergeTool('kdiff3',
                                  'kdiff3 {base} {this} {other} -o {result}'),
             mergetools.MergeTool('kdiff3',
-                                 'kdiff3 {base} {this} {other} -o {result}')
+                                 'kdiff3 blah blah blah')
             ])
-        tools = conf.get_merge_tools()
-        self.assertEqual(1, len(tools))
-        self.assertEqual('kdiff3', tools[0].name)
-        self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
-                         tools[0].command_line)
+        self.assertEqual('kdiff3 blah blah blah',
+                          conf.get_user_option('bzr.mergetool.kdiff3'))
 
     def test_set_merge_tools_empty_tool(self):
         conf = config.GlobalConfig()
@@ -1058,19 +1107,14 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
             mergetools.MergeTool('',''),
             mergetools.MergeTool('blah','')
             ])
-        tools = conf.get_merge_tools()
-        self.assertEqual(1, len(tools))
-        self.assertEqual('kdiff3', tools[0].name)
         self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
-                         tools[0].command_line)
+                          conf.get_user_option('bzr.mergetool.kdiff3'))
 
     def test_set_merge_tools_remove_one(self):
         conf = config.GlobalConfig()
         tools = [
             mergetools.MergeTool('kdiff3',
                                  'kdiff3 {base} {this} {other} -o {result}'),
-            mergetools.MergeTool('winmergeu',
-                                 'winmergeu {result}'),
             mergetools.MergeTool('funkytool',
                                  'funkytool "arg with spaces" {this_temp}')
             ]
@@ -1082,16 +1126,12 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
     def test_set_default_merge_tool(self):
         conf = config.GlobalConfig()
         tools = [
-            mergetools.MergeTool('kdiff3',
-                                 'kdiff3 {base} {this} {other} -o {result}'),
-            mergetools.MergeTool('winmergeu',
-                                 'winmergeu {result}'),
             mergetools.MergeTool('funkytool',
                                  'funkytool "arg with spaces" {this_temp}')
             ]
         conf.set_merge_tools(tools)
-        conf.set_default_merge_tool('winmergeu')
-        self.assertEqual('winmergeu',
+        conf.set_default_merge_tool('funkytool')
+        self.assertEqual('funkytool',
                          conf.get_user_option('bzr.default_mergetool'))
 
     def test_set_invalid_default_merge_tool(self):
@@ -1107,6 +1147,12 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
         conf.set_merge_tools(tools)
         self.failUnlessRaises(errors.BzrError, conf.set_default_merge_tool,
                               'DOES NOT EXIST')
+
+    def test_set_default_merge_tool_known(self):
+        conf = config.GlobalConfig()
+        conf.set_default_merge_tool('kdiff3')
+        self.assertEqual('kdiff3',
+                         conf.get_user_option('bzr.default_mergetool'))
 
 
 class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):

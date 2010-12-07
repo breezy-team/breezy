@@ -101,7 +101,7 @@ class MergeTool(object):
         return subst_args, tmp_file
 
 
-_KNOWN_MERGE_TOOLS = {
+known_merge_tools = {
     'bcompare': 'bcompare {this} {other} {base} {result}',
     'kdiff3': 'kdiff3 {base} {this} {other} -o {result}',
     'xdiff': 'xxdiff -m -O -M {result} {this} {base} {other}',
@@ -109,12 +109,3 @@ _KNOWN_MERGE_TOOLS = {
     'opendiff': 'opendiff {this} {other} -ancestor {base} -merge {result}',
     'winmergeu': 'winmergeu {result}',
 }
-
-
-def detect_merge_tools():
-    available_merge_tools = []
-    for name, cmd_line in _KNOWN_MERGE_TOOLS.iteritems():
-        merge_tool = MergeTool(name, cmd_line)
-        if merge_tool.is_available():
-            available_merge_tools.append(merge_tool)
-    return available_merge_tools
