@@ -32,13 +32,9 @@ Improvements
   have been merge cleanly otherwise. (Vincent Ladeuil, #638451)
 
 * ``upgrade`` now upgrades dependent branches when a shared repository is
-  specified. It also supports several new options:
-
-  * ``--dry-run`` for showing what will happen
-
-  * ``--clean`` to remove the backup.dir directory on successful completion.
-
-  (Ian Clatworthy, #89830, #374734, #422450)
+  specified. It also supports new options: ``--dry-run`` for showing what
+  will happen and ``--clean`` to remove the backup directory on successful
+  completion. (Ian Clatworthy, Matthew Fuller, #89830, #374734, #422450)
 
 Bug Fixes
 *********
