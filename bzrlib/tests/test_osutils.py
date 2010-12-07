@@ -2124,10 +2124,13 @@ class TestFindExecutableInPath(tests.TestCase):
         if sys.platform != 'win32':
             raise tests.TestSkipped('test requires win32')
         self.assertTrue(osutils.find_executable_on_path('explorer') is not None)
-        self.assertTrue(osutils.find_executable_on_path('explorer.exe')
-                        is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('explorer.exe') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('EXPLORER.EXE') is not None)
         self.assertTrue(
             osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
+        self.assertTrue(osutils.find_executable_on_path('file.txt') is None)
 
     def test_other(self):
         if sys.platform == 'win32':
