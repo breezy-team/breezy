@@ -724,9 +724,9 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
     def test_sprout_bzrdir_passing_rev_not_source_branch_copies_tags(self):
-        # dir.sprout(..., revision_id='rev1') copies rev1, the tip of the
-        # branch, all the tags of the branch at that bzrdir, the ancestry of
-        # all of those, but no other revs.
+        # dir.sprout(..., revision_id='rev1') copies rev1, and all the tags of
+        # the branch at that bzrdir, the ancestry of all of those, but no other
+        # revs (not even the tip of the source branch).
         builder = self.make_branch_builder('source')
         builder.build_commit(message="Base", rev_id='base-rev')
         # Make three parallel lines of ancestry off this base.
@@ -761,8 +761,8 @@ class TestControlDir(TestCaseWithControlDir):
         # And the revs for A2, B2 and C2's ancestries are present, but no
         # others.
         self.assertEqual(
-            ['base-rev', 'rev-a1', 'rev-a2', 'rev-b1', 'rev-b2', 'rev-c1',
-             'rev-c2'], sorted(new_branch.repository.all_revision_ids()))
+            ['base-rev', 'rev-b1', 'rev-b2', 'rev-c1', 'rev-c2'],
+            sorted(new_branch.repository.all_revision_ids()))
 
     def test_sprout_bzrdir_tree_branch_reference(self):
         # sprouting should create a repository if needed and a sprouted branch.

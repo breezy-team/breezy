@@ -459,6 +459,7 @@ class ControlDir(ControlComponent):
         fetch_spec_factory = FetchSpecFactory()
         if revision_id is not None:
             fetch_spec_factory.add_revision_ids([revision_id])
+            fetch_spec_factory.source_branch_stop_revision = revision_id
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir(stacked)
