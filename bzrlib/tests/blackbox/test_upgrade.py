@@ -149,13 +149,13 @@ finished
         self.run_bzr('init-repository --format=metaweave repo')
         self.run_bzr('upgrade --format=knit repo')
 
-    def _assert_option_legal(self, option_str):
+    def assertLegalOption(self, option_str):
         # Confirm that an option is legal. (Lower level tests are
         # expected to validate the actual functionality.)
         self.run_bzr('init --format=pack-0.92 branch-foo')
         self.run_bzr('upgrade --format=2a branch-foo %s' % (option_str,))
 
-    def _assert_branch_format(self, dir, format):
+    def assertBranchFormat(self, dir, format):
         branch = bzrdir.BzrDir.open_tree_or_branch(self.get_url(dir))[1]
         branch_format = branch._format
         meta_format = bzrdir.format_registry.make_bzrdir(format)
@@ -163,14 +163,14 @@ finished
         self.assertEqual(expected_format, branch_format)
 
     def test_upgrade_clean_supported(self):
-        self._assert_option_legal('--clean')
-        self._assert_branch_format('branch-foo', '2a')
+        self.assertLegalOption('--clean')
+        self.assertBranchFormat('branch-foo', '2a')
         backup_bzr_dir = os.path.join("branch-foo", "backup.bzr.~1~")
         self.assertFalse(os.path.exists(backup_bzr_dir))
 
     def test_upgrade_dry_run_supported(self):
-        self._assert_option_legal('--dry-run')
-        self._assert_branch_format('branch-foo', 'pack-0.92')
+        self.assertLegalOption('--dry-run')
+        self.assertBranchFormat('branch-foo', 'pack-0.92')
 
     def test_upgrade_permission_check(self):
         """'backup.bzr' should retain permissions of .bzr. Bug #262450"""
