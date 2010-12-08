@@ -3344,12 +3344,12 @@ class cmd_upgrade(Command):
     2.x default) so downgrading is not always possible.
 
     A backup.bzr.~#~ directory is created at the start of the conversion
-    process (where # is a number). By default, this is left there on completion. If the
-    conversion fails, delete the new .bzr directory and rename this
-    one back in its place. Use the --clean option to ask for the
-    backup.bzr directory to be removed on successful conversion.
-    Alternatively, you can delete it by hand if everything looks
-    good afterwards.
+    process (where # is a number). By default, this is left there on
+    completion. If the conversion fails, delete the new .bzr directory
+    and rename this one back in its place. Use the --clean option to ask
+    for the backup.bzr directory to be removed on successful conversion.
+    Alternatively, you can delete it by hand if everything looks good
+    afterwards.
 
     If the location given is a shared repository, dependent branches
     are also converted provided the repository converts successfully.
