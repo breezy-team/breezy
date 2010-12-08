@@ -1867,7 +1867,7 @@ class TestBranchFormat(tests.TestCase):
 class TestRepositoryFormat(TestRemoteRepository):
 
     def test_fast_delta(self):
-        true_name = groupcompress_repo.RepositoryFormatCHK1().network_name()
+        true_name = groupcompress_repo.RepositoryFormat2a().network_name()
         true_format = RemoteRepositoryFormat()
         true_format._network_name = true_name
         self.assertEqual(True, true_format.fast_deltas)

@@ -55,8 +55,8 @@ import warnings
 import testtools
 # nb: check this before importing anything else from within it
 _testtools_version = getattr(testtools, '__version__', ())
-if _testtools_version < (0, 9, 2):
-    raise ImportError("need at least testtools 0.9.2: %s is %r"
+if _testtools_version < (0, 9, 5):
+    raise ImportError("need at least testtools 0.9.5: %s is %r"
         % (testtools.__file__, _testtools_version))
 from testtools import content
 
@@ -651,7 +651,10 @@ class TextTestRunner(object):
             encode = codec[0]
         else:
             encode = codec.encode
-        stream = osutils.UnicodeOrBytesToBytesWriter(encode, stream)
+        # GZ 2010-09-08: Really we don't want to be writing arbitrary bytes,
+        #                so should swap to the plain codecs.StreamWriter
+        stream = osutils.UnicodeOrBytesToBytesWriter(encode, stream,
+            "backslashreplace")
         stream.encoding = new_encoding
         self.stream = stream
         self.descriptions = descriptions
