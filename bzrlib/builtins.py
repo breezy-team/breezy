@@ -4208,10 +4208,10 @@ class cmd_revert(Command):
     last committed revision is used.
 
     To remove only some changes, without reverting to a prior version, use
-    merge instead.  For example, "merge . --r -2..-3" will remove the changes
-    introduced by the second last commit (-2), without affecting the changes
-    introduced by the last commit (-1).  To remove certain changes on a
-    hunk-by-hunk basis, see the shelve command.
+    merge instead.  For example, "merge . -r -2..-3" (don't forget the ".")
+    will remove the changes introduced by the second last commit (-2), without
+    affecting the changes introduced by the last commit (-1).  To remove
+    certain changes on a hunk-by-hunk basis, see the shelve command.
 
     By default, any files that have been manually changed will be backed up
     first.  (Files changed only by merge are not backed up.)  Backup files have
