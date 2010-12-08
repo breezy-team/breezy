@@ -5,22 +5,25 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.2.2
+bzr 2.2.3
 #########
 
-:2.2.2: NOT RELEASED YET
+:2.2.3: NOT RELEASED YET
 
 Compatibility Breaks
 ********************
+
+* Launchpad has announced that the ``edge.launchpad.net`` instance is
+  deprecated and may be shut down in the future
+  <http://blog.launchpad.net/general/edge-is-deprecated>.  Bazaar has therefore
+  been updated in this release to talk to the main (``launchpad.net``) servers,
+  rather than the ``edge`` ones. (Vincent Ladeuil, #583667)
 
 New Features
 ************
 
 Bug Fixes
 *********
-
-* Using bzr with `lp:` urls behind an http proxy should work.
-  (Robert Collins, #558343)
 
 Improvements
 ************
@@ -37,13 +40,35 @@ Internals
 Testing
 *******
 
-* Add ``tests/ssl_certs/ca.crt`` to the required test files list. Test
-  involving the pycurl https test server fail otherwise when running
-  selftest from an installed version. (Vincent Ladeuil, #651706)
+bzr 2.2.2
+#########
 
-* Fix tests that failed when run under ``LANG=C``.
-  (Andrew Bennetts, #632387)
+:2.2.2: 2010-11-25
 
+This is a bugfix release. None of these bugfixes are critical, but upgrading
+is recommended for all users on earlier 2.2 releases.
+
+New Features
+************
+
+Bug Fixes
+*********
+
+* ``bzr resolve --take-other <file>`` will not crash anymore if ``<file>``
+  is involved in a text conflict (but the conflict is still not
+  resolved). (Vincent Ladeuil, #646961)
+
+* Commit in a bound branch or heavyweight checkout now propagates tags
+  (e.g. from a merge) to the master branch (and informs the user if there
+  is a conflict).  (Andrew Bennetts, #603395)
+  
+* Correctly set the Content-Type header when http POSTing to comply
+  with stricter web frameworks. (Vincent Ladeuil, #665100)
+
+* ``NotBranchError`` no longer allows errors from calling
+  ``bzrdir.open_repository()`` to propagate.  This is unhelpful at best,
+  and at worst can trigger infinite loops in callers.  (Andrew Bennetts)
+  
 * Skip tests that needs a bzr source tree when there isn't one. This is
   needed to succesfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).
@@ -51,6 +76,26 @@ Testing
 * Skip the tests that requires respecting the chmod bits when running as
   root. Including the one that wasn't present in 2.1.
   (Vincent Ladeuil, #646133)
+
+* Using bzr with `lp:` urls behind an http proxy should work.
+  (Robert Collins, #558343)
+
+* Windows installers no longer requires the Microsoft vcredist to be
+  installed.
+  (Martin [gz], Gary van der Merwe, #632465)
+
+* Close leaked socket to SSH subprocesses, which caused dput sftp uploads
+  to hang.  (Max Bowsher, #659590)
+
+Testing
+*******
+
+* Add ``tests/ssl_certs/ca.crt`` to the required test files list. Test
+  involving the pycurl https test server fail otherwise when running
+  selftest from an installed version. (Vincent Ladeuil, #651706)
+
+* Fix tests that failed when run under ``LANG=C``.
+  (Andrew Bennetts, #632387)
 
 
 bzr 2.2.1

@@ -2894,12 +2894,10 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
 class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     """A subtrees development repository.
 
-    This format should be retained until the second release after bzr 1.7.
+    This format should be retained in 2.3, to provide an upgrade path from this
+    to RepositoryFormat2aSubtree.  It can be removed in later releases.
 
     1.6.1-subtree[as it might have been] with B+Tree indices.
-
-    This is [now] retained until we have a CHK based subtree format in
-    development.
     """
 
     repository_class = KnitPackRepository

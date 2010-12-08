@@ -367,8 +367,9 @@ the line.
 The execution stops as soon as an expected output or an expected error is not
 matched.
 
-When no output is specified, any ouput from the command is accepted
-and execution continue.
+If output occurs and no output is expected, the execution stops and the
+test fails.  If unexpected output occurs on the standard error, then
+execution stops and the test fails.
 
 If an error occurs and no expected error is specified, the execution stops.
 
@@ -447,11 +448,11 @@ this::
     def test_unshelve_keep(self):
         # some setup here
         script.run_script(self, '''
-            $ bzr add file
-            $ bzr shelve --all -m Foo
+            $ bzr add -q file
+            $ bzr shelve -q --all -m Foo
             $ bzr shelve --list
             1: Foo
-            $ bzr unshelve --keep
+            $ bzr unshelve -q --keep
             $ bzr shelve --list
             1: Foo
             $ cat file
@@ -470,6 +471,19 @@ You can also test commands that read user interaction::
             <yes
             yes
             """)
+
+To avoid having to specify "-q" for all commands whose output is
+irrelevant, the run_script() method may be passed the keyword argument
+``null_output_matches_anything=True``.  For example::
+
+    def test_ignoring_null_output(self):
+        self.run_script("""
+            $ bzr init
+            $ bzr ci -m 'first revision' --unchanged
+            $ bzr log --line
+            1: ...
+            """, null_output_matches_anything=True)
+           
 
 Import tariff tests
 -------------------

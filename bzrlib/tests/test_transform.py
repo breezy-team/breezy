@@ -2381,7 +2381,7 @@ A_ENTRY = ('a-id', ('a', 'a'), True, (True, True),
                   ('TREE_ROOT', 'TREE_ROOT'), ('a', 'a'), ('file', 'file'),
                   (False, False))
 ROOT_ENTRY = ('TREE_ROOT', ('', ''), False, (True, True), (None, None),
-              ('', ''), ('directory', 'directory'), (False, None))
+              ('', ''), ('directory', 'directory'), (False, False))
 
 
 class TestTransformPreview(tests.TestCaseWithTransport):
@@ -2474,13 +2474,13 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         changes = preview_tree.iter_changes(revision_tree,
                                             specific_files=[''])
-        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
+        self.assertEqual([A_ENTRY], list(changes))
 
     def test_want_unversioned(self):
         revision_tree, preview_tree = self.get_tree_and_preview_tree()
         changes = preview_tree.iter_changes(revision_tree,
                                             want_unversioned=True)
-        self.assertEqual([ROOT_ENTRY, A_ENTRY], list(changes))
+        self.assertEqual([A_ENTRY], list(changes))
 
     def test_ignore_extra_trees_no_specific_files(self):
         # extra_trees is harmless without specific_files, so we'll silently
@@ -3272,15 +3272,20 @@ class TestOrphan(tests.TestCaseWithTransport):
                                                policy)
 
     def _prepare_orphan(self, wt):
-        self.build_tree(['dir/', 'dir/foo'])
-        wt.add(['dir'], ['dir-id'])
-        wt.commit('add dir')
+        self.build_tree(['dir/', 'dir/file', 'dir/foo'])
+        wt.add(['dir', 'dir/file'], ['dir-id', 'file-id'])
+        wt.commit('add dir and file ignoring foo')
         tt = transform.TreeTransform(wt)
         self.addCleanup(tt.finalize)
+        # dir and bar are deleted
         dir_tid = tt.trans_id_tree_path('dir')
+        file_tid = tt.trans_id_tree_path('dir/file')
         orphan_tid = tt.trans_id_tree_path('dir/foo')
+        tt.delete_contents(file_tid)
+        tt.unversion_file(file_tid)
         tt.delete_contents(dir_tid)
         tt.unversion_file(dir_tid)
+        # There should be a conflict because dir still contain foo
         raw_conflicts = tt.find_conflicts()
         self.assertLength(1, raw_conflicts)
         self.assertEqual(('missing parent', 'new-1'), raw_conflicts[0])
@@ -3290,7 +3295,13 @@ class TestOrphan(tests.TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         self._set_orphan_policy(wt, 'move')
         tt, orphan_tid = self._prepare_orphan(wt)
+        warnings = []
+        def warning(*args):
+            warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
         remaining_conflicts = resolve_conflicts(tt)
+        self.assertEquals(['dir/foo has been orphaned in bzr-orphans'],
+                          warnings)
         # Yeah for resolved conflicts !
         self.assertLength(0, remaining_conflicts)
         # We have a new orphan
