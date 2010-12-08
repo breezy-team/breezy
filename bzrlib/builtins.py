@@ -3380,7 +3380,7 @@ class cmd_upgrade(Command):
         exceptions = upgrade(url, format, clean_up=clean, dry_run=dry_run)
         if exceptions:
             if len(exceptions) == 1:
-                # This provides backwards compatibility
+                # Compatibility with historical behavior
                 raise exceptions[0]
             else:
                 return 3
