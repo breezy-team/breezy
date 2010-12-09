@@ -391,7 +391,8 @@ class MutableTree(tree.Tree):
 
         # expand any symlinks in the directory part, while leaving the
         # filename alone
-        file_list = map(osutils.normalizepath, file_list)
+        if osutils.has_symlinks():
+            file_list = map(osutils.normalizepath, file_list)
 
         # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
