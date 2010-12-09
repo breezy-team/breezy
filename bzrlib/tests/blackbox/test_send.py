@@ -27,30 +27,10 @@ from bzrlib import (
     )
 from bzrlib.bundle import serializer
 from bzrlib.transport import memory
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Multiply tests for the send command."""
-    result = loader.suiteClass()
-
-    # one for each king of change
-    changes_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((
-                TestSendStrictWithChanges,
-                )))
-    changes_scenarios = [
-        ('uncommitted',
-         dict(_changes_type='_uncommitted_changes')),
-        ('pending_merges',
-         dict(_changes_type='_pending_merges')),
-        ('out-of-sync-trees',
-         dict(_changes_type='_out_of_sync_trees')),
-        ]
-    tests.multiply_tests(changes_tests, changes_scenarios, result)
-    # No parametrization for the remaining tests
-    result.addTests(remaining_tests)
-
-    return result
+load_tests = load_tests_apply_scenarios
 
 
 class TestSendMixin(object):
@@ -367,6 +347,18 @@ class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
 
 class TestSendStrictWithChanges(tests.TestCaseWithTransport,
                                    TestSendStrictMixin):
+
+    # These are textually the same as test_push.strict_push_change_scenarios,
+    # but since the functions are reimplemented here, the definitions are left
+    # here too.
+    scenarios = [
+        ('uncommitted',
+         dict(_changes_type='_uncommitted_changes')),
+        ('pending_merges',
+         dict(_changes_type='_pending_merges')),
+        ('out-of-sync-trees',
+         dict(_changes_type='_out_of_sync_trees')),
+        ]
 
     _changes_type = None # Set by load_tests
 
