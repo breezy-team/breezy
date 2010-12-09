@@ -55,7 +55,7 @@ class TestSphinx(tests.TestCaseInTempDir):
     def sphinx_version(self):
         # Convert to a tuple to avoid traps in string comparison
         # ( '1.12' < '1.6' but (1, 12) > (1, 6) )
-        return tuple(features.sphinx.module.__version__.split('.'))
+        return tuple(map(int, features.sphinx.module.__version__.split('.')))
 
     def make_sphinx(self):
         out = tests.StringIOWrapper()
