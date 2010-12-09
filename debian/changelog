@@ -1,4 +1,4 @@
-bzr (2.3.0~beta4-1) UNRELEASED; urgency=low
+bzr (2.3.0~beta4-1) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Make dependency on python-testtools versioned (>= 0.9.5).
@@ -7,7 +7,7 @@ bzr (2.3.0~beta4-1) UNRELEASED; urgency=low
   * Run testsuite for bundled plugins too.
   * New upstream release.
 
- -- Max Bowsher <maxb@f2s.com>  Wed, 08 Dec 2010 00:31:09 +0000
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 09 Dec 2010 16:13:02 +0100
 
 bzr (2.3.0~beta3-1) unstable; urgency=low
 
