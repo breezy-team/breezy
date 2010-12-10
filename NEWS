@@ -78,3 +78,5 @@ Internals
 Testing
 *******
 
+* Make tests requiring a unicode file system skip where applicable.
+  (Vincent Ladeuil, #671964)
