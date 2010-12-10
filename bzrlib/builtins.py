@@ -4208,9 +4208,10 @@ class cmd_revert(Command):
     last committed revision is used.
 
     To remove only some changes, without reverting to a prior version, use
-    merge instead.  For example, "merge . --revision -2..-3" will remove the
-    changes introduced by -2, without affecting the changes introduced by -1.
-    Or to remove certain changes on a hunk-by-hunk basis, see the Shelf plugin.
+    merge instead.  For example, "merge . -r -2..-3" (don't forget the ".")
+    will remove the changes introduced by the second last commit (-2), without
+    affecting the changes introduced by the last commit (-1).  To remove
+    certain changes on a hunk-by-hunk basis, see the shelve command.
 
     By default, any files that have been manually changed will be backed up
     first.  (Files changed only by merge are not backed up.)  Backup files have
@@ -4246,7 +4247,7 @@ class cmd_revert(Command):
     target branches.
     """
 
-    _see_also = ['cat', 'export']
+    _see_also = ['cat', 'export', 'merge', 'shelve']
     takes_options = [
         'revision',
         Option('no-backup', "Do not save backups of reverted files."),
