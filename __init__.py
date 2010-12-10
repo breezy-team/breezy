@@ -492,8 +492,6 @@ class BzrUploader(object):
             if not self.quiet:
                 self.outf.write('Remote location already up to date\n')
 
-        # XXX: errors out if rev_id not in branch history (probably someone
-        # uploaded from a different branch).
         from_tree = self.branch.repository.revision_tree(rev_id)
         self.to_transport.ensure_base() # XXX: Handle errors (add
                                         # --create-prefix option ?)
@@ -658,8 +656,8 @@ class cmd_upload(commands.Command):
             if location is None:
                 stored_loc = get_upload_location(branch)
                 if stored_loc is None:
-                    raise errors.BzrCommandError('No upload location'
-                                                 ' known or specified.')
+                    raise errors.BzrCommandError(
+                        'No upload location known or specified.')
                 else:
                     # FIXME: Not currently tested
                     display_url = urlutils.unescape_for_display(stored_loc,
