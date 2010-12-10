@@ -808,8 +808,7 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
         self.assertUpFileEqual('foo', 'hello')
 
 
-class TestUploadDiverged(tests.TestCaseWithTransport,
-                         UploadUtilsMixin):
+class TestUploadDiverged(tests.TestCaseWithTransport, UploadUtilsMixin):
 
     def setUp(self):
         super(TestUploadDiverged, self).setUp()
@@ -841,3 +840,17 @@ class TestUploadDiverged(tests.TestCaseWithTransport,
         self.do_incremental_upload(directory=self.diverged_tree.basedir,
                                    overwrite=True)
         self.assertRevidUploaded('rev2b')
+
+
+class TestUploadBadRemoteReivd(tests.TestCaseWithTransport, UploadUtilsMixin):
+
+    def test_raises_on_wrong_revid(self):
+        tree = self.make_branch_and_working_tree()
+        self.do_full_upload()
+        # Put a fake revid on the remote branch
+        t = self.get_transport(self.upload_dir)
+        t.put_bytes('.bzr-upload.revid', 'fake')
+        # Make a change
+        self.add_file('foo', 'bar\n')
+        self.assertRaises(upload.DivergedUploadedTree, self.do_full_upload)
+
