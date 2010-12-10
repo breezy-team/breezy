@@ -256,6 +256,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self._test_create_file('hello')
 
     def test_unicode_create_file(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         self._test_create_file(u'hell\u00d8')
 
     def _test_create_file_in_dir(self, dir_name, file_name):
@@ -276,6 +277,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self._test_create_file_in_dir('dir', 'goodbye')
 
     def test_unicode_create_file_in_dir(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         self._test_create_file_in_dir(u'dir\u00d8', u'goodbye\u00d8')
 
     def test_modify_file(self):
@@ -306,6 +308,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self._test_rename_one_file('hello', 'goodbye')
 
     def test_unicode_rename_one_file(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         self._test_rename_one_file(u'hello\u00d8', u'goodbye\u00d8')
 
     def test_rename_and_change_file(self):
@@ -390,6 +393,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self._test_change_file_into_dir('hello')
 
     def test_unicode_change_file_into_dir(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         self._test_change_file_into_dir(u'hello\u00d8')
 
     def test_change_dir_into_file(self):
@@ -423,6 +427,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self._test_make_file_executable('hello')
 
     def test_unicode_make_file_executable(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         self._test_make_file_executable(u'hello\u00d8')
 
     def test_create_symlink(self):
