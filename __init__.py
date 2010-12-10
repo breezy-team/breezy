@@ -152,6 +152,22 @@ Known Issues
 # scary for the user when we say 'Deleting <path>' and are referring to
 # remote files...
 
+import bzrlib
+import bzrlib.api
+
+from info import (
+    bzr_plugin_version as version_info,
+    bzr_compatible_versions,
+    )
+
+if version_info[3] == 'final':
+    version_string = '%d.%d.%d' % version_info[:3]
+else:
+    version_string = '%d.%d.%d%s%d' % version_info
+__version__ = version_string
+
+bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
+
 from bzrlib import (
     branch,
     commands,
@@ -177,7 +193,7 @@ from bzrlib import (
     )
 """)
 
-version_info = (1, 0, 0, 'dev', 0)
+version_info = (1, 0, 0, 'final', 0)
 plugin_name = 'upload'
 
 

@@ -5,13 +5,11 @@ bzr-upload Release Notes
 .. contents:: List of Releases
    :depth: 1
 
-In Development
-##############
 
+bzr-upload 1.0.0
+################
 
-Compatibility Breaks
-********************
-
+:1.0.0: 2010-12-10
 
 New Features
 ************
@@ -52,10 +50,6 @@ Bug Fixes
 * Emit warnings instead of backtrace when symlinks are encountered.
  (Vincent Ladeuil, #477224)
 
-Improvements
-************
-
-
 Documentation
 *************
 
@@ -65,15 +59,6 @@ Documentation
 * Move the README file into the module doc string so that it
   becomes available through the 'bzr help plugins/upload'
   command.  (Vincent Ladeuil, #424193)
-
-
-API Changes
-***********
-
-
-Internals
-*********
-
 
 Testing
 *******
