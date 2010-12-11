@@ -335,7 +335,7 @@ class GenericCommitHandler(processor.CommitHandler):
             # make sure the cache used by get_lines knows that
             self.data_for_commit[file_id] = ''
         elif kind == 'symlink':
-            ie.symlink_target = data.encode('utf8')
+            ie.symlink_target = data.decode('utf8')
             # There are no lines stored for a symlink so
             # make sure the cache used by get_lines knows that
             self.data_for_commit[file_id] = ''
@@ -457,7 +457,7 @@ class GenericCommitHandler(processor.CommitHandler):
                 content = self.rev_store.get_file_text(self.parents[0], file_id)
             self._modify_item(dest_path, kind, ie.executable, content, inv)
         elif kind == 'symlink':
-            self._modify_item(dest_path, kind, False, ie.symlink_target, inv)
+            self._modify_item(dest_path, kind, False, ie.symlink_target.encode("utf-8"), inv)
         else:
             self.warning("ignoring copy of %s %s - feature not yet supported",
                 kind, dest_path)
@@ -874,14 +874,14 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         self._delete_item(filecmd.path, self.basis_inventory)
 
     def copy_handler(self, filecmd):
-        src_path = filecmd.src_path
-        dest_path = filecmd.dest_path
+        src_path = filecmd.src_path.decode("utf8")
+        dest_path = filecmd.dest_path.decode("utf8")
         self.debug("copying %s to %s", src_path, dest_path)
         self._copy_item(src_path, dest_path, self.basis_inventory)
 
     def rename_handler(self, filecmd):
-        old_path = filecmd.old_path
-        new_path = filecmd.new_path
+        old_path = filecmd.old_path.decode("utf8")
+        new_path = filecmd.new_path.decode("utf8")
         self.debug("renaming %s to %s", old_path, new_path)
         self._rename_item(old_path, new_path, self.basis_inventory)
 

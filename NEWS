@@ -18,6 +18,9 @@ Bug fixes
 
 * Cope with non-ascii characters in tag names. (Jelmer Vernooij, #598060)
 
+* Cope with non-ascii characters in symbolic links. (Daniel Clemente,
+   Jelmer Vernooij, #238365)
+
 0.9 28-Feb-2010
 ===============
 
