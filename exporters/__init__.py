@@ -280,7 +280,7 @@ class PerforceExporter(_Exporter):
             retcode = p4_fast_export.main([source])
         finally:
             sys.stdout = original_stdout
-            self.report_results(retcode, destination)
+        self.report_results(retcode, destination)
 
 
 class SubversionExporter(_Exporter):
