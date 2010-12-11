@@ -58,7 +58,7 @@ class UserMapper(object):
 
     def _parse_id(self, id):
         if id.find('<') == -1:
-            return id, None
+            return id, ""
         else:
             return Utils.parseaddr(id)
 
@@ -77,5 +77,4 @@ class UserMapper(object):
                 new_email = "%s@%s" % (name, self._default_domain)
             else:
                 new_email = email
-        #print "converted '%s <%s>' to '%s <%s>'" % (name, email, new_name, new_email)
         return new_name, new_email

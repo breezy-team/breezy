@@ -31,6 +31,8 @@ Bug fixes
 * Support new marks file format introduced in (apparently) git 1.6.
   (Ian Clatworthy, Jelmer Vernooij, Gabriel Filion, #347729)
 
+* Allow entries without email address in user map. (Jelmer Vernooij, #576598)
+
 0.9 28-Feb-2010
 ===============
 
