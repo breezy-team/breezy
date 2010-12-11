@@ -21,6 +21,8 @@ Bug fixes
 * Cope with non-ascii characters in symbolic links. (Daniel Clemente,
    Jelmer Vernooij, #238365)
 
+* In plain mode, don't export multiple authors. (David Kilzer, #496677)
+
 0.9 28-Feb-2010
 ===============
 

@@ -287,7 +287,7 @@ class BzrFastExporter(object):
         else:
             more_authors = []
             author = revobj.get_apparent_author()
-        if more_authors:
+        if not self.plain_format and more_authors:
             name, email = self._get_name_email(author)
             author_info = (name, email, revobj.timestamp, revobj.timezone)
             more_author_info = []
