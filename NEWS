@@ -28,6 +28,9 @@ Bug fixes
 * SOURCE argument to bzr fast-import-filter is now optional, consistent with
   examples. (Jelmer Vernooij, #477861)
 
+* Support new marks file format introduced in (apparently) git 1.6.
+  (Ian Clatworthy, Jelmer Vernooij, Gabriel Filion, #347729)
+
 0.9 28-Feb-2010
 ===============
 

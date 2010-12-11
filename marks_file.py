@@ -17,7 +17,6 @@
 """Routines for reading/writing a marks file."""
 
 
-import re
 from bzrlib.trace import warning
 
 
@@ -25,11 +24,8 @@ def import_marks(filename):
     """Read the mapping of marks to revision-ids from a file.
 
     :param filename: the file to read from
-    :return: None if an error is encountered or (revision_ids, branch_names)
-      where
-      * revision_ids is a dictionary with marks as keys and revision-ids
-        as values
-      * branch_names is a dictionary mapping branch names to some magic #
+    :return: None if an error is encountered or a dictionary with marks
+        as keys and revision-ids as values
     """
     # Check that the file is readable and in the right format
     try:
@@ -38,41 +34,38 @@ def import_marks(filename):
         warning("Could not import marks file %s - not importing marks",
             filename)
         return None
-    firstline = f.readline()
-    match = re.match(r'^format=(\d+)$', firstline)
-    if not match:
-        warning("%r doesn't look like a marks file - not importing marks",
-            filename)
-        return None
-    elif match.group(1) != '1':
-        warning('format version in marks file %s not supported - not importing'
-            'marks', filename)
-        return None
 
-    # Read the branch info
-    branch_names = {}
-    for string in f.readline().rstrip('\n').split('\0'):
-        if not string:
-            continue
-        name, integer = string.rsplit('.', 1)
-        branch_names[name] = int(integer)
- 
     # Read the revision info
     revision_ids = {}
-    for line in f:
+
+    line = f.readline()
+    if line == 'format=1\n':
+        # Cope with old-style marks files
+        # Read the branch info
+        branch_names = {}
+        for string in f.readline().rstrip('\n').split('\0'):
+            if not string:
+                continue
+            name, integer = string.rsplit('.', 1)
+            branch_names[name] = int(integer)
+        line = f.readline()
+
+    while line:
         line = line.rstrip('\n')
         mark, revid = line.split(' ', 1)
+        if mark.startswith(':'):
+            mark = mark[1:]
         revision_ids[mark] = revid
+        line = f.readline()
     f.close()
-    return (revision_ids, branch_names)
+    return revision_ids
 
 
-def export_marks(filename, revision_ids, branch_names=None):
+def export_marks(filename, revision_ids):
     """Save marks to a file.
 
     :param filename: filename to save data to
     :param revision_ids: dictionary mapping marks -> bzr revision-ids
-    :param branch_names: dictionary mapping branch names to some magic #
     """
     try:
         f = file(filename, 'w')
@@ -80,16 +73,8 @@ def export_marks(filename, revision_ids, branch_names=None):
         warning("Could not open export-marks file %s - not exporting marks",
             filename)
         return
-    f.write('format=1\n')
-
-    # Write the branch names line
-    if branch_names:
-        branch_names = [ '%s.%d' % x for x in branch_names.iteritems() ]
-        f.write('\0'.join(branch_names) + '\n')
-    else:
-        f.write('\0tmp.0\n')
 
     # Write the revision info
     for mark, revid in revision_ids.iteritems():
-        f.write('%s %s\n' % (mark, revid))
+        f.write(':%s %s\n' % (mark, revid))
     f.close()

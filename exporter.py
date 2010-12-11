@@ -103,8 +103,9 @@ class BzrFastExporter(object):
             marks_info = marks_file.import_marks(self.import_marks_file)
             if marks_info is not None:
                 self.revid_to_mark = dict((r, m) for m, r in
-                    marks_info[0].items())
-                self.branch_names = marks_info[1]
+                    marks_info.items())
+                # These are no longer included in the marks file
+                #self.branch_names = marks_info[1]
  
     def interesting_history(self):
         if self.revision:
@@ -193,8 +194,7 @@ class BzrFastExporter(object):
     def _save_marks(self):
         if self.export_marks_file:
             revision_ids = dict((m, r) for r, m in self.revid_to_mark.items())
-            marks_file.export_marks(self.export_marks_file, revision_ids,
-                self.branch_names)
+            marks_file.export_marks(self.export_marks_file, revision_ids)
  
     def is_empty_dir(self, tree, path):
         path_id = tree.path2id(path)
