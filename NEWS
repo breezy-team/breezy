@@ -13,6 +13,11 @@ Changes
   separate upstream project called python-fastimport, that it now depends on.
   python-fastimport can be retrieved from http://launchpad.net/python-fastimport.
 
+Bug fixes
+---------
+
+* Cope with non-ascii characters in tag names. (Jelmer Vernooij, #598060)
+
 0.9 28-Feb-2010
 ===============
 

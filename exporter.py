@@ -505,7 +505,7 @@ class BzrFastExporter(object):
                 self.warning('not creating tag %r pointing to non-existent '
                     'revision %s' % (tag, revid))
             else:
-                git_ref = 'refs/tags/%s' % tag
+                git_ref = 'refs/tags/%s' % tag.encode("utf-8")
                 self.print_cmd(commands.ResetCommand(git_ref, ":" + str(mark)))
 
     def _next_tmp_branch_name(self):
