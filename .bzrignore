@@ -2,3 +2,4 @@ build
 # executables
 exporters/svn-archive
 exporters/svn-fast-export
+.testrepository
