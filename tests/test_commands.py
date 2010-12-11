@@ -22,7 +22,7 @@ import gzip
 
 from bzrlib import tests
 
-from bzrlib.plugins.fastimport import (
+from bzrlib.plugins.fastimport.cmds import (
     _get_source_stream,
     )
 
