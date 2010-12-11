@@ -111,10 +111,10 @@ def export_revision(rev, repo, fs, pool):
             pass
         else:
             if c_t == 'D':
-                file_changes.append("D %s" % MATCHER.replace(path))
+                file_changes.append("D %s" % MATCHER.replace(path).lstrip("/"))
             else:
                 marks[i] = MATCHER.replace(path)
-                file_changes.append("M 644 :%s %s" % (i, marks[i]))
+                file_changes.append("M 644 :%s %s" % (i, marks[i].lstrip("/")))
                 sys.stdout.write("blob\nmark :%s\n" % i)
                 dump_file_blob(root, path, revpool)
                 i += 1

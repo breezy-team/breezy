@@ -33,6 +33,9 @@ Bug fixes
 
 * Allow entries without email address in user map. (Jelmer Vernooij, #576598)
 
+* Strip leading slashes when exporting Subversion repositories.
+  (Jelmer Vernooij, #477869)
+
 0.9 28-Feb-2010
 ===============
 
