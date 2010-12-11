@@ -128,8 +128,8 @@ class TestGitBlackBox(ExternalBase):
 
         output, error = self.run_bzr(["tag", "bar"])
 
-        self.assertEquals(error, '')
-        self.assertEquals(output, 'Created tag bar.\n')
+        self.assertEquals(error, 'Created tag bar.\n')
+        self.assertEquals(output, '')
 
     def test_init_repo(self):
         output, error = self.run_bzr(["init-repo", "--git", "bla.git"])
