@@ -313,7 +313,7 @@ class cmd_fast_import(Command):
             'export-marks': export_marks,
             }
         return _run(source, generic_processor.GenericProcessor, control,
-            params, verbose, user_map=user_map)
+                params, verbose, user_map=user_map)
 
     def _generate_info(self, source):
         from cStringIO import StringIO
@@ -428,8 +428,12 @@ class cmd_fast_import_filter(Command):
             'include_paths': include_paths,
             'exclude_paths': exclude_paths,
             }
-        return _run(source, filter_processor.FilterProcessor, params,
-            verbose, user_map=user_map)
+        from fastimport import parser
+        stream = _get_source_stream(source)
+        user_mapper = _get_user_mapper(user_map)
+        proc = filter_processor.FilterProcessor(params=params, verbose=verbose)
+        p = parser.ImportParser(stream, verbose=verbose, user_mapper=user_mapper)
+        return proc.process(p.iter_commands)
 
 
 class cmd_fast_import_info(Command):
