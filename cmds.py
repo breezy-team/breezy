@@ -406,7 +406,7 @@ class cmd_fast_import_filter(Command):
     """
     hidden = False
     _see_also = ['fast-import']
-    takes_args = ['source']
+    takes_args = ['source?']
     takes_options = ['verbose',
                     ListOption('include_paths', short_name='i', type=str,
                         help="Only include commits affecting these paths."
@@ -420,7 +420,7 @@ class cmd_fast_import_filter(Command):
                         ),
                      ]
     encoding_type = 'exact'
-    def run(self, source, verbose=False, include_paths=None,
+    def run(self, source=None, verbose=False, include_paths=None,
         exclude_paths=None, user_map=None):
         load_fastimport()
         from fastimport.processors import filter_processor
