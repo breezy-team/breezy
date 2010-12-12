@@ -83,8 +83,10 @@ class cmd_git_import(Command):
         mapping = source_repo.get_mapping()
         refs = interrepo.fetch()
         tags = {}
-        for k, v in extract_tags(refs).iteritems():
-            tags[k] = mapping.revision_id_foreign_to_bzr(v)
+        for k, (peeled, unpeeled) in extract_tags(refs).iteritems():
+            tags[k] = mapping.revision_id_foreign_to_bzr(peeled)
+            if unpeeled is not None:
+                pass # FIXME: Store unpeeled information
         pb = ui.ui_factory.nested_progress_bar()
         try:
             for i, (name, ref) in enumerate(refs.iteritems()):

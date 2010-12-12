@@ -29,18 +29,24 @@ def extract_tags(refs):
     """Extract the tags from a refs dictionary.
 
     :param refs: Refs to extract the tags from.
-    :return: Dictionary mapping tag names to SHA1s.
+    :return: Dictionary mapping tag names to SHA1s of the actual object
+        and unpeeled object SHA1s.
     """
     ret = {}
-    for k,v in refs.iteritems():
+    for k, v in refs.iteritems():
         if k.startswith("refs/tags/") and not k.endswith("^{}"):
-            v = refs.get(k+"^{}", v)
+            try:
+                peeled = refs[k+"^{}"]
+                unpeeled = v
+            except KeyError:
+                peeled = v
+                unpeeled = None
             try:
                 tagname = ref_to_tag_name(k)
             except UnicodeDecodeError:
                 pass
             else:
-                ret[tagname] = v
+                ret[tagname] = (peeled, unpeeled)
     return ret
 
 

@@ -330,8 +330,9 @@ class RemoteGitTagDict(tag.BasicTags):
 
     def get_tag_dict(self):
         tags = {}
-        for k, v in extract_tags(self.repository.get_refs()).iteritems():
-            tags[k] = self.branch.mapping.revision_id_foreign_to_bzr(v)
+        refs = self.repository.get_refs()
+        for k, (peeled, unpeeled) in extract_tags(refs).iteritems():
+            tags[k] = self.branch.mapping.revision_id_foreign_to_bzr(peeled)
         return tags
 
     def set_tag(self, name, revid):

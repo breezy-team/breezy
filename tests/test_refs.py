@@ -52,19 +52,19 @@ class ExtractTagTests(tests.TestCase):
                 "HEAD": "ref: foo", "refs/branches/blala": "la"}))
 
     def test_tags(self):
-        self.assertEquals({"mytag": "mysha"},
+        self.assertEquals({"mytag": ("mysha", None)},
             refs.extract_tags({
                 "HEAD": "ref: foo", "refs/tags/mytag": "mysha"}))
 
     def test_ignores_peels(self):
-        self.assertEquals({"mytag": "actualsha"},
+        self.assertEquals({"mytag": ("actualsha", "mysha")},
             refs.extract_tags({
                 "HEAD": "ref: foo",
                 "refs/tags/mytag": "mysha",
                 "refs/tags/mytag^{}": "actualsha"}))
 
     def test_non_ascii_name(self):
-        self.assertEquals({u'myt\xe2g': "actualsha"},
+        self.assertEquals({u'myt\xe2g': ("actualsha", None)},
             refs.extract_tags({
                 "HEAD": "ref: foo",
                 "refs/tags/myt\xc3\xa2g": "actualsha"}))

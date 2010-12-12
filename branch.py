@@ -85,20 +85,24 @@ class LocalGitTagDict(tag.BasicTags):
 
     def get_tag_dict(self):
         ret = {}
-        for k,v in extract_tags(self.repository._git.get_refs()).iteritems():
+        refs = self.repository._git.get_refs()
+        for k, (peeled, unpeeled) in extract_tags(refs).iteritems():
             try:
-                obj = self.repository._git[v]
+                obj = self.repository._git[peeled]
             except KeyError:
-                mutter("Tag %s points at unknown object %s, ignoring", v, obj)
+                mutter("Tag %s points at unknown object %s, ignoring", peeled,
+                       obj)
                 continue
+            # FIXME: this shouldn't really be necessary, the repository
+            # already should have these unpeeled.
             while isinstance(obj, Tag):
-                v = obj.object[1]
-                obj = self.repository._git[v]
+                peeled = obj.object[1]
+                obj = self.repository._git[peeled]
             if not isinstance(obj, Commit):
                 mutter("Tag %s points at object %r that is not a commit, "
                        "ignoring", k, obj)
                 continue
-            ret[k] = self.branch.lookup_foreign_revision_id(v)
+            ret[k] = self.branch.lookup_foreign_revision_id(peeled)
         return ret
 
     def _set_tag_dict(self, to_dict):
@@ -616,9 +620,11 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         return result
 
     def update_tags(self, refs):
-        for name, v in extract_tags(refs).iteritems():
-            revid = self.target.lookup_foreign_revision_id(v)
+        for name, (peeled, unpeeled) in extract_tags(refs).iteritems():
+            revid = self.target.lookup_foreign_revision_id(peeled)
             self.target.tags.set_tag(name, revid)
+            if unpeeled is not None:
+                pass # FIXME: Store unpeeled info
 
     def update_refs(self, stop_revision=None):
         interrepo = repository.InterRepository.get(self.source.repository,
