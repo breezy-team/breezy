@@ -274,7 +274,7 @@ class BzrFastExporter(object):
             email = ''
         else:
             name, email = parseaddr(user)
-        return name, email
+        return name.encode("utf-8"), email.encode("utf-8")
 
     def _get_commit_command(self, git_ref, mark, revobj, file_cmds):
         # Get the committer and author info
@@ -336,7 +336,7 @@ class BzrFastExporter(object):
 
         # Build and return the result
         return commands.CommitCommand(git_ref, mark, author_info,
-            committer_info, revobj.message, from_, merges, iter(file_cmds),
+            committer_info, revobj.message.encode("utf-8"), from_, merges, iter(file_cmds),
             more_authors=more_author_info, properties=properties)
 
     def _get_revision_trees(self, parent, revision_id):
@@ -385,16 +385,16 @@ class BzrFastExporter(object):
         for path, id_, kind in changes.added + my_modified + rd_modifies:
             if kind == 'file':
                 text = tree_new.get_file_text(id_)
-                file_cmds.append(commands.FileModifyCommand(path,
+                file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
                     helpers.kind_to_mode('file', tree_new.is_executable(id_)),
                     None, text))
             elif kind == 'symlink':
-                file_cmds.append(commands.FileModifyCommand(path,
+                file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
                     helpers.kind_to_mode('symlink', False),
                     None, tree_new.get_symlink_target(id_)))
             elif kind == 'directory':
                 if not self.plain_format:
-                    file_cmds.append(commands.FileModifyCommand(path,
+                    file_cmds.append(commands.FileModifyCommand(path.encode("utf-8"),
                         helpers.kind_to_mode('directory', False),
                         None, None))
             else:
@@ -436,7 +436,7 @@ class BzrFastExporter(object):
             emit = kind != 'directory' or not self.plain_format
             if newpath in deleted_paths:
                 if emit:
-                    file_cmds.append(commands.FileDeleteCommand(newpath))
+                    file_cmds.append(commands.FileDeleteCommand(newpath.encode("utf-8")))
                 deleted_paths.remove(newpath)
             if (self.is_empty_dir(tree_old, oldpath)):
                 self.note("Skipping empty dir %s in rev %s" % (oldpath,
@@ -447,7 +447,8 @@ class BzrFastExporter(object):
             renamed.append([oldpath, newpath])
             old_to_new[oldpath] = newpath
             if emit:
-                file_cmds.append(commands.FileRenameCommand(oldpath, newpath))
+                file_cmds.append(
+                    commands.FileRenameCommand(oldpath.encode("utf-8"), newpath.encode("utf-8")))
             if text_modified or meta_modified:
                 modifies.append((newpath, id_, kind))
 
@@ -470,8 +471,8 @@ class BzrFastExporter(object):
                 if self.verbose:
                     self.note("implicitly renaming %s => %s" % (old_child_path,
                         new_child_path))
-                file_cmds.append(commands.FileRenameCommand(old_child_path,
-                    new_child_path))
+                file_cmds.append(commands.FileRenameCommand(old_child_path.encode("utf-8"),
+                    new_child_path.encode("utf-8")))
 
         # Record remaining deletes
         for path, id_, kind in deletes:
@@ -480,7 +481,7 @@ class BzrFastExporter(object):
             if kind == 'directory' and self.plain_format:
                 continue
             #path = self._adjust_path_for_renames(path, renamed, revision_id)
-            file_cmds.append(commands.FileDeleteCommand(path))
+            file_cmds.append(commands.FileDeleteCommand(path.encode("utf-8")))
         return file_cmds, modifies, renamed
 
     def _adjust_path_for_renames(self, path, renamed, revision_id):

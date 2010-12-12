@@ -234,8 +234,21 @@ class GenericCommitHandler(processor.CommitHandler):
         """Get a Bazaar file identifier for a path."""
         return self.bzr_file_id_and_new(path)[0]
 
-    def _format_name_email(self, name, email):
+    def _utf8_decode(self, field, value):
+        try:
+            return value.decode('utf_8')
+        except UnicodeDecodeError:
+            # The spec says fields are *typically* utf8 encoded
+            # but that isn't enforced by git-fast-export (at least)
+            self.warning("%s not in utf8 - replacing unknown "
+                "characters" % (field,))
+            return value.decode('utf_8', 'replace')
+
+    def _format_name_email(self, section, name, email):
         """Format name & email as a string."""
+        name = self._utf8_decode("%s name" % section, name)
+        email = self._utf8_decode("%s email" % section, email)
+
         if email:
             return "%s <%s>" % (name, email)
         else:
@@ -249,7 +262,7 @@ class GenericCommitHandler(processor.CommitHandler):
         committer = self.command.committer
         # Perhaps 'who' being the person running the import is ok? If so,
         # it might be a bit quicker and give slightly better compression?
-        who = self._format_name_email(committer[0], committer[1])
+        who = self._format_name_email("committer", committer[0], committer[1])
         timestamp = committer[2]
         return generate_ids.gen_revision_id(who, timestamp)
 
@@ -260,7 +273,7 @@ class GenericCommitHandler(processor.CommitHandler):
                     self.branch_ref)
         self._save_author_info(rev_props)
         committer = self.command.committer
-        who = self._format_name_email(committer[0], committer[1])
+        who = self._format_name_email("committer", committer[0], committer[1])
         try:
             message = self.command.message.decode("utf-8")
         except UnicodeDecodeError:
@@ -300,9 +313,9 @@ class GenericCommitHandler(processor.CommitHandler):
             return
         if self.command.more_authors:
             authors = [author] + self.command.more_authors
-            author_ids = [self._format_name_email(a[0], a[1]) for a in authors]
+            author_ids = [self._format_name_email("author", a[0], a[1]) for a in authors]
         elif author != self.command.committer:
-            author_ids = [self._format_name_email(author[0], author[1])]
+            author_ids = [self._format_name_email("author", author[0], author[1])]
         else:
             return
         # If we reach here, there are authors worth storing
