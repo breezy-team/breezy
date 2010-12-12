@@ -606,7 +606,7 @@ class GenericProcessor(processor.ImportProcessor):
         if feature not in commands.FEATURE_NAMES:
             raise plugin_errors.UnknownFeature(feature)
 
-    def debug(self, mgs, *args):
+    def debug(self, msg, *args):
         """Output a debug message if the appropriate -D option was given."""
         if "fast-import" in debug.debug_flags:
             msg = "%s DEBUG: %s" % (self._time_of_day(), msg)
