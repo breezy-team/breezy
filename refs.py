@@ -16,6 +16,8 @@
 
 """Conversion between refs and Bazaar revision pointers."""
 
+from collections import defaultdict
+
 from dulwich.repo import (
     RefsContainer,
     )
@@ -23,6 +25,8 @@ from dulwich.repo import (
 from bzrlib import (
     errors,
     )
+
+is_tag = lambda x: x.startswith("refs/tags/")
 
 
 def extract_tags(refs):
@@ -34,7 +38,7 @@ def extract_tags(refs):
     """
     ret = {}
     for k, v in refs.iteritems():
-        if k.startswith("refs/tags/") and not k.endswith("^{}"):
+        if is_tag(k) and not k.endswith("^{}"):
             try:
                 peeled = refs[k+"^{}"]
                 unpeeled = v
@@ -175,3 +179,50 @@ class BazaarRefsContainer(RefsContainer):
             target_branch.generate_revision_history(rev_id)
         finally:
             target_branch.unlock()
+
+
+class UnpeelMap(object):
+    """Unpeel map.
+
+    Keeps track of the unpeeled object id of tags.
+    """
+
+    def __init__(self):
+        self._map = defaultdict(set)
+
+    def update(self, m):
+        for k, v in m.iteritems():
+            self._map[k].update(v)
+
+    def load(self, f):
+        assert f.readline() == "unpeel map version 1\n"
+        for l in f.readlines():
+            (k, v) = l.split(":", 1)
+            self._map[k.strip()].add(v.strip())
+
+    def save(self, f):
+        f.write("unpeel map version 1\n")
+        for k, vs in self._map.iteritems():
+            for v in vs:
+                f.write("%s: %s\n" % (k, v))
+
+    def re_unpeel_tag(self, new_git_sha, old_git_sha):
+        """Re-unpeel tags.
+
+        Bazaar can't store unpeeled refs so in order to prevent peeling
+        existing tags when pushing they are "re-peeled" here.
+        """
+        if old_git_sha in self._map[new_git_sha]:
+            return old_git_sha
+        return new_git_sha
+
+
+def get_unpeel_map(repository):
+    """Load the unpeel map for a repository.
+    """
+    m = UnpeelMap()
+    try:
+        m.load(repository.transport.get("git-unpeel-map"))
+    except errors.NoSuchFile:
+        pass
+    return m

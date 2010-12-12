@@ -51,8 +51,10 @@ from bzrlib.plugins.git.errors import (
     NoSuchRef,
     )
 from bzrlib.plugins.git.refs import (
-    ref_to_branch_name,
     extract_tags,
+    is_tag,
+    ref_to_branch_name,
+    ref_to_tag_name,
     tag_name_to_ref,
     )
 
@@ -113,7 +115,7 @@ class LocalGitTagDict(tag.BasicTags):
                 extra.remove(name)
             self.set_tag(k, revid)
         for name in extra:
-            if name.startswith("refs/tags/"):
+            if is_tag(name):
                 del self.repository._git[name]
 
     def set_tag(self, name, revid):
@@ -615,16 +617,22 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
         self.target.generate_revision_history(stop_revision, result.old_revid)
-        self.update_tags(refs)
+        self.update_tags(refs, overwrite=overwrite)
         result.new_revid = self.target.last_revision()
         return result
 
-    def update_tags(self, refs):
-        for name, (peeled, unpeeled) in extract_tags(refs).iteritems():
-            revid = self.target.lookup_foreign_revision_id(peeled)
-            self.target.tags.set_tag(name, revid)
-            if unpeeled is not None:
-                pass # FIXME: Store unpeeled info
+    def update_tags(self, refs, overwrite=False):
+        conflicts = []
+        for k, v in refs.iteritems():
+            if not is_tag(k):
+                continue
+            if overwrite or not k in self.target.repository.refs:
+                self.target.repository.refs[k] = v
+            elif self.target.repository.refs[k] == v:
+                pass
+            else:
+                conflicts.append((ref_to_tag_name(k), v, self.target.repository.refs[k]))
+        return conflicts
 
     def update_refs(self, stop_revision=None):
         interrepo = repository.InterRepository.get(self.source.repository,

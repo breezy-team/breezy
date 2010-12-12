@@ -41,6 +41,9 @@ from bzrlib.plugins.git.repository import (
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
     )
+from bzrlib.plugins.git.refs import (
+    get_unpeel_map,
+    )
 
 
 class MissingObjectsIterator(object):
@@ -308,6 +311,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
 
     def dfetch_refs(self, update_refs):
         """Import the gist of the ancestry of a particular revision."""
+        unpeel_map = get_unpeel_map(self.source)
         revidmap = {}
         def determine_wants(old_refs):
             ret = {}
@@ -315,7 +319,7 @@ class InterToRemoteGitRepository(InterToGitRepository):
             self.new_refs = update_refs(self.old_refs)
             for name, (gitid, revid) in self.new_refs.iteritems():
                 if gitid is None:
-                    ret[name] = self.source_store._lookup_revision_sha1(revid)
+                    ret[name] = unpeel_map.re_unpeel_tag(self.source_store._lookup_revision_sha1(revid), old_refs[name])
                 else:
                     ret[name] = gitid
             return ret
