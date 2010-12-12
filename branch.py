@@ -17,6 +17,8 @@
 
 """An adapter between a Git Branch and a Bazaar Branch"""
 
+from collections import defaultdict
+
 from dulwich.objects import (
     Commit,
     Tag,
@@ -56,6 +58,7 @@ from bzrlib.plugins.git.refs import (
     ref_to_branch_name,
     ref_to_tag_name,
     tag_name_to_ref,
+    UnpeelMap,
     )
 
 from bzrlib.foreign import ForeignBranch
@@ -85,6 +88,72 @@ class GitTags(tag.BasicTags):
         self.branch = branch
         self.repository = branch.repository
 
+    def _iter_tag_refs(self, refs):
+        raise NotImplementedError(self._iter_tag_refs)
+
+    def _merge_to_git(self, to_tags, refs, overwrite=False):
+        target_repo = to_tags.repository
+        conflicts = []
+        for k, v in refs.iteritems():
+            if not is_tag(k):
+                continue
+            if overwrite or not k in self.target.repository.refs:
+                target_repo.refs[k] = v
+            elif target_repo.repository.refs[k] == v:
+                pass
+            else:
+                conflicts.append((ref_to_tag_name(k), v, target_repo.refs[k]))
+        return conflicts
+
+    def _merge_to_non_git(self, to_tags, refs, overwrite=False):
+        unpeeled_map = defaultdict(set)
+        conflicts = []
+        result = dict(to_tags.get_tag_dict())
+        for n, peeled, unpeeled, bzr_revid in self._iter_tag_refs(refs):
+            if unpeeled is not None:
+                unpeeled_map[peeled].add(unpeeled)
+            if n not in result or overwrite:
+                result[n] = bzr_revid
+            elif result[n] == bzr_revid:
+                pass
+            else:
+                conflicts.append((n, result[n], bzr_revid))
+        to_tags._set_tag_dict(result)
+        if len(unpeeled_map) > 0:
+            map_file = UnpeelMap.from_repository(to_tags.branch.repository)
+            map_file.update(unpeeled_map)
+            map_file.save_in_repository(to_tags.branch.repository)
+        return conflicts
+
+    def merge_to(self, to_tags, overwrite=False, ignore_master=False,
+                 source_refs=None):
+        if source_refs is None:
+            source_refs = self.repository.get_refs()
+        if self == to_tags:
+            return
+        if isinstance(to_tags, GitTags):
+            return self._merge_to_git(to_tags, source_refs,
+                                      overwrite=overwrite)
+        else:
+            if ignore_master:
+                master = None
+            else:
+                master = to_tags.branch.get_master_branch()
+            conflicts = self._merge_to_non_git(to_tags, source_refs,
+                                              overwrite=overwrite)
+            if master is not None:
+                conflicts += self.merge_to(to_tags, overwrite=overwrite,
+                                           source_refs=source_refs,
+                                           ignore_master=ignore_master)
+            return conflicts
+
+    def get_tag_dict(self):
+        ret = {}
+        refs = self.repository.get_refs()
+        for (name, peeled, unpeeled, bzr_revid) in self._iter_tag_refs(refs):
+            ret[name] = bzr_revid
+        return ret
+
 
 class LocalGitTagDict(GitTags):
     """Dictionary with tags in a local repository."""
@@ -93,9 +162,12 @@ class LocalGitTagDict(GitTags):
         super(LocalGitTagDict, self).__init__(branch)
         self.refs = self.repository._git.refs
 
-    def get_tag_dict(self):
-        ret = {}
-        refs = self.repository._git.get_refs()
+    def _iter_tag_refs(self, refs):
+        """Iterate over the tag refs.
+
+        :param refs: Refs dictionary (name -> git sha1)
+        :return: iterator over (name, peeled_sha1, unpeeled_sha1, bzr_revid)
+        """
         for k, (peeled, unpeeled) in extract_tags(refs).iteritems():
             try:
                 obj = self.repository._git[peeled]
@@ -112,8 +184,9 @@ class LocalGitTagDict(GitTags):
                 mutter("Tag %s points at object %r that is not a commit, "
                        "ignoring", k, obj)
                 continue
-            ret[k] = self.branch.lookup_foreign_revision_id(peeled)
-        return ret
+            yield (k, peeled, unpeeled,
+                   self.branch.lookup_foreign_revision_id(peeled))
+
 
     def _set_tag_dict(self, to_dict):
         extra = set(self.repository._git.get_refs().keys())
@@ -625,22 +698,10 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
         self.target.generate_revision_history(stop_revision, result.old_revid)
-        result.tag_conflicts = self.update_tags(refs, overwrite=overwrite)
+        result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
+            source_refs=refs, overwrite=overwrite)
         result.new_revid = self.target.last_revision()
         return result
-
-    def update_tags(self, refs, overwrite=False):
-        conflicts = []
-        for k, v in refs.iteritems():
-            if not is_tag(k):
-                continue
-            if overwrite or not k in self.target.repository.refs:
-                self.target.repository.refs[k] = v
-            elif self.target.repository.refs[k] == v:
-                pass
-            else:
-                conflicts.append((ref_to_tag_name(k), v, self.target.repository.refs[k]))
-        return conflicts
 
     def update_refs(self, stop_revision=None):
         interrepo = repository.InterRepository.get(self.source.repository,
@@ -663,7 +724,8 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
         self.target.generate_revision_history(stop_revision, result.old_revid)
-        result.tag_conflicts = self.update_tags(refs)
+        result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
+            overwrite=overwrite, source_refs=refs)
         result.new_revid = self.target.last_revision()
         return result
 

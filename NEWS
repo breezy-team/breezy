@@ -13,6 +13,9 @@
 
   * Cope with unknown refs. (Jelmer Vernooij, #666443)
 
+  * Don't peel tags automatically when pushing back.
+    (Jelmer Vernooij, #675231)
+
  FEATURES
 
   * Remove all remaining dependencies on C git. (Jelmer Vernooij, #348238)

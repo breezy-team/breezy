@@ -17,6 +17,7 @@
 """Conversion between refs and Bazaar revision pointers."""
 
 from collections import defaultdict
+from cStringIO import StringIO
 
 from dulwich.repo import (
     RefsContainer,
@@ -24,6 +25,7 @@ from dulwich.repo import (
 
 from bzrlib import (
     errors,
+    trace,
     )
 
 is_tag = lambda x: x.startswith("refs/tags/")
@@ -206,23 +208,33 @@ class UnpeelMap(object):
             for v in vs:
                 f.write("%s: %s\n" % (k, v))
 
+    def save_in_repository(self, repository):
+        f = StringIO()
+        try:
+            self.save(f)
+            f.seek(0)
+            repository.control_transport.put_file("git-unpeel-map", f)
+        finally:
+            f.close()
+
     def re_unpeel_tag(self, new_git_sha, old_git_sha):
         """Re-unpeel tags.
 
         Bazaar can't store unpeeled refs so in order to prevent peeling
         existing tags when pushing they are "re-peeled" here.
         """
-        if old_git_sha in self._map[new_git_sha]:
+        if old_git_sha is not None and old_git_sha in self._map[new_git_sha]:
+            trace.mutter("re-unpeeling %r to %r", new_git_sha, old_git_sha)
             return old_git_sha
         return new_git_sha
 
-
-def get_unpeel_map(repository):
-    """Load the unpeel map for a repository.
-    """
-    m = UnpeelMap()
-    try:
-        m.load(repository.transport.get("git-unpeel-map"))
-    except errors.NoSuchFile:
-        pass
-    return m
+    @classmethod
+    def from_repository(cls, repository):
+        """Load the unpeel map for a repository.
+        """
+        m = UnpeelMap()
+        try:
+            m.load(repository.control_transport.get("git-unpeel-map"))
+        except errors.NoSuchFile:
+            pass
+        return m
