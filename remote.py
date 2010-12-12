@@ -17,7 +17,6 @@
 from bzrlib import (
     config,
     debug,
-    tag,
     trace,
     ui,
     urlutils,
@@ -40,6 +39,7 @@ lazy_check_versions()
 
 from bzrlib.plugins.git.branch import (
     GitBranch,
+    GitTags,
     )
 from bzrlib.plugins.git.errors import (
     GitSmartRemoteNotSupported,
@@ -322,11 +322,7 @@ class RemoteGitRepository(GitRepository):
         return mapping.revision_id_foreign_to_bzr(foreign_revid)
 
 
-class RemoteGitTagDict(tag.BasicTags):
-
-    def __init__(self, branch):
-        self.branch = branch
-        self.repository = branch.repository
+class RemoteGitTagDict(GitTags):
 
     def get_tag_dict(self):
         tags = {}

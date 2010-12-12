@@ -78,12 +78,20 @@ class GitPullResult(branch.PullResult):
         return self._lookup_revno(self.new_revid)
 
 
-class LocalGitTagDict(tag.BasicTags):
-    """Dictionary with tags in a local repository."""
+class GitTags(tag.BasicTags):
+    """Ref-based tag dictionary."""
 
     def __init__(self, branch):
         self.branch = branch
         self.repository = branch.repository
+
+
+class LocalGitTagDict(GitTags):
+    """Dictionary with tags in a local repository."""
+
+    def __init__(self, branch):
+        super(LocalGitTagDict, self).__init__(branch)
+        self.refs = self.repository._git.refs
 
     def get_tag_dict(self):
         ret = {}
@@ -119,7 +127,7 @@ class LocalGitTagDict(tag.BasicTags):
                 del self.repository._git[name]
 
     def set_tag(self, name, revid):
-        self.repository._git.refs[tag_name_to_ref(name)], _ = \
+        self.refs[tag_name_to_ref(name)], _ = \
             self.branch.lookup_bzr_revision_id(revid)
 
 
