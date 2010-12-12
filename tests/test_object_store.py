@@ -28,6 +28,7 @@ from bzrlib.errors import (
     )
 from bzrlib.graph import (
     DictParentsProvider,
+    Graph,
     )
 from bzrlib.tests import (
     TestCase,
@@ -71,7 +72,7 @@ class FindMissingBzrRevidsTests(TestCase):
 
     def _find_missing(self, ancestry, want, have):
         return _find_missing_bzr_revids(
-            DictParentsProvider(ancestry).get_parent_map,
+            Graph(DictParentsProvider(ancestry)),
             set(want), set(have))
 
     def test_simple(self):

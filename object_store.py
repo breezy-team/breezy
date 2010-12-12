@@ -638,7 +638,10 @@ class BazaarObjectStore(BaseObjectStore):
         try:
             for i, revid in enumerate(todo):
                 pb.update("generating git objects", i, len(todo))
-                rev = self.repository.get_revision(revid)
+                try:
+                    rev = self.repository.get_revision(revid)
+                except errors.NoSuchRevision:
+                    continue
                 tree = self.tree_cache.revision_tree(revid)
                 for path, obj, ie in self._revision_to_objects(rev, tree,
                     roundtrip=not lossy):

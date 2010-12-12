@@ -275,7 +275,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
         if stat.S_ISDIR(child_mode):
             subinvdelta, grandchildmodes = import_git_tree(texts, mapping,
                 child_path, name, (child_base_hexsha, child_hexsha), base_inv,
-                file_id, revision_id, parent_invs, lookup_object, 
+                file_id, revision_id, parent_invs, lookup_object,
                 (child_base_mode, child_mode), store_updater, lookup_file_id,
                 allow_submodules=allow_submodules)
         elif S_ISGITLINK(child_mode): # submodule
