@@ -617,7 +617,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
         self.target.generate_revision_history(stop_revision, result.old_revid)
-        self.update_tags(refs, overwrite=overwrite)
+        result.tag_conflicts = self.update_tags(refs, overwrite=overwrite)
         result.new_revid = self.target.last_revision()
         return result
 
@@ -655,7 +655,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         result.old_revid = self.target.last_revision()
         refs, stop_revision = self.update_refs(stop_revision)
         self.target.generate_revision_history(stop_revision, result.old_revid)
-        self.update_tags(refs)
+        result.tag_conflicts = self.update_tags(refs)
         result.new_revid = self.target.last_revision()
         return result
 
