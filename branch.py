@@ -457,7 +457,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
         Compared to the `update_revisions()` below, this function takes a
         `limit` argument that limits how many git commits will be converted
-        and returns the new git head.
+        and returns the new git head and remote refs.
         """
         interrepo = self._get_interrepo(self.source, self.target)
         def determine_wants(heads):
@@ -489,7 +489,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             prev_last_revid = self.target.last_revision()
         self.target.generate_revision_history(self._last_revid,
             prev_last_revid)
-        return head
+        return head, refs
 
     def update_revisions(self, stop_revision=None, overwrite=False,
                          graph=None):
@@ -527,7 +527,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             graph = self.target.repository.get_graph(self.source.repository)
             (result.old_revno, result.old_revid) = \
                 self.target.last_revision_info()
-            result.new_git_head = self._update_revisions(
+            result.new_git_head, remote_refs = self._update_revisions(
                 stop_revision, overwrite=overwrite, graph=graph, limit=limit)
             result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
                 overwrite)
@@ -552,7 +552,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         result.target_branch = self.target
         graph = self.target.repository.get_graph(self.source.repository)
         result.old_revno, result.old_revid = self.target.last_revision_info()
-        result.new_git_head = self._update_revisions(
+        result.new_git_head, remote_refs = self._update_revisions(
             stop_revision, overwrite=overwrite, graph=graph)
         result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
             overwrite)
