@@ -324,6 +324,9 @@ class RemoteGitRepository(GitRepository):
 
 class RemoteGitTagDict(GitTags):
 
+    def get_refs(self):
+        return self.repository.get_refs()
+
     def _iter_tag_refs(self, refs):
         for k, (peeled, unpeeled) in extract_tags(refs).iteritems():
             yield (k, peeled, unpeeled,

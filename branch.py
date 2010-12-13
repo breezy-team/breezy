@@ -88,6 +88,9 @@ class GitTags(tag.BasicTags):
         self.branch = branch
         self.repository = branch.repository
 
+    def get_refs(self):
+        raise NotImplementedError(self.get_refs)
+
     def _iter_tag_refs(self, refs):
         raise NotImplementedError(self._iter_tag_refs)
 
@@ -128,7 +131,7 @@ class GitTags(tag.BasicTags):
     def merge_to(self, to_tags, overwrite=False, ignore_master=False,
                  source_refs=None):
         if source_refs is None:
-            source_refs = self.repository.get_refs()
+            source_refs = self.get_refs()
         if self == to_tags:
             return
         if isinstance(to_tags, GitTags):
@@ -149,7 +152,7 @@ class GitTags(tag.BasicTags):
 
     def get_tag_dict(self):
         ret = {}
-        refs = self.repository.get_refs()
+        refs = self.get_refs()
         for (name, peeled, unpeeled, bzr_revid) in self._iter_tag_refs(refs):
             ret[name] = bzr_revid
         return ret
@@ -161,6 +164,9 @@ class LocalGitTagDict(GitTags):
     def __init__(self, branch):
         super(LocalGitTagDict, self).__init__(branch)
         self.refs = self.repository._git.refs
+
+    def get_refs(self):
+        return self.repository._git.get_refs()
 
     def _iter_tag_refs(self, refs):
         """Iterate over the tag refs.
@@ -187,9 +193,8 @@ class LocalGitTagDict(GitTags):
             yield (k, peeled, unpeeled,
                    self.branch.lookup_foreign_revision_id(peeled))
 
-
     def _set_tag_dict(self, to_dict):
-        extra = set(self.repository._git.get_refs().keys())
+        extra = set(self.get_refs().keys())
         for k, revid in to_dict.iteritems():
             name = tag_name_to_ref(k)
             if name in extra:
