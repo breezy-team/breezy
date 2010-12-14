@@ -70,7 +70,7 @@ Performance improvements
   (John Arbash Meinel, #614576)
 
 * Fetches involving stacked branches and branches with tags are now faster.
-  Some redundant network reads and writes were removed.  (Andrew Bennetts)
+  Some redundant network reads were removed.  (Andrew Bennetts)
 
 * Inventory entries now consume less memory (on 32-bit Ubuntu file entries
   have dropped from 68 bytes to 40, and directory entries from 120 bytes
