@@ -267,16 +267,16 @@ class TestBranch67(object):
     def test_config(self):
         """Ensure that all configuration data is stored in the branch"""
         branch = self.make_branch('a', format=self.get_format_name())
-        branch.set_parent('http://bazaar-vcs.org')
+        branch.set_parent('http://example.com')
         self.failIfExists('a/.bzr/branch/parent')
-        self.assertEqual('http://bazaar-vcs.org', branch.get_parent())
-        branch.set_push_location('sftp://bazaar-vcs.org')
+        self.assertEqual('http://example.com', branch.get_parent())
+        branch.set_push_location('sftp://example.com')
         config = branch.get_config()._get_branch_data_config()
-        self.assertEqual('sftp://bazaar-vcs.org',
+        self.assertEqual('sftp://example.com',
                          config.get_user_option('push_location'))
-        branch.set_bound_location('ftp://bazaar-vcs.org')
+        branch.set_bound_location('ftp://example.com')
         self.failIfExists('a/.bzr/branch/bound')
-        self.assertEqual('ftp://bazaar-vcs.org', branch.get_bound_location())
+        self.assertEqual('ftp://example.com', branch.get_bound_location())
 
     def test_set_revision_history(self):
         builder = self.make_branch_builder('.', format=self.get_format_name())

@@ -30,15 +30,10 @@ from bzrlib.tests.per_transport import transport_test_permutations
 import bzrlib.transport
 from bzrlib.transport.memory import MemoryTransport
 import bzrlib.urlutils
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Multiply tests for tranport implementations."""
-    transport_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests,
-        tests.condition_isinstance(TestReadMergeableBundleFromURL))
-    return tests.multiply_tests(transport_tests, transport_test_permutations(),
-        remaining_tests)
+load_tests = load_tests_apply_scenarios
 
 
 def create_bundle_file(test_case):
@@ -63,6 +58,8 @@ def create_bundle_file(test_case):
 
 class TestReadMergeableBundleFromURL(TestTransportImplementation):
     """Test that read_bundle works properly across multiple transports"""
+
+    scenarios = transport_test_permutations()
 
     def setUp(self):
         super(TestReadMergeableBundleFromURL, self).setUp()

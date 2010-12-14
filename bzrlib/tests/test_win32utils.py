@@ -120,7 +120,8 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             ])
 
     def test_case_insensitive_globbing(self):
-        self.requireFeature(tests.CaseInsCasePresFilenameFeature)
+        if os.path.normcase("AbC") == "AbC":
+            self.skip("Test requires case insensitive globbing function")
         self.build_ascii_tree()
         self._run_testset([
             [[u'A'], [u'A']],
@@ -326,7 +327,8 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
             single_quotes_allowed=True)
 
     def test_case_insensitive_globs(self):
-        self.requireFeature(tests.CaseInsCasePresFilenameFeature)
+        if os.path.normcase("AbC") == "AbC":
+            self.skip("Test requires case insensitive globbing function")
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
         self.assertCommandLine([u'A/b.c'], 'A/B*')
 
