@@ -31,6 +31,10 @@ Improvements
   missing inventories.  This removes at least one network roundtrip when
   pushing to a stacked branch.  (Andrew Bennetts)
 
+* ``ControlDir.sprout`` no longer opens the target repository more than
+  once.  This avoids some unnecessary IO, and removes a network roundtrip
+  when doing ``bzr branch`` to a smart server URL.  (Andrew Bennetts)
+
 * ``bzr resolve`` now accepts ``--take-this`` and ``--take-other`` actions
   for text conflicts. This *replace* the whole file with the content
   designated by the action. This will *ignore* all differences that would
@@ -52,6 +56,14 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``Branch.sprout``, ``BranchFormat.initalize`` and
+  ``ControlDir.create_branch`` now take an optional ``repository`` keyword
+  argument, and ``BranchFormat.open`` now takes an optional
+  ``found_repository`` keyword argument.  These provide the repository
+  object for new branch object to use (for cases when the caller has
+  already opened that repository).  Implementations of these APIs will
+  need to be updated to accept these arguments.  (Andrew Bennetts)
 
 Internals
 *********
