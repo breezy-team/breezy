@@ -64,6 +64,9 @@ Testing
 * Catch exceptions related to bug #637821 during test cleanup to avoid
   spurious failures. (Vincent Ladeuil, #686008).
 
+* Check sphinx compatibility for tests requiring older sphinx versions.
+  (Vincent Ladeuil, #688072)
+
 * ``TestDebuntuExpansions`` was escaping the test isolation by calling the
   wrong base class ``setUp``. (Vincent Ladeuil, #684622)
 
