@@ -110,7 +110,7 @@ class Branch(controldir.ControlComponent):
                 # This fallback is already configured.  This probably only
                 # happens because BzrDir.sprout is a horrible mess.  To avoid
                 # confusing _unstack we don't add this a second time.
-                # XXX: log a warning, maybe?
+                mutter('duplicate activation of fallback %r on %r', url, self)
                 return
         repo = self._get_fallback_repository(url)
         if repo.has_same_location(self.repository):
