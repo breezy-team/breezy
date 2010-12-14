@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2005-2008, 2010 by Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -156,6 +156,7 @@ class TestGetTo(TestCaseInTempDir):
         self.assertEqual({'X-Cheese': 'to the rescue!'}, sender.extra_headers())
 
     def get_sender(self, text=sample_config):
+        config.GlobalConfig.from_string(text, save=True)
         self.branch = BzrDir.create_branch_convenience('.')
         tree = self.branch.bzrdir.open_workingtree()
         tree.commit('foo bar baz\nfuzzy\nwuzzy', rev_id='A',
@@ -165,8 +166,6 @@ class TestGetTo(TestCaseInTempDir):
             committer="Sample <john@example.com>",
             )
         my_config = self.branch.get_config()
-        config_file = StringIO(text)
-        (my_config._get_global_config()._get_parser(config_file))
         sender = EmailSender(self.branch, 'A', my_config)
         # This is usually only done after the EmailSender has locked the branch
         # and repository during send(), however, for testing, we need to do it

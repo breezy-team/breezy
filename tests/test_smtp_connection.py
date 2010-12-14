@@ -1,4 +1,4 @@
-# Copyright (C) 2005 by Canonical Ltd
+# Copyright (C) 2007, 2010 by Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -63,9 +63,7 @@ class InstrumentedSMTPConnection(SMTPConnection):
 class TestSMTPConnection(TestCase):
 
     def get_connection(self, text):
-        my_config = config.GlobalConfig()
-        config_file = StringIO(text)
-        my_config._get_parser(config_file)
+        my_config = config.GlobalConfig.from_string(text)
         return InstrumentedSMTPConnection(my_config)
 
     def test_defaults(self):
