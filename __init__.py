@@ -23,7 +23,7 @@ from bzrlib import (
     lazy_import,
     )
 lazy_import.lazy_import(globals(), """
-bzrom bzrlib import (
+from bzrlib import (
     patiendiff,
     ui,
     )
