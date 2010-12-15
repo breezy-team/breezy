@@ -86,7 +86,6 @@ class LaunchpadService(object):
 
     LAUNCHPAD_DOMAINS = {
         'production': 'launchpad.net',
-        'edge': 'edge.launchpad.net',
         'staging': 'staging.launchpad.net',
         'demo': 'demo.launchpad.net',
         'dev': 'launchpad.dev',
@@ -98,7 +97,8 @@ class LaunchpadService(object):
     for instance, domain in LAUNCHPAD_DOMAINS.iteritems():
         LAUNCHPAD_INSTANCE[instance] = 'https://xmlrpc.%s/bazaar/' % domain
 
-    # Previously 'edge' was used to avoid a launchpad bug with redirection
+    # We use production as the default because edge has been deprecated circa
+    # 2010-11 (see bug https://bugs.launchpad.net/bzr/+bug/583667)
     DEFAULT_INSTANCE = 'production'
     DEFAULT_SERVICE_URL = LAUNCHPAD_INSTANCE[DEFAULT_INSTANCE]
 

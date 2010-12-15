@@ -381,6 +381,7 @@ def load_tests(standard_tests, module, loader):
         'get_symlink_target',
         'inv',
         'iter_search_rules',
+        'is_executable',
         'list_files',
         'locking',
         'path_content_summary',

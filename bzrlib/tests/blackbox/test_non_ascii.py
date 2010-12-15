@@ -25,16 +25,16 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.tests import EncodingAdapter
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    return tests.multiply_tests(standard_tests,
-                                EncodingAdapter.encoding_scenarios,
-                                loader.suiteClass())
+load_tests = load_tests_apply_scenarios
 
 
 class TestNonAscii(tests.TestCaseWithTransport):
     """Test that bzr handles files/committers/etc which are non-ascii."""
+
+    scenarios = EncodingAdapter.encoding_scenarios
 
     def setUp(self):
         super(TestNonAscii, self).setUp()

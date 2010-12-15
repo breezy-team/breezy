@@ -1667,7 +1667,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
         utf8_files = [('README',
                        "This is a Bazaar control directory.\n"
                        "Do not change any files in this directory.\n"
-                       "See http://bazaar-vcs.org/ for more information about Bazaar.\n"),
+                       "See http://bazaar.canonical.com/ for more information about Bazaar.\n"),
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.

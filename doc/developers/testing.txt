@@ -857,10 +857,10 @@ For example::
 
     class TestCheckout(TestCase):
 
-    variations = multiply_scenarios(
-        VaryByRepositoryFormat(), 
-        VaryByTreeFormat(),
-        )
+        scenarios = multiply_scenarios(
+            VaryByRepositoryFormat(), 
+            VaryByTreeFormat(),
+            )
 
 The `load_tests` declaration or definition should be near the top of the
 file so its effect can be seen.

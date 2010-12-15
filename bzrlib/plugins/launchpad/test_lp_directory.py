@@ -361,7 +361,7 @@ class TestDebuntuExpansions(TestCaseInTempDir):
     """Test expansions for ubuntu: and debianlp: schemes."""
 
     def setUp(self):
-        tests.TestCase.setUp(self)
+        super(TestDebuntuExpansions, self).setUp()
         self.directory = LaunchpadDirectory()
 
     def _make_factory(self, package='foo', distro='ubuntu', series=None):
