@@ -3417,16 +3417,40 @@ class TestEnvironHandling(tests.TestCase):
 
     def test__captureVar_None_called_twice_leaks(self):
         self._captureVar('MYVAR', '42')
+        # We need an embedded test to observe the bug
         class Test(tests.TestCase):
             def test_me(self):
-                # The first call records 42
+                # The first call save the 42 value
                 self._captureVar('MYVAR', None)
+                self.assertEquals(None, os.environ.get('MYVAR'))
                 self.assertEquals('42', self._old_env.get('MYVAR'))
                 # But the second one erases it !
                 self._captureVar('MYVAR', None)
                 self.assertEquals(None, self._old_env.get('MYVAR'))
-        result = tests.ExtendedTestResult(StringIO(), 0, 1)
+        output = StringIO()
+        result = tests.TextTestResult(output, 0, 1)
         Test('test_me').run(result)
+        self.assertTrue(result.wasStrictlySuccessful())
         # And we have lost all trace of the original value
         self.assertEquals(None, os.environ.get('MYVAR'))
         self.assertEquals(None, self._old_env.get('MYVAR'))
+
+    def test_overrideEnv_None_called_twice_doesnt_leak(self):
+        self.overrideEnv('MYVAR', '42')
+        # We use an embedded test to make sure we fix the _captureVar bug
+        class Test(tests.TestCase):
+            def test_me(self):
+                # The first call save the 42 value
+                self.overrideEnv('MYVAR', None)
+                self.assertEquals(None, os.environ.get('MYVAR'))
+                self.assertEquals('42', self._old_env.get('MYVAR'))
+                # The second one respect it
+                self.overrideEnv('MYVAR', None)
+                self.assertEquals(None, os.environ.get('MYVAR'))
+                self.assertEquals('42', self._old_env.get('MYVAR'))
+        output = StringIO()
+        result = tests.TextTestResult(output, 0, 1)
+        Test('test_me').run(result)
+        self.assertTrue(result.wasStrictlySuccessful())
+        # We get our value back
+        self.assertEquals('42', os.environ.get('MYVAR'))

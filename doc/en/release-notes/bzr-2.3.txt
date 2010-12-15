@@ -185,6 +185,10 @@ Testing
   to 0.9.5 which will allow tests that need the fixed unicode handling to be
   written. (Martin [gz])
 
+* Introduce an ``overrideEnv()`` helper for tests that needs to change the
+  environment variables while respecting the isoltation rules.
+  (Vincent Ladeuil, #690563)
+
 * Printing selftest results to a non-UTF-8 console will now escape characters
   that can't be encoded rather than aborting the test run with an exception.
   (Martin [gz], #633216)
