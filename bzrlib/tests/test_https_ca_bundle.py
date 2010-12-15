@@ -36,13 +36,13 @@ class TestGetCAPath(TestCaseInTempDir):
             'CURL_CA_BUNDLE': None,
             'PATH': None,
             }
-        self._old_env = {}
+        self._saved_env = {}
         self.addCleanup(self._restore)
         for name, value in new_env.iteritems():
-            self._old_env[name] = osutils.set_or_unset_env(name, None)
+            self._saved_env[name] = osutils.set_or_unset_env(name, None)
 
     def _restore(self):
-        for name, value in self._old_env.iteritems():
+        for name, value in self._saved_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
     def _make_file(self, in_dir='.'):
