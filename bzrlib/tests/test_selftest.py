@@ -3428,4 +3428,5 @@ class TestEnvironHandling(tests.TestCase):
         result = tests.ExtendedTestResult(StringIO(), 0, 1)
         Test('test_me').run(result)
         # And we have lost all trace of the original value
+        self.assertEquals(None, os.environ.get('MYVAR'))
         self.assertEquals(None, self._old_env.get('MYVAR'))
