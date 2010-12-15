@@ -40,6 +40,10 @@ Improvements
   designated by the action. This will *ignore* all differences that would
   have been merge cleanly otherwise. (Vincent Ladeuil, #638451)
 
+* ``bt.test_http`` was breaking ``os.environ`` by erasing the values save by
+  ``TestCase`` leading to ``bt.test_import_tariff`` failures.
+  (Vincent Ladeuil, #690563)
+
 Bug Fixes
 *********
 
