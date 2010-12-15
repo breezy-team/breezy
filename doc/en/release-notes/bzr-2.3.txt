@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.3b4
+bzr 2.3b5
 #########
 
-:2.3.b4: NOT RELEASED YET
+:2.3.b5: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -26,6 +26,93 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* A redundant parent inventories calculation was removed from
+  ``fetch.py``, as ``Repository.insert_stream`` already reports any
+  missing inventories.  This removes at least one network roundtrip when
+  pushing to a stacked branch.  (Andrew Bennetts)
+
+* ``ControlDir.sprout`` no longer opens the target repository more than
+  once.  This avoids some unnecessary IO, and removes a network roundtrip
+  when doing ``bzr branch`` to a smart server URL.  (Andrew Bennetts)
+
+* ``bzr resolve`` now accepts ``--take-this`` and ``--take-other`` actions
+  for text conflicts. This *replace* the whole file with the content
+  designated by the action. This will *ignore* all differences that would
+  have been merge cleanly otherwise. (Vincent Ladeuil, #638451)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+* ``Branch.sprout``, ``BranchFormat.initalize`` and
+  ``ControlDir.create_branch`` now take an optional ``repository`` keyword
+  argument, and ``BranchFormat.open`` now takes an optional
+  ``found_repository`` keyword argument.  These provide the repository
+  object for new branch object to use (for cases when the caller has
+  already opened that repository).  Implementations of these APIs will
+  need to be updated to accept these arguments.  (Andrew Bennetts)
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+* Catch exceptions related to bug #637821 during test cleanup to avoid
+  spurious failures. (Vincent Ladeuil, #686008).
+
+* Check sphinx compatibility for tests requiring older sphinx versions.
+  (Vincent Ladeuil, #688072)
+
+* ``TestDebuntuExpansions`` was escaping the test isolation by calling the
+  wrong base class ``setUp``. (Vincent Ladeuil, #684622)
+
+bzr 2.3b4
+#########
+
+:2.3.b4: 2010-12-03
+
+This is the fourth beta of the 2.3 series, leading up to a 2.3.0 release in
+February. Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.
+
+2.3b4 includes bug fixes for the ``config`` command and conflict
+resolution. More changes were made for the test scripts handling to make it
+easier to add reproducing recipes to bugs.
+
+It also includes bug fixes from the 2.2.2 release as well as the bug fixes
+in the upcoming 2.0.7, 2.1.4 and 2.2.3 releases. This means that all known
+fixed bugs at the time of this release are included.
+
+
+External Compatibility Breaks
+*****************************
+
+  (none)
+
+Improvements
+************
+
 * Bazaar now caches a branch's tags while that branch is read-locked.
   This removes 1 network roundtrip from most interactions with a remote
   branch.  (Andrew Bennetts)
@@ -39,11 +126,11 @@ Improvements
   number of remaining conflicts. This provides a better feedback about the
   whole resolution process. (Vincent Ladeuil)
 
+* Read configuration files in $XDG_CONFIG_HOME/bazaar on Unix if there is
+  already a directory there.  (Neil Martinsen-Burrell, #195397)
+
 Bug Fixes
 *********
-
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
 
 * Better message if there is an error while setting ownership of
   ``.bazaar`` directory. (Parth Malwankar, #657553)
@@ -67,22 +154,12 @@ Bug Fixes
 
 * Report error if non-ASCII command option given. (Rory Yorke, #140563)
 
-Documentation
-*************
-
-.. Improved or updated documentation.
-
-API Changes
-***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
+* ``tools/check-newsbug.py`` is now based on ``lp:hydrazine`` and no longer
+  crashes when encountering private bugs (they are just displayed as such).
+  (Vincent Ladeuil, #354985)
 
 Internals
 *********
-
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
 
 * ``BranchBuilder.build_snapshot`` now accepts parent_ids == [].
   This can be used to create a new root in the graph. (Gary van der Merwe)
@@ -95,10 +172,6 @@ Internals
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
 * Add a null_output_matches_anything keyword argument with default False to
   bzrlib.tests.script.ScriptRunner.run_script to specify that the command
   output should not be checked (as opposed to expecting an empty output).
@@ -107,6 +180,14 @@ Testing
 * Blank output section in scriptrunner tests no longer match any output.
   Instead, use '...' as a wildcard if you don't care about the output.
   (Martin Pool, #637830)
+
+* Bump minimum testtools version required to run ``bzr selftest`` from 0.9.2
+  to 0.9.5 which will allow tests that need the fixed unicode handling to be
+  written. (Martin [gz])
+
+* Printing selftest results to a non-UTF-8 console will now escape characters
+  that can't be encoded rather than aborting the test run with an exception.
+  (Martin [gz], #633216)
 
 
 bzr 2.3b3
@@ -383,7 +464,7 @@ Testing
   (Andrew Bennetts, #632387)
 
 * Skip tests that needs a bzr source tree when there isn't one. This is
-  needed to succesfully run the test suite for installed versions.
+  needed to successfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).
 
 * Skip the tests that requires respecting the chmod bits when running as root.
@@ -459,7 +540,7 @@ Improvements
 * ``bzr remove`` now just backs up changed files instead of exiting,
   forcing you to choose to either keep or delete them. Bazaar will now delete
   the files if they can easily be recovered using revert, otherwise they
-  will be backed up (adding an extention of the form .~#~).
+  will be backed up (adding an extension of the form .~#~).
   (Marius Kruger, #400554)
 
 * ``bzr revert`` and ``bzr status`` are up to 15% faster on large trees
