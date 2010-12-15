@@ -87,11 +87,11 @@ released Bazaar."  A conflict would look like this::
 
 The correct resolution would be "Martin Pool released Bazaar."
 
-You can handle text conflicts either by editing the main copy of the file, or
-by invoking external tools on the THIS, OTHER and BASE versions.  It's worth
-mentioning that resolving text conflicts rarely involves picking one set of
-changes over the other.  More often, the two sets of changes must be
-intelligently combined.
+You can handle text conflicts either by editing the main copy of the file,
+or by invoking external tools on the THIS, OTHER and BASE versions.  It's
+worth mentioning that resolving text conflicts rarely involves picking one
+set of changes over the other (but see below when you encounter these
+cases).  More often, the two sets of changes must be intelligently combined.
 
 If you edit the main copy, be sure to remove the herringbone markers.  When
 you are done editing, the file should look like it never had a conflict, and be
@@ -103,6 +103,16 @@ Bazaar will auto-detect which conflicts you have resolved.
 When the conflict is resolved, Bazaar deletes the previously generated
 ``.BASE``, ``.THIS`` and ``.OTHER`` files if they are still present in the
 working tree.
+
+
+When you want to pick one set of changes over the other, you can use ``bzr
+resolve`` with one of the following actions:
+
+* ``--action=take-this`` will issue ``mv FILE.THIS FILE``,
+* ``--action=take-other`` will issue ``mv FILE.OTHER FILE``.
+
+Note that if you have modified ``FILE.THIS`` or ``FILE.OTHER``, these
+modifications will be taken into account.
 
 Content conflicts
 -----------------

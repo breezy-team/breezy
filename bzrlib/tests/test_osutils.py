@@ -38,6 +38,7 @@ from bzrlib.tests import (
     file_utils,
     test__walkdirs_win32,
     )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
 class _UTF8DirReaderFeature(tests.Feature):
@@ -96,13 +97,7 @@ def dir_reader_scenarios():
     return scenarios
 
 
-def load_tests(basic_tests, module, loader):
-    suite = loader.suiteClass()
-    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
-        basic_tests, tests.condition_isinstance(TestDirReader))
-    tests.multiply_tests(dir_reader_tests, dir_reader_scenarios(), suite)
-    suite.addTest(remaining_tests)
-    return suite
+load_tests = load_tests_apply_scenarios
 
 
 class TestContainsWhitespace(tests.TestCase):
@@ -1107,6 +1102,8 @@ class TestWalkDirs(tests.TestCaseInTempDir):
 
         # rename the 1file to a latin-1 filename
         os.rename("./1file", "\xe8file")
+        if "\xe8file" not in os.listdir("."):
+            self.skip("Lack filesystem that preserves arbitrary bytes")
 
         self._save_platform_info()
         win32utils.winver = None # Avoid the win32 detection code
@@ -1732,6 +1729,8 @@ class TestReCompile(tests.TestCase):
 
 
 class TestDirReader(tests.TestCaseInTempDir):
+
+    scenarios = dir_reader_scenarios()
 
     # Set by load_tests
     _dir_reader_class = None

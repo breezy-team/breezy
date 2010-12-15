@@ -31,26 +31,24 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     TestCaseWithTransport,
-    condition_isinstance,
-    multiply_tests,
-    split_suite_by_condition,
+    scenarios,
     )
 
 
-def load_tests(standard_tests, module, loader):
-    # parameterise the TestBTreeNodes tests
-    node_tests, others = split_suite_by_condition(standard_tests,
-        condition_isinstance(TestBTreeNodes))
+load_tests = scenarios.load_tests_apply_scenarios
+
+
+def btreeparser_scenarios():
     import bzrlib._btree_serializer_py as py_module
     scenarios = [('python', {'parse_btree': py_module})]
     if compiled_btreeparser_feature.available():
-        scenarios.append(('C', {'parse_btree':
-                                compiled_btreeparser_feature.module}))
-    return multiply_tests(node_tests, scenarios, others)
+        scenarios.append(('C', 
+            {'parse_btree': compiled_btreeparser_feature.module}))
+    return scenarios
 
 
 compiled_btreeparser_feature = tests.ModuleAvailableFeature(
-                                'bzrlib._btree_serializer_pyx')
+    'bzrlib._btree_serializer_pyx')
 
 
 class BTreeTestCase(TestCaseWithTransport):
@@ -1184,6 +1182,8 @@ class TestBTreeIndex(BTreeTestCase):
 
 
 class TestBTreeNodes(BTreeTestCase):
+
+    scenarios = btreeparser_scenarios()
 
     def setUp(self):
         BTreeTestCase.setUp(self)

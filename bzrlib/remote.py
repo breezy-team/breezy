@@ -254,7 +254,9 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
             name=name, repository=repository)
         if not isinstance(real_branch, RemoteBranch):
             if not isinstance(repository, RemoteRepository):
-                raise AssertionError('xxx %r' % (repository,))
+                raise AssertionError(
+                    'need a RemoteRepository to use with RemoteBranch, got %r'
+                    % (repository,))
             result = RemoteBranch(self, repository, real_branch, name=name)
         else:
             result = real_branch
@@ -2157,8 +2159,9 @@ class RemoteBranchFormat(branch.BranchFormat):
                     remote_repo_url)
             if url_diff != '.':
                 raise AssertionError(
-                    'diff %r: %r vs. (%r + %r)' %
-                    (url_diff, repository.user_url, medium.base, repo_path))
+                    'repository.user_url %r does not match URL from server '
+                    'response (%r + %r)'
+                    % (repository.user_url, medium.base, repo_path))
             remote_repo = repository
         else:
             if repo_path == '':

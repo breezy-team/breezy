@@ -30,10 +30,7 @@ from bzrlib import (
     cleanup,
     errors,
     graph,
-    registry,
-    repository,
     revision as _mod_revision,
-    symbol_versioning,
     urlutils,
     )
 from bzrlib.push import (
@@ -48,6 +45,8 @@ from bzrlib.transport import (
     )
 
 """)
+
+from bzrlib import registry
 
 
 class ControlComponent(object):

@@ -40,7 +40,7 @@ class TestParent(TestCaseWithTransport):
     def test_set_get_parent(self):
         """Set, re-get and reset the parent"""
         b = self.make_branch('subdir')
-        url = 'http://bazaar-vcs.org/bzr/bzr.dev'
+        url = 'http://example.com/bzr/bzr.dev'
         b.set_parent(url)
         self.assertEqual(url, b.get_parent())
         self.assertEqual(url, b._get_parent_location())
