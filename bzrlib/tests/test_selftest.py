@@ -3411,3 +3411,21 @@ class TestRunSuite(tests.TestCase):
                                                 self.verbosity)
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertLength(1, calls)
+
+
+class TestEnvironHandling(tests.TestCase):
+
+    def test__captureVar_None_called_twice_leaks(self):
+        self._captureVar('MYVAR', '42')
+        class Test(tests.TestCase):
+            def test_me(self):
+                # The first call records 42
+                self._captureVar('MYVAR', None)
+                self.assertEquals('42', self._old_env.get('MYVAR'))
+                # But the second one erases it !
+                self._captureVar('MYVAR', None)
+                self.assertEquals(None, self._old_env.get('MYVAR'))
+        result = tests.ExtendedTestResult(StringIO(), 0, 1)
+        Test('test_me').run(result)
+        # And we have lost all trace of the original value
+        self.assertEquals(None, self._old_env.get('MYVAR'))
