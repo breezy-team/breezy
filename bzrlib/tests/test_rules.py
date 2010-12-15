@@ -20,12 +20,10 @@ import os
 import sys
 
 from bzrlib import (
-    config,
     errors,
     rules,
     tests,
     )
-from bzrlib.util.configobj import configobj
 
 
 class TestIniBasedRulesSearcher(tests.TestCase):

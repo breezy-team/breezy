@@ -43,7 +43,7 @@ from bzrlib.tests import (
     features,
     scenarios,
     )
-from bzrlib.util.configobj import configobj
+import configobj
 
 
 def lockable_config_scenarios():

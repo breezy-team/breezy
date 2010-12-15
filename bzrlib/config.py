@@ -91,7 +91,7 @@ from bzrlib import (
     urlutils,
     win32utils,
     )
-from bzrlib.util.configobj import configobj
+import configobj
 """)
 
 
