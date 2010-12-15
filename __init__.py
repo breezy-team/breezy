@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,8 +18,16 @@
 
 
 import traceback
-from bzrlib import commands, patiencediff, ui
-
+from bzrlib import (
+    commands,
+    lazy_import,
+    )
+lazy_import.lazy_import(globals(), """
+bzrom bzrlib import (
+    patiendiff,
+    ui,
+    )
+""")
 
 # Overrides for common mispellings that heuristics get wrong
 _overrides = {
