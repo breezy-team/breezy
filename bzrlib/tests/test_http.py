@@ -1075,15 +1075,15 @@ class TestHttpProxyWhiteBox(tests.TestCase):
 
     def setUp(self):
         tests.TestCase.setUp(self)
-        self._saved_env = {}
+        self._http_saved_env = {}
         self.addCleanup(self._restore_env)
 
     def _install_env(self, env):
         for name, value in env.iteritems():
-            self._saved_env[name] = osutils.set_or_unset_env(name, value)
+            self._http_saved_env[name] = osutils.set_or_unset_env(name, value)
 
     def _restore_env(self):
-        for name, value in self._saved_env.iteritems():
+        for name, value in self._http_saved_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
     def _proxied_request(self):
@@ -1136,7 +1136,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
             self.no_proxy_host = self.server_host_port
         # The secondary server is the proxy
         self.proxy_url = self.get_secondary_url()
-        self._saved_env = {}
+        self._http_saved_env = {}
 
     def _testing_pycurl(self):
         # TODO: This is duplicated for lots of the classes in this file
@@ -1145,10 +1145,10 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
 
     def _install_env(self, env):
         for name, value in env.iteritems():
-            self._saved_env[name] = osutils.set_or_unset_env(name, value)
+            self._http_saved_env[name] = osutils.set_or_unset_env(name, value)
 
     def _restore_env(self):
-        for name, value in self._saved_env.iteritems():
+        for name, value in self._http_saved_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
     def proxied_in_env(self, env):
@@ -1707,7 +1707,7 @@ class TestProxyAuth(TestAuth):
 
     def setUp(self):
         super(TestProxyAuth, self).setUp()
-        self._saved_env = {}
+        self._http_saved_env = {}
         self.addCleanup(self._restore_env)
         # Override the contents to avoid false positives
         self.build_tree_contents([('a', 'not proxied contents of a\n'),
@@ -1722,10 +1722,10 @@ class TestProxyAuth(TestAuth):
 
     def _install_env(self, env):
         for name, value in env.iteritems():
-            self._saved_env[name] = osutils.set_or_unset_env(name, value)
+            self._http_saved_env[name] = osutils.set_or_unset_env(name, value)
 
     def _restore_env(self):
-        for name, value in self._saved_env.iteritems():
+        for name, value in self._http_saved_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
     def test_empty_pass(self):
