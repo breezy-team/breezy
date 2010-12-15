@@ -354,27 +354,27 @@ class TestHttpTransportUrls(tests.TestCase):
 
     def test_abs_url(self):
         """Construction of absolute http URLs"""
-        t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
+        t = self._transport('http://example.com/bzr/bzr.dev/')
         eq = self.assertEqualDiff
-        eq(t.abspath('.'), 'http://bazaar-vcs.org/bzr/bzr.dev')
-        eq(t.abspath('foo/bar'), 'http://bazaar-vcs.org/bzr/bzr.dev/foo/bar')
-        eq(t.abspath('.bzr'), 'http://bazaar-vcs.org/bzr/bzr.dev/.bzr')
+        eq(t.abspath('.'), 'http://example.com/bzr/bzr.dev')
+        eq(t.abspath('foo/bar'), 'http://example.com/bzr/bzr.dev/foo/bar')
+        eq(t.abspath('.bzr'), 'http://example.com/bzr/bzr.dev/.bzr')
         eq(t.abspath('.bzr/1//2/./3'),
-           'http://bazaar-vcs.org/bzr/bzr.dev/.bzr/1/2/3')
+           'http://example.com/bzr/bzr.dev/.bzr/1/2/3')
 
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
-        self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
+        self._transport('http://example.com/bzr/bzr.dev/')
         self.assertRaises(errors.InvalidURL,
                           self._transport,
-                          'http://http://bazaar-vcs.org/bzr/bzr.dev/')
+                          'http://http://example.com/bzr/bzr.dev/')
 
     def test_http_root_urls(self):
         """Construction of URLs from server root"""
-        t = self._transport('http://bzr.ozlabs.org/')
+        t = self._transport('http://example.com/')
         eq = self.assertEqualDiff
         eq(t.abspath('.bzr/tree-version'),
-           'http://bzr.ozlabs.org/.bzr/tree-version')
+           'http://example.com/.bzr/tree-version')
 
     def test_http_impl_urls(self):
         """There are servers which ask for particular clients to connect"""

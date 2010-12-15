@@ -24,18 +24,10 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import test_server
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(basic_tests, module, loader):
-    suite = loader.suiteClass()
-    server_tests, remaining_tests = tests.split_suite_by_condition(
-        basic_tests, tests.condition_isinstance(TestTCPServerInAThread))
-    server_scenarios = [ (name, {'server_class': getattr(test_server, name)})
-                         for name in
-                         ('TestingTCPServer', 'TestingThreadingTCPServer')]
-    tests.multiply_tests(server_tests, server_scenarios, suite)
-    suite.addTest(remaining_tests)
-    return suite
+load_tests = load_tests_apply_scenarios
 
 
 class TestThreadWithException(tests.TestCase):
@@ -128,6 +120,11 @@ class TCPConnectionHandler(SocketServer.StreamRequestHandler):
 
 
 class TestTCPServerInAThread(tests.TestCase):
+
+    scenarios = [ 
+        (name, {'server_class': getattr(test_server, name)})
+        for name in
+        ('TestingTCPServer', 'TestingThreadingTCPServer')]
 
     # Set by load_tests()
     server_class = None

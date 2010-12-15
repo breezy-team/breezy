@@ -203,7 +203,7 @@ class FtpTransport(ConnectedTransport):
             # Microsoft FTP-Service RNFR reply if file not found
             or (s.startswith('550 ') and 'unable to rename to' in extra)
             # if containing directory doesn't exist, suggested by
-            # <https://bugs.edge.launchpad.net/bzr/+bug/224373>
+            # <https://bugs.launchpad.net/bzr/+bug/224373>
             or (s.startswith('550 ') and "can't find folder" in s)
             ):
             raise errors.NoSuchFile(path, extra=extra)

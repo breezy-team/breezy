@@ -3749,16 +3749,20 @@ class cmd_merge(Command):
     with bzr send. If neither is specified, the default is the upstream branch
     or the branch most recently merged using --remember.
 
-    When merging a branch, by default the tip will be merged. To pick a different
-    revision, pass --revision. If you specify two values, the first will be used as
-    BASE and the second one as OTHER. Merging individual revisions, or a subset of
-    available revisions, like this is commonly referred to as "cherrypicking".
+    When merging from a branch, by default bzr will try to merge in all new
+    work from the other branch, automatically determining an appropriate base
+    revision.  If this fails, you may need to give an explicit base.
 
-    Revision numbers are always relative to the branch being merged.
+    To pick a different ending revision, pass "--revision OTHER".  bzr will
+    try to merge in all new work up to and including revision OTHER.
 
-    By default, bzr will try to merge in all new work from the other
-    branch, automatically determining an appropriate base.  If this
-    fails, you may need to give an explicit base.
+    If you specify two values, "--revision BASE..OTHER", only revisions BASE
+    through OTHER, excluding BASE but including OTHER, will be merged.  If this
+    causes some revisions to be skipped, i.e. if the destination branch does
+    not already contain revision BASE, such a merge is commonly referred to as
+    a "cherrypick".
+
+    Revision numbers are always relative to the source branch.
 
     Merge will do its best to combine the changes in two branches, but there
     are some kinds of problems only a human can fix.  When it encounters those,
@@ -3788,7 +3792,7 @@ class cmd_merge(Command):
     you to apply each diff hunk and file change, similar to "shelve".
 
     :Examples:
-        To merge the latest revision from bzr.dev::
+        To merge all new revisions from bzr.dev::
 
             bzr merge ../bzr.dev
 
@@ -4204,9 +4208,10 @@ class cmd_revert(Command):
     last committed revision is used.
 
     To remove only some changes, without reverting to a prior version, use
-    merge instead.  For example, "merge . --revision -2..-3" will remove the
-    changes introduced by -2, without affecting the changes introduced by -1.
-    Or to remove certain changes on a hunk-by-hunk basis, see the Shelf plugin.
+    merge instead.  For example, "merge . -r -2..-3" (don't forget the ".")
+    will remove the changes introduced by the second last commit (-2), without
+    affecting the changes introduced by the last commit (-1).  To remove
+    certain changes on a hunk-by-hunk basis, see the shelve command.
 
     By default, any files that have been manually changed will be backed up
     first.  (Files changed only by merge are not backed up.)  Backup files have
@@ -4242,7 +4247,7 @@ class cmd_revert(Command):
     target branches.
     """
 
-    _see_also = ['cat', 'export']
+    _see_also = ['cat', 'export', 'merge', 'shelve']
     takes_options = [
         'revision',
         Option('no-backup', "Do not save backups of reverted files."),

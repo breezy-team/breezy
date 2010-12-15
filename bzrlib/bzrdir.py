@@ -1027,8 +1027,11 @@ class BzrDirPreSplitOut(BzrDir):
             tree.clone(result)
         return result
 
-    def create_branch(self, name=None):
+    def create_branch(self, name=None, repository=None):
         """See BzrDir.create_branch."""
+        if repository is not None:
+            raise NotImplementedError(
+                "create_branch(repository=<not None>) on %r" % (self,))
         return self._format.get_branch_format().initialize(self, name=name)
 
     def destroy_branch(self, name=None):
@@ -1264,9 +1267,10 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.can_convert_format()."""
         return True
 
-    def create_branch(self, name=None):
+    def create_branch(self, name=None, repository=None):
         """See BzrDir.create_branch."""
-        return self._format.get_branch_format().initialize(self, name=name)
+        return self._format.get_branch_format().initialize(self, name=name,
+                repository=repository)
 
     def destroy_branch(self, name=None):
         """See BzrDir.create_branch."""
@@ -1663,7 +1667,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
         utf8_files = [('README',
                        "This is a Bazaar control directory.\n"
                        "Do not change any files in this directory.\n"
-                       "See http://bazaar-vcs.org/ for more information about Bazaar.\n"),
+                       "See http://bazaar.canonical.com/ for more information about Bazaar.\n"),
                       ('branch-format', self.get_format_string()),
                       ]
         # NB: no need to escape relative paths that are url safe.

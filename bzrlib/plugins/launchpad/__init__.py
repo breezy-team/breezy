@@ -38,7 +38,7 @@ The plugin also provides the following commands:
 # The XMLRPC server address can be overridden by setting the environment
 # variable $BZR_LP_XMLRPC_URL
 
-# see http://bazaar-vcs.org/Specs/BranchRegistrationTool
+# see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
 # Since we are a built-in plugin we share the bzrlib version
 from bzrlib import version_info
