@@ -405,8 +405,8 @@ class TestConfigPath(tests.TestCase):
         os.environ['HOME'] = '/home/bogus'
         os.environ['XDG_CACHE_DIR'] = ''
         if sys.platform == 'win32':
-            os.environ['BZR_HOME'] = \
-                r'C:\Documents and Settings\bogus\Application Data'
+            self.overrideEnv(
+                'BZR_HOME', r'C:\Documents and Settings\bogus\Application Data')
             self.bzr_home = \
                 'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
         else:
@@ -441,9 +441,9 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
             raise tests.TestNotApplicable(
                 'XDG config dir not used on this platform')
         super(TestXDGConfigDir, self).setUp()
-        os.environ['HOME'] = self.test_home_dir
+        self.overrideEnv('HOME', self.test_home_dir)
         # BZR_HOME overrides everything we want to test so unset it.
-        del os.environ['BZR_HOME']
+        self.overrideEnv('BZR_HOME', None)
 
     def test_xdg_config_dir_exists(self):
         """When ~/.config/bazaar exists, use it as the config dir."""
@@ -454,7 +454,7 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
     def test_xdg_config_home(self):
         """When XDG_CONFIG_HOME is set, use it."""
         xdgconfigdir = osutils.pathjoin(self.test_home_dir, 'xdgconfig')
-        os.environ['XDG_CONFIG_HOME'] = xdgconfigdir
+        self.overrideEnv('XDG_CONFIG_HOME', xdgconfigdir)
         newdir = osutils.pathjoin(xdgconfigdir, 'bazaar')
         os.makedirs(newdir)
         self.assertEqual(config.config_dir(), newdir)
