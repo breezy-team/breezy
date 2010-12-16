@@ -37,7 +37,7 @@ Improvements
 
 * New connection: ``bzr+http://`` which supports tunnelling the smart
   protocol over an HTTP connection. If writing is enabled on the bzr
-  server, then you can write over the http connection.
+  server, then you can write over the HTTP connection.
   (Andrew Bennetts, John Arbash Meinel)
 
 * Aliases now support quotation marks, so they can contain whitespace
@@ -141,7 +141,7 @@ Bug Fixes
   (Kent Gibson, Jan Hudec #57637)
 
 * pycurl and urllib can detect short reads at different places. Update
-  the test suite to test more cases. Also detect http error code 416
+  the test suite to test more cases. Also detect HTTP error code 416
   which was raised for that specific bug. Also enhance the urllib
   robustness by detecting invalid ranges (and pycurl's one by detecting
   short reads during the initial GET). (Vincent Ladeuil, #73948)

@@ -511,7 +511,7 @@ handled.  This parameter can take one of 3 values:
 Because Transports work in URLs (as defined earlier), printing the raw URL
 to the user is usually less than optimal. Characters outside the standard
 set are printed as escapes, rather than the real character, and local
-paths would be printed as ``file://`` urls. The function
+paths would be printed as ``file://`` URLs. The function
 ``unescape_for_display`` attempts to unescape a URL, such that anything
 that cannot be printed in the current encoding stays an escaped URL, but
 valid characters are generated where possible.

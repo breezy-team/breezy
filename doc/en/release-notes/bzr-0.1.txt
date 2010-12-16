@@ -13,7 +13,7 @@ bzr 0.1.1
 Bug Fixes
 *********
 
-* Fix problem in pulling over http from machines that do not
+* Fix problem in pulling over HTTP from machines that do not
   allow directories to be listed.
 
 * Avoid harmless warning about invalid hash cache after
@@ -22,7 +22,7 @@ Bug Fixes
 Performance
 ***********
 
-* Avoid some unnecessary http operations in branch and pull.
+* Avoid some unnecessary HTTP operations in branch and pull.
 
 
 bzr 0.1
@@ -33,7 +33,7 @@ bzr 0.1
 Notes
 *****
 
-* 'bzr branch' over http initially gives a very high estimate
+* 'bzr branch' over HTTP initially gives a very high estimate
   of completion time but it should fall as the first few
   revisions are pulled in.  branch is still slow on
   high-latency connections.
@@ -169,7 +169,7 @@ Bug Fixes
 * Fix remote access to branches containing non-compressed history.
   (Robert Collins).
 
-* Better reliability of http server tests.  (John Arbash-Meinel)
+* Better reliability of HTTP server tests.  (John Arbash-Meinel)
 
 * Merge graph maximum distance calculation fix.  (Aaron Bentley)
 
@@ -232,14 +232,14 @@ Improvements
 Internals
 *********
 
-* Refactor xml packing/unpacking.
+* Refactor XML packing/unpacking.
 
 Bug Fixes
 *********
 
 * Fixed 'bzr mv' by Ollie Rutherfurd.
 
-* Fixed strange error when trying to access a nonexistent http
+* Fixed strange error when trying to access a nonexistent HTTP
   branch.
 
 * Make sure that the hashcache gets written out if it can't be
@@ -453,7 +453,7 @@ Enhancements
 * New syntax ``bzr status [FILE...]`` contributed by Bartosz
   Oler.  File may be in a branch other than the working directory.
 
-* ``bzr log`` and ``bzr root`` can be given an http URL instead of
+* ``bzr log`` and ``bzr root`` can be given an HTTP URL instead of
   a filename.
 
 * Commands can now be defined by external programs or scripts

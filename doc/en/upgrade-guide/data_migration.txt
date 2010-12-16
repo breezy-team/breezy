@@ -113,7 +113,7 @@ different to migrating a personal or in-house project.
 
 In Launchpad, a project can define a *development series* and associate a
 branch with that series.  The branch then becomes the *focus of development*
-and gets special treatment and a shortcut url.  By default, if anybody
+and gets special treatment and a shortcut URL.  By default, if anybody
 branches your project's focus of development and pushes changes back to
 Launchpad, their branch will be stacked on your development focus branch.
 Also, branches can be associated with other Launchpad artifacts such as bugs
