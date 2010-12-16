@@ -158,7 +158,7 @@ class TestTextUIFactory(tests.TestCase):
     def test_text_factory_prompts_and_clears(self):
         # a get_boolean call should clear the pb before prompting
         out = test_progress._TTYStringIO()
-        os.environ['TERM'] = 'xterm'
+        self.overrideEnv('TERM', 'xterm')
         factory = _mod_ui_text.TextUIFactory(
             stdin=tests.StringIOWrapper("yada\ny\n"),
             stdout=out, stderr=out)
@@ -226,7 +226,7 @@ class TestTextUIFactory(tests.TestCase):
             pb.finished()
 
     def test_quietness(self):
-        os.environ['BZR_PROGRESS_BAR'] = 'text'
+        self.overrideEnv('BZR_PROGRESS_BAR', 'text')
         ui_factory = _mod_ui_text.TextUIFactory(None,
             test_progress._TTYStringIO(),
             test_progress._TTYStringIO())
@@ -313,12 +313,8 @@ class UITests(tests.TestCase):
             # however, it can still be forced on
             (FileStringIO, 'dumb', 'text', _mod_ui_text.TextProgressView),
             ):
-            os.environ['TERM'] = term
-            if pb is None:
-                if 'BZR_PROGRESS_BAR' in os.environ:
-                    del os.environ['BZR_PROGRESS_BAR']
-            else:
-                os.environ['BZR_PROGRESS_BAR'] = pb
+            self.overrideEnv('TERM', term)
+            self.overrideEnv('BZR_PROGRESS_BAR', pb)
             stdin = file_class('')
             stderr = file_class()
             stdout = file_class()
@@ -335,10 +331,7 @@ class UITests(tests.TestCase):
         stderr = test_progress._NonTTYStringIO()
         stdout = test_progress._NonTTYStringIO()
         for term_type in ['dumb', None, 'xterm']:
-            if term_type is None:
-                del os.environ['TERM']
-            else:
-                os.environ['TERM'] = term_type
+            self.overrideEnv('TERM', term_type)
             uif = _mod_ui.make_ui_for_terminal(stdin, stdout, stderr)
             self.assertIsInstance(uif, _mod_ui_text.TextUIFactory,
                 'TERM=%r' % (term_type,))

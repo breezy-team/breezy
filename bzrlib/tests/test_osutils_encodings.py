@@ -216,7 +216,7 @@ class TestUserEncoding(TestCase):
             raise locale.Error, 'unsupported locale'
 
         locale.getpreferredencoding = f
-        os.environ['LANG'] = 'BOGUS'
+        self.overrideEnv('LANG', 'BOGUS')
         self.assertEquals('ascii', osutils.get_user_encoding(use_cache=False))
         self.assertEquals('bzr: warning: unsupported locale\n'
                           '  Could not determine what text encoding to use.\n'

@@ -3387,10 +3387,9 @@ class TestPostMortemDebugging(tests.TestCase):
         result = tests.ExtendedTestResult(StringIO(), 0, 1)
         post_mortem_calls = []
         self.overrideAttr(pdb, "post_mortem", post_mortem_calls.append)
-        self.addCleanup(osutils.set_or_unset_env, "BZR_TEST_PDB",
-            osutils.set_or_unset_env("BZR_TEST_PDB", None))
+        self.overrideEnv('BZR_TEST_PDB', None)
         result._post_mortem(1)
-        os.environ["BZR_TEST_PDB"] = "on"
+        self.overrideEnv('BZR_TEST_PDB', 'on')
         result._post_mortem(2)
         self.assertEqual([2], post_mortem_calls)
 
@@ -3416,6 +3415,7 @@ class TestRunSuite(tests.TestCase):
 class TestEnvironHandling(tests.TestCase):
 
     def test__captureVar_None_called_twice_leaks(self):
+        self.failIf('MYVAR' in os.environ)
         self._captureVar('MYVAR', '42')
         # We need an embedded test to observe the bug
         class Test(tests.TestCase):
@@ -3437,6 +3437,7 @@ class TestEnvironHandling(tests.TestCase):
         self.assertEquals(None, self._old_env.get('MYVAR'))
 
     def test_overrideEnv_None_called_twice_doesnt_leak(self):
+        self.failIf('MYVAR' in os.environ)
         self.overrideEnv('MYVAR', '42')
         # We use an embedded test to make sure we fix the _captureVar bug
         class Test(tests.TestCase):

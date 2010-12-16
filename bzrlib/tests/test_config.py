@@ -402,8 +402,8 @@ class TestConfigPath(tests.TestCase):
 
     def setUp(self):
         super(TestConfigPath, self).setUp()
-        os.environ['HOME'] = '/home/bogus'
-        os.environ['XDG_CACHE_DIR'] = ''
+        self.overrideEnv('HOME', '/home/bogus')
+        self.overrideEnv('XDG_CACHE_DIR', '')
         if sys.platform == 'win32':
             self.overrideEnv(
                 'BZR_HOME', r'C:\Documents and Settings\bogus\Application Data')
@@ -1308,7 +1308,7 @@ other_url = /other-subdir
         self.assertEqual('bzr', my_config.get_bzr_remote_path())
         my_config.set_user_option('bzr_remote_path', '/path-bzr')
         self.assertEqual('/path-bzr', my_config.get_bzr_remote_path())
-        os.environ['BZR_REMOTE_PATH'] = '/environ-bzr'
+        self.overrideEnv('BZR_REMOTE_PATH', '/environ-bzr')
         self.assertEqual('/environ-bzr', my_config.get_bzr_remote_path())
 
 
@@ -1360,7 +1360,7 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         self.assertEqual("John", my_config._get_user_id())
 
     def test_BZR_EMAIL_OVERRIDES(self):
-        os.environ['BZR_EMAIL'] = "Robert Collins <robertc@example.org>"
+        self.overrideEnv('BZR_EMAIL', "Robert Collins <robertc@example.org>")
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.org>",

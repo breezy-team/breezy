@@ -656,7 +656,7 @@ class TestLoadFromPath(tests.TestCaseInTempDir):
                     self.fail('No path to global plugins')
 
     def test_get_standard_plugins_path_env(self):
-        os.environ['BZR_PLUGIN_PATH'] = 'foo/'
+        self.overrideEnv('BZR_PLUGIN_PATH', 'foo/')
         path = plugin.get_standard_plugins_path()
         for directory in path:
             self.assertNotContainsRe(directory, r'\\/$')

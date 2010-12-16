@@ -52,7 +52,7 @@ class TestWhoami(TestCaseWithTransport):
 
         # Verify that the environment variable overrides the value
         # in the file
-        os.environ['BZR_EMAIL'] = 'Different ID <other@environ.ment>'
+        self.overrideEnv('BZR_EMAIL', 'Different ID <other@environ.ment>')
         whoami = self.run_bzr("whoami")[0]
         self.assertEquals('Different ID <other@environ.ment>\n', whoami)
         whoami_email = self.run_bzr("whoami --email")[0]

@@ -157,7 +157,7 @@ added:
             return './fed.sh'
 
     def test_run_editor(self):
-        os.environ['BZR_EDITOR'] = self.make_do_nothing_editor()
+        self.overrideEnv('BZR_EDITOR', self.make_do_nothing_editor())
         self.assertEqual(True, msgeditor._run_editor(''),
                          'Unable to run dummy fake editor')
 
@@ -191,11 +191,11 @@ if len(sys.argv) == 2:
 "%s" fed.py %%1
 """ % sys.executable)
             f.close()
-            os.environ['BZR_EDITOR'] = 'fed.bat'
+            self.overrideEnv('BZR_EDITOR', 'fed.bat')
         else:
             # [non-win32] make python script executable and set BZR_EDITOR
             os.chmod('fed.py', 0755)
-            os.environ['BZR_EDITOR'] = './fed.py'
+            self.overrideEnv('BZR_EDITOR', './fed.py')
 
     def test_edit_commit_message(self):
         working_tree = self.make_uncommitted_tree()
@@ -230,16 +230,17 @@ if len(sys.argv) == 2:
         working_tree = self.make_uncommitted_tree()
 
         if sys.platform == 'win32':
-            os.environ['BZR_EDITOR'] = 'cmd.exe /c del'
+            editor = 'cmd.exe /c del'
         else:
-            os.environ['BZR_EDITOR'] = 'rm'
+            editor = 'rm'
+        self.overrideEnv('BZR_EDITOR', editor)
 
         self.assertRaises((IOError, OSError), msgeditor.edit_commit_message, '')
 
     def test__get_editor(self):
-        os.environ['BZR_EDITOR'] = 'bzr_editor'
-        os.environ['VISUAL'] = 'visual'
-        os.environ['EDITOR'] = 'editor'
+        self.overrideEnv('BZR_EDITOR', 'bzr_editor')
+        self.overrideEnv('VISUAL', 'visual')
+        self.overrideEnv('EDITOR', 'editor')
 
         conf = config.GlobalConfig.from_string('editor = config_editor\n',
                                                save=True)
@@ -259,7 +260,7 @@ if len(sys.argv) == 2:
 
     def test__run_editor_EACCES(self):
         """If running a configured editor raises EACESS, the user is warned."""
-        os.environ['BZR_EDITOR'] = 'eacces.py'
+        self.overrideEnv('BZR_EDITOR', 'eacces.py')
         f = file('eacces.py', 'wb')
         f.write('# Not a real editor')
         f.close()
@@ -267,7 +268,7 @@ if len(sys.argv) == 2:
         os.chmod('eacces.py', 0)
         # Set $EDITOR so that _run_editor will terminate before trying real
         # editors.
-        os.environ['EDITOR'] = self.make_do_nothing_editor()
+        self.overrideEnv('EDITOR', self.make_do_nothing_editor())
         # Call _run_editor, capturing mutter.warning calls.
         warnings = []
         def warning(*args):
