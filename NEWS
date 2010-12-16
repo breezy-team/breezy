@@ -25,6 +25,9 @@ New Features
 Bug Fixes
 *********
 
+* Avoid UnicodeDecodeError in ``bzr add`` with multiple files under a non-ascii
+  path on windows from symlink support addition. (Martin [gz], #686611)
+
 * Don't probe for a repository from within ``NotBranchError.__repr__``,
   because this can cause knock-on errors at awkward times.
   (Andrew Bennetts, #687653)
@@ -246,6 +249,9 @@ New Features
 Bug Fixes
 *********
 
+* Avoid UnicodeDecodeError in ``bzr add`` with multiple files under a non-ascii
+  path on windows from symlink support addition. (Martin [gz], #686611)
+
 * Skip tests that needs a bzr source tree when there isn't one. This is
   needed to succesfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).
@@ -374,6 +380,9 @@ New Features
 
 Bug Fixes
 *********
+
+* Avoid UnicodeDecodeError in ``bzr add`` with multiple files under a non-ascii
+  path on windows from symlink support addition. (Martin [gz], #686611)
 
 Improvements
 ************
