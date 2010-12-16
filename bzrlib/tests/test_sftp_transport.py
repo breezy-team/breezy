@@ -174,7 +174,7 @@ class SFTPNonServerTest(TestCase):
         from bzrlib.transport import ssh
         # set '.' as the only location in the path, forcing no 'ssh' to exist
         self.overrideAttr(ssh, '_ssh_vendor_manager')
-        self.overrideEnv('PATH' '.')
+        self.overrideEnv('PATH', '.')
         ssh._ssh_vendor_manager.clear_cache()
         vendor = ssh._get_ssh_vendor()
         self.assertIsInstance(vendor, ssh.ParamikoVendor)
