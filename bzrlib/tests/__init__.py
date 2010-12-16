@@ -1602,17 +1602,12 @@ class TestCase(testtools.TestCase):
             # use an env var so it propagates to subprocesses.
             'APPORT_DISABLE': '1',
         }
-        self.addCleanup(self._restoreEnvironment)
         for name, value in new_env.iteritems():
             self.overrideEnv(name, value)
 
     def _captureVar(self, name, newvalue):
         """Set an environment variable, and reset it when finished."""
         self._old_env[name] = osutils.set_or_unset_env(name, newvalue)
-
-    def _restoreEnvironment(self):
-        for name, value in self._old_env.iteritems():
-            osutils.set_or_unset_env(name, value)
 
     def _restoreHooks(self):
         for klass, (name, hooks) in self._preserved_hooks.items():
