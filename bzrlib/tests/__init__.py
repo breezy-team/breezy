@@ -851,6 +851,7 @@ class TestCase(testtools.TestCase):
         self.addDetail("log", content.Content(content.ContentType("text",
             "plain", {"charset": "utf8"}),
             lambda:[self._get_log(keep_log_file=True)]))
+        self._old_env = {}
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -1598,10 +1599,9 @@ class TestCase(testtools.TestCase):
             # use an env var so it propagates to subprocesses.
             'APPORT_DISABLE': '1',
         }
-        self._old_env = {}
         self.addCleanup(self._restoreEnvironment)
         for name, value in new_env.iteritems():
-            self._captureVar(name, value)
+            self.overrideEnv(name, value)
 
     def _captureVar(self, name, newvalue):
         """Set an environment variable, and reset it when finished."""
