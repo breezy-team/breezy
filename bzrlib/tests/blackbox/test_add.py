@@ -24,7 +24,8 @@ from bzrlib.tests import (
     condition_isinstance,
     split_suite_by_condition,
     multiply_tests,
-    SymlinkFeature
+    SymlinkFeature,
+    UnicodeFilename,
     )
 from bzrlib.tests.blackbox import ExternalBase
 
@@ -224,3 +225,12 @@ class TestAdd(ExternalBase):
         os.symlink(osutils.abspath('target'), 'tree/link')
         out = self.run_bzr(['add', 'tree/link'])[0]
         self.assertEquals(out, 'adding link\n')
+
+    def test_add_multiple_files_in_unicode_cwd(self):
+        """Adding multiple files in a non-ascii cwd, see lp:686611"""
+        self.requireFeature(UnicodeFilename)
+        self.make_branch_and_tree(u"\xA7")
+        self.build_tree([u"\xA7/a", u"\xA7/b"])
+        out, err = self.run_bzr(["add", "a", "b"], working_dir=u"\xA7")
+        self.assertEquals(out, "adding a\n" "adding b\n")
+        self.assertEquals(err, "")
