@@ -1546,12 +1546,8 @@ class TestCase(testtools.TestCase):
         :param value: The value to set the variable to. If None, the 
             variable is deleted from the environment.
         """
-        if name in self._old_env:
-            # We already protect this variable so we should not record its
-            # initial value
-            osutils.set_or_unset_env(name, value)
-        else:
-            self._old_env[name] = osutils.set_or_unset_env(name, value)
+        old_value = osutils.set_or_unset_env(name, value)
+        self.addCleanup(osutils.set_or_unset_env, name, old_value)
 
     def _cleanEnvironment(self):
         new_env = {

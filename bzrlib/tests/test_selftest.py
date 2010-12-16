@@ -3430,7 +3430,8 @@ class TestEnvironHandling(tests.TestCase):
         output = StringIO()
         result = tests.TextTestResult(output, 0, 1)
         Test('test_me').run(result)
-        self.assertTrue(result.wasStrictlySuccessful())
+        if not result.wasStrictlySuccessful():
+            self.fail(output.getvalue())
         # And we have lost all trace of the original value
         self.assertEquals(None, os.environ.get('MYVAR'))
         self.assertEquals(None, self._old_env.get('MYVAR'))
@@ -3443,14 +3444,13 @@ class TestEnvironHandling(tests.TestCase):
                 # The first call save the 42 value
                 self.overrideEnv('MYVAR', None)
                 self.assertEquals(None, os.environ.get('MYVAR'))
-                self.assertEquals('42', self._old_env.get('MYVAR'))
-                # The second one respect it
+                # Make sure we can call it twice
                 self.overrideEnv('MYVAR', None)
                 self.assertEquals(None, os.environ.get('MYVAR'))
-                self.assertEquals('42', self._old_env.get('MYVAR'))
         output = StringIO()
         result = tests.TextTestResult(output, 0, 1)
         Test('test_me').run(result)
-        self.assertTrue(result.wasStrictlySuccessful())
+        if not result.wasStrictlySuccessful():
+            self.fail(output.getvalue())
         # We get our value back
         self.assertEquals('42', os.environ.get('MYVAR'))
