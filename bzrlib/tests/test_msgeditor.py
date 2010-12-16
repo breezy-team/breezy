@@ -320,23 +320,20 @@ if len(sys.argv) == 2:
         self.assertFileEqual('', msgfilename)
 
     def test_unsupported_encoding_commit_message(self):
-        old_env = osutils.set_or_unset_env('LANG', 'C')
-        try:
-            # LANG env variable has no effect on Windows
-            # but some characters anyway cannot be represented
-            # in default user encoding
-            char = probe_bad_non_ascii(osutils.get_user_encoding())
-            if char is None:
-                raise TestSkipped('Cannot find suitable non-ascii character '
-                    'for user_encoding (%s)' % osutils.get_user_encoding())
+        self.overrideEnv('LANG', 'C')
+        # LANG env variable has no effect on Windows
+        # but some characters anyway cannot be represented
+        # in default user encoding
+        char = probe_bad_non_ascii(osutils.get_user_encoding())
+        if char is None:
+            raise TestSkipped('Cannot find suitable non-ascii character '
+                'for user_encoding (%s)' % osutils.get_user_encoding())
 
-            self.make_fake_editor(message=char)
+        self.make_fake_editor(message=char)
 
-            working_tree = self.make_uncommitted_tree()
-            self.assertRaises(errors.BadCommitMessageEncoding,
-                              msgeditor.edit_commit_message, '')
-        finally:
-            osutils.set_or_unset_env('LANG', old_env)
+        working_tree = self.make_uncommitted_tree()
+        self.assertRaises(errors.BadCommitMessageEncoding,
+                          msgeditor.edit_commit_message, '')
 
     def test_generate_commit_message_template_no_hooks(self):
         commit_obj = commit.Commit()

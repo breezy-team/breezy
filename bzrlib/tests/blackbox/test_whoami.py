@@ -94,8 +94,8 @@ class TestWhoami(TestCaseWithTransport):
     def test_whoami_not_set(self):
         """Ensure whoami error if username is not set.
         """
-        osutils.set_or_unset_env('EMAIL', None)
-        osutils.set_or_unset_env('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
         out, err = self.run_bzr(['whoami'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
 

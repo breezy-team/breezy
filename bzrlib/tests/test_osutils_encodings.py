@@ -171,8 +171,6 @@ class TestUserEncoding(TestCase):
     def setUp(self):
         TestCase.setUp(self)
         self.overrideAttr(locale, 'getpreferredencoding')
-        self.addCleanup(osutils.set_or_unset_env,
-                        'LANG', os.environ.get('LANG'))
         self.overrideAttr(sys, 'stderr', StringIOWrapper())
 
     def test_get_user_encoding(self):
@@ -181,7 +179,8 @@ class TestUserEncoding(TestCase):
 
         locale.getpreferredencoding = f
         fake_codec.add('user_encoding')
-        self.assertEquals('user_encoding', osutils.get_user_encoding(use_cache=False))
+        self.assertEquals('user_encoding',
+                          osutils.get_user_encoding(use_cache=False))
         self.assertEquals('', sys.stderr.getvalue())
 
     def test_user_cp0(self):

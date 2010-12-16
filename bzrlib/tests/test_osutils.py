@@ -2070,7 +2070,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
 class TestGetuserUnicode(tests.TestCase):
 
     def test_ascii_user(self):
-        osutils.set_or_unset_env('LOGNAME', 'jrandom')
+        self.overrideEnv('LOGNAME', 'jrandom')
         self.assertEqual(u'jrandom', osutils.getuser_unicode())
 
     def test_unicode_user(self):
@@ -2082,9 +2082,9 @@ class TestGetuserUnicode(tests.TestCase):
                 % (osutils.get_user_encoding(),))
         uni_username = u'jrandom' + uni_val
         encoded_username = uni_username.encode(ue)
-        osutils.set_or_unset_env('LOGNAME', encoded_username)
+        self.overrideEnv('LOGNAME', encoded_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
-        osutils.set_or_unset_env('LOGNAME', u'jrandom\xb6'.encode(ue))
+        self.overrideEnv('LOGNAME', u'jrandom\xb6'.encode(ue))
         self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
 
 class TestBackupNames(tests.TestCase):
