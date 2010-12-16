@@ -364,6 +364,8 @@ implementation.)
 
 Because repr methods are often called when something has already gone
 wrong, they should be written somewhat more defensively than most code.
+They shouldn't have side effects like doing network or disk
+IO.
 The object may be half-initialized or in some other way in an illegal
 state.  The repr method shouldn't raise an exception, or it may hide the
 (probably more useful) underlying exception.
@@ -384,6 +386,13 @@ really should terminate the program such as ``MemoryError`` and
 later re-raised.  Even then, think about whether catching just
 ``Exception`` (which excludes system errors in Python2.5 and later) would
 be better.
+
+The ``__str__`` method on exceptions should be small and have no side
+effects, following the rules given for `Object string representations`_.
+In particular it should not do any network IO, or complicated
+introspection of other objects.  All the state needed to present the
+exception to the user should be gathered before the error is raised.
+In other words, exceptions should basically be value objects.
 
 
 Test coverage
