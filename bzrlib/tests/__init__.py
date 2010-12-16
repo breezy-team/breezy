@@ -1540,15 +1540,18 @@ class TestCase(testtools.TestCase):
             setattr(obj, attr_name, new)
         return value
 
-    def overrideEnv(self, name, value):
+    def overrideEnv(self, name, new):
         """Set an environment variable, and reset it when the test finished.
 
         :param name: The name if the environment variable.
-        :param value: The value to set the variable to. If None, the 
+        :param new: The value to set the variable to. If None, the 
             variable is deleted from the environment.
+
+        :returns: The actual variable value.
         """
-        old_value = osutils.set_or_unset_env(name, value)
-        self.addCleanup(osutils.set_or_unset_env, name, old_value)
+        value = osutils.set_or_unset_env(name, new)
+        self.addCleanup(osutils.set_or_unset_env, name, value)
+        return value
 
     def _cleanEnvironment(self):
         new_env = {
