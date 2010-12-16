@@ -257,7 +257,7 @@ Internals
   and additionally call ``builder.record_delete`` when a delete
   against the basis occurs. (Robert Collins)
 
-* The default http handler has been changed from pycurl to urllib.
+* The default HTTP handler has been changed from pycurl to urllib.
   The default is still pycurl for https connections. (The only
   advantage of pycurl is that it checks ssl certificates.)
   (John Arbash Meinel)

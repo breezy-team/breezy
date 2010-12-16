@@ -170,9 +170,9 @@ Improvements
   server handler, and not arbitrary ``.bzr/*/smart`` URLs.  (Andrew Bennetts)
 
 * digest authentication is now supported for proxies and HTTP by the urllib
-  based http implementation. Tested against Apache 2.0.55 and Squid
+  based HTTP implementation. Tested against Apache 2.0.55 and Squid
   2.6.5. Basic and digest authentication are handled coherently for HTTP
-  and proxy: if the user is provided in the url (bzr command line for HTTP,
+  and proxy: if the user is provided in the URL (bzr command line for HTTP,
   proxy environment variables for proxies), the password is prompted for
   (only once). If the password is provided, it is taken into account. Once
   the first authentication is successful, all further authentication
@@ -186,8 +186,8 @@ Internals
 * bzrlib API compatability with 0.8 has been dropped, cleaning up some
   code paths. (Robert Collins)
 
-* Change the format of chroot urls so that they can be safely manipulated
-  by generic url utilities without causing the resulting urls to have
+* Change the format of chroot URLS so that they can be safely manipulated
+  by generic URL utilities without causing the resulting URLs to have
   escaped the chroot. A side effect of this is that creating a chroot
   requires an explicit action using a ChrootServer.
   (Robert Collins, Andrew Bennetts)
@@ -220,11 +220,11 @@ Internals
   bzrlib/transport/remote.py contains just the Transport classes that used
   to be in bzrlib/transport/smart.py.  (Andrew Bennetts)
 
-* urllib http implementation avoid roundtrips associated with
+* urllib HTTP implementation avoid roundtrips associated with
   401 (and 407) errors once the authentication succeeds.
   (Vincent Ladeuil).
 
-* urlib http now supports querying the user for a proxy password if
+* urlib HTTP now supports querying the user for a proxy password if
   needed. Realm is shown in the prompt for both HTTP and proxy
   authentication when the user is required to type a password.
   (Vincent Ladeuil).
@@ -332,7 +332,7 @@ Bugfixes
   security hole.
   (Vincent Ladeuil)
 
-* Handle http and proxy digest authentication.
+* Handle HTTP and proxy digest authentication.
   (Vincent Ladeuil, #94034).
 
 Testing
@@ -358,8 +358,8 @@ Testing
   lightweight checkout for the tree if the ``vfs_transport_factory`` is not
   a LocalURLServer. (Robert Collins, Andrew Bennetts)
 
-* Branch implementation tests have been audited to ensure that all urls
-  passed to Branch APIs use proper urls, except when local-disk paths
+* Branch implementation tests have been audited to ensure that all URLs
+  passed to Branch APIs use proper URLs, except when local-disk paths
   are intended. This is so that tests correctly access the test transport
   which is often not equivalent to local disk in Remote* tests. As part
   of this many tests were adjusted to remove dependencies on local disk
@@ -371,7 +371,7 @@ Testing
   Andrew Bennetts, Martin Pool, Jonathan Lange)
 
 * Refactored proxy and authentication handling to simplify the
-  implementation of new auth schemes for both http and proxy.
+  implementation of new auth schemes for both HTTP and proxy.
   (Vincent Ladeuil)
 
 

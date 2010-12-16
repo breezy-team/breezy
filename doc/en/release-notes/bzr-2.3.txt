@@ -212,7 +212,7 @@ New Features
   once. It can also be used to set or delete a configuration option in any
   configuration file. (Vincent Ladeuil)
 
-* New shortcut url schemes ``ubuntu:`` and ``debianlp:`` access source
+* New shortcut URL schemes ``ubuntu:`` and ``debianlp:`` access source
   branches on Launchpad.  E.g. ``bzr branch ubuntu:foo`` gives you the source
   branch for project ``foo`` in the current distroseries for Ubuntu while
   ``bzr branch debianlp:lenny/foo`` gives you the source branch (on Launchpad)
@@ -240,14 +240,13 @@ Bug Fixes
   provided as parameters. When both are provided, ``--directory`` becomes
   the base directory for the other paths. (Vincent Ladeuil, #670851)
 
-* Correctly set the Content-Type  header when http POSTing to comply
+* Correctly set the Content-Type  header when HTTP POSTing to comply
   with stricter web frameworks. (Vincent Ladeuil, #665100)
 
 * Don't force openssh to use protocol=2, since that is now the default.
   (Neil Martinsen-Burrell, #561061)
 
-* Fix ``KeyError: 'port'`` when getting the stored password for an http
-  URL.
+* Fix ``KeyError: 'port'`` when getting the stored password for an HTTP  URL.
   (Martin Pool, #654684)
 
 * Make ``bzr tag --quiet`` really quiet. (Neil Martinsen-Burrell, #239523)
@@ -378,7 +377,7 @@ Improvements
   (Marius Kruger, #400554)
 
 * When using the pycurl client module, Bazaar shows some of the text from
-  http server error messages.
+  HTTP server error messages.
   (Martin Pool, #656667)
 
 Bug Fixes
@@ -641,7 +640,7 @@ Bug Fixes
 * ``EPIPE`` can be raised during test server shutdown. This happened on
   gentoo only so far. (Vincent Ladeuil, #627277)
 
-* Errors occurring during http(s) test server starts should now be
+* Errors occurring during HTTP(S) test server starts should now be
   handled cleanly. (Vincent Ladeuil, #392402)
 
 * Fix ``AttributeError on parent.children`` when adding a file under a 

@@ -32,7 +32,7 @@ Bug Fixes
 * Skip the tests that requires respecting the chmod bits when running as root.
   (Vincent Ladeuil, #646133)
 
-* Using bzr with `lp:` urls behind an http proxy should work.
+* Using bzr with `lp:` URLs behind an HTTP proxy should work.
   (Robert Collins, #558343)
 
 Improvements
@@ -212,7 +212,7 @@ Bug Fixes
 
 * Fix plugin packaging on Windows. (Ian Clatworthy, #524162)
 
-* Fix stub sftp test server to call os.getcwdu().
+* Fix stub SFTP test server to call os.getcwdu().
   (Vincent Ladeuil, #526221, #526353)
 
 * Fixed CHM generation by moving the NEWS section template into
@@ -278,7 +278,7 @@ Users are encouraged to upgrade from the 2.0 stable series.
 Bug Fixes
 *********
 
-* Don't require testtools to use sftp.
+* Don't require testtools to use SFTP.
   (Vincent Ladeuil, #516183)
 
 * Fix "AttributeError in Inter1and2Helper" during fetch.
@@ -702,7 +702,7 @@ Bug Fixes
   (Joke de Buhr, Vincent Ladeuil, #353370, #62539)
   (John Arbash Meinel, Vincent Ladeuil, #492561)
 
-* Terminate ssh subprocesses when no references to them remain, fixing
+* Terminate SSH subprocesses when no references to them remain, fixing
   subprocess and file descriptor leaks.  (Andrew Bennetts, #426662)
   
 * The ``--hardlink`` option of ``bzr branch`` and ``bzr checkout`` now
@@ -784,7 +784,7 @@ Internals
   been changed to the equalivent ``Transport.get_bytes()``. The main
   difference is that the latter will explicitly call ``file.close()``,
   rather than expecting the garbage collector to handle it. This helps
-  with some race conditions on Windows during the test suite and sftp
+  with some race conditions on Windows during the test suite and SFTP
   tests. (John Arbash Meinel)
 
 Testing
@@ -925,7 +925,7 @@ path to a 2.1.0. Once again, all bugfixes in 2.0.2 are present in 2.1.0b2.
 
 Key highlights in this release are: improved handling of
 failures-during-cleanup for commit, fixing a long-standing bug with
-``bzr+http`` and shared repositories, all ``lp:`` urls to be resolved
+``bzr+http`` and shared repositories, all ``lp:`` URLs to be resolved
 behind proxies, and a new StaticTuple datatype, allowing us to reduce
 memory consumption (50%) and garbage collector overhead (40% faster) for
 many operations.
@@ -948,7 +948,7 @@ Bug Fixes
   they do occur.  This fixes some causes of ``TooManyConcurrentRequests``
   and similar errors.  (Andrew Bennetts, #429747, #243391)
 
-* Launchpad urls can now be resolved from behind proxies.
+* Launchpad URLs can now be resolved from behind proxies.
   (Gordon Tyler, Vincent Ladeuil, #186920)
 
 * Reduce the strictness for StaticTuple, instead add a debug flag
@@ -1037,7 +1037,7 @@ and several new feature developments. People looking for a stable code
 base with only bugfixes should focus on the 2.0.1 release. All bugfixes
 present in 2.0.1 are present in 2.1.0b1.
 
-Highlights include support for ``bzr+ssh://host/~/homedir`` style urls,
+Highlights include support for ``bzr+ssh://host/~/homedir`` style URLs,
 finer control over the plugin search path via extended BZR_PLUGIN_PATH
 syntax, visible warnings when extension modules fail to load, and improved
 error handling during unlocking.
@@ -1109,7 +1109,7 @@ Bug Fixes
 * Don't restrict the command name used to run the test suite.
   (Vincent Ladeuil, #419950)
 
-* ftp transports were built differently when the kerberos python module was
+* FTP transports were built differently when the kerberos python module was
   present leading to obscure failures related to ASCII/BINARY modes.
   (Vincent Ladeuil, #443041)
 
@@ -1226,7 +1226,7 @@ Testing
 * Tests that try to open a bzr dir on an arbitrary transport will now
   fail unless they have explicitly permitted the transport via
   ``self.permit_url``. The standard test factories such as ``self.get_url``
-  will permit the urls they provide automatically, so only exceptional
+  will permit the URLs they provide automatically, so only exceptional
   tests should need to do this. (Robert Collins)
 
 * The break-in test no longer cares about clean shutdown of the child,
