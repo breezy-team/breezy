@@ -3677,13 +3677,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_bad_files',
         'bzrlib.tests.test_bisect_multi',
         'bzrlib.tests.test_branch',
-        # FIXME: Fixing bug #690563 revealed an isolation problem in the single
-        # doctest for branchbuilder. Uncomment this when bug #321320 is fixed
-        # to ensure the issue is addressed (note that to reproduce the bug in
-        # the doctest below, one should comment the 'email' config var in
-        # bazaar.conf (or anywhere else). This means an setup where *no* user
-        # is being set at all in the environment.
-#       'bzrlib.tests.test_branchbuilder',
+        'bzrlib.tests.test_branchbuilder',
         'bzrlib.tests.test_btree_index',
         'bzrlib.tests.test_bugtracker',
         'bzrlib.tests.test_bundle',
@@ -3848,7 +3842,13 @@ def _test_suite_modules_to_doctest():
         return []
     return [
         'bzrlib',
-        'bzrlib.branchbuilder',
+        # FIXME: Fixing bug #690563 revealed an isolation problem in the single
+        # doctest for branchbuilder. Uncomment this when bug #321320 is fixed
+        # to ensure the issue is addressed (note that to reproduce the bug in
+        # the doctest below, one should comment the 'email' config var in
+        # bazaar.conf (or anywhere else). This means an setup where *no* user
+        # is being set at all in the environment.
+#       'bzrlib.branchbuilder',
         'bzrlib.decorators',
         'bzrlib.export',
         'bzrlib.inventory',
