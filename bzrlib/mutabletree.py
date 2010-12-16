@@ -391,6 +391,7 @@ class MutableTree(tree.Tree):
 
         # expand any symlinks in the directory part, while leaving the
         # filename alone
+        # only expanding if symlinks are supported avoids windows path bugs
         if osutils.has_symlinks():
             file_list = map(osutils.normalizepath, file_list)
 
