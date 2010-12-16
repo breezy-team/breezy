@@ -25,6 +25,9 @@ New Features
 Bug Fixes
 *********
 
+* Avoid UnicodeDecodeError in ``bzr add`` with multiple files under a non-ascii
+  path on windows from symlink support addition. (Martin [gz], #686611)
+
 * Skip tests that needs a bzr source tree when there isn't one. This is
   needed to succesfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).
