@@ -43,7 +43,7 @@ Bugfixes
 
 * Fix Makefile rules for doc generation. (Ian Clatworthy, #175207)
 
-* Give more feedback during long http downloads by making readv deliver data
+* Give more feedback during long HTTP downloads by making readv deliver data
   as it arrives for urllib, and issue more requests for pycurl. High latency
   networks are better handled by urllib, the pycurl implementation give more
   feedback but also incur more latency.
@@ -63,7 +63,7 @@ Documentation
 Internals
 *********
 
-* readv urllib http implementation is now a real iterator above the
+* readv urllib HTTP implementation is now a real iterator above the
   underlying socket and deliver data as soon as it arrives. 'get' still
   wraps its output in a StringIO.
   (Vincent Ladeuil)
@@ -113,7 +113,7 @@ Improvements
 Internals
 *********
 
-* New -Dhttp debug option reports http connections, requests and responses.
+* New -Dhttp debug option reports HTTP connections, requests and responses.
   (Vincent Ladeuil)
 
 * New -Dmerge debug option, which emits merge plans for merge-type=weave.
@@ -182,7 +182,7 @@ Notes When Upgrading
 Changes
 *******
 
-* Disable detection of plink.exe as possible ssh vendor. Plink vendor
+* Disable detection of plink.exe as possible SSH vendor. Plink vendor
   still available if user selects it explicitly with BZR_SSH environment
   variable. (Alexander Belchenko, workaround for bug #107593)
 
@@ -194,7 +194,7 @@ Features
 ********
 
 * New ``authentication.conf`` file holding the password or other credentials
-  for remote servers. This can be used for ssh, sftp, smtp and other
+  for remote servers. This can be used for SSH, SFTP, SMTP and other
   supported transports.
   (Vincent Ladeuil)
 
@@ -274,7 +274,7 @@ Bug Fixes
 * ``commit`` is now able to invoke an external editor in a non-ascii
   directory. (Daniel Watkins, #84043)
 
-* Catch connection errors for ftp.
+* Catch connection errors for FTP.
   (Vincent Ladeuil, #164567)
 
 * ``check`` no longer reports spurious unreferenced text versions.
@@ -292,8 +292,8 @@ Bug Fixes
 * Do no use timeout in HttpServer anymore.
   (Vincent Ladeuil, #158972).
 
-* Don't catch the exceptions related to the http pipeline status before
-  retrying an http request or some programming errors may be masked.
+* Don't catch the exceptions related to the HTTP pipeline status before
+  retrying an HTTP request or some programming errors may be masked.
   (Vincent Ladeuil, #160012)
 
 * Fix ``bzr rm`` to not delete modified and ignored files.
@@ -315,7 +315,7 @@ Bug Fixes
   on them.
   (Martin Pool, #164637)
 
-* Fix typo in limiting offsets coalescing for http, leading to
+* Fix typo in limiting offsets coalescing for HTTP, leading to
   whole files being downloaded instead of parts.
   (Vincent Ladeuil, #165061)
 
@@ -330,7 +330,7 @@ Bug Fixes
   suggestion for an acceptable name is given. (Daniel Watkins, #103023)
 
 * Leave port as None in transport objects if user doesn't
-  specify a port in urls.
+  specify a port in URLs.
   (vincent Ladeuil, #150860)
 
 * Make sure Repository.fetch(self) is properly a no-op for all
@@ -388,7 +388,7 @@ Bug Fixes
 * Upgrade util/configobj to version 4.4.0.
   (Vincent Ladeuil, #151208).
 
-* Wrap medusa ftp test server as an FTPServer feature.
+* Wrap medusa FTP test server as an FTPServer feature.
   (Vincent Ladeuil, #157752)
 
 API Breaks

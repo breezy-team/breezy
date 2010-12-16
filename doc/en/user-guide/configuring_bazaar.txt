@@ -19,7 +19,7 @@ If ``whoami`` is used without an argument, the current value is displayed.
 Using a network proxy
 ---------------------
 
-If your network requires that you use an http proxy for outbound
+If your network requires that you use an HTTP proxy for outbound
 connections, you must set the ``http_proxy`` variable.  If the proxy is
 also required for https connections, you need to set ``https_proxy`` too.
 If you need these and don't have them set, you may find that connections

@@ -45,7 +45,7 @@ Bugfixes
   so that we can give it the Transport we already have.
   (John Arbash Meinel, Vincent Ladeuil, #111702)
 
-* Get rid of sftp connection cache (get rid of the FTP one too).
+* Get rid of SFTP connection cache (get rid of the FTP one too).
   (Vincent Ladeuil, #43731)
 
 * bzr branch {local|remote} remote don't try to create a working tree
@@ -299,7 +299,7 @@ Testing
   are done within directories in $TMPDIR.  (Martin Pool)
 
 * The SSH_AUTH_SOCK environment variable is now reset to avoid
-  interaction with any running ssh agents.  (Jelmer Vernooij, #125955)
+  interaction with any running SSH agents.  (Jelmer Vernooij, #125955)
 
 * run_bzr_subprocess handles parameters the same way as run_bzr:
   either a string or a list of strings should be passed as the first
