@@ -9,7 +9,7 @@ bzr_minimum_version = (0, 17, 0)
 if __name__ == 'main':
     setup(name="bzr-guess plugin",
           version="0.0.1dev0",
-          description="when a bzr command is mispelt, offer the closest match instead.",
+          description="when a bzr command is misspelt, offer the closest match instead.",
           author="Canonical Ltd",
           author_email="bazaar@lists.canonical.com",
           license = "GNU GPL v2",
