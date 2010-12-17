@@ -55,6 +55,9 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Better document the rules to update the bzr freshmeat page when
+  doing a release. (Vincent Ladeuil, #690515)
+
 API Changes
 ***********
 
