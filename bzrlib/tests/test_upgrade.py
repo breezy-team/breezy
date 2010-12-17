@@ -25,16 +25,12 @@ and then upgraded to the new format."""
 from bzrlib import (
     branch,
     bzrdir,
-    osutils,
-    progress,
     repository,
     tests,
-    transport,
+    upgrade,
     workingtree,
     workingtree_4,
     )
-from bzrlib.transport import get_transport
-from bzrlib.upgrade import upgrade, smart_upgrade
 
 
 class TestUpgrade(tests.TestCaseWithTransport):
@@ -43,7 +39,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         """Upgrade simple v0.0.4 format to latest format"""
         eq = self.assertEquals
         self.build_tree_contents(_upgrade1_template)
-        upgrade(u'.')
+        upgrade.upgrade(u'.')
         control = bzrdir.BzrDir.open('.')
         b = control.open_branch()
         # tsk, peeking under the covers.
@@ -104,7 +100,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         its contents."""
         eq = self.assertEquals
         self.build_tree_contents(_ghost_template)
-        upgrade(u'.')
+        upgrade.upgrade(u'.')
         b = branch.Branch.open(u'.')
         revision_id = b.revision_history()[1]
         rev = b.repository.get_revision(revision_id)
@@ -115,7 +111,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         self.build_tree_contents(_upgrade_dir_template)
         old_repodir = bzrdir.BzrDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format
-        upgrade('.')
+        upgrade.upgrade('.')
         # this is the path to the literal file. As format changes
         # occur it needs to be updated. FIXME: ask the store for the
         # path.
@@ -133,7 +129,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
 
     def test_upgrade_to_meta_sets_workingtree_last_revision(self):
         self.build_tree_contents(_upgrade_dir_template)
-        upgrade('.', bzrdir.BzrDirMetaFormat1())
+        upgrade.upgrade('.', bzrdir.BzrDirMetaFormat1())
         tree = workingtree.WorkingTree.open('.')
         self.assertEqual([tree.branch.revision_history()[-1]],
             tree.get_parent_ids())
@@ -142,15 +138,15 @@ class TestUpgrade(tests.TestCaseWithTransport):
         # Some format6 branches do not have checkout files. Upgrading
         # such a branch to metadir must not setup a working tree.
         self.build_tree_contents(_upgrade1_template)
-        upgrade('.', bzrdir.BzrDirFormat6())
-        t = transport.get_transport('.')
+        upgrade.upgrade('.', bzrdir.BzrDirFormat6())
+        t = self.get_transport('.')
         t.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
         self.assertFalse(t.has('.bzr/stat-cache'))
         # XXX: upgrade fails if a backup.bzr is already present
         # -- David Allouche 2006-08-11
         t.delete_tree('backup.bzr.~1~')
         # At this point, we have a format6 branch without checkout files.
-        upgrade('.', bzrdir.BzrDirMetaFormat1())
+        upgrade.upgrade('.', bzrdir.BzrDirMetaFormat1())
         # The upgrade should not have set up a working tree.
         control = bzrdir.BzrDir.open('.')
         self.assertFalse(control.has_workingtree())
@@ -166,7 +162,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
     def test_upgrade_rich_root(self):
         tree = self.make_branch_and_tree('tree', format='rich-root')
         rev_id = tree.commit('first post')
-        upgrade('tree')
+        upgrade.upgrade('tree')
 
     def test_convert_branch5_branch6(self):
         b = self.make_branch('branch', format='knit')
@@ -432,7 +428,8 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
 
     def test_upgrade_standalone_branch(self):
         control = self.make_standalone_branch()
-        tried, worked, issues = smart_upgrade([control], format=self.to_format)
+        tried, worked, issues = upgrade.smart_upgrade(
+            [control], format=self.to_format)
         self.assertLength(1, tried)
         self.assertEqual(tried[0], control)
         self.assertLength(1, worked)
@@ -444,8 +441,8 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
 
     def test_upgrade_standalone_branch_cleanup(self):
         control = self.make_standalone_branch()
-        tried, worked, issues = smart_upgrade([control], format=self.to_format,
-            clean_up=True)
+        tried, worked, issues = upgrade.smart_upgrade(
+            [control], format=self.to_format, clean_up=True)
         self.assertLength(1, tried)
         self.assertEqual(tried[0], control)
         self.assertLength(1, worked)
@@ -470,7 +467,8 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
 
     def test_upgrade_repo_with_branches(self):
         control = self.make_repo_with_branches()
-        tried, worked, issues = smart_upgrade([control], format=self.to_format)
+        tried, worked, issues = upgrade.smart_upgrade(
+            [control], format=self.to_format)
         self.assertLength(3, tried)
         self.assertEqual(tried[0], control)
         self.assertLength(3, worked)
@@ -486,8 +484,8 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
 
     def test_upgrade_repo_with_branches_cleanup(self):
         control = self.make_repo_with_branches()
-        tried, worked, issues = smart_upgrade([control], format=self.to_format,
-            clean_up=True)
+        tried, worked, issues = upgrade.smart_upgrade(
+            [control], format=self.to_format, clean_up=True)
         self.assertLength(3, tried)
         self.assertEqual(tried[0], control)
         self.assertLength(3, worked)
