@@ -3842,13 +3842,7 @@ def _test_suite_modules_to_doctest():
         return []
     return [
         'bzrlib',
-        # FIXME: Fixing bug #690563 revealed an isolation problem in the single
-        # doctest for branchbuilder. Uncomment this when bug #321320 is fixed
-        # to ensure the issue is addressed (note that to reproduce the bug in
-        # the doctest below, one should comment the 'email' config var in
-        # bazaar.conf (or anywhere else). This means an setup where *no* user
-        # is being set at all in the environment.
-#       'bzrlib.branchbuilder',
+        'bzrlib.branchbuilder',
         'bzrlib.decorators',
         'bzrlib.export',
         'bzrlib.inventory',
