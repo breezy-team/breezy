@@ -42,10 +42,12 @@ class BranchBuilder(object):
     >>> builder.start_series()
     >>> builder.build_snapshot('rev-id', None, [
     ...     ('add', ('', 'root-id', 'directory', '')),
-    ...     ('add', ('filename', 'f-id', 'file', 'content\n'))])
+    ...     ('add', ('filename', 'f-id', 'file', 'content\n'))],
+    ...     committer='Joe <Joe@example.com>')
     'rev-id'
     >>> builder.build_snapshot('rev2-id', ['rev-id'],
-    ...     [('modify', ('f-id', 'new-content\n'))])
+    ...     [('modify', ('f-id', 'new-content\n'))],
+    ...     committer='Joe <joe@example.com>')
     'rev2-id'
     >>> builder.finish_series()
     >>> branch = builder.get_branch()
