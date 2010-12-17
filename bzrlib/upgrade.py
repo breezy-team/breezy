@@ -21,11 +21,11 @@ from bzrlib import (
     errors,
     osutils,
     repository,
+    trace,
     ui,
     )
 from bzrlib.bzrdir import BzrDir, format_registry
 from bzrlib.remote import RemoteBzrDir
-from bzrlib.trace import mutter, note, warning
 
 
 class Convert(object):
@@ -69,9 +69,9 @@ class Convert(object):
         try:
             branch = self.bzrdir.open_branch()
             if branch.user_url != self.bzrdir.user_url:
-                ui.ui_factory.note("This is a checkout. The branch (%s) needs to be "
-                             "upgraded separately." %
-                             branch.user_url)
+                ui.ui_factory.note(
+                    'This is a checkout. The branch (%s) needs to be upgraded'
+                    ' separately.' % (branch.user_url,))
             del branch
         except (errors.NotBranchError, errors.IncompatibleRepositories):
             # might not be a format we can open without upgrading; see e.g.
@@ -101,7 +101,7 @@ class Convert(object):
         while self.bzrdir.needs_format_conversion(format):
             converter = self.bzrdir._format.get_converter(format)
             self.bzrdir = converter.convert(self.bzrdir, None)
-        ui.ui_factory.note("finished")
+        ui.ui_factory.note('finished')
 
     def clean_up(self):
         """Clean-up after a conversion.
@@ -141,8 +141,9 @@ def upgrade(url, format=None, clean_up=False, dry_run=False):
         attempted_count = len(attempted)
         succeeded_count = len(succeeded)
         failed_count = attempted_count - succeeded_count
-        note("\nSUMMARY: %d upgrades attempted, %d succeeded, %d failed",
-            attempted_count, succeeded_count, failed_count)
+        ui.ui_factory.note(
+            '\nSUMMARY: %d upgrades attempted, %d succeeded, %d failed'
+            % (attempted_count, succeeded_count, failed_count))
     return exceptions
 
 
@@ -195,10 +196,10 @@ def _smart_upgrade_one(control_dir, format, clean_up=False,
     # Do the conversions
     attempted = [control_dir]
     succeeded, exceptions = _convert_items([control_dir], format, clean_up,
-        dry_run, verbose=dependents)
+                                           dry_run)
     if succeeded and dependents:
-        note("Found %d dependent branches - upgrading ...", len(dependents))
-
+        ui.ui_factory.note('Found %d dependent branches - upgrading ...'
+                           % (len(dependents),))
         # Convert dependent branches
         branch_cdirs = [b.bzrdir for b in dependents]
         successes, problems = _convert_items(branch_cdirs, format, clean_up,
@@ -211,8 +212,7 @@ def _smart_upgrade_one(control_dir, format, clean_up=False,
     return attempted, succeeded, exceptions
 
 
-def _convert_items(items, format, clean_up, dry_run, label=None,
-    verbose=True):
+def _convert_items(items, format, clean_up, dry_run, label=None):
     """Convert a sequence of control directories to the given format.
  
     :param items: the control directories to upgrade
@@ -221,29 +221,24 @@ def _convert_items(items, format, clean_up, dry_run, label=None,
       upgrade succeeded for a given repo/branch/tree
     :param dry_run: show what would happen but don't actually do any upgrades
     :param label: the label for these items or None to calculate one
-    :param verbose: if True, output a message before starting and
-      display any problems encountered
     :return: items successfully upgraded, exceptions
     """
     succeeded = []
     exceptions = []
     child_pb = ui.ui_factory.nested_progress_bar()
-    i = 0
-    child_pb.update('Upgrading bzrdirs', i, len(items))
-    for control_dir in items:
-        i += 1
+    child_pb.update('Upgrading bzrdirs', 0, len(items))
+    for i, control_dir in enumerate(items):
         # Do the conversion
         location = control_dir.root_transport.base
         bzr_object, bzr_label = control_dir._get_object_and_label()
         type_label = label or bzr_label
-        child_pb.update("Upgrading %s" % (type_label), i, len(items))
-        if verbose:
-            note("Upgrading %s %s ...", type_label, location)
+        child_pb.update("Upgrading %s" % (type_label), i+1, len(items))
+        ui.ui_factory.note('Upgrading %s %s ...' % (type_label, location,))
         try:
             if not dry_run:
                 cv = Convert(control_dir=control_dir, format=format)
         except Exception, ex:
-            _verbose_warning(verbose, "conversion error: %s" % ex)
+            trace.warning('conversion error: %s' % ex)
             exceptions.append(ex)
             continue
 
@@ -251,21 +246,14 @@ def _convert_items(items, format, clean_up, dry_run, label=None,
         succeeded.append(control_dir)
         if clean_up:
             try:
-                note("Removing backup ...")
+                ui.ui_factory.note('Removing backup ...')
                 if not dry_run:
                     cv.clean_up()
             except Exception, ex:
-                _verbose_warning(verbose, "failed to clean-up %s: %s" %
-                    (location, ex))
+                trace.warning('failed to clean-up %s: %s' % (location, ex))
                 exceptions.append(ex)
 
     child_pb.finished()
 
     # Return the result
     return succeeded, exceptions
-
-
-def _verbose_warning(verbose, msg):
-    mutter(msg)
-    if verbose:
-        warning(msg)
