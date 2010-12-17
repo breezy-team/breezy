@@ -22,28 +22,22 @@ and then upgraded to the new format."""
 # TODO queue for upgrade:
 # test the error message when upgrading an unknown BzrDir format.
 
-import base64
-import os
-import sys
-
 from bzrlib import (
-    branch as _mod_branch,
+    branch,
     bzrdir,
     osutils,
     progress,
     repository,
+    tests,
     transport,
     workingtree,
     workingtree_4,
     )
-import bzrlib.branch
-from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseWithTransport
 from bzrlib.transport import get_transport
 from bzrlib.upgrade import upgrade, smart_upgrade
 
 
-class TestUpgrade(TestCaseWithTransport):
+class TestUpgrade(tests.TestCaseWithTransport):
 
     def test_upgrade_simple(self):
         """Upgrade simple v0.0.4 format to latest format"""
@@ -76,7 +70,7 @@ class TestUpgrade(TestCaseWithTransport):
             rt.unlock()
         # check a backup was made:
         backup_dir = 'backup.bzr.~1~'
-        t = transport.get_transport(b.base)
+        t = self.get_transport('.')
         t.stat(backup_dir)
         t.stat(backup_dir + '/README')
         t.stat(backup_dir + '/branch-format')
@@ -111,7 +105,7 @@ class TestUpgrade(TestCaseWithTransport):
         eq = self.assertEquals
         self.build_tree_contents(_ghost_template)
         upgrade(u'.')
-        b = Branch.open(u'.')
+        b = branch.Branch.open(u'.')
         revision_id = b.revision_history()[1]
         rev = b.repository.get_revision(revision_id)
         eq(len(rev.parent_ids), 2)
@@ -119,13 +113,13 @@ class TestUpgrade(TestCaseWithTransport):
 
     def test_upgrade_makes_dir_weaves(self):
         self.build_tree_contents(_upgrade_dir_template)
-        old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
+        old_repodir = bzrdir.BzrDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format
         upgrade('.')
         # this is the path to the literal file. As format changes
         # occur it needs to be updated. FIXME: ask the store for the
         # path.
-        repo = bzrlib.repository.Repository.open('.')
+        repo = repository.Repository.open('.')
         # it should have changed the format
         self.assertNotEqual(old_repo_format.__class__, repo._format.__class__)
         # and we should be able to read the names for the file id
@@ -164,8 +158,8 @@ class TestUpgrade(TestCaseWithTransport):
         # upgrade has not eaten our data, even if it's a bit redundant with
         # other tests.
         self.failUnless(isinstance(control._format, bzrdir.BzrDirMetaFormat1))
-        branch = control.open_branch()
-        self.assertEquals(branch.revision_history(),
+        b = control.open_branch()
+        self.assertEquals(b.revision_history(),
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
@@ -175,16 +169,16 @@ class TestUpgrade(TestCaseWithTransport):
         upgrade('tree')
 
     def test_convert_branch5_branch6(self):
-        branch = self.make_branch('branch', format='knit')
-        branch.set_revision_history(['AB', 'CD'])
-        branch.set_parent('file:///EF')
-        branch.set_bound_location('file:///GH')
-        branch.set_push_location('file:///IJ')
+        b = self.make_branch('branch', format='knit')
+        b.set_revision_history(['AB', 'CD'])
+        b.set_parent('file:///EF')
+        b.set_bound_location('file:///GH')
+        b.set_push_location('file:///IJ')
         target = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
-        converter = branch.bzrdir._format.get_converter(target)
-        converter.convert(branch.bzrdir, None)
-        new_branch = _mod_branch.Branch.open(self.get_url('branch'))
-        self.assertIs(new_branch.__class__, _mod_branch.BzrBranch6)
+        converter = b.bzrdir._format.get_converter(target)
+        converter.convert(b.bzrdir, None)
+        new_branch = branch.Branch.open(self.get_url('branch'))
+        self.assertIs(new_branch.__class__, branch.BzrBranch6)
         self.assertEqual('CD', new_branch.last_revision())
         self.assertEqual('file:///EF', new_branch.get_parent())
         self.assertEqual('file:///GH', new_branch.get_bound_location())
@@ -192,21 +186,21 @@ class TestUpgrade(TestCaseWithTransport):
         self.assertEqual('file:///IJ',
             branch_config.get_user_option('push_location'))
 
-        branch2 = self.make_branch('branch2', format='knit')
-        converter = branch2.bzrdir._format.get_converter(target)
-        converter.convert(branch2.bzrdir, None)
-        branch2 = _mod_branch.Branch.open(self.get_url('branch'))
-        self.assertIs(branch2.__class__, _mod_branch.BzrBranch6)
+        b2 = self.make_branch('branch2', format='knit')
+        converter = b2.bzrdir._format.get_converter(target)
+        converter.convert(b2.bzrdir, None)
+        b2 = branch.Branch.open(self.get_url('branch'))
+        self.assertIs(b2.__class__, branch.BzrBranch6)
 
     def test_convert_branch7_branch8(self):
-        branch = self.make_branch('branch', format='1.9')
+        b = self.make_branch('branch', format='1.9')
         target = bzrdir.format_registry.make_bzrdir('1.9')
-        target.set_branch_format(_mod_branch.BzrBranchFormat8())
-        converter = branch.bzrdir._format.get_converter(target)
-        converter.convert(branch.bzrdir, None)
-        branch = _mod_branch.Branch.open(self.get_url('branch'))
-        self.assertIs(branch.__class__, _mod_branch.BzrBranch8)
-        self.assertEqual({}, branch._get_all_reference_info())
+        target.set_branch_format(branch.BzrBranchFormat8())
+        converter = b.bzrdir._format.get_converter(target)
+        converter.convert(b.bzrdir, None)
+        b = branch.Branch.open(self.get_url('branch'))
+        self.assertIs(b.__class__, branch.BzrBranch8)
+        self.assertEqual({}, b._get_all_reference_info())
 
     def test_convert_knit_dirstate_empty(self):
         # test that asking for an upgrade from knit to dirstate works.
@@ -427,7 +421,7 @@ _upgrade_dir_template = [
 ]
 
 
-class TestSmartUpgrade(TestCaseWithTransport):
+class TestSmartUpgrade(tests.TestCaseWithTransport):
 
     from_format = bzrdir.format_registry.make_bzrdir("pack-0.92")
     to_format = bzrdir.format_registry.make_bzrdir("2a")
@@ -487,7 +481,7 @@ class TestSmartUpgrade(TestCaseWithTransport):
         self.failUnlessExists('repo/branch2/backup.bzr.~1~')
         self.assertEqual(control.open_repository()._format,
                          self.to_format._repository_format)
-        b1 = Branch.open('repo/branch1')
+        b1 = branch.Branch.open('repo/branch1')
         self.assertEqual(b1._format, self.to_format._branch_format)
 
     def test_upgrade_repo_with_branches_cleanup(self):
@@ -506,5 +500,5 @@ class TestSmartUpgrade(TestCaseWithTransport):
         self.failIfExists('repo/branch2/backup.bzr.~1~')
         self.assertEqual(control.open_repository()._format,
                          self.to_format._repository_format)
-        b1 = Branch.open('repo/branch1')
+        b1 = branch.Branch.open('repo/branch1')
         self.assertEqual(b1._format, self.to_format._branch_format)
