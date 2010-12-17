@@ -32,7 +32,7 @@ class LaunchpadServiceTests(TestCase):
     def setUp(self):
         super(LaunchpadServiceTests, self).setUp()
         # make sure we have a reproducible standard environment
-        self._captureVar('BZR_LP_XMLRPC_URL', None)
+        self.overrideEnv('BZR_LP_XMLRPC_URL', None)
 
     def test_default_service(self):
         service = LaunchpadService()

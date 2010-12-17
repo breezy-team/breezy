@@ -1317,7 +1317,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_committer_no_username(self):
         # Ensure that when no username is available but a committer is
         # supplied, commit works.
-        del os.environ['EMAIL']
+        self.overrideEnv('EMAIL', None)
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:

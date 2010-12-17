@@ -851,6 +851,7 @@ class TestCase(testtools.TestCase):
         self.addDetail("log", content.Content(content.ContentType("text",
             "plain", {"charset": "utf8"}),
             lambda:[self._get_log(keep_log_file=True)]))
+        self._old_env = {}
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -1539,6 +1540,20 @@ class TestCase(testtools.TestCase):
             setattr(obj, attr_name, new)
         return value
 
+    def overrideEnv(self, name, new):
+        """Set an environment variable, and reset it fater the test.
+
+        :param name: The environment variable name.
+
+        :param new: The value to set the variable to. If None, the 
+            variable is deleted from the environment.
+
+        :returns: The actual variable value.
+        """
+        value = osutils.set_or_unset_env(name, new)
+        self.addCleanup(osutils.set_or_unset_env, name, value)
+        return value
+
     def _cleanEnvironment(self):
         new_env = {
             'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
@@ -1588,18 +1603,12 @@ class TestCase(testtools.TestCase):
             # use an env var so it propagates to subprocesses.
             'APPORT_DISABLE': '1',
         }
-        self._old_env = {}
-        self.addCleanup(self._restoreEnvironment)
         for name, value in new_env.iteritems():
-            self._captureVar(name, value)
+            self.overrideEnv(name, value)
 
     def _captureVar(self, name, newvalue):
         """Set an environment variable, and reset it when finished."""
         self._old_env[name] = osutils.set_or_unset_env(name, newvalue)
-
-    def _restoreEnvironment(self):
-        for name, value in self._old_env.iteritems():
-            osutils.set_or_unset_env(name, value)
 
     def _restoreHooks(self):
         for klass, (name, hooks) in self._preserved_hooks.items():
@@ -2442,8 +2451,8 @@ class TestCaseWithMemoryTransport(TestCase):
         test_home_dir = self.test_home_dir
         if isinstance(test_home_dir, unicode):
             test_home_dir = test_home_dir.encode(sys.getfilesystemencoding())
-        os.environ['HOME'] = test_home_dir
-        os.environ['BZR_HOME'] = test_home_dir
+        self.overrideEnv('HOME', test_home_dir)
+        self.overrideEnv('BZR_HOME', test_home_dir)
 
     def setUp(self):
         super(TestCaseWithMemoryTransport, self).setUp()

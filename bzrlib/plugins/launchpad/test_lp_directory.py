@@ -298,7 +298,7 @@ class TestXMLRPCTransport(tests.TestCase):
         self.server = self.server_class()
         self.server.start_server()
         # Ensure we don't clobber env
-        self._captureVar('BZR_LP_XMLRPC_URL', None)
+        self.overrideEnv('BZR_LP_XMLRPC_URL', None)
 
     def tearDown(self):
         self.server.stop_server()

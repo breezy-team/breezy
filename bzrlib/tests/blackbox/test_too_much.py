@@ -315,37 +315,28 @@ class TestCommands(TestCaseWithTransport):
         cmd_name = 'test-command'
         if sys.platform == 'win32':
             cmd_name += '.bat'
-        oldpath = os.environ.get('BZRPATH', None)
-        try:
-            if 'BZRPATH' in os.environ:
-                del os.environ['BZRPATH']
+        self.overrideEnv('BZRPATH', None)
 
-            f = file(cmd_name, 'wb')
-            if sys.platform == 'win32':
-                f.write('@echo off\n')
-            else:
-                f.write('#!/bin/sh\n')
-            # f.write('echo Hello from test-command')
-            f.close()
-            os.chmod(cmd_name, 0755)
+        f = file(cmd_name, 'wb')
+        if sys.platform == 'win32':
+            f.write('@echo off\n')
+        else:
+            f.write('#!/bin/sh\n')
+        # f.write('echo Hello from test-command')
+        f.close()
+        os.chmod(cmd_name, 0755)
 
-            # It should not find the command in the local
-            # directory by default, since it is not in my path
-            self.run_bzr(cmd_name, retcode=3)
+        # It should not find the command in the local
+        # directory by default, since it is not in my path
+        self.run_bzr(cmd_name, retcode=3)
 
-            # Now put it into my path
-            os.environ['BZRPATH'] = '.'
+        # Now put it into my path
+        self.overrideEnv('BZRPATH', '.')
+        self.run_bzr(cmd_name)
 
-            self.run_bzr(cmd_name)
-
-            # Make sure empty path elements are ignored
-            os.environ['BZRPATH'] = os.pathsep
-
-            self.run_bzr(cmd_name, retcode=3)
-
-        finally:
-            if oldpath:
-                os.environ['BZRPATH'] = oldpath
+        # Make sure empty path elements are ignored
+        self.overrideEnv('BZRPATH', os.pathsep)
+        self.run_bzr(cmd_name, retcode=3)
 
 
 def listdir_sorted(dir):
