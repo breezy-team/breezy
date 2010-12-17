@@ -44,7 +44,6 @@ except ImportError, e:
     raise errors.DependencyNotPresent('launchpadlib', e)
 
 from launchpadlib.launchpad import (
-    EDGE_SERVICE_ROOT,
     STAGING_SERVICE_ROOT,
     Launchpad,
     )
@@ -81,7 +80,6 @@ def check_launchpadlib_compatibility():
 
 LAUNCHPAD_API_URLS = {
     'production': LPNET_SERVICE_ROOT,
-    'edge': EDGE_SERVICE_ROOT,
     'staging': STAGING_SERVICE_ROOT,
     'dev': 'https://api.launchpad.dev/beta/',
     }
@@ -90,8 +88,8 @@ LAUNCHPAD_API_URLS = {
 def _get_api_url(service):
     """Return the root URL of the Launchpad API.
 
-    e.g. For the 'edge' Launchpad service, this function returns
-    launchpadlib.launchpad.EDGE_SERVICE_ROOT.
+    e.g. For the 'staging' Launchpad service, this function returns
+    launchpadlib.launchpad.STAGING_SERVICE_ROOT.
 
     :param service: A `LaunchpadService` object.
     :return: A URL as a string.

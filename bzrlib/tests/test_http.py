@@ -354,27 +354,27 @@ class TestHttpTransportUrls(tests.TestCase):
 
     def test_abs_url(self):
         """Construction of absolute http URLs"""
-        t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
+        t = self._transport('http://example.com/bzr/bzr.dev/')
         eq = self.assertEqualDiff
-        eq(t.abspath('.'), 'http://bazaar-vcs.org/bzr/bzr.dev')
-        eq(t.abspath('foo/bar'), 'http://bazaar-vcs.org/bzr/bzr.dev/foo/bar')
-        eq(t.abspath('.bzr'), 'http://bazaar-vcs.org/bzr/bzr.dev/.bzr')
+        eq(t.abspath('.'), 'http://example.com/bzr/bzr.dev')
+        eq(t.abspath('foo/bar'), 'http://example.com/bzr/bzr.dev/foo/bar')
+        eq(t.abspath('.bzr'), 'http://example.com/bzr/bzr.dev/.bzr')
         eq(t.abspath('.bzr/1//2/./3'),
-           'http://bazaar-vcs.org/bzr/bzr.dev/.bzr/1/2/3')
+           'http://example.com/bzr/bzr.dev/.bzr/1/2/3')
 
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
-        self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
+        self._transport('http://example.com/bzr/bzr.dev/')
         self.assertRaises(errors.InvalidURL,
                           self._transport,
-                          'http://http://bazaar-vcs.org/bzr/bzr.dev/')
+                          'http://http://example.com/bzr/bzr.dev/')
 
     def test_http_root_urls(self):
         """Construction of URLs from server root"""
-        t = self._transport('http://bzr.ozlabs.org/')
+        t = self._transport('http://example.com/')
         eq = self.assertEqualDiff
         eq(t.abspath('.bzr/tree-version'),
-           'http://bzr.ozlabs.org/.bzr/tree-version')
+           'http://example.com/.bzr/tree-version')
 
     def test_http_impl_urls(self):
         """There are servers which ask for particular clients to connect"""
@@ -1075,15 +1075,15 @@ class TestHttpProxyWhiteBox(tests.TestCase):
 
     def setUp(self):
         tests.TestCase.setUp(self)
-        self._old_env = {}
+        self._http_saved_env = {}
         self.addCleanup(self._restore_env)
 
     def _install_env(self, env):
         for name, value in env.iteritems():
-            self._old_env[name] = osutils.set_or_unset_env(name, value)
+            self._http_saved_env[name] = osutils.set_or_unset_env(name, value)
 
     def _restore_env(self):
-        for name, value in self._old_env.iteritems():
+        for name, value in self._http_saved_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
     def _proxied_request(self):
@@ -1136,7 +1136,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
             self.no_proxy_host = self.server_host_port
         # The secondary server is the proxy
         self.proxy_url = self.get_secondary_url()
-        self._old_env = {}
+        self._http_saved_env = {}
 
     def _testing_pycurl(self):
         # TODO: This is duplicated for lots of the classes in this file
@@ -1145,10 +1145,10 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
 
     def _install_env(self, env):
         for name, value in env.iteritems():
-            self._old_env[name] = osutils.set_or_unset_env(name, value)
+            self._http_saved_env[name] = osutils.set_or_unset_env(name, value)
 
     def _restore_env(self):
-        for name, value in self._old_env.iteritems():
+        for name, value in self._http_saved_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
     def proxied_in_env(self, env):
@@ -1707,7 +1707,7 @@ class TestProxyAuth(TestAuth):
 
     def setUp(self):
         super(TestProxyAuth, self).setUp()
-        self._old_env = {}
+        self._http_saved_env = {}
         self.addCleanup(self._restore_env)
         # Override the contents to avoid false positives
         self.build_tree_contents([('a', 'not proxied contents of a\n'),
@@ -1722,10 +1722,10 @@ class TestProxyAuth(TestAuth):
 
     def _install_env(self, env):
         for name, value in env.iteritems():
-            self._old_env[name] = osutils.set_or_unset_env(name, value)
+            self._http_saved_env[name] = osutils.set_or_unset_env(name, value)
 
     def _restore_env(self):
-        for name, value in self._old_env.iteritems():
+        for name, value in self._http_saved_env.iteritems():
             osutils.set_or_unset_env(name, value)
 
     def test_empty_pass(self):

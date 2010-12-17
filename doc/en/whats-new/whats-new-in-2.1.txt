@@ -62,6 +62,16 @@ For example, you can now just give a tag (instead of saying ``tag:xxx``)
 or just say ``today`` (instead of saying ``date:today``). Prefixes
 are now only required if the revision spec could be ambiguous.
 
+Launchpad compatibility
+-----------------------
+
+Launchpad has `announced
+<http://blog.launchpad.net/general/edge-is-deprecated>`_ that the
+``edge.launchpad.net`` instance is deprecated and may be shut down in the
+future . Bazaar has therefore been updated in this release to talk to the main
+(``launchpad.net``) servers, rather than the ``edge`` ones (the same code is
+running on both servers during the interim).
+
 
 New ignore patterns
 -------------------

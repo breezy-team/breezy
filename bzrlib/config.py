@@ -653,6 +653,11 @@ class LockableConfig(IniBasedConfig):
     def __init__(self, file_name):
         super(LockableConfig, self).__init__(file_name=file_name)
         self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
+        # FIXME: It doesn't matter that we don't provide possible_transports
+        # below since this is currently used only for local config files ;
+        # local transports are not shared. But if/when we start using
+        # LockableConfig for other kind of transports, we will need to reuse
+        # whatever connection is already established -- vila 20100929
         self.transport = transport.get_transport(self.dir)
         self._lock = lockdir.LockDir(self.transport, 'lock')
 
@@ -1123,7 +1128,9 @@ def ensure_config_dir_exists(path=None):
 def config_dir():
     """Return per-user configuration directory.
 
-    By default this is ~/.bazaar/
+    By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
+    and Linux.  On Linux, if there is a $XDG_CONFIG_HOME/bazaar directory,
+    that will be used instead.
 
     TODO: Global option --config-dir to override this.
     """
@@ -1137,8 +1144,23 @@ def config_dir():
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
+    elif sys.platform == 'darwin':
+        if base is None:
+            # this takes into account $HOME
+            base = os.path.expanduser("~")
+        return osutils.pathjoin(base, '.bazaar')
     else:
         if base is None:
+
+            xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
+            if xdg_dir is None:
+                xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
+            xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
+            if osutils.isdir(xdg_dir):
+                trace.mutter(
+                    "Using configuration in XDG directory %s." % xdg_dir)
+                return xdg_dir
+
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, ".bazaar")
 

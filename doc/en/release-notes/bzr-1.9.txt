@@ -68,10 +68,10 @@ Improvements
   RPC when querying the remote branch's revision graph.
   (Andrew Bennetts)
 
-* default username for bzr+ssh and sftp can be configured in
+* default username for bzr+ssh:// and sftp:// can be configured in
   authentication.conf. (Aaron Bentley)
 
-* launchpad-login now provides a default username for bzr+ssh and sftp
+* launchpad-login now provides a default username for bzr+ssh and SFTP
   URLs, allowing username-free URLs to work for everyone. (Aaron Bentley)
 
 * ``lp:`` lookups no longer include usernames, making them shareable and

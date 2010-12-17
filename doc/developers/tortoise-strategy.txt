@@ -306,7 +306,7 @@ about features of the Vista property system.
 Reuse of TSVNCache?
 ~~~~~~~~~~~~~~~~~~~
 
-The RPC mechanism and the tasks performed by the RPC server (rpc, file system
+The RPC mechanism and the tasks performed by the RPC server (RPC, file system
 crawling and watching, device notifications, caching) are very similar to
 those already implemented for TSVN and analysis of that code shows that
 it is not particularly tied to any VCS model.  As a result, consideration

@@ -119,7 +119,7 @@ Bug Fixes
   transforms.
   (Craig Hewetson, Martin Pool, #218206)
 
-* Force socket shutdown in threaded http test servers to avoid client hangs
+* Force socket shutdown in threaded HTTP test servers to avoid client hangs
   (pycurl).  (Vincent Ladeuil, #383920).
 
 * ``LRUCache`` will maintain the linked list pointers even if a nodes

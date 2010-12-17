@@ -115,7 +115,7 @@ arrangement.
 Improvements
 ************
 
-* sftp paths can now be relative, or local, according to the lftp
+* SFTP paths can now be relative, or local, according to the lftp
   convention. Paths now take the form::
 
       sftp://user:pass@host:port/~/relative/path
@@ -123,11 +123,11 @@ Improvements
       sftp://user:pass@host:port/absolute/path
 
 * The FTP transport now tries to reconnect after a temporary
-  failure. ftp put is made atomic. (Matthieu Moy)
+  failure. FTP put is made atomic. (Matthieu Moy)
 
 * The FTP transport now maintains a pool of connections, and
   reuses them to avoid multiple connections to the same host (like
-  sftp did). (Daniel Silverstone)
+  SFTP did). (Daniel Silverstone)
 
 * The ``bzr_man.py`` file has been removed. To create the man page now,
   use ``./generate_docs.py man``. The new program can also create other files.

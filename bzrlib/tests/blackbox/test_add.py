@@ -26,20 +26,18 @@ from bzrlib import (
 from bzrlib.tests import (
     script,
     )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterize tests for view-aware vs not."""
-    to_adapt, result = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance(TestAdd))
+load_tests = load_tests_apply_scenarios
+
+
+class TestAdd(tests.TestCaseWithTransport):
+
     scenarios = [
         ('pre-views', {'branch_tree_format': 'pack-0.92'}),
         ('view-aware', {'branch_tree_format': '2a'}),
         ]
-    return tests.multiply_tests(to_adapt, scenarios, result)
-
-
-class TestAdd(tests.TestCaseWithTransport):
 
     def make_branch_and_tree(self, dir):
         return super(TestAdd, self).make_branch_and_tree(
@@ -231,3 +229,12 @@ class TestAdd(tests.TestCaseWithTransport):
         $ bzr add tree1/a tree2/b
         2>bzr: ERROR: Path "...tree2/b" is not a child of path "...tree1"
         ''')
+
+    def test_add_multiple_files_in_unicode_cwd(self):
+        """Adding multiple files in a non-ascii cwd, see lp:686611"""
+        self.requireFeature(tests.UnicodeFilename)
+        self.make_branch_and_tree(u"\xA7")
+        self.build_tree([u"\xA7/a", u"\xA7/b"])
+        out, err = self.run_bzr(["add", "a", "b"], working_dir=u"\xA7")
+        self.assertEquals(out, "adding a\n" "adding b\n")
+        self.assertEquals(err, "")
