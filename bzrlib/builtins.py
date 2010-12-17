@@ -3356,7 +3356,7 @@ class cmd_upgrade(Command):
     If the conversion of a branch fails, remaining branches are still
     tried.
 
-    For more information on upgrades, see the Bazaar 2.0 Upgrade Guide,
+    For more information on upgrades, see the Bazaar Upgrade Guide,
     http://doc.bazaar.canonical.com/latest/en/upgrade-guide/.
     """
 

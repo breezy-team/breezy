@@ -202,11 +202,15 @@ To migrate branches in a shared repository:
    name then **merge** your changes from the matching branch in the
    old repository.
 
-The first method will give you a branch which is identical (in terms
-of revision history) to the old branch, but it's parent branch will
-be set to the old branch, not your new trunk. If you use this method,
-you'll probably want to edit your branch.conf file to update the
-parent branch setting.
+The first method will give you a branch which is identical (in terms of
+revision history) to the old branch, but it's parent branch will be set to the
+old branch, not your new trunk. If you use this method, you'll probably update
+the ``parent_location`` configuration variable in the ``branch.conf`` file
+with::
+
+    bzr config parent_location=XXX
+
+``XXX` being the URL to your new trunk.
 
 In contrast, the second approach sets up the parent branch correctly.
 However, it isn't ideal if you're not ready to include all the latest
