@@ -29,9 +29,11 @@ __unittest = 1
 
 
 class LogCollector(logging.Handler):
+
     def __init__(self):
         logging.Handler.__init__(self)
         self.records=[]
+
     def emit(self, record):
         self.records.append(record.getMessage())
 
@@ -60,7 +62,8 @@ def visitTests(suite, visitor):
                 visitor.visitSuite(test)
                 visitTests(test, visitor)
             else:
-                print "unvisitable non-unittest.TestCase element %r (%r)" % (test, test.__class__)
+                print "unvisitable non-unittest.TestCase element %r (%r)" % (
+                    test, test.__class__)
 
 
 class TestSuite(unittest.TestSuite):
@@ -183,7 +186,9 @@ class FilteredByModuleTestLoader(TestLoader):
 
 class TestVisitor(object):
     """A visitor for Tests"""
+
     def visitSuite(self, aTestSuite):
         pass
+
     def visitCase(self, aTestCase):
         pass
