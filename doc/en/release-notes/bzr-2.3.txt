@@ -82,8 +82,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
-* ``bzrlib.tests`` defines ``isolated_environ`` with the definitions of the
-  all the environment variables the tests should care about. It also defines
+* ``bzrlib.tests`` defines ``isolated_environ`` with the definitions of all
+  the environment variables the tests should care about. It also defines
   ``override_os_environ`` and ``restore_os_environ`` to properly implement
   isolation from ``os.environ`` for tests. (Vincent Ladeuil, #321320)
 
