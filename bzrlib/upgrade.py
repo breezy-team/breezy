@@ -211,6 +211,46 @@ def _smart_upgrade_one(control_dir, format, clean_up=False,
     # Return the result
     return attempted, succeeded, exceptions
 
+# FIXME: There are several problems below:
+# - RemoteRepository doesn't support _unsupported (really ?)
+# - raising AssertionError is rude and may not be necessary
+# - no tests
+# - the only caller uses only the label
+def _get_object_and_label(control_dir):
+    """Return the primary object and type label for a control directory.
+
+    :return: object, label where
+      object is a Branch, Repository or WorkingTree and
+      label is one of:
+        branch            - a branch
+        repository        - a repository
+        tree              - a lightweight checkout
+    """
+    try:
+        try:
+            br = control_dir.open_branch(unsupported=True,
+                                         ignore_fallbacks=True)
+        except NotImplementedError:
+            # RemoteRepository doesn't support the unsupported parameter
+            br = control_dir.open_branch(ignore_fallbacks=True)
+    except errors.NotBranchError:
+        pass
+    else:
+        return br, "branch"
+    try:
+        repo = control_dir.open_repository()
+    except errors.NoRepositoryPresent:
+        pass
+    else:
+        return repo, "repository"
+    try:
+        wt = control_dir.open_workingtree()
+    except (errors.NoWorkingTree, errors.NotLocalUrl):
+        pass
+    else:
+        return wt, "tree"
+    raise AssertionError("unknown type of control directory %s", control_dir)
+
 
 def _convert_items(items, format, clean_up, dry_run, label=None):
     """Convert a sequence of control directories to the given format.
@@ -230,7 +270,7 @@ def _convert_items(items, format, clean_up, dry_run, label=None):
     for i, control_dir in enumerate(items):
         # Do the conversion
         location = control_dir.root_transport.base
-        bzr_object, bzr_label = control_dir._get_object_and_label()
+        bzr_object, bzr_label = _get_object_and_label(control_dir)
         type_label = label or bzr_label
         child_pb.update("Upgrading %s" % (type_label), i+1, len(items))
         ui.ui_factory.note('Upgrading %s %s ...' % (type_label, location,))

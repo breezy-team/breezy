@@ -927,41 +927,6 @@ class BzrDir(controldir.ControlDir):
         return format.initialize_on_transport(t)
 
 
-    def _get_object_and_label(self):
-        """Return the primary object and type label for a control directory.
-
-        :return: object, label where
-          object is a Branch, Repository or WorkingTree and
-          label is one of:
-            branch            - a branch
-            repository        - a repository
-            tree              - a lightweight checkout
-        """
-        try:
-            try:
-                br = self.open_branch(unsupported=True, ignore_fallbacks=True)
-            except NotImplementedError:
-                # RemoteRepository doesn't support the unsupported parameter
-                br = self.open_branch(ignore_fallbacks=True)
-        except errors.NotBranchError:
-            pass
-        else:
-            return br, "branch"
-        try:
-            repo = self.open_repository()
-        except errors.NoRepositoryPresent:
-            pass
-        else:
-            return repo, "repository"
-        try:
-            wt = self.open_workingtree()
-        except (errors.NoWorkingTree, errors.NotLocalUrl):
-            pass
-        else:
-            return wt, "tree"
-        raise AssertionError("unknown type of control directory %s", self)
-
-
 class BzrDirHooks(hooks.Hooks):
     """Hooks for BzrDir operations."""
 
