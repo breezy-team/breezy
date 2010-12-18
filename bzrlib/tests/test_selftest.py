@@ -3210,7 +3210,8 @@ class TestTestPrefixRegistry(tests.TestCase):
         tpr.register('bar', 'bBB.aAA.rRR')
         self.assertEquals('bbb.aaa.rrr', tpr.get('bar'))
         self.assertThat(self.get_log(),
-            DocTestMatches("...bar...bbb.aaa.rrr...BB.aAA.rRR", ELLIPSIS))
+            DocTestMatches("...bar...bbb.aaa.rrr...BB.aAA.rRR",
+                           doctest.ELLIPSIS))
 
     def test_get_unknown_prefix(self):
         tpr = self._get_registry()
