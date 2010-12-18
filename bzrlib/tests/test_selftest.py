@@ -3511,8 +3511,19 @@ class TestIsolatedEnv(tests.TestCase):
 
 
 class TestDocTestSuiteIsolation(tests.TestCase):
+    """Test that `tests.DocTestSuite` isolates doc tests from os.environ.
 
-    def get_doctest_suite(self, klass, string):
+    Since tests.TestCase alreay provides an isolation from os.environ, we use
+    the clean environment as a base for testing. To precisely capture the
+    isolation provided by tests.DocTestSuite, we use doctest.DocTestSuite to
+    compare against.
+
+    We want to make sure `tests.DocTestSuite` respect `tests.isolated_environ`,
+    not `os.environ` so each test overrides it to suit its needs.
+
+    """
+
+    def get_doctest_suite_for_string(self, klass, string):
         class Finder(doctest.DocTestFinder):
 
             def find(*args, **kwargs):
@@ -3523,23 +3534,42 @@ class TestDocTestSuiteIsolation(tests.TestCase):
         suite = klass(test_finder=Finder())
         return suite
 
-    def assertDocTestStringSucceds(self, klass, string):
-        suite = self.get_doctest_suite(klass, string)
+    def run_doctest_suite_for_string(self, klass, string):
+        suite = self.get_doctest_suite_for_string(klass, string)
         output = StringIO()
         result = tests.TextTestResult(output, 0, 1)
         suite.run(result)
+        return result, output
+
+    def assertDocTestStringSucceds(self, klass, string):
+        result, output = self.run_doctest_suite_for_string(klass, string)
         if not result.wasStrictlySuccessful():
             self.fail(output.getvalue())
 
+    def assertDocTestStringFails(self, klass, string):
+        result, output = self.run_doctest_suite_for_string(klass, string)
+        if result.wasStrictlySuccessful():
+            self.fail(output.getvalue())
+
     def test_injected_variable(self):
-        self.assertDocTestStringSucceds(tests.DocTestSuite, """
+        self.overrideAttr(tests, 'isolated_environ', {'LINES': '42'})
+        test = """
             >>> import os
             >>> os.environ['LINES']
-            '25'
-            """)
+            '42'
+            """
+        # doctest.DocTestSuite fails as it sees '25'
+        self.assertDocTestStringFails(doctest.DocTestSuite, test)
+        # tests.DocTestSuite sees '42'
+        self.assertDocTestStringSucceds(tests.DocTestSuite, test)
 
     def test_deleted_variable(self):
-        self.assertDocTestStringSucceds(tests.DocTestSuite, """
+        self.overrideAttr(tests, 'isolated_environ', {'LINES': None})
+        test = """
             >>> import os
-            >>> os.environ.get('BZR_HOME')
-            """)
+            >>> os.environ.get('LINES')
+            """
+        # doctest.DocTestSuite fails as it sees '25'
+        self.assertDocTestStringFails(doctest.DocTestSuite, test)
+        # tests.DocTestSuite sees None
+        self.assertDocTestStringSucceds(tests.DocTestSuite, test)

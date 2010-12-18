@@ -887,8 +887,8 @@ def DocTestSuite(*args, **kwargs):
 
     The method is really a factory and users are expected to use it as such.
     """
-#    kwargs['setUp'] = override_os_environ
-#    kwargs['tearDown'] = restore_os_environ
+    kwargs['setUp'] = override_os_environ
+    kwargs['tearDown'] = restore_os_environ
     return doctest.DocTestSuite(*args, **kwargs)
 
 
