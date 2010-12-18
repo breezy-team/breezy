@@ -3455,3 +3455,56 @@ class TestEnvironHandling(tests.TestCase):
             self.fail(output.getvalue())
         # We get our value back
         self.assertEquals('42', os.environ.get('MYVAR'))
+
+
+class TestIsolatedEnv(tests.TestCase):
+    """Test isolating tests from os.environ.
+
+    Since we use tests that are already isolated from os.environ abit of care
+    should be taken when designing the tests to avoid bootstrap side-effects.
+    The tests start an already clean os.environ which allow doing valid
+    assertions about which variables are present or not and design tests around
+    these assertions.
+    """
+
+    class ScratchMonkey(tests.TestCase):
+
+        def test_me(self):
+            pass
+
+    def test_basics(self):
+        # Make sure we know the definition of BZR_HOME: not part of os.environ
+        # for tests.TestCase.
+        self.assertTrue('BZR_HOME' in tests.isolated_environ)
+        self.assertEquals(None, tests.isolated_environ['BZR_HOME'])
+        # Being part of isolated_environ, BZR_HOME should not appear here
+        self.assertFalse('BZR_HOME' in os.environ)
+        # Make sure we know the definition of LINES: part of os.environ for
+        # tests.TestCase
+        self.assertTrue('LINES' in tests.isolated_environ)
+        self.assertEquals('25', tests.isolated_environ['LINES'])
+        self.assertEquals('25', os.environ['LINES'])
+
+    def test_injecting_unknown_variable(self):
+        # BZR_HOME is known to be absent from os.environ
+        test = self.ScratchMonkey('test_me')
+        tests.override_os_environ(test, {'BZR_HOME': 'foo'})
+        self.assertEquals('foo', os.environ['BZR_HOME'])
+        tests.restore_os_environ(test)
+        self.assertFalse('BZR_HOME' in os.environ)
+
+    def test_injecting_known_variable(self):
+        test = self.ScratchMonkey('test_me')
+        # LINES is known to be present in os.environ
+        tests.override_os_environ(test, {'LINES': '42'})
+        self.assertEquals('42', os.environ['LINES'])
+        tests.restore_os_environ(test)
+        self.assertEquals('25', os.environ['LINES'])
+
+    def test_deleting_variable(self):
+        test = self.ScratchMonkey('test_me')
+        # LINES is known to be present in os.environ
+        tests.override_os_environ(test, {'LINES': None})
+        self.assertTrue('LINES' not in os.environ)
+        tests.restore_os_environ(test)
+        self.assertEquals('25', os.environ['LINES'])
