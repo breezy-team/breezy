@@ -881,6 +881,17 @@ class TestUIFactory(TextUIFactory):
         return NullProgressView()
 
 
+
+def DocTestSuite(*args, **kwargs):
+    """Overrides doctest.DocTestSuite to handle isolation.
+
+    The method is really a factory and users are expected to use it as such.
+    """
+#    kwargs['setUp'] = override_os_environ
+#    kwargs['tearDown'] = restore_os_environ
+    return doctest.DocTestSuite(*args, **kwargs)
+
+
 class TestCase(testtools.TestCase):
     """Base class for bzr unit tests.
 

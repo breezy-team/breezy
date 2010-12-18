@@ -17,7 +17,7 @@
 """Tests for the test framework."""
 
 from cStringIO import StringIO
-from doctest import ELLIPSIS
+import doctest
 import os
 import signal
 import sys
@@ -92,7 +92,7 @@ class MetaTestLog(tests.TestCase):
             "text", "plain", {"charset": "utf8"})))
         self.assertThat(u"".join(log.iter_text()), Equals(self.get_log()))
         self.assertThat(self.get_log(),
-            DocTestMatches(u"...a test message\n", ELLIPSIS))
+            DocTestMatches(u"...a test message\n", doctest.ELLIPSIS))
 
 
 class TestUnicodeFilename(tests.TestCase):
@@ -3508,3 +3508,38 @@ class TestIsolatedEnv(tests.TestCase):
         self.assertTrue('LINES' not in os.environ)
         tests.restore_os_environ(test)
         self.assertEquals('25', os.environ['LINES'])
+
+
+class TestDocTestSuiteIsolation(tests.TestCase):
+
+    def get_doctest_suite(self, klass, string):
+        class Finder(doctest.DocTestFinder):
+
+            def find(*args, **kwargs):
+                test = doctest.DocTestParser().get_doctest(
+                    string, {}, 'foo', 'foo.py', 0)
+                return [test]
+
+        suite = klass(test_finder=Finder())
+        return suite
+
+    def assertDocTestStringSucceds(self, klass, string):
+        suite = self.get_doctest_suite(klass, string)
+        output = StringIO()
+        result = tests.TextTestResult(output, 0, 1)
+        suite.run(result)
+        if not result.wasStrictlySuccessful():
+            self.fail(output.getvalue())
+
+    def test_injected_variable(self):
+        self.assertDocTestStringSucceds(tests.DocTestSuite, """
+            >>> import os
+            >>> os.environ['LINES']
+            '25'
+            """)
+
+    def test_deleted_variable(self):
+        self.assertDocTestStringSucceds(tests.DocTestSuite, """
+            >>> import os
+            >>> os.environ.get('BZR_HOME')
+            """)
