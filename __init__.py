@@ -90,7 +90,8 @@ def load_fastimport():
         import fastimport
     except ImportError, e:
         from bzrlib.errors import DependencyNotPresent
-        raise DependencyNotPresent("fastimport", e)
+        raise DependencyNotPresent("fastimport",
+            "bzr-fastimport requires the fasimport python module")
 
 
 def test_suite():
