@@ -1,5 +1,8 @@
-This plugin provides a 'bzr rebase' command, in the same fashion of the 
-famous git-rebase.
+This plugin provides various commands for rewriting Bazaar revisions in 
+an automated fashion. 
+
+It includes a 'bzr rebase' command, in the same fashion of the 
+famous ``git rebase`` command.
 
 ==========
 How to use
