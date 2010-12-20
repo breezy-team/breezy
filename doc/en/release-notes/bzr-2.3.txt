@@ -85,7 +85,9 @@ Testing
 * ``bzrlib.tests`` defines ``isolated_environ`` with the definitions of all
   the environment variables the tests should care about. It also defines
   ``override_os_environ`` and ``restore_os_environ`` to properly implement
-  isolation from ``os.environ`` for tests. (Vincent Ladeuil, #321320)
+  isolation from ``os.environ`` for tests. ``bzrlib.tests`` now defines a
+  ``DocTestSuite`` class using this facility for all ``bzrlib``
+  doctests. (Vincent Ladeuil, #321320)
 
 * Catch exceptions related to bug #637821 during test cleanup to avoid
   spurious failures. (Vincent Ladeuil, #686008).
