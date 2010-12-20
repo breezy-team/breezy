@@ -210,7 +210,7 @@ with::
 
     bzr config parent_location=XXX
 
-``XXX` being the URL to your new trunk.
+``XXX`` being the URL to your new trunk.
 
 In contrast, the second approach sets up the parent branch correctly.
 However, it isn't ideal if you're not ready to include all the latest
