@@ -1,6 +1,6 @@
-########################
-Bazaar 2.0 Upgrade Guide
-########################
+####################
+Bazaar Upgrade Guide
+####################
 
 .. Please mark sections in included files as following:
 ..   level 1 ========
