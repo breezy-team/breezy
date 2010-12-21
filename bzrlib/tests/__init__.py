@@ -1524,7 +1524,7 @@ class TestCase(testtools.TestCase):
         return value
 
     def overrideEnv(self, name, new):
-        """Set an environment variable, and reset it fater the test.
+        """Set an environment variable, and reset it after the test.
 
         :param name: The environment variable name.
 
