@@ -95,6 +95,10 @@ Testing
 * Check sphinx compatibility for tests requiring older sphinx versions.
   (Vincent Ladeuil, #688072)
 
+* ``TestCase._captureVar`` and ``TestCase._old_env`` have been deleted due to
+  bug #690563. Test writers are encouraged to use ``TestCase.overrideEnv``
+  instead. (Vincent Ladeuil)
+
 * ``TestDebuntuExpansions`` was escaping the test isolation by calling the
   wrong base class ``setUp``. (Vincent Ladeuil, #684622)
 

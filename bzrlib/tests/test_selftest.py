@@ -3415,28 +3415,6 @@ class TestRunSuite(tests.TestCase):
 
 class TestEnvironHandling(tests.TestCase):
 
-    def test__captureVar_None_called_twice_leaks(self):
-        self.failIf('MYVAR' in os.environ)
-        self._captureVar('MYVAR', '42')
-        # We need an embedded test to observe the bug
-        class Test(tests.TestCase):
-            def test_me(self):
-                # The first call save the 42 value
-                self._captureVar('MYVAR', None)
-                self.assertEquals(None, os.environ.get('MYVAR'))
-                self.assertEquals('42', self._old_env.get('MYVAR'))
-                # But the second one erases it !
-                self._captureVar('MYVAR', None)
-                self.assertEquals(None, self._old_env.get('MYVAR'))
-        output = StringIO()
-        result = tests.TextTestResult(output, 0, 1)
-        Test('test_me').run(result)
-        if not result.wasStrictlySuccessful():
-            self.fail(output.getvalue())
-        # And we have lost all trace of the original value
-        self.assertEquals(None, os.environ.get('MYVAR'))
-        self.assertEquals(None, self._old_env.get('MYVAR'))
-
     def test_overrideEnv_None_called_twice_doesnt_leak(self):
         self.failIf('MYVAR' in os.environ)
         self.overrideEnv('MYVAR', '42')
