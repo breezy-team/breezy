@@ -110,7 +110,7 @@ class FetchSpecFactory(object):
     """
 
     def __init__(self):
-        self.explicit_rev_ids = set()
+        self._explicit_rev_ids = set()
         self.source_branch = None
         self.source_branch_stop_revision_id = None
         self.source_repo = None
@@ -119,14 +119,14 @@ class FetchSpecFactory(object):
 
     def add_revision_ids(self, revision_ids):
         """Add revision_ids to the set of revision_ids to be fetched."""
-        self.explicit_rev_ids.update(revision_ids)
+        self._explicit_rev_ids.update(revision_ids)
         
     def make_fetch_spec(self):
         """Build a SearchResult or PendingAncestryResult or etc."""
         if self.target_repo_kind is None or self.source_repo is None:
             raise AssertionError(
                 'Incomplete FetchSpecFactory: %r' % (self.__dict__,))
-        if len(self.explicit_rev_ids) == 0 and self.source_branch is None:
+        if len(self._explicit_rev_ids) == 0 and self.source_branch is None:
             # Caller hasn't specified any revisions or source branch
             if self.target_repo_kind == _TargetRepoKinds.EMPTY:
                 return graph.EverythingResult(self.source_repo)
@@ -135,7 +135,7 @@ class FetchSpecFactory(object):
                 # fallbacks).
                 return graph.EverythingNotInOther(
                     self.target_repo, self.source_repo)
-        heads_to_fetch = set(self.explicit_rev_ids)
+        heads_to_fetch = set(self._explicit_rev_ids)
         tags_to_fetch = set()
         if self.source_branch is not None:
             try:
