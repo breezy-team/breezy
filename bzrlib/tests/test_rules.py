@@ -118,10 +118,10 @@ class TestRulesPath(tests.TestCase):
 
     def setUp(self):
         super(TestRulesPath, self).setUp()
-        os.environ['HOME'] = '/home/bogus'
+        self.overrideEnv('HOME', '/home/bogus')
         if sys.platform == 'win32':
-            os.environ['BZR_HOME'] = \
-                r'C:\Documents and Settings\bogus\Application Data'
+            self.overrideEnv(
+                'BZR_HOME', r'C:\Documents and Settings\bogus\Application Data')
             self.bzr_home = \
                 'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
         else:

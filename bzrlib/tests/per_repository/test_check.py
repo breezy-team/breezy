@@ -135,7 +135,7 @@ class TestCleanRepository(TestCaseWithRepository):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         config = _mod_config.Config()
-        os.environ['BZR_EMAIL'] = 'foo@sample.com'
+        self.overrideEnv('BZR_EMAIL', 'foo@sample.com')
         builder = repo.get_commit_builder(None, [], config)
         list(builder.record_iter_changes(None, _mod_revision.NULL_REVISION, [
             ('TREE_ROOT', (None, ''), True, (False, True), (None, None),

@@ -40,7 +40,7 @@ class TestApportReporting(tests.TestCaseInTempDir):
     def test_apport_report(self):
         crash_dir = osutils.joinpath((self.test_base_dir, 'crash'))
         os.mkdir(crash_dir)
-        os.environ['APPORT_CRASH_DIR'] = crash_dir
+        self.overrideEnv('APPORT_CRASH_DIR', crash_dir)
         self.assertEquals(crash_dir, config.crash_dir())
 
         stderr = StringIO()

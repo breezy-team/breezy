@@ -44,6 +44,11 @@ Improvements
   ``TestCase`` leading to ``bt.test_import_tariff`` failures.
   (Vincent Ladeuil, #690563)
 
+* ``upgrade`` now upgrades dependent branches when a shared repository is
+  specified. It also supports new options: ``--dry-run`` for showing what
+  will happen and ``--clean`` to remove the backup directory on successful
+  completion. (Ian Clatworthy, Matthew Fuller, #89830, #374734, #422450)
+
 Bug Fixes
 *********
 
@@ -54,6 +59,9 @@ Documentation
 *************
 
 .. Improved or updated documentation.
+
+* Better document the rules to update the bzr freshmeat page when
+  doing a release. (Vincent Ladeuil, #690515)
 
 API Changes
 ***********
@@ -188,6 +196,11 @@ Testing
 * Bump minimum testtools version required to run ``bzr selftest`` from 0.9.2
   to 0.9.5 which will allow tests that need the fixed unicode handling to be
   written. (Martin [gz])
+
+* Introduce an ``overrideEnv()`` helper for tests that needs to change the
+  environment variables while respecting the isolation rules. Get rid of
+  TestCase._restoreEnvironment which is now useless.
+  (Vincent Ladeuil, #690563)
 
 * Printing selftest results to a non-UTF-8 console will now escape characters
   that can't be encoded rather than aborting the test run with an exception.

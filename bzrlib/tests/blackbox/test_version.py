@@ -95,7 +95,7 @@ class TestVersionUnicodeOutput(TestCaseInTempDir):
             raise TestSkipped('Cannot find a unicode character that works in'
                               ' encoding %s' % (osutils.get_user_encoding(),))
 
-        osutils.set_or_unset_env('BZR_HOME', str_val)
+        self.overrideEnv('BZR_HOME', str_val)
         self.permit_source_tree_branch_repo()
         out = self.run_bzr("version")[0]
         self.assertTrue(len(out) > 0)
@@ -106,7 +106,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
 
     def test_simple(self):
         bzr_log = 'my.bzr.log'
-        osutils.set_or_unset_env('BZR_LOG', bzr_log)
+        self.overrideEnv('BZR_LOG', bzr_log)
         default_log = os.path.join(os.environ['BZR_HOME'], '.bzr.log')
         self.failIfExists([default_log, bzr_log])
         out = self.run_bzr_subprocess('version')[0]
@@ -122,7 +122,7 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
             bzr_log = 'NUL'
         else:
             bzr_log = '/dev/null'
-        osutils.set_or_unset_env('BZR_LOG', bzr_log)
+        self.overrideEnv('BZR_LOG', bzr_log)
         default_log = os.path.join(os.environ['BZR_HOME'], '.bzr.log')
         self.failIfExists(default_log)
         out = self.run_bzr_subprocess('version')[0]
