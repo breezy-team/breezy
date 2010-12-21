@@ -226,9 +226,9 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         # and uses whoami only in a lock file. Without whoami the login name
         # is used. This test is to ensure that init passes even when whoami
         # is not available.
-        osutils.set_or_unset_env('EMAIL', None)
-        osutils.set_or_unset_env('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
         out, err = self.run_bzr(['init', 'foo'])
         self.assertEqual(err, '')
         self.assertTrue(os.path.exists('foo'))
-        
+

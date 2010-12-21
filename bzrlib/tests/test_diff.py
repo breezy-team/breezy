@@ -144,31 +144,22 @@ class TestDiff(tests.TestCase):
         self.check_patch(lines)
 
     def test_external_diff_binary_lang_c(self):
-        old_env = {}
         for lang in ('LANG', 'LC_ALL', 'LANGUAGE'):
-            old_env[lang] = osutils.set_or_unset_env(lang, 'C')
-        try:
-            lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
-            # Older versions of diffutils say "Binary files", newer
-            # versions just say "Files".
-            self.assertContainsRe(lines[0],
-                                  '(Binary f|F)iles old and new differ\n')
-            self.assertEquals(lines[1:], ['\n'])
-        finally:
-            for lang, old_val in old_env.iteritems():
-                osutils.set_or_unset_env(lang, old_val)
+            self.overrideEnv(lang, 'C')
+        lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
+        # Older versions of diffutils say "Binary files", newer
+        # versions just say "Files".
+        self.assertContainsRe(lines[0], '(Binary f|F)iles old and new differ\n')
+        self.assertEquals(lines[1:], ['\n'])
 
     def test_no_external_diff(self):
         """Check that NoDiff is raised when diff is not available"""
-        # Use os.environ['PATH'] to make sure no 'diff' command is available
-        orig_path = os.environ['PATH']
-        try:
-            os.environ['PATH'] = ''
-            self.assertRaises(errors.NoDiff, diff.external_diff,
-                              'old', ['boo\n'], 'new', ['goo\n'],
-                              StringIO(), diff_opts=['-u'])
-        finally:
-            os.environ['PATH'] = orig_path
+        # Make sure no 'diff' command is available
+        # XXX: Weird, using None instead of '' breaks the test -- vila 20101216
+        self.overrideEnv('PATH', '')
+        self.assertRaises(errors.NoDiff, diff.external_diff,
+                          'old', ['boo\n'], 'new', ['goo\n'],
+                          StringIO(), diff_opts=['-u'])
 
     def test_internal_diff_default(self):
         # Default internal diff encoding is utf8

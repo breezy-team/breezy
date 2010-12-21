@@ -217,7 +217,7 @@ class TestLocationsCtypes(TestCase):
     def test_appdata_not_using_environment(self):
         # Test that we aren't falling back to the environment
         first = win32utils.get_appdata_location()
-        self._captureVar("APPDATA", None)
+        self.overrideEnv("APPDATA", None)
         self.assertPathsEqual(first, win32utils.get_appdata_location())
 
     def test_appdata_matches_environment(self):
@@ -234,7 +234,7 @@ class TestLocationsCtypes(TestCase):
     def test_local_appdata_not_using_environment(self):
         # Test that we aren't falling back to the environment
         first = win32utils.get_local_appdata_location()
-        self._captureVar("LOCALAPPDATA", None)
+        self.overrideEnv("LOCALAPPDATA", None)
         self.assertPathsEqual(first, win32utils.get_local_appdata_location())
 
     def test_local_appdata_matches_environment(self):

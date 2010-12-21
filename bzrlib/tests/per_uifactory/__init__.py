@@ -190,7 +190,7 @@ class TestTTYTextUIFactory(TestTextUIFactory):
 
         # Remove 'TERM' == 'dumb' which causes us to *not* treat output as a
         # real terminal, even though isatty returns True
-        self._captureVar('TERM', None)
+        self.overrideEnv('TERM', None)
         self.stderr = TTYStringIO()
         self.stdout = TTYStringIO()
         self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,
