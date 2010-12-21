@@ -386,8 +386,7 @@ class TestExternalDiff(DiffBase):
         # subprocess.py that we had to workaround).
         # However, if 'diff' may not be available
         self.make_example_branch()
-        # this will be automatically restored by the base bzr test class
-        os.environ['BZR_PROGRESS_BAR'] = 'none'
+        self.overrideEnv('BZR_PROGRESS_BAR', 'none')
         out, err = self.run_bzr_subprocess('diff -r 1 --diff-options -ub',
                                            universal_newlines=True,
                                            retcode=None)

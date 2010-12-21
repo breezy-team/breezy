@@ -402,11 +402,11 @@ class TestConfigPath(tests.TestCase):
 
     def setUp(self):
         super(TestConfigPath, self).setUp()
-        os.environ['HOME'] = '/home/bogus'
-        os.environ['XDG_CACHE_DIR'] = ''
+        self.overrideEnv('HOME', '/home/bogus')
+        self.overrideEnv('XDG_CACHE_DIR', '')
         if sys.platform == 'win32':
-            os.environ['BZR_HOME'] = \
-                r'C:\Documents and Settings\bogus\Application Data'
+            self.overrideEnv(
+                'BZR_HOME', r'C:\Documents and Settings\bogus\Application Data')
             self.bzr_home = \
                 'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
         else:
@@ -441,9 +441,9 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
             raise tests.TestNotApplicable(
                 'XDG config dir not used on this platform')
         super(TestXDGConfigDir, self).setUp()
-        os.environ['HOME'] = self.test_home_dir
+        self.overrideEnv('HOME', self.test_home_dir)
         # BZR_HOME overrides everything we want to test so unset it.
-        del os.environ['BZR_HOME']
+        self.overrideEnv('BZR_HOME', None)
 
     def test_xdg_config_dir_exists(self):
         """When ~/.config/bazaar exists, use it as the config dir."""
@@ -454,7 +454,7 @@ class TestXDGConfigDir(tests.TestCaseInTempDir):
     def test_xdg_config_home(self):
         """When XDG_CONFIG_HOME is set, use it."""
         xdgconfigdir = osutils.pathjoin(self.test_home_dir, 'xdgconfig')
-        os.environ['XDG_CONFIG_HOME'] = xdgconfigdir
+        self.overrideEnv('XDG_CONFIG_HOME', xdgconfigdir)
         newdir = osutils.pathjoin(xdgconfigdir, 'bazaar')
         os.makedirs(newdir)
         self.assertEqual(config.config_dir(), newdir)
@@ -1308,7 +1308,7 @@ other_url = /other-subdir
         self.assertEqual('bzr', my_config.get_bzr_remote_path())
         my_config.set_user_option('bzr_remote_path', '/path-bzr')
         self.assertEqual('/path-bzr', my_config.get_bzr_remote_path())
-        os.environ['BZR_REMOTE_PATH'] = '/environ-bzr'
+        self.overrideEnv('BZR_REMOTE_PATH', '/environ-bzr')
         self.assertEqual('/environ-bzr', my_config.get_bzr_remote_path())
 
 
@@ -1360,7 +1360,7 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         self.assertEqual("John", my_config._get_user_id())
 
     def test_BZR_EMAIL_OVERRIDES(self):
-        os.environ['BZR_EMAIL'] = "Robert Collins <robertc@example.org>"
+        self.overrideEnv('BZR_EMAIL', "Robert Collins <robertc@example.org>")
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.org>",

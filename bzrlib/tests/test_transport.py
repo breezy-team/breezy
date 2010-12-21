@@ -967,7 +967,7 @@ class TestSSHConnections(tests.TestCaseWithTransport):
             bzr_remote_path = sys.executable + ' ' + self.get_bzr_path()
         else:
             bzr_remote_path = self.get_bzr_path()
-        os.environ['BZR_REMOTE_PATH'] = bzr_remote_path
+        self.overrideEnv('BZR_REMOTE_PATH', bzr_remote_path)
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.
