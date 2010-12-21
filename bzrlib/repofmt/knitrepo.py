@@ -538,7 +538,7 @@ class InterKnitRepo(InterSameDataRepository):
     def search_missing_revision_ids(self,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
             find_ghosts=True, revision_ids=None, if_present_ids=None):
-        """See InterRepository.searcH_missing_revision_ids()."""
+        """See InterRepository.search_missing_revision_ids()."""
         if symbol_versioning.deprecated_passed(revision_id):
             symbol_versioning.warn(
                 'search_missing_revision_ids(revision_id=...) was '
