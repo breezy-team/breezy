@@ -60,6 +60,7 @@ if _testtools_version < (0, 9, 5):
         % (testtools.__file__, _testtools_version))
 from testtools import content
 
+import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
