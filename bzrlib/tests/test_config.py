@@ -351,19 +351,29 @@ class TestConfigObjInterpolation(tests.TestCase):
         c = self.get_config('')
         self.assertInterpolate('foo', c, 'foo')
 
-    def test_interpolate_in_env(self):
+    def test_in_env(self):
         c = self.get_config('')
         self.assertInterpolate('bar', c, '{foo}', {'foo': 'bar'})
 
-    def test_interpolate_simple_ref(self):
+    def test_simple_ref(self):
         c = self.get_config('foo=xxx')
         self.assertInterpolate('xxx', c, '{foo}')
 
-    def test_interpolate_indirect_ref(self):
+    def test_indirect_ref(self):
         c = self.get_config("""foo=xxx
 bar={foo}
 """)
         self.assertInterpolate('xxx', c, '{bar}')
+
+    def test_embedded_ref(self):
+        c = self.get_config("""foo=xxx
+bar=foo
+""")
+        self.assertInterpolate('xxx', c, '{{bar}}')
+
+    def test_simple_loop(self):
+        c = self.get_config('foo=food')
+        self.assertRaises(errors.InterpolationLoop, c.interpolate, '{foo}')
 
 
 class TestConfig(tests.TestCase):

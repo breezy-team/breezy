@@ -159,12 +159,14 @@ class ConfigObj(configobj.ConfigObj):
             ref = found.group()
             name = ref[1:-1]
             if env is not None and name in env:
+                # Special case, values provided in env takes precedence over
+                # anything else
                 value = env[name]
-            elif name in self:
-                # Search for an option
-                value = self[name]
             else:
-                raise UnkownOption(name)
+                # FIXME: This is a limited implementation, what we really need
+                # is a way to query the bzr config for the value of an option,
+                # respecting the scope rules.
+                value = self[name]
             string = string.replace(ref, value)
         return string
 

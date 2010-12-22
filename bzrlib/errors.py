@@ -3218,3 +3218,12 @@ class RecursiveBind(BzrError):
     def __init__(self, branch_url):
         self.branch_url = branch_url
 
+# FIXME: I would prefer to define the config related exception classes in
+# config.py but the lazy import mechanism proscribe this.
+class InterpolationLoop(BzrError):
+
+    _fmt = 'Loop involving %(refs)s while evaluating %(string)s.'
+
+    def __init__(self, string, refs):
+        self.string = string
+        self.refs = '->'.join(refs)
