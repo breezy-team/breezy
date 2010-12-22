@@ -334,6 +334,38 @@ class TestConfigObjErrors(tests.TestCase):
             self.fail('Error in config file not detected')
 
 
+
+class TestConfigObjInterpolation(tests.TestCase):
+
+    def get_config(self, string=None):
+        if string is None:
+            string = ''
+        string = StringIO(string.encode('utf-8'))
+        c = config.ConfigObj(string, encoding='utf-8')
+        return c
+
+    def assertInterpolate(self, expected, conf, string, env=None):
+        self.assertEquals(expected, conf.interpolate(string, env))
+
+    def test_no_interpolation(self):
+        c = self.get_config('')
+        self.assertInterpolate('foo', c, 'foo')
+
+    def test_interpolate_in_env(self):
+        c = self.get_config('')
+        self.assertInterpolate('bar', c, '{foo}', {'foo': 'bar'})
+
+    def test_interpolate_simple_ref(self):
+        c = self.get_config('foo=xxx')
+        self.assertInterpolate('xxx', c, '{foo}')
+
+    def test_interpolate_indirect_ref(self):
+        c = self.get_config("""foo=xxx
+bar={foo}
+""")
+        self.assertInterpolate('xxx', c, '{bar}')
+
+
 class TestConfig(tests.TestCase):
 
     def test_constructs(self):

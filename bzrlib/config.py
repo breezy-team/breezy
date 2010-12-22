@@ -143,6 +143,30 @@ class ConfigObj(configobj.ConfigObj):
                 pass
         return self[section][name]
 
+    option_ref_re = None
+
+    def interpolate(self, string, env=None):
+        if self.option_ref_re is None:
+            # We want to match the most embedded reference first (i.e. for
+            # '{{foo}}' we will get '{foo}',
+            # for '{bar{baz}}' we will get '{baz}'
+            self.option_ref_re = re.compile('({[^{}]+})')
+        while True:
+            found = self.option_ref_re.search(string)
+            if found is None:
+                # No more references, interpolation is done
+                break
+            ref = found.group()
+            name = ref[1:-1]
+            if env is not None and name in env:
+                value = env[name]
+            elif name in self:
+                # Search for an option
+                value = self[name]
+            else:
+                raise UnkownOption(name)
+            string = string.replace(ref, value)
+        return string
 
 class Config(object):
     """A configuration policy - what username, editor, gpg needs etc."""
