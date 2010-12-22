@@ -165,7 +165,7 @@ class ConfigObj(configobj.ConfigObj):
             else:
                 # FIXME: This is a limited implementation, what we really need
                 # is a way to query the bzr config for the value of an option,
-                # respecting the scope rules.
+                # respecting the scope rules -- vila 20101222
                 value = self[name]
             string = string.replace(ref, value)
         return string
