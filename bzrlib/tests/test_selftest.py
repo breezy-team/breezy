@@ -3562,7 +3562,7 @@ class TestDocTestSuiteIsolation(tests.TestCase):
         # doctest.DocTestSuite fails as it sees '25'
         self.assertDocTestStringFails(doctest.DocTestSuite, test)
         # tests.DocTestSuite sees '42'
-        self.assertDocTestStringSucceds(tests.DocTestSuite, test)
+        self.assertDocTestStringSucceds(tests.BzrDocTestSuite, test)
 
     def test_deleted_variable(self):
         self.overrideAttr(tests, 'isolated_environ', {'LINES': None})
@@ -3573,4 +3573,4 @@ class TestDocTestSuiteIsolation(tests.TestCase):
         # doctest.DocTestSuite fails as it sees '25'
         self.assertDocTestStringFails(doctest.DocTestSuite, test)
         # tests.DocTestSuite sees None
-        self.assertDocTestStringSucceds(tests.DocTestSuite, test)
+        self.assertDocTestStringSucceds(tests.BzrDocTestSuite, test)

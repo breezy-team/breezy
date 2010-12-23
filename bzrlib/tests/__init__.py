@@ -131,7 +131,7 @@ TestLoader = TestUtil.TestLoader
 # few exceptions but you shouldn't violate this rule lightly.
 isolated_environ = {
     'BZR_HOME': None,
-    'HOME': os.getcwd(),
+    'HOME': None,
     # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
     # tests do check our impls match APPDATA
     'BZR_EDITOR': None, # test_msgeditor manipulates this variable
@@ -882,7 +882,7 @@ class TestUIFactory(TextUIFactory):
 
 
 
-def DocTestSuite(*args, **kwargs):
+def BzrDocTestSuite(*args, **kwargs):
     """Overrides doctest.DocTestSuite to handle isolation.
 
     The method is really a factory and users are expected to use it as such.
@@ -3958,7 +3958,7 @@ def test_suite(keep_only=None, starting_with=None):
         try:
             # note that this really does mean "report only" -- doctest
             # still runs the rest of the examples
-            doc_suite = DocTestSuite(
+            doc_suite = BzrDocTestSuite(
                 mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)
