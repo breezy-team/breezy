@@ -215,18 +215,20 @@ def tarball_name(package, version, format=None):
 
 
 def get_snapshot_revision(upstream_version):
-    """Return the upstream revision specifier if specified in the upstream version.
+    """Return the upstream revision specifier if specified in the upstream
+    version.
 
-    When packaging an upstream snapshot some people use +vcsnn or ~vcsnn to indicate
-    what revision number of the upstream VCS was taken for the snapshot. This given
-    an upstream version number this function will return an identifier of the
-    upstream revision if it appears to be a snapshot. The identifier is a string
-    containing a bzr revision spec, so it can be transformed in to a revision.
+    When packaging an upstream snapshot some people use +vcsnn or ~vcsnn to
+    indicate what revision number of the upstream VCS was taken for the
+    snapshot. This given an upstream version number this function will return
+    an identifier of the upstream revision if it appears to be a snapshot. The
+    identifier is a string containing a bzr revision spec, so it can be
+    transformed in to a revision.
 
     :param upstream_version: a string containing the upstream version number.
     :return: a string containing a revision specifier for the revision of the
-        upstream branch that the snapshot was taken from, or None if it doesn't
-        appear to be a snapshot.
+        upstream branch that the snapshot was taken from, or None if it
+        doesn't appear to be a snapshot.
     """
     match = re.search("(?:~|\\+)bzr([0-9]+)$", upstream_version)
     if match is not None:
@@ -238,6 +240,12 @@ def get_snapshot_revision(upstream_version):
 
 
 def get_export_upstream_revision(config, version=None):
+    """Find the revision to use when exporting the upstream source.
+
+    :param config: Config object
+    :param version: Optional version to find revision for, if not the latest.
+    :return: Revision id
+    """
     rev = None
     if version is not None:
         rev = get_snapshot_revision(str(version.upstream_version))
@@ -257,7 +265,8 @@ def suite_to_distribution(suite):
     Ubuntu).
 
     :param suite: the string containing the suite
-    :return: "debian", "ubuntu", or None if the distribution couldn't be inferred.
+    :return: "debian", "ubuntu", or None if the distribution couldn't be
+        inferred.
     """
     all_debian = [r + t for r in DEBIAN_RELEASES for t in DEBIAN_POCKETS]
     all_ubuntu = [r + t for r in UBUNTU_RELEASES for t in UBUNTU_POCKETS]
@@ -281,7 +290,11 @@ def lookup_distribution(distribution_or_suite):
 
 
 def md5sum_filename(filename):
-    """Calculate the md5sum of a file by name."""
+    """Calculate the md5sum of a file by name.
+
+    :param filename: Path of the file to checksum
+    :return: MD5 Checksum as hex digest
+    """
     m = md5.md5()
     f = open(filename, 'rb')
     try:
@@ -293,6 +306,12 @@ def md5sum_filename(filename):
 
 
 def move_file_if_different(source, target, md5sum):
+    """Overwrite a file if its new contents would be different from the current contents.
+
+    :param source: Path of the source file
+    :param target: Path of the target file
+    :param md5sum: MD5Sum (as hex digest) of the source file
+    """
     if os.path.exists(target):
         if os.path.samefile(source, target):
             return
@@ -303,6 +322,11 @@ def move_file_if_different(source, target, md5sum):
 
 
 def write_if_different(contents, target):
+    """(Over)write a file with `contents` if they are different from its current content.
+
+    :param contents: The contents to write, as a string
+    :param target: Path of the target file
+    """
     md5sum = md5.md5()
     md5sum.update(contents)
     fd, temp_path = tempfile.mkstemp("builddeb-rename-")
@@ -326,7 +350,7 @@ def _download_part(name, base_transport, target_dir, md5sum):
     f_f = f_t.get(part_path)
     try:
         target_path = os.path.join(target_dir, part_path)
-        fd, temp_path = tempfile.mkstemp(prefix="builldeb-")
+        fd, temp_path = tempfile.mkstemp(prefix="builddeb-")
         fobj = os.fdopen(fd, "wb")
         try:
             try:
@@ -341,8 +365,13 @@ def _download_part(name, base_transport, target_dir, md5sum):
         f_f.close()
 
 
-def open_file(path):
-    filename, transport = open_transport(path)
+def open_file(url):
+    """Open a file from a URL.
+
+    :param url: URL to open
+    :return: A file-like object.
+    """
+    filename, transport = open_transport(url)
     return open_file_via_transport(filename, transport)
 
 
@@ -396,6 +425,13 @@ def get_parent_dir(target):
 
 
 def find_bugs_fixed(changes, branch, _lplib=None):
+    """Find the bugs marked fixed in a changelog entry.
+
+    :param changes: The contents of the changelog entry.
+    :param branch: Bazaar branch associated with the package
+    :return: String with bugs closed, as appropriate for a Bazaar "bugs" revision 
+        property.
+    """
     if _lplib is None:
         from bzrlib.plugins.builddeb import launchpad as _lplib
     bugs = []
@@ -405,30 +441,30 @@ def find_bugs_fixed(changes, branch, _lplib=None):
                 re.IGNORECASE):
             closes_list = match.group(0)
             for match in re.finditer("\d+", closes_list):
-                bug_url = bugtracker.get_bug_url("deb", branch,
-                        match.group(0))
+                bug_url = bugtracker.get_bug_url("deb", branch, match.group(0))
                 bugs.append(bug_url + " fixed")
                 lp_bugs = _lplib.ubuntu_bugs_for_debian_bug(match.group(0))
                 if len(lp_bugs) == 1:
-                    bug_url = bugtracker.get_bug_url("lp", branch,
-                            lp_bugs[0])
+                    bug_url = bugtracker.get_bug_url("lp", branch, lp_bugs[0])
                     bugs.append(bug_url + " fixed")
         for match in re.finditer("lp:\s+\#\d+(?:,\s*\#\d+)*",
                 change, re.IGNORECASE):
             closes_list = match.group(0)
             for match in re.finditer("\d+", closes_list):
-                bug_url = bugtracker.get_bug_url("lp", branch,
-                        match.group(0))
+                bug_url = bugtracker.get_bug_url("lp", branch, match.group(0))
                 bugs.append(bug_url + " fixed")
                 deb_bugs = _lplib.debian_bugs_for_ubuntu_bug(match.group(0))
                 if len(deb_bugs) == 1:
-                    bug_url = bugtracker.get_bug_url("deb", branch,
-                            deb_bugs[0])
+                    bug_url = bugtracker.get_bug_url("deb", branch, deb_bugs[0])
                     bugs.append(bug_url + " fixed")
     return bugs
 
 
 def find_extra_authors(changes):
+    """Find additional authors from a changelog entry.
+
+    :return: List of fullnames of additional authors, without e-mail address.
+    """
     extra_author_re = re.compile(r"\s*\[([^\]]+)]\s*")
     authors = []
     for change in changes:
@@ -447,6 +483,11 @@ def find_extra_authors(changes):
 
 
 def find_thanks(changes):
+    """Find all people thanked in a changelog entry.
+
+    :param changes: String with the contents of the changelog entry
+    :return: List of people thanked, optionally including email address.
+    """
     thanks_re = re.compile(r"[tT]hank(?:(?:s)|(?:you))(?:\s*to)?"
             "((?:\s+(?:(?:\w\.)|(?:\w+(?:-\w+)*)))+"
             "(?:\s+<[^@>]+@[^@>]+>)?)",
@@ -579,6 +620,12 @@ def find_previous_upload(tree, merge):
 
 
 def _find_previous_upload(cl):
+    """Find the version of the previous upload.
+
+    :param cl: Changelog object
+    :return: Version object for the previous upload
+    :raise NoPreviousUpload: Raised when there is no previous upload
+    """
     blocks = cl._blocks
     current_target = blocks[0].distributions.split(" ")[0]
     all_debian = [r + t for r in DEBIAN_RELEASES for t in DEBIAN_POCKETS]
@@ -601,7 +648,7 @@ def _find_previous_upload(cl):
 
 def tree_contains_upstream_source(tree):
     """Guess if the specified tree contains the upstream source.
-    
+
     :param tree: A RevisionTree.
     :return: Boolean indicating whether or not the tree contains the upstream
         source
