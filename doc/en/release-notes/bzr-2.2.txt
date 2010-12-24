@@ -32,6 +32,13 @@ Bug Fixes
   because this can cause knock-on errors at awkward times.
   (Andrew Bennetts, #687653)
 
+* ``https`` access works again with recent versions of python2.7.
+  (Vincent Ladeuil, #693880)
+
+* RevisionTree.is_executable no longer returns None for directories and
+  symlinks.  Instead, it returns False, like other Trees and methods.
+  (Aaron Bentley, #681885)
+
 Improvements
 ************
 
