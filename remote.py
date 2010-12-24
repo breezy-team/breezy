@@ -204,6 +204,10 @@ class RemoteGitDir(GitDir):
         self._lockfiles = lockfiles
         self._mode_check_done = None
 
+    @property
+    def user_url(self):
+        return self.control_url
+
     def _branch_name_to_ref(self, name, default=None):
         return branch_name_to_ref(name, default=default)
 
@@ -267,6 +271,10 @@ class RemoteGitRepository(GitRepository):
     def __init__(self, gitdir, lockfiles):
         GitRepository.__init__(self, gitdir, lockfiles)
         self._refs = None
+
+    @property
+    def user_url(self):
+        return self.control_url
 
     @property
     def inventories(self):
@@ -343,6 +351,14 @@ class RemoteGitBranch(GitBranch):
         self._sha = None
         super(RemoteGitBranch, self).__init__(bzrdir, repository, name,
                 lockfiles)
+
+    @property
+    def user_url(self):
+        return self.control_url
+
+    @property
+    def control_url(self):
+        return self.base
 
     def revision_history(self):
         raise GitSmartRemoteNotSupported()
