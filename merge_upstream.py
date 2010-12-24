@@ -174,6 +174,25 @@ def package_version(upstream_version, distribution_name):
     return ret
 
 
+def upstream_merge_changelog_line(upstream_version):
+    """Describe that a new upstream revision was merged.
+
+    This will either describe that a new upstream release or a new upstream snapshot
+    was merged.
+
+    :param upstream_version: Upstream version string
+    :return: Line string for use in changelog
+    """
+    vcs_suffixes = ["~bzr", "+bzr", "~svn", "+svn", "~git", "+git"]
+    for vcs_suffix in vcs_suffixes:
+        if vcs_suffix in str(upstream_version):
+            entry_description = "New upstream snapshot."
+            break
+    else:
+        entry_description = "New upstream release."
+    return entry_description
+
+
 def changelog_add_new_version(tree, upstream_version, distribution_name,
         changelog, package):
     """Add an entry to the changelog for a new version.
@@ -188,17 +207,11 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
     assert isinstance(upstream_version, str), \
          "upstream_version should be a str, not %s" % str(
                  type(upstream_version))
-    vcs_suffixes = ["~bzr", "+bzr", "~svn", "+svn", "~git", "+git"]
-    for vcs_suffix in vcs_suffixes:
-        if vcs_suffix in str(upstream_version):
-            entry_description = "New upstream snapshot."
-            break
-    else:
-        entry_description = "New upstream release."
+    entry_description = upstream_merge_changelog_line(upstream_version)
     proc = subprocess.Popen(["dch", "-v",
             str(package_version(upstream_version, distribution_name)),
-            "-D", "UNRELEASED", "--release-heuristic", "changelog",
-            entry_description], cwd=tree.basedir)
+            "-D", "UNRELEASED", "--release-heuristic", "changelog", entry_description],
+            cwd=tree.basedir)
     proc.wait()
     # FIXME: Raise insightful exception here rather than just checking
     # return code.
