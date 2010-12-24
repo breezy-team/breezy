@@ -881,14 +881,22 @@ class TestUIFactory(TextUIFactory):
         return NullProgressView()
 
 
+def isolated_doctest_setUp(test):
+    override_os_environ(test)
 
-def BzrDocTestSuite(*args, **kwargs):
+
+def isolated_doctest_tearDown(test):
+    restore_os_environ(test)
+
+
+def IsolatedDocTestSuite(*args, **kwargs):
     """Overrides doctest.DocTestSuite to handle isolation.
 
     The method is really a factory and users are expected to use it as such.
     """
-    kwargs['setUp'] = override_os_environ
-    kwargs['tearDown'] = restore_os_environ
+    
+    kwargs['setUp'] = isolated_doctest_setUp
+    kwargs['tearDown'] = isolated_doctest_tearDown
     return doctest.DocTestSuite(*args, **kwargs)
 
 
@@ -3958,7 +3966,7 @@ def test_suite(keep_only=None, starting_with=None):
         try:
             # note that this really does mean "report only" -- doctest
             # still runs the rest of the examples
-            doc_suite = BzrDocTestSuite(
+            doc_suite = IsolatedDocTestSuite(
                 mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)
