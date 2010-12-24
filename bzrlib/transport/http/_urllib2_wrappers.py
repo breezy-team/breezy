@@ -110,6 +110,9 @@ class _ReportingFileSocket(object):
         self.report_activity(len(s), 'read')
         return s
 
+    # httplib in python 2.4 and 2.5 defines a SSLFile wrapper whose readline
+    # method lacks the size parameter. python2.6 provides a proper ssl socket
+    # and added it. python2.7 uses it, forcing us to provide it.
     if sys.version_info < (2, 6):
         def readline(self):
             s = self.filesock.readline()
