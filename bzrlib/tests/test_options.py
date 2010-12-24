@@ -24,7 +24,7 @@ from bzrlib import (
     option,
     )
 from bzrlib.builtins import cmd_commit
-from bzrlib.commands import Command, parse_args
+from bzrlib.commands import parse_args
 from bzrlib.tests import TestCase
 from bzrlib.repofmt import knitrepo
 

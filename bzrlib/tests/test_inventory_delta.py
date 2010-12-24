@@ -22,7 +22,6 @@ See doc/developer/inventory.txt for more information.
 from cStringIO import StringIO
 
 from bzrlib import (
-    errors,
     inventory,
     inventory_delta,
     )

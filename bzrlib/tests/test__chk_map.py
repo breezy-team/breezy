@@ -18,7 +18,6 @@
 
 from bzrlib import (
     chk_map,
-    inventory,
     tests,
     )
 from bzrlib.static_tuple import StaticTuple

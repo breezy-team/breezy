@@ -20,7 +20,6 @@ import os
 import stat
 
 from bzrlib import tests
-from bzrlib.symbol_versioning import deprecated_in
 
 
 class _NotRunningAsRoot(tests.Feature):

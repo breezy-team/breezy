@@ -16,8 +16,6 @@
 
 """Tests for the strace-invoking support."""
 
-import errno
-import subprocess
 import threading
 
 from bzrlib import (

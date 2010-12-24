@@ -16,8 +16,6 @@
 
 """Tests for bzrlib/generate_ids.py"""
 
-import re
-
 from bzrlib import (
     generate_ids,
     tests,

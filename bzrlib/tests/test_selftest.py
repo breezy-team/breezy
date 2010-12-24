@@ -42,7 +42,6 @@ import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
-    debug,
     errors,
     lockdir,
     memorytree,
@@ -56,7 +55,6 @@ from bzrlib import (
     )
 from bzrlib.repofmt import (
     groupcompress_repo,
-    pack_repo,
     weaverepo,
     )
 from bzrlib.symbol_versioning import (
@@ -68,12 +66,10 @@ from bzrlib.tests import (
     features,
     test_lsprof,
     test_server,
-    test_sftp_transport,
     TestUtil,
     )
 from bzrlib.trace import note, mutter
 from bzrlib.transport import memory
-from bzrlib.version import _get_bzr_source_tree
 
 
 def _test_ids(test_suite):

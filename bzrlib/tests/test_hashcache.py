@@ -16,13 +16,15 @@
 
 import os
 import stat
-import sys
 import time
 
 from bzrlib import osutils
 from bzrlib.errors import BzrError
 from bzrlib.hashcache import HashCache
-from bzrlib.tests import OsFifoFeature, TestCaseInTempDir, TestCase
+from bzrlib.tests import (
+    OsFifoFeature,
+    TestCaseInTempDir,
+    )
 
 
 def sha1(t):

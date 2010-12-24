@@ -18,7 +18,6 @@
 import os
 import socket
 import sys
-import threading
 import time
 
 from bzrlib import (
@@ -30,7 +29,6 @@ from bzrlib import (
     ui,
     )
 from bzrlib.osutils import (
-    pathjoin,
     lexists,
     )
 from bzrlib.tests import (
@@ -45,8 +43,6 @@ import bzrlib.transport.http
 if features.paramiko.available():
     from bzrlib.transport import sftp as _mod_sftp
     from bzrlib.tests import stub_sftp
-
-from bzrlib.workingtree import WorkingTree
 
 
 def set_test_transport_to_sftp(testcase):

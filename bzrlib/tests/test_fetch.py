@@ -14,25 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
-import re
-import sys
-
-import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
     osutils,
-    merge,
-    repository,
     versionedfile,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
 from bzrlib.repofmt import knitrepo
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests.test_revision import make_branches
-from bzrlib.trace import mutter
 from bzrlib.upgrade import Convert
 from bzrlib.workingtree import WorkingTree
 

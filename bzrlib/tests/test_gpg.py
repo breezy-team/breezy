@@ -18,12 +18,11 @@
 """Tests for signing and verifying blobs of data via gpg."""
 
 # import system imports here
-import os
 import sys
 
 from bzrlib import errors, ui
 import bzrlib.gpg as gpg
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase
 
 class FakeConfig(object):
 

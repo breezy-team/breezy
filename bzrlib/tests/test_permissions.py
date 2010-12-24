@@ -32,8 +32,6 @@ permissions should be inherited individually, rather than all be the same.
 
 import os
 import sys
-import stat
-from cStringIO import StringIO
 import urllib
 
 from bzrlib import transport

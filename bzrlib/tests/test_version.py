@@ -17,7 +17,6 @@
 """Tests for versioning of bzrlib."""
 
 from cStringIO import StringIO
-import os
 import re
 
 from bzrlib import version, workingtree

@@ -25,10 +25,8 @@ import glob
 import os
 import shlex
 import textwrap
-from cStringIO import StringIO
 
 from bzrlib import (
-    errors,
     osutils,
     tests,
     )

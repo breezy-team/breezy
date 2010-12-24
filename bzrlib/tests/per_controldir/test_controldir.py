@@ -17,7 +17,6 @@
 """Tests for control directory implementations - tests a controldir format."""
 
 from itertools import izip
-import os
 
 import bzrlib.branch
 from bzrlib import (

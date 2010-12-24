@@ -17,8 +17,6 @@
 
 """Adapter for running test cases against multiple encodings."""
 
-from copy import deepcopy
-
 # prefix for micro (1/1000000)
 _mu = u'\xb5'
 

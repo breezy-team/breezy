@@ -16,11 +16,9 @@
 
 
 from bzrlib import (
-    errors,
     merge3,
     tests,
     )
-from bzrlib.merge3 import Merge3
 from bzrlib.errors import CantReprocessAndShowBase, BinaryFile
 
 def split_lines(t):

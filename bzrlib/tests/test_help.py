@@ -16,8 +16,6 @@
 
 """Unit tests for the bzrlib.help module."""
 
-from cStringIO import StringIO
-
 from bzrlib import (
     builtins,
     commands,

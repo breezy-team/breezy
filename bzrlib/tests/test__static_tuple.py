@@ -17,13 +17,11 @@
 """Tests for the StaticTuple type."""
 
 import cPickle
-import gc
 import sys
 
 from bzrlib import (
     _static_tuple_py,
     debug,
-    errors,
     osutils,
     static_tuple,
     tests,

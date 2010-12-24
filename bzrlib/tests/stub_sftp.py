@@ -21,11 +21,9 @@ Adapted from the one in paramiko's unit tests.
 
 import os
 import paramiko
-import select
 import socket
 import SocketServer
 import sys
-import threading
 import time
 
 from bzrlib import (

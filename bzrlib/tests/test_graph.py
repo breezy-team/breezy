@@ -17,7 +17,6 @@
 from bzrlib import (
     errors,
     graph as _mod_graph,
-    symbol_versioning,
     tests,
     )
 from bzrlib.revision import NULL_REVISION

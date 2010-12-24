@@ -19,8 +19,6 @@
 import sys
 
 from bzrlib import (
-    errors,
-    osutils,
     tests,
     )
 

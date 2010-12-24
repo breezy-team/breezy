@@ -21,8 +21,7 @@ import os
 import gzip
 
 import bzrlib.errors as errors
-from bzrlib.errors import BzrError, UnlistableStore, NoSuchFile
-from bzrlib.transport.local import LocalTransport
+from bzrlib.errors import BzrError
 from bzrlib.store.text import TextStore
 from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
 import bzrlib.store as store

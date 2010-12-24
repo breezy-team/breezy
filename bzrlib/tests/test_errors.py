@@ -25,10 +25,13 @@ from bzrlib import (
     bzrdir,
     errors,
     osutils,
-    symbol_versioning,
     urlutils,
     )
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 
 
 class TestErrors(TestCaseWithTransport):

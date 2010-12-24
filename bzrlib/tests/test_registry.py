@@ -21,7 +21,6 @@ import sys
 
 from bzrlib import (
     branch,
-    errors,
     osutils,
     registry,
     tests,
