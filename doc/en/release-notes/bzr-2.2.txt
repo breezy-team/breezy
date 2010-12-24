@@ -32,6 +32,10 @@ Bug Fixes
   because this can cause knock-on errors at awkward times.
   (Andrew Bennetts, #687653)
 
+* ``https`` access works again with recent versions of python2.7.
+  (Vincent Ladeuil, #693880)
+
+
 Improvements
 ************
 
