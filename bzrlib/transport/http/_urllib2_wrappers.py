@@ -90,7 +90,7 @@ class _ReportingFileSocket(object):
         self.report_activity(len(s), 'read')
         return s
 
-    if sys.version < (2, 6):
+    if sys.version_info < (2, 6):
         def readline(self):
             s = self.filesock.readline()
             self.report_activity(len(s), 'read')
