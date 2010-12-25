@@ -31,6 +31,10 @@ class TransportObjectStoreTests(PackBasedObjectStoreTests, TestCaseWithTransport
         TestCaseWithTransport.setUp(self)
         self.store = TransportObjectStore.init(self.get_transport())
 
+    def tearDown(self):
+        PackBasedObjectStoreTests.tearDown(self)
+        TestCaseWithTransport.tearDown(self)
+
 # FIXME: Unfortunately RefsContainerTests requires on a specific set of refs existing.
 
 # class TransportRefContainerTests(RefsContainerTests, TestCaseWithTransport):
