@@ -16,6 +16,8 @@
   * Don't peel tags automatically when pushing back.
     (Jelmer Vernooij, #675231)
 
+  * Fix `bzr-receive-pack` and `bzr-upload-pack`. (Jelmer Vernooij, #681193)
+
  FEATURES
 
   * Remove all remaining dependencies on C git. (Jelmer Vernooij, #348238)
