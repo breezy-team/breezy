@@ -1,8 +1,10 @@
 bzr (2.3.0~beta4-2) unstable; urgency=medium
 
   * Cherrypick fix for compatibility with python2.7 >= 2.7.1-2.  LP: #693880
+  * Switch to python-support. Closes: #568462
+  * Add missing build dependency on python-configobj.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sun, 26 Dec 2010 15:02:27 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 26 Dec 2010 15:23:50 +0100
 
 bzr (2.3.0~beta4-1) unstable; urgency=low
 
