@@ -1,4 +1,4 @@
-bzr (2.3.0~beta4-2) unstable; urgency=medium
+bzr (2.3.0~beta4-2) UNRELEASED; urgency=medium
 
   * Cherrypick fix for compatibility with python2.7 >= 2.7.1-2.  LP: #693880
   * Switch to python-support. Closes: #568462
