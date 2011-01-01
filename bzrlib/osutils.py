@@ -2376,3 +2376,16 @@ def available_backup_name(base, exists):
         counter += 1
         name = "%s.~%d~" % (base, counter)
     return name
+
+
+def set_fd_cloexec(fd):
+    """Set a Unix file descriptor's FD_CLOEXEC flag.  Do nothing if platform
+    support for this is not available.
+    """
+    try:
+        import fcntl
+        old = fcntl.fcntl(fd, fcntl.F_GETFD)
+        fcntl.fcntl(fd, fcntl.F_SETFD, old | fcntl.FD_CLOEXEC)
+    except (ImportError, AttributeError):
+        # Either the fcntl module or specific constants are not present
+        pass

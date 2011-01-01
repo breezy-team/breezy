@@ -55,6 +55,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Avoid leaking SSH subprocess communication socket into unrelated child
+  processes, which could cause bzr to hang on exit. (Max Bowsher, #696285)
+
 Documentation
 *************
 

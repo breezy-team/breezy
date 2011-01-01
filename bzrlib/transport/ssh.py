@@ -359,6 +359,7 @@ class SubprocessVendor(SSHVendor):
         # whatever) chunks.
         try:
             my_sock, subproc_sock = socket.socketpair()
+            osutils.set_fd_cloexec(my_sock)
         except (AttributeError, socket.error):
             # This platform doesn't support socketpair(), so just use ordinary
             # pipes instead.
