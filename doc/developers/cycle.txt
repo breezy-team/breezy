@@ -275,9 +275,8 @@ Packaging
 
 At present we have three upstream-maintained PPAs containing Ubuntu packages
 of Bazaar: ``bzr/daily`` (snapshots), ``bzr-beta-ppa/ppa`` (beta releases) and
-``bzr/ppa`` (ie stable).  We will keep these PPAs, and reorient beta to contain
-the monthly beta releases, and the stable PPA to contain stable releases and
-bugfixes to those releases.
+``bzr/ppa`` (ie stable).  Beta contains the monthly beta releases, and the
+stable PPA contains stable releases and bugfixes to those releases.
 
 Some platforms with relatively less active packagers may choose to ship
 only the stable releases.  This is probably better than having them only
