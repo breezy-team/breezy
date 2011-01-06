@@ -1,9 +1,9 @@
 bzr-git, a plugin for bzr that adds git support.
 
-This was originally written as a proof of concept at Europython 2006 by 
-Robert Collins, using stgit's convenience methods for accessing gits head 
-and parsing git output. Later, it was adapted to use James Westby's Python 
-Git module (which had by then be renamed to "Dulwich") and extended to support 
+This was originally written as a proof of concept at Europython 2006 by
+Robert Collins, using stgit's convenience methods for accessing gits head
+and parsing git output. Later, it was adapted to use James Westby's Python
+Git module (which had by then be renamed to "Dulwich") and extended to support
 push and pull by Jelmer Vernooij.
 
 Please see INSTALL for installation instructions, and TODO for future plans.
