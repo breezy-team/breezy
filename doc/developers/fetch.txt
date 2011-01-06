@@ -1,0 +1,88 @@
+=============
+Fetching data
+=============
+
+Overview of a fetch
+===================
+
+Inside bzr, a typical fetch happens like this:
+
+* a user runs a command like ``bzr branch`` or ``bzr pull``
+
+* ``Repository.fetch`` is called (by a higher-level method such as
+  ``ControlDir.sprout``, ``Branch.fetch``, etc).
+
+* An ``InterRepository`` object is created.  The exact implementation of
+  ``InterRepository`` chosen depends on the format/capabilities of the
+  source and target repos.
+
+* The source and target repositories are compared to determine which data
+  needs to be transferred.
+
+* The repository data is copied.  Often this is done by creating a
+  ``StreamSource`` and ``StreamSink`` from the source and target
+  repositories and feeding the stream from the source into the sink, but
+  some ``InterRepository`` implementations do differently.
+
+
+How objects to be transferred are determined
+============================================
+
+See ``InterRepository._walk_to_common_revisions``.  The basic idea is to
+do a breadth-first search in the source repository's revision graph
+(starting from the head or heads the caller asked for), and look in the
+target repository to see if those revisions are already present.
+Eventually this will find the common ancestors in both graphs, and thus
+the set of revisions to be copied has been identified.
+
+All inventories for the copied revisions need to be present (and all
+parent inventories at the stacking boundary too, to support stacking).
+
+All texts versions introduced by those inventories need to be transferred
+(but see also stacking constraints).
+
+Fetch specs
+===========
+
+The most ``fetch`` methods accept a ``fetch_spec`` parameter.  This is how
+the caller controls what is fetched: e.g. all revisions for a given head
+(that aren't already present in the target), the full ancestry for one or
+more heads, or even the full contents of the source repository.
+
+The ``fetch_spec`` parameter is an object that implements the interface
+defined by ``AbstractSearchResult`` in ``bzrlib.graph``.  It describes
+which keys should be fetched.  Current implementations are
+``SearchResult``, ``PendingAncestryResult``, ``EmptySearchResult``, and
+``EverythingResult``.  Some have options controlling if missing revisions
+cause errors or not, etc.
+
+There are also some “search” objects, which can be used to conveniently
+construct a search result for common cases: ``EverythingNotInOther`` and
+``NotInOtherForRevs``.  They provide an ``execute`` method that performs
+the search and returns a search result.
+
+Also, ``Graph._make_breadth_first_searcher`` returns an object with a
+``get_result`` method that returns a search result.
+
+
+Streams
+=======
+
+
+Network stuff?
+==============
+
+
+Stacking
+========
+
+
+
+
+
+hhhh
+----
+
+
+..
+   vim: ft=rst tw=74 ai
