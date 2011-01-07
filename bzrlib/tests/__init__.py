@@ -286,10 +286,9 @@ class ExtendedTestResult(testtools.TextTestResult):
         addOnException = getattr(test, "addOnException", None)
         if addOnException is not None:
             addOnException(self._record_traceback_from_test)
-        # Only check for thread leaks if the test case supports cleanups
-        addCleanup = getattr(test, "addCleanup", None)
-        if addCleanup is not None:
-            addCleanup(self._check_leaked_threads, test)
+        # Only check for thread leaks on bzrlib derived test cases
+        if isinstance(test, TestCase):
+            test.addCleanup(self._check_leaked_threads, test)
 
     def startTests(self):
         self.report_tests_starting()
