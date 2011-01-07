@@ -1488,7 +1488,7 @@ class DistributionBranch(object):
                 "Should use self.upstream_branch if set"
         assert isinstance(version, str), \
             "Should pass version as str not %s" % str(type(version))
-        assert isinstance(previous_version, str), \
+        assert isinstance(previous_version, str) or previous_version is None, \
             "Should pass previous_version as str not %s" % str(
                     type(previous_version))
         tempdir = tempfile.mkdtemp(dir=os.path.join(self.tree.basedir, '..'))
