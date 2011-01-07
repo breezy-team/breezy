@@ -14,10 +14,16 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import random
+import time
+
+
 from bzrlib import (
     tests,
     timestamp,
     )
+from bzrlib.osutils import local_time_offset
+
 
 class TestPatchHeader(tests.TestCase):
 
@@ -52,3 +58,38 @@ class TestPatchHeader(tests.TestCase):
         # offset of three minutes
         self.assertEqual((1173193459, +3 * 60),
             timestamp.parse_patch_date('2007-03-06 15:07:19 +0003'))
+
+
+class UnpackHighresDateTests(tests.TestCase):
+
+    def test_unpack_highres_date(self):
+        self.assertEquals(
+            (1120153132.3508501, -18000),
+            timestamp.unpack_highres_date('Thu 2005-06-30 12:38:52.350850105 -0500'))
+        self.assertEquals(
+            (1120153132.3508501, 0),
+            timestamp.unpack_highres_date('Thu 2005-06-30 17:38:52.350850105 +0000'))
+        self.assertEquals(
+            (1120153132.3508501, 7200),
+            timestamp.unpack_highres_date('Thu 2005-06-30 19:38:52.350850105 +0200'))
+        self.assertEquals(
+            (1152428738.867522, 19800),
+            timestamp.unpack_highres_date('Sun 2006-07-09 12:35:38.867522001 +0530'))
+
+    def test_random(self):
+        t = time.time()
+        o = local_time_offset()
+        t2, o2 = timestamp.unpack_highres_date(timestamp.format_highres_date(t, o))
+        self.assertEquals(t, t2)
+        self.assertEquals(o, o2)
+        t -= 24*3600*365*2 # Start 2 years ago
+        o = -12*3600
+        for count in xrange(500):
+            t += random.random()*24*3600*30
+            o = ((o/3600 + 13) % 25 - 12)*3600 # Add 1 wrap around from [-12, 12]
+            date = timestamp.format_highres_date(t, o)
+            t2, o2 = timestamp.unpack_highres_date(date)
+            self.assertEquals(t, t2,
+                'Failed on date %r, %s,%s diff:%s' % (date, t, o, t2-t))
+            self.assertEquals(o, o2,
+                'Failed on date %r, %s,%s diff:%s' % (date, t, o, t2-t))

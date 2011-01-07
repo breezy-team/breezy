@@ -60,54 +60,40 @@ if _testtools_version < (0, 9, 5):
         % (testtools.__file__, _testtools_version))
 from testtools import content
 
+import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
     chk_map,
+    commands as _mod_commands,
     config,
     debug,
     errors,
     hooks,
     lock as _mod_lock,
+    lockdir,
     memorytree,
     osutils,
+    plugin as _mod_plugin,
     pyutils,
     ui,
     urlutils,
     registry,
+    symbol_versioning,
+    trace,
     transport as _mod_transport,
     workingtree,
     )
-import bzrlib.branch
-import bzrlib.commands
-import bzrlib.timestamp
-import bzrlib.export
-import bzrlib.inventory
-import bzrlib.iterablefile
-import bzrlib.lockdir
 try:
     import bzrlib.lsprof
 except ImportError:
     # lsprof not available
     pass
-import bzrlib.merge3
-import bzrlib.plugin
 from bzrlib.smart import client, request
-import bzrlib.store
-from bzrlib import symbol_versioning
-from bzrlib.symbol_versioning import (
-    DEPRECATED_PARAMETER,
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    deprecated_passed,
-    )
-import bzrlib.trace
 from bzrlib.transport import (
     memory,
     pathfilter,
     )
-from bzrlib.trace import mutter, note
 from bzrlib.tests import (
     test_server,
     TestUtil,
@@ -115,7 +101,6 @@ from bzrlib.tests import (
     )
 from bzrlib.ui import NullProgressView
 from bzrlib.ui.text import TextUIFactory
-import bzrlib.version_info_formats.format_custom
 
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
@@ -301,10 +286,9 @@ class ExtendedTestResult(testtools.TextTestResult):
         addOnException = getattr(test, "addOnException", None)
         if addOnException is not None:
             addOnException(self._record_traceback_from_test)
-        # Only check for thread leaks if the test case supports cleanups
-        addCleanup = getattr(test, "addCleanup", None)
-        if addCleanup is not None:
-            addCleanup(self._check_leaked_threads, test)
+        # Only check for thread leaks on bzrlib derived test cases
+        if isinstance(test, TestCase):
+            test.addCleanup(self._check_leaked_threads, test)
 
     def startTests(self):
         self.report_tests_starting()
@@ -1127,7 +1111,7 @@ class TestCase(testtools.TestCase):
         except UnicodeError, e:
             # If we can't compare without getting a UnicodeError, then
             # obviously they are different
-            mutter('UnicodeError: %s', e)
+            trace.mutter('UnicodeError: %s', e)
         if message:
             message += '\n'
         raise AssertionError("%snot equal:\na = %s\nb = %s\n"
@@ -1193,7 +1177,6 @@ class TestCase(testtools.TestCase):
     def assertLogsError(self, exception_class, func, *args, **kwargs):
         """Assert that func(*args, **kwargs) quietly logs a specific exception.
         """
-        from bzrlib import trace
         captured = []
         orig_log_exception_quietly = trace.log_exception_quietly
         try:
@@ -1493,7 +1476,7 @@ class TestCase(testtools.TestCase):
         The file is removed as the test is torn down.
         """
         self._log_file = StringIO()
-        self._log_memento = bzrlib.trace.push_log_file(self._log_file)
+        self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
 
     def _finishLogFile(self):
@@ -1501,10 +1484,10 @@ class TestCase(testtools.TestCase):
 
         Close the file and delete it, unless setKeepLogfile was called.
         """
-        if bzrlib.trace._trace_file:
+        if trace._trace_file:
             # flush the log file, to get all content
-            bzrlib.trace._trace_file.flush()
-        bzrlib.trace.pop_log_file(self._log_memento)
+            trace._trace_file.flush()
+        trace.pop_log_file(self._log_memento)
         # Cache the log result and delete the file on disk
         self._get_log(False)
 
@@ -1708,7 +1691,7 @@ class TestCase(testtools.TestCase):
             self._benchtime += time.time() - start
 
     def log(self, *args):
-        mutter(*args)
+        trace.mutter(*args)
 
     def _get_log(self, keep_log_file=False):
         """Internal helper to get the log from bzrlib.trace for this test.
@@ -1799,9 +1782,10 @@ class TestCase(testtools.TestCase):
 
         try:
             try:
-                result = self.apply_redirected(ui.ui_factory.stdin,
+                result = self.apply_redirected(
+                    ui.ui_factory.stdin,
                     stdout, stderr,
-                    bzrlib.commands.run_bzr_catch_user_errors,
+                    _mod_commands.run_bzr_catch_user_errors,
                     args)
             except KeyboardInterrupt:
                 # Reraise KeyboardInterrupt with contents of redirected stdout
@@ -2057,8 +2041,8 @@ class TestCase(testtools.TestCase):
         if retcode is not None and retcode != process.returncode:
             if process_args is None:
                 process_args = "(unknown args)"
-            mutter('Output of bzr %s:\n%s', process_args, out)
-            mutter('Error for bzr %s:\n%s', process_args, err)
+            trace.mutter('Output of bzr %s:\n%s', process_args, out)
+            trace.mutter('Error for bzr %s:\n%s', process_args, err)
             self.fail('Command bzr %s failed with retcode %s != %s'
                       % (process_args, retcode, process.returncode))
         return [out, err]
@@ -2121,7 +2105,7 @@ class TestCase(testtools.TestCase):
 
         Tests that expect to provoke LockContention errors should call this.
         """
-        self.overrideAttr(bzrlib.lockdir, '_DEFAULT_TIMEOUT_SECONDS', 0)
+        self.overrideAttr(lockdir, '_DEFAULT_TIMEOUT_SECONDS', 0)
 
     def make_utf8_encoded_stringio(self, encoding_type=None):
         """Return a StringIOWrapper instance, that will encode Unicode
@@ -3608,8 +3592,9 @@ class TestPrefixAliasRegistry(registry.Registry):
                 key, obj, help=help, info=info, override_existing=False)
         except KeyError:
             actual = self.get(key)
-            note('Test prefix alias %s is already used for %s, ignoring %s'
-                 % (key, actual, obj))
+            trace.note(
+                'Test prefix alias %s is already used for %s, ignoring %s'
+                % (key, actual, obj))
 
     def resolve_alias(self, id_start):
         """Replace the alias by the prefix in the given string.
@@ -3939,7 +3924,7 @@ def test_suite(keep_only=None, starting_with=None):
         suite.addTest(doc_suite)
 
     default_encoding = sys.getdefaultencoding()
-    for name, plugin in bzrlib.plugin.plugins().items():
+    for name, plugin in _mod_plugin.plugins().items():
         if not interesting_module(plugin.module.__name__):
             continue
         plugin_suite = plugin.test_suite()
@@ -3951,7 +3936,7 @@ def test_suite(keep_only=None, starting_with=None):
         if plugin_suite is not None:
             suite.addTest(plugin_suite)
         if default_encoding != sys.getdefaultencoding():
-            bzrlib.trace.warning(
+            trace.warning(
                 'Plugin "%s" tried to reset default encoding to: %s', name,
                 sys.getdefaultencoding())
             reload(sys)
@@ -3972,9 +3957,9 @@ def test_suite(keep_only=None, starting_with=None):
             # Some tests mentioned in the list are not in the test suite. The
             # list may be out of date, report to the tester.
             for id in not_found:
-                bzrlib.trace.warning('"%s" not found in the test suite', id)
+                trace.warning('"%s" not found in the test suite', id)
         for id in duplicates:
-            bzrlib.trace.warning('"%s" is used as an id by several tests', id)
+            trace.warning('"%s" is used as an id by several tests', id)
 
     return suite
 
@@ -4318,13 +4303,6 @@ class ModuleAvailableFeature(Feature):
         return self.module_name
 
 
-# This is kept here for compatibility, it is recommended to use
-# 'bzrlib.tests.feature.paramiko' instead
-ParamikoFeature = _CompatabilityThunkFeature(
-    deprecated_in((2,1,0)),
-    'bzrlib.tests.features', 'ParamikoFeature', 'paramiko')
-
-
 def probe_unicode_in_user_encoding():
     """Try to encode several unicode strings to use in unicode-aware tests.
     Return first successfull match.
@@ -4517,10 +4495,6 @@ class _CaseSensitiveFilesystemFeature(Feature):
 case_sensitive_filesystem_feature = _CaseSensitiveFilesystemFeature()
 
 
-# Kept for compatibility, use bzrlib.tests.features.subunit instead
-SubUnitFeature = _CompatabilityThunkFeature(
-    deprecated_in((2,1,0)),
-    'bzrlib.tests.features', 'SubUnitFeature', 'subunit')
 # Only define SubUnitBzrRunner if subunit is available.
 try:
     from subunit import TestProtocolClient

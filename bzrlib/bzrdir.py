@@ -927,7 +927,6 @@ class BzrDir(controldir.ControlDir):
         return format.initialize_on_transport(t)
 
 
-
 class BzrDirHooks(hooks.Hooks):
     """Hooks for BzrDir operations."""
 
