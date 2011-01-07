@@ -3252,10 +3252,8 @@ class TestThreadLeakDetection(tests.TestCase):
         class Test(unittest.TestCase):
             def runTest(self):
                 pass
-            addCleanup = None # for when on Python 2.7 with native addCleanup
         result = self.LeakRecordingResult()
         test = Test()
-        self.assertIs(getattr(test, "addCleanup", None), None)
         result.startTestRun()
         test.run(result)
         result.stopTestRun()
