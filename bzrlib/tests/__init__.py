@@ -60,6 +60,7 @@ if _testtools_version < (0, 9, 5):
         % (testtools.__file__, _testtools_version))
 from testtools import content
 
+import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
@@ -131,7 +132,7 @@ TestLoader = TestUtil.TestLoader
 # few exceptions but you shouldn't violate this rule lightly.
 isolated_environ = {
     'BZR_HOME': None,
-    'HOME': os.getcwd(),
+    'HOME': None,
     # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
     # tests do check our impls match APPDATA
     'BZR_EDITOR': None, # test_msgeditor manipulates this variable
@@ -372,10 +373,9 @@ class ExtendedTestResult(testtools.TextTestResult):
         addOnException = getattr(test, "addOnException", None)
         if addOnException is not None:
             addOnException(self._record_traceback_from_test)
-        # Only check for thread leaks if the test case supports cleanups
-        addCleanup = getattr(test, "addCleanup", None)
-        if addCleanup is not None:
-            addCleanup(self._check_leaked_threads, test)
+        # Only check for thread leaks on bzrlib derived test cases
+        if isinstance(test, TestCase):
+            test.addCleanup(self._check_leaked_threads, test)
 
     def startTests(self):
         self.report_tests_starting()
@@ -881,14 +881,22 @@ class TestUIFactory(TextUIFactory):
         return NullProgressView()
 
 
+def isolated_doctest_setUp(test):
+    override_os_environ(test)
 
-def DocTestSuite(*args, **kwargs):
+
+def isolated_doctest_tearDown(test):
+    restore_os_environ(test)
+
+
+def IsolatedDocTestSuite(*args, **kwargs):
     """Overrides doctest.DocTestSuite to handle isolation.
 
     The method is really a factory and users are expected to use it as such.
     """
-    kwargs['setUp'] = override_os_environ
-    kwargs['tearDown'] = restore_os_environ
+    
+    kwargs['setUp'] = isolated_doctest_setUp
+    kwargs['tearDown'] = isolated_doctest_tearDown
     return doctest.DocTestSuite(*args, **kwargs)
 
 
@@ -3953,7 +3961,7 @@ def test_suite(keep_only=None, starting_with=None):
         try:
             # note that this really does mean "report only" -- doctest
             # still runs the rest of the examples
-            doc_suite = DocTestSuite(
+            doc_suite = IsolatedDocTestSuite(
                 mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)

@@ -44,6 +44,11 @@ Improvements
   ``TestCase`` leading to ``bt.test_import_tariff`` failures.
   (Vincent Ladeuil, #690563)
 
+* ``upgrade`` now upgrades dependent branches when a shared repository is
+  specified. It also supports new options: ``--dry-run`` for showing what
+  will happen and ``--clean`` to remove the backup directory on successful
+  completion. (Ian Clatworthy, Matthew Fuller, #89830, #374734, #422450)
+
 Bug Fixes
 *********
 
@@ -54,6 +59,9 @@ Documentation
 *************
 
 .. Improved or updated documentation.
+
+* Better document the rules to update the bzr freshmeat page when
+  doing a release. (Vincent Ladeuil, #690515)
 
 API Changes
 ***********

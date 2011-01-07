@@ -3252,10 +3252,8 @@ class TestThreadLeakDetection(tests.TestCase):
         class Test(unittest.TestCase):
             def runTest(self):
                 pass
-            addCleanup = None # for when on Python 2.7 with native addCleanup
         result = self.LeakRecordingResult()
         test = Test()
-        self.assertIs(getattr(test, "addCleanup", None), None)
         result.startTestRun()
         test.run(result)
         result.stopTestRun()
@@ -3439,7 +3437,7 @@ class TestEnvironHandling(tests.TestCase):
 class TestIsolatedEnv(tests.TestCase):
     """Test isolating tests from os.environ.
 
-    Since we use tests that are already isolated from os.environ abit of care
+    Since we use tests that are already isolated from os.environ a bit of care
     should be taken when designing the tests to avoid bootstrap side-effects.
     The tests start an already clean os.environ which allow doing valid
     assertions about which variables are present or not and design tests around
@@ -3540,7 +3538,7 @@ class TestDocTestSuiteIsolation(tests.TestCase):
         # doctest.DocTestSuite fails as it sees '25'
         self.assertDocTestStringFails(doctest.DocTestSuite, test)
         # tests.DocTestSuite sees '42'
-        self.assertDocTestStringSucceds(tests.DocTestSuite, test)
+        self.assertDocTestStringSucceds(tests.IsolatedDocTestSuite, test)
 
     def test_deleted_variable(self):
         self.overrideAttr(tests, 'isolated_environ', {'LINES': None})
@@ -3551,4 +3549,4 @@ class TestDocTestSuiteIsolation(tests.TestCase):
         # doctest.DocTestSuite fails as it sees '25'
         self.assertDocTestStringFails(doctest.DocTestSuite, test)
         # tests.DocTestSuite sees None
-        self.assertDocTestStringSucceds(tests.DocTestSuite, test)
+        self.assertDocTestStringSucceds(tests.IsolatedDocTestSuite, test)
