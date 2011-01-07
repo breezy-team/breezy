@@ -61,6 +61,20 @@ class InstrumentedXMLRPCConnection(object):
         """
         return (200, 'OK', [])
 
+    def getresponse(self, buffering=True):
+        class FakeHttpResponse(object):
+
+            def __init__(self, status, reason, headers, body):
+                self.status = status
+                self.reason = reason
+                self.headers = headers
+                self.body = body
+
+            def read(self, size=-1):
+                return self.body.read(size)
+
+        return FakeHttpResponse(200, 'OK', [], self.getfile())
+
     def getfile(self):
         """Return a fake file containing the response content."""
         return StringIO('''\
@@ -85,6 +99,7 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
     def __init__(self, testcase, expect_auth):
         self.testcase = testcase
         self.expect_auth = expect_auth
+        self._connection = (None, None)
 
     def make_connection(self, host):
         host, http_headers, x509 = self.get_host_info(host)
