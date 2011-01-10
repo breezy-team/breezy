@@ -21,7 +21,11 @@
 from bzrlib.branch import Branch
 from bzrlib.tests import TestCaseWithTransport
 
-from bzrlib.plugins.builddeb.config import DebBuildConfig
+from bzrlib.plugins.builddeb.config import (
+    BUILD_TYPE_MERGE,
+    BUILD_TYPE_NORMAL,
+    DebBuildConfig,
+    )
 
 
 class DebBuildConfigTests(TestCaseWithTransport):
@@ -75,6 +79,7 @@ class DebBuildConfigTests(TestCaseWithTransport):
 
   def test_no_entry(self):
     self.assertEqual(self.config.merge, False)
+    self.assertEqual(self.config.build_type, BUILD_TYPE_NORMAL)
 
   def test_parse_error(self):
     f = open('invalid.conf', 'wb')
@@ -107,6 +112,7 @@ else:
 
       cfg = DebBuildConfig([], tree=Branch.open(repos_url).basis_tree())
       self.assertEquals(True, cfg.merge)
+      self.assertEquals(BUILD_TYPE_MERGE, cfg.build_type)
       self.assertEquals("someorigdir", cfg.orig_dir)
 
     def test_from_svn_layout_file(self):

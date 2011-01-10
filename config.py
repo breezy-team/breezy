@@ -26,6 +26,12 @@ except ImportError:
   from configobj import ParseError
 
 
+BUILD_TYPE_NORMAL = 0
+BUILD_TYPE_NATIVE = 1
+BUILD_TYPE_MERGE = 2
+BUILD_TYPE_SPLIT = 3
+
+
 class SvnBuildPackageMappedConfig(object):
   """Config object that provides a bzr-builddeb configuration 
   based on a svn-buildpackage configuration.
@@ -256,6 +262,17 @@ class DebBuildConfig(object):
           lambda self: self._user_config_value('result-dir'))
 
   merge = _bool_property('merge', "Run in merge mode")
+
+  @property
+  def build_type(self):
+    if self.merge:
+      return BUILD_TYPE_MERGE
+    elif self.native:
+      return BUILD_TYPE_NATIVE
+    elif self.split:
+      return BUILD_TYPE_SPLIT
+    else:
+      return BUILD_TYPE_NORMAL
 
   quick_builder = _opt_property('quick-builder',
                           "A quick command to build with", True)
