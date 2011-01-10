@@ -4122,8 +4122,8 @@ class StreamSink(object):
                 is_resume = False
             try:
                 # locked_insert_stream performs a commit|suspend.
-                missing_keys = self._locked_insert_stream(stream, src_format,
-                    is_resume)
+                missing_keys = self.insert_stream_without_locking(stream,
+                                    src_format, is_resume)
                 if missing_keys:
                     # suspend the write group and tell the caller what we is
                     # missing. We know we can suspend or else we would not have
@@ -4142,7 +4142,24 @@ class StreamSink(object):
         finally:
             self.target_repo.unlock()
 
-    def _locked_insert_stream(self, stream, src_format, is_resume):
+    def insert_stream_without_locking(self, stream, src_format,
+                                      is_resume=False):
+        """Insert a stream's content into the target repository.
+
+        This assumes that you already have a locked repository and an active
+        write group.
+
+        :param src_format: a bzr repository format.
+        :param is_resume: Passed down to get_missing_parent_inventories to
+            indicate if we should be checking for missing texts at the same
+            time.
+
+        :return: A set of keys that are missing.
+        """
+        if not self.target_repo.is_write_locked():
+            raise errors.ObjectNotLocked(self)
+        if not self.target_repo.is_in_write_group():
+            raise errors.BzrError('you must already be in a write group')
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
         new_pack = None
