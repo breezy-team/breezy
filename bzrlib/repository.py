@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -4122,8 +4122,20 @@ class StreamSink(object):
                 is_resume = False
             try:
                 # locked_insert_stream performs a commit|suspend.
-                return self._locked_insert_stream(stream, src_format,
+                missing_keys = self._locked_insert_stream(stream, src_format,
                     is_resume)
+                if missing_keys:
+                    # suspend the write group and tell the caller what we is
+                    # missing. We know we can suspend or else we would not have
+                    # entered this code path. (All repositories that can handle
+                    # missing keys can handle suspending a write group).
+                    write_group_tokens = self.target_repo.suspend_write_group()
+                    return write_group_tokens, missing_keys
+                hint = self.target_repo.commit_write_group()
+                if (to_serializer != src_serializer and
+                    self.target_repo._format.pack_compresses):
+                    self.target_repo.pack(hint=hint)
+                return [], set()
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
@@ -4215,19 +4227,7 @@ class StreamSink(object):
             # cannot even attempt suspending, and missing would have failed
             # during stream insertion.
             missing_keys = set()
-        else:
-            if missing_keys:
-                # suspend the write group and tell the caller what we is
-                # missing. We know we can suspend or else we would not have
-                # entered this code path. (All repositories that can handle
-                # missing keys can handle suspending a write group).
-                write_group_tokens = self.target_repo.suspend_write_group()
-                return write_group_tokens, missing_keys
-        hint = self.target_repo.commit_write_group()
-        if (to_serializer != src_serializer and
-            self.target_repo._format.pack_compresses):
-            self.target_repo.pack(hint=hint)
-        return [], set()
+        return missing_keys
 
     def _extract_and_insert_inventory_deltas(self, substream, serializer):
         target_rich_root = self.target_repo._format.rich_root_data
