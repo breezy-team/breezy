@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -257,7 +257,7 @@ class TestControlDir(TestCaseWithControlDir):
 
     def test_clone_bzrdir_branch_and_repo_fixed_user_id(self):
         # Bug #430868 is about an email containing '.sig'
-        os.environ['BZR_EMAIL'] = 'murphy@host.sighup.org'
+        self.overrideEnv('BZR_EMAIL', 'murphy@host.sighup.org')
         tree = self.make_branch_and_tree('commit_tree')
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')

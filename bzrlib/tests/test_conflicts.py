@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -197,11 +197,6 @@ class TestResolveConflicts(script.TestCaseWithTransportAndScript):
         self.run_script(self.preamble)
 
 
-class TestResolveTextConflicts(TestResolveConflicts):
-    # TBC
-    pass
-
-
 def mirror_scenarios(base_scenarios):
     """Return a list of mirrored scenarios.
 
@@ -370,6 +365,50 @@ class TestParametrizedResolveConflicts(tests.TestCaseWithTransport):
         self.check_resolved(wt, 'take_other')
         check_other = self._get_check(self._other['check'])
         check_other()
+
+
+class TestResolveTextConflicts(TestParametrizedResolveConflicts):
+
+    _conflict_type = conflicts.TextConflict
+
+    # Set by the scenarios
+    # path and file-id for the file involved in the conflict
+    _path = None
+    _file_id = None
+
+    scenarios = mirror_scenarios(
+        [
+            # File modified/deleted
+            (dict(_base_actions='create_file',
+                  _path='file', _file_id='file-id'),
+             ('filed_modified_A',
+              dict(actions='modify_file_A', check='file_has_content_A')),
+             ('file_modified_B',
+              dict(actions='modify_file_B', check='file_has_content_B')),),
+            ])
+
+    def do_create_file(self):
+        return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
+
+    def do_modify_file_A(self):
+        return [('modify', ('file-id', 'trunk content\nfeature A\n'))]
+
+    def do_modify_file_B(self):
+        return [('modify', ('file-id', 'trunk content\nfeature B\n'))]
+
+    def check_file_has_content_A(self):
+        self.assertFileEqual('trunk content\nfeature A\n', 'branch/file')
+
+    def check_file_has_content_B(self):
+        self.assertFileEqual('trunk content\nfeature B\n', 'branch/file')
+
+    def _get_resolve_path_arg(self, wt, action):
+        return self._path
+
+    def assertTextConflict(self, wt, c):
+        self.assertEqual(self._file_id, c.file_id)
+        self.assertEqual(self._path, c.path)
+    _assert_conflict = assertTextConflict
 
 
 class TestResolveContentsConflict(TestParametrizedResolveConflicts):

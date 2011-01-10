@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1317,7 +1317,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
     def test_committer_no_username(self):
         # Ensure that when no username is available but a committer is
         # supplied, commit works.
-        del os.environ['EMAIL']
+        self.overrideEnv('EMAIL', None)
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:

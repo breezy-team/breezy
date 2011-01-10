@@ -23,7 +23,7 @@ Bug Fixes
 
 * Fix a bug causing a ValueError crash in ``parse_line_delta_iter`` when
   fetching revisions from a knit to pack repository or vice versa using
-  bzr:// (including over http or ssh).
+  bzr:// (including over HTTP or SSH).
   (#208418, Andrew Bennetts, Martin Pool, Robert Collins)
 
 

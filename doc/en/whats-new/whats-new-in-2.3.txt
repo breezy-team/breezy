@@ -45,6 +45,11 @@ Changed Behaviour
   ~/.bazaar/plugins.  To use a different directory for plugins, use the
   environment variable BZR_PLUGIN_PATH.  (Neil Martinsen-Burrell, #195397)
 
+* ``bzr upgrade`` now operates recursively when run on a shared
+  repository, automatically upgrading the branches within it, and has
+  grown additional options for showing what it will do and cleaning up
+  after itself.  (Ian Clatworthy, Matthew Fuller, #89830, #374734, #422450)
+
 Launchpad integration
 *********************
 
@@ -68,6 +73,10 @@ Performance improvements
 
 * ``bzr send`` uses less memory.
   (John Arbash Meinel, #614576)
+
+* Fetches involving stacked branches and branches with tags now do slightly less
+  I/O, and so does branching from an existing branch.  This also improves the
+  network performance of these operations.  (Andrew Bennetts)
 
 * Inventory entries now consume less memory (on 32-bit Ubuntu file entries
   have dropped from 68 bytes to 40, and directory entries from 120 bytes
@@ -130,6 +139,12 @@ Improved conflict handling
   moved to a ``bzr-orphans`` directory at the root of the working tree. The
   default behaviour is specified (if needed) by setting the variable to
   ``conflict``.  (Vincent Ladeuil, #323111)
+
+* ``bzr resolve --take-this`` and ``bzr resolve --take-other`` can now be
+  used for text conflicts. This will ignore the differences that were merged
+  cleanly and replace the file with its content in the current branch
+  (``--take-this``) or with its content in the merged branch
+  (``--take-other``). (Vincent Ladeuil, #638451)
 
 * ``bzr resolve`` now provides more feedback about the conflicts just
   resolved and the remaining ones. (Vincent Ladeuil)

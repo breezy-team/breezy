@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,15 +30,10 @@ from bzrlib.tests.per_transport import transport_test_permutations
 import bzrlib.transport
 from bzrlib.transport.memory import MemoryTransport
 import bzrlib.urlutils
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Multiply tests for tranport implementations."""
-    transport_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests,
-        tests.condition_isinstance(TestReadMergeableBundleFromURL))
-    return tests.multiply_tests(transport_tests, transport_test_permutations(),
-        remaining_tests)
+load_tests = load_tests_apply_scenarios
 
 
 def create_bundle_file(test_case):
@@ -64,6 +59,8 @@ def create_bundle_file(test_case):
 class TestReadMergeableBundleFromURL(TestTransportImplementation):
     """Test that read_bundle works properly across multiple transports"""
 
+    scenarios = transport_test_permutations()
+
     def setUp(self):
         super(TestReadMergeableBundleFromURL, self).setUp()
         self.bundle_name = 'test_bundle'
@@ -72,7 +69,7 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
         # from the one we want to test, so we must inject a correct transport
         # into possible_transports first).
         self.possible_transports = [self.get_transport(self.bundle_name)]
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
         wt = self.create_test_bundle()
 
     def read_mergeable_from_url(self, url):

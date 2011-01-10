@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,19 +30,20 @@ from bzrlib import (
     )
 from bzrlib.osutils import sha_string
 from bzrlib.tests.test__groupcompress import compiled_groupcompress_feature
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterize tests for all versions of groupcompress."""
-    to_adapt, result = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance(TestAllGroupCompressors))
+def group_compress_implementation_scenarios():
     scenarios = [
         ('python', {'compressor': groupcompress.PythonGroupCompressor}),
         ]
     if compiled_groupcompress_feature.available():
         scenarios.append(('C',
             {'compressor': groupcompress.PyrexGroupCompressor}))
-    return tests.multiply_tests(to_adapt, scenarios, result)
+    return scenarios
+
+
+load_tests = load_tests_apply_scenarios
 
 
 class TestGroupCompressor(tests.TestCase):
@@ -66,7 +67,8 @@ class TestGroupCompressor(tests.TestCase):
 class TestAllGroupCompressors(TestGroupCompressor):
     """Tests for GroupCompressor"""
 
-    compressor = None # Set by multiply_tests
+    scenarios = group_compress_implementation_scenarios()
+    compressor = None # Set by scenario
 
     def test_empty_delta(self):
         compressor = self.compressor()

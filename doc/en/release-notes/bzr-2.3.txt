@@ -26,6 +26,29 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* A redundant parent inventories calculation was removed from
+  ``fetch.py``, as ``Repository.insert_stream`` already reports any
+  missing inventories.  This removes at least one network roundtrip when
+  pushing to a stacked branch.  (Andrew Bennetts)
+
+* ``ControlDir.sprout`` no longer opens the target repository more than
+  once.  This avoids some unnecessary IO, and removes a network roundtrip
+  when doing ``bzr branch`` to a smart server URL.  (Andrew Bennetts)
+
+* ``bzr resolve`` now accepts ``--take-this`` and ``--take-other`` actions
+  for text conflicts. This *replace* the whole file with the content
+  designated by the action. This will *ignore* all differences that would
+  have been merge cleanly otherwise. (Vincent Ladeuil, #638451)
+
+* ``bt.test_http`` was breaking ``os.environ`` by erasing the values saved by
+  ``TestCase`` leading to ``bt.test_import_tariff`` failures.
+  (Vincent Ladeuil, #690563)
+
+* ``upgrade`` now upgrades dependent branches when a shared repository is
+  specified. It also supports new options: ``--dry-run`` for showing what
+  will happen and ``--clean`` to remove the backup directory on successful
+  completion. (Ian Clatworthy, Matthew Fuller, #89830, #374734, #422450)
+
 Bug Fixes
 *********
 
@@ -41,11 +64,22 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Better document the rules to update the bzr freshmeat page when
+  doing a release. (Vincent Ladeuil, #690515)
+
 API Changes
 ***********
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``Branch.sprout``, ``BranchFormat.initalize`` and
+  ``ControlDir.create_branch`` now take an optional ``repository`` keyword
+  argument, and ``BranchFormat.open`` now takes an optional
+  ``found_repository`` keyword argument.  These provide the repository
+  object for new branch object to use (for cases when the caller has
+  already opened that repository).  Implementations of these APIs will
+  need to be updated to accept these arguments.  (Andrew Bennetts)
 
 Internals
 *********
@@ -60,6 +94,14 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Catch exceptions related to bug #637821 during test cleanup to avoid
+  spurious failures. (Vincent Ladeuil, #686008).
+
+* Check sphinx compatibility for tests requiring older sphinx versions.
+  (Vincent Ladeuil, #688072)
+
+* ``TestDebuntuExpansions`` was escaping the test isolation by calling the
+  wrong base class ``setUp``. (Vincent Ladeuil, #684622)
 
 bzr 2.3b4
 #########
@@ -159,6 +201,11 @@ Testing
   to 0.9.5 which will allow tests that need the fixed unicode handling to be
   written. (Martin [gz])
 
+* Introduce an ``overrideEnv()`` helper for tests that needs to change the
+  environment variables while respecting the isolation rules. Get rid of
+  TestCase._restoreEnvironment which is now useless.
+  (Vincent Ladeuil, #690563)
+
 * Printing selftest results to a non-UTF-8 console will now escape characters
   that can't be encoded rather than aborting the test run with an exception.
   (Martin [gz], #633216)
@@ -186,7 +233,7 @@ New Features
   once. It can also be used to set or delete a configuration option in any
   configuration file. (Vincent Ladeuil)
 
-* New shortcut url schemes ``ubuntu:`` and ``debianlp:`` access source
+* New shortcut URL schemes ``ubuntu:`` and ``debianlp:`` access source
   branches on Launchpad.  E.g. ``bzr branch ubuntu:foo`` gives you the source
   branch for project ``foo`` in the current distroseries for Ubuntu while
   ``bzr branch debianlp:lenny/foo`` gives you the source branch (on Launchpad)
@@ -214,14 +261,13 @@ Bug Fixes
   provided as parameters. When both are provided, ``--directory`` becomes
   the base directory for the other paths. (Vincent Ladeuil, #670851)
 
-* Correctly set the Content-Type  header when http POSTing to comply
+* Correctly set the Content-Type  header when HTTP POSTing to comply
   with stricter web frameworks. (Vincent Ladeuil, #665100)
 
 * Don't force openssh to use protocol=2, since that is now the default.
   (Neil Martinsen-Burrell, #561061)
 
-* Fix ``KeyError: 'port'`` when getting the stored password for an http
-  URL.
+* Fix ``KeyError: 'port'`` when getting the stored password for an HTTP  URL.
   (Martin Pool, #654684)
 
 * Make ``bzr tag --quiet`` really quiet. (Neil Martinsen-Burrell, #239523)
@@ -352,7 +398,7 @@ Improvements
   (Marius Kruger, #400554)
 
 * When using the pycurl client module, Bazaar shows some of the text from
-  http server error messages.
+  HTTP server error messages.
   (Martin Pool, #656667)
 
 Bug Fixes
@@ -615,7 +661,7 @@ Bug Fixes
 * ``EPIPE`` can be raised during test server shutdown. This happened on
   gentoo only so far. (Vincent Ladeuil, #627277)
 
-* Errors occurring during http(s) test server starts should now be
+* Errors occurring during HTTP(S) test server starts should now be
   handled cleanly. (Vincent Ladeuil, #392402)
 
 * Fix ``AttributeError on parent.children`` when adding a file under a 

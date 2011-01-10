@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -62,10 +62,10 @@ from bzrlib.smart.client import _SmartClient
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests import (
     condition_isinstance,
-    split_suite_by_condition,
     multiply_tests,
     test_server,
     )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import (
     RemoteTransport,
@@ -73,18 +73,18 @@ from bzrlib.transport.remote import (
     RemoteTCPTransport,
 )
 
-def load_tests(standard_tests, module, loader):
-    to_adapt, result = split_suite_by_condition(
-        standard_tests, condition_isinstance(BasicRemoteObjectTests))
-    smart_server_version_scenarios = [
-        ('HPSS-v2',
-         {'transport_server': test_server.SmartTCPServer_for_testing_v2_only}),
-        ('HPSS-v3',
-         {'transport_server': test_server.SmartTCPServer_for_testing})]
-    return multiply_tests(to_adapt, smart_server_version_scenarios, result)
+
+load_tests = load_tests_apply_scenarios
 
 
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
+
+    scenarios = [
+        ('HPSS-v2',
+            {'transport_server': test_server.SmartTCPServer_for_testing_v2_only}),
+        ('HPSS-v3',
+            {'transport_server': test_server.SmartTCPServer_for_testing})]
+
 
     def setUp(self):
         super(BasicRemoteObjectTests, self).setUp()

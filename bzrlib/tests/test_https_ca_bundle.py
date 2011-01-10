@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,19 +31,9 @@ from bzrlib.transport.http import ca_bundle
 class TestGetCAPath(TestCaseInTempDir):
 
     def setUp(self):
-        TestCaseInTempDir.setUp(self)
-        new_env = {
-            'CURL_CA_BUNDLE': None,
-            'PATH': None,
-            }
-        self._old_env = {}
-        self.addCleanup(self._restore)
-        for name, value in new_env.iteritems():
-            self._old_env[name] = osutils.set_or_unset_env(name, None)
-
-    def _restore(self):
-        for name, value in self._old_env.iteritems():
-            osutils.set_or_unset_env(name, value)
+        super(TestGetCAPath, self).setUp()
+        self.overrideEnv('CURL_CA_BUNDLE', None)
+        self.overrideEnv('PATH', None)
 
     def _make_file(self, in_dir='.'):
         fname = os.path.join(in_dir, 'curl-ca-bundle.crt')
@@ -55,7 +45,7 @@ class TestGetCAPath(TestCaseInTempDir):
         self.assertEqual('', ca_bundle.get_ca_path(use_cache=False))
 
     def test_env_var(self):
-        osutils.set_or_unset_env('CURL_CA_BUNDLE', 'foo.bar')
+        self.overrideEnv('CURL_CA_BUNDLE', 'foo.bar')
         self._make_file()
         self.assertEqual('foo.bar', ca_bundle.get_ca_path(use_cache=False))
 
@@ -65,6 +55,6 @@ class TestGetCAPath(TestCaseInTempDir):
         os.mkdir('foo')
         in_dir = os.path.join(os.getcwd(), 'foo')
         self._make_file(in_dir=in_dir)
-        osutils.set_or_unset_env('PATH', in_dir)
+        self.overrideEnv('PATH', in_dir)
         shouldbe = os.path.join(in_dir, 'curl-ca-bundle.crt')
         self.assertEqual(shouldbe, ca_bundle.get_ca_path(use_cache=False))

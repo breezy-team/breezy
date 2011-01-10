@@ -189,7 +189,7 @@ Bug Fixes
   numerous bad bugs with line-ending support. (Ian Clatworthy, #362030)
 
 * Fix problem of "directory not empty" when contending for a lock over
-  sftp.  (Martin Pool, #340352)
+  SFTP.  (Martin Pool, #340352)
 
 * Fix rule handling so that eol is optional, not mandatory.
   (Ian Clatworthy, #379370)

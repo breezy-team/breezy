@@ -258,10 +258,10 @@ standard`_ for further information.
 .. _WSGI standard: http://www.python.org/dev/peps/pep-0333/
 
 
-Pushing over the http smart server
+Pushing over the HTTP smart server
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-It is possible to allow pushing data over the http smart server. The
+It is possible to allow pushing data over the HTTP smart server. The
 easiest way to do this, is to just supply ``readonly=False`` to the
 ``wsgi.make_app()`` call. But be careful, because the smart protocol does
 not contain any Authentication. So if you enable write support, you will
@@ -278,7 +278,7 @@ actually write data on your system, e.g. in apache it looks like::
     </Location>
 
 At this time, it is not possible to allow some people to have read-only
-access and others to have read-write access to the same urls. Because at
+access and others to have read-write access to the same URLs. Because at
 the HTTP layer (which is doing the Authenticating), everything is just a
 POST request.  However, it would certainly be possible to have HTTPS
 require authentication and use a writable server, and plain HTTP allow

@@ -14,7 +14,7 @@ Bazaar 1.8 includes several fixes that improve working tree performance,
 display of revision logs, and merges.  The bzr testsuite now passes on OS
 X and Python 2.6, and almost completely passes on Windows.  The
 smartserver code has gained several bug fixes and performance
-improvements, and can now run server-side hooks within an http server.
+improvements, and can now run server-side hooks within an HTTP server.
 
 Bug Fixes
 *********

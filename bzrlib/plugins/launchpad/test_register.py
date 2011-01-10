@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -133,14 +133,11 @@ class MockLaunchpadService(LaunchpadService):
 
 
 class TestBranchRegistration(TestCaseWithTransport):
-    SAMPLE_URL = 'http://bazaar-vcs.org/bzr/bzr.dev/'
-    SAMPLE_OWNER = 'jhacker@foo.com'
-    SAMPLE_BRANCH_ID = 'bzr.dev'
 
     def setUp(self):
         super(TestBranchRegistration, self).setUp()
         # make sure we have a reproducible standard environment
-        self._captureVar('BZR_LP_XMLRPC_URL', None)
+        self.overrideEnv('BZR_LP_XMLRPC_URL', None)
 
     def test_register_help(self):
         """register-branch accepts --help"""
@@ -299,7 +296,7 @@ class TestGatherUserCredentials(tests.TestCaseInTempDir):
     def setUp(self):
         super(TestGatherUserCredentials, self).setUp()
         # make sure we have a reproducible standard environment
-        self._captureVar('BZR_LP_XMLRPC_URL', None)
+        self.overrideEnv('BZR_LP_XMLRPC_URL', None)
 
     def test_gather_user_credentials_has_password(self):
         service = LaunchpadService()

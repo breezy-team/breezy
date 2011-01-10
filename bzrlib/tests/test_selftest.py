@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -3251,10 +3251,8 @@ class TestThreadLeakDetection(tests.TestCase):
         class Test(unittest.TestCase):
             def runTest(self):
                 pass
-            addCleanup = None # for when on Python 2.7 with native addCleanup
         result = self.LeakRecordingResult()
         test = Test()
-        self.assertIs(getattr(test, "addCleanup", None), None)
         result.startTestRun()
         test.run(result)
         result.stopTestRun()
@@ -3387,10 +3385,9 @@ class TestPostMortemDebugging(tests.TestCase):
         result = tests.ExtendedTestResult(StringIO(), 0, 1)
         post_mortem_calls = []
         self.overrideAttr(pdb, "post_mortem", post_mortem_calls.append)
-        self.addCleanup(osutils.set_or_unset_env, "BZR_TEST_PDB",
-            osutils.set_or_unset_env("BZR_TEST_PDB", None))
+        self.overrideEnv('BZR_TEST_PDB', None)
         result._post_mortem(1)
-        os.environ["BZR_TEST_PDB"] = "on"
+        self.overrideEnv('BZR_TEST_PDB', 'on')
         result._post_mortem(2)
         self.assertEqual([2], post_mortem_calls)
 
@@ -3411,3 +3408,48 @@ class TestRunSuite(tests.TestCase):
                                                 self.verbosity)
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertLength(1, calls)
+
+
+class TestEnvironHandling(tests.TestCase):
+
+    def test__captureVar_None_called_twice_leaks(self):
+        self.failIf('MYVAR' in os.environ)
+        self._captureVar('MYVAR', '42')
+        # We need an embedded test to observe the bug
+        class Test(tests.TestCase):
+            def test_me(self):
+                # The first call save the 42 value
+                self._captureVar('MYVAR', None)
+                self.assertEquals(None, os.environ.get('MYVAR'))
+                self.assertEquals('42', self._old_env.get('MYVAR'))
+                # But the second one erases it !
+                self._captureVar('MYVAR', None)
+                self.assertEquals(None, self._old_env.get('MYVAR'))
+        output = StringIO()
+        result = tests.TextTestResult(output, 0, 1)
+        Test('test_me').run(result)
+        if not result.wasStrictlySuccessful():
+            self.fail(output.getvalue())
+        # And we have lost all trace of the original value
+        self.assertEquals(None, os.environ.get('MYVAR'))
+        self.assertEquals(None, self._old_env.get('MYVAR'))
+
+    def test_overrideEnv_None_called_twice_doesnt_leak(self):
+        self.failIf('MYVAR' in os.environ)
+        self.overrideEnv('MYVAR', '42')
+        # We use an embedded test to make sure we fix the _captureVar bug
+        class Test(tests.TestCase):
+            def test_me(self):
+                # The first call save the 42 value
+                self.overrideEnv('MYVAR', None)
+                self.assertEquals(None, os.environ.get('MYVAR'))
+                # Make sure we can call it twice
+                self.overrideEnv('MYVAR', None)
+                self.assertEquals(None, os.environ.get('MYVAR'))
+        output = StringIO()
+        result = tests.TextTestResult(output, 0, 1)
+        Test('test_me').run(result)
+        if not result.wasStrictlySuccessful():
+            self.fail(output.getvalue())
+        # We get our value back
+        self.assertEquals('42', os.environ.get('MYVAR'))
