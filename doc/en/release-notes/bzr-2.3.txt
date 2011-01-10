@@ -96,6 +96,9 @@ Testing
 * Check sphinx compatibility for tests requiring older sphinx versions.
   (Vincent Ladeuil, #688072)
 
+* ``test_onto_transport`` in the Launchpad plugin can now run with Python
+  2.7. (Vincent Ladeuil, #654733)
+
 * ``TestDebuntuExpansions`` was escaping the test isolation by calling the
   wrong base class ``setUp``. (Vincent Ladeuil, #684622)
 

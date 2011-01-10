@@ -15,18 +15,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import base64
-import os
 from StringIO import StringIO
 import urlparse
 import xmlrpclib
 
 from bzrlib import (
     config,
-    osutils,
     tests,
     ui,
     )
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
+from bzrlib.tests import TestCaseWithTransport
 
 # local import
 from bzrlib.plugins.launchpad.lp_registration import (
@@ -62,6 +60,11 @@ class InstrumentedXMLRPCConnection(object):
         return (200, 'OK', [])
 
     def getresponse(self, buffering=True):
+        """Fake the http reply.
+
+        This is used when running on Python 2.7, where xmlrpclib uses
+        httplib.HTTPConnection in a different way than before.
+        """
         class FakeHttpResponse(object):
 
             def __init__(self, status, reason, headers, body):
@@ -99,7 +102,6 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
     def __init__(self, testcase, expect_auth):
         self.testcase = testcase
         self.expect_auth = expect_auth
-        self._connection = (None, None)
 
     def make_connection(self, host):
         host, http_headers, x509 = self.get_host_info(host)
