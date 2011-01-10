@@ -21,6 +21,14 @@
 
 __all__ = ['is_upstream_tag', 'upstream_tag_version']
 
+
+try:
+    from debian.changelog import Version
+except ImportError:
+    # Prior to 0.1.15 the debian module was called debian_bundle
+    from debian_bundle.changelog import Version
+
+
 def is_upstream_tag(tag):
     """Return true if tag is an upstream tag.
     
@@ -54,3 +62,14 @@ def upstream_tag_version(tag):
         elif tag.startswith('ubuntu-'):
             tag = tag[len('ubuntu-'):]
     return tag
+
+
+def sort_debversion(branch, tags):
+    """Sort tags using Debian version in-place.
+
+    :param branch: Branch to use
+    :param tags: List of tuples with name and version.
+    """
+    def debversion_key((version, revid)):
+        return Version(version)
+    tags.sort(key=debversion_key)
