@@ -50,6 +50,7 @@ from bzrlib.plugins.builddeb.util import (
                   get_export_upstream_revision,
                   get_commit_info_from_changelog,
                   get_snapshot_revision,
+                  get_source_format,
                   lookup_distribution,
                   move_file_if_different,
                   get_parent_dir,
@@ -772,3 +773,24 @@ class FindPreviousUploadTests(TestCase):
         self.assertRaises(NoPreviousUpload, _find_previous_upload, cl)
         cl = self.make_changelog([("0.1-1", "unstable")])
         self.assertRaises(NoPreviousUpload, _find_previous_upload, cl)
+
+
+class SourceFormatTests(TestCaseWithTransport):
+
+    def test_no_source_format_file(self):
+        tree = self.make_branch_and_tree('.')
+        self.assertEquals("1.0", get_source_format(tree))
+
+    def test_source_format_newline(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([("debian/", ), ("debian/source/",),
+            ("debian/source/format", "3.0 (native)\n")])
+        tree.add(["debian", "debian/source", "debian/source/format"])
+        self.assertEquals("3.0 (native)", get_source_format(tree))
+
+    def test_source_format(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([("debian/",), ("debian/source/",),
+            ("debian/source/format", "3.0 (quilt)")])
+        tree.add(["debian", "debian/source", "debian/source/format"])
+        self.assertEquals("3.0 (quilt)", get_source_format(tree))

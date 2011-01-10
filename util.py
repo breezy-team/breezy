@@ -612,3 +612,14 @@ def tree_contains_upstream_source(tree):
     present_files = set(root.children.keys())
     packaging_files = frozenset(["debian", ".bzr-builddeb"])
     return (len(present_files - packaging_files) > 0)
+
+
+def get_source_format(tree):
+    """Retrieve the source format name from a package.
+
+    :param path: Path to the package
+    :return: String with package format
+    """
+    if not tree.has_filename("debian/source/format"):
+        return "1.0"
+    return tree.get_file_text(tree.path2id("debian/source/format")).strip()

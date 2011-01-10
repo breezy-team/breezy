@@ -22,8 +22,10 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
     if we can't find the tarball.
   * Determine Bazaar home directory using bzrlib to prevent test
     isolation issues. LP: #614125
+  * Automatically use debian/source/format if package is native. Closes:
+    #586617
 
- -- James Westby <james.westby@ubuntu.com>  Wed, 18 Aug 2010 20:12:20 -0400
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 11 Jan 2011 00:42:21 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 
