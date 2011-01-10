@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -159,6 +159,3 @@ class TestCommitWithStacking(TestCaseWithRepository):
         stacked2_only_repo.refresh_data()
         self.assertPresent([self.r1_key], stacked2_only_repo.inventories,
                            [self.r1_key, self.r2_key])
-
-# TOOD: We need to run the above tests for when the source and/or the target
-#       are remote repositories.
