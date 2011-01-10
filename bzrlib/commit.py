@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -432,7 +432,6 @@ class Commit(object):
             self.rev_id = self.builder.commit(self.message)
 
         except Exception, e:
-            import pdb; pdb.set_trace()
             mutter("aborting commit write group because of exception:")
             trace.log_exception_quietly()
             note("aborting commit write group: %r" % (e,))
