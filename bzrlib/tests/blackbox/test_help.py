@@ -104,6 +104,10 @@ class TestHelp(TestCaseWithTransport):
         self.assertEquals(dash_help, qmark_long)
         self.assertEquals(dash_help, qmark_cmds)
 
+    def test_help_width_zero(self):
+        self.overrideEnv('BZR_COLUMNS', '0')
+        self.run_bzr('help commands')
+
     def test_hidden(self):
         help_commands = self.run_bzr('help commands')[0]
         help_hidden = self.run_bzr('help hidden-commands')[0]

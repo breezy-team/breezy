@@ -1988,6 +1988,10 @@ class TestTerminalWidth(tests.TestCase):
         self.overrideEnv('BZR_COLUMNS', '12')
         self.assertEqual(12, osutils.terminal_width())
 
+    def test_BZR_COLUMNS_0_no_limit(self):
+        self.overrideEnv('BZR_COLUMNS', '0')
+        self.assertEqual(None, osutils.terminal_width())
+
     def test_falls_back_to_COLUMNS(self):
         self.overrideEnv('BZR_COLUMNS', None)
         self.assertNotEqual('42', os.environ['COLUMNS'])

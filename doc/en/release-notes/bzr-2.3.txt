@@ -55,6 +55,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* The BZR_COLUMNS environment variable can be set to 0 to indicate no
+  limitation on the width of the terminal.  (Neil Martinsen-Burrell, #675652)
+
 Documentation
 *************
 
