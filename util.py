@@ -140,7 +140,7 @@ def find_changelog(t, merge, max_blocks=1):
     try:
         if not t.has_filename(changelog_file):
             if merge:
-                #Assume LarstiQ's layout (.bzr in debian/)
+                # Assume LarstiQ's layout (.bzr in debian/)
                 changelog_file = 'changelog'
                 larstiq = True
                 if not t.has_filename(changelog_file):
@@ -606,6 +606,9 @@ def tree_contains_upstream_source(tree):
     :return: Boolean indicating whether or not the tree contains the upstream
         source
     """
-    present_files = set(tree.inventory.root.children.keys())
+    root = tree.inventory.root
+    if root is None:
+        return False # Empty tree
+    present_files = set(root.children.keys())
     packaging_files = frozenset(["debian", ".bzr-builddeb"])
     return (len(present_files - packaging_files) > 0)
