@@ -41,8 +41,8 @@ Improvements
   have been merge cleanly otherwise. (Vincent Ladeuil, #638451)
 
 * ``bzr tags``'s "sort" argument now allows registering custom sort
-  methods using the ``bzrlib.tag.tag_sort_methods`` registry. (Jelmer
-  Vernooij, #701244)
+  methods using the ``bzrlib.tag.tag_sort_methods`` registry. 
+  (Jelmer Vernooij, #701244)
 
 * ``bt.test_http`` was breaking ``os.environ`` by erasing the values saved by
   ``TestCase`` leading to ``bt.test_import_tariff`` failures.
