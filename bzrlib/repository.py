@@ -198,8 +198,6 @@ class CommitBuilder(object):
         # mechanism is suspend+resume.
         # However, we don't want to immediately resume the write group,
         # because, insert_stream finalizes the commit.
-        saved_resume_tokens = self.repository.suspend_write_group()
-
         missing_keys = [('inventories', pk[0])
                         for pk in missing_parent_keys]
         resume_tokens = []
@@ -208,11 +206,11 @@ class CommitBuilder(object):
             source = fallback_repo._get_source(self.repository._format)
             sink = self.repository._get_sink()
             stream = source.get_stream_for_missing_keys(missing_keys)
-            resume_tokens, missing_keys = sink.insert_stream(
-                stream, self.repository._format, resume_tokens)
-        if resume_tokens or missing_keys:
-            raise RuntimeError('failure will robinson')
-        self.repository.resume_write_group(saved_resume_tokens)
+            missing_keys = sink.insert_stream_without_locking(stream,
+                self.repository._format)
+        if missing_keys:
+            raise errors.BzrError('Unable to fill in parent inventories for a'
+                                  ' stacked branch')
 
     def commit(self, message):
         """Make the actual commit.
@@ -4132,6 +4130,8 @@ class StreamSink(object):
                     write_group_tokens = self.target_repo.suspend_write_group()
                     return write_group_tokens, missing_keys
                 hint = self.target_repo.commit_write_group()
+                to_serializer = self.target_repo._format._serializer
+                src_serializer = src_format._serializer
                 if (to_serializer != src_serializer and
                     self.target_repo._format.pack_compresses):
                     self.target_repo.pack(hint=hint)
