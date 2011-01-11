@@ -86,6 +86,10 @@ API Changes
   already opened that repository).  Implementations of these APIs will
   need to be updated to accept these arguments.  (Andrew Bennetts)
 
+* ``bzrlib.tuned_gzip.GzipFile`` is now deprecated and will be removed in
+  the bzr-2.4 series. Code that was using it can just use the python
+  stdlib ``gzip.GzipFile``. (John Arbash Meinel)
+
 Internals
 *********
 
