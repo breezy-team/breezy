@@ -186,6 +186,9 @@ class CommitBuilder(object):
         """
         if not self.repository._fallback_repositories:
             return
+        if not self.repository._format.supports_chks:
+            raise errors.BzrError('Stacked commit does not support'
+                ' repositories earlier that 2a')
         # This is a stacked repo, we need to make sure we have the parent
         # inventories for the parents.
         parent_keys = [(p,) for p in self.parents]

@@ -18,12 +18,13 @@
 from bzrlib import (
     errors,
     remote,
+    tests,
     urlutils,
     )
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
-class TestCommitWithStacking(TestCaseWithRepository):
+class TestCaseWithStackedTarget(TestCaseWithRepository):
 
     r1_key = ('rev1-id',)
     r2_key = ('rev2-id',)
@@ -46,6 +47,17 @@ class TestCommitWithStacking(TestCaseWithRepository):
         else:
             stacked_tree = stacked_bzrdir.open_workingtree()
         return base_tree, stacked_tree
+
+
+class TestCommitWithStacking(TestCaseWithStackedTarget):
+
+    def setUp(self):
+        super(TestCommitWithStacking, self).setUp()
+        format = self.repository_format
+        if (not (isinstance(format, remote.RemoteRepositoryFormat)
+                 or format.supports_chks)):
+            raise tests.TestNotApplicable('stacked commit only supported'
+                ' for chk repositories')
 
     def get_only_repo(self, tree):
         """Open just the repository used by this tree.
@@ -167,3 +179,42 @@ class TestCommitWithStacking(TestCaseWithRepository):
                                      'ghost-rev-id'])
         self.assertRaises(errors.BzrError,
             stacked_tree.commit, 'failed_commit')
+
+    def test_commit_with_ghost_in_ancestry(self):
+        base_tree, stacked_tree = self.make_stacked_target()
+        self.build_tree_contents([('base/f1.txt', 'new content\n')])
+        r3_key = ('rev3-id',)
+        base_tree.commit('second base', rev_id=r3_key[0])
+        to_be_merged_tree = base_tree.bzrdir.sprout('merged'
+            ).open_workingtree()
+        self.build_tree(['merged/f2.txt'])
+        to_be_merged_tree.add(['f2.txt'], ['f2.txt-id'])
+        ghost_key = ('ghost-rev-id',)
+        to_be_merged_tree.set_parent_ids([r3_key[0], ghost_key[0]])
+        to_merge_key = ('to-merge-rev-id',)
+        to_be_merged_tree.commit('new-to-be-merged', rev_id=to_merge_key[0])
+        stacked_tree.merge_from_branch(to_be_merged_tree.branch)
+        merged_key = ('merged-rev-id',)
+        stacked_tree.commit('merge', rev_id=merged_key[0])
+        # vs test_merge_commit, the fetch for 'merge_from_branch' should
+        # already have handled that 'ghost-rev-id' is a ghost, and commit
+        # should not try to fill it in at this point.
+        stacked_only_repo = self.get_only_repo(stacked_tree)
+        all_keys = [self.r1_key, self.r2_key, r3_key, to_merge_key, merged_key,
+                    ghost_key]
+        self.assertPresent([to_merge_key, merged_key],
+                           stacked_only_repo.revisions, all_keys)
+        self.assertPresent([self.r2_key, r3_key, to_merge_key, merged_key],
+                           stacked_only_repo.inventories, all_keys)
+
+
+class TestCommitStackedFailsAppropriately(TestCaseWithStackedTarget):
+
+    def test_stacked_commit_fails_on_old_formats(self):
+        base_tree, stacked_tree = self.make_stacked_target()
+        format = stacked_tree.branch.repository._format
+        if format.supports_chks:
+            stacked_tree.commit('should succeed')
+        else:
+            self.assertRaises(errors.BzrError,
+                stacked_tree.commit, 'unsupported format')
