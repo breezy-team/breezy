@@ -25,10 +25,10 @@ As of September 2010, there are four PPAs:
 <https://launchpad.net/~bzr-beta-ppa/+archive>
     Beta releases.
 
-<https://launchpad.net/~bzr-nightly-ppa/+archive>
+<https://launchpad.net/~bzr/+archive/daily>
     Automatic nightly builds from trunk.
 
-We build a distinct package for each distrorelease.  
+We build a distinct package for each distrorelease.
 If you upload a release-specific version, you should add a suffix to the
 package version, e.g. ``bzr.1.3-1~bazaar1~dapper1``.
 
