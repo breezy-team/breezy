@@ -102,6 +102,7 @@ class InstrumentedXMLRPCTransport(xmlrpclib.Transport):
     def __init__(self, testcase, expect_auth):
         self.testcase = testcase
         self.expect_auth = expect_auth
+        self._connection = (None, None)
 
     def make_connection(self, host):
         host, http_headers, x509 = self.get_host_info(host)
