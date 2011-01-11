@@ -16,6 +16,7 @@
 
 
 from bzrlib import (
+    errors,
     remote,
     urlutils,
     )
@@ -159,3 +160,10 @@ class TestCommitWithStacking(TestCaseWithRepository):
         stacked2_only_repo.refresh_data()
         self.assertPresent([self.r1_key], stacked2_only_repo.inventories,
                            [self.r1_key, self.r2_key])
+
+    def test_commit_with_ghosts_fails(self):
+        base_tree, stacked_tree = self.make_stacked_target()
+        stacked_tree.set_parent_ids([stacked_tree.last_revision(),
+                                     'ghost-rev-id'])
+        self.assertRaises(errors.BzrError,
+            stacked_tree.commit, 'failed_commit')
