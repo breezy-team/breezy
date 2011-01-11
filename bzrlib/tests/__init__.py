@@ -941,7 +941,6 @@ class TestCase(testtools.TestCase):
         self.addDetail("log", content.Content(content.ContentType("text",
             "plain", {"charset": "utf8"}),
             lambda:[self._get_log(keep_log_file=True)]))
-        self._old_env = {}
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -1646,10 +1645,6 @@ class TestCase(testtools.TestCase):
     def _cleanEnvironment(self):
         for name, value in isolated_environ.iteritems():
             self.overrideEnv(name, value)
-
-    def _captureVar(self, name, newvalue):
-        """Set an environment variable, and reset it when finished."""
-        self._old_env[name] = osutils.set_or_unset_env(name, newvalue)
 
     def _restoreHooks(self):
         for klass, (name, hooks) in self._preserved_hooks.items():
