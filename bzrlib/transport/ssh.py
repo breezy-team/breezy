@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Robey Pointer <robey@lag.net>
+# Copyright (C) 2006-2011 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -359,6 +359,7 @@ class SubprocessVendor(SSHVendor):
         # whatever) chunks.
         try:
             my_sock, subproc_sock = socket.socketpair()
+            osutils.set_fd_cloexec(my_sock)
         except (AttributeError, socket.error):
             # This platform doesn't support socketpair(), so just use ordinary
             # pipes instead.
