@@ -22,17 +22,23 @@ from bzrlib.bzrdir import (
     BzrDirMetaFormat1,
     Converter,
     )
-from bzrlib.transport import get_transport
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import os
+
 from bzrlib import (
     controldir,
     errors,
     lockable_files,
     lockdir,
+    osutils,
     revision as _mod_revision,
     ui,
     urlutils,
+    )
+from bzrlib.transport import (
+    get_transport,
+    local,
     )
 """)
 
