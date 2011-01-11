@@ -26,8 +26,11 @@ from bzrlib.transport import get_transport
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    controldir,
     errors,
     lockable_files,
+    lockdir,
+    revision as _mod_revision,
     ui,
     urlutils,
     )

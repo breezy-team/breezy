@@ -19,9 +19,11 @@
 from cStringIO import StringIO
 
 from bzrlib import (
+    errors,
     inventory,
     revision as _mod_revision,
     transform,
+    xml5,
     )
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (

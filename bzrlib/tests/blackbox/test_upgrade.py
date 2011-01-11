@@ -48,8 +48,9 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def make_format_5_branch(self):
         # setup a format 5 branch we can upgrade from.
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5
         self.make_branch_and_tree('format_5_branch',
-                                  format=bzrdir.BzrDirFormat5())
+                                  format=BzrDirFormat5())
 
     def make_metadir_weave_branch(self):
         self.make_branch_and_tree('metadir_weave_branch', format='metaweave')
@@ -110,7 +111,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         self.make_format_5_branch()
         url = transport.get_transport(self.get_url('format_5_branch')).base
         # check --format takes effect
-        controldir.ControlDirFormat._set_default_format(bzrdir.BzrDirFormat5())
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5
+        controldir.ControlDirFormat._set_default_format(BzrDirFormat5())
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=metaweave', url])
@@ -135,7 +137,8 @@ finished
         self.make_metadir_weave_branch()
         url = transport.get_transport(self.get_url('metadir_weave_branch')).base
         # check --format takes effect
-        controldir.ControlDirFormat._set_default_format(bzrdir.BzrDirFormat5())
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5
+        controldir.ControlDirFormat._set_default_format(BzrDirFormat5())
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
             ['upgrade', '--format=knit', url])
@@ -193,12 +196,12 @@ finished
         new_perms = os.stat(backup_dir).st_mode & 0777
         self.assertTrue(new_perms == old_perms)
 
-
     def test_upgrade_with_existing_backup_dir(self):
         self.make_format_5_branch()
         t = transport.get_transport(self.get_url('format_5_branch'))
         url = t.base
-        controldir.ControlDirFormat._set_default_format(bzrdir.BzrDirFormat5())
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5
+        controldir.ControlDirFormat._set_default_format(BzrDirFormat5())
         backup_dir1 = 'backup.bzr.~1~'
         backup_dir2 = 'backup.bzr.~2~'
         # explicitly create backup_dir1. bzr should create the .~2~ directory
@@ -221,6 +224,7 @@ finished
             bzrdir.BzrDir.open(self.get_url('format_5_branch'))._format,
             bzrdir.BzrDirMetaFormat1))
         self.assertTrue(t.has(backup_dir2))
+
 
 class SFTPTests(TestCaseWithSFTPServer):
     """Tests for upgrade over sftp."""

@@ -68,7 +68,8 @@ class TestConflicts(tests.TestCaseWithTransport):
     def test_conflicts(self):
         """Conflicts are detected properly"""
         # Use BzrDirFormat6 so we can fake conflicts
-        tree = self.make_branch_and_tree('.', format=bzrdir.BzrDirFormat6())
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
+        tree = self.make_branch_and_tree('.', format=BzrDirFormat6())
         self.build_tree_contents([('hello', 'hello world4'),
                                   ('hello.THIS', 'hello world2'),
                                   ('hello.BASE', 'hello world1'),

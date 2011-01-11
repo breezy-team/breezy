@@ -198,7 +198,8 @@ class TestPush(per_branch.TestCaseWithBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+        if isinstance(self.branch_format, BzrBranchFormat4):
             raise tests.TestNotApplicable('Not a metadir format.')
         if isinstance(self.branch_format, branch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
@@ -339,7 +340,8 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable(
                 'Does not apply when remote backing branch is also '
                 'a smart branch')
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+        if isinstance(self.branch_format, BzrBranchFormat4):
             raise tests.TestNotApplicable(
                 'Branch format 4 is not usable via HPSS.')
         super(EmptyPushSmartEffortTests, self).setUp()

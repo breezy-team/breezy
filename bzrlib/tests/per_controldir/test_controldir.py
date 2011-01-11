@@ -17,7 +17,6 @@
 """Tests for control directory implementations - tests a controldir format."""
 
 from itertools import izip
-import os
 
 import bzrlib.branch
 from bzrlib import (
@@ -754,7 +753,8 @@ class TestControlDir(TestCaseWithControlDir):
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         dir = tree.bzrdir
-        if isinstance(dir, (bzrdir.BzrDirPreSplitOut,)):
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirPreSplitOut
+        if isinstance(dir, BzrDirPreSplitOut):
             self.assertRaises(errors.MustHaveWorkingTree, dir.sprout,
                               self.get_url('target'),
                               create_tree_if_local=False)
@@ -872,8 +872,8 @@ class TestControlDir(TestCaseWithControlDir):
         if control is None:
             # uninitialisable format
             return
-        if not isinstance(control._format, (bzrdir.BzrDirFormat5,
-            bzrdir.BzrDirFormat6,)):
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5, BzrDirFormat6
+        if not isinstance(control._format, (BzrDirFormat5, BzrDirFormat6,)):
             self.assertEqual(repo.bzrdir.root_transport.base,
                 made_repo.bzrdir.root_transport.base)
 
@@ -941,8 +941,8 @@ class TestControlDir(TestCaseWithControlDir):
         if control is None:
             # uninitialisable format
             return
-        if isinstance(self.bzrdir_format, (bzrdir.BzrDirFormat5,
-            bzrdir.BzrDirFormat6)):
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5, BzrDirFormat6
+        if isinstance(self.bzrdir_format, (BzrDirFormat5, BzrDirFormat6)):
             # must stay with the all-in-one-format.
             repo_name = self.bzrdir_format.network_name()
         self.assertEqual(repo_name, repo._format.network_name())
@@ -975,8 +975,9 @@ class TestControlDir(TestCaseWithControlDir):
             # set, so we skip a number of tests for RemoteBzrDirFormat's.
             self.assertIsInstance(control, RemoteBzrDir)
         else:
-            if need_meta and isinstance(expected_format, (bzrdir.BzrDirFormat5,
-                bzrdir.BzrDirFormat6)):
+            from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5, BzrDirFormat6
+            if need_meta and isinstance(expected_format, (BzrDirFormat5,
+                BzrDirFormat6)):
                 # Pre-metadir formats change when we are making something that
                 # needs a metaformat, because clone is used for push.
                 expected_format = bzrdir.BzrDirMetaFormat1()
@@ -1185,8 +1186,10 @@ class TestControlDir(TestCaseWithControlDir):
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
         # branches, or it supports anonymous  branch formats, but not both.
-        anonymous_format = bzrlib.branch.BzrBranchFormat4()
-        identifiable_format = bzrlib.branch.BzrBranchFormat5()
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+        from bzrlib.branch import BzrBranchFormat5
+        anonymous_format = BzrBranchFormat4()
+        identifiable_format = BzrBranchFormat5()
         try:
             found_transport = dir.get_branch_transport(anonymous_format)
             self.assertRaises(errors.IncompatibleFormat,
@@ -1229,7 +1232,8 @@ class TestControlDir(TestCaseWithControlDir):
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
         # trees, or it supports anonymous tree formats, but not both.
-        anonymous_format = workingtree.WorkingTreeFormat2()
+        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
+        anonymous_format = WorkingTreeFormat2()
         identifiable_format = workingtree.WorkingTreeFormat3()
         try:
             found_transport = dir.get_workingtree_transport(anonymous_format)

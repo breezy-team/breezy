@@ -342,7 +342,8 @@ class TestWorkingTreeScenarios(tests.TestCase):
         from bzrlib.tests.per_workingtree import make_scenarios
         server1 = "a"
         server2 = "b"
-        formats = [workingtree.WorkingTreeFormat2(),
+        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
+        formats = [WorkingTreeFormat2(),
                    workingtree.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
@@ -377,9 +378,10 @@ class TestTreeScenarios(tests.TestCase):
             return_parameter,
             revision_tree_from_workingtree
             )
+        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
         server1 = "a"
         server2 = "b"
-        formats = [workingtree.WorkingTreeFormat2(),
+        formats = [WorkingTreeFormat2(),
                    workingtree.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual(7, len(scenarios))
@@ -453,12 +455,12 @@ class TestInterTreeScenarios(tests.TestCase):
         # ones to add.
         from bzrlib.tests.per_tree import (
             return_parameter,
-            revision_tree_from_workingtree
             )
         from bzrlib.tests.per_intertree import (
             make_scenarios,
             )
-        from bzrlib.workingtree import WorkingTreeFormat2, WorkingTreeFormat3
+        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
+        from bzrlib.workingtree import WorkingTreeFormat3
         input_test = TestInterTreeScenarios(
             "test_scenarios")
         server1 = "a"
@@ -1980,11 +1982,12 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
     def test_make_branch_and_tree_with_format(self):
         # we should be able to supply a format to make_branch_and_tree
         self.make_branch_and_tree('a', format=bzrlib.bzrdir.BzrDirMetaFormat1())
-        self.make_branch_and_tree('b', format=bzrlib.bzrdir.BzrDirFormat6())
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
+        self.make_branch_and_tree('b', format=BzrDirFormat6())
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('a')._format,
                               bzrlib.bzrdir.BzrDirMetaFormat1)
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
-                              bzrlib.bzrdir.BzrDirFormat6)
+                              BzrDirFormat6)
 
     def test_make_branch_and_memory_tree(self):
         # we should be able to get a new branch and a mutable tree from

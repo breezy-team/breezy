@@ -501,7 +501,8 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         self.assertThat(branch.lock_read, ReturnsUnlockable(branch))
 
     def test_lock_write_locks_repo_too(self):
-        if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+        if isinstance(self.branch_format, BzrBranchFormat4):
             # Branch format 4 is combined with the repository, so this test
             # doesn't apply.
             return

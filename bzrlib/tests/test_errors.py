@@ -297,7 +297,8 @@ class TestErrors(TestCaseWithTransport):
             str(error))
 
     def test_up_to_date(self):
-        error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat4
+        error = errors.UpToDateFormat(BzrDirFormat4())
         self.assertEqualDiff("The branch format All-in-one "
                              "format 4 is already at the most "
                              "recent format.",

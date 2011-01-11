@@ -30,7 +30,8 @@ class PreSplitOutBzrBranch(BzrBranch):
         Weaves are used if this branch's repository uses weaves.
         """
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
-        format = bzrdir.BzrDirMetaFormat1()
+        from bzrlib.bzrdir import BzrDirMetaFormat1
+        format = BzrDirMetaFormat1()
         format.repository_format = RepositoryFormat7()
         return format
 

@@ -85,8 +85,8 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         return builder.get_branch()
 
     def test_pull_orphans(self):
-        from bzrlib import workingtree
-        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
+        if isinstance(self.workingtree_format, WorkingTreeFormat2):
             raise tests.TestSkipped(
                 'WorkingTreeFormat2 does not support missing parent conflicts')
         trunk = self.make_branch_deleting_dir('trunk')

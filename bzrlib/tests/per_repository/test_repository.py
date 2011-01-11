@@ -25,10 +25,8 @@ from bzrlib import (
     delta as _mod_delta,
     errors,
     gpg,
-    graph,
     info,
     inventory,
-    osutils,
     remote,
     repository,
     revision as _mod_revision,
@@ -37,7 +35,6 @@ from bzrlib import (
     upgrade,
     versionedfile,
     workingtree,
-    xml_serializer,
     )
 from bzrlib.repofmt import (
     pack_repo,
@@ -853,10 +850,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_sprout_from_hpss_preserves_format(self):
         """repo.sprout from a smart server preserves the repository format."""
-        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
-        if self.repository_format == RepositoryFormat7():
-            raise tests.TestNotApplicable(
-                "Cannot fetch weaves over smart protocol.")
         remote_repo = self.make_remote_repository('remote')
         local_bzrdir = self.make_bzrdir('local')
         try:
@@ -951,7 +944,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo = self.make_repository('repo', shared=True)
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable('Cannot make a shared repository')
-        if isinstance(repo.bzrdir, bzrdir.BzrDirPreSplitOut):
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirPreSplitOut
+        if isinstance(repo.bzrdir, BzrDirPreSplitOut):
             raise tests.KnownFailure(
                 "pre metadir branches do not upgrade on push "
                 "with stacking policy")

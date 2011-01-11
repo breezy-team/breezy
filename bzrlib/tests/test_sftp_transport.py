@@ -30,7 +30,6 @@ from bzrlib import (
     ui,
     )
 from bzrlib.osutils import (
-    pathjoin,
     lexists,
     )
 from bzrlib.tests import (
@@ -45,8 +44,6 @@ import bzrlib.transport.http
 if features.paramiko.available():
     from bzrlib.transport import sftp as _mod_sftp
     from bzrlib.tests import stub_sftp
-
-from bzrlib.workingtree import WorkingTree
 
 
 def set_test_transport_to_sftp(testcase):
@@ -195,7 +192,8 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
 
     def test_lock_file(self):
         # old format branches use a special lock file on sftp.
-        b = self.make_branch('', format=bzrdir.BzrDirFormat6())
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
+        b = self.make_branch('', format=BzrDirFormat6())
         b = bzrlib.branch.Branch.open(self.get_url())
         self.failUnlessExists('.bzr/')
         self.failUnlessExists('.bzr/branch-format')

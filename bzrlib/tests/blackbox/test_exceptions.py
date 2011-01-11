@@ -16,22 +16,17 @@
 
 """Tests for display of exceptions."""
 
-from cStringIO import StringIO
-import os
 import sys
 
 from bzrlib import (
-    bzrdir,
     config,
     errors,
     osutils,
     repository,
     tests,
-    trace,
     )
 
-from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.errors import NotBranchError
+from bzrlib.tests import TestCase
 
 
 class TestExceptionReporting(TestCase):

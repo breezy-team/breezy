@@ -243,8 +243,9 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
     """Tests that are specific to format 2 trees."""
 
     def create_format2_tree(self, url):
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
         return self.make_branch_and_tree(
-            url, format=bzrdir.BzrDirFormat6())
+            url, format=BzrDirFormat6())
 
     def test_conflicts(self):
         # test backwards compatability

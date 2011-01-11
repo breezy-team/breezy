@@ -154,7 +154,8 @@ class TestStacking(TestCaseWithBranch):
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
     def test_sprout_stacked_from_smart_server(self):
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+        if isinstance(self.branch_format, BzrBranchFormat4):
             raise TestNotApplicable('Branch format 4 is not usable via HPSS.')
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('mainline')
@@ -320,7 +321,8 @@ class TestStacking(TestCaseWithBranch):
 
     def test_sprout_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+        if isinstance(self.branch_format, BzrBranchFormat4):
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
@@ -337,7 +339,8 @@ class TestStacking(TestCaseWithBranch):
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+        if isinstance(self.branch_format, BzrBranchFormat4):
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
@@ -354,7 +357,8 @@ class TestStacking(TestCaseWithBranch):
 
     def test_sprout_to_smart_server_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+        if isinstance(self.branch_format, BzrBranchFormat4):
             raise TestNotApplicable('Branch format 4 is not usable via HPSS.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)

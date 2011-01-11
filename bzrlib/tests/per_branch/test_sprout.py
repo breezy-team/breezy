@@ -182,7 +182,8 @@ class TestSprout(TestCaseWithBranch):
                 source.last_revision(), possible_transports=[target_transport],
                 source_branch=source, stacked=True)
         except errors.UnstackableBranchFormat:
-            if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
+            from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+            if isinstance(self.branch_format, BzrBranchFormat4):
                 raise tests.KnownFailure(
                     "Format 4 doesn't auto stack successfully.")
             else:

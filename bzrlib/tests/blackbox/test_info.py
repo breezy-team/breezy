@@ -1332,8 +1332,9 @@ Repository:
         # call here.
         self.thisFailsStrictLockCheck()
 
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
         tree = self.make_branch_and_tree('branch',
-                                         format=bzrdir.BzrDirFormat6())
+                                         format=BzrDirFormat6())
 
         # Test all permutations of locking the working tree, branch and repository
         # XXX: Well not yet, as we can't query oslocks yet. Currently, it's

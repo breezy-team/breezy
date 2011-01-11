@@ -301,7 +301,8 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
     def test_accessible_explicit(self):
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
+        if isinstance(self.workingtree_format, WorkingTreeFormat2):
             self.expectFailure(
                 'With WorkingTreeFormat2, smart_add requires'
                 ' normalized unicode filenames',
@@ -317,7 +318,8 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
     def test_accessible_implicit(self):
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
+        if isinstance(self.workingtree_format, WorkingTreeFormat2):
             self.expectFailure(
                 'With WorkingTreeFormat2, smart_add requires'
                 ' normalized unicode filenames',

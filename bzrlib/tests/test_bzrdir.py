@@ -86,10 +86,11 @@ class TestFormatRegistry(TestCase):
 
     def make_format_registry(self):
         my_format_registry = controldir.ControlDirFormatRegistry()
-        my_format_registry.register('weave', bzrdir.BzrDirFormat6,
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
+        my_format_registry.register('weave', BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True)
-        my_format_registry.register_lazy('lazy', 'bzrlib.bzrdir',
+        my_format_registry.register_lazy('lazy', 'bzrlib.plugins.weave_fmt.bzrdir',
             'BzrDirFormat6', 'Format registered lazily', deprecated=True)
         bzrdir.register_metadir(my_format_registry, 'knit',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
@@ -107,20 +108,21 @@ class TestFormatRegistry(TestCase):
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='bzrlib.branch.BzrBranchFormat6', hidden=True)
-        my_format_registry.register('hiddenweave', bzrdir.BzrDirFormat6,
+        my_format_registry.register('hiddenweave', BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', hidden=True)
-        my_format_registry.register_lazy('hiddenlazy', 'bzrlib.bzrdir',
+        my_format_registry.register_lazy('hiddenlazy', 'bzrlib.plugins.weave_fmt.bzrdir',
             'BzrDirFormat6', 'Format registered lazily', deprecated=True,
             hidden=True)
         return my_format_registry
 
     def test_format_registry(self):
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
         my_format_registry = self.make_format_registry()
         my_bzrdir = my_format_registry.make_bzrdir('lazy')
-        self.assertIsInstance(my_bzrdir, bzrdir.BzrDirFormat6)
+        self.assertIsInstance(my_bzrdir, BzrDirFormat6)
         my_bzrdir = my_format_registry.make_bzrdir('weave')
-        self.assertIsInstance(my_bzrdir, bzrdir.BzrDirFormat6)
+        self.assertIsInstance(my_bzrdir, BzrDirFormat6)
         my_bzrdir = my_format_registry.make_bzrdir('default')
         self.assertIsInstance(my_bzrdir.repository_format,
             knitrepo.RepositoryFormatKnit1)
@@ -178,10 +180,11 @@ class TestFormatRegistry(TestCase):
 
     def test_aliases(self):
         a_registry = controldir.ControlDirFormatRegistry()
-        a_registry.register('weave', bzrdir.BzrDirFormat6,
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
+        a_registry.register('weave', BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True)
-        a_registry.register('weavealias', bzrdir.BzrDirFormat6,
+        a_registry.register('weavealias', BzrDirFormat6,
             'Pre-0.8 format.  Slower and does not support checkouts or shared'
             ' repositories', deprecated=True, alias=True)
         self.assertEqual(frozenset(['weavealias']), a_registry.aliases())
@@ -261,8 +264,9 @@ class TestBzrDirFormat(TestCaseWithTransport):
             t = get_transport(url)
             found_format = bzrdir.BzrDirFormat.find_format(t)
             self.failUnless(isinstance(found_format, format.__class__))
-        check_format(bzrdir.BzrDirFormat5(), "foo")
-        check_format(bzrdir.BzrDirFormat6(), "bar")
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5, BzrDirFormat6
+        check_format(BzrDirFormat5(), "foo")
+        check_format(BzrDirFormat6(), "bar")
 
     def test_find_format_nothing_there(self):
         self.assertRaises(NotBranchError,
@@ -985,70 +989,6 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertEqual(2, rpc_count)
-
-
-class TestFormat5(TestCaseWithTransport):
-    """Tests specific to the version 5 bzrdir format."""
-
-    def test_same_lockfiles_between_tree_repo_branch(self):
-        # this checks that only a single lockfiles instance is created
-        # for format 5 objects
-        dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
-        def check_dir_components_use_same_lock(dir):
-            ctrl_1 = dir.open_repository().control_files
-            ctrl_2 = dir.open_branch().control_files
-            ctrl_3 = dir.open_workingtree()._control_files
-            self.assertTrue(ctrl_1 is ctrl_2)
-            self.assertTrue(ctrl_2 is ctrl_3)
-        check_dir_components_use_same_lock(dir)
-        # and if we open it normally.
-        dir = bzrdir.BzrDir.open(self.get_url())
-        check_dir_components_use_same_lock(dir)
-
-    def test_can_convert(self):
-        # format 5 dirs are convertable
-        dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
-        self.assertTrue(dir.can_convert_format())
-
-    def test_needs_conversion(self):
-        # format 5 dirs need a conversion if they are not the default,
-        # and they aren't
-        dir = bzrdir.BzrDirFormat5().initialize(self.get_url())
-        # don't need to convert it to itself
-        self.assertFalse(dir.needs_format_conversion(bzrdir.BzrDirFormat5()))
-        # do need to convert it to the current default
-        self.assertTrue(dir.needs_format_conversion(
-            bzrdir.BzrDirFormat.get_default_format()))
-
-
-class TestFormat6(TestCaseWithTransport):
-    """Tests specific to the version 6 bzrdir format."""
-
-    def test_same_lockfiles_between_tree_repo_branch(self):
-        # this checks that only a single lockfiles instance is created
-        # for format 6 objects
-        dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        def check_dir_components_use_same_lock(dir):
-            ctrl_1 = dir.open_repository().control_files
-            ctrl_2 = dir.open_branch().control_files
-            ctrl_3 = dir.open_workingtree()._control_files
-            self.assertTrue(ctrl_1 is ctrl_2)
-            self.assertTrue(ctrl_2 is ctrl_3)
-        check_dir_components_use_same_lock(dir)
-        # and if we open it normally.
-        dir = bzrdir.BzrDir.open(self.get_url())
-        check_dir_components_use_same_lock(dir)
-
-    def test_can_convert(self):
-        # format 6 dirs are convertable
-        dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        self.assertTrue(dir.can_convert_format())
-
-    def test_needs_conversion(self):
-        # format 6 dirs need an conversion if they are not the default.
-        dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        self.assertTrue(dir.needs_format_conversion(
-            bzrdir.BzrDirFormat.get_default_format()))
 
 
 class NotBzrDir(bzrlib.bzrdir.BzrDir):
