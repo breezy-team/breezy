@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ from bzrlib import (
     )
 from bzrlib import bencode
 """)
-from bzrlib.tuned_gzip import GzipFile
+from gzip import GzipFile
 
 
 def topo_iter_keys(vf, keys=None):
@@ -564,7 +564,9 @@ class MultiVersionedFile(BaseVersionedFile):
         zip_file = GzipFile(None, mode='rb', fileobj=sio)
         try:
             file_version_id = zip_file.readline()
-            return MultiParent.from_patch(zip_file.read())
+            import pdb; pdb.set_trace()
+            content = zip_file.read()
+            return MultiParent.from_patch(content)
         finally:
             zip_file.close()
 

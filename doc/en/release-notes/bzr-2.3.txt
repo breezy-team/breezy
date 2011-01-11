@@ -59,6 +59,11 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Stop using ``bzrlib.tuned_gzip.GzipFile``. It is incompatible with
+  python-2.7 and was only used for Knit format repositories, which haven't
+  been recommended since 2007. The file itself will be removed in the next
+  release. (John Arbash Meinel)
+
 Documentation
 *************
 
