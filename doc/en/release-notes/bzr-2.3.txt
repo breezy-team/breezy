@@ -59,6 +59,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr update`` in a checkout of a readonly branch works again, without
+  trying to set the tags in the master branch. This had been broken by the
+  bug fix for bug #603395.  (John Arbash Meinel, #701212)
+
 Documentation
 *************
 
