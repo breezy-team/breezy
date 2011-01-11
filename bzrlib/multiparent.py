@@ -564,7 +564,6 @@ class MultiVersionedFile(BaseVersionedFile):
         zip_file = GzipFile(None, mode='rb', fileobj=sio)
         try:
             file_version_id = zip_file.readline()
-            import pdb; pdb.set_trace()
             content = zip_file.read()
             return MultiParent.from_patch(content)
         finally:
