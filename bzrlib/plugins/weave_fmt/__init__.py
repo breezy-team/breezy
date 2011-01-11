@@ -80,3 +80,12 @@ bzrdir.BzrDirFormat.register_format(BzrDirFormat6())
 branch.network_format_registry.register_lazy(
     "Bazaar-NG branch, format 6\n", "bzrlib.plugins.weave_fmt.branch",
     "BzrBranchFormat4")
+
+
+def load_tests(basic_tests, module, loader):
+    testmod_names = [
+        'test_repository',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests
