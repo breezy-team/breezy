@@ -52,7 +52,6 @@ from bzrlib.errors import (
     ImmortalPendingDeletion,
     LockError,
     MalformedTransform,
-    NoSuchFile,
     ReusingTransform,
 )
 from bzrlib.osutils import (
@@ -64,7 +63,6 @@ from bzrlib.tests import (
     features,
     HardlinkFeature,
     SymlinkFeature,
-    TestCase,
     TestCaseInTempDir,
     TestSkipped,
 )
@@ -74,7 +72,6 @@ from bzrlib.transform import (
     cook_conflicts,
     _FileMover,
     FinalPaths,
-    get_backup_name,
     resolve_conflicts,
     resolve_checkout,
     ROOT_PARENT,

@@ -24,7 +24,10 @@ from bzrlib import (
     lazy_import,
     osutils,
     )
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    )
 
 
 class InstrumentedReplacer(lazy_import.ScopeReplacer):

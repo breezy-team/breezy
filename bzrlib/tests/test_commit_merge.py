@@ -16,16 +16,13 @@
 
 
 import os
-import shutil
 
 from bzrlib import check, osutils
-from bzrlib.branch import Branch
-from bzrlib.errors import PointlessCommit, BzrError
+from bzrlib.errors import PointlessCommit
 from bzrlib.tests import (
     SymlinkFeature,
     TestCaseWithTransport,
     )
-from bzrlib.tests.test_revision import make_branches
 
 
 class TestCommitMerge(TestCaseWithTransport):

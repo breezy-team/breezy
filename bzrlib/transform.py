@@ -19,10 +19,12 @@ import errno
 from stat import S_ISREG, S_IEXEC
 import time
 
+import bzrlib
 from bzrlib import (
     errors,
     lazy_import,
     registry,
+    tree,
     )
 lazy_import.lazy_import(globals(), """
 from bzrlib import (
@@ -55,15 +57,14 @@ from bzrlib.osutils import (
     sha_file,
     splitpath,
     supports_executable,
-)
+    )
 from bzrlib.progress import ProgressPhase
 from bzrlib.symbol_versioning import (
-        deprecated_function,
-        deprecated_in,
-        deprecated_method,
-        )
+    deprecated_function,
+    deprecated_in,
+    deprecated_method,
+    )
 from bzrlib.trace import warning
-from bzrlib import tree
 
 
 ROOT_PARENT = "root-parent"

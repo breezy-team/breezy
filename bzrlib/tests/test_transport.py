@@ -16,7 +16,6 @@
 
 
 from cStringIO import StringIO
-import os
 import subprocess
 import sys
 import threading

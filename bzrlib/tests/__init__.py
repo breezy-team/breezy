@@ -123,6 +123,93 @@ SUBUNIT_SEEK_CUR = 1
 TestSuite = TestUtil.TestSuite
 TestLoader = TestUtil.TestLoader
 
+# Tests should run in a clean and clearly defined environment. The goal is to
+# keep them isolated from the running environment as mush as possible. The test
+# framework ensures the variables defined below are set (or deleted if the
+# value is None) before a test is run and reset to their original value after
+# the test is run. Generally if some code depends on an environment variable,
+# the tests should start without this variable in the environment. There are a
+# few exceptions but you shouldn't violate this rule lightly.
+isolated_environ = {
+    'BZR_HOME': None,
+    'HOME': None,
+    # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
+    # tests do check our impls match APPDATA
+    'BZR_EDITOR': None, # test_msgeditor manipulates this variable
+    'VISUAL': None,
+    'EDITOR': None,
+    'BZR_EMAIL': None,
+    'BZREMAIL': None, # may still be present in the environment
+    'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
+    'BZR_PROGRESS_BAR': None,
+    'BZR_LOG': None,
+    'BZR_PLUGIN_PATH': None,
+    'BZR_DISABLE_PLUGINS': None,
+    'BZR_PLUGINS_AT': None,
+    'BZR_CONCURRENCY': None,
+    # Make sure that any text ui tests are consistent regardless of
+    # the environment the test case is run in; you may want tests that
+    # test other combinations.  'dumb' is a reasonable guess for tests
+    # going to a pipe or a StringIO.
+    'TERM': 'dumb',
+    'LINES': '25',
+    'COLUMNS': '80',
+    'BZR_COLUMNS': '80',
+    # Disable SSH Agent
+    'SSH_AUTH_SOCK': None,
+    # Proxies
+    'http_proxy': None,
+    'HTTP_PROXY': None,
+    'https_proxy': None,
+    'HTTPS_PROXY': None,
+    'no_proxy': None,
+    'NO_PROXY': None,
+    'all_proxy': None,
+    'ALL_PROXY': None,
+    # Nobody cares about ftp_proxy, FTP_PROXY AFAIK. So far at
+    # least. If you do (care), please update this comment
+    # -- vila 20080401
+    'ftp_proxy': None,
+    'FTP_PROXY': None,
+    'BZR_REMOTE_PATH': None,
+    # Generally speaking, we don't want apport reporting on crashes in
+    # the test envirnoment unless we're specifically testing apport,
+    # so that it doesn't leak into the real system environment.  We
+    # use an env var so it propagates to subprocesses.
+    'APPORT_DISABLE': '1',
+    }
+
+
+def override_os_environ(test, env=None):
+    """Modify os.environ keeping a copy.
+    
+    :param test: A test instance
+
+    :param env: A dict containing variable definitions to be installed
+    """
+    if env is None:
+        env = isolated_environ
+    test._original_os_environ = dict([(var, value)
+                                      for var, value in os.environ.iteritems()])
+    for var, value in env.iteritems():
+        osutils.set_or_unset_env(var, value)
+        if var not in test._original_os_environ:
+            # The var is new, add it with a value of None, so
+            # restore_os_environ will delete it
+            test._original_os_environ[var] = None
+
+
+def restore_os_environ(test):
+    """Restore os.environ to its original state.
+
+    :param test: A test instance previously passed to override_os_environ.
+    """
+    for var, value in test._original_os_environ.iteritems():
+        # Restore the original value (or delete it if the value has been set to
+        # None in override_os_environ).
+        osutils.set_or_unset_env(var, value)
+
+
 class ExtendedTestResult(testtools.TextTestResult):
     """Accepts, reports and accumulates the results of running tests.
 
@@ -794,6 +881,25 @@ class TestUIFactory(TextUIFactory):
         return NullProgressView()
 
 
+def isolated_doctest_setUp(test):
+    override_os_environ(test)
+
+
+def isolated_doctest_tearDown(test):
+    restore_os_environ(test)
+
+
+def IsolatedDocTestSuite(*args, **kwargs):
+    """Overrides doctest.DocTestSuite to handle isolation.
+
+    The method is really a factory and users are expected to use it as such.
+    """
+    
+    kwargs['setUp'] = isolated_doctest_setUp
+    kwargs['tearDown'] = isolated_doctest_tearDown
+    return doctest.DocTestSuite(*args, **kwargs)
+
+
 class TestCase(testtools.TestCase):
     """Base class for bzr unit tests.
 
@@ -835,7 +941,6 @@ class TestCase(testtools.TestCase):
         self.addDetail("log", content.Content(content.ContentType("text",
             "plain", {"charset": "utf8"}),
             lambda:[self._get_log(keep_log_file=True)]))
-        self._old_env = {}
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -1538,60 +1643,8 @@ class TestCase(testtools.TestCase):
         return value
 
     def _cleanEnvironment(self):
-        new_env = {
-            'BZR_HOME': None, # Don't inherit BZR_HOME to all the tests.
-            'HOME': os.getcwd(),
-            # bzr now uses the Win32 API and doesn't rely on APPDATA, but the
-            # tests do check our impls match APPDATA
-            'BZR_EDITOR': None, # test_msgeditor manipulates this variable
-            'VISUAL': None,
-            'EDITOR': None,
-            'BZR_EMAIL': None,
-            'BZREMAIL': None, # may still be present in the environment
-            'EMAIL': 'jrandom@example.com', # set EMAIL as bzr does not guess
-            'BZR_PROGRESS_BAR': None,
-            'BZR_LOG': None,
-            'BZR_PLUGIN_PATH': None,
-            'BZR_DISABLE_PLUGINS': None,
-            'BZR_PLUGINS_AT': None,
-            'BZR_CONCURRENCY': None,
-            # Make sure that any text ui tests are consistent regardless of
-            # the environment the test case is run in; you may want tests that
-            # test other combinations.  'dumb' is a reasonable guess for tests
-            # going to a pipe or a StringIO.
-            'TERM': 'dumb',
-            'LINES': '25',
-            'COLUMNS': '80',
-            'BZR_COLUMNS': '80',
-            # SSH Agent
-            'SSH_AUTH_SOCK': None,
-            # Proxies
-            'http_proxy': None,
-            'HTTP_PROXY': None,
-            'https_proxy': None,
-            'HTTPS_PROXY': None,
-            'no_proxy': None,
-            'NO_PROXY': None,
-            'all_proxy': None,
-            'ALL_PROXY': None,
-            # Nobody cares about ftp_proxy, FTP_PROXY AFAIK. So far at
-            # least. If you do (care), please update this comment
-            # -- vila 20080401
-            'ftp_proxy': None,
-            'FTP_PROXY': None,
-            'BZR_REMOTE_PATH': None,
-            # Generally speaking, we don't want apport reporting on crashes in
-            # the test envirnoment unless we're specifically testing apport,
-            # so that it doesn't leak into the real system environment.  We
-            # use an env var so it propagates to subprocesses.
-            'APPORT_DISABLE': '1',
-        }
-        for name, value in new_env.iteritems():
+        for name, value in isolated_environ.iteritems():
             self.overrideEnv(name, value)
-
-    def _captureVar(self, name, newvalue):
-        """Set an environment variable, and reset it when finished."""
-        self._old_env[name] = osutils.set_or_unset_env(name, newvalue)
 
     def _restoreHooks(self):
         for klass, (name, hooks) in self._preserved_hooks.items():
@@ -3836,13 +3889,7 @@ def _test_suite_modules_to_doctest():
         return []
     return [
         'bzrlib',
-        # FIXME: Fixing bug #690563 revealed an isolation problem in the single
-        # doctest for branchbuilder. Uncomment this when bug #321320 is fixed
-        # to ensure the issue is addressed (note that to reproduce the bug in
-        # the doctest below, one should comment the 'email' config var in
-        # bazaar.conf (or anywhere else). This means an setup where *no* user
-        # is being set at all in the environment.
-#       'bzrlib.branchbuilder',
+        'bzrlib.branchbuilder',
         'bzrlib.decorators',
         'bzrlib.export',
         'bzrlib.inventory',
@@ -3914,8 +3961,8 @@ def test_suite(keep_only=None, starting_with=None):
         try:
             # note that this really does mean "report only" -- doctest
             # still runs the rest of the examples
-            doc_suite = doctest.DocTestSuite(mod,
-                optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
+            doc_suite = IsolatedDocTestSuite(
+                mod, optionflags=doctest.REPORT_ONLY_FIRST_FAILURE)
         except ValueError, e:
             print '**failed to get doctest for: %s\n%s' % (mod, e)
             raise

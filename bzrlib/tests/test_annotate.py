@@ -21,10 +21,7 @@ from cStringIO import StringIO
 
 from bzrlib import (
     annotate,
-    conflicts,
-    errors,
     tests,
-    trace,
     )
 
 

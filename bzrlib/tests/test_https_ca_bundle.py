@@ -19,8 +19,6 @@
 import os
 import sys
 
-import bzrlib
-from bzrlib import osutils
 from bzrlib.tests import (
     TestCaseInTempDir,
     TestSkipped,

@@ -18,7 +18,6 @@
 
 from bzrlib import (
     annotate,
-    _annotator_py,
     errors,
     knit,
     revision,

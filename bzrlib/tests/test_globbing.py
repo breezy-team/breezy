@@ -26,7 +26,6 @@ from bzrlib.globbing import (
     )
 from bzrlib.tests import (
     TestCase,
-    TestCaseInTempDir,
     )
 
 

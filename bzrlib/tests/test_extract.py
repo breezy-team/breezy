@@ -16,7 +16,6 @@
 
 from bzrlib import (
     branch,
-    bzrdir,
     errors,
     )
 from bzrlib.tests import TestCaseWithTransport

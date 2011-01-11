@@ -18,8 +18,15 @@
 
 from cStringIO import StringIO
 
-from bzrlib import config, errors, ignores
-from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
+from bzrlib import (
+    config,
+    ignores,
+    )
+from bzrlib.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    TestCaseWithTransport,
+    )
 
 
 class TestParseIgnoreFile(TestCase):

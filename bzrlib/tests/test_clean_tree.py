@@ -18,7 +18,6 @@
 import errno
 import os
 import shutil
-from StringIO import StringIO
 import sys
 import types
 

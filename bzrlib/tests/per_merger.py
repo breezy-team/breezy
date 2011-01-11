@@ -23,7 +23,6 @@ from bzrlib import (
     errors,
     merge as _mod_merge,
     option,
-    progress,
     )
 from bzrlib.tests import (
     multiply_tests,

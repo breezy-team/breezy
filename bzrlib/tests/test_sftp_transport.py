@@ -18,7 +18,6 @@
 import os
 import socket
 import sys
-import threading
 import time
 
 from bzrlib import (

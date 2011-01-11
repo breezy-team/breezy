@@ -16,7 +16,6 @@
 
 """Tests for bisect_multi."""
 
-from bzrlib import errors
 from bzrlib.bisect_multi import bisect_multi_bytes
 from bzrlib.tests import TestCase
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -3395,7 +3395,8 @@ class GenericInterBranch(InterBranch):
         if local and not bound_location:
             raise errors.LocalRequiresBoundBranch()
         master_branch = None
-        if not local and bound_location and self.source.user_url != bound_location:
+        source_is_master = (self.source.user_url == bound_location)
+        if not local and bound_location and not source_is_master:
             # not pulling from master, so we need to update master.
             master_branch = self.target.get_master_branch(possible_transports)
             master_branch.lock_write()
@@ -3407,7 +3408,8 @@ class GenericInterBranch(InterBranch):
             return self._pull(overwrite,
                 stop_revision, _hook_master=master_branch,
                 run_hooks=run_hooks,
-                _override_hook_target=_override_hook_target)
+                _override_hook_target=_override_hook_target,
+                merge_tags_to_master=not source_is_master)
         finally:
             if master_branch:
                 master_branch.unlock()
@@ -3480,7 +3482,8 @@ class GenericInterBranch(InterBranch):
 
     def _pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, _hook_master=None, run_hooks=True,
-             _override_hook_target=None, local=False):
+             _override_hook_target=None, local=False,
+             merge_tags_to_master=True):
         """See Branch.pull.
 
         This function is the core worker, used by GenericInterBranch.pull to
@@ -3521,7 +3524,7 @@ class GenericInterBranch(InterBranch):
             # so a tags implementation that versions tags can only 
             # pull in the most recent changes. -- JRV20090506
             result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
-                overwrite)
+                overwrite, ignore_master=not merge_tags_to_master)
             result.new_revno, result.new_revid = self.target.last_revision_info()
             if _hook_master:
                 result.master_branch = _hook_master

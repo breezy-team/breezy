@@ -19,8 +19,6 @@
 import os
 import sys
 import subprocess
-import shutil
-from tempfile import TemporaryFile
 
 import bzrlib
 from bzrlib.tests import TestCase, TestSkipped

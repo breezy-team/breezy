@@ -23,10 +23,9 @@ from bzrlib import (
     xml6,
     xml7,
     xml8,
-    serializer,
     )
 from bzrlib.tests import TestCase
-from bzrlib.inventory import Inventory, InventoryEntry
+from bzrlib.inventory import Inventory
 from bzrlib.xml4 import serializer_v4
 import bzrlib.xml5
 

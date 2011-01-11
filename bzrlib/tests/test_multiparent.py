@@ -17,7 +17,6 @@
 from unittest import TestCase
 
 from bzrlib import (
-    knit,
     multiparent,
     patiencediff,
     tests,
