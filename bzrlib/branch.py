@@ -1380,13 +1380,8 @@ class Branch(controldir.ControlComponent):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
-        if isinstance(self.bzrdir, bzrdir.BzrDirPreSplitOut):
-            from bzrlib.repofmt import weaverepo
-            format = bzrdir.BzrDirMetaFormat1()
-            format.repository_format = weaverepo.RepositoryFormat7()
-        else:
-            format = self.repository.bzrdir.checkout_metadir()
-            format.set_branch_format(self._format)
+        format = self.repository.bzrdir.checkout_metadir()
+        format.set_branch_format(self._format)
         return format
 
     def create_clone_on_transport(self, to_transport, revision_id=None,
@@ -2057,7 +2052,7 @@ class BzrBranchFormat4(BranchFormat):
             raise NotImplementedError
         if found_repository is None:
             found_repository = a_bzrdir.open_repository()
-        return BzrBranch(_format=self,
+        return BzrBranchPreSplitOut(_format=self,
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
                          name=name,
@@ -2696,6 +2691,19 @@ class BzrBranch(Branch, _RelockDebugMixin):
         else:
             self._transport.put_bytes('parent', url + '\n',
                 mode=self.bzrdir._get_file_mode())
+
+
+class BzrBranchPreSplitOut(BzrBranch):
+
+    def _get_checkout_format(self):
+        """Return the most suitable metadir for a checkout of this branch.
+        Weaves are used if this branch's repository uses weaves.
+        """
+        from bzrlib.repofmt.weaverepo import RepositoryFormat7
+        from bzrlib.bzrdir import BzrDirMetaFormat1
+        format = BzrDirMetaFormat1()
+        format.repository_format = RepositoryFormat7()
+        return format
 
 
 class BzrBranch5(BzrBranch):
