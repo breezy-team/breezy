@@ -31,9 +31,15 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Changelog, Version
 
-from bzrlib.plugins.builddeb.config import DebBuildConfig
+from bzrlib.plugins.builddeb.config import (
+    DebBuildConfig,
+    BUILD_TYPE_MERGE,
+    BUILD_TYPE_NATIVE,
+    BUILD_TYPE_NORMAL,
+    )
 from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
                 AddChangelogError,
+                InconsistentSourceFormatError,
                 NoPreviousUpload,
                 UnknownDistribution,
                 )
@@ -51,6 +57,7 @@ from bzrlib.plugins.builddeb.util import (
                   get_commit_info_from_changelog,
                   get_snapshot_revision,
                   get_source_format,
+                  guess_build_type,
                   lookup_distribution,
                   move_file_if_different,
                   get_parent_dir,
@@ -794,3 +801,64 @@ class SourceFormatTests(TestCaseWithTransport):
             ("debian/source/format", "3.0 (quilt)")])
         tree.add(["debian", "debian/source", "debian/source/format"])
         self.assertEquals("3.0 (quilt)", get_source_format(tree))
+
+
+class GuessBuildTypeTests(TestCaseWithTransport):
+    """Tests for guess_build_type."""
+
+    def writeVersionFile(self, tree, format_string):
+        """Write a Debian source format file.
+
+        :param tree: Tree to write to.
+        :param format_string: Format string to write.
+        """
+        self.build_tree_contents([("debian/",), ("debian/source/",),
+            ("debian/source/format", format_string)])
+        tree.add(["debian", "debian/source", "debian/source/format"])
+
+    def test_normal_source_format(self):
+        # Normal source format -> NORMAL
+        tree = self.make_branch_and_tree('.')
+        self.writeVersionFile(tree, "3.0 (quilt)")
+        self.assertEquals(BUILD_TYPE_NORMAL, guess_build_type(tree, None, True))
+
+    def test_normal_source_format_merge(self):
+        # Normal source format without upstream source -> MERGE
+        tree = self.make_branch_and_tree('.')
+        self.writeVersionFile(tree, "3.0 (quilt)")
+        self.assertEquals(BUILD_TYPE_MERGE, guess_build_type(tree, None, False))
+
+    def test_native_source_format(self):
+        # Native source format -> NATIVE
+        tree = self.make_branch_and_tree('.')
+        self.writeVersionFile(tree, "3.0 (native)")
+        self.assertEquals(BUILD_TYPE_NATIVE, guess_build_type(tree, None, True))
+
+    def test_prev_version_native(self):
+        # Native package version -> NATIVE
+        tree = self.make_branch_and_tree('.')
+        self.assertEquals(BUILD_TYPE_NATIVE,
+            guess_build_type(tree, Version("1.0"), True))
+
+    def test_no_upstream_source(self):
+        # No upstream source code and a non-native package -> MERGE
+        tree = self.make_branch_and_tree('.')
+        self.assertEquals(BUILD_TYPE_MERGE,
+            guess_build_type(tree, Version("1.0-1"), False))
+
+    def test_default(self):
+        # Upstream source code and a non-native package -> NORMAL
+        tree = self.make_branch_and_tree('.')
+        self.assertEquals(BUILD_TYPE_NORMAL,
+            guess_build_type(tree, Version("1.0-1"), True))
+
+    def test_inconsistent(self):
+        # If version string and source format disagree on whether the package is native,
+        # raise an exception.
+        tree = self.make_branch_and_tree('.')
+        self.writeVersionFile(tree, "3.0 (native)")
+        e = self.assertRaises(InconsistentSourceFormatError, guess_build_type, tree,
+            Version("1.0-1"), True)
+        self.assertEquals(
+            "Inconsistency between source format and version: version is not native, "
+            "format is native.", str(e))
