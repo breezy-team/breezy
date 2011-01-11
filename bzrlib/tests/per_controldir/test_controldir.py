@@ -44,7 +44,6 @@ from bzrlib.ui import (
     CannedInputUIFactory,
     )
 from bzrlib.remote import RemoteBzrDir, RemoteRepository
-from bzrlib.repofmt import weaverepo
 
 
 class TestControlDir(TestCaseWithControlDir):
@@ -1207,8 +1206,10 @@ class TestControlDir(TestCaseWithControlDir):
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
         # repositories, or it supports anonymous  repository formats, but not both.
-        anonymous_format = weaverepo.RepositoryFormat6()
-        identifiable_format = weaverepo.RepositoryFormat7()
+        from bzrlib.plugins.weave_fmt.repository import (
+            RepositoryFormat6, RepositoryFormat7)
+        anonymous_format = RepositoryFormat6()
+        identifiable_format = RepositoryFormat7()
         try:
             found_transport = dir.get_repository_transport(anonymous_format)
             self.assertRaises(errors.IncompatibleFormat,

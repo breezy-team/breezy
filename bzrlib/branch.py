@@ -1380,10 +1380,11 @@ class Branch(controldir.ControlComponent):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
-        if isinstance(self.bzrdir, bzrdir.BzrDirPreSplitOut):
-            from bzrlib.repofmt import weaverepo
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirPreSplitOut
+        if isinstance(self.bzrdir, BzrDirPreSplitOut):
+            from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
             format = bzrdir.BzrDirMetaFormat1()
-            format.repository_format = weaverepo.RepositoryFormat7()
+            format.repository_format = RepositoryFormat7()
         else:
             format = self.repository.bzrdir.checkout_metadir()
             format.set_branch_format(self._format)
@@ -2018,55 +2019,6 @@ class SwitchHookParams(object):
             self.revision_id)
 
 
-class BzrBranchFormat4(BranchFormat):
-    """Bzr branch format 4.
-
-    This format has:
-     - a revision-history file.
-     - a branch-lock lock file [ to be shared with the bzrdir ]
-    """
-
-    def get_format_description(self):
-        """See BranchFormat.get_format_description()."""
-        return "Branch format 4"
-
-    def initialize(self, a_bzrdir, name=None, repository=None):
-        """Create a branch of this format in a_bzrdir."""
-        if repository is not None:
-            raise NotImplementedError(
-                "initialize(repository=<not None>) on %r" % (self,))
-        utf8_files = [('revision-history', ''),
-                      ('branch-name', ''),
-                      ]
-        return self._initialize_helper(a_bzrdir, utf8_files, name=name,
-                                       lock_type='branch4', set_format=False)
-
-    def __init__(self):
-        super(BzrBranchFormat4, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat6()
-
-    def network_name(self):
-        """The network name for this format is the control dirs disk label."""
-        return self._matchingbzrdir.get_format_string()
-
-    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
-            found_repository=None):
-        """See BranchFormat.open()."""
-        if not _found:
-            # we are being called directly and must probe.
-            raise NotImplementedError
-        if found_repository is None:
-            found_repository = a_bzrdir.open_repository()
-        return BzrBranch(_format=self,
-                         _control_files=a_bzrdir._control_files,
-                         a_bzrdir=a_bzrdir,
-                         name=name,
-                         _repository=found_repository)
-
-    def __str__(self):
-        return "Bazaar-NG branch format 4"
-
-
 class BranchFormatMetadir(BranchFormat):
     """Common logic for meta-dir based branch formats."""
 
@@ -2384,10 +2336,6 @@ BranchFormat.register_format(__format6)
 BranchFormat.register_format(__format7)
 BranchFormat.register_format(__format8)
 BranchFormat.set_default_format(__format7)
-_legacy_formats = [BzrBranchFormat4(),
-    ]
-network_format_registry.register(
-    _legacy_formats[0].network_name(), _legacy_formats[0].__class__)
 
 
 class BranchWriteLockResult(LogicalLockResult):

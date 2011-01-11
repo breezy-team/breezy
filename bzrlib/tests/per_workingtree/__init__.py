@@ -69,8 +69,8 @@ class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
 
 def workingtree_formats():
     """The known working tree formats."""
-    return (workingtree.WorkingTreeFormat._formats.values() +
-        workingtree._legacy_formats)
+    from bzrlib.plugins.weave_fmt.workingtree import _legacy_formats as weave_formats
+    return (workingtree.WorkingTreeFormat._formats.values() + weave_formats)
 
 
 def load_tests(standard_tests, module, loader):

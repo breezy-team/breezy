@@ -19,7 +19,10 @@ import os
 from bzrlib import errors, tests, workingtree, workingtree_4
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
-TREES_NOT_SUPPORTING_REFERENCES = (workingtree.WorkingTree2,
+from bzrlib.plugins.weave_fmt.workingtree import WorkingTree2
+
+
+TREES_NOT_SUPPORTING_REFERENCES = (WorkingTree2,
                                    workingtree.WorkingTree3,
                                    workingtree_4.WorkingTree4)
 

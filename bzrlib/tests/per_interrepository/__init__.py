@@ -69,7 +69,6 @@ def default_test_list():
         groupcompress_repo,
         knitrepo,
         pack_repo,
-        weaverepo,
         )
     result = []
     def add_combo(label, from_format, to_format, extra_setup=None):
@@ -93,8 +92,9 @@ def default_test_list():
     def force_known_graph(testcase):
         from bzrlib.fetch import Inter1and2Helper
         testcase.overrideAttr(Inter1and2Helper, 'known_graph_threshold', -1)
+    from bzrlib.plugins.weave_fmt.repository import RepositoryFormat5
     add_combo('InterRepository',
-              weaverepo.RepositoryFormat5(),
+              RepositoryFormat5(),
               knitrepo.RepositoryFormatKnit3())
     add_combo('InterRepository',
               knitrepo.RepositoryFormatKnit1(),

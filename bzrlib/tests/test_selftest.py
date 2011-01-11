@@ -57,7 +57,6 @@ from bzrlib import (
 from bzrlib.repofmt import (
     groupcompress_repo,
     pack_repo,
-    weaverepo,
     )
 from bzrlib.symbol_versioning import (
     deprecated_function,
@@ -561,7 +560,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
     def test_make_branch_and_memory_tree_with_format(self):
         """make_branch_and_memory_tree should accept a format option."""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = weaverepo.RepositoryFormat7()
+        format.repository_format = repository.RepositoryFormat.get_default_format()
         tree = self.make_branch_and_memory_tree('dir', format=format)
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
@@ -581,7 +580,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         # Use a repo layout that doesn't conform to a 'named' layout, to ensure
         # that the format objects are used.
         format = bzrdir.BzrDirMetaFormat1()
-        repo_format = weaverepo.RepositoryFormat7()
+        repo_format = repository.RepositoryFormat.get_default_format()
         format.repository_format = repo_format
         builder = self.make_branch_builder('dir', format=format)
         the_branch = builder.get_branch()

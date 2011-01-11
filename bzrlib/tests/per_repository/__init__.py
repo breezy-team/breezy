@@ -28,9 +28,6 @@ from bzrlib import (
     repository,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.repofmt import (
-    weaverepo,
-    )
 from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
 from bzrlib.tests import (
     default_transport,
@@ -75,7 +72,8 @@ def all_repository_format_scenarios():
     """
     registry = repository.format_registry
     all_formats = [registry.get(k) for k in registry.keys()]
-    all_formats.extend(weaverepo._legacy_formats)
+    from bzrlib.plugins.weave_fmt.repository import _legacy_formats as weave_formats
+    all_formats.extend(weave_formats)
     # format_scenarios is all the implementations of Repository; i.e. all disk
     # formats plus RemoteRepository.
     format_scenarios = formats_to_scenarios(

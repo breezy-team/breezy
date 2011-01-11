@@ -3231,32 +3231,11 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         return self.get_format_string()
 
 
-# Pre-0.8 formats that don't have a disk format string (because they are
-# versioned by the matching control directory). We use the control directories
-# disk format string as a key for the network_name because they meet the
-# constraints (simple string, unique, immutable).
-network_format_registry.register_lazy(
-    "Bazaar-NG branch, format 5\n",
-    'bzrlib.repofmt.weaverepo',
-    'RepositoryFormat5',
-)
-network_format_registry.register_lazy(
-    "Bazaar-NG branch, format 6\n",
-    'bzrlib.repofmt.weaverepo',
-    'RepositoryFormat6',
-)
-
 # formats which have no format string are not discoverable or independently
 # creatable on disk, so are not registered in format_registry.  They're
-# all in bzrlib.repofmt.weaverepo now.  When an instance of one of these is
+# all in bzrlib.repofmt.knitreponow.  When an instance of one of these is
 # needed, it's constructed directly by the BzrDir.  Non-native formats where
 # the repository is not separately opened are similar.
-
-format_registry.register_lazy(
-    'Bazaar-NG Repository format 7',
-    'bzrlib.repofmt.weaverepo',
-    'RepositoryFormat7'
-    )
 
 format_registry.register_lazy(
     'Bazaar-NG Knit Repository Format 1',

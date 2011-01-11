@@ -83,7 +83,8 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
 
     def make_obsolete_repo(self, path):
         # We don't want the deprecation raising during the repo creation
-        tree = self.make_branch_and_tree(path, format=bzrdir.BzrDirFormat5())
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5
+        tree = self.make_branch_and_tree(path, format=BzrDirFormat5())
         return tree
 
     def check_warning(self, present):

@@ -60,7 +60,6 @@ from bzrlib.repofmt import (
     groupcompress_repo,
     knitrepo,
     pack_repo,
-    weaverepo,
     )
 
 
@@ -131,7 +130,8 @@ class TestRepositoryFormat(TestCaseWithTransport):
             t = get_transport(url)
             found_format = repository.RepositoryFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
-        check_format(weaverepo.RepositoryFormat7(), "bar")
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        check_format(RepositoryFormat7(), "bar")
 
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -167,24 +167,28 @@ class TestFormat6(TestCaseWithTransport):
     def test_attribute__fetch_order(self):
         """Weaves need topological data insertion."""
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat6
+        repo = RepositoryFormat6().initialize(control)
         self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Weaves do not reuse deltas."""
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat6
+        repo = RepositoryFormat6().initialize(control)
         self.assertEqual(False, repo._format._fetch_uses_deltas)
 
     def test_attribute__fetch_reconcile(self):
         """Weave repositories need a reconcile after fetch."""
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat6
+        repo = RepositoryFormat6().initialize(control)
         self.assertEqual(True, repo._format._fetch_reconcile)
 
     def test_no_ancestry_weave(self):
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat6
+        repo = RepositoryFormat6().initialize(control)
         # We no longer need to create the ancestry.weave file
         # since it is *never* used.
         self.assertRaises(NoSuchFile,
@@ -193,7 +197,8 @@ class TestFormat6(TestCaseWithTransport):
 
     def test_supports_external_lookups(self):
         control = bzrdir.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat6
+        repo = RepositoryFormat6().initialize(control)
         self.assertFalse(repo._format.supports_external_lookups)
 
 
@@ -202,24 +207,28 @@ class TestFormat7(TestCaseWithTransport):
     def test_attribute__fetch_order(self):
         """Weaves need topological data insertion."""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        repo = RepositoryFormat7().initialize(control)
         self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Weaves do not reuse deltas."""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        repo = RepositoryFormat7().initialize(control)
         self.assertEqual(False, repo._format._fetch_uses_deltas)
 
     def test_attribute__fetch_reconcile(self):
         """Weave repositories need a reconcile after fetch."""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        repo = RepositoryFormat7().initialize(control)
         self.assertEqual(True, repo._format._fetch_reconcile)
 
     def test_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        repo = RepositoryFormat7().initialize(control)
         # in case of side effects of locking.
         repo.lock_write()
         repo.unlock()
@@ -267,7 +276,8 @@ class TestFormat7(TestCaseWithTransport):
 
     def test_shared_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        repo = RepositoryFormat7().initialize(control, shared=True)
         # we want:
         # format 'Bazaar-NG Repository format 7'
         # inventory.weave == empty_weave
@@ -290,7 +300,8 @@ class TestFormat7(TestCaseWithTransport):
     def test_creates_lockdir(self):
         """Make sure it appears to be controlled by a LockDir existence"""
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        repo = RepositoryFormat7().initialize(control, shared=True)
         t = control.get_repository_transport(None)
         # TODO: Should check there is a 'lock' toplevel directory,
         # regardless of contents
@@ -306,7 +317,8 @@ class TestFormat7(TestCaseWithTransport):
         """repo format 7 actually locks on lockdir"""
         base_url = self.get_url()
         control = bzrdir.BzrDirMetaFormat1().initialize(base_url)
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        repo = RepositoryFormat7().initialize(control, shared=True)
         t = control.get_repository_transport(None)
         repo.lock_write()
         repo.unlock()
@@ -320,7 +332,8 @@ class TestFormat7(TestCaseWithTransport):
 
     def test_shared_no_tree_disk_layout(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        repo = RepositoryFormat7().initialize(control, shared=True)
         repo.set_make_working_trees(False)
         # we want:
         # format 'Bazaar-NG Repository format 7'
@@ -346,7 +359,8 @@ class TestFormat7(TestCaseWithTransport):
 
     def test_supports_external_lookups(self):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        repo = RepositoryFormat7().initialize(control)
         self.assertFalse(repo._format.supports_external_lookups)
 
 
@@ -577,16 +591,19 @@ class TestInterWeaveRepo(TestCaseWithTransport):
     def test_is_compatible_and_registered(self):
         # InterWeaveRepo is compatible when either side
         # is a format 5/6/7 branch
-        from bzrlib.repofmt import knitrepo, weaverepo
-        formats = [weaverepo.RepositoryFormat5(),
-                   weaverepo.RepositoryFormat6(),
-                   weaverepo.RepositoryFormat7()]
-        incompatible_formats = [weaverepo.RepositoryFormat4(),
+        from bzrlib.repofmt import knitrepo
+        from bzrlib.plugins.weave_fmt.repository import (
+            InterWeaveRepo, RepositoryFormat4, RepositoryFormat5,
+            RepositoryFormat6, RepositoryFormat7)
+        formats = [RepositoryFormat5(),
+                   RepositoryFormat6(),
+                   RepositoryFormat7()]
+        incompatible_formats = [RepositoryFormat4(),
                                 knitrepo.RepositoryFormatKnit1(),
                                 ]
         repo_a = self.make_repository('a')
         repo_b = self.make_repository('b')
-        is_compatible = weaverepo.InterWeaveRepo.is_compatible
+        is_compatible = InterWeaveRepo.is_compatible
         for source in incompatible_formats:
             # force incompatible left then right
             repo_a._format = source
@@ -598,7 +615,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
             for target in formats:
                 repo_b._format = target
                 self.assertTrue(is_compatible(repo_a, repo_b))
-        self.assertEqual(weaverepo.InterWeaveRepo,
+        self.assertEqual(InterWeaveRepo,
                          repository.InterRepository.get(repo_a,
                                                         repo_b).__class__)
 
@@ -606,10 +623,11 @@ class TestInterWeaveRepo(TestCaseWithTransport):
 class TestRepositoryConverter(TestCaseWithTransport):
 
     def test_convert_empty(self):
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
         t = get_transport(self.get_url('.'))
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
-        repo = weaverepo.RepositoryFormat7().initialize(repo_dir)
+        repo = RepositoryFormat7().initialize(repo_dir)
         target_format = knitrepo.RepositoryFormatKnit1()
         converter = repository.CopyConverter(target_format)
         pb = bzrlib.ui.ui_factory.nested_progress_bar()

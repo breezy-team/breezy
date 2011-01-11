@@ -62,7 +62,11 @@ from bzrlib.versionedfile import (
     FulltextContentFactory,
     VersionedFiles,
     )
-
+from bzrlib.plugins.weave_fmt.bzrdir import (
+    BzrDirFormat4,
+    BzrDirFormat5,
+    BzrDirFormat6,
+    )
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
@@ -339,7 +343,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
     has been removed.
     """
 
-    _matchingbzrdir = bzrdir.BzrDirFormat4()
+    _matchingbzrdir = BzrDirFormat4()
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -387,7 +391,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = bzrdir.BzrDirFormat5()
+    _matchingbzrdir = BzrDirFormat5()
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -432,7 +436,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = bzrdir.BzrDirFormat6()
+    _matchingbzrdir = BzrDirFormat6()
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -743,9 +747,6 @@ class SignatureTextStore(TextVersionedFiles):
 
 class InterWeaveRepo(InterSameDataRepository):
     """Optimised code paths between Weave based repositories.
-
-    This should be in bzrlib/repofmt/weaverepo.py but we have not yet
-    implemented lazy inter-object optimisation.
     """
 
     @classmethod

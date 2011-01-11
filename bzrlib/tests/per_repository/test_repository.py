@@ -41,7 +41,6 @@ from bzrlib import (
     )
 from bzrlib.repofmt import (
     pack_repo,
-    weaverepo,
     )
 from bzrlib.tests import (
     per_repository,
@@ -854,7 +853,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_sprout_from_hpss_preserves_format(self):
         """repo.sprout from a smart server preserves the repository format."""
-        if self.repository_format == weaverepo.RepositoryFormat7():
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        if self.repository_format == RepositoryFormat7():
             raise tests.TestNotApplicable(
                 "Cannot fetch weaves over smart protocol.")
         remote_repo = self.make_remote_repository('remote')
@@ -871,9 +871,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_sprout_branch_from_hpss_preserves_repo_format(self):
         """branch.sprout from a smart server preserves the repository format.
         """
-        weave_formats = [weaverepo.RepositoryFormat5(),
-                         weaverepo.RepositoryFormat6(),
-                         weaverepo.RepositoryFormat7()]
+        from bzrlib.plugins.weave_fmt.repository import (
+            RepositoryFormat5, RepositoryFormat6, RepositoryFormat7)
+        weave_formats = [RepositoryFormat5(),
+                         RepositoryFormat6(),
+                         RepositoryFormat7()]
         if self.repository_format in weave_formats:
             raise tests.TestNotApplicable(
                 "Cannot fetch weaves over smart protocol.")
@@ -893,9 +895,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
         """branch.sprout from a smart server preserves the repository format of
         a branch from a shared repository.
         """
-        weave_formats = [weaverepo.RepositoryFormat5(),
-                         weaverepo.RepositoryFormat6(),
-                         weaverepo.RepositoryFormat7()]
+        from bzrlib.plugins.weave_fmt.repository import (
+            RepositoryFormat5, RepositoryFormat6, RepositoryFormat7)
+        weave_formats = [RepositoryFormat5(),
+                         RepositoryFormat6(),
+                         RepositoryFormat7()]
         if self.repository_format in weave_formats:
             raise tests.TestNotApplicable(
                 "Cannot fetch weaves over smart protocol.")
@@ -922,8 +926,12 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual(remote_backing_repo._format, local_repo._format)
 
     def test_clone_to_hpss(self):
-        pre_metadir_formats = [weaverepo.RepositoryFormat5(),
-                               weaverepo.RepositoryFormat6()]
+        from bzrlib.plugins.weave_fmt.repository import (
+            RepositoryFormat5,
+            RepositoryFormat6,
+            )
+        pre_metadir_formats = [RepositoryFormat5(),
+                               RepositoryFormat6()]
         if self.repository_format in pre_metadir_formats:
             raise tests.TestNotApplicable(
                 "Cannot lock pre_metadir_formats remotely.")

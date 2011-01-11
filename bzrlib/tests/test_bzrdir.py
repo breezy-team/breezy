@@ -63,7 +63,7 @@ from bzrlib.transport import (
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.nosmart import NoSmartTransportDecorator
 from bzrlib.transport.readonly import ReadonlyTransportDecorator
-from bzrlib.repofmt import knitrepo, weaverepo, pack_repo
+from bzrlib.repofmt import knitrepo, pack_repo
 
 
 class TestDefaultFormat(TestCase):
@@ -933,8 +933,9 @@ class TestMeta1DirFormat(TestCaseWithTransport):
                          dir.get_branch_transport(bzrlib.branch.BzrBranchFormat5()).base)
         repository_base = t.clone('repository').base
         self.assertEqual(repository_base, dir.get_repository_transport(None).base)
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
         self.assertEqual(repository_base,
-                         dir.get_repository_transport(weaverepo.RepositoryFormat7()).base)
+                         dir.get_repository_transport(RepositoryFormat7()).base)
         checkout_base = t.clone('checkout').base
         self.assertEqual(checkout_base, dir.get_workingtree_transport(None).base)
         self.assertEqual(checkout_base,

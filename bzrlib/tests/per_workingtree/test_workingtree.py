@@ -39,8 +39,10 @@ from bzrlib.tests import TestSkipped, TestNotApplicable
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 from bzrlib.trace import mutter
 from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree, WorkingTree2)
+                                WorkingTree)
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
+
+from bzrlib.plugins.weave_fmt.workingtree import WorkingTree2
 
 
 class TestWorkingTree(TestCaseWithWorkingTree):
