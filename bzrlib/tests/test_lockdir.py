@@ -16,7 +16,6 @@
 
 """Tests for LockDir"""
 
-from cStringIO import StringIO
 import os
 from threading import Thread, Lock
 import time
@@ -34,12 +33,14 @@ from bzrlib.errors import (
     LockBreakMismatch,
     LockBroken,
     LockContention,
-    LockError,
     LockFailed,
     LockNotHeld,
     )
 from bzrlib.lockdir import LockDir
-from bzrlib.tests import (features, TestCaseWithTransport)
+from bzrlib.tests import (
+    features,
+    TestCaseWithTransport,
+    )
 from bzrlib.trace import note
 
 # These tests sometimes use threads to test the behaviour of lock files with

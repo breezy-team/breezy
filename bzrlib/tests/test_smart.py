@@ -25,15 +25,11 @@ Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
 import bz2
-from cStringIO import StringIO
-import tarfile
 
 from bzrlib import (
-    bencode,
     branch as _mod_branch,
     bzrdir,
     errors,
-    pack,
     tests,
     transport,
     urlutils,
@@ -45,7 +41,6 @@ from bzrlib.smart import (
     repository as smart_repo,
     packrepository as smart_packrepo,
     request as smart_req,
-    server,
     vfs,
     )
 from bzrlib.tests import test_server

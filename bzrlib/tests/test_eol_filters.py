@@ -19,7 +19,6 @@
 
 from bzrlib import (
     errors,
-    rules,
     )
 from bzrlib.filters import _get_filter_stack_for
 from bzrlib.filters.eol import (

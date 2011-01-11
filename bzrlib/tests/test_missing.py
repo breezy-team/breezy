@@ -14,9 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
-
-
 from bzrlib import (
     missing,
     tests,
@@ -25,7 +22,6 @@ from bzrlib.missing import (
     iter_log_revisions,
     )
 from bzrlib.tests import TestCaseWithTransport
-from bzrlib.workingtree import WorkingTree
 
 
 class TestMissing(TestCaseWithTransport):

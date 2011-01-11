@@ -16,7 +16,6 @@
 
 """Tests for BzrLibraryState."""
 
-import bzrlib
 from bzrlib import (
     library_state,
     tests,

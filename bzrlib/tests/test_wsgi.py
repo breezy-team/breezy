@@ -19,7 +19,7 @@
 from cStringIO import StringIO
 
 from bzrlib import tests
-from bzrlib.smart import medium, message, protocol
+from bzrlib.smart import medium, protocol
 from bzrlib.transport.http import wsgi
 from bzrlib.transport import chroot, memory
 

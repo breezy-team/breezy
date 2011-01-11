@@ -15,15 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import os
 from StringIO import StringIO
 
-from bzrlib import errors
 from bzrlib.progress import (
     ProgressTask,
-    )
-from bzrlib.symbol_versioning import (
-    deprecated_in,
     )
 from bzrlib.tests import TestCase
 from bzrlib.ui.text import (

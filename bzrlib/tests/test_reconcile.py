@@ -23,9 +23,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.reconcile import reconcile, Reconciler
-from bzrlib.revision import Revision
 from bzrlib.tests import per_repository
-from bzrlib.workingtree import WorkingTree
 
 
 class TestWorksWithSharedRepositories(per_repository.TestCaseWithRepository):

@@ -21,7 +21,6 @@ from cStringIO import StringIO
 import os
 
 from bzrlib import (
-    add,
     errors,
     )
 from bzrlib.status import show_tree_status

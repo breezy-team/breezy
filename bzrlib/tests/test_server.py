@@ -17,7 +17,6 @@
 import errno
 import socket
 import SocketServer
-import select
 import sys
 import threading
 

@@ -19,7 +19,6 @@
 These tests are repeated for all pack-based repository formats.
 """
 
-from cStringIO import StringIO
 from stat import S_ISDIR
 
 from bzrlib.btree_index import BTreeGraphIndex
@@ -29,35 +28,24 @@ from bzrlib import (
     errors,
     inventory,
     osutils,
-    progress,
     repository,
     revision as _mod_revision,
-    symbol_versioning,
     tests,
     ui,
-    upgrade,
-    workingtree,
-    )
-from bzrlib.repofmt import (
-    pack_repo,
-    groupcompress_repo,
     )
 from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 from bzrlib.smart import (
     client,
     )
 from bzrlib.tests import (
-    TestCase,
     TestCaseWithTransport,
     TestNotApplicable,
-    TestSkipped,
     )
 from bzrlib.transport import (
     get_transport,
     memory,
     )
 from bzrlib.tests import test_server
-from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestPackRepository(TestCaseWithTransport):

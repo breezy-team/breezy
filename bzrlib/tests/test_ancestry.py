@@ -15,12 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from cStringIO import StringIO
-import os
-import sys
-
 from bzrlib.tests import TestCaseWithMemoryTransport
-from bzrlib.branch import Branch
 from bzrlib.branchbuilder import BranchBuilder
 
 

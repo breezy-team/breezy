@@ -23,7 +23,6 @@ from unicodedata import normalize
 from bzrlib import osutils
 from bzrlib.osutils import pathjoin
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.workingtree import WorkingTree
 
 
 class NonAsciiTest(TestCaseWithTransport):

@@ -26,7 +26,6 @@ from bzrlib import (
     config,
     crash,
     osutils,
-    symbol_versioning,
     tests,
     )
 

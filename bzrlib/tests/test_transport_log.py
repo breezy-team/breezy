@@ -18,8 +18,6 @@
 """Tests for log+ transport decorator."""
 
 
-import types
-
 from bzrlib import transport
 from bzrlib.tests import TestCaseWithMemoryTransport
 from bzrlib.trace import mutter

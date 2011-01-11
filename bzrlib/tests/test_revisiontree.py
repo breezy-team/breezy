@@ -21,8 +21,6 @@ from bzrlib import (
     errors,
     revision,
     )
-import bzrlib
-from bzrlib.inventory import ROOT_ID
 from bzrlib.tests import TestCaseWithTransport
 
 

@@ -19,7 +19,6 @@
 from bzrlib import (
     errors,
     revision,
-    tests,
     tree as _mod_tree,
     )
 from bzrlib.tests import TestCaseWithTransport

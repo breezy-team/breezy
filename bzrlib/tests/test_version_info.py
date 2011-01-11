@@ -24,7 +24,6 @@ import sys
 from bzrlib import (
     errors,
     registry,
-    symbol_versioning,
     tests,
     version_info_formats,
     )

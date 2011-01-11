@@ -17,13 +17,9 @@
 
 """Tests for the behaviour of the Transaction concept in bzr."""
 
-# import system imports here
-import os
-import sys
-
 #import bzrlib specific imports here
 import bzrlib.errors as errors
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase
 import bzrlib.transactions as transactions
 
 

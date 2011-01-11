@@ -18,7 +18,6 @@
 
 
 import cPickle
-import os
 import threading
 
 import bzrlib

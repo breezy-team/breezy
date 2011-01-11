@@ -25,7 +25,7 @@ from bzrlib import (
     merge as _mod_merge,
     switch,
     tests,
-)
+    )
 
 
 class TestSwitch(tests.TestCaseWithTransport):

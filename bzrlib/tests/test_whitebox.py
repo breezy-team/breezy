@@ -15,13 +15,11 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import unittest
 
 from bzrlib import (
     osutils,
     )
-from bzrlib.tests import TestCaseWithTransport, TestCase
-from bzrlib.branch import Branch
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.errors import PathNotChild
 from bzrlib.osutils import relpath, pathjoin, abspath, realpath
 

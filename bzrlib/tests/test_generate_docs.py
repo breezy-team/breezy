@@ -23,7 +23,7 @@ and produce non-empty output.
 from cStringIO import StringIO
 
 import bzrlib.commands
-from bzrlib.tests import TestCase, TestSkipped
+from bzrlib.tests import TestCase
 
 
 class Options:

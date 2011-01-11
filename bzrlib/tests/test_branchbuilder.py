@@ -18,7 +18,6 @@
 
 from bzrlib import (
     branch as _mod_branch,
-    errors,
     revision as _mod_revision,
     tests,
     )
