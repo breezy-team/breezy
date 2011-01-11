@@ -35,6 +35,9 @@ Improvements
   once.  This avoids some unnecessary IO, and removes a network roundtrip
   when doing ``bzr branch`` to a smart server URL.  (Andrew Bennetts)
 
+* ``bzr modified`` now read-locks the working tree (and branch and
+  repository) just once.  (Andrew Bennetts)
+  
 * ``bzr resolve`` now accepts ``--take-this`` and ``--take-other`` actions
   for text conflicts. This *replace* the whole file with the content
   designated by the action. This will *ignore* all differences that would
@@ -58,6 +61,10 @@ Bug Fixes
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* ``bzr update`` in a checkout of a readonly branch works again, without
+  trying to set the tags in the master branch. This had been broken by the
+  bug fix for bug #603395.  (John Arbash Meinel, #701212)
 
 * Stop using ``bzrlib.tuned_gzip.GzipFile``. It is incompatible with
   python-2.7 and was only used for Knit format repositories, which haven't
