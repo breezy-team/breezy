@@ -35,6 +35,9 @@ Improvements
   once.  This avoids some unnecessary IO, and removes a network roundtrip
   when doing ``bzr branch`` to a smart server URL.  (Andrew Bennetts)
 
+* ``bzr modified`` now read-locks the working tree (and branch and
+  repository) just once.  (Andrew Bennetts)
+  
 * ``bzr resolve`` now accepts ``--take-this`` and ``--take-other`` actions
   for text conflicts. This *replace* the whole file with the content
   designated by the action. This will *ignore* all differences that would
