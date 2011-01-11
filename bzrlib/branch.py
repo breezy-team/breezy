@@ -1380,14 +1380,8 @@ class Branch(controldir.ControlComponent):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
-        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirPreSplitOut
-        if isinstance(self.bzrdir, BzrDirPreSplitOut):
-            from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
-            format = bzrdir.BzrDirMetaFormat1()
-            format.repository_format = RepositoryFormat7()
-        else:
-            format = self.repository.bzrdir.checkout_metadir()
-            format.set_branch_format(self._format)
+        format = self.repository.bzrdir.checkout_metadir()
+        format.set_branch_format(self._format)
         return format
 
     def create_clone_on_transport(self, to_transport, revision_id=None,

@@ -23,6 +23,18 @@ from bzrlib.branch import (
     )
 
 
+class PreSplitOutBzrBranch(BzrBranch):
+
+    def _get_checkout_format(self):
+        """Return the most suitable metadir for a checkout of this branch.
+        Weaves are used if this branch's repository uses weaves.
+        """
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        format = bzrdir.BzrDirMetaFormat1()
+        format.repository_format = RepositoryFormat7()
+        return format
+
+
 class BzrBranchFormat4(BranchFormat):
     """Bzr branch format 4.
 
@@ -63,7 +75,7 @@ class BzrBranchFormat4(BranchFormat):
             raise NotImplementedError
         if found_repository is None:
             found_repository = a_bzrdir.open_repository()
-        return BzrBranch(_format=self,
+        return PreSplitOutBzrBranch(_format=self,
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
                          name=name,
