@@ -19,17 +19,12 @@
 import sys
 
 import bzrlib
-import bzrlib.bzrdir as bzrdir
-from bzrlib.branch import Branch, needs_read_lock, needs_write_lock
 import bzrlib.errors as errors
 import bzrlib.gpg
 from bzrlib.inventory import Inventory
 import bzrlib.repofmt.weaverepo as weaverepo
-import bzrlib.repository as repository
-from bzrlib.revision import NULL_REVISION, Revision
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import (
-    TestCase,
-    TestCaseWithTransport,
     TestNotApplicable,
     TestSkipped,
     )
@@ -67,7 +62,7 @@ def check_repo_format_for_funky_id_on_win32(repo):
     if (isinstance(repo, (weaverepo.AllInOneRepository,
                           weaverepo.WeaveMetaDirRepository))
         and sys.platform == 'win32'):
-            raise TestSkipped("funky chars does not permitted"
+            raise TestSkipped("funky chars not allowed"
                               " on this platform in repository"
                               " %s" % repo.__class__.__name__)
 

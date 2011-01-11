@@ -16,12 +16,8 @@
 
 import os
 
-from bzrlib import errors, tests, workingtree, workingtree_4
+from bzrlib import errors, tests, workingtree
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
-
-TREES_NOT_SUPPORTING_REFERENCES = (workingtree.WorkingTree2,
-                                   workingtree.WorkingTree3,
-                                   workingtree_4.WorkingTree4)
 
 
 class TestBasisInventory(TestCaseWithWorkingTree):
@@ -37,7 +33,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         return tree, sub_tree
 
     def _references_unsupported(self, tree):
-        if tree.__class__ in TREES_NOT_SUPPORTING_REFERENCES:
+        if not tree.supports_tree_reference():
             raise tests.TestSkipped('Tree format does not support references')
         else:
             self.fail('%r does not support references but should'
