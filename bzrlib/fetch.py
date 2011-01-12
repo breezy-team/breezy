@@ -337,3 +337,85 @@ def _parent_keys_for_root_version(
             selected_ids.append(parent_id)
     parent_keys = [(root_id, parent_id) for parent_id in selected_ids]
     return parent_keys
+
+
+class TargetRepoKinds(object):
+    """An enum-like set of constants.
+    
+    They are the possible values of FetchSpecFactory.target_repo_kinds.
+    """
+    
+    PREEXISTING = 'preexisting'
+    STACKED = 'stacked'
+    EMPTY = 'empty'
+
+
+class FetchSpecFactory(object):
+    """A helper for building the best fetch spec for a sprout call.
+
+    Factors that go into determining the sort of fetch to perform:
+     * did the caller specify any revision IDs?
+     * did the caller specify a source branch (need to fetch the tip + tags)
+     * is there an existing target repo (don't need to refetch revs it
+       already has)
+     * target is stacked?  (similar to pre-existing target repo: even if
+       the target itself is new don't want to refetch existing revs)
+
+    :ivar source_branch: the source branch if one specified, else None.
+    :ivar source_branch_stop_revision_id: fetch up to this revision of
+        source_branch, rather than its tip.
+    :ivar source_repo: the source repository if one found, else None.
+    :ivar target_repo: the target repository acquired by sprout.
+    :ivar target_repo_kind: one of the TargetRepoKinds constants.
+    """
+
+    def __init__(self):
+        self._explicit_rev_ids = set()
+        self.source_branch = None
+        self.source_branch_stop_revision_id = None
+        self.source_repo = None
+        self.target_repo = None
+        self.target_repo_kind = None
+
+    def add_revision_ids(self, revision_ids):
+        """Add revision_ids to the set of revision_ids to be fetched."""
+        self._explicit_rev_ids.update(revision_ids)
+        
+    def make_fetch_spec(self):
+        """Build a SearchResult or PendingAncestryResult or etc."""
+        if self.target_repo_kind is None or self.source_repo is None:
+            raise AssertionError(
+                'Incomplete FetchSpecFactory: %r' % (self.__dict__,))
+        if len(self._explicit_rev_ids) == 0 and self.source_branch is None:
+            # Caller hasn't specified any revisions or source branch
+            if self.target_repo_kind == TargetRepoKinds.EMPTY:
+                return graph.EverythingResult(self.source_repo)
+            else:
+                # We want everything not already in the target (or target's
+                # fallbacks).
+                return graph.EverythingNotInOther(
+                    self.target_repo, self.source_repo)
+        heads_to_fetch = set(self._explicit_rev_ids)
+        tags_to_fetch = set()
+        if self.source_branch is not None:
+            try:
+                tags_to_fetch.update(
+                    self.source_branch.tags.get_reverse_tag_dict())
+            except errors.TagsNotSupported:
+                pass
+            if self.source_branch_stop_revision_id is not None:
+                heads_to_fetch.add(self.source_branch_stop_revision_id)
+            else:
+                heads_to_fetch.add(self.source_branch.last_revision())
+        if self.target_repo_kind == TargetRepoKinds.EMPTY:
+            # PendingAncestryResult does not raise errors if a requested head
+            # is absent.  Ideally it would support the
+            # required_ids/if_present_ids distinction, but in practice
+            # heads_to_fetch will almost certainly be present so this doesn't
+            # matter much.
+            all_heads = heads_to_fetch.union(tags_to_fetch)
+            return graph.PendingAncestryResult(all_heads, self.source_repo)
+        return graph.NotInOtherForRevs(self.target_repo, self.source_repo,
+            required_ids=heads_to_fetch, if_present_ids=tags_to_fetch)
+
+
