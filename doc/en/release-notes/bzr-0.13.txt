@@ -25,12 +25,11 @@ Improvements
   tree from a branch.
   (Daniel Silverstone)
 
-* urllib uses shared keep-alive connections, so http
-  operations are substantially faster.
+* urllib uses shared keep-alive connections, so HTTP  operations are substantially faster.
   (Vincent Ladeuil, #53654)
 
 * ``bzr export`` allows an optional branch parameter, to export a bzr
-  tree from some other url. For example:
+  tree from some other URL. For example:
   ``bzr export bzr.tar.gz http://bazaar-vcs.org/bzr/bzr.dev``
   (Daniel Silverstone)
 
@@ -71,7 +70,7 @@ Internals
 * New method ``get_branch_reference`` on 'BzrDir' allows the detection of
   branch references - which the smart server component needs.
 
-* New ``ChrootTransportDecorator``, accessible via the ``chroot+`` url
+* New ``ChrootTransportDecorator``, accessible via the ``chroot+`` URL
   prefix.  It disallows any access to locations above a set URL.  (Andrew
   Bennetts)
 
@@ -89,15 +88,15 @@ Bug Fixes
 
 * Suppress the traceback on invalid URLs (Vincent Ladeuil, #70803).
 
-* Give nicer error message when an http server returns a 403
+* Give nicer error message when an HTTP server returns a 403
   error code. (Vincent Ladeuil, #57644).
 
-* When a multi-range http GET request fails, try a single
+* When a multi-range HTTP GET request fails, try a single
   range one. If it fails too, forget about ranges. Remember that until
   the death of the transport and propagates that to the clones.
   (Vincent Ladeuil, #62276, #62029).
 
-* Handles user/passwords supplied in url from command
+* Handles user/passwords supplied in URL from command
   line (for the urllib implementation). Don't request already
   known passwords (Vincent Ladeuil, #42383, #44647, #48527)
 
@@ -114,7 +113,7 @@ Bug Fixes
 * mv correctly handles paths that traverse symlinks.
   (Aaron Bentley, #66964)
 
-* Give nicer looking error messages when failing to connect over ssh.
+* Give nicer looking error messages when failing to connect over SSH.
   (John Arbash Meinel, #49172)
 
 * Pushing to a remote branch does not currently update the remote working

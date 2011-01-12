@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@
 
 """Tests for display of exceptions."""
 
-from cStringIO import StringIO
-import os
 import sys
 
 from bzrlib import (
@@ -27,11 +25,9 @@ from bzrlib import (
     osutils,
     repository,
     tests,
-    trace,
     )
 
-from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.errors import NotBranchError
+from bzrlib.tests import TestCase
 
 
 class TestExceptionReporting(TestCase):

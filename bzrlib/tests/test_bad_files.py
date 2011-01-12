@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@ from cStringIO import StringIO
 import os
 
 from bzrlib import (
-    add,
     errors,
     )
 from bzrlib.status import show_tree_status

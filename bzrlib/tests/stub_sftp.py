@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009, 2010 Robey Pointer <robey@lag.net>, Canonical Ltd
+# Copyright (C) 2005, 2006, 2008-2011 Robey Pointer <robey@lag.net>, Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,11 +21,9 @@ Adapted from the one in paramiko's unit tests.
 
 import os
 import paramiko
-import select
 import socket
 import SocketServer
 import sys
-import threading
 import time
 
 from bzrlib import (

@@ -329,8 +329,11 @@ Doctests
 We make selective use of doctests__.  In general they should provide
 *examples* within the API documentation which can incidentally be tested.  We
 don't try to test every important case using doctests |--| regular Python
-tests are generally a better solution.  That is, we just use doctests to
-make our documentation testable, rather than as a way to make tests.
+tests are generally a better solution.  That is, we just use doctests to make
+our documentation testable, rather than as a way to make tests. Be aware that
+doctests are not as well isolated as the unit tests, if you need more
+isolation, you're likely want to write unit tests anyway if only to get a
+better control of the test environment.
 
 Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 
@@ -976,6 +979,25 @@ If your test needs to temporarily mutate some global state, and you need
 it restored at the end, you can say for example::
 
     self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
+
+Temporarily changing environment variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If yout test needs to temporarily change some environment variable value
+(which generally means you want it restored at the end), you can use::
+
+    self.overrideEnv('BZR_ENV_VAR', 'new_value')
+
+If you want to remove a variable from the environment, you should use the
+special ``None`` value::
+
+    self.overrideEnv('PATH', None)
+
+If you add a new feature which depends on a new environment variable, make
+sure it behaves properly when this variable is not defined (if applicable) and
+if you need to enforce a specific default value, check the
+``TestCase._cleanEnvironment`` in ``bzrlib.tests.__init__.py`` which defines a
+proper set of values for all tests.
 
 Cleaning up
 ~~~~~~~~~~~

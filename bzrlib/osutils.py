@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1461,10 +1461,16 @@ def terminal_width():
     # a similar effect.
 
     # If BZR_COLUMNS is set, take it, user is always right
+    # Except if they specified 0 in which case, impose no limit here
     try:
-        return int(os.environ['BZR_COLUMNS'])
+        width = int(os.environ['BZR_COLUMNS'])
     except (KeyError, ValueError):
-        pass
+        width = None
+    if width is not None:
+        if width > 0:
+            return width
+        else:
+            return None
 
     isatty = getattr(sys.stdout, 'isatty', None)
     if isatty is None or not isatty():
@@ -2376,3 +2382,16 @@ def available_backup_name(base, exists):
         counter += 1
         name = "%s.~%d~" % (base, counter)
     return name
+
+
+def set_fd_cloexec(fd):
+    """Set a Unix file descriptor's FD_CLOEXEC flag.  Do nothing if platform
+    support for this is not available.
+    """
+    try:
+        import fcntl
+        old = fcntl.fcntl(fd, fcntl.F_GETFD)
+        fcntl.fcntl(fd, fcntl.F_SETFD, old | fcntl.FD_CLOEXEC)
+    except (ImportError, AttributeError):
+        # Either the fcntl module or specific constants are not present
+        pass

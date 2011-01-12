@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@ import os
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
-import itertools
-import re
 import sys
 import time
 
@@ -2052,7 +2050,9 @@ class cmd_modified(Command):
     @display_command
     def run(self, null=False, directory=u'.'):
         tree = WorkingTree.open_containing(directory)[0]
+        self.add_cleanup(tree.lock_read().unlock)
         td = tree.changes_from(tree.basis_tree())
+        self.cleanup_now()
         for path, id, kind, text_modified, meta_modified in td.modified:
             if null:
                 self.outf.write(path + '\0')
@@ -3328,27 +3328,62 @@ class cmd_check(Command):
 
 
 class cmd_upgrade(Command):
-    __doc__ = """Upgrade branch storage to current format.
+    __doc__ = """Upgrade a repository, branch or working tree to a newer format.
 
-    The check command or bzr developers may sometimes advise you to run
-    this command. When the default format has changed you may also be warned
-    during other operations to upgrade.
+    When the default format has changed after a major new release of
+    Bazaar, you may be informed during certain operations that you
+    should upgrade. Upgrading to a newer format may improve performance
+    or make new features available. It may however limit interoperability
+    with older repositories or with older versions of Bazaar.
+
+    If you wish to upgrade to a particular format rather than the
+    current default, that can be specified using the --format option.
+    As a consequence, you can use the upgrade command this way to
+    "downgrade" to an earlier format, though some conversions are
+    a one way process (e.g. changing from the 1.x default to the
+    2.x default) so downgrading is not always possible.
+
+    A backup.bzr.~#~ directory is created at the start of the conversion
+    process (where # is a number). By default, this is left there on
+    completion. If the conversion fails, delete the new .bzr directory
+    and rename this one back in its place. Use the --clean option to ask
+    for the backup.bzr directory to be removed on successful conversion.
+    Alternatively, you can delete it by hand if everything looks good
+    afterwards.
+
+    If the location given is a shared repository, dependent branches
+    are also converted provided the repository converts successfully.
+    If the conversion of a branch fails, remaining branches are still
+    tried.
+
+    For more information on upgrades, see the Bazaar Upgrade Guide,
+    http://doc.bazaar.canonical.com/latest/en/upgrade-guide/.
     """
 
-    _see_also = ['check']
+    _see_also = ['check', 'reconcile', 'formats']
     takes_args = ['url?']
     takes_options = [
-                    RegistryOption('format',
-                        help='Upgrade to a specific format.  See "bzr help'
-                             ' formats" for details.',
-                        lazy_registry=('bzrlib.bzrdir', 'format_registry'),
-                        converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
-                        value_switches=True, title='Branch format'),
-                    ]
+        RegistryOption('format',
+            help='Upgrade to a specific format.  See "bzr help'
+                 ' formats" for details.',
+            lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+            converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
+            value_switches=True, title='Branch format'),
+        Option('clean',
+            help='Remove the backup.bzr directory if successful.'),
+        Option('dry-run',
+            help="Show what would be done, but don't actually do anything."),
+    ]
 
-    def run(self, url='.', format=None):
+    def run(self, url='.', format=None, clean=False, dry_run=False):
         from bzrlib.upgrade import upgrade
-        upgrade(url, format)
+        exceptions = upgrade(url, format, clean_up=clean, dry_run=dry_run)
+        if exceptions:
+            if len(exceptions) == 1:
+                # Compatibility with historical behavior
+                raise exceptions[0]
+            else:
+                return 3
 
 
 class cmd_whoami(Command):
@@ -5447,24 +5482,17 @@ class cmd_tags(Command):
     takes_options = [
         custom_help('directory',
             help='Branch whose tags should be displayed.'),
-        RegistryOption.from_kwargs('sort',
+        RegistryOption('sort',
             'Sort tags by different criteria.', title='Sorting',
-            natural='Sort numeric substrings as numbers:'
-                    ' suitable for version numbers. (default)',
-            alpha='Sort tags lexicographically.',
-            time='Sort tags chronologically.',
+            lazy_registry=('bzrlib.tag', 'tag_sort_methods')
             ),
         'show-ids',
         'revision',
     ]
 
     @display_command
-    def run(self,
-            directory='.',
-            sort='natural',
-            show_ids=False,
-            revision=None,
-            ):
+    def run(self, directory='.', sort=None, show_ids=False, revision=None):
+        from bzrlib.tag import tag_sort_methods
         branch, relpath = Branch.open_containing(directory)
 
         tags = branch.tags.get_tag_dict().items()
@@ -5479,25 +5507,9 @@ class cmd_tags(Command):
             # only show revisions between revid1 and revid2 (inclusive)
             tags = [(tag, revid) for tag, revid in tags if
                 graph.is_between(revid, revid1, revid2)]
-        if sort == 'natural':
-            def natural_sort_key(tag):
-                return [f(s) for f,s in 
-                        zip(itertools.cycle((unicode.lower,int)),
-                                            re.split('([0-9]+)', tag[0]))]
-            tags.sort(key=natural_sort_key)
-        elif sort == 'alpha':
-            tags.sort()
-        elif sort == 'time':
-            timestamps = {}
-            for tag, revid in tags:
-                try:
-                    revobj = branch.repository.get_revision(revid)
-                except errors.NoSuchRevision:
-                    timestamp = sys.maxint # place them at the end
-                else:
-                    timestamp = revobj.timestamp
-                timestamps[revid] = timestamp
-            tags.sort(key=lambda x: timestamps[x[1]])
+        if sort is None:
+            sort = tag_sort_methods.get()
+        sort(branch, tags)
         if not show_ids:
             # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
             for index, (tag, revid) in enumerate(tags):

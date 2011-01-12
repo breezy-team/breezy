@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,7 @@
 from cStringIO import StringIO
 
 from bzrlib import tests
-from bzrlib.smart import medium, message, protocol
+from bzrlib.smart import medium, protocol
 from bzrlib.transport.http import wsgi
 from bzrlib.transport import chroot, memory
 

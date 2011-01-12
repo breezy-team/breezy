@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,13 +17,11 @@
 """Tests for the StaticTuple type."""
 
 import cPickle
-import gc
 import sys
 
 from bzrlib import (
     _static_tuple_py,
     debug,
-    errors,
     osutils,
     static_tuple,
     tests,

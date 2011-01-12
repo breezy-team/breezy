@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -712,6 +712,9 @@ class NotBranchError(PathError):
        self.detail = detail
        self.bzrdir = bzrdir
        PathError.__init__(self, path=path)
+
+    def __repr__(self):
+        return '<%s %r>' % (self.__class__.__name__, self.__dict__)
 
     def _format(self):
         # XXX: Ideally self.detail would be a property, but Exceptions in

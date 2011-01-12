@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1899,17 +1899,17 @@ class TestConcurrency(tests.TestCase):
         self.assertIsInstance(concurrency, int)
 
     def test_local_concurrency_environment_variable(self):
-        os.environ['BZR_CONCURRENCY'] = '2'
+        self.overrideEnv('BZR_CONCURRENCY', '2')
         self.assertEqual(2, osutils.local_concurrency(use_cache=False))
-        os.environ['BZR_CONCURRENCY'] = '3'
+        self.overrideEnv('BZR_CONCURRENCY', '3')
         self.assertEqual(3, osutils.local_concurrency(use_cache=False))
-        os.environ['BZR_CONCURRENCY'] = 'foo'
+        self.overrideEnv('BZR_CONCURRENCY', 'foo')
         self.assertEqual(1, osutils.local_concurrency(use_cache=False))
 
     def test_option_concurrency(self):
-        os.environ['BZR_CONCURRENCY'] = '1'
+        self.overrideEnv('BZR_CONCURRENCY', '1')
         self.run_bzr('rocks --concurrency 42')
-        # Command line overrides envrionment variable
+        # Command line overrides environment variable
         self.assertEquals('42', os.environ['BZR_CONCURRENCY'])
         self.assertEquals(42, osutils.local_concurrency(use_cache=False))
 
@@ -1985,19 +1985,23 @@ class TestTerminalWidth(tests.TestCase):
     def test_defaults_to_BZR_COLUMNS(self):
         # BZR_COLUMNS is set by the test framework
         self.assertNotEqual('12', os.environ['BZR_COLUMNS'])
-        os.environ['BZR_COLUMNS'] = '12'
+        self.overrideEnv('BZR_COLUMNS', '12')
         self.assertEqual(12, osutils.terminal_width())
 
+    def test_BZR_COLUMNS_0_no_limit(self):
+        self.overrideEnv('BZR_COLUMNS', '0')
+        self.assertEqual(None, osutils.terminal_width())
+
     def test_falls_back_to_COLUMNS(self):
-        del os.environ['BZR_COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
         self.assertNotEqual('42', os.environ['COLUMNS'])
         self.set_fake_tty()
-        os.environ['COLUMNS'] = '42'
+        self.overrideEnv('COLUMNS', '42')
         self.assertEqual(42, osutils.terminal_width())
 
     def test_tty_default_without_columns(self):
-        del os.environ['BZR_COLUMNS']
-        del os.environ['COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('COLUMNS', None)
 
         def terminal_size(w, h):
             return 42, 42
@@ -2010,8 +2014,8 @@ class TestTerminalWidth(tests.TestCase):
         self.assertEqual(42, osutils.terminal_width())
 
     def test_non_tty_default_without_columns(self):
-        del os.environ['BZR_COLUMNS']
-        del os.environ['COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('COLUMNS', None)
         self.replace_stdout(None)
         self.assertEqual(None, osutils.terminal_width())
 
@@ -2027,8 +2031,8 @@ class TestTerminalWidth(tests.TestCase):
         else:
             self.overrideAttr(termios, 'TIOCGWINSZ')
             del termios.TIOCGWINSZ
-        del os.environ['BZR_COLUMNS']
-        del os.environ['COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('COLUMNS', None)
         # Whatever the result is, if we don't raise an exception, it's ok.
         osutils.terminal_width()
 
@@ -2070,7 +2074,7 @@ class TestCreationOps(tests.TestCaseInTempDir):
 class TestGetuserUnicode(tests.TestCase):
 
     def test_ascii_user(self):
-        osutils.set_or_unset_env('LOGNAME', 'jrandom')
+        self.overrideEnv('LOGNAME', 'jrandom')
         self.assertEqual(u'jrandom', osutils.getuser_unicode())
 
     def test_unicode_user(self):
@@ -2082,9 +2086,9 @@ class TestGetuserUnicode(tests.TestCase):
                 % (osutils.get_user_encoding(),))
         uni_username = u'jrandom' + uni_val
         encoded_username = uni_username.encode(ue)
-        osutils.set_or_unset_env('LOGNAME', encoded_username)
+        self.overrideEnv('LOGNAME', encoded_username)
         self.assertEqual(uni_username, osutils.getuser_unicode())
-        osutils.set_or_unset_env('LOGNAME', u'jrandom\xb6'.encode(ue))
+        self.overrideEnv('LOGNAME', u'jrandom\xb6'.encode(ue))
         self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
 
 class TestBackupNames(tests.TestCase):

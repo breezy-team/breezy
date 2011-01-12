@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -98,7 +98,7 @@ class TransportTests(TestTransportImplementation):
 
     def setUp(self):
         super(TransportTests, self).setUp()
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
 
     def check_transport_contents(self, content, transport, relpath):
         """Check that transport.get(relpath).read() == content."""

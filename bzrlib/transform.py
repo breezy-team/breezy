@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,10 +19,12 @@ import errno
 from stat import S_ISREG, S_IEXEC
 import time
 
+import bzrlib
 from bzrlib import (
     errors,
     lazy_import,
     registry,
+    tree,
     )
 lazy_import.lazy_import(globals(), """
 from bzrlib import (
@@ -50,20 +52,18 @@ from bzrlib.osutils import (
     delete_any,
     file_kind,
     has_symlinks,
-    lexists,
     pathjoin,
     sha_file,
     splitpath,
     supports_executable,
-)
+    )
 from bzrlib.progress import ProgressPhase
 from bzrlib.symbol_versioning import (
-        deprecated_function,
-        deprecated_in,
-        deprecated_method,
-        )
-from bzrlib.trace import mutter, warning
-from bzrlib import tree
+    deprecated_function,
+    deprecated_in,
+    deprecated_method,
+    )
+from bzrlib.trace import warning
 import bzrlib.ui
 import bzrlib.urlutils as urlutils
 
@@ -528,6 +528,8 @@ class TreeTransformBase(object):
         for trans_id in self._removed_id:
             file_id = self.tree_file_id(trans_id)
             if file_id is not None:
+                # XXX: This seems like something that should go via a different
+                #      indirection.
                 if self._tree.inventory[file_id].kind == 'directory':
                     parents.append(trans_id)
             elif self.tree_kind(trans_id) == 'directory':
@@ -3020,7 +3022,8 @@ def conflict_pass(tt, conflicts, path_tree=None):
             file_id = tt.inactive_file_id(conflict[1])
             # special-case the other tree root (move its children instead)
             if path_tree and file_id in path_tree:
-                if path_tree.inventory[file_id].parent_id is None:
+                if path_tree.path2id('') == file_id:
+                    # This is the root entry, skip it
                     continue
             tt.version_file(file_id, conflict[1])
             new_conflicts.add((c_type, 'Versioned directory', conflict[1]))

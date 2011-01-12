@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@ from bzrlib import (
     merge as _mod_merge,
     switch,
     tests,
-)
+    )
 
 
 class TestSwitch(tests.TestCaseWithTransport):

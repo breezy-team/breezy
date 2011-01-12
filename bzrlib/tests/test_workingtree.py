@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -15,7 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import os
 
 from bzrlib import (
@@ -25,8 +24,6 @@ from bzrlib import (
     transport,
     workingtree,
     )
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
