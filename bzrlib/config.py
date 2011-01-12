@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -1131,10 +1131,16 @@ def config_dir():
     """
     base = os.environ.get('BZR_HOME', None)
     if sys.platform == 'win32':
+        if base is not None:
+            # environ variables on Windows are in user encoding/mbcs, we should
+            # decode it to a Unicode variable
+            base = base.decode('mbcs')
         if base is None:
             base = win32utils.get_appdata_location_unicode()
         if base is None:
             base = os.environ.get('HOME', None)
+            if base is not None:
+                base = base.decode('mbcs')
         if base is None:
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
                                   ' or HOME set')
