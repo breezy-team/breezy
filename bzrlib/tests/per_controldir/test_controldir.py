@@ -501,10 +501,10 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertNotEqual(dir.transport.base, target.transport.base)
         self.assertNotEqual(dir.transport.base, shared_repo.bzrdir.transport.base)
         branch = target.open_branch()
-        # XXX: this assertion currently fails.  I think it's wrong, do we
-        # really want bzrdir.sprout(url) to copy all revisions from the source
-        # repo, even those not referred to by the source branch?
-        self.assertTrue(branch.repository.has_revision('1'))
+        # The sprouted bzrdir has a branch, so only revisions referenced by
+        # that branch are copied, rather than the whole repository.  It's an
+        # empty branch, so none are copied.
+        self.assertEqual([], branch.repository.all_revision_ids())
         if branch.bzrdir._format.supports_workingtrees:
             self.assertTrue(branch.repository.make_working_trees())
         self.assertFalse(branch.repository.is_shared())

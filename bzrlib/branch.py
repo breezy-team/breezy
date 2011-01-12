@@ -28,6 +28,7 @@ from bzrlib import (
         controldir,
         debug,
         errors,
+        fetch,
         graph as _mod_graph,
         lockdir,
         lockable_files,
@@ -111,7 +112,7 @@ class Branch(controldir.ControlComponent):
                 # This fallback is already configured.  This probably only
                 # happens because BzrDir.sprout is a horrible mess.  To avoid
                 # confusing _unstack we don't add this a second time.
-                # XXX: log a warning, maybe?
+                mutter('duplicate activation of fallback %r on %r', url, self)
                 return
         repo = self._get_fallback_repository(url)
         if repo.has_same_location(self.repository):
@@ -3451,12 +3452,12 @@ class GenericInterBranch(InterBranch):
         # already merged can operate on the just fetched graph, which will
         # be cached in memory.
         if fetch_tags:
-            fetch_spec_factory = controldir.FetchSpecFactory()
+            fetch_spec_factory = fetch.FetchSpecFactory()
             fetch_spec_factory.source_branch = self.source
             fetch_spec_factory.source_branch_stop_revision = stop_revision
             fetch_spec_factory.source_repo = self.source.repository
             fetch_spec_factory.target_repo = self.target.repository
-            fetch_spec_factory.target_repo_kind = controldir._TargetRepoKinds.PREEXISTING
+            fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
             fetch_spec = fetch_spec_factory.make_fetch_spec()
         else:
             fetch_spec = _mod_graph.NotInOtherForRevs(self.target.repository,

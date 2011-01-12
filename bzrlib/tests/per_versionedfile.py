@@ -51,9 +51,6 @@ from bzrlib.tests import (
     TestCaseWithMemoryTransport,
     TestNotApplicable,
     TestSkipped,
-    condition_isinstance,
-    split_suite_by_condition,
-    multiply_tests,
     )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.trace import mutter
@@ -70,100 +67,10 @@ from bzrlib.versionedfile import (
     )
 from bzrlib.weave import WeaveFile
 from bzrlib.weavefile import read_weave, write_weave
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterize VersionedFiles tests for different implementations."""
-    to_adapt, result = split_suite_by_condition(
-        standard_tests, condition_isinstance(TestVersionedFiles))
-    # We want to be sure of behaviour for:
-    # weaves prefix layout (weave texts)
-    # individually named weaves (weave inventories)
-    # annotated knits - prefix|hash|hash-escape layout, we test the third only
-    #                   as it is the most complex mapper.
-    # individually named knits
-    # individual no-graph knits in packs (signatures)
-    # individual graph knits in packs (inventories)
-    # individual graph nocompression knits in packs (revisions)
-    # plain text knits in packs (texts)
-    len_one_scenarios = [
-        ('weave-named', {
-            'cleanup':None,
-            'factory':make_versioned_files_factory(WeaveFile,
-                ConstantMapper('inventory')),
-            'graph':True,
-            'key_length':1,
-            'support_partial_insertion': False,
-            }),
-        ('named-knit', {
-            'cleanup':None,
-            'factory':make_file_factory(False, ConstantMapper('revisions')),
-            'graph':True,
-            'key_length':1,
-            'support_partial_insertion': False,
-            }),
-        ('named-nograph-nodelta-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(False, False, 1),
-            'graph':False,
-            'key_length':1,
-            'support_partial_insertion': False,
-            }),
-        ('named-graph-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(True, True, 1),
-            'graph':True,
-            'key_length':1,
-            'support_partial_insertion': True,
-            }),
-        ('named-graph-nodelta-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(True, False, 1),
-            'graph':True,
-            'key_length':1,
-            'support_partial_insertion': False,
-            }),
-        ('groupcompress-nograph', {
-            'cleanup':groupcompress.cleanup_pack_group,
-            'factory':groupcompress.make_pack_factory(False, False, 1),
-            'graph': False,
-            'key_length':1,
-            'support_partial_insertion':False,
-            }),
-        ]
-    len_two_scenarios = [
-        ('weave-prefix', {
-            'cleanup':None,
-            'factory':make_versioned_files_factory(WeaveFile,
-                PrefixMapper()),
-            'graph':True,
-            'key_length':2,
-            'support_partial_insertion': False,
-            }),
-        ('annotated-knit-escape', {
-            'cleanup':None,
-            'factory':make_file_factory(True, HashEscapedPrefixMapper()),
-            'graph':True,
-            'key_length':2,
-            'support_partial_insertion': False,
-            }),
-        ('plain-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(True, True, 2),
-            'graph':True,
-            'key_length':2,
-            'support_partial_insertion': True,
-            }),
-        ('groupcompress', {
-            'cleanup':groupcompress.cleanup_pack_group,
-            'factory':groupcompress.make_pack_factory(True, False, 1),
-            'graph': True,
-            'key_length':1,
-            'support_partial_insertion':False,
-            }),
-        ]
-    scenarios = len_one_scenarios + len_two_scenarios
-    return multiply_tests(to_adapt, scenarios, result)
+load_tests = load_tests_apply_scenarios
 
 
 def get_diamond_vf(f, trailing_eol=True, left_only=False):
@@ -1474,6 +1381,95 @@ class TestKeyMapper(TestCaseWithMemoryTransport):
 
 class TestVersionedFiles(TestCaseWithMemoryTransport):
     """Tests for the multiple-file variant of VersionedFile."""
+
+    # We want to be sure of behaviour for:
+    # weaves prefix layout (weave texts)
+    # individually named weaves (weave inventories)
+    # annotated knits - prefix|hash|hash-escape layout, we test the third only
+    #                   as it is the most complex mapper.
+    # individually named knits
+    # individual no-graph knits in packs (signatures)
+    # individual graph knits in packs (inventories)
+    # individual graph nocompression knits in packs (revisions)
+    # plain text knits in packs (texts)
+    len_one_scenarios = [
+        ('weave-named', {
+            'cleanup':None,
+            'factory':make_versioned_files_factory(WeaveFile,
+                ConstantMapper('inventory')),
+            'graph':True,
+            'key_length':1,
+            'support_partial_insertion': False,
+            }),
+        ('named-knit', {
+            'cleanup':None,
+            'factory':make_file_factory(False, ConstantMapper('revisions')),
+            'graph':True,
+            'key_length':1,
+            'support_partial_insertion': False,
+            }),
+        ('named-nograph-nodelta-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(False, False, 1),
+            'graph':False,
+            'key_length':1,
+            'support_partial_insertion': False,
+            }),
+        ('named-graph-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(True, True, 1),
+            'graph':True,
+            'key_length':1,
+            'support_partial_insertion': True,
+            }),
+        ('named-graph-nodelta-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(True, False, 1),
+            'graph':True,
+            'key_length':1,
+            'support_partial_insertion': False,
+            }),
+        ('groupcompress-nograph', {
+            'cleanup':groupcompress.cleanup_pack_group,
+            'factory':groupcompress.make_pack_factory(False, False, 1),
+            'graph': False,
+            'key_length':1,
+            'support_partial_insertion':False,
+            }),
+        ]
+    len_two_scenarios = [
+        ('weave-prefix', {
+            'cleanup':None,
+            'factory':make_versioned_files_factory(WeaveFile,
+                PrefixMapper()),
+            'graph':True,
+            'key_length':2,
+            'support_partial_insertion': False,
+            }),
+        ('annotated-knit-escape', {
+            'cleanup':None,
+            'factory':make_file_factory(True, HashEscapedPrefixMapper()),
+            'graph':True,
+            'key_length':2,
+            'support_partial_insertion': False,
+            }),
+        ('plain-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(True, True, 2),
+            'graph':True,
+            'key_length':2,
+            'support_partial_insertion': True,
+            }),
+        ('groupcompress', {
+            'cleanup':groupcompress.cleanup_pack_group,
+            'factory':groupcompress.make_pack_factory(True, False, 1),
+            'graph': True,
+            'key_length':1,
+            'support_partial_insertion':False,
+            }),
+        ]
+
+    scenarios = len_one_scenarios + len_two_scenarios
 
     def get_versionedfiles(self, relpath='files'):
         transport = self.get_transport(relpath)

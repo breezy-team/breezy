@@ -293,7 +293,7 @@ Bug Fixes
   
 * The ``--hardlink`` option to ``branch`` and ``checkout`` is not
   supported at the moment on workingtree formats that can do content
-  filtering.  (See <https://bugs.edge.launchpad.net/bzr/+bug/408193>.)
+  filtering.  (See <https://bugs.launchpad.net/bzr/+bug/408193>.)
   bzr now says so, rather than just ignoring the option.  (Martin Pool)
 
 * There was a bug in ``osutils.relpath`` that was only triggered on

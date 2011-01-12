@@ -1705,7 +1705,8 @@ class PendingAncestryResult(AbstractSearchResult):
 
     def __repr__(self):
         if len(self.heads) > 5:
-            heads_repr = repr(list(self.heads)[:5] + ', ...]')
+            heads_repr = repr(list(self.heads)[:5])[:-1]
+            heads_repr += ', <%d more>...]' % (len(self.heads) - 5,)
         else:
             heads_repr = repr(self.heads)
         return '<%s heads:%s repo:%r>' % (
@@ -1949,6 +1950,9 @@ class GraphThunkIdsToKeys(object):
 
     def merge_sort(self, tip_revision):
         return self._graph.merge_sort((tip_revision,))
+
+    def add_node(self, revision, parents):
+        self._graph.add_node((revision,), [(p,) for p in parents])
 
 
 _counters = [0,0,0,0,0,0,0]

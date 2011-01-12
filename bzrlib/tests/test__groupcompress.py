@@ -21,14 +21,13 @@ from bzrlib import (
     _groupcompress_py,
     tests,
     )
+from bzrlib.tests.scenarios import (
+    load_tests_apply_scenarios,
+    multiply_scenarios,
+    )
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterize tests for all versions of groupcompress."""
-    two_way_scenarios = [
-        ('PP', {'make_delta': _groupcompress_py.make_delta,
-                'apply_delta': _groupcompress_py.apply_delta})
-        ]
+def module_scenarios():
     scenarios = [
         ('python', {'_gc_module': _groupcompress_py}),
         ]
@@ -36,7 +35,17 @@ def load_tests(standard_tests, module, loader):
         gc_module = compiled_groupcompress_feature.module
         scenarios.append(('C',
             {'_gc_module': gc_module}))
-        two_way_scenarios.extend([
+    return scenarios
+
+
+def two_way_scenarios():
+    scenarios = [
+        ('PP', {'make_delta': _groupcompress_py.make_delta,
+                'apply_delta': _groupcompress_py.apply_delta})
+        ]
+    if compiled_groupcompress_feature.available():
+        gc_module = compiled_groupcompress_feature.module
+        scenarios.extend([
             ('CC', {'make_delta': gc_module.make_delta,
                     'apply_delta': gc_module.apply_delta}),
             ('PC', {'make_delta': _groupcompress_py.make_delta,
@@ -44,14 +53,10 @@ def load_tests(standard_tests, module, loader):
             ('CP', {'make_delta': gc_module.make_delta,
                     'apply_delta': _groupcompress_py.apply_delta}),
             ])
-    to_adapt, result = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((TestMakeAndApplyDelta,
-                                                    TestBase128Int)))
-    result = tests.multiply_tests(to_adapt, scenarios, result)
-    to_adapt, result = tests.split_suite_by_condition(result,
-        tests.condition_isinstance(TestMakeAndApplyCompatible))
-    result = tests.multiply_tests(to_adapt, two_way_scenarios, result)
-    return result
+    return scenarios
+
+
+load_tests = load_tests_apply_scenarios
 
 
 compiled_groupcompress_feature = tests.ModuleAvailableFeature(
@@ -116,6 +121,7 @@ same rabin hash
 
 class TestMakeAndApplyDelta(tests.TestCase):
 
+    scenarios = module_scenarios()
     _gc_module = None # Set by load_tests
 
     def setUp(self):
@@ -225,6 +231,8 @@ class TestMakeAndApplyDelta(tests.TestCase):
 
 
 class TestMakeAndApplyCompatible(tests.TestCase):
+
+    scenarios = two_way_scenarios()
 
     make_delta = None # Set by load_tests
     apply_delta = None # Set by load_tests
@@ -456,6 +464,8 @@ class TestCopyInstruction(tests.TestCase):
 
 
 class TestBase128Int(tests.TestCase):
+
+    scenarios = module_scenarios()
 
     _gc_module = None # Set by load_tests
 
