@@ -176,6 +176,41 @@ class CommitBuilder(object):
             self._validate_unicode_text(value,
                                         'revision property (%s)' % (key,))
 
+    def _ensure_fallback_inventories(self):
+        """Ensure that appropriate inventories are available.
+
+        This only applies to repositories that are stacked, and is about
+        enusring the stacking invariants. Namely, that for any revision that is
+        present, we either have all of the file content, or we have the parent
+        inventory and the delta file content.
+        """
+        if not self.repository._fallback_repositories:
+            return
+        if not self.repository._format.supports_chks:
+            raise errors.BzrError("Cannot commit directly to a stacked branch"
+                " in pre-2a formats. See "
+                "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
+        # This is a stacked repo, we need to make sure we have the parent
+        # inventories for the parents.
+        parent_keys = [(p,) for p in self.parents]
+        parent_map = self.repository.inventories._index.get_parent_map(parent_keys)
+        missing_parent_keys = set([pk for pk in parent_keys
+                                       if pk not in parent_map])
+        fallback_repos = list(reversed(self.repository._fallback_repositories))
+        missing_keys = [('inventories', pk[0])
+                        for pk in missing_parent_keys]
+        resume_tokens = []
+        while missing_keys and fallback_repos:
+            fallback_repo = fallback_repos.pop()
+            source = fallback_repo._get_source(self.repository._format)
+            sink = self.repository._get_sink()
+            stream = source.get_stream_for_missing_keys(missing_keys)
+            missing_keys = sink.insert_stream_without_locking(stream,
+                self.repository._format)
+        if missing_keys:
+            raise errors.BzrError('Unable to fill in parent inventories for a'
+                                  ' stacked branch')
+
     def commit(self, message):
         """Make the actual commit.
 
@@ -193,6 +228,7 @@ class CommitBuilder(object):
         rev.parent_ids = self.parents
         self.repository.add_revision(self._new_revision_id, rev,
             self.new_inventory, self._config)
+        self._ensure_fallback_inventories()
         self.repository.commit_write_group()
         return self._new_revision_id
 
@@ -1761,9 +1797,9 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
-        if self._fallback_repositories:
-            raise errors.BzrError("Cannot commit from a lightweight checkout "
-                "to a stacked branch. See "
+        if self._fallback_repositories and not self._format.supports_chks:
+            raise errors.BzrError("Cannot commit directly to a stacked branch"
+                " in pre-2a formats. See "
                 "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
         result = self._commit_builder_class(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id)
@@ -4054,15 +4090,46 @@ class StreamSink(object):
                 is_resume = False
             try:
                 # locked_insert_stream performs a commit|suspend.
-                return self._locked_insert_stream(stream, src_format,
-                    is_resume)
+                missing_keys = self.insert_stream_without_locking(stream,
+                                    src_format, is_resume)
+                if missing_keys:
+                    # suspend the write group and tell the caller what we is
+                    # missing. We know we can suspend or else we would not have
+                    # entered this code path. (All repositories that can handle
+                    # missing keys can handle suspending a write group).
+                    write_group_tokens = self.target_repo.suspend_write_group()
+                    return write_group_tokens, missing_keys
+                hint = self.target_repo.commit_write_group()
+                to_serializer = self.target_repo._format._serializer
+                src_serializer = src_format._serializer
+                if (to_serializer != src_serializer and
+                    self.target_repo._format.pack_compresses):
+                    self.target_repo.pack(hint=hint)
+                return [], set()
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
         finally:
             self.target_repo.unlock()
 
-    def _locked_insert_stream(self, stream, src_format, is_resume):
+    def insert_stream_without_locking(self, stream, src_format,
+                                      is_resume=False):
+        """Insert a stream's content into the target repository.
+
+        This assumes that you already have a locked repository and an active
+        write group.
+
+        :param src_format: a bzr repository format.
+        :param is_resume: Passed down to get_missing_parent_inventories to
+            indicate if we should be checking for missing texts at the same
+            time.
+
+        :return: A set of keys that are missing.
+        """
+        if not self.target_repo.is_write_locked():
+            raise errors.ObjectNotLocked(self)
+        if not self.target_repo.is_in_write_group():
+            raise errors.BzrError('you must already be in a write group')
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
         new_pack = None
@@ -4147,19 +4214,7 @@ class StreamSink(object):
             # cannot even attempt suspending, and missing would have failed
             # during stream insertion.
             missing_keys = set()
-        else:
-            if missing_keys:
-                # suspend the write group and tell the caller what we is
-                # missing. We know we can suspend or else we would not have
-                # entered this code path. (All repositories that can handle
-                # missing keys can handle suspending a write group).
-                write_group_tokens = self.target_repo.suspend_write_group()
-                return write_group_tokens, missing_keys
-        hint = self.target_repo.commit_write_group()
-        if (to_serializer != src_serializer and
-            self.target_repo._format.pack_compresses):
-            self.target_repo.pack(hint=hint)
-        return [], set()
+        return missing_keys
 
     def _extract_and_insert_inventory_deltas(self, substream, serializer):
         target_rich_root = self.target_repo._format.rich_root_data
