@@ -2001,6 +2001,14 @@ def get_host_name():
 # data at once.
 MAX_SOCKET_CHUNK = 64 * 1024
 
+_end_of_stream_errors = [errno.ECONNRESET]
+for _eno in ['WSAECONNRESET', 'WSAECONNABORTED']:
+    _eno = getattr(errno, _eno, None)
+    if _eno is not None:
+        _end_of_stream_errors.append(_eno)
+del _eno
+
+
 def read_bytes_from_socket(sock, report_activity=None,
         max_read_size=MAX_SOCKET_CHUNK):
     """Read up to max_read_size of bytes from sock and notify of progress.
@@ -2014,7 +2022,7 @@ def read_bytes_from_socket(sock, report_activity=None,
             bytes = sock.recv(max_read_size)
         except socket.error, e:
             eno = e.args[0]
-            if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
+            if eno in _end_of_stream_errors:
                 # The connection was closed by the other side.  Callers expect
                 # an empty string to signal end-of-stream.
                 return ""

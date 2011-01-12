@@ -598,7 +598,9 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                         'Bad status line received',
                         orig_error=exc_val)
                 elif (isinstance(exc_val, socket.error) and len(exc_val.args)
-                      and exc_val.args[0] in (errno.ECONNRESET, 10054)):
+                      and exc_val.args[0] in (errno.ECONNRESET, 10053, 10054)):
+                      # 10053 == WSAECONNABORTED
+                      # 10054 == WSAECONNRESET
                     raise errors.ConnectionReset(
                         "Connection lost while sending request.")
                 else:

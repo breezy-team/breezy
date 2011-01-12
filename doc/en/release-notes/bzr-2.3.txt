@@ -88,6 +88,11 @@ Bug Fixes
 * The BZR_COLUMNS environment variable can be set to 0 to indicate no
   limitation on the width of the terminal.  (Neil Martinsen-Burrell, #675652)
 
+* Treat WSAECONNABORTED the same as WSAECONNRESET for the purposes of
+  considering a smart data stream as being interrupted. This fixes a
+  failure in the windows test suite, that was trying to ensure we cleanly
+  handled a server disconnect.  (John Arbash Meinel, #581311, #686587)
+
 * Unshelving changes that occur in a now-unversioned directory now restore
   the directory properly rather than crashing.
   (John Arbash Meinel, #389674)
