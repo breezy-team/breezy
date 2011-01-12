@@ -1131,9 +1131,9 @@ def config_dir():
     """
     base = os.environ.get('BZR_HOME', None)
     if sys.platform == 'win32':
+        # environ variables on Windows are in user encoding/mbcs. So decode
+        # before using one
         if base is not None:
-            # environ variables on Windows are in user encoding/mbcs, we should
-            # decode it to a Unicode variable
             base = base.decode('mbcs')
         if base is None:
             base = win32utils.get_appdata_location_unicode()
