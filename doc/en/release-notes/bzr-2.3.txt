@@ -69,6 +69,13 @@ Bug Fixes
   trying to set the tags in the master branch. This had been broken by the
   bug fix for bug #603395.  (John Arbash Meinel, #701212)
 
+* Per-transport tests now prefer to use ``Transport.get_bytes()`` rather
+  than ``Transport.get().read()``. The SFTP code uses an async message to
+  close the file handle if you let the handle die from refcounting, while
+  it uses a synchronous message if you close it directly. This should help
+  prevent random test suite failures from race conditions.
+  (John Arbash Meinel, #681047)
+
 * Stop using ``bzrlib.tuned_gzip.GzipFile``. It is incompatible with
   python-2.7 and was only used for Knit format repositories, which haven't
   been recommended since 2007. The file itself will be removed in the next
