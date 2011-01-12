@@ -82,6 +82,10 @@ Bug Fixes
   failure in the windows test suite, that was trying to ensure we cleanly
   handled a server disconnect.  (John Arbash Meinel, #581311, #686587)
 
+* Unshelving changes that occur in a now-unversioned directory now restore
+  the directory properly rather than crashing.
+  (John Arbash Meinel, #389674)
+
 * You are now able to commit directly to a stacked branch. Any needed
   parent inventories will be filled in as part of the commit process.
   (John Arbash Meinel, #375013)
