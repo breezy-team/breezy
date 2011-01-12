@@ -2640,6 +2640,19 @@ class BzrBranch(Branch, _RelockDebugMixin):
                 mode=self.bzrdir._get_file_mode())
 
 
+class BzrBranchPreSplitOut(BzrBranch):
+
+    def _get_checkout_format(self):
+        """Return the most suitable metadir for a checkout of this branch.
+        Weaves are used if this branch's repository uses weaves.
+        """
+        from bzrlib.repofmt.weaverepo import RepositoryFormat7
+        from bzrlib.bzrdir import BzrDirMetaFormat1
+        format = BzrDirMetaFormat1()
+        format.repository_format = RepositoryFormat7()
+        return format
+
+
 class BzrBranch5(BzrBranch):
     """A format 5 branch. This supports new features over plain branches.
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,12 +24,9 @@ this.
 
 from bzrlib import (
     errors,
-    repository,
     remote,
     )
-from bzrlib.branch import BzrBranchFormat7
 from bzrlib.bzrdir import BzrDir
-from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack6
 from bzrlib.tests import multiply_tests
 from bzrlib.tests.per_repository import (
     all_repository_format_scenarios,
@@ -89,18 +86,8 @@ def external_reference_test_scenarios():
     result = []
     for test_name, scenario_info in all_repository_format_scenarios():
         format = scenario_info['repository_format']
-        if isinstance(format, remote.RemoteRepositoryFormat):
-            # This is a RemoteRepositoryFormat scenario.  Force the scenario to
-            # use real branch and repository formats that support references.
-            scenario_info = dict(scenario_info)
-            format = remote.RemoteRepositoryFormat()
-            format._custom_format = RepositoryFormatKnitPack6()
-            scenario_info['repository_format'] = format
-            bzrdir_format = remote.RemoteBzrDirFormat()
-            bzrdir_format.repository_format = format
-            bzrdir_format.set_branch_format(BzrBranchFormat7())
-            scenario_info['bzrdir_format'] = bzrdir_format
-        if format.supports_external_lookups:
+        if (isinstance(format, remote.RemoteRepositoryFormat)
+            or format.supports_external_lookups):
             result.append((test_name, scenario_info))
     return result
 
@@ -113,6 +100,7 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_repository_reference.test_all_revision_ids',
         'bzrlib.tests.per_repository_reference.test_break_lock',
         'bzrlib.tests.per_repository_reference.test_check',
+        'bzrlib.tests.per_repository_reference.test_commit_with_stacking',
         'bzrlib.tests.per_repository_reference.test_default_stacking',
         'bzrlib.tests.per_repository_reference.test_fetch',
         'bzrlib.tests.per_repository_reference.test_get_record_stream',

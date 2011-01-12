@@ -62,9 +62,24 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Avoid leaking SSH subprocess communication socket into unrelated child
+  processes, which could cause bzr to hang on exit. (Max Bowsher, #696285)
+
 * ``bzr update`` in a checkout of a readonly branch works again, without
   trying to set the tags in the master branch. This had been broken by the
   bug fix for bug #603395.  (John Arbash Meinel, #701212)
+
+* Stop using ``bzrlib.tuned_gzip.GzipFile``. It is incompatible with
+  python-2.7 and was only used for Knit format repositories, which haven't
+  been recommended since 2007. The file itself will be removed in the next
+  release. (John Arbash Meinel)
+
+* The BZR_COLUMNS environment variable can be set to 0 to indicate no
+  limitation on the width of the terminal.  (Neil Martinsen-Burrell, #675652)
+
+* You are now able to commit directly to a stacked branch. Any needed
+  parent inventories will be filled in as part of the commit process.
+  (John Arbash Meinel, #375013)
 
 Documentation
 *************
@@ -87,6 +102,10 @@ API Changes
   object for new branch object to use (for cases when the caller has
   already opened that repository).  Implementations of these APIs will
   need to be updated to accept these arguments.  (Andrew Bennetts)
+
+* ``bzrlib.tuned_gzip.GzipFile`` is now deprecated and will be removed in
+  the bzr-2.4 series. Code that was using it can just use the python
+  stdlib ``gzip.GzipFile``. (John Arbash Meinel)
 
 Internals
 *********
