@@ -80,7 +80,7 @@ Bug Fixes
 * Treat WSAECONNABORTED the same as WSAECONNRESET for the purposes of
   considering a smart data stream as being interrupted. This fixes a
   failure in the windows test suite, that was trying to ensure we cleanly
-  handled a server disconnect.  (John Arbash Meinel, #581311)
+  handled a server disconnect.  (John Arbash Meinel, #581311, #686587)
 
 * You are now able to commit directly to a stacked branch. Any needed
   parent inventories will be filled in as part of the commit process.
