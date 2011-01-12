@@ -1821,10 +1821,9 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
         t = self.get_readonly_transport()
         # No need to build a valid smart request here, the server will not even
         # try to interpret it.
-        medium = t.get_smart_medium()
         self.assertRaises(errors.SmartProtocolError,
-                          medium.send_http_smart_request, 'whatever')
-        medium.disconnect()
+                          t.get_smart_medium().send_http_smart_request,
+                          'whatever')
 
 
 class Test_redirected_to(tests.TestCase):
