@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,16 +16,13 @@
 
 
 import os
-import shutil
 
 from bzrlib import check, osutils
-from bzrlib.branch import Branch
-from bzrlib.errors import PointlessCommit, BzrError
+from bzrlib.errors import PointlessCommit
 from bzrlib.tests import (
     SymlinkFeature,
     TestCaseWithTransport,
     )
-from bzrlib.tests.test_revision import make_branches
 
 
 class TestCommitMerge(TestCaseWithTransport):

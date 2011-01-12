@@ -17,7 +17,6 @@
 """Tests for win32utils."""
 
 import os
-import sys
 
 from bzrlib import (
     osutils,

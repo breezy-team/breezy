@@ -21,6 +21,7 @@
 # TODO: might be nice to create a versionedfile with some type of corruption
 # considered typical and check that it can be detected/corrected.
 
+from gzip import GzipFile
 from itertools import chain, izip
 from StringIO import StringIO
 
@@ -37,14 +38,11 @@ from bzrlib import (
 from bzrlib.errors import (
                            RevisionNotPresent,
                            RevisionAlreadyPresent,
-                           WeaveParentMismatch
                            )
 from bzrlib.knit import (
     cleanup_pack_knit,
     make_file_factory,
     make_pack_factory,
-    KnitAnnotateFactory,
-    KnitPlainFactory,
     )
 from bzrlib.tests import (
     TestCase,
@@ -53,10 +51,7 @@ from bzrlib.tests import (
     TestSkipped,
     )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
-from bzrlib.trace import mutter
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.tsort import topo_sort
-from bzrlib.tuned_gzip import GzipFile
 import bzrlib.versionedfile as versionedfile
 from bzrlib.versionedfile import (
     ConstantMapper,
@@ -66,7 +61,7 @@ from bzrlib.versionedfile import (
     make_versioned_files_factory,
     )
 from bzrlib.weave import WeaveFile
-from bzrlib.weavefile import read_weave, write_weave
+from bzrlib.weavefile import write_weave
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 

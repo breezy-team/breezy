@@ -20,7 +20,6 @@ import pprint
 
 from bzrlib import (
     errors,
-    graph as _mod_graph,
     _known_graph_py,
     tests,
     )

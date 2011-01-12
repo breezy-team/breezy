@@ -17,13 +17,11 @@
 """Tests for the python and pyrex extensions of groupcompress"""
 
 from bzrlib import (
-    groupcompress,
     _groupcompress_py,
     tests,
     )
 from bzrlib.tests.scenarios import (
     load_tests_apply_scenarios,
-    multiply_scenarios,
     )
 
 

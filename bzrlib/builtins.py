@@ -21,8 +21,6 @@ import os
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
-import itertools
-import re
 import sys
 import time
 
@@ -2052,7 +2050,9 @@ class cmd_modified(Command):
     @display_command
     def run(self, null=False, directory=u'.'):
         tree = WorkingTree.open_containing(directory)[0]
+        self.add_cleanup(tree.lock_read().unlock)
         td = tree.changes_from(tree.basis_tree())
+        self.cleanup_now()
         for path, id, kind, text_modified, meta_modified in td.modified:
             if null:
                 self.outf.write(path + '\0')
@@ -5482,24 +5482,17 @@ class cmd_tags(Command):
     takes_options = [
         custom_help('directory',
             help='Branch whose tags should be displayed.'),
-        RegistryOption.from_kwargs('sort',
+        RegistryOption('sort',
             'Sort tags by different criteria.', title='Sorting',
-            natural='Sort numeric substrings as numbers:'
-                    ' suitable for version numbers. (default)',
-            alpha='Sort tags lexicographically.',
-            time='Sort tags chronologically.',
+            lazy_registry=('bzrlib.tag', 'tag_sort_methods')
             ),
         'show-ids',
         'revision',
     ]
 
     @display_command
-    def run(self,
-            directory='.',
-            sort='natural',
-            show_ids=False,
-            revision=None,
-            ):
+    def run(self, directory='.', sort=None, show_ids=False, revision=None):
+        from bzrlib.tag import tag_sort_methods
         branch, relpath = Branch.open_containing(directory)
 
         tags = branch.tags.get_tag_dict().items()
@@ -5514,25 +5507,9 @@ class cmd_tags(Command):
             # only show revisions between revid1 and revid2 (inclusive)
             tags = [(tag, revid) for tag, revid in tags if
                 graph.is_between(revid, revid1, revid2)]
-        if sort == 'natural':
-            def natural_sort_key(tag):
-                return [f(s) for f,s in 
-                        zip(itertools.cycle((unicode.lower,int)),
-                                            re.split('([0-9]+)', tag[0]))]
-            tags.sort(key=natural_sort_key)
-        elif sort == 'alpha':
-            tags.sort()
-        elif sort == 'time':
-            timestamps = {}
-            for tag, revid in tags:
-                try:
-                    revobj = branch.repository.get_revision(revid)
-                except errors.NoSuchRevision:
-                    timestamp = sys.maxint # place them at the end
-                else:
-                    timestamp = revobj.timestamp
-                timestamps[revid] = timestamp
-            tags.sort(key=lambda x: timestamps[x[1]])
+        if sort is None:
+            sort = tag_sort_methods.get()
+        sort(branch, tags)
         if not show_ids:
             # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
             for index, (tag, revid) in enumerate(tags):

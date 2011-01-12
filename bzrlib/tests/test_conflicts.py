@@ -18,13 +18,11 @@
 import os
 
 from bzrlib import (
-    branchbuilder,
     bzrdir,
     conflicts,
     errors,
     option,
     tests,
-    workingtree,
     )
 from bzrlib.tests import (
     script,

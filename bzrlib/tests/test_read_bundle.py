@@ -17,18 +17,15 @@
 """Test read_bundle works properly across various transports."""
 
 import cStringIO
-import os
 
 import bzrlib.bundle
 from bzrlib.bundle.serializer import write_bundle
 import bzrlib.bzrdir
 import bzrlib.errors as errors
-from bzrlib.symbol_versioning import deprecated_in
 from bzrlib import tests
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.tests.per_transport import transport_test_permutations
 import bzrlib.transport
-from bzrlib.transport.memory import MemoryTransport
 import bzrlib.urlutils
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 

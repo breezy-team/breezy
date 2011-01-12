@@ -329,8 +329,11 @@ Doctests
 We make selective use of doctests__.  In general they should provide
 *examples* within the API documentation which can incidentally be tested.  We
 don't try to test every important case using doctests |--| regular Python
-tests are generally a better solution.  That is, we just use doctests to
-make our documentation testable, rather than as a way to make tests.
+tests are generally a better solution.  That is, we just use doctests to make
+our documentation testable, rather than as a way to make tests. Be aware that
+doctests are not as well isolated as the unit tests, if you need more
+isolation, you're likely want to write unit tests anyway if only to get a
+better control of the test environment.
 
 Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 

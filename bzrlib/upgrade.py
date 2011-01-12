@@ -19,12 +19,13 @@
 
 from bzrlib import (
     errors,
-    osutils,
-    repository,
     trace,
     ui,
     )
-from bzrlib.bzrdir import BzrDir, format_registry
+from bzrlib.bzrdir import (
+    BzrDir,
+    format_registry,
+    )
 from bzrlib.remote import RemoteBzrDir
 
 

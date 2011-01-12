@@ -2853,39 +2853,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
 
 
-# remove these delegates a while after bzr 0.15
-def __make_delegated(name, from_module):
-    def _deprecated_repository_forwarder():
-        symbol_versioning.warn('%s moved to %s in bzr 0.15'
-            % (name, from_module),
-            DeprecationWarning,
-            stacklevel=2)
-        try:
-            return pyutils.get_named_object(from_module, name)
-        except AttributeError:
-            raise AttributeError('module %s has no name %s'
-                    % (sys.modules[from_module], name))
-    globals()[name] = _deprecated_repository_forwarder
-
-for _name in [
-        'AllInOneRepository',
-        'WeaveMetaDirRepository',
-        'PreSplitOutRepositoryFormat',
-        'RepositoryFormat4',
-        'RepositoryFormat5',
-        'RepositoryFormat6',
-        'RepositoryFormat7',
-        ]:
-    __make_delegated(_name, 'bzrlib.repofmt.weaverepo')
-
-for _name in [
-        'KnitRepository',
-        'RepositoryFormatKnit',
-        'RepositoryFormatKnit1',
-        ]:
-    __make_delegated(_name, 'bzrlib.repofmt.knitrepo')
-
-
 def install_revision(repository, rev, revision_tree):
     """Install all revision data into a repository."""
     install_revisions(repository, [(rev, revision_tree, None)])

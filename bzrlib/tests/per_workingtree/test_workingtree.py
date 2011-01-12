@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #           and others
 #
@@ -19,7 +19,6 @@
 from cStringIO import StringIO
 import errno
 import os
-import sys
 
 from bzrlib import (
     branch,
@@ -29,17 +28,22 @@ from bzrlib import (
     osutils,
     tests,
     urlutils,
-    workingtree,
     )
-from bzrlib.errors import (NotBranchError, NotVersionedError,
-                           UnsupportedOperation, PathsNotVersionedError)
+from bzrlib.errors import (
+    UnsupportedOperation,
+    PathsNotVersionedError,
+    )
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped, TestNotApplicable
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
-from bzrlib.trace import mutter
-from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree, WorkingTree2)
+from bzrlib.workingtree import (
+    TreeDirectory,
+    TreeFile,
+    TreeLink,
+    WorkingTree,
+    WorkingTree2,
+    )
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
 
 

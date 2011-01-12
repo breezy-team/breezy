@@ -18,11 +18,9 @@
 
 import codecs
 import locale
-import os
 import sys
 
 from bzrlib import (
-    errors,
     osutils,
     )
 from bzrlib.tests import (

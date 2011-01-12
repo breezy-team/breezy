@@ -16,7 +16,6 @@
 
 """Tests of the dirstate functionality being built for WorkingTreeFormat4."""
 
-import bisect
 import os
 
 from bzrlib import (

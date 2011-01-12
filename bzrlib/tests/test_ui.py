@@ -17,7 +17,6 @@
 """Tests for the bzrlib ui
 """
 
-import os
 import time
 
 from StringIO import StringIO
@@ -26,14 +25,9 @@ from testtools.matchers import *
 
 from bzrlib import (
     config,
-    errors,
     remote,
-    repository,
     tests,
     ui as _mod_ui,
-    )
-from bzrlib.symbol_versioning import (
-    deprecated_in,
     )
 from bzrlib.tests import (
     fixtures,
