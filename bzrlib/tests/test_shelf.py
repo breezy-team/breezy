@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -622,6 +622,29 @@ class TestUnshelver(tests.TestCaseWithTransport):
                               shelf.Unshelver.from_tree_and_shelf, tree,
                               shelf_file)
         self.assertEqual('Shelf corrupt.', str(e))
+
+    def test_unshelve_subdir_in_now_removed_dir(self):
+        tree = self.make_branch_and_tree('.')
+        self.addCleanup(tree.lock_write().unlock)
+        self.build_tree(['dir/', 'dir/subdir/', 'dir/subdir/foo'])
+        tree.add(['dir'], ['dir-id'])
+        tree.commit('versioned dir')
+        tree.add(['dir/subdir', 'dir/subdir/foo'], ['subdir-id', 'foo-id'])
+        creator = shelf.ShelfCreator(tree, tree.basis_tree())
+        self.addCleanup(creator.finalize)
+        for change in creator.iter_shelvable():
+            creator.shelve_change(change)
+        shelf_manager = tree.get_shelf_manager()
+        shelf_id = shelf_manager.shelve_changes(creator)
+        self.failIfExists('dir/subdir')
+        tree.remove(['dir'])
+        unshelver = shelf_manager.get_unshelver(shelf_id)
+        self.addCleanup(unshelver.finalize)
+        unshelver.make_merger().do_merge()
+        self.failUnlessExists('dir/subdir/foo')
+        self.assertEqual('dir-id', tree.path2id('dir'))
+        self.assertEqual('subdir-id', tree.path2id('dir/subdir'))
+        self.assertEqual('foo-id', tree.path2id('dir/subdir/foo'))
 
 
 class TestShelfManager(tests.TestCaseWithTransport):

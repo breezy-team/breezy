@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ Weave based formats scaled linearly with history size and could not represent
 ghosts.
 """
 
+import gzip
 import os
 from cStringIO import StringIO
 import urllib
@@ -41,6 +42,7 @@ from bzrlib import (
     osutils,
     symbol_versioning,
     trace,
+    tuned_gzip,
     urlutils,
     versionedfile,
     weave,
@@ -57,7 +59,6 @@ from bzrlib.repository import (
     RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
-from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,
@@ -590,7 +591,7 @@ class TextVersionedFiles(VersionedFiles):
             raise ValueError('bad idea to put / in %r' % (key,))
         text = ''.join(lines)
         if self._compressed:
-            text = bytes_to_gzip(text)
+            text = tuned_gzip.bytes_to_gzip(text)
         path = self._map(key)
         self._transport.put_bytes_non_atomic(path, text, create_parent_dir=True)
 
@@ -638,7 +639,7 @@ class TextVersionedFiles(VersionedFiles):
             else:
                 return None
         if compressed:
-            text = GzipFile(mode='rb', fileobj=StringIO(text)).read()
+            text = gzip.GzipFile(mode='rb', fileobj=StringIO(text)).read()
         return text
 
     def _map(self, key):
@@ -744,9 +745,6 @@ class SignatureTextStore(TextVersionedFiles):
 
 class InterWeaveRepo(InterSameDataRepository):
     """Optimised code paths between Weave based repositories.
-
-    This should be in bzrlib/repofmt/weaverepo.py but we have not yet
-    implemented lazy inter-object optimisation.
     """
 
     @classmethod

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,13 +17,11 @@
 """Tests for the python and pyrex extensions of groupcompress"""
 
 from bzrlib import (
-    groupcompress,
     _groupcompress_py,
     tests,
     )
 from bzrlib.tests.scenarios import (
     load_tests_apply_scenarios,
-    multiply_scenarios,
     )
 
 
