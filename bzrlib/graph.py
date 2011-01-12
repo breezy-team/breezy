@@ -1705,7 +1705,8 @@ class PendingAncestryResult(AbstractSearchResult):
 
     def __repr__(self):
         if len(self.heads) > 5:
-            heads_repr = repr(list(self.heads)[:5])[:-1] + ', ...]'
+            heads_repr = repr(list(self.heads)[:5])[:-1]
+            heads_repr += ', <%d more>...]' % (len(self.heads) - 5,)
         else:
             heads_repr = repr(self.heads)
         return '<%s heads:%s repo:%r>' % (
