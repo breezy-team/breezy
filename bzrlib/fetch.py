@@ -55,6 +55,8 @@ class RepoFetcher(object):
 
         :param last_revision: If set, try to limit to the data this revision
             references.
+        :param fetch_spec: A SearchResult specifying which revisions to fetch.
+            If set, this overrides last_revision.
         :param find_ghosts: If True search the entire history for ghosts.
         """
         # repository.fetch has the responsibility for short-circuiting
@@ -93,12 +95,12 @@ class RepoFetcher(object):
         pb.show_pct = pb.show_count = False
         try:
             pb.update("Finding revisions", 0, 2)
-            search = self._revids_to_fetch()
-            mutter('fetching: %s', search)
-            if search.is_empty():
+            search_result = self._revids_to_fetch()
+            mutter('fetching: %s', search_result)
+            if search_result.is_empty():
                 return
             pb.update("Fetching revisions", 1, 2)
-            self._fetch_everything_for_search(search)
+            self._fetch_everything_for_search(search_result)
         finally:
             pb.finished()
 
@@ -151,18 +153,11 @@ class RepoFetcher(object):
         install self._last_revision in self.to_repository.
 
         :returns: A SearchResult of some sort.  (Possibly a
-        PendingAncestryResult, EmptySearchResult, etc.)
+            PendingAncestryResult, EmptySearchResult, etc.)
         """
         mutter("self._fetch_spec, self._last_revision: %r, %r",
                 self._fetch_spec, self._last_revision)
-        get_search_result = getattr(self._fetch_spec, 'get_search_result', None)
-        if get_search_result is not None:
-            mutter(
-                'resolving fetch_spec into search result: %s', self._fetch_spec)
-            # This is EverythingNotInOther or a similar kind of fetch_spec.
-            # Turn it into a search result.
-            return get_search_result()
-        elif self._fetch_spec is not None:
+        if self._fetch_spec is not None:
             # The fetch spec is already a concrete search result.
             return self._fetch_spec
         elif self._last_revision == NULL_REVISION:
@@ -172,11 +167,11 @@ class RepoFetcher(object):
         elif self._last_revision is not None:
             return graph.NotInOtherForRevs(self.to_repository,
                 self.from_repository, [self._last_revision],
-                find_ghosts=self.find_ghosts).get_search_result()
+                find_ghosts=self.find_ghosts).execute()
         else: # self._last_revision is None:
             return graph.EverythingNotInOther(self.to_repository,
                 self.from_repository,
-                find_ghosts=self.find_ghosts).get_search_result()
+                find_ghosts=self.find_ghosts).execute()
 
 
 class Inter1and2Helper(object):
