@@ -22,8 +22,9 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
     if we can't find the tarball.
   * Determine Bazaar home directory using bzrlib to prevent test
     isolation issues. LP: #614125
+  * Support 'bzr tags --sort=debversion'. Closes #701244.
 
- -- James Westby <james.westby@ubuntu.com>  Wed, 18 Aug 2010 20:12:20 -0400
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 10 Jan 2011 23:43:30 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 

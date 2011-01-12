@@ -173,6 +173,15 @@ except ImportError:
     from bzrlib.plugins.builddeb.revspec import RevisionSpec_package
     SPEC_TYPES.append(RevisionSpec_package)
 
+try:
+    from bzrlib.tag import tag_sort_methods
+except ImportError:
+    pass # bzr tags --sort= can not be extended
+else:
+    tag_sort_methods.register_lazy("debversion",
+        "bzrlib.plugins.builddeb.tagging", "sort_debversion",
+        "Sort like Debian versions.")
+
 
 def load_tests(standard_tests, module, loader):
     return loader.loadTestsFromModuleNames(['bzrlib.plugins.builddeb.tests'])

@@ -51,3 +51,12 @@ class TestUpstreamTagVersion(TestCase):
 
     def test_git_upstream(self):
         self.assertEqual('2.1', tagging.upstream_tag_version('upstream/2.1'))
+
+
+class TestDebVersionSort(TestCase):
+
+    def test_sort(self):
+        tags = [("1.0", "revid"), ("1.0.1", "revid"), ("1.0~1", "revid")]
+        tagging.sort_debversion(None, tags)
+        self.assertEquals(tags,
+            [("1.0~1", "revid"), ("1.0", "revid"), ("1.0.1", "revid")])
