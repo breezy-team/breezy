@@ -14,6 +14,7 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
   * Don't crash when doing merge-upstream with a branch that does a rename
     and then ships another file with the old path in the tarball that isn't
     in the branch.
+  * Accept None as a valid previous_version value in merge_upstream(). LP: #680945
 
   [ Jelmer Vernooij ]
 
