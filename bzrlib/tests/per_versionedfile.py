@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -21,6 +21,7 @@
 # TODO: might be nice to create a versionedfile with some type of corruption
 # considered typical and check that it can be detected/corrected.
 
+from gzip import GzipFile
 from itertools import chain, izip
 from StringIO import StringIO
 
@@ -51,7 +52,6 @@ from bzrlib.tests import (
     )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.tuned_gzip import GzipFile
 import bzrlib.versionedfile as versionedfile
 from bzrlib.versionedfile import (
     ConstantMapper,

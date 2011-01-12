@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 """Tests for Knit data structure"""
 
 from cStringIO import StringIO
+import gzip
 import sys
 
 from bzrlib import (
@@ -27,7 +28,6 @@ from bzrlib import (
     pack,
     tests,
     transport,
-    tuned_gzip,
     )
 from bzrlib.errors import (
     KnitHeaderError,
@@ -692,7 +692,7 @@ class LowLevelKnitDataTests(TestCase):
 
     def create_gz_content(self, text):
         sio = StringIO()
-        gz_file = tuned_gzip.GzipFile(mode='wb', fileobj=sio)
+        gz_file = gzip.GzipFile(mode='wb', fileobj=sio)
         gz_file.write(text)
         gz_file.close()
         return sio.getvalue()
