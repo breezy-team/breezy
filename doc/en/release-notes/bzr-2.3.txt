@@ -74,6 +74,9 @@ Bug Fixes
   been recommended since 2007. The file itself will be removed in the next
   release. (John Arbash Meinel)
 
+* The BZR_COLUMNS environment variable can be set to 0 to indicate no
+  limitation on the width of the terminal.  (Neil Martinsen-Burrell, #675652)
+
 * You are now able to commit directly to a stacked branch. Any needed
   parent inventories will be filled in as part of the commit process.
   (John Arbash Meinel, #375013)
