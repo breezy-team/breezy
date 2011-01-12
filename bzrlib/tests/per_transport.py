@@ -101,8 +101,8 @@ class TransportTests(TestTransportImplementation):
         self.overrideEnv('BZR_NO_SMART_VFS', None)
 
     def check_transport_contents(self, content, transport, relpath):
-        """Check that transport.get(relpath).read() == content."""
-        self.assertEqualDiff(content, transport.get(relpath).read())
+        """Check that transport.get_bytes(relpath) == content."""
+        self.assertEqualDiff(content, transport.get_bytes(relpath))
 
     def test_ensure_base_missing(self):
         """.ensure_base() should create the directory if it doesn't exist"""
@@ -256,7 +256,7 @@ class TransportTests(TestTransportImplementation):
         handle = t.open_write_stream('foo')
         try:
             handle.write('b')
-            self.assertEqual('b', t.get('foo').read())
+            self.assertEqual('b', t.get_bytes('foo'))
         finally:
             handle.close()
 
@@ -268,7 +268,11 @@ class TransportTests(TestTransportImplementation):
         try:
             handle.write('b')
             self.assertEqual('b', t.get_bytes('foo'))
-            self.assertEqual('b', t.get('foo').read())
+            f = t.get('foo')
+            try:
+                self.assertEqual('b', f.read())
+            finally:
+                f.close()
         finally:
             handle.close()
 
@@ -640,7 +644,7 @@ class TransportTests(TestTransportImplementation):
             self.build_tree(files, transport=transport_from)
             self.assertEqual(4, transport_from.copy_to(files, transport_to))
             for f in files:
-                self.check_transport_contents(transport_to.get(f).read(),
+                self.check_transport_contents(transport_to.get_bytes(f),
                                               transport_from, f)
 
         t = self.get_transport()
@@ -669,7 +673,7 @@ class TransportTests(TestTransportImplementation):
         files = ['a', 'b', 'c', 'd']
         t.copy_to(iter(files), temp_transport)
         for f in files:
-            self.check_transport_contents(temp_transport.get(f).read(),
+            self.check_transport_contents(temp_transport.get_bytes(f),
                                           t, f)
         del temp_transport
 
