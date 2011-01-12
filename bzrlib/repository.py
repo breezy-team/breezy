@@ -187,8 +187,9 @@ class CommitBuilder(object):
         if not self.repository._fallback_repositories:
             return
         if not self.repository._format.supports_chks:
-            raise errors.BzrError('Stacked commit does not support'
-                ' repositories earlier that 2a')
+            raise errors.BzrError("Cannot commit directly to a stacked branch"
+                " in pre-2a formats. See "
+                "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
         # This is a stacked repo, we need to make sure we have the parent
         # inventories for the parents.
         parent_keys = [(p,) for p in self.parents]
@@ -1796,6 +1797,10 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
+        if self._fallback_repositories and not self._format.supports_chks:
+            raise errors.BzrError("Cannot commit directly to a stacked branch"
+                " in pre-2a formats. See "
+                "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
         result = self._commit_builder_class(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id)
         self.start_write_group()
