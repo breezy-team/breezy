@@ -1336,6 +1336,10 @@ class TestCase(testtools.TestCase):
         if haystack.find(needle) == -1:
             self.fail("string %r not found in '''%s'''" % (needle, haystack))
 
+    def assertNotContainsString(self, haystack, needle):
+        if haystack.find(needle) != -1:
+            self.fail("string %r found in '''%s'''" % (needle, haystack))
+
     def assertSubset(self, sublist, superlist):
         """Assert that every entry in sublist is present in superlist."""
         missing = set(sublist) - set(superlist)
