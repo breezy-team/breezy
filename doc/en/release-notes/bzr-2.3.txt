@@ -65,6 +65,10 @@ Bug Fixes
 * Avoid leaking SSH subprocess communication socket into unrelated child
   processes, which could cause bzr to hang on exit. (Max Bowsher, #696285)
 
+* ``bzr break-lock`` on a corrupted lock file works correctly, rather than
+  raising a PermissionDenied error. We were accidentally holding open the
+  file we were trying to delete. (John Arbash Meinel, #659978)
+
 * ``bzr update`` in a checkout of a readonly branch works again, without
   trying to set the tags in the master branch. This had been broken by the
   bug fix for bug #603395.  (John Arbash Meinel, #701212)
