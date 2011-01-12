@@ -1461,10 +1461,16 @@ def terminal_width():
     # a similar effect.
 
     # If BZR_COLUMNS is set, take it, user is always right
+    # Except if they specified 0 in which case, impose no limit here
     try:
-        return int(os.environ['BZR_COLUMNS'])
+        width = int(os.environ['BZR_COLUMNS'])
     except (KeyError, ValueError):
-        pass
+        width = None
+    if width is not None:
+        if width > 0:
+            return width
+        else:
+            return None
 
     isatty = getattr(sys.stdout, 'isatty', None)
     if isatty is None or not isatty():

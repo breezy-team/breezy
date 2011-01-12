@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1987,6 +1987,10 @@ class TestTerminalWidth(tests.TestCase):
         self.assertNotEqual('12', os.environ['BZR_COLUMNS'])
         self.overrideEnv('BZR_COLUMNS', '12')
         self.assertEqual(12, osutils.terminal_width())
+
+    def test_BZR_COLUMNS_0_no_limit(self):
+        self.overrideEnv('BZR_COLUMNS', '0')
+        self.assertEqual(None, osutils.terminal_width())
 
     def test_falls_back_to_COLUMNS(self):
         self.overrideEnv('BZR_COLUMNS', None)
