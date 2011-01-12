@@ -68,20 +68,18 @@ Also, ``Graph._make_breadth_first_searcher`` returns an object with a
 Streams
 =======
 
+A **stream** is an iterable of (substream type, substream) pairs.
+The **substream type** is a ``str`` that will be one of ``texts``,
+``inventories``, ``inventory-deltas``, ``chk_bytes``, ``revisions`` or
+``signatures``.  A **substream** is a record stream.  The format of those
+records depends on the repository format being streamed, except for
+``inventory-deltas`` records which are format-independent.
 
-Network stuff?
-==============
-
-
-Stacking
-========
-
-
-
-
-
-hhhh
-----
+A stream source can be constructed with ``repo._get_source(to_format)``,
+and it provides a ``get_stream(search)`` method (among others).  A stream
+sink can be constructed with ``repo._get_sink()``, and provides an
+``insert_stream(stream, src_format, resume_tokens)`` method (among
+others).
 
 
 ..
