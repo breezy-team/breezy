@@ -25,10 +25,8 @@ from bzrlib import (
     delta as _mod_delta,
     errors,
     gpg,
-    graph,
     info,
     inventory,
-    osutils,
     remote,
     repository,
     revision as _mod_revision,
@@ -37,7 +35,6 @@ from bzrlib import (
     upgrade,
     versionedfile,
     workingtree,
-    xml_serializer,
     )
 from bzrlib.repofmt import (
     pack_repo,
@@ -854,9 +851,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_sprout_from_hpss_preserves_format(self):
         """repo.sprout from a smart server preserves the repository format."""
-        if self.repository_format == weaverepo.RepositoryFormat7():
-            raise tests.TestNotApplicable(
-                "Cannot fetch weaves over smart protocol.")
         remote_repo = self.make_remote_repository('remote')
         local_bzrdir = self.make_bzrdir('local')
         try:

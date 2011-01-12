@@ -744,9 +744,6 @@ class SignatureTextStore(TextVersionedFiles):
 
 class InterWeaveRepo(InterSameDataRepository):
     """Optimised code paths between Weave based repositories.
-
-    This should be in bzrlib/repofmt/weaverepo.py but we have not yet
-    implemented lazy inter-object optimisation.
     """
 
     @classmethod
