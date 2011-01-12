@@ -192,6 +192,7 @@ class TestVersionInfo(TestCaseWithTransport):
         val = sio.getvalue()
         self.assertContainsRe(val, "'revision_id': None")
         self.assertContainsRe(val, "'revno': 0")
+        self.assertNotContainsString(val, '\n\n\n\n')
 
     def test_python_version(self):
         wt = self.create_branch()
