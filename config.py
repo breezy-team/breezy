@@ -26,10 +26,10 @@ except ImportError:
   from configobj import ParseError
 
 
-BUILD_TYPE_NORMAL = 0
-BUILD_TYPE_NATIVE = 1
-BUILD_TYPE_MERGE = 2
-BUILD_TYPE_SPLIT = 3
+BUILD_TYPE_NORMAL = "normal"
+BUILD_TYPE_NATIVE = "native"
+BUILD_TYPE_MERGE = "merge"
+BUILD_TYPE_SPLIT = "split"
 
 
 class SvnBuildPackageMappedConfig(object):
