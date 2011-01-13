@@ -25,6 +25,8 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
     isolation issues. LP: #614125
   * Support 'bzr tags --sort=debversion'. Closes #701244.
   * When adding a changelog entry, support git and svn snapshots.
+  * Automatically use debian/source/format if package is native. Closes:
+    #586617
 
  -- Jelmer Vernooij <jelmer@debian.org>  Wed, 12 Jan 2011 22:05:40 +0100
 

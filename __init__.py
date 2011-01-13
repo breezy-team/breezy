@@ -135,6 +135,7 @@ msgeditor.hooks.install_named_hook("commit_message_template",
 
 
 def debian_tag_name(branch, revid):
+    from bzrlib.plugins.builddeb.config import BUILD_TYPE_MERGE
     from bzrlib.plugins.builddeb.errors import MissingChangelogError
     from bzrlib.plugins.builddeb.import_dsc import (DistributionBranch,
         DistributionBranchSet)
@@ -142,7 +143,7 @@ def debian_tag_name(branch, revid):
     t = branch.repository.revision_tree(revid)
     config = debuild_config(t, False)
     try:
-        (changelog, larstiq) = find_changelog(t, config.merge)
+        (changelog, larstiq) = find_changelog(t, config.build_type == BUILD_TYPE_MERGE)
     except MissingChangelogError:
         # Not a debian package
         return None

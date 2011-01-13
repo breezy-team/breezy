@@ -61,7 +61,16 @@ from bzrlib.plugins.builddeb import (
 from bzrlib.plugins.builddeb.builder import (
                      DebBuild,
                      )
-from bzrlib.plugins.builddeb.errors import BuildFailedError
+from bzrlib.plugins.builddeb.config import (
+    BUILD_TYPE_MERGE,
+    BUILD_TYPE_NATIVE,
+    BUILD_TYPE_NORMAL,
+    BUILD_TYPE_SPLIT,
+    )
+from bzrlib.plugins.builddeb.errors import (
+    BuildFailedError,
+    NoPreviousUpload,
+    )
 from bzrlib.plugins.builddeb.hooks import run_hook
 from bzrlib.plugins.builddeb.import_dsc import (
         DistributionBranch,
@@ -95,6 +104,7 @@ from bzrlib.plugins.builddeb.util import (
         find_last_distribution,
         find_previous_upload,
         get_export_upstream_revision,
+        guess_build_type,
         lookup_distribution,
         open_file,
         open_file_via_transport,
@@ -125,7 +135,6 @@ export_upstream_opt = Option('export-upstream',
 export_upstream_revision_opt = Option('export-upstream-revision',
     help="Select the upstream revision that will be exported.",
     type=str)
-
 
 class cmd_builddeb(Command):
     """Builds a Debian package from a branch.
@@ -222,25 +231,14 @@ class cmd_builddeb(Command):
             working_tree = False
         return tree, working_tree
 
-    def _build_type(self, config, merge, native, split):
-        if not merge:
-            merge = config.merge
+    def _build_type(self, merge, native, split):
         if merge:
-            note("Running in merge mode")
-            native = False
-            split = False
-        else:
-            if not native:
-                native = config.native
-            if native:
-                note("Running in native mode")
-                split = False
-            else:
-                if not split:
-                    split = config.split
-                if split:
-                    note("Running in split mode")
-        return merge, native, split
+            return BUILD_TYPE_MERGE
+        if native:
+            return BUILD_TYPE_NATIVE
+        if split:
+            return BUILD_TYPE_SPLIT
+        return None
 
     def _get_build_command(self, config, builder, quick, build_options):
         if builder is None:
@@ -327,10 +325,10 @@ class cmd_builddeb(Command):
     def run(self, branch_or_build_options_list=None, verbose=False,
             working_tree=False,
             export_only=False, dont_purge=False, use_existing=False,
-            result_dir=None, builder=None, merge=False, build_dir=None,
+            result_dir=None, builder=None, merge=None, build_dir=None,
             export_upstream=None, export_upstream_revision=None,
             orig_dir=None, split=None,
-            quick=False, reuse=False, native=False,
+            quick=False, reuse=False, native=None,
             source=False, revision=None, result=None, package_merge=None):
         if result is not None:
             warning("--result is deprected, use --result-dir instead")
@@ -351,14 +349,26 @@ class cmd_builddeb(Command):
                 note("Reusing existing build dir")
                 dont_purge = True
                 use_existing = True
-            merge, native, split = self._build_type(config, merge, native, split)
-            if (not merge and not native and not split and
-                not tree_contains_upstream_source(tree)):
-                # Default to merge mode if there's only a debian/ directory
-                merge = True
-            (changelog, larstiq) = find_changelog(tree, merge)
+            build_type = self._build_type(merge, native, split)
+            if build_type is None:
+                build_type = config.build_type
+            contains_upstream_source = tree_contains_upstream_source(tree)
+            (changelog, larstiq) = find_changelog(tree, not contains_upstream_source)
+            try:
+                prev_version = find_previous_upload(tree, not contains_upstream_source)
+            except NoPreviousUpload:
+                prev_version = None
+            if build_type is None:
+                build_type = guess_build_type(tree, changelog.version,
+                    contains_upstream_source)
+
+            note("Building package in %s mode" % {
+                BUILD_TYPE_NATIVE: "native",
+                BUILD_TYPE_MERGE: "merge",
+                BUILD_TYPE_SPLIT: "split",
+                BUILD_TYPE_NORMAL: "normal"}[build_type])
+
             if package_merge:
-                prev_version = find_previous_upload(tree, merge)
                 build_options.append("-v%s" % str(prev_version))
                 if (prev_version.upstream_version
                         != changelog.version.upstream_version
@@ -370,7 +380,7 @@ class cmd_builddeb(Command):
                     is_local, result_dir or result, build_dir, orig_dir)
 
             upstream_sources = [
-                PristineTarSource(tree, branch), 
+                PristineTarSource(tree, branch),
                 AptSource(),
                 ]
             if merge:
@@ -689,10 +699,10 @@ class cmd_merge_upstream(Command):
                         "working tree. You must commit before using this "
                         "command.")
             config = debuild_config(tree, tree)
-            if config.merge:
+            if config.build_type == BUILD_TYPE_MERGE:
                 raise BzrCommandError("Merge upstream in merge mode is not "
                         "yet supported.")
-            if config.native:
+            if config.build_type == BUILD_TYPE_NATIVE:
                 raise BzrCommandError("Merge upstream in native mode is not "
                         "yet supported.")
 
@@ -803,7 +813,7 @@ class cmd_import_dsc(Command):
                                       "source package to install, or use the "
                                       "--file option.")
             config = debuild_config(tree, tree)
-            if config.merge:
+            if config.build_type == BUILD_TYPE_MERGE:
                 raise BzrCommandError("import-dsc in merge mode is not "
                         "yet supported.")
             orig_dir = config.orig_dir or default_orig_dir
@@ -959,8 +969,7 @@ class cmd_bd_do(Command):
     def run(self, command_list=None):
         t = WorkingTree.open_containing('.')[0]
         config = debuild_config(t, t)
-
-        if not config.merge:
+        if config.build_type != BUILD_TYPE_MERGE:
             raise BzrCommandError("This command only works for merge mode "
                                   "packages. See /usr/share/doc/bzr-builddeb"
                                   "/user_manual/merge.html for more information.")
@@ -1040,7 +1049,7 @@ class cmd_mark_uploaded(Command):
 
     takes_options = [merge_opt, force]
 
-    def run(self, merge=False, force=None):
+    def run(self, merge=None, force=None):
         t = WorkingTree.open_containing('.')[0]
         t.lock_write()
         try:
@@ -1049,8 +1058,8 @@ class cmd_mark_uploaded(Command):
                       "working tree. You must commit before using this "
                       "command")
             config = debuild_config(t, t)
-            if not merge:
-                merge = config.merge
+            if merge is None:
+                merge = (config.build_type == BUILD_TYPE_MERGE)
             (changelog, larstiq) = find_changelog(t, merge)
             if changelog.distributions == 'UNRELEASED':
                 if not force:
@@ -1104,7 +1113,8 @@ class cmd_merge_package(Command):
         this_config = debuild_config(tree, tree)
         that_config = debuild_config(source_branch.basis_tree(),
                 source_branch.basis_tree())
-        if not (this_config.native or that_config.native):
+        if not (this_config.build_type == BUILD_TYPE_NATIVE or
+                that_config.build_type == BUILD_TYPE_NATIVE):
             fix_ancestry_as_needed(tree, source_branch)
 
         # Merge source packaging branch in to the target packaging branch.

@@ -55,10 +55,16 @@ from bzrlib.plugins.builddeb import (
     local_conf,
     global_conf,
     )
-from bzrlib.plugins.builddeb.config import DebBuildConfig
+from bzrlib.plugins.builddeb.config import (
+    DebBuildConfig,
+    BUILD_TYPE_MERGE,
+    BUILD_TYPE_NATIVE,
+    BUILD_TYPE_NORMAL,
+    )
 from bzrlib.plugins.builddeb.errors import (
                 MissingChangelogError,
                 AddChangelogError,
+                InconsistentSourceFormatError,
                 NoPreviousUpload,
                 UnableToFindPreviousUpload,
                 UnknownDistribution,
@@ -140,7 +146,7 @@ def find_changelog(t, merge, max_blocks=1):
     try:
         if not t.has_filename(changelog_file):
             if merge:
-                #Assume LarstiQ's layout (.bzr in debian/)
+                # Assume LarstiQ's layout (.bzr in debian/)
                 changelog_file = 'changelog'
                 larstiq = True
                 if not t.has_filename(changelog_file):
@@ -653,6 +659,59 @@ def tree_contains_upstream_source(tree):
     :return: Boolean indicating whether or not the tree contains the upstream
         source
     """
-    present_files = set(tree.inventory.root.children.keys())
+    root = tree.inventory.root
+    if root is None:
+        return False # Empty tree
+    present_files = set(root.children.keys())
     packaging_files = frozenset(["debian", ".bzr-builddeb"])
     return (len(present_files - packaging_files) > 0)
+
+
+def get_source_format(tree):
+    """Retrieve the source format name from a package.
+
+    :param path: Path to the package
+    :return: String with package format
+    """
+    if not tree.has_filename("debian/source/format"):
+        return "1.0"
+    return tree.get_file_text(tree.path2id("debian/source/format")).strip()
+
+
+NATIVE_SOURCE_FORMATS = ["3.0 (native)"]
+NORMAL_SOURCE_FORMATS = ["3.0 (quilt)"]
+
+
+def guess_build_type(tree, version, contains_upstream_source):
+    """Guess the build type based on the contents of a tree.
+
+    :param tree: A `Tree` object.
+    :param version: `Version` of the upload.
+    :param contains_upstream_source: Whether this branch contains the upstream source.
+    :return: A build_type value.
+    """
+    source_format = get_source_format(tree)
+    if source_format in NATIVE_SOURCE_FORMATS:
+        format_native = True
+    elif source_format in NORMAL_SOURCE_FORMATS:
+        format_native = False
+    else:
+        format_native = None
+
+    # If the package doesn't have a debian revision then it must be native.
+    if version is not None:
+        version_native = (not version.debian_revision)
+    else:
+        version_native = None
+
+    if type(version_native) is bool and type(format_native) is bool:
+        if version_native != format_native:
+            raise InconsistentSourceFormatError(version_native, format_native)
+
+    if version_native or format_native:
+        return BUILD_TYPE_NATIVE
+    if not contains_upstream_source:
+        # Default to merge mode if there's only a debian/ directory
+        return BUILD_TYPE_MERGE
+    else:
+        return BUILD_TYPE_NORMAL
