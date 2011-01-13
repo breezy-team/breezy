@@ -78,12 +78,19 @@ from bzrlib import (
     errors,
     osutils,
     )
-from bzrlib.errors import (WeaveError, WeaveFormatError, WeaveParentMismatch,
-        RevisionAlreadyPresent,
-        RevisionNotPresent,
-        UnavailableRepresentation,
-        )
-from bzrlib.osutils import dirname, sha, sha_strings, split_lines
+from bzrlib.errors import (
+    BzrError,
+    ParentMismatch,
+    RevisionAlreadyPresent,
+    RevisionNotPresent,
+    UnavailableRepresentation,
+    )
+from bzrlib.osutils import (
+    dirname,
+    sha,
+    sha_strings,
+    split_lines,
+    )
 import bzrlib.patiencediff
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import *
@@ -96,6 +103,46 @@ from bzrlib.versionedfile import (
     VersionedFile,
     )
 from bzrlib.weavefile import _read_weave_v5, write_weave_v5
+
+
+class WeaveError(BzrError):
+
+    _fmt = "Error in processing weave: %(msg)s"
+
+    def __init__(self, msg=None):
+        BzrError.__init__(self)
+        self.msg = msg
+
+
+class WeaveRevisionNotPresent(WeaveError):
+
+    _fmt = "Revision {%(revision_id)s} not present in %(weave)s"
+
+    def __init__(self, revision_id, weave):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave = weave
+
+
+class WeaveFormatError(WeaveError):
+
+    _fmt = "Weave invariant violated: %(what)s"
+
+    def __init__(self, what):
+        WeaveError.__init__(self)
+        self.what = what
+
+
+class WeaveTextDiffers(WeaveError):
+
+    _fmt = ("Weaves differ on text content. Revision:"
+            " {%(revision_id)s}, %(weave_a)s, %(weave_b)s")
+
+    def __init__(self, revision_id, weave_a, weave_b):
+        WeaveError.__init__(self)
+        self.revision_id = revision_id
+        self.weave_a = weave_a
+        self.weave_b = weave_b
 
 
 class WeaveContentFactory(ContentFactory):
@@ -762,7 +809,7 @@ class Weave(VersionedFile):
         expected_sha1 = self._sha1s[int_index]
         measured_sha1 = sha_strings(result)
         if measured_sha1 != expected_sha1:
-            raise errors.WeaveInvalidChecksum(
+            raise errors.VersionedFileInvalidChecksum(
                     'file %s, revision %s, expected: %s, measured %s'
                     % (self._weave_name, version_id,
                        expected_sha1, measured_sha1))
@@ -839,7 +886,7 @@ class Weave(VersionedFile):
             hd = sha1s[version].hexdigest()
             expected = self._sha1s[i]
             if hd != expected:
-                raise errors.WeaveInvalidChecksum(
+                raise errors.VersionedFileInvalidChecksum(
                         "mismatched sha1 for version %s: "
                         "got %s, expected %s"
                         % (version, hd, expected))
@@ -881,8 +928,7 @@ class Weave(VersionedFile):
             n1 = set([self._names[i] for i in self_parents])
             n2 = set([other._names[i] for i in other_parents])
             if not self._compatible_parents(n1, n2):
-                raise WeaveParentMismatch("inconsistent parents "
-                    "for version {%s}: %s vs %s" % (name, n1, n2))
+                raise ParentMismatch(name, n1, n2)
             else:
                 return True         # ok!
         else:

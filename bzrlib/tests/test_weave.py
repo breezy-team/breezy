@@ -689,9 +689,9 @@ class JoinWeavesTests(TestBase):
         w = read_weave(tmpf)
 
         self.assertEqual('hello\n', w.get_text('v1'))
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.check)
 
         # Change the sha checksum
         tmpf = StringIO('# bzr weave file v5\n'
@@ -702,9 +702,9 @@ class JoinWeavesTests(TestBase):
         w = read_weave(tmpf)
 
         self.assertEqual('hello\n', w.get_text('v1'))
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.check)
 
 
 class TestWeave(TestCase):
@@ -757,7 +757,6 @@ class TestWeaveFile(TestCaseInTempDir):
     def test_empty_file(self):
         f = open('empty.weave', 'wb+')
         try:
-            self.assertRaises(errors.WeaveFormatError,
-                              read_weave, f)
+            self.assertRaises(WeaveFormatError, read_weave, f)
         finally:
             f.close()

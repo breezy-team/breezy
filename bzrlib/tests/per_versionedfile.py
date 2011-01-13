@@ -611,16 +611,16 @@ class VersionedFileTestMixIn(object):
         w = self.get_file_corrupted_text()
 
         self.assertEqual('hello\n', w.get_text('v1'))
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.check)
 
         w = self.get_file_corrupted_checksum()
 
         self.assertEqual('hello\n', w.get_text('v1'))
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_text, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, w.get_lines, 'v2')
-        self.assertRaises(errors.WeaveInvalidChecksum, w.check)
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.get_text, 'v2')
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.get_lines, 'v2')
+        self.assertRaises(errors.VersionedFileInvalidChecksum, w.check)
 
     def get_file_corrupted_text(self):
         """Return a versioned file with corrupt text but valid metadata."""
