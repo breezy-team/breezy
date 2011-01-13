@@ -80,7 +80,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          inv,
                          _internal=True,
                          _format=self,
-                         _bzrdir=a_bzrdir)
+                         _bzrdir=a_bzrdir,
+                         _control_files=branch.control_files)
         basis_tree = branch.repository.revision_tree(revision_id)
         if basis_tree.inventory.root is not None:
             wt.set_root_id(basis_tree.get_root_id())
@@ -112,7 +113,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
-                           _bzrdir=a_bzrdir)
+                           _bzrdir=a_bzrdir,
+                           _control_files=a_bzrdir.open_branch().control_files)
         return wt
 
 

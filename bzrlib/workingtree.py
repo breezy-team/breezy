@@ -209,14 +209,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         else:
             self._branch = self.bzrdir.open_branch()
         self.basedir = realpath(basedir)
-        # if branch is at our basedir and is a format 6 or less
-        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
-        if isinstance(self._format, WorkingTreeFormat2):
-            # share control object
-            self._control_files = self.branch.control_files
-        else:
-            # assume all other formats have their own control files.
-            self._control_files = _control_files
+        self._control_files = _control_files
         self._transport = self._control_files._transport
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
