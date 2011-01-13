@@ -345,6 +345,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
     """
 
     _matchingbzrdir = BzrDirFormat4()
+    supports_funky_characters = False
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -393,6 +394,8 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = BzrDirFormat5()
+    supports_funky_characters = False
+
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -438,6 +441,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = BzrDirFormat6()
+    supports_funky_characters = False
     @property
     def _serializer(self):
         return xml5.serializer_v5
