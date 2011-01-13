@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import errno
 import os
 from StringIO import StringIO
 import sys
@@ -52,7 +53,6 @@ from bzrlib.errors import (
     ImmortalPendingDeletion,
     LockError,
     MalformedTransform,
-    NoSuchFile,
     ReusingTransform,
 )
 from bzrlib.osutils import (
@@ -64,7 +64,6 @@ from bzrlib.tests import (
     features,
     HardlinkFeature,
     SymlinkFeature,
-    TestCase,
     TestCaseInTempDir,
     TestSkipped,
 )
@@ -74,7 +73,6 @@ from bzrlib.transform import (
     cook_conflicts,
     _FileMover,
     FinalPaths,
-    get_backup_name,
     resolve_conflicts,
     resolve_checkout,
     ROOT_PARENT,
@@ -900,9 +898,14 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         # On windows looks like:
         # "Failed to rename .../work/myfile to 
         # .../work/.bzr/checkout/limbo/new-1: [Errno 13] Permission denied"
-        # The strerror will vary per OS and language so it's not checked here
-        self.assertContainsRe(str(e),
-            "Failed to rename .*(first-dir.newname:|myfile)")
+        # This test isn't concerned with exactly what the error looks like,
+        # and the strerror will vary across OS and locales, but the assert
+        # that the exeception attributes are what we expect
+        self.assertEqual(e.errno, errno.EACCES)
+        if os.name == "posix":
+            self.assertEndsWith(e.to_path, "/first-dir/newname")
+        else:
+            self.assertEqual(os.path.basename(e.from_path), "myfile")
 
     def test_set_executability_order(self):
         """Ensure that executability behaves the same, no matter what order.

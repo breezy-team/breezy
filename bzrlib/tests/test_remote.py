@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,8 +61,6 @@ from bzrlib.smart import medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests import (
-    condition_isinstance,
-    multiply_tests,
     test_server,
     )
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
@@ -71,7 +69,7 @@ from bzrlib.transport.remote import (
     RemoteTransport,
     RemoteSSHTransport,
     RemoteTCPTransport,
-)
+    )
 
 
 load_tests = load_tests_apply_scenarios

@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@ See doc/developer/inventory.txt for more information.
 from cStringIO import StringIO
 
 from bzrlib import (
-    errors,
     inventory,
     inventory_delta,
     )
