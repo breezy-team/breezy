@@ -33,16 +33,19 @@ from bzrlib import (
     )
 import bzrlib.revision
 from bzrlib.tests import (
-                          ChrootedTestCase,
-                          TestNotApplicable,
-                          TestSkipped,
-                          )
+    ChrootedTestCase,
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.per_controldir import TestCaseWithControlDir
 from bzrlib.transport.local import LocalTransport
 from bzrlib.ui import (
     CannedInputUIFactory,
     )
-from bzrlib.remote import RemoteBzrDir, RemoteRepository
+from bzrlib.remote import (
+    RemoteBzrDir,
+    RemoteRepository,
+    )
 from bzrlib.repofmt import weaverepo
 
 
@@ -754,12 +757,11 @@ class TestControlDir(TestCaseWithControlDir):
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         dir = tree.bzrdir
-        if isinstance(dir, (bzrdir.BzrDirPreSplitOut,)):
-            self.assertRaises(errors.MustHaveWorkingTree, dir.sprout,
-                              self.get_url('target'),
-                              create_tree_if_local=False)
-            return
-        target = dir.sprout(self.get_url('target'), create_tree_if_local=False)
+        try:
+            target = dir.sprout(self.get_url('target'),
+                create_tree_if_local=False)
+        except errors.MustHaveWorkingTree:
+            raise TestNotApplicable("control dir format requires working tree")
         self.failIfExists('target/foo')
         self.assertEqual(tree.branch.last_revision(),
                          target.open_branch().last_revision())
@@ -1205,7 +1207,7 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertTrue(isinstance(dir.get_repository_transport(None),
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
-        # repositories, or it supports anonymous  repository formats, but not both.
+        # repositories, or it supports anonymous repository formats, but not both.
         anonymous_format = weaverepo.RepositoryFormat6()
         identifiable_format = weaverepo.RepositoryFormat7()
         try:
