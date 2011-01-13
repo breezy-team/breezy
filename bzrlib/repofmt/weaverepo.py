@@ -339,6 +339,8 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
     has been removed.
     """
 
+    supports_funky_characters = False
+
     _matchingbzrdir = bzrdir.BzrDirFormat4()
 
     def get_format_description(self):
@@ -388,6 +390,8 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat5()
+    supports_funky_characters = False
+
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -433,6 +437,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat6()
+    supports_funky_characters = False
     @property
     def _serializer(self):
         return xml5.serializer_v5

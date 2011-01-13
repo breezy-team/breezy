@@ -3046,6 +3046,9 @@ class RepositoryFormat(object):
     supports_tree_reference = None
     # Is the format experimental ?
     experimental = False
+    # Does this repository format escape funky characters, or does it create files with
+    # similar names as the versioned files in its contents on disk ?
+    supports_funky_characters = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
