@@ -1370,17 +1370,6 @@ class WeaveError(BzrError):
         self.msg = msg
 
 
-class WeaveRevisionAlreadyPresent(WeaveError):
-
-    _fmt = "Revision {%(revision_id)s} already present in %(weave)s"
-
-    def __init__(self, revision_id, weave):
-
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave = weave
-
-
 class WeaveRevisionNotPresent(WeaveError):
 
     _fmt = "Revision {%(revision_id)s} not present in %(weave)s"
