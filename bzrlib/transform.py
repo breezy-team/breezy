@@ -19,6 +19,7 @@ import errno
 from stat import S_ISREG, S_IEXEC
 import time
 
+import bzrlib
 from bzrlib import (
     errors,
     lazy_import,
