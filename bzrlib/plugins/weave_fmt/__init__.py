@@ -86,6 +86,7 @@ def load_tests(basic_tests, module, loader):
     testmod_names = [
         'test_bzrdir',
         'test_repository',
+        'test_workingtree',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
             ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
