@@ -2023,7 +2023,7 @@ class BzrBadParameterNotString(BzrBadParameter):
 
 class BzrBadParameterMissing(BzrBadParameter):
 
-    _fmt = "Parameter $(param)s is required but not present."
+    _fmt = "Parameter %(param)s is required but not present."
 
 
 class BzrBadParameterUnicode(BzrBadParameter):
