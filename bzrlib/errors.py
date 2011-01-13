@@ -1361,71 +1361,19 @@ class BoundBranchConnectionFailure(BzrError):
         self.error = error
 
 
-class WeaveError(BzrError):
-
-    _fmt = "Error in processing weave: %(msg)s"
-
-    def __init__(self, msg=None):
-        BzrError.__init__(self)
-        self.msg = msg
-
-
-class WeaveRevisionNotPresent(WeaveError):
-
-    _fmt = "Revision {%(revision_id)s} not present in %(weave)s"
-
-    def __init__(self, revision_id, weave):
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave = weave
-
-
-class WeaveFormatError(WeaveError):
-
-    _fmt = "Weave invariant violated: %(what)s"
-
-    def __init__(self, what):
-        WeaveError.__init__(self)
-        self.what = what
-
-
-class WeaveParentMismatch(WeaveError):
-
-    _fmt = "Parents are mismatched between two revisions. %(msg)s"
-
-
-class WeaveInvalidChecksum(WeaveError):
-
-    _fmt = "Text did not match its checksum: %(msg)s"
-
-
-class WeaveTextDiffers(WeaveError):
-
-    _fmt = ("Weaves differ on text content. Revision:"
-            " {%(revision_id)s}, %(weave_a)s, %(weave_b)s")
-
-    def __init__(self, revision_id, weave_a, weave_b):
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave_a = weave_a
-        self.weave_b = weave_b
-
-
-class WeaveTextDiffers(WeaveError):
-
-    _fmt = ("Weaves differ on text content. Revision:"
-            " {%(revision_id)s}, %(weave_a)s, %(weave_b)s")
-
-    def __init__(self, revision_id, weave_a, weave_b):
-        WeaveError.__init__(self)
-        self.revision_id = revision_id
-        self.weave_a = weave_a
-        self.weave_b = weave_b
-
-
 class VersionedFileError(BzrError):
 
     _fmt = "Versioned file error"
+
+
+class ParentMismatch(VersionedFileError):
+
+    _fmt = "Parents are mismatched between two revisions. %(name)s has %(p1)s vs %(p2)s"
+
+    def __init__(self, name, p1, p2):
+        self.name = name
+        self.p1 = p1
+        self.p2 = p2
 
 
 class RevisionNotPresent(VersionedFileError):
