@@ -3454,7 +3454,7 @@ class GenericInterBranch(InterBranch):
         if fetch_tags:
             fetch_spec_factory = fetch.FetchSpecFactory()
             fetch_spec_factory.source_branch = self.source
-            fetch_spec_factory.source_branch_stop_revision = stop_revision
+            fetch_spec_factory.source_branch_stop_revision_id = stop_revision
             fetch_spec_factory.source_repo = self.source.repository
             fetch_spec_factory.target_repo = self.target.repository
             fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
