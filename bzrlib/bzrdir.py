@@ -27,9 +27,7 @@ objects returned.
 
 # TODO: Move old formats into a plugin to make this file smaller.
 
-import os
 import sys
-import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -77,14 +75,11 @@ from bzrlib.weave import Weave
 """)
 
 from bzrlib.trace import (
-    mutter,
     note,
-    warning,
     )
 
 from bzrlib import (
     hooks,
-    registry,
     symbol_versioning,
     )
 from bzrlib.symbol_versioning import (
