@@ -55,6 +55,7 @@ from bzrlib import (
     revision,
     trace,
     tree,
+    ui,
     )
 from bzrlib.branch import Branch
 from bzrlib.cleanup import OperationWithCleanups
@@ -72,7 +73,6 @@ from bzrlib.trace import mutter, note, is_quiet
 from bzrlib.inventory import Inventory, InventoryEntry, make_entry
 from bzrlib import symbol_versioning
 from bzrlib.urlutils import unescape_for_display
-import bzrlib.ui
 
 
 class NullCommitReporter(object):
@@ -346,7 +346,7 @@ class Commit(object):
             not self.branch.repository._format.supports_tree_reference and
             (self.branch.repository._format.fast_deltas or
              len(self.parents) < 2))
-        self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.pb = ui.ui_factory.nested_progress_bar()
         operation.add_cleanup(self.pb.finished)
         self.basis_revid = self.work_tree.last_revision()
         self.basis_tree = self.work_tree.basis_tree()
