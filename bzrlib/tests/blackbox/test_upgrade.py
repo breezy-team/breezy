@@ -48,10 +48,9 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def make_format_5_branch(self):
         # setup a format 5 branch we can upgrade from.
-        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5
-        self.make_branch_and_tree('format_5_branch',
-                                  format=BzrDirFormat5())
-        return 'format_5_branch'
+        path = 'format_5_branch'
+        self.make_branch_and_tree(path, format=bzrdir.BzrDirFormat5())
+        return path
 
     def make_metadir_weave_branch(self):
         self.make_branch_and_tree('metadir_weave_branch', format='metaweave')
@@ -103,7 +102,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # anonymous branch
         pass
 
-    def test_ugrade_branch_in_repo(self):
+    def test_upgrade_branch_in_repo(self):
         # upgrading a branch in a repo should warn about not upgrading the repo
         pass
 
