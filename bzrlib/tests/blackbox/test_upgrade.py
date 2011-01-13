@@ -51,14 +51,15 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5
         self.make_branch_and_tree('format_5_branch',
                                   format=BzrDirFormat5())
+        return 'format_5_branch'
 
     def make_metadir_weave_branch(self):
         self.make_branch_and_tree('metadir_weave_branch', format='metaweave')
 
     def test_readonly_url_error(self):
-        self.make_format_5_branch()
+        path = self.make_format_5_branch()
         (out, err) = self.run_bzr(
-            ['upgrade', self.get_readonly_url('format_5_branch')], retcode=3)
+            ['upgrade', self.get_readonly_url(path)], retcode=3)
         err_msg = 'Upgrade URL cannot work with readonly URLs.'
         self.assertEqualDiff('conversion error: %s\nbzr: ERROR: %s\n'
                              % (err_msg, err_msg),
@@ -108,8 +109,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def test_upgrade_explicit_metaformat(self):
         # users can force an upgrade to metadir format.
-        self.make_format_5_branch()
-        url = transport.get_transport(self.get_url('format_5_branch')).base
+        path = self.make_format_5_branch()
+        url = transport.get_transport(self.get_url(path)).base
         # check --format takes effect
         from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5
         controldir.ControlDirFormat._set_default_format(BzrDirFormat5())
@@ -128,7 +129,7 @@ finished
 """ % (url, url, url, url, backup_dir), out)
         self.assertEqualDiff("", err)
         self.assertTrue(isinstance(
-            bzrdir.BzrDir.open(self.get_url('format_5_branch'))._format,
+            bzrdir.BzrDir.open(self.get_url(path))._format,
             bzrdir.BzrDirMetaFormat1))
 
     def test_upgrade_explicit_knit(self):
@@ -197,8 +198,8 @@ finished
         self.assertTrue(new_perms == old_perms)
 
     def test_upgrade_with_existing_backup_dir(self):
-        self.make_format_5_branch()
-        t = transport.get_transport(self.get_url('format_5_branch'))
+        path = self.make_format_5_branch()
+        t = transport.get_transport(self.get_url(path))
         url = t.base
         from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5
         controldir.ControlDirFormat._set_default_format(BzrDirFormat5())
@@ -221,7 +222,7 @@ finished
 """ % (url, url, url, url, backup_dir2), out)
         self.assertEqualDiff("", err)
         self.assertTrue(isinstance(
-            bzrdir.BzrDir.open(self.get_url('format_5_branch'))._format,
+            bzrdir.BzrDir.open(self.get_url(path))._format,
             bzrdir.BzrDirMetaFormat1))
         self.assertTrue(t.has(backup_dir2))
 

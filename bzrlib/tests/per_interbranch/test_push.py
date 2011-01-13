@@ -26,10 +26,8 @@ from testtools.matchers import (
 
 from bzrlib import (
     branch,
-    builtins,
     bzrdir,
     check,
-    debug,
     errors,
     push,
     repository,
@@ -40,7 +38,6 @@ from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
-from bzrlib.smart import client, server
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests.per_interbranch import (
     TestCaseWithInterBranch,
@@ -204,9 +201,6 @@ class TestPush(TestCaseWithInterBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
-        if isinstance(self.branch_format_from, BzrBranchFormat4):
-            raise tests.TestNotApplicable('Not a metadir format.')
         if isinstance(self.branch_format_from, branch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
             # make_branch_builder doesn't support it.
