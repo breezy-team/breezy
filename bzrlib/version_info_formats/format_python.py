@@ -38,7 +38,6 @@ So don't edit it. :)
 
 
 _py_version_footer = '''
-
 if __name__ == '__main__':
     print 'revision: %(revno)d' % version_info
     print 'nick: %(branch_nick)s' % version_info

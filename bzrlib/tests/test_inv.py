@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,13 +25,18 @@ from bzrlib import (
     revision,
     tests,
     )
-from bzrlib.inventory import (CHKInventory, Inventory, ROOT_ID, InventoryFile,
-    InventoryDirectory, InventoryEntry, TreeReference)
+from bzrlib.inventory import (
+    CHKInventory,
+    Inventory,
+    ROOT_ID,
+    InventoryFile,
+    InventoryDirectory,
+    InventoryEntry,
+    TreeReference,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
-    condition_isinstance,
-    multiply_tests,
     )
 from bzrlib.tests.per_workingtree import workingtree_formats
 from bzrlib.tests.scenarios import load_tests_apply_scenarios

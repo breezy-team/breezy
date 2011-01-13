@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,11 +18,9 @@
 
 import codecs
 import locale
-import os
 import sys
 
 from bzrlib import (
-    errors,
     osutils,
     )
 from bzrlib.tests import (

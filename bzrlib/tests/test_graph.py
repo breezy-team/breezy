@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 from bzrlib import (
     errors,
     graph as _mod_graph,
-    symbol_versioning,
     tests,
     )
 from bzrlib.revision import NULL_REVISION

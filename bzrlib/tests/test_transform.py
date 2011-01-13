@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,7 +52,6 @@ from bzrlib.errors import (
     ImmortalPendingDeletion,
     LockError,
     MalformedTransform,
-    NoSuchFile,
     ReusingTransform,
 )
 from bzrlib.osutils import (
@@ -64,7 +63,6 @@ from bzrlib.tests import (
     features,
     HardlinkFeature,
     SymlinkFeature,
-    TestCase,
     TestCaseInTempDir,
     TestSkipped,
 )
@@ -74,7 +72,6 @@ from bzrlib.transform import (
     cook_conflicts,
     _FileMover,
     FinalPaths,
-    get_backup_name,
     resolve_conflicts,
     resolve_checkout,
     ROOT_PARENT,
