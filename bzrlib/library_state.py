@@ -20,8 +20,6 @@ __all__ = [
     'BzrLibraryState',
     ]
 
-import sys
-
 import bzrlib
 
 
@@ -80,8 +78,9 @@ class BzrLibraryState(object):
             self.cleanups.add_cleanup(warning_cleanup)
         self._trace.__enter__()
 
-        self._orig_ui = bzrlib.ui.ui_factory
-        bzrlib.ui.ui_factory = self._ui
+        from bzrlib import ui
+        self._orig_ui = ui.ui_factory
+        ui.ui_factory = self._ui
         self._ui.__enter__()
 
         self.saved_state = bzrlib.global_state
@@ -90,14 +89,14 @@ class BzrLibraryState(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanups.cleanup_now()
-        import bzrlib.ui
+        from bzrlib import ui
         bzrlib.trace._flush_stdout_stderr()
         bzrlib.trace._flush_trace()
         import bzrlib.osutils
         bzrlib.osutils.report_extension_load_failures()
         self._ui.__exit__(None, None, None)
         self._trace.__exit__(None, None, None)
-        bzrlib.ui.ui_factory = self._orig_ui
+        ui.ui_factory = self._orig_ui
         global global_state
         global_state = self.saved_state
         return False # propogate exceptions.

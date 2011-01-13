@@ -346,7 +346,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
 
     supports_funky_characters = False
 
-    _matchingbzrdir = bzrdir.BzrDirFormat4()
+    _matchingbzrdir = BzrDirFormat4()
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -394,7 +394,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = bzrdir.BzrDirFormat5()
+    _matchingbzrdir = BzrDirFormat5()
     supports_funky_characters = False
 
     @property
@@ -441,7 +441,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = bzrdir.BzrDirFormat6()
+    _matchingbzrdir = BzrDirFormat6()
     supports_funky_characters = False
 
     @property

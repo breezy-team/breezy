@@ -49,7 +49,8 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def make_format_5_branch(self):
         # setup a format 5 branch we can upgrade from.
         path = 'format_5_branch'
-        self.make_branch_and_tree(path, format=bzrdir.BzrDirFormat5())
+        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5
+        self.make_branch_and_tree(path, format=BzrDirFormat5())
         return path
 
     def make_metadir_weave_branch(self):
