@@ -218,7 +218,7 @@ finished
 """ % (url, url, url, url, backup_dir2), out)
         self.assertEqualDiff("", err)
         self.assertTrue(isinstance(
-            bzrdir.BzrDir.open(self.get_url(name))._format,
+            bzrdir.BzrDir.open(self.get_url(path))._format,
             bzrdir.BzrDirMetaFormat1))
         self.assertTrue(t.has(backup_dir2))
 
