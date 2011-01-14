@@ -407,6 +407,15 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
               dict(actions='modify_file', check='file_has_more_content')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist')),),
+            # File modified/deleted in dir
+            (dict(_base_actions='create_file_in_dir',
+                  _path='dir/file', _file_id='file-id'),
+             ('file_modified_in_dir',
+              dict(actions='modify_file_in_dir',
+                   check='file_in_dir_has_more_content')),
+             ('file_deleted_in_dir',
+              dict(actions='delete_file',
+                   check='file_in_dir_doesnt_exist')),),
             ]
         return mirror_scenarios(base_scenarios)
 
@@ -424,6 +433,19 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 
     def check_file_doesnt_exist(self):
         self.failIfExists('branch/file')
+
+    def do_create_file_in_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', '')),
+                ('add', ('dir/file', 'file-id', 'file', 'trunk content\n'))]
+
+    def do_modify_file_in_dir(self):
+        return [('modify', ('file-id', 'trunk content\nmore content\n'))]
+
+    def check_file_in_dir_has_more_content(self):
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/dir/file')
+
+    def check_file_in_dir_doesnt_exist(self):
+        self.failIfExists('branch/dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         return self._path
