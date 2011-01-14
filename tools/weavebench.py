@@ -19,14 +19,14 @@
 
 """Weave algorithms benchmark"""
 
-import bzrlib.branch
-from bzrlib.weave import Weave
-from bzrlib.weavefile import write_weave
 from bzrlib.progress import ProgressBar
+from bzrlib.weave import Weave
 from random import randrange, randint, seed
 import tempfile
 import hotshot, hotshot.stats
 import sys
+
+from bzrlib.plugins.weave_fmt.weavefile import write_weave
 
 WEAVE_NAME = "bench.weave"
 NUM_REVS = 2000

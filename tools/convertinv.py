@@ -21,11 +21,12 @@
 
 import bzrlib.branch
 from bzrlib.weave import Weave
-from bzrlib.weavefile import write_weave
 from bzrlib.progress import ProgressBar
 import tempfile
 import hotshot, hotshot.stats
 import sys
+
+from bzrlib.plugins.weave_fmt.weavefile import write_weave
 
 def convert():
     WEAVE_NAME = "inventory.weave"

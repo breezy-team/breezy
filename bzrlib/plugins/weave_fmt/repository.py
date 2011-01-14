@@ -34,7 +34,6 @@ from bzrlib import (
     )
 """)
 from bzrlib import (
-    bzrdir,
     debug,
     errors,
     lockable_files,
@@ -44,8 +43,6 @@ from bzrlib import (
     tuned_gzip,
     urlutils,
     versionedfile,
-    weave,
-    weavefile,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
@@ -63,11 +60,16 @@ from bzrlib.versionedfile import (
     FulltextContentFactory,
     VersionedFiles,
     )
+
+from bzrlib.plugins.weave_fmt import (
+    weavefile,
+    )
 from bzrlib.plugins.weave_fmt.bzrdir import (
     BzrDirFormat4,
     BzrDirFormat5,
     BzrDirFormat6,
     )
+
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
@@ -393,7 +395,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
      - TextStores for revisions and signatures.
     """
 
-    _versionedfile_class = weave.WeaveFile
+    _versionedfile_class = weavefile.WeaveFile
     _matchingbzrdir = BzrDirFormat5()
     supports_funky_characters = False
 
@@ -412,7 +414,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
         return versionedfile.ThunkedVersionedFiles(repo_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+            weavefile.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
         return RevisionTextStore(repo_transport.clone('revision-store'),
@@ -428,7 +430,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         mapper = versionedfile.PrefixMapper()
         base_transport = repo_transport.clone('weaves')
         return versionedfile.ThunkedVersionedFiles(base_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+            weavefile.WeaveFile, mapper, repo.is_locked)
 
 
 class RepositoryFormat6(PreSplitOutRepositoryFormat):
@@ -440,7 +442,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
      - TextStores for revisions and signatures.
     """
 
-    _versionedfile_class = weave.WeaveFile
+    _versionedfile_class = weavefile.WeaveFile
     _matchingbzrdir = BzrDirFormat6()
     supports_funky_characters = False
 
@@ -459,7 +461,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
         return versionedfile.ThunkedVersionedFiles(repo_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+            weavefile.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
         return RevisionTextStore(repo_transport.clone('revision-store'),
@@ -475,7 +477,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
         mapper = versionedfile.HashPrefixMapper()
         base_transport = repo_transport.clone('weaves')
         return versionedfile.ThunkedVersionedFiles(base_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+            weavefile.WeaveFile, mapper, repo.is_locked)
 
 
 class RepositoryFormat7(MetaDirRepositoryFormat):
@@ -490,7 +492,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
      - an optional 'no-working-trees' flag
     """
 
-    _versionedfile_class = weave.WeaveFile
+    _versionedfile_class = weavefile.WeaveFile
     supports_ghosts = False
     supports_chks = False
 
@@ -512,7 +514,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
         return versionedfile.ThunkedVersionedFiles(repo_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+            weavefile.WeaveFile, mapper, repo.is_locked)
 
     def _get_revisions(self, repo_transport, repo):
         return RevisionTextStore(repo_transport.clone('revision-store'),
@@ -528,7 +530,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         mapper = versionedfile.HashPrefixMapper()
         base_transport = repo_transport.clone('weaves')
         return versionedfile.ThunkedVersionedFiles(base_transport,
-            weave.WeaveFile, mapper, repo.is_locked)
+            weavefile.WeaveFile, mapper, repo.is_locked)
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a weave repository.

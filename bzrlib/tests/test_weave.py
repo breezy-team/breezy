@@ -27,9 +27,18 @@ from bzrlib import (
     errors,
     )
 from bzrlib.osutils import sha_string
-from bzrlib.tests import TestCase, TestCaseInTempDir
-from bzrlib.weave import Weave, WeaveFormatError
-from bzrlib.weavefile import write_weave, read_weave
+from bzrlib.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    )
+from bzrlib.weave import (
+    Weave,
+    WeaveFormatError,
+    )
+from bzrlib.plugins.weave_fmt.weavefile import (
+    write_weave,
+    read_weave,
+    )
 
 
 # texts for use in testing

@@ -53,7 +53,6 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
 
-import sys
 from bzrlib import (
     errors,
     registry,

@@ -102,7 +102,6 @@ from bzrlib.versionedfile import (
     sort_groupcompress,
     VersionedFile,
     )
-from bzrlib.weavefile import _read_weave_v5, write_weave_v5
 
 
 class WeaveError(BzrError):
@@ -949,70 +948,6 @@ class Weave(VersionedFile):
         for attr in self.__slots__:
             if attr != '_weave_name':
                 setattr(self, attr, copy(getattr(otherweave, attr)))
-
-
-class WeaveFile(Weave):
-    """A WeaveFile represents a Weave on disk and writes on change."""
-
-    WEAVE_SUFFIX = '.weave'
-
-    def __init__(self, name, transport, filemode=None, create=False, access_mode='w', get_scope=None):
-        """Create a WeaveFile.
-
-        :param create: If not True, only open an existing knit.
-        """
-        super(WeaveFile, self).__init__(name, access_mode, get_scope=get_scope,
-            allow_reserved=False)
-        self._transport = transport
-        self._filemode = filemode
-        try:
-            _read_weave_v5(self._transport.get(name + WeaveFile.WEAVE_SUFFIX), self)
-        except errors.NoSuchFile:
-            if not create:
-                raise
-            # new file, save it
-            self._save()
-
-    def _add_lines(self, version_id, parents, lines, parent_texts,
-        left_matching_blocks, nostore_sha, random_id, check_content):
-        """Add a version and save the weave."""
-        self.check_not_reserved_id(version_id)
-        result = super(WeaveFile, self)._add_lines(version_id, parents, lines,
-            parent_texts, left_matching_blocks, nostore_sha, random_id,
-            check_content)
-        self._save()
-        return result
-
-    def copy_to(self, name, transport):
-        """See VersionedFile.copy_to()."""
-        # as we are all in memory always, just serialise to the new place.
-        sio = StringIO()
-        write_weave_v5(self, sio)
-        sio.seek(0)
-        transport.put_file(name + WeaveFile.WEAVE_SUFFIX, sio, self._filemode)
-
-    def _save(self):
-        """Save the weave."""
-        self._check_write_ok()
-        sio = StringIO()
-        write_weave_v5(self, sio)
-        sio.seek(0)
-        bytes = sio.getvalue()
-        path = self._weave_name + WeaveFile.WEAVE_SUFFIX
-        try:
-            self._transport.put_bytes(path, bytes, self._filemode)
-        except errors.NoSuchFile:
-            self._transport.mkdir(dirname(path))
-            self._transport.put_bytes(path, bytes, self._filemode)
-
-    @staticmethod
-    def get_suffixes():
-        """See VersionedFile.get_suffixes()."""
-        return [WeaveFile.WEAVE_SUFFIX]
-
-    def insert_record_stream(self, stream):
-        super(WeaveFile, self).insert_record_stream(stream)
-        self._save()
 
 
 def _reweave(wa, wb, pb=None, msg=None):

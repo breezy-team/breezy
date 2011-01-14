@@ -60,9 +60,12 @@ from bzrlib.versionedfile import (
     VirtualVersionedFiles,
     make_versioned_files_factory,
     )
-from bzrlib.weave import WeaveFile
-from bzrlib.weavefile import write_weave
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
+
+from bzrlib.plugins.weave_fmt.weavefile import (
+    WeaveFile,
+    write_weave,
+    )
 
 
 load_tests = load_tests_apply_scenarios

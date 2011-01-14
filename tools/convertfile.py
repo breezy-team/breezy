@@ -22,11 +22,11 @@
 import sys
 import bzrlib.branch
 from bzrlib.weave import Weave
-from bzrlib.weavefile import write_weave
 
 import hotshot
 import tempfile
 
+from bzrlib.plugins.weave_fmt.weavefile import write_weave
 
 def convert():
     WEAVE_NAME = "test.weave"
@@ -83,5 +83,3 @@ stats.sort_stats('time')
 ## XXX: Might like to write to stderr or the trace file instead but
 ## print_stats seems hardcoded to stdout
 stats.print_stats(20)
-            
-
