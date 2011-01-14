@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -407,6 +407,15 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
               dict(actions='modify_file', check='file_has_more_content')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist')),),
+            # File modified/deleted in dir
+            (dict(_base_actions='create_file_in_dir',
+                  _path='dir/file', _file_id='file-id'),
+             ('file_modified_in_dir',
+              dict(actions='modify_file_in_dir',
+                   check='file_in_dir_has_more_content')),
+             ('file_deleted_in_dir',
+              dict(actions='delete_file',
+                   check='file_in_dir_doesnt_exist')),),
             ]
         return mirror_scenarios(base_scenarios)
 
@@ -424,6 +433,19 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 
     def check_file_doesnt_exist(self):
         self.failIfExists('branch/file')
+
+    def do_create_file_in_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', '')),
+                ('add', ('dir/file', 'file-id', 'file', 'trunk content\n'))]
+
+    def do_modify_file_in_dir(self):
+        return [('modify', ('file-id', 'trunk content\nmore content\n'))]
+
+    def check_file_in_dir_has_more_content(self):
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/dir/file')
+
+    def check_file_in_dir_doesnt_exist(self):
+        self.failIfExists('branch/dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         return self._path
@@ -454,6 +476,16 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
                    path='new-file', file_id='file-id')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist',
+                   # PathConflicts deletion handling requires a special
+                   # hard-coded value
+                   path='<deleted>', file_id='file-id')),),
+            # File renamed/deleted in dir
+            (dict(_base_actions='create_file_in_dir'),
+             ('file_renamed_in_dir',
+              dict(actions='rename_file_in_dir', check='file_in_dir_renamed',
+                   path='dir/new-file', file_id='file-id')),
+             ('file_deleted',
+              dict(actions='delete_file', check='file_in_dir_doesnt_exist',
                    # PathConflicts deletion handling requires a special
                    # hard-coded value
                    path='<deleted>', file_id='file-id')),),
@@ -531,6 +563,20 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
 
     def check_dir_doesnt_exist(self):
         self.failIfExists('branch/dir')
+
+    def do_create_file_in_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', '')),
+                ('add', ('dir/file', 'file-id', 'file', 'trunk content\n'))]
+
+    def do_rename_file_in_dir(self):
+        return [('rename', ('dir/file', 'dir/new-file'))]
+
+    def check_file_in_dir_renamed(self):
+        self.failIfExists('branch/dir/file')
+        self.failUnlessExists('branch/dir/new-file')
+
+    def check_file_in_dir_doesnt_exist(self):
+        self.failIfExists('branch/dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         tpath = self._this['path']
@@ -958,6 +1004,48 @@ $ bzr commit -m 'Add foo/bar'
 
 $ bzr merge ../trunk
 2>bzr: ERROR: Tree transform is malformed [('unversioned executability', 'new-1')]
+""")
+
+    def test_bug_660935(self):
+        self.run_script("""
+$ bzr init trunk
+Created a standalone tree (format: 2a)
+$ cd trunk
+$ mkdir src
+$ echo trunk > src/file
+$ bzr add
+adding src
+adding src/file
+$ bzr commit -m 'create file on trunk'
+2>Committing to: .../trunk/
+2>added src
+2>added src/file
+2>Committed revision 1.
+$ cd ..
+$ bzr branch trunk featureA
+2>Branched 1 revision(s).
+$ cd featureA
+$ echo featureA > src/file
+$ bzr commit -m 'modify file for featureA'
+2>Committing to: .../featureA/
+2>modified src/file
+2>Committed revision 2.
+$ cd ..
+$ cd trunk
+$ bzr rm src/file
+2>deleted src/file
+$ bzr commit -m 'Delete file'
+2>Committing to: .../trunk/
+2>deleted src/file
+2>Committed revision 2.
+$ cd ../featureA
+$ bzr merge ../trunk
+2>RM  src/file => src/file.THIS
+2>Contents conflict in src/file
+2>1 conflicts encountered.
+$ bzr conflicts
+Contents conflict in src/file
+$ bzr resolve --take-other
 """)
 
 
