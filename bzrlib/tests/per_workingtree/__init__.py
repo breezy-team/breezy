@@ -66,12 +66,7 @@ class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
         return builder
 
 
-def workingtree_formats():
-    """The known working tree formats."""
-    return workingtree.WorkingTreeFormat._formats.values()
-
-
-def workingtree_tests(loader):
+def per_workingtree_tests(loader):
     test_names = [
         'add_reference',
         'add',
@@ -120,17 +115,14 @@ def workingtree_tests(loader):
     return loader.loadTestsFromModuleNames(test_workingtree_implementations)
 
 
-def multiply_workingtree_tests(loader, scenarios, standard_tests):
-    return tests.multiply_tests(workingtree_tests(loader), scenarios, standard_tests)
-
 def load_tests(standard_tests, module, loader):
     scenarios = make_scenarios(
         tests.default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        workingtree_formats()
+        workingtree.WorkingTreeFormat._formats.values()
         )
 
     # add the tests for the sub modules
-    return multiply_workingtree_tests(loader, scenarios, standard_tests)
+    return tests.multiply_tests(per_workingtree_tests(loader), scenarios, standard_tests)

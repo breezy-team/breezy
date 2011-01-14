@@ -371,7 +371,7 @@ def create_tree_scenario(transport_server, transport_readonly_server,
     return scenario_options
 
 
-def tree_tests(loader):
+def per_tree_tests(loader):
     per_tree_mod_names = [
         'annotate_iter',
         'get_file_mtime',
@@ -394,10 +394,6 @@ def tree_tests(loader):
          for name in per_tree_mod_names])
 
 
-def multiply_tree_tests(loader, scenarios, standard_tests):
-    return tests.multiply_tests(tree_tests(loader), scenarios, standard_tests)
-
-
 def load_tests(standard_tests, module, loader):
     scenarios = make_scenarios(
         tests.default_transport,
@@ -406,4 +402,4 @@ def load_tests(standard_tests, module, loader):
         None,
         WorkingTreeFormat._formats.values())
     # add the tests for the sub modules
-    return multiply_tree_tests(loader, scenarios, standard_tests)
+    return tests.multiply_tests(per_tree_tests(loader), scenarios, standard_tests)

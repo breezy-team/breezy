@@ -90,20 +90,4 @@ def load_tests(basic_tests, module, loader):
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
             ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
-    from bzrlib import tests
-    from bzrlib.tests.per_workingtree import (
-        make_scenarios as make_workingtree_scenarios,
-        multiply_workingtree_tests,
-        )
-    from bzrlib.tests.per_tree import (
-        make_scenarios as make_tree_scenarios,
-        multiply_tree_tests,
-        )
-    from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
-    workingtree_scenarios = make_workingtree_scenarios(tests.default_transport, None,
-        [WorkingTreeFormat2()])
-    multiply_workingtree_tests(loader, workingtree_scenarios, basic_tests)
-    tree_scenarios = make_tree_scenarios(tests.default_transport, None,
-        [WorkingTreeFormat2()])
-    multiply_tree_tests(loader, tree_scenarios, basic_tests)
     return basic_tests
