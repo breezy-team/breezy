@@ -84,6 +84,7 @@ branch.network_format_registry.register_lazy(
 
 def load_tests(basic_tests, module, loader):
     testmod_names = [
+        'test_branch',
         'test_bzrdir',
         'test_repository',
         'test_workingtree',

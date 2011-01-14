@@ -268,3 +268,16 @@ class TestInterWeaveRepo(TestCaseWithTransport):
                 self.assertTrue(is_compatible(repo_a, repo_b))
         self.assertEqual(InterWeaveRepo,
                          InterRepository.get(repo_a, repo_b).__class__)
+
+
+def load_tests(basic_tests, module, loader):
+    from bzrlib import tests
+    from bzrlib.tests.per_repository import (
+        formats_to_scenarios,
+        per_repository_tests,
+        )
+    legacy_formats = [RepositoryFormat4(), RepositoryFormat5(), RepositoryFormat6()]
+    scenarios = formats_to_scenarios([('', format) for format in legacy_formats],
+        tests.default_transport, None)
+    tests.multiply_tests(per_repository_tests(loader), scenarios, basic_tests)
+    return basic_tests

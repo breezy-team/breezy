@@ -129,9 +129,8 @@ def branch_scenarios():
     """ """
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
-    from bzrlib.plugins.weave_fmt.branch import _legacy_formats as weave_formats
     combinations = [(format, format._matchingbzrdir) for format in
-         BranchFormat.get_formats() + weave_formats]
+         BranchFormat.get_formats()]
     scenarios = make_scenarios(
         # None here will cause the default vfs transport server to be used.
         None,
@@ -158,7 +157,7 @@ def branch_scenarios():
     return scenarios
 
 
-def load_tests(standard_tests, module, loader):
+def per_branch_tests(loader):
     per_branch_mod_names = [
         'bound_sftp',
         'branch',
@@ -189,7 +188,11 @@ def load_tests(standard_tests, module, loader):
         'uncommit',
         'update',
         ]
-    sub_tests = loader.loadTestsFromModuleNames(
+    return loader.loadTestsFromModuleNames(
         ['bzrlib.tests.per_branch.test_' + name
          for name in per_branch_mod_names])
-    return tests.multiply_tests(sub_tests, branch_scenarios(), standard_tests)
+
+
+def load_tests(standard_tests, module, loader):
+    return tests.multiply_tests(per_branch_tests(loader), branch_scenarios(),
+        standard_tests)

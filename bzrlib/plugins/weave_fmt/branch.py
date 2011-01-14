@@ -85,5 +85,3 @@ class BzrBranchFormat4(BranchFormat):
     def __str__(self):
         return "Bazaar-NG branch format 4"
 
-
-_legacy_formats = [BzrBranchFormat4() ]
