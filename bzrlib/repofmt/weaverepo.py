@@ -488,6 +488,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     _versionedfile_class = weave.WeaveFile
     supports_ghosts = False
     supports_chks = False
+    supports_funky_characters = False
 
     _fetch_order = 'topological'
     _fetch_reconcile = True
