@@ -176,7 +176,7 @@ class SmartTCPServer(object):
 
     def get_url(self):
         """Return the url of the server"""
-        return "bzr://%s:%d/" % (self._sockname[0], self._sockname[1])
+        return "bzr://%s:%s/" % (self._sockname[0], self._sockname[1])
 
     def serve_conn(self, conn, thread_name_suffix):
         # For WIN32, where the timeout value from the listening socket

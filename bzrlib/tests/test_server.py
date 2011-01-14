@@ -694,8 +694,6 @@ class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
         server.SmartTCPServer.__init__(self, backing_transport,
                                        root_client_path)
     def serve(self):
-        # FIXME: No test are exercising the hooks for the test server
-        # -- vila 20100618
         self.run_server_started_hooks()
         try:
             TestingThreadingTCPServer.serve(self)

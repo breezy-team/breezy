@@ -1942,10 +1942,10 @@ class SmartTCPServerHookTests(tests.TestCaseWithMemoryTransport):
         server.SmartTCPServer.hooks.install_named_hook('server_started_ex',
             lambda backing_urls, url: started_ex_calls.append((backing_urls, url)),
             None)
-        self.server._sockname = ('192.168.0.1', 42)
+        self.server._sockname = ('example.com', 42)
         self.server.run_server_started_hooks()
         self.assertEquals(started_calls,
-            [([self.get_transport().base], 'bzr://192.168.0.1:42/')])
+            [([self.get_transport().base], 'bzr://example.com:42/')])
         self.assertEquals(started_ex_calls,
             [([self.get_transport().base], self.server)])
 
@@ -1962,11 +1962,11 @@ class SmartTCPServerHookTests(tests.TestCaseWithMemoryTransport):
 
     def test_run_server_stopped_hooks(self):
         """Test the server stopped hooks."""
-        self.server._sockname = ('192.168.0.1', 42)
+        self.server._sockname = ('example.com', 42)
         stopped_calls = []
         server.SmartTCPServer.hooks.install_named_hook('server_stopped',
             lambda backing_urls, url: stopped_calls.append((backing_urls, url)),
             None)
         self.server.run_server_stopped_hooks()
         self.assertEquals(stopped_calls,
-            [([self.get_transport().base], 'bzr://192.168.0.1:42/')])
+            [([self.get_transport().base], 'bzr://example.com:42/')])
