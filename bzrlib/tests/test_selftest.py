@@ -338,12 +338,11 @@ class TestWorkingTreeScenarios(tests.TestCase):
         from bzrlib.tests.per_workingtree import make_scenarios
         server1 = "a"
         server2 = "b"
-        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
-        formats = [WorkingTreeFormat2(),
+        formats = [workingtree.WorkingTreeFormat4(),
                    workingtree.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
-            ('WorkingTreeFormat2',
+            ('WorkingTreeFormat4',
              {'bzrdir_format': formats[0]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
@@ -374,10 +373,9 @@ class TestTreeScenarios(tests.TestCase):
             return_parameter,
             revision_tree_from_workingtree
             )
-        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
         server1 = "a"
         server2 = "b"
-        formats = [WorkingTreeFormat2(),
+        formats = [workingtree.WorkingTreeFormat4(),
                    workingtree.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual(7, len(scenarios))
@@ -455,13 +453,12 @@ class TestInterTreeScenarios(tests.TestCase):
         from bzrlib.tests.per_intertree import (
             make_scenarios,
             )
-        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
-        from bzrlib.workingtree import WorkingTreeFormat3
+        from bzrlib.workingtree import WorkingTreeFormat3, WorkingTreeFormat4
         input_test = TestInterTreeScenarios(
             "test_scenarios")
         server1 = "a"
         server2 = "b"
-        format1 = WorkingTreeFormat2()
+        format1 = WorkingTreeFormat4()
         format2 = WorkingTreeFormat3()
         formats = [("1", str, format1, format2, "converter1"),
             ("2", int, format2, format1, "converter2")]
