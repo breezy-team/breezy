@@ -504,7 +504,7 @@ class PathConflict(Conflict):
         # Adjust the path for the retained file id
         tid = tt.trans_id_file_id(file_id)
         parent_tid = tt.get_tree_parent(tid)
-        tt.adjust_path(path, parent_tid, tid)
+        tt.adjust_path(osutils.basename(path), parent_tid, tid)
         tt.apply()
 
     def _revision_tree(self, tree, revid):

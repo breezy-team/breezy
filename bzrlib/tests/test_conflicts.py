@@ -479,6 +479,16 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
                    # PathConflicts deletion handling requires a special
                    # hard-coded value
                    path='<deleted>', file_id='file-id')),),
+            # File renamed/deleted in dir
+            (dict(_base_actions='create_file_in_dir'),
+             ('file_renamed_in_dir',
+              dict(actions='rename_file_in_dir', check='file_in_dir_renamed',
+                   path='dir/new-file', file_id='file-id')),
+             ('file_deleted',
+              dict(actions='delete_file', check='file_in_dir_doesnt_exist',
+                   # PathConflicts deletion handling requires a special
+                   # hard-coded value
+                   path='<deleted>', file_id='file-id')),),
             # File renamed/renamed differently
             (dict(_base_actions='create_file'),
              ('file_renamed',
@@ -553,6 +563,20 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
 
     def check_dir_doesnt_exist(self):
         self.failIfExists('branch/dir')
+
+    def do_create_file_in_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', '')),
+                ('add', ('dir/file', 'file-id', 'file', 'trunk content\n'))]
+
+    def do_rename_file_in_dir(self):
+        return [('rename', ('dir/file', 'dir/new-file'))]
+
+    def check_file_in_dir_renamed(self):
+        self.failIfExists('branch/dir/file')
+        self.failUnlessExists('branch/dir/new-file')
+
+    def check_file_in_dir_doesnt_exist(self):
+        self.failIfExists('branch/dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         tpath = self._this['path']
