@@ -28,23 +28,27 @@ import urllib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    xml5,
-    graph as _mod_graph,
-    ui,
-    )
-""")
-from bzrlib import (
     debug,
-    errors,
+    graph as _mod_graph,
     lockable_files,
     lockdir,
     osutils,
     trace,
     tuned_gzip,
+    ui,
     urlutils,
     versionedfile,
+    weave,
+    xml5,
     )
-from bzrlib.decorators import needs_read_lock, needs_write_lock
+""")
+from bzrlib import (
+    errors,
+    )
+from bzrlib.decorators import (
+    needs_read_lock,
+    needs_write_lock,
+    )
 from bzrlib.repository import (
     CommitBuilder,
     InterRepository,

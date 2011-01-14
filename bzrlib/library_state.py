@@ -89,11 +89,10 @@ class BzrLibraryState(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.cleanups.cleanup_now()
-        from bzrlib import ui
-        bzrlib.trace._flush_stdout_stderr()
-        bzrlib.trace._flush_trace()
-        import bzrlib.osutils
-        bzrlib.osutils.report_extension_load_failures()
+        from bzrlib import (osutils, trace, ui)
+        trace._flush_stdout_stderr()
+        trace._flush_trace()
+        osutils.report_extension_load_failures()
         self._ui.__exit__(None, None, None)
         self._trace.__exit__(None, None, None)
         ui.ui_factory = self._orig_ui
