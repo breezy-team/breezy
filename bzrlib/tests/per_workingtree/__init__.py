@@ -24,7 +24,6 @@ rather than in tests/per_workingtree/*.py.
 
 from bzrlib import (
     branchbuilder,
-    errors,
     tests,
     workingtree,
     )
@@ -69,11 +68,10 @@ class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
 
 def workingtree_formats():
     """The known working tree formats."""
-    from bzrlib.plugins.weave_fmt.workingtree import _legacy_formats as weave_formats
-    return (workingtree.WorkingTreeFormat._formats.values() + weave_formats)
+    return workingtree.WorkingTreeFormat._formats.values()
 
 
-def load_tests(standard_tests, module, loader):
+def workingtree_tests(loader):
     test_names = [
         'add_reference',
         'add',
@@ -119,7 +117,13 @@ def load_tests(standard_tests, module, loader):
     test_workingtree_implementations = [
         'bzrlib.tests.per_workingtree.test_' + name for
         name in test_names]
+    return loader.loadTestsFromModuleNames(test_workingtree_implementations)
 
+
+def multiply_workingtree_tests(loader, scenarios, standard_tests):
+    return tests.multiply_tests(workingtree_tests(loader), scenarios, standard_tests)
+
+def load_tests(standard_tests, module, loader):
     scenarios = make_scenarios(
         tests.default_transport,
         # None here will cause a readonly decorator to be created
@@ -129,6 +133,4 @@ def load_tests(standard_tests, module, loader):
         )
 
     # add the tests for the sub modules
-    return tests.multiply_tests(
-        loader.loadTestsFromModuleNames(test_workingtree_implementations),
-        scenarios, standard_tests)
+    return multiply_workingtree_tests(loader, scenarios, standard_tests)

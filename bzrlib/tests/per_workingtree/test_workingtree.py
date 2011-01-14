@@ -45,8 +45,6 @@ from bzrlib.workingtree import (
     )
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
 
-from bzrlib.plugins.weave_fmt.workingtree import WorkingTree2
-
 
 class TestWorkingTree(TestCaseWithWorkingTree):
 

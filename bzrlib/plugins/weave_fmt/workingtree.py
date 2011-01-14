@@ -174,10 +174,3 @@ class WorkingTree2(WorkingTree):
             return self._control_files.unlock()
         finally:
             self.branch.unlock()
-
-
-
-
-# formats which have no format string are not discoverable
-# and not independently creatable, so are not registered.
-_legacy_formats = [WorkingTreeFormat2()]
