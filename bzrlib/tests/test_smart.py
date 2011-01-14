@@ -1469,7 +1469,7 @@ class TestSmartServerRepositoryGetRevIdForRevno(
             request.execute('stacked', 1, (3, r3)))
 
 
-class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
+class GetStreamTestBase(tests.TestCaseWithMemoryTransport):
 
     def make_two_commit_repo(self):
         tree = self.make_branch_and_memory_tree('.')
@@ -1480,6 +1480,9 @@ class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
         tree.unlock()
         repo = tree.branch.repository
         return repo, r1, r2
+
+
+class TestSmartServerRepositoryGetStream(GetStreamTestBase):
 
     def test_ancestry_of(self):
         """The search argument may be a 'ancestry-of' some heads'."""
@@ -1503,6 +1506,18 @@ class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
         lines = '\n'.join(fetch_spec)
         request.execute('', repo._format.network_name())
         response = request.do_body(lines)
+        self.assertEqual(('ok',), response.args)
+        stream_bytes = ''.join(response.body_stream)
+        self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
+
+    def test_search_everything(self):
+        """A search of 'everything' returns a stream."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetStream_1_19(backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        serialised_fetch_spec = 'everything'
+        request.execute('', repo._format.network_name())
+        response = request.do_body(serialised_fetch_spec)
         self.assertEqual(('ok',), response.args)
         stream_bytes = ''.join(response.body_stream)
         self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
@@ -1906,6 +1921,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryGetRevisionGraph)
         self.assertHandlerEqual('Repository.get_stream',
             smart_repo.SmartServerRepositoryGetStream)
+        self.assertHandlerEqual('Repository.get_stream_1.19',
+            smart_repo.SmartServerRepositoryGetStream_1_19)
         self.assertHandlerEqual('Repository.has_revision',
             smart_repo.SmartServerRequestHasRevision)
         self.assertHandlerEqual('Repository.insert_stream',
