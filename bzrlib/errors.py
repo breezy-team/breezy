@@ -713,6 +713,9 @@ class NotBranchError(PathError):
        self.bzrdir = bzrdir
        PathError.__init__(self, path=path)
 
+    def __repr__(self):
+        return '<%s %r>' % (self.__class__.__name__, self.__dict__)
+
     def _format(self):
         # XXX: Ideally self.detail would be a property, but Exceptions in
         # Python 2.4 have to be old-style classes so properties don't work.
