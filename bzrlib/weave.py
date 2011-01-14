@@ -67,7 +67,6 @@
 # FIXME: the conflict markers should be *7* characters
 
 from copy import copy
-from cStringIO import StringIO
 import os
 
 from bzrlib.lazy_import import lazy_import
@@ -86,7 +85,6 @@ from bzrlib.errors import (
     UnavailableRepresentation,
     )
 from bzrlib.osutils import (
-    dirname,
     sha,
     sha_strings,
     split_lines,

@@ -40,6 +40,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     upgrade_recommended = True
 
+    requires_normalized_unicode_filenames = True
+
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"

@@ -2800,6 +2800,8 @@ class WorkingTreeFormat(object):
 
     upgrade_recommended = False
 
+    requires_normalized_unicode_filenames = False
+
     @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the working tree object in a_bzrdir."""

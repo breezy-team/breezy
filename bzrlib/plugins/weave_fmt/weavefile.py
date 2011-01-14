@@ -39,11 +39,11 @@ line contains a newline, or ',' if not.
 # deserialize it into memory.
 
 from cStringIO import StringIO
-from os.path import dirname
 
 from bzrlib import (
     errors,
     )
+from bzrlib.osutils import dirname
 from bzrlib.weave import (
     Weave,
     WeaveFormatError,
