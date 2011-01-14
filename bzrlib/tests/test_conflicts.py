@@ -960,6 +960,44 @@ $ bzr merge ../trunk
 2>bzr: ERROR: Tree transform is malformed [('unversioned executability', 'new-1')]
 """)
 
+    def test_bug_660935(self):
+        self.run_script("""
+$ bzr init trunk
+Created a standalone tree (format: 2a)
+$ cd trunk
+$ echo trunk > file
+$ bzr add
+adding file
+$ bzr commit -m 'create file on trunk'
+2>Committing to: .../trunk/
+2>added file
+2>Committed revision 1.
+$ cd ..
+$ bzr branch trunk featureA
+2>Branched 1 revision(s).
+$ cd featureA
+$ echo featureA > file
+$ bzr commit -m 'modify file for featureA'
+2>Committing to: .../featureA/
+2>modified file
+2>Committed revision 2.
+$ cd ..
+$ cd trunk
+$ bzr rm file
+2>deleted file
+$ bzr commit -m 'Delete file'
+2>Committing to: .../trunk/
+2>deleted file
+2>Committed revision 2.
+$ cd ../featureA
+$ bzr merge ../trunk
+2>RM  file => file.THIS
+2>Contents conflict in file
+2>1 conflicts encountered.
+$ bzr conflicts
+Contents conflict in file
+$ bzr resolve --take-other
+""")
 
 class TestResolveActionOption(tests.TestCase):
 
