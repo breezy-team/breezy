@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr serve`` no longer crashes when a server_started hook is installed and IPv6
+  support is available on the system. (Jelmer Vernooij, #293697)
+
 Documentation
 *************
 
