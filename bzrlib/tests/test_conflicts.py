@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -965,39 +965,43 @@ $ bzr merge ../trunk
 $ bzr init trunk
 Created a standalone tree (format: 2a)
 $ cd trunk
-$ echo trunk > file
+$ mkdir src
+$ echo trunk > src/file
 $ bzr add
-adding file
+adding src
+adding src/file
 $ bzr commit -m 'create file on trunk'
 2>Committing to: .../trunk/
-2>added file
+2>added src
+2>added src/file
 2>Committed revision 1.
 $ cd ..
 $ bzr branch trunk featureA
 2>Branched 1 revision(s).
 $ cd featureA
-$ echo featureA > file
+$ echo featureA > src/file
 $ bzr commit -m 'modify file for featureA'
 2>Committing to: .../featureA/
-2>modified file
+2>modified src/file
 2>Committed revision 2.
 $ cd ..
 $ cd trunk
-$ bzr rm file
-2>deleted file
+$ bzr rm src/file
+2>deleted src/file
 $ bzr commit -m 'Delete file'
 2>Committing to: .../trunk/
-2>deleted file
+2>deleted src/file
 2>Committed revision 2.
 $ cd ../featureA
 $ bzr merge ../trunk
-2>RM  file => file.THIS
-2>Contents conflict in file
+2>RM  src/file => src/file.THIS
+2>Contents conflict in src/file
 2>1 conflicts encountered.
 $ bzr conflicts
-Contents conflict in file
+Contents conflict in src/file
 $ bzr resolve --take-other
 """)
+
 
 class TestResolveActionOption(tests.TestCase):
 
