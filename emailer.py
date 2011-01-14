@@ -65,7 +65,8 @@ class EmailSender(object):
 
         outf.write('At %s\n\n' % self.url())
 
-        lf = log.log_formatter('long',
+        log_format = self.config.get_user_option('post_commit_log_format')
+        lf = log.log_formatter(log_format or 'long',
                                show_ids=True,
                                to_file=outf
                                )
