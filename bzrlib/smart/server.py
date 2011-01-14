@@ -18,7 +18,6 @@
 
 import errno
 import os.path
-import select
 import socket
 import sys
 import threading
@@ -27,7 +26,6 @@ from bzrlib.hooks import HookPoint, Hooks
 from bzrlib import (
     errors,
     trace,
-    transport,
 )
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """

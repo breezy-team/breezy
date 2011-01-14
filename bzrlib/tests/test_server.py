@@ -803,7 +803,3 @@ class ReadonlySmartTCPServer_for_testing_v2_only(
         """Get a backing transport from a server we are decorating."""
         url = 'readonly+' + backing_transport_server.get_url()
         return transport.get_transport(url)
-
-
-
-

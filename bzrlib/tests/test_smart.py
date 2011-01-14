@@ -41,6 +41,7 @@ from bzrlib.smart import (
     repository as smart_repo,
     packrepository as smart_packrepo,
     request as smart_req,
+    server,
     vfs,
     )
 from bzrlib.tests import test_server
@@ -1922,3 +1923,50 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryUnlock)
         self.assertHandlerEqual('Transport.is_readonly',
             smart_req.SmartServerIsReadonly)
+
+
+class SmartTCPServerHookTests(tests.TestCaseWithMemoryTransport):
+    """Tests for SmartTCPServer hooks."""
+
+    def setUp(self):
+        super(SmartTCPServerHookTests, self).setUp()
+        self.server = server.SmartTCPServer(self.get_transport())
+
+    def test_run_server_started_hooks(self):
+        """Test the server started hooks get fired properly."""
+        started_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_started',
+            lambda backing_urls, url: started_calls.append((backing_urls, url)),
+            None)
+        started_ex_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_started_ex',
+            lambda backing_urls, url: started_ex_calls.append((backing_urls, url)),
+            None)
+        self.server._sockname = ('192.168.0.1', 42)
+        self.server.run_server_started_hooks()
+        self.assertEquals(started_calls,
+            [([self.get_transport().base], 'bzr://192.168.0.1:42/')])
+        self.assertEquals(started_ex_calls,
+            [([self.get_transport().base], self.server)])
+
+    def test_run_server_started_hooks_ipv6(self):
+        """Test that socknames can contain 4-tuples."""
+        self.server._sockname = ('::', 42, 0, 0)
+        started_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_started',
+            lambda backing_urls, url: started_calls.append((backing_urls, url)),
+            None)
+        self.server.run_server_started_hooks()
+        self.assertEquals(started_calls,
+                [([self.get_transport().base], 'bzr://:::42/')])
+
+    def test_run_server_stopped_hooks(self):
+        """Test the server stopped hooks."""
+        self.server._sockname = ('192.168.0.1', 42)
+        stopped_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_stopped',
+            lambda backing_urls, url: stopped_calls.append((backing_urls, url)),
+            None)
+        self.server.run_server_stopped_hooks()
+        self.assertEquals(stopped_calls,
+            [([self.get_transport().base], 'bzr://192.168.0.1:42/')])
