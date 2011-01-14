@@ -180,5 +180,4 @@ class WorkingTree2(WorkingTree):
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-_legacy_formats = [WorkingTreeFormat2(),
-                   ]
+_legacy_formats = [WorkingTreeFormat2()]

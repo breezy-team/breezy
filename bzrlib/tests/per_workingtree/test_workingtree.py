@@ -925,8 +925,6 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         else:
             case_sensitive = True
         tree = self.make_branch_and_tree('test')
-        if tree.__class__ == WorkingTree2:
-            raise TestSkipped('WorkingTree2 is not supported')
         self.assertEqual(case_sensitive, tree.case_sensitive)
 
     def test_all_file_ids_with_missing(self):

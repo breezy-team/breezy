@@ -44,7 +44,10 @@ from os.path import dirname
 from bzrlib import (
     errors,
     )
-from bzrlib.weave import Weave
+from bzrlib.weave import (
+    Weave,
+    WeaveFormatError,
+    )
 
 FORMAT_1 = '# bzr weave file v5\n'
 
@@ -119,8 +122,6 @@ def _read_weave_v5(f, w):
     #  200   0    851.7250    501.1120   bzrlib.weavefile:104(_read_weave_v5)
     # +59363 0    311.8780    311.8780   +<method 'append' of 'list' objects>
     # +200   0     30.2500     30.2500   +<method 'readlines' of 'file' objects>
-
-    from weave import WeaveFormatError
 
     try:
         lines = iter(f.readlines())
