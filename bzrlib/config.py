@@ -364,10 +364,6 @@ class Config(object):
             if oname.startswith('bzr.mergetool.'):
                 tool_name = oname[len('bzr.mergetool.'):]
                 tools[tool_name] = mergetools.MergeTool(tool_name, value)
-        for tool_name in mergetools.known_merge_tools:
-            if not tool_name in tools:
-                tools[tool_name] = mergetools.MergeTool(tool_name,
-                    mergetools.known_merge_tools[tool_name])
         trace.mutter('loaded merge tools: %r' % tools)
         return tools.values()
 
@@ -380,11 +376,15 @@ class Config(object):
         self.remove_user_option('bzr.mergetool.%s' % name)
 
     def find_merge_tool(self, name):
-        commandline = (self.get_user_option('bzr.mergetool.%s' % name)
-                       or mergetools.known_merge_tools.get(name, None))
-        if commandline is None:
+        # We fake a defaults mechanism here by checking if the given name can 
+        # be found in the known_merge_tools if it's not found in the config.
+        # This should be done through the proposed config defaults mechanism
+        # when it becomes available in the future.
+        command_line = (self.get_user_option('bzr.mergetool.%s' % name) or
+                        mergetools.known_merge_tools.get(name, None))
+        if command_line is None:
             return None
-        return mergetools.MergeTool(name, commandline)
+        return mergetools.MergeTool(name, command_line)
 
     def get_default_merge_tool(self):
         return self.get_user_option('bzr.default_mergetool')
