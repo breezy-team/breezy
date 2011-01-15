@@ -367,14 +367,6 @@ class Config(object):
         trace.mutter('loaded merge tools: %r' % tools)
         return tools.values()
 
-    def set_merge_tool(self, tool):
-        if tool.name == '' or tool.command_line == '':
-            return
-        self.set_user_option('bzr.mergetool.%s' % tool.name, tool.command_line)
-    
-    def remove_merge_tool(self, name):
-        self.remove_user_option('bzr.mergetool.%s' % name)
-
     def find_merge_tool(self, name):
         # We fake a defaults mechanism here by checking if the given name can 
         # be found in the known_merge_tools if it's not found in the config.
@@ -388,12 +380,6 @@ class Config(object):
 
     def get_default_merge_tool(self):
         return self.get_user_option('bzr.default_mergetool')
-
-    def set_default_merge_tool(self, name):
-        if self.find_merge_tool(name) is None:
-            raise errors.BzrError('invalid merge tool name: %r' % name)
-        trace.mutter('setting default merge tool: %s', name)
-        self.set_user_option('bzr.default_mergetool', name)
 
 
 class IniBasedConfig(Config):
