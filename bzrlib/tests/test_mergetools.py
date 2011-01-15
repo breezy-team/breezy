@@ -38,6 +38,11 @@ class TestBasics(tests.TestCase):
         self.assertEqual(
             '/path/to/tool --opt {base} -x {this} {other} --stuff {result}',
             self.tool.command_line)
+        
+    def test_set_commandline(self):
+        self.tool.command_line = "/path/to/tool blah"
+        self.assertEqual("/path/to/tool blah", self.tool.command_line)
+        self.assertEqual(['/path/to/tool', 'blah'], self.tool._cmd_list)
 
     def test_get_name(self):
         self.assertEqual('sometool', self.tool.name)

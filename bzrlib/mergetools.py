@@ -52,10 +52,18 @@ class MergeTool(object):
         """Initializes the merge tool with a name and a command-line."""
         self.name = name
         self.command_line = command_line
-        self._cmd_list = cmdline.split(self.command_line)
 
     def __repr__(self):
         return '<%s(%s, %s)>' % (self.__class__, self.name, self.command_line)
+        
+    def _get_command_line(self):
+        return self._command_line
+    
+    def _set_command_line(self, command_line):
+        self._command_line = command_line
+        self._cmd_list = cmdline.split(self.command_line)
+        
+    command_line = property(_get_command_line, _set_command_line)
 
     def is_available(self):
         exe = self._cmd_list[0]
