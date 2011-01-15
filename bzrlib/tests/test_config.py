@@ -996,22 +996,12 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_get_default_merge_tool(self):
         conf = self._get_sample_config()
-        tool = conf.get_default_merge_tool()
-        self.log(repr(tool))
-        self.assertIsNot(tool, None)
-        self.assertEqual('sometool', tool.name)
-        self.assertEqual('sometool {base} {this} {other} -o {result}',
-                         tool.command_line)
+        self.assertEqual('sometool', conf.get_default_merge_tool())
 
     def test_get_default_merge_tool_known(self):
         conf = self._get_sample_config()
         conf.set_default_merge_tool('kdiff3')
-        tool = conf.get_default_merge_tool()
-        self.log(repr(tool))
-        self.assertIsNot(tool, None)
-        self.assertEqual('kdiff3', tool.name)
-        self.assertEqual('kdiff3 {base} {this} {other} -o {result}',
-                         tool.command_line)
+        self.assertEqual('kdiff3', conf.get_default_merge_tool())
 
     def test_get_default_merge_tool_empty(self):
         conf = self._get_empty_config()
