@@ -371,21 +371,13 @@ class Config(object):
         trace.mutter('loaded merge tools: %r' % tools)
         return tools.values()
 
-    def set_merge_tools(self, tools):
-        # remove entries from config for tools which do not appear in
-        # merge_tools
-        tool_names = [tool.name for tool in tools]
-        for (oname, value, section, conf_id, parser) in self._get_options():
-            if oname.startswith('bzr.mergetool.'):
-                if oname[len('bzr.mergetool.'):] not in tool_names:
-                    self.remove_user_option(oname)
-        # set config entries
-        for tool in tools:
-            oname = 'bzr.mergetool.%s' % tool.name
-            value = tool.command_line
-            if oname == '' or value == '':
-                continue
-            self.set_user_option(oname, value)
+    def set_merge_tool(self, tool):
+        if tool.name == '' or tool.command_line == '':
+            return
+        self.set_user_option('bzr.mergetool.%s' % tool.name, tool.command_line)
+    
+    def remove_merge_tool(self, name):
+        self.remove_user_option('bzr.mergetool.%s' % name)
 
     def find_merge_tool(self, name):
         commandline = (self.get_user_option('bzr.mergetool.%s' % name)
