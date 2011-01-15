@@ -18,16 +18,12 @@
 """Tests of the bzr serve command."""
 
 import os
-import os.path
 import signal
-import subprocess
-import sys
 import thread
 import threading
 
 from bzrlib import (
     builtins,
-    debug,
     errors,
     osutils,
     revision as _mod_revision,
@@ -37,11 +33,13 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import client, medium
-from bzrlib.smart.server import BzrServerFactory, SmartTCPServer
+from bzrlib.smart.server import (
+    BzrServerFactory,
+    SmartTCPServer,
+    )
 from bzrlib.tests import (
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
-    TestSkipped,
     )
 from bzrlib.trace import mutter
 from bzrlib.transport import remote
@@ -53,9 +51,9 @@ class TestBzrServeBase(TestCaseWithTransport):
                                 *func_args, **func_kwargs):
         """Run 'bzr serve', and run the given func in a thread once the server
         has started.
-        
+
         When 'func' terminates, the server will be terminated too.
-        
+
         Returns stdout and stderr.
         """
         # install hook
@@ -164,7 +162,7 @@ class TestBzrServe(TestBzrServeBase):
         url = 'bzr://localhost:%d/' % port
         self.permit_url(url)
         return process, url
-    
+
     def test_bzr_serve_quiet(self):
         self.make_branch('.')
         args = ['--port', 'localhost:0', '--quiet']
@@ -334,4 +332,3 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         self.assertEqual(base_url, self.bzr_serve_transport.base)
         self.assertEqual(base_dir,
             server_maker.get_base_path(self.bzr_serve_transport))
-
