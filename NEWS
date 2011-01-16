@@ -9,7 +9,7 @@
 
   * Support non-ascii characters in tag names. (Jelmer Vernooij, #616995)
 
-  * Mark as compatible with bzr 2.3. (Jelmer Vernooij)
+  * Mark as compatible with bzr 2.3, 2.4. (Jelmer Vernooij)
 
   * Cope with unknown refs. (Jelmer Vernooij, #666443)
 
