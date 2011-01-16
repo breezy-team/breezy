@@ -15,24 +15,20 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
-import stat
 import sys
 
 
 from bzrlib import (
-    branch,
     bzrdir,
     config,
     errors,
     osutils,
-    remote,
     revisionspec,
     tests,
     transport,
     workingtree,
     uncommit,
     )
-from bzrlib.smart import server as smart_server
 from bzrlib.tests import (
     per_branch,
     per_transport,
@@ -42,7 +38,9 @@ from bzrlib.transport import (
     ftp,
     sftp,
     )
-from bzrlib.plugins import upload
+from bzrlib.plugins.upload import (
+    cmds,
+    )
 
 
 def get_transport_scenarios():
@@ -213,7 +211,7 @@ class UploadUtilsMixin(object):
         self.tree.commit('modify symlink %s -> %s' % (path, target))
 
     def _get_cmd_upload(self):
-        cmd = upload.cmd_upload()
+        cmd = cmds.cmd_upload()
         # We don't want to use run_bzr here because redirected output are a
         # pain to debug. But we need to provides a valid outf.
         # XXX: Should a bug against bzr be filled about that ?
@@ -452,7 +450,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.failIfUpFileExists(new_name)
 
     def get_upload_auto(self):
-        return upload.get_upload_auto(self.tree.branch)
+        return cmds.get_upload_auto(self.tree.branch)
 
     def test_upload_auto(self):
         """Test that upload --auto sets the upload_auto option"""
@@ -503,7 +501,7 @@ class TestUploadMixin(UploadUtilsMixin):
         self.add_file('dir/goodbye', 'baz')
 
         revid_path = 'dir/revid-path'
-        upload.set_upload_revid_location(self.tree.branch, revid_path)
+        cmds.set_upload_revid_location(self.tree.branch, revid_path)
         self.failIfUpFileExists(revid_path)
 
         self.do_full_upload()
@@ -618,7 +616,7 @@ class TestFullUpload(tests.TestCaseWithTransport, TestUploadMixin):
 
         self.do_full_upload()
 
-        revid_path = upload.get_upload_revid_location(self.tree.branch)
+        revid_path = cmds.get_upload_revid_location(self.tree.branch)
         self.failUnlessUpFileExists(revid_path)
 
     def test_invalid_revspec(self):
@@ -725,7 +723,7 @@ class TestIncrementalUpload(tests.TestCaseWithTransport, TestUploadMixin):
         self.make_branch_and_working_tree()
         self.add_file('hello', 'bar')
 
-        revid_path = upload.get_upload_revid_location(self.tree.branch)
+        revid_path = cmds.get_upload_revid_location(self.tree.branch)
         self.failIfUpFileExists(revid_path)
 
         self.do_upload()
@@ -800,7 +798,7 @@ class TestUploadFromRemoteBranch(tests.TestCaseWithTransport,
         up_url = self.get_url(self.branch_dir)
         # Let's try to upload from the just created remote branch into the
         # branch (which has a working tree).
-        self.assertRaises(upload.CannotUploadToWorkingTree,
+        self.assertRaises(cmds.CannotUploadToWorkingTree,
                           cmd.run, up_url, directory=self.remote_branch_url)
 
     def test_upload_without_working_tree(self):
@@ -831,7 +829,7 @@ class TestUploadDiverged(tests.TestCaseWithTransport, UploadUtilsMixin):
         self.assertEqual(revid, uploaded_revid)
 
     def test_cant_upload_diverged(self):
-        self.assertRaises(upload.DivergedUploadedTree,
+        self.assertRaises(cmds.DivergedUploadedTree,
                           self.do_incremental_upload,
                           directory=self.diverged_tree.basedir)
         self.assertRevidUploaded('rev2a')
@@ -852,5 +850,5 @@ class TestUploadBadRemoteReivd(tests.TestCaseWithTransport, UploadUtilsMixin):
         t.put_bytes('.bzr-upload.revid', 'fake')
         # Make a change
         self.add_file('foo', 'bar\n')
-        self.assertRaises(upload.DivergedUploadedTree, self.do_full_upload)
+        self.assertRaises(cmds.DivergedUploadedTree, self.do_full_upload)
 
