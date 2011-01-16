@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ from bzrlib import (
     revision as _mod_revision,
     static_tuple,
     symbol_versioning,
+    urlutils,
 )
 from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
 from bzrlib.bzrdir import BzrDir, RemoteBzrDirFormat
@@ -246,14 +247,17 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         self._ensure_real()
         self._real_bzrdir.destroy_repository()
 
-    def create_branch(self, name=None):
+    def create_branch(self, name=None, repository=None):
         # as per meta1 formats - just delegate to the format object which may
         # be parameterised.
         real_branch = self._format.get_branch_format().initialize(self,
-            name=name)
+            name=name, repository=repository)
         if not isinstance(real_branch, RemoteBranch):
-            result = RemoteBranch(self, self.find_repository(), real_branch,
-                                  name=name)
+            if not isinstance(repository, RemoteRepository):
+                raise AssertionError(
+                    'need a RemoteRepository to use with RemoteBranch, got %r'
+                    % (repository,))
+            result = RemoteBranch(self, repository, real_branch, name=name)
         else:
             result = real_branch
         # BzrDir.clone_on_transport() uses the result of create_branch but does
@@ -1344,15 +1348,29 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return result
 
     @needs_read_lock
-    def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
+    def search_missing_revision_ids(self, other,
+            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
 
         revision_id: only return revision ids included by revision_id.
         """
-        return repository.InterRepository.get(
-            other, self).search_missing_revision_ids(revision_id, find_ghosts)
+        if symbol_versioning.deprecated_passed(revision_id):
+            symbol_versioning.warn(
+                'search_missing_revision_ids(revision_id=...) was '
+                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                DeprecationWarning, stacklevel=2)
+            if revision_ids is not None:
+                raise AssertionError(
+                    'revision_ids is mutually exclusive with revision_id')
+            if revision_id is not None:
+                revision_ids = [revision_id]
+        inter_repo = repository.InterRepository.get(other, self)
+        return inter_repo.search_missing_revision_ids(
+            find_ghosts=find_ghosts, revision_ids=revision_ids,
+            if_present_ids=if_present_ids)
 
     def fetch(self, source, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None):
@@ -1759,12 +1777,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return '\n'.join((start_keys, stop_keys, count))
 
     def _serialise_search_result(self, search_result):
-        if isinstance(search_result, graph.PendingAncestryResult):
-            parts = ['ancestry-of']
-            parts.extend(search_result.heads)
-        else:
-            recipe = search_result.get_recipe()
-            parts = [recipe[0], self._serialise_search_recipe(recipe)]
+        parts = search_result.get_network_struct()
         return '\n'.join(parts)
 
     def autopack(self):
@@ -1964,6 +1977,7 @@ class RemoteStreamSource(repository.StreamSource):
         candidate_verbs = [
             ('Repository.get_stream_1.19', (1, 19)),
             ('Repository.get_stream', (1, 13))]
+
         found_verb = False
         for verb, version in candidate_verbs:
             if medium._is_remote_before(version):
@@ -1973,6 +1987,17 @@ class RemoteStreamSource(repository.StreamSource):
                     verb, args, search_bytes)
             except errors.UnknownSmartMethod:
                 medium._remember_remote_is_before(version)
+            except errors.UnknownErrorFromSmartServer, e:
+                if isinstance(search, graph.EverythingResult):
+                    error_verb = e.error_from_smart_server.error_verb
+                    if error_verb == 'BadSearch':
+                        # Pre-2.3 servers don't support this sort of search.
+                        # XXX: perhaps falling back to VFS on BadSearch is a
+                        # good idea in general?  It might provide a little bit
+                        # of protection against client-side bugs.
+                        medium._remember_remote_is_before((2, 3))
+                        break
+                raise
             else:
                 response_tuple, response_handler = response
                 found_verb = True
@@ -2093,7 +2118,7 @@ class RemoteBranchFormat(branch.BranchFormat):
                                   name=name)
         return result
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, repository=None):
         # 1) get the network name to use.
         if self._custom_format:
             network_name = self._custom_format.network_name()
@@ -2127,13 +2152,25 @@ class RemoteBranchFormat(branch.BranchFormat):
         # Turn the response into a RemoteRepository object.
         format = RemoteBranchFormat(network_name=response[1])
         repo_format = response_tuple_to_repo_format(response[3:])
-        if response[2] == '':
-            repo_bzrdir = a_bzrdir
+        repo_path = response[2]
+        if repository is not None:
+            remote_repo_url = urlutils.join(medium.base, repo_path)
+            url_diff = urlutils.relative_url(repository.user_url,
+                    remote_repo_url)
+            if url_diff != '.':
+                raise AssertionError(
+                    'repository.user_url %r does not match URL from server '
+                    'response (%r + %r)'
+                    % (repository.user_url, medium.base, repo_path))
+            remote_repo = repository
         else:
-            repo_bzrdir = RemoteBzrDir(
-                a_bzrdir.root_transport.clone(response[2]), a_bzrdir._format,
-                a_bzrdir._client)
-        remote_repo = RemoteRepository(repo_bzrdir, repo_format)
+            if repo_path == '':
+                repo_bzrdir = a_bzrdir
+            else:
+                repo_bzrdir = RemoteBzrDir(
+                    a_bzrdir.root_transport.clone(repo_path), a_bzrdir._format,
+                    a_bzrdir._client)
+            remote_repo = RemoteRepository(repo_bzrdir, repo_format)
         remote_branch = RemoteBranch(a_bzrdir, remote_repo,
             format=format, setup_stacking=False, name=name)
         # XXX: We know this is a new branch, so it must have revno 0, revid

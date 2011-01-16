@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -187,7 +187,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch_b.get_parent(), branch_c.get_parent())
 
         # We can also set a specific parent, and it should be honored
-        random_parent = 'http://bazaar-vcs.org/path/to/branch'
+        random_parent = 'http://example.com/path/to/branch'
         branch_b.set_parent(random_parent)
         repo_d = self.make_repository('d')
         branch_b.repository.copy_content_into(repo_d)

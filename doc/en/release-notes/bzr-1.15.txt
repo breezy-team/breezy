@@ -105,7 +105,7 @@ Bug Fixes
   bzr+ssh:// clients (which have bug #354036).  Instead, the server now
   causes those clients to send the missing records.  (Andrew Bennetts)
 
-* Correctly handle http servers proposing multiple authentication schemes.
+* Correctly handle HTTP servers proposing multiple authentication schemes.
   (Vincent Ladeuil, #366107)
 
 * End-Of-Line content filters are now loaded correctly.
@@ -120,7 +120,7 @@ Bug Fixes
 * Non-recursive ``bzr ls`` now works properly when a path is specified.
   (Jelmer Vernooij, #357863)
 
-* ssh usernames (defined in ~/.ssh/config) are honoured for bzr+ssh connections.
+* SSH usernames (defined in ~/.ssh/config) are honoured for bzr+ssh connections.
   (Vincent Ladeuil, #367726)
 
 * Several bugs related to unicode symlinks have been fixed and the test suite

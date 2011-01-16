@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,22 +25,27 @@ from bzrlib import (
     revision,
     tests,
     )
-from bzrlib.inventory import (CHKInventory, Inventory, ROOT_ID, InventoryFile,
-    InventoryDirectory, InventoryEntry, TreeReference)
+from bzrlib.inventory import (
+    CHKInventory,
+    Inventory,
+    ROOT_ID,
+    InventoryFile,
+    InventoryDirectory,
+    InventoryEntry,
+    TreeReference,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
-    condition_isinstance,
-    multiply_tests,
-    split_suite_by_condition,
     )
 from bzrlib.tests.per_workingtree import workingtree_formats
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterise some inventory tests."""
-    to_adapt, result = split_suite_by_condition(standard_tests,
-        condition_isinstance(TestDeltaApplication))
+load_tests = load_tests_apply_scenarios
+
+
+def delta_application_scenarios():
     scenarios = [
         ('Inventory', {'apply_delta':apply_inventory_Inventory}),
         ]
@@ -63,7 +68,7 @@ def load_tests(standard_tests, module, loader):
             (str(format.__class__.__name__) + ".apply_inventory_delta", {
             'apply_delta':apply_inventory_WT,
             'format':format}))
-    return multiply_tests(to_adapt, scenarios, result)
+    return scenarios
 
 
 def create_texts_for_inv(repo, inv):
@@ -73,6 +78,7 @@ def create_texts_for_inv(repo, inv):
         else:
             lines = []
         repo.texts.add_lines((ie.file_id, ie.revision), [], lines)
+
     
 def apply_inventory_Inventory(self, basis, delta):
     """Apply delta to basis and return the result.
@@ -329,6 +335,8 @@ class TestInventoryUpdates(TestCase):
 
 
 class TestDeltaApplication(TestCaseWithTransport):
+
+    scenarios = delta_application_scenarios()
  
     def get_empty_inventory(self, reference_inv=None):
         """Get an empty inventory.

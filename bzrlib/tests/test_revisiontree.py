@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2008-2011 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,8 +21,6 @@ from bzrlib import (
     errors,
     revision,
     )
-import bzrlib
-from bzrlib.inventory import ROOT_ID
 from bzrlib.tests import TestCaseWithTransport
 
 

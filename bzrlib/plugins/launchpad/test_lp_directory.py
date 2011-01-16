@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -298,7 +298,7 @@ class TestXMLRPCTransport(tests.TestCase):
         self.server = self.server_class()
         self.server.start_server()
         # Ensure we don't clobber env
-        self._captureVar('BZR_LP_XMLRPC_URL', None)
+        self.overrideEnv('BZR_LP_XMLRPC_URL', None)
 
     def tearDown(self):
         self.server.stop_server()

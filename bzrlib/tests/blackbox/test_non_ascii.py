@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,16 +25,16 @@ from bzrlib import (
     urlutils,
     )
 from bzrlib.tests import EncodingAdapter
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    return tests.multiply_tests(standard_tests,
-                                EncodingAdapter.encoding_scenarios,
-                                loader.suiteClass())
+load_tests = load_tests_apply_scenarios
 
 
 class TestNonAscii(tests.TestCaseWithTransport):
     """Test that bzr handles files/committers/etc which are non-ascii."""
+
+    scenarios = EncodingAdapter.encoding_scenarios
 
     def setUp(self):
         super(TestNonAscii, self).setUp()
@@ -42,7 +42,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         self.overrideAttr(osutils, '_cached_user_encoding', self.encoding)
         email = self.info['committer'] + ' <joe@foo.com>'
-        os.environ['BZR_EMAIL'] = email.encode(osutils.get_user_encoding())
+        self.overrideEnv('BZR_EMAIL', email.encode(osutils.get_user_encoding()))
         self.create_base()
 
     def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None,

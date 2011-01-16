@@ -18,7 +18,6 @@
 
 import errno
 import os.path
-import select
 import socket
 import sys
 import threading
@@ -27,7 +26,6 @@ from bzrlib.hooks import HookPoint, Hooks
 from bzrlib import (
     errors,
     trace,
-    transport,
 )
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -178,7 +176,7 @@ class SmartTCPServer(object):
 
     def get_url(self):
         """Return the url of the server"""
-        return "bzr://%s:%d/" % self._sockname
+        return "bzr://%s:%s/" % (self._sockname[0], self._sockname[1])
 
     def serve_conn(self, conn, thread_name_suffix):
         # For WIN32, where the timeout value from the listening socket

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -57,34 +57,35 @@ from bzrlib.remote import (
     )
 from bzrlib.repofmt import groupcompress_repo, pack_repo
 from bzrlib.revision import NULL_REVISION
-from bzrlib.smart import medium
+from bzrlib.smart import medium, request
 from bzrlib.smart.client import _SmartClient
-from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
+from bzrlib.smart.repository import (
+    SmartServerRepositoryGetParentMap,
+    SmartServerRepositoryGetStream_1_19,
+    )
 from bzrlib.tests import (
-    condition_isinstance,
-    split_suite_by_condition,
-    multiply_tests,
     test_server,
     )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 from bzrlib.transport.memory import MemoryTransport
 from bzrlib.transport.remote import (
     RemoteTransport,
     RemoteSSHTransport,
     RemoteTCPTransport,
-)
+    )
 
-def load_tests(standard_tests, module, loader):
-    to_adapt, result = split_suite_by_condition(
-        standard_tests, condition_isinstance(BasicRemoteObjectTests))
-    smart_server_version_scenarios = [
-        ('HPSS-v2',
-         {'transport_server': test_server.SmartTCPServer_for_testing_v2_only}),
-        ('HPSS-v3',
-         {'transport_server': test_server.SmartTCPServer_for_testing})]
-    return multiply_tests(to_adapt, smart_server_version_scenarios, result)
+
+load_tests = load_tests_apply_scenarios
 
 
 class BasicRemoteObjectTests(tests.TestCaseWithTransport):
+
+    scenarios = [
+        ('HPSS-v2',
+            {'transport_server': test_server.SmartTCPServer_for_testing_v2_only}),
+        ('HPSS-v3',
+            {'transport_server': test_server.SmartTCPServer_for_testing})]
+
 
     def setUp(self):
         super(BasicRemoteObjectTests, self).setUp()
@@ -3182,11 +3183,63 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
 
     def test_copy_content_into_avoids_revision_history(self):
         local = self.make_branch('local')
-        remote_backing_tree = self.make_branch_and_tree('remote')
-        remote_backing_tree.commit("Commit.")
+        builder = self.make_branch_builder('remote')
+        builder.build_commit(message="Commit.")
         remote_branch_url = self.smart_server.get_url() + 'remote'
         remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
         local.repository.fetch(remote_branch.repository)
         self.hpss_calls = []
         remote_branch.copy_content_into(local)
         self.assertFalse('Branch.revision_history' in self.hpss_calls)
+
+    def test_fetch_everything_needs_just_one_call(self):
+        local = self.make_branch('local')
+        builder = self.make_branch_builder('remote')
+        builder.build_commit(message="Commit.")
+        remote_branch_url = self.smart_server.get_url() + 'remote'
+        remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
+        self.hpss_calls = []
+        local.repository.fetch(remote_branch.repository,
+                fetch_spec=graph.EverythingResult(remote_branch.repository))
+        self.assertEqual(['Repository.get_stream_1.19'], self.hpss_calls)
+
+    def override_verb(self, verb_name, verb):
+        request_handlers = request.request_handlers
+        orig_verb = request_handlers.get(verb_name)
+        request_handlers.register(verb_name, verb, override_existing=True)
+        self.addCleanup(request_handlers.register, verb_name, orig_verb,
+                override_existing=True)
+
+    def test_fetch_everything_backwards_compat(self):
+        """Can fetch with EverythingResult even with pre 2.3 servers.
+        
+        Pre-2.3 do not support 'everything' searches with the
+        Repository.get_stream_1.19 verb.
+        """
+        verb_log = []
+        class OldGetStreamVerb(SmartServerRepositoryGetStream_1_19):
+            """A version of the Repository.get_stream_1.19 verb patched to
+            reject 'everything' searches the way 2.2 and earlier do.
+            """
+            def recreate_search(self, repository, search_bytes, discard_excess=False):
+                verb_log.append(search_bytes.split('\n', 1)[0])
+                if search_bytes == 'everything':
+                    return (None, request.FailedSmartServerResponse(('BadSearch',)))
+                return super(OldGetStreamVerb,
+                        self).recreate_search(repository, search_bytes,
+                            discard_excess=discard_excess)
+        self.override_verb('Repository.get_stream_1.19', OldGetStreamVerb)
+        local = self.make_branch('local')
+        builder = self.make_branch_builder('remote')
+        builder.build_commit(message="Commit.")
+        remote_branch_url = self.smart_server.get_url() + 'remote'
+        remote_branch = bzrdir.BzrDir.open(remote_branch_url).open_branch()
+        self.hpss_calls = []
+        local.repository.fetch(remote_branch.repository,
+                fetch_spec=graph.EverythingResult(remote_branch.repository))
+        # make sure the overridden verb was used
+        self.assertLength(1, verb_log)
+        # more than one HPSS call is needed, but because it's a VFS callback
+        # its hard to predict exactly how many.
+        self.assertTrue(len(self.hpss_calls) > 1)
+

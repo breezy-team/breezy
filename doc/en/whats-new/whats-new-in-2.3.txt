@@ -20,6 +20,11 @@ previous versions.
 Changed Behaviour
 *****************
 
+* Committing a new revision in a stacked branch is now supported, as long as
+  you are using the current repository format (2a). It will preserve the
+  stacking invariants, etc, so that fetching after commit is guaranteed to
+  work. (John Arbash Meinel, #375013)
+
 * Support for some old development formats have been removed:
   ``development-rich-root``, ``development6-rich-root``, and
   ``development7-rich-root``.  These formats were always labelled experimental
@@ -45,6 +50,11 @@ Changed Behaviour
   ~/.bazaar/plugins.  To use a different directory for plugins, use the
   environment variable BZR_PLUGIN_PATH.  (Neil Martinsen-Burrell, #195397)
 
+* ``bzr upgrade`` now operates recursively when run on a shared
+  repository, automatically upgrading the branches within it, and has
+  grown additional options for showing what it will do and cleaning up
+  after itself.  (Ian Clatworthy, Matthew Fuller, #89830, #374734, #422450)
+
 Launchpad integration
 *********************
 
@@ -68,6 +78,10 @@ Performance improvements
 
 * ``bzr send`` uses less memory.
   (John Arbash Meinel, #614576)
+
+* Fetches involving stacked branches and branches with tags now do slightly less
+  I/O, and so does branching from an existing branch.  This also improves the
+  network performance of these operations.  (Andrew Bennetts)
 
 * Inventory entries now consume less memory (on 32-bit Ubuntu file entries
   have dropped from 68 bytes to 40, and directory entries from 120 bytes

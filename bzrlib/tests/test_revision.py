@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,26 +15,19 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import os
 import warnings
 
 from bzrlib import (
     bugtracker,
     revision,
-    symbol_versioning,
     )
-from bzrlib.branch import Branch
 from bzrlib.errors import (
     InvalidBugStatus,
     InvalidLineInBugsProperty,
-    NoSuchRevision,
     )
-from bzrlib.deprecated_graph import Graph
-from bzrlib.revision import (find_present_ancestors,
-                             NULL_REVISION)
+from bzrlib.revision import NULL_REVISION
 from bzrlib.tests import TestCase, TestCaseWithTransport
 from bzrlib.trace import mutter
-from bzrlib.workingtree import WorkingTree
 
 # We're allowed to test deprecated interfaces
 warnings.filterwarnings('ignore',

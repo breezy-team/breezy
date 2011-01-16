@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 
 """Tests for how many modules are loaded in executing various commands."""
 
+import os
 from testtools import content
 
 from bzrlib.plugin import (
@@ -29,11 +30,18 @@ from bzrlib.tests import (
 
 
 class TestImportTariffs(TestCaseWithTransport):
-
     """Check how many modules are loaded for some representative scenarios.
 
     See the Testing Guide in the developer documentation for more explanation.
     """
+
+    def setUp(self):
+        # Preserve some env vars as we want to escape the isolation for them
+        self.preserved_env_vars = {}
+        for name in ('BZR_HOME', 'BZR_PLUGIN_PATH', 'BZR_DISABLE_PLUGINS',
+                     'BZR_PLUGINS_AT', 'HOME'):
+            self.preserved_env_vars[name] = os.environ.get(name)
+        super(TestImportTariffs, self).setUp()
 
     def run_command_check_imports(self, args, forbidden_imports):
         """Run bzr ARGS in a subprocess and check its imports.
@@ -50,15 +58,11 @@ class TestImportTariffs(TestCaseWithTransport):
         # more likely to always show everything.  And we use the environment
         # variable rather than 'python -v' in the hope it will work even if
         # bzr is frozen and python is not explicitly specified. -- mbp 20100208
-        #
+
         # Normally we want test isolation from the real $HOME but here we
         # explicitly do want to test against things installed there, therefore
         # we pass it through.
-        env_changes = dict(PYTHONVERBOSE='1')
-        for name in ['BZR_HOME', 'BZR_PLUGIN_PATH',
-                     'BZR_DISABLE_PLUGINS', 'BZR_PLUGINS_AT',
-                     'HOME',]:
-            env_changes[name] = self._old_env.get(name)
+        env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
         out, err = self.run_bzr_subprocess(args,
             allow_plugins=(not are_plugins_disabled()),
             env_changes=env_changes)

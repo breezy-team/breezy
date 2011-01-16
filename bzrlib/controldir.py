@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,11 +27,10 @@ lazy_import(globals(), """
 import textwrap
 
 from bzrlib import (
+    cleanup,
     errors,
     graph,
-    registry,
     revision as _mod_revision,
-    symbol_versioning,
     urlutils,
     )
 from bzrlib.push import (
@@ -46,6 +45,8 @@ from bzrlib.transport import (
     )
 
 """)
+
+from bzrlib import registry
 
 
 class ControlComponent(object):
@@ -143,7 +144,7 @@ class ControlDir(ControlComponent):
         """Destroy the repository in this ControlDir."""
         raise NotImplementedError(self.destroy_repository)
 
-    def create_branch(self, name=None):
+    def create_branch(self, name=None, repository=None):
         """Create a branch in this ControlDir.
 
         :param name: Name of the colocated branch to create, None for
@@ -364,6 +365,19 @@ class ControlDir(ControlComponent):
         :param create_tree_if_local: If true, a working-tree will be created
             when working locally.
         """
+        operation = cleanup.OperationWithCleanups(self._sprout)
+        return operation.run(url, revision_id=revision_id,
+            force_new_repo=force_new_repo, recurse=recurse,
+            possible_transports=possible_transports,
+            accelerator_tree=accelerator_tree, hardlink=hardlink,
+            stacked=stacked, source_branch=source_branch,
+            create_tree_if_local=create_tree_if_local)
+
+    def _sprout(self, op, url, revision_id=None, force_new_repo=False,
+               recurse='down', possible_transports=None,
+               accelerator_tree=None, hardlink=False, stacked=False,
+               source_branch=None, create_tree_if_local=True):
+        add_cleanup = op.add_cleanup
         target_transport = get_transport(url, possible_transports)
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir(stacked)
@@ -373,6 +387,7 @@ class ControlDir(ControlComponent):
         # even if the origin was stacked
         stacked_branch_url = None
         if source_branch is not None:
+            add_cleanup(source_branch.lock_read().unlock)
             if stacked:
                 stacked_branch_url = self.root_transport.base
             source_repository = source_branch.repository
@@ -388,9 +403,14 @@ class ControlDir(ControlComponent):
                     source_repository = self.open_repository()
                 except errors.NoRepositoryPresent:
                     source_repository = None
+                else:
+                    add_cleanup(source_repository.lock_read().unlock)
+            else:
+                add_cleanup(source_branch.lock_read().unlock)
         repository_policy = result.determine_repository_policy(
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo, is_new_repo = repository_policy.acquire_repository()
+        add_cleanup(result_repo.lock_write().unlock)
         is_stacked = stacked or (len(result_repo._fallback_repositories) != 0)
         if is_new_repo and revision_id is not None and not is_stacked:
             fetch_spec = graph.PendingAncestryResult(
@@ -412,7 +432,8 @@ class ControlDir(ControlComponent):
             result_branch = result.create_branch()
         else:
             result_branch = source_branch.sprout(result,
-                revision_id=revision_id, repository_policy=repository_policy)
+                revision_id=revision_id, repository_policy=repository_policy,
+                repository=result_repo)
         mutter("created new branch %r" % (result_branch,))
 
         # Create/update the result working tree
@@ -420,7 +441,7 @@ class ControlDir(ControlComponent):
             isinstance(target_transport, local.LocalTransport) and
             (result_repo is None or result_repo.make_working_trees())):
             wt = result.create_workingtree(accelerator_tree=accelerator_tree,
-                hardlink=hardlink)
+                hardlink=hardlink, from_branch=result_branch)
             wt.lock_write()
             try:
                 if wt.path2id('') is None:

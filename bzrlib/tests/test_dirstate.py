@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 """Tests of the dirstate functionality being built for WorkingTreeFormat4."""
 
-import bisect
 import os
 
 from bzrlib import (
@@ -29,6 +28,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import test_osutils
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
 # TODO:
@@ -44,18 +44,13 @@ from bzrlib.tests import test_osutils
 # set_path_id  setting id when state is in memory modified
 
 
-def load_tests(basic_tests, module, loader):
-    suite = loader.suiteClass()
-    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
-        basic_tests, tests.condition_isinstance(TestCaseWithDirState))
-    tests.multiply_tests(dir_reader_tests,
-                         test_osutils.dir_reader_scenarios(), suite)
-    suite.addTest(remaining_tests)
-    return suite
+load_tests = load_tests_apply_scenarios
 
 
 class TestCaseWithDirState(tests.TestCaseWithTransport):
     """Helper functions for creating DirState objects with various content."""
+
+    scenarios = test_osutils.dir_reader_scenarios()
 
     # Set by load_tests
     _dir_reader_class = None

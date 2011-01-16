@@ -4,7 +4,7 @@ Overview
 High level upgrade process
 --------------------------
 
-In broad terms, there are 3 steps involved in upgrading to Bazaar 2.x:
+In broad terms, there are 3 steps involved in upgrading a new format:
 
 1. Upgrade the core software
 
@@ -12,34 +12,29 @@ In broad terms, there are 3 steps involved in upgrading to Bazaar 2.x:
 
 3. Migrate data to the new default format.
 
-Bazaar 2.x supports branches in earlier formats so the third step is
-strictly not required. However, the new default format in Bazaar 2.x
-is more space efficient, faster on large projects and provides a range
-of new features, so it is recommended that most projects migrate to it
-at a convenient time.
+Bazaar supports branches in earlier formats so the third step is strictly not
+required. However, when new default formats are introduced, they are more
+space efficient, faster on large projects and/or provide new features. So it
+is recommended that most projects migrate to it at a convenient time.
 
-For most users, upgrading to 2.x and migrating to the new format is
-straight forward. For projects with a large community of developers
-though, things become more complex. In these cases, careful planning
-and good communications become essential. This document provides
-general advice which aims to assist in this regard. If in doubt,
-please contact us on our mailing list or IRC channel with any
-questions or concerns you have.
+For most users, upgrading and migrating to the new format is straight
+forward. For projects with a large community of developers though, things
+become more complex. In these cases, careful planning and good communications
+become essential. This document provides general advice which aims to assist
+in this regard. If in doubt, please contact us on our mailing list or IRC
+channel with any questions or concerns you have.
 
 
 Upgrading the core software
 ---------------------------
 
-The steps required to upgrade the core software vary from operating
-system to operating system. There is nothing special about upgrading
-from Bazaar 1.x to Bazaar 2.0 compared to upgrading from Bazaar 1.x
-to Bazaar 1.y. In either case, a brief outline of the steps is given
-below.
+The steps required to upgrade the core software vary from operating system to
+operating system.  A brief outline of the steps is given below.
 
 To upgrade Bazaar on Ubuntu:
 
-1. Ensure your package manager is configured with the required
-   software sources, e.g. the official release PPA for Ubuntu:
+1. Ensure your package manager is configured with the required software
+   sources, e.g. the official stable release PPA for Ubuntu:
    https://launchpad.net/~bzr/+archive
 
 2. Use your package manager to upgrade to the latest version.

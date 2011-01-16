@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,60 +28,34 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     test_dirstate,
-    test_osutils,
+    )
+from bzrlib.tests.test_osutils import dir_reader_scenarios
+from bzrlib.tests.scenarios import (
+    load_tests_apply_scenarios,
+    multiply_scenarios,
     )
 
-try:
-    from bzrlib import _dirstate_helpers_pyx
-    has_dirstate_helpers_pyx = True
-except ImportError:
-    has_dirstate_helpers_pyx = False
+
+load_tests = load_tests_apply_scenarios
 
 
 compiled_dirstate_helpers_feature = tests.ModuleAvailableFeature(
-                                'bzrlib._dirstate_helpers_pyx')
+    'bzrlib._dirstate_helpers_pyx')
 
 
-def load_tests(basic_tests, module, loader):
-    # FIXME: we should also parametrize against SHA1Provider !
-    suite = loader.suiteClass()
-    remaining_tests = basic_tests
+# FIXME: we should also parametrize against SHA1Provider !
 
-    dir_reader_scenarios = test_osutils.dir_reader_scenarios()
+ue_scenarios = [('dirstate_Python',
+    {'update_entry': dirstate.py_update_entry})]
+if compiled_dirstate_helpers_feature.available():
+    update_entry = compiled_dirstate_helpers_feature.module.update_entry
+    ue_scenarios.append(('dirstate_Pyrex', {'update_entry': update_entry}))
 
-    ue_scenarios = [('dirstate_Python',
-                     {'update_entry': dirstate.py_update_entry})]
-    if compiled_dirstate_helpers_feature.available():
-        update_entry = compiled_dirstate_helpers_feature.module.update_entry
-        pyrex_scenario = ('dirstate_Pyrex', {'update_entry': update_entry})
-        ue_scenarios.append(pyrex_scenario)
-    process_entry_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance(TestUpdateEntry))
-    tests.multiply_tests(process_entry_tests,
-                         tests.multiply_scenarios(dir_reader_scenarios,
-                                                  ue_scenarios),
-                         suite)
-
-    pe_scenarios = [('dirstate_Python',
-                     {'_process_entry': dirstate.ProcessEntryPython})]
-    if compiled_dirstate_helpers_feature.available():
-        process_entry = compiled_dirstate_helpers_feature.module.ProcessEntryC
-        pyrex_scenario = ('dirstate_Pyrex', {'_process_entry': process_entry})
-        pe_scenarios.append(pyrex_scenario)
-    process_entry_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance(TestProcessEntry))
-    tests.multiply_tests(process_entry_tests,
-                         tests.multiply_scenarios(dir_reader_scenarios,
-                                                  pe_scenarios),
-                         suite)
-
-    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance(
-            test_dirstate.TestCaseWithDirState))
-    tests.multiply_tests(dir_reader_tests, dir_reader_scenarios, suite)
-    suite.addTest(remaining_tests)
-
-    return suite
+pe_scenarios = [('dirstate_Python',
+    {'_process_entry': dirstate.ProcessEntryPython})]
+if compiled_dirstate_helpers_feature.available():
+    process_entry = compiled_dirstate_helpers_feature.module.ProcessEntryC
+    pe_scenarios.append(('dirstate_Pyrex', {'_process_entry': process_entry}))
 
 
 class TestBisectPathMixin(object):
@@ -719,6 +693,8 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
     implementation.
     """
 
+    # inherits scenarios from test_dirstate
+
     def get_read_dirblocks(self):
         from bzrlib._dirstate_helpers_py import _read_dirblocks
         return _read_dirblocks
@@ -825,6 +801,9 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
 
 class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
     """Test the DirState.update_entry functions"""
+
+    scenarios = multiply_scenarios(
+        dir_reader_scenarios(), ue_scenarios)
 
     # Set by load_tests
     update_entry = None
@@ -1268,6 +1247,8 @@ class UppercaseSHA1Provider(dirstate.SHA1Provider):
 
 
 class TestProcessEntry(test_dirstate.TestCaseWithDirState):
+
+    scenarios = multiply_scenarios(dir_reader_scenarios(), pe_scenarios)
 
     # Set by load_tests
     _process_entry = None
