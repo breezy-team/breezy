@@ -4,6 +4,8 @@
 
    * Mark as compatible with the Bazaar 2.3 API. (Vincent Ladeuil)
 
+   * Mark as compatible with the Bazaar 2.4 API. (Jelmer Vernooij)
+
 0.6.1	2010-08-09
 
   BUG FIXES
