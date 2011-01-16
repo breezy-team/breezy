@@ -5,7 +5,7 @@ bzr_plugin_version = (0, 6, 2, 'dev', 0)
 
 bzr_compatible_versions = [
     (1, 14, 0), (1, 15, 0), (1, 16, 0), (1, 17, 0), (1, 18, 0),
-    (2, 0, 0), (2, 1, 0), (2, 2, 0), (2, 3, 0),]
+    (2, 0, 0), (2, 1, 0), (2, 2, 0), (2, 3, 0), (2, 4, 0)]
 
 bzr_minimum_version = bzr_compatible_versions[0]
 
