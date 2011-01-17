@@ -14,6 +14,7 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
   * Don't crash when doing merge-upstream with a branch that does a rename
     and then ships another file with the old path in the tarball that isn't
     in the branch.
+  * Accept None as a valid previous_version value in merge_upstream(). LP: #680945
 
   [ Jelmer Vernooij ]
 
@@ -22,8 +23,12 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
     if we can't find the tarball.
   * Determine Bazaar home directory using bzrlib to prevent test
     isolation issues. LP: #614125
+  * Support 'bzr tags --sort=debversion'. Closes #701244.
+  * When adding a changelog entry, support git and svn snapshots.
+  * Automatically use debian/source/format if package is native. Closes:
+    #586617
 
- -- James Westby <james.westby@ubuntu.com>  Wed, 18 Aug 2010 20:12:20 -0400
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 12 Jan 2011 22:05:40 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 

@@ -28,6 +28,7 @@ from bzrlib.revision import Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
 from bzrlib.plugins.builddeb.merge_upstream import (
+        upstream_merge_changelog_line,
         package_version,
         _upstream_branch_version,
         upstream_tag_to_version,
@@ -162,3 +163,21 @@ class TestPackageVersion(TestCase):
   def test_ubuntu_with_dash(self):
     self.assertEquals(Version("1.2-1-0ubuntu1"),
         package_version("1.2-1", "ubuntu"))
+
+
+class UpstreamMergeChangelogLineTests(TestCase):
+
+    def test_release(self):
+        self.assertEquals("New upstream release.", upstream_merge_changelog_line("1.0"))
+
+    def test_bzr_snapshot(self):
+        self.assertEquals("New upstream snapshot.",
+            upstream_merge_changelog_line("1.0+bzr3"))
+
+    def test_git_snapshot(self):
+        self.assertEquals("New upstream snapshot.",
+            upstream_merge_changelog_line("1.0~git20101212"))
+
+    def test_plus(self):
+        self.assertEquals("New upstream release.",
+            upstream_merge_changelog_line("1.0+dfsg1"))

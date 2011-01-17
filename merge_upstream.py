@@ -51,7 +51,7 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
     :param revid: Revision id of the revision
     """
     revno = upstream_branch.revision_id_to_revno(revid)
-  
+
     if "+bzr" in version_string:
         return "%s+bzr%d" % (version_string[:version_string.rfind("+bzr")], revno)
 
@@ -112,6 +112,14 @@ def _upstream_branch_version(revhistory, reverse_tag_dict, package,
 
 def upstream_branch_version(upstream_branch, upstream_revision, package,
         previous_version):
+    """Determine the version string for a revision in an upstream branch.
+
+    :param upstream_branch: The upstream branch object
+    :param upstream_revision: The revision id of the upstream revision
+    :param package: The name of the package
+    :param previous_version: The previous upstream version string
+    :return: Upstream version string for `upstream_revision`.
+    """
     dotted_revno = upstream_branch.revision_id_to_dotted_revno(upstream_revision)
     if len(dotted_revno) > 1:
         revno = -2
@@ -166,6 +174,25 @@ def package_version(upstream_version, distribution_name):
     return ret
 
 
+def upstream_merge_changelog_line(upstream_version):
+    """Describe that a new upstream revision was merged.
+
+    This will either describe that a new upstream release or a new upstream snapshot
+    was merged.
+
+    :param upstream_version: Upstream version string
+    :return: Line string for use in changelog
+    """
+    vcs_suffixes = ["~bzr", "+bzr", "~svn", "+svn", "~git", "+git"]
+    for vcs_suffix in vcs_suffixes:
+        if vcs_suffix in str(upstream_version):
+            entry_description = "New upstream snapshot."
+            break
+    else:
+        entry_description = "New upstream release."
+    return entry_description
+
+
 def changelog_add_new_version(tree, upstream_version, distribution_name,
         changelog, package):
     """Add an entry to the changelog for a new version.
@@ -180,14 +207,11 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
     assert isinstance(upstream_version, str), \
          "upstream_version should be a str, not %s" % str(
                  type(upstream_version))
-    if "~bzr" in str(upstream_version) or "+bzr" in str(upstream_version):
-        entry_description = "New upstream snapshot."
-    else:
-        entry_description = "New upstream release."
+    entry_description = upstream_merge_changelog_line(upstream_version)
     proc = subprocess.Popen(["dch", "-v",
             str(package_version(upstream_version, distribution_name)),
-            "-D", "UNRELEASED", "--release-heuristic", "changelog",
-            entry_description], cwd=tree.basedir)
+            "-D", "UNRELEASED", "--release-heuristic", "changelog", entry_description],
+            cwd=tree.basedir)
     proc.wait()
     # FIXME: Raise insightful exception here rather than just checking
     # return code.

@@ -104,6 +104,7 @@ from bzrlib.plugins.builddeb.util import (
         find_last_distribution,
         find_previous_upload,
         get_export_upstream_revision,
+        guess_build_type,
         lookup_distribution,
         open_file,
         open_file_via_transport,
@@ -134,7 +135,6 @@ export_upstream_opt = Option('export-upstream',
 export_upstream_revision_opt = Option('export-upstream-revision',
     help="Select the upstream revision that will be exported.",
     type=str)
-
 
 class cmd_builddeb(Command):
     """Builds a Debian package from a branch.
@@ -359,20 +359,10 @@ class cmd_builddeb(Command):
             except NoPreviousUpload:
                 prev_version = None
             if build_type is None:
-                if prev_version and not prev_version.debian_revision:
-                    # If the package doesn't have a debian revision, assume it's native.
-                    build_type = BUILD_TYPE_NATIVE
-                elif not contains_upstream_source:
-                    # Default to merge mode if there's only a debian/ directory
-                    build_type = BUILD_TYPE_MERGE
-                else:
-                    build_type = BUILD_TYPE_NORMAL
+                build_type = guess_build_type(tree, changelog.version,
+                    contains_upstream_source)
 
-            note("Building package in %s mode" % {
-                BUILD_TYPE_NATIVE: "native",
-                BUILD_TYPE_MERGE: "merge",
-                BUILD_TYPE_SPLIT: "split",
-                BUILD_TYPE_NORMAL: "normal"}[build_type])
+            note("Building package in %s mode" % build_type)
 
             if package_merge:
                 build_options.append("-v%s" % str(prev_version))

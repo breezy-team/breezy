@@ -203,3 +203,20 @@ class NoPreviousUpload(BzrError):
 class UnableToFindPreviousUpload(BzrError):
 
     _fmt = ("Unable to determine the previous upload for --package-merge.")
+
+
+class InconsistentSourceFormatError(BzrError):
+
+    _fmt = ("Inconsistency between source format and version: version is "
+            "%(version_bool)snative, format is %(format_bool)snative.")
+
+    def __init__(self, version_native, format_native):
+        if version_native:
+            version_bool = ""
+        else:
+            version_bool = "not "
+        if format_native:
+            format_bool = ""
+        else:
+            format_bool = "not "
+        BzrError.__init__(self, version_bool=version_bool, format_bool=format_bool)
