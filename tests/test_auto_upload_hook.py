@@ -17,11 +17,15 @@
 import os
 
 from bzrlib import (
-    branch,
     tests,
     )
 
-from bzrlib.plugins import upload
+from bzrlib.plugins import (
+    upload,
+    )
+from bzrlib.plugins.upload import (
+    cmds,
+    )
 
 
 class AutoPushHookTests(tests.TestCaseWithTransport):
@@ -42,9 +46,9 @@ class AutoPushWithLocation(AutoPushHookTests):
     def setUp(self):
         super(AutoPushWithLocation, self).setUp()
         self.make_start_branch()
-        upload.set_upload_auto(self.wt.branch, True)
-        upload.set_upload_location(self.wt.branch, self.get_url('target'))
-        upload.set_upload_auto_quiet(self.wt.branch, 'True')
+        cmds.set_upload_auto(self.wt.branch, True)
+        cmds.set_upload_location(self.wt.branch, self.get_url('target'))
+        cmds.set_upload_auto_quiet(self.wt.branch, 'True')
 
     def test_auto_push_on_commit(self):
         self.failIfExists('target')
@@ -60,7 +64,7 @@ class AutoPushWithLocation(AutoPushHookTests):
         self.build_tree(['b'])
         self.wt.add(['b'])
         self.wt.commit("two")
-        upload.set_upload_auto(self.wt.branch, False)
+        cmds.set_upload_auto(self.wt.branch, False)
         self.build_tree(['c'])
         self.wt.add(['c'])
         self.wt.commit("three")
@@ -72,7 +76,7 @@ class AutoPushWithoutLocation(AutoPushHookTests):
     def setUp(self):
         super(AutoPushWithoutLocation, self).setUp()
         self.make_start_branch()
-        upload.set_upload_auto(self.wt.branch, True)
+        cmds.set_upload_auto(self.wt.branch, True)
 
     def test_dont_push_if_no_location(self):
         self.failIfExists('target')
