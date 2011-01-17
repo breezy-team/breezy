@@ -362,11 +362,7 @@ class cmd_builddeb(Command):
                 build_type = guess_build_type(tree, changelog.version,
                     contains_upstream_source)
 
-            note("Building package in %s mode" % {
-                BUILD_TYPE_NATIVE: "native",
-                BUILD_TYPE_MERGE: "merge",
-                BUILD_TYPE_SPLIT: "split",
-                BUILD_TYPE_NORMAL: "normal"}[build_type])
+            note("Building package in %s mode" % build_type)
 
             if package_merge:
                 build_options.append("-v%s" % str(prev_version))
