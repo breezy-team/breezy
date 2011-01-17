@@ -217,9 +217,6 @@ def install_auto_upload_hook():
 
 
 install_auto_upload_hook()
-    auto_hook_available = True
-else:
-    auto_hook_available = False
 
 
 def load_tests(basic_tests, module, loader):
