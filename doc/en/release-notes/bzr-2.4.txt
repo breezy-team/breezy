@@ -21,7 +21,7 @@ New Features
 .. New commands, options, etc that users may wish to try out.
 
 * The ``lp:`` directory service now supports Launchpad's QA staging.
-  (Jelmer Vernooij)
+  (Jelmer Vernooij, #667483)
 
 Improvements
 ************
