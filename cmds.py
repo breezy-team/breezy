@@ -493,10 +493,6 @@ class cmd_upload(commands.Command):
         if directory is None:
             directory = u'.'
 
-        if auto and not auto_hook_available:
-            raise BzrCommandError("Your version of bzr does not have the "
-                    "hooks necessary for --auto to work")
-
         (wt, branch,
          relpath) = bzrdir.BzrDir.open_containing_tree_or_branch(directory)
 
@@ -570,50 +566,3 @@ class cmd_upload(commands.Command):
             set_upload_location(branch, urlutils.unescape(to_transport.base))
         if auto is not None:
             set_upload_auto(branch, auto)
-
-
-def auto_upload_hook(params):
-    source_branch = params.branch
-    destination = get_upload_location(source_branch)
-    if destination is None:
-        return
-    auto_upload = get_upload_auto(source_branch)
-    if not auto_upload:
-        return
-    quiet = get_upload_auto_quiet(source_branch)
-    if not quiet:
-        display_url = urlutils.unescape_for_display(
-            destination, osutils.get_terminal_encoding())
-        trace.note('Automatically uploading to %s', display_url)
-    to_transport = transport.get_transport(destination)
-    last_revision = source_branch.last_revision()
-    last_tree = source_branch.repository.revision_tree(last_revision)
-    uploader = BzrUploader(source_branch, to_transport, sys.stdout,
-                           last_tree, last_revision, quiet=quiet)
-    uploader.upload_tree()
-
-
-def install_auto_upload_hook():
-    branch.Branch.hooks.install_named_hook('post_change_branch_tip',
-            auto_upload_hook,
-            'Auto upload code from a branch when it is changed.')
-
-
-if hasattr(branch.Branch.hooks, "install_named_hook"):
-    install_auto_upload_hook()
-    auto_hook_available = True
-else:
-    auto_hook_available = False
-
-
-def load_tests(basic_tests, module, loader):
-    # This module shouldn't define any tests but I don't know how to report
-    # that. I prefer to update basic_tests with the other tests to detect
-    # unwanted tests and I think that's sufficient.
-
-    testmod_names = [
-        'tests',
-        ]
-    basic_tests.addTest(loader.loadTestsFromModuleNames(
-            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
-    return basic_tests

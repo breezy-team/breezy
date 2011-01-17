@@ -216,8 +216,7 @@ def install_auto_upload_hook():
             'Auto upload code from a branch when it is changed.')
 
 
-if hasattr(branch.Branch.hooks, "install_named_hook"):
-    install_auto_upload_hook()
+install_auto_upload_hook()
     auto_hook_available = True
 else:
     auto_hook_available = False
