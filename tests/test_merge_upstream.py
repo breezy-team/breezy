@@ -50,14 +50,9 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
     return self.revnos[revid]
 
   def get_revision(self, revid):
-    class MockSvnMeta(object):
-      
-      def __init__(self, svn_revno):
-        self.revnum = svn_revno
-
     rev = Revision(revid)
     if revid in self.svn_revnos:
-      rev.svn_meta = MockSvnMeta(self.svn_revnos[revid])
+      rev.foreign_revid = ("uuid", "bp", self.svn_revnos[revid])
     return rev
 
   def test_update_plus_rev(self):

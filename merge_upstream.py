@@ -35,12 +35,34 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
+from bzrlib.errors import InvalidRevisionId
 from bzrlib.revisionspec import RevisionSpec
 
 from bzrlib.plugins.builddeb.util import get_snapshot_revision
 
 
 TAG_PREFIX = "upstream-"
+
+
+def extract_svn_revno(rev):
+    """Extract the Subversion number of a revision from a revision.
+
+    :param rev: Revision object
+    :return: Revision number, None if this was not a Subversion revision or
+         if the revision number could not be determined (bzr-svn not available).
+    """
+    try:
+        from bzrlib.plugins.svn import extract_svn_foreign_revid
+    except ImportError:
+        # No svn support
+        return None
+    else:
+        try:
+            (svn_uuid, branch_path, svn_revno) = extract_svn_foreign_revid(rev)
+        except InvalidRevisionId:
+            return None
+        else:
+            return svn_revno
 
 
 def upstream_version_add_revision(upstream_branch, version_string, revid):
@@ -59,17 +81,18 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
         return "%s~bzr%d" % (version_string[:version_string.rfind("~bzr")], revno)
 
     rev = upstream_branch.repository.get_revision(revid)
-    svn_revmeta = getattr(rev, "svn_meta", None)
-    if svn_revmeta is not None:
-        svn_revno = svn_revmeta.revnum
+    svn_revno = extract_svn_revno(rev)
 
-        if "+svn" in version_string:
-            return "%s+svn%d" % (version_string[:version_string.rfind("+svn")], svn_revno)
-        if "~svn" in version_string:
-            return "%s~svn%d" % (version_string[:version_string.rfind("~svn")], svn_revno)
+    # FIXME: Raise error if +svn/~svn is present and svn_revno is not set?
+    if "+svn" in version_string and svn_revno:
+        return "%s+svn%d" % (version_string[:version_string.rfind("+svn")], svn_revno)
+    if "~svn" in version_string and svn_revno:
+        return "%s~svn%d" % (version_string[:version_string.rfind("~svn")], svn_revno)
+
+    if svn_revno:
         return "%s+svn%d" % (version_string, svn_revno)
-
-    return "%s+bzr%d" % (version_string, revno)
+    else:
+        return "%s+bzr%d" % (version_string, revno)
 
 
 def _upstream_branch_version(revhistory, reverse_tag_dict, package, 
@@ -130,7 +153,7 @@ def upstream_branch_version(upstream_branch, upstream_revision, package,
     if previous_revision is not None:
         previous_revspec = RevisionSpec.from_string(previous_revision)
         previous_revno, _ = previous_revspec.in_history(upstream_branch)
-        # Trim revision history - we don't care about any revisions 
+        # Trim revision history - we don't care about any revisions
         # before the revision of the previous version
     else:
         previous_revno = 0
