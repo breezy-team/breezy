@@ -14,21 +14,22 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
-import webbrowser
-
 from bzrlib import (
     errors,
     hooks,
+    )
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import webbrowser
+
+from bzrlib import (
     msgeditor,
 )
 from bzrlib.plugins.launchpad import (
     lp_api,
     lp_registration,
 )
-from bzrlib.plugins.launchpad.lp_api import canonical_url
-
-from lazr.restfulclient import errors as restful_errors
+""")
 
 
 class ProposeMergeHooks(hooks.Hooks):
@@ -153,7 +154,7 @@ class Proposer(object):
             if mp.target_branch.self_link == self.target_branch.lp.self_link:
                 raise errors.BzrCommandError(
                     'There is already a branch merge proposal: %s' %
-                    canonical_url(mp))
+                    lp_api.canonical_url(mp))
 
     def _get_prerequisite_branch(self):
         hooks = self.hooks['get_prerequisite']
@@ -174,6 +175,7 @@ class Proposer(object):
         :param **kwargs: **kwargs for the call.
         :return: The result of calling call(*args, *kwargs).
         """
+        from lazr.restfulclient import errors as restful_errors
         try:
             return call(*args, **kwargs)
         except restful_errors.HTTPError, e:
@@ -208,7 +210,7 @@ class Proposer(object):
             review_types=review_types)
         if self.approve:
             self.call_webservice(mp.setStatus, status='Approved')
-        webbrowser.open(canonical_url(mp))
+        webbrowser.open(lp_api.canonical_url(mp))
 
 
 def modified_files(old_tree, new_tree):

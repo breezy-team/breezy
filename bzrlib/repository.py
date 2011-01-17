@@ -42,7 +42,6 @@ from bzrlib import (
     pyutils,
     revision as _mod_revision,
     static_tuple,
-    symbol_versioning,
     trace,
     tsort,
     versionedfile,
@@ -56,6 +55,7 @@ from bzrlib.testament import Testament
 from bzrlib import (
     errors,
     registry,
+    symbol_versioning,
     ui,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
@@ -1596,15 +1596,28 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         return ret
 
     @needs_read_lock
-    def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
+    def search_missing_revision_ids(self, other,
+            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
 
         revision_id: only return revision ids included by revision_id.
         """
+        if symbol_versioning.deprecated_passed(revision_id):
+            symbol_versioning.warn(
+                'search_missing_revision_ids(revision_id=...) was '
+                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                DeprecationWarning, stacklevel=3)
+            if revision_ids is not None:
+                raise AssertionError(
+                    'revision_ids is mutually exclusive with revision_id')
+            if revision_id is not None:
+                revision_ids = [revision_id]
         return InterRepository.get(other, self).search_missing_revision_ids(
-            revision_id, find_ghosts)
+            find_ghosts=find_ghosts, revision_ids=revision_ids,
+            if_present_ids=if_present_ids)
 
     @staticmethod
     def open(base):
@@ -3414,7 +3427,7 @@ class InterRepository(InterObject):
                                fetch_spec=fetch_spec,
                                find_ghosts=find_ghosts)
 
-    def _walk_to_common_revisions(self, revision_ids):
+    def _walk_to_common_revisions(self, revision_ids, if_present_ids=None):
         """Walk out from revision_ids in source to revisions target has.
 
         :param revision_ids: The start point for the search.
@@ -3422,10 +3435,14 @@ class InterRepository(InterObject):
         """
         target_graph = self.target.get_graph()
         revision_ids = frozenset(revision_ids)
+        if if_present_ids:
+            all_wanted_revs = revision_ids.union(if_present_ids)
+        else:
+            all_wanted_revs = revision_ids
         missing_revs = set()
         source_graph = self.source.get_graph()
         # ensure we don't pay silly lookup costs.
-        searcher = source_graph._make_breadth_first_searcher(revision_ids)
+        searcher = source_graph._make_breadth_first_searcher(all_wanted_revs)
         null_set = frozenset([_mod_revision.NULL_REVISION])
         searcher_exhausted = False
         while True:
@@ -3467,29 +3484,78 @@ class InterRepository(InterObject):
         return searcher.get_result()
 
     @needs_read_lock
-    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
+    def search_missing_revision_ids(self,
+            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
         """Return the revision ids that source has that target does not.
 
         :param revision_id: only return revision ids included by this
-                            revision_id.
+            revision_id.
+        :param revision_ids: return revision ids included by these
+            revision_ids.  NoSuchRevision will be raised if any of these
+            revisions are not present.
+        :param if_present_ids: like revision_ids, but will not cause
+            NoSuchRevision if any of these are absent, instead they will simply
+            not be in the result.  This is useful for e.g. finding revisions
+            to fetch for tags, which may reference absent revisions.
         :param find_ghosts: If True find missing revisions in deep history
             rather than just finding the surface difference.
         :return: A bzrlib.graph.SearchResult.
         """
+        if symbol_versioning.deprecated_passed(revision_id):
+            symbol_versioning.warn(
+                'search_missing_revision_ids(revision_id=...) was '
+                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                DeprecationWarning, stacklevel=2)
+            if revision_ids is not None:
+                raise AssertionError(
+                    'revision_ids is mutually exclusive with revision_id')
+            if revision_id is not None:
+                revision_ids = [revision_id]
+        del revision_id
         # stop searching at found target revisions.
-        if not find_ghosts and revision_id is not None:
-            return self._walk_to_common_revisions([revision_id])
+        if not find_ghosts and (revision_ids is not None or if_present_ids is
+                not None):
+            return self._walk_to_common_revisions(revision_ids,
+                    if_present_ids=if_present_ids)
         # generic, possibly worst case, slow code path.
         target_ids = set(self.target.all_revision_ids())
-        if revision_id is not None:
-            source_ids = self.source.get_ancestry(revision_id)
-            if source_ids[0] is not None:
-                raise AssertionError()
-            source_ids.pop(0)
-        else:
-            source_ids = self.source.all_revision_ids()
+        source_ids = self._present_source_revisions_for(
+            revision_ids, if_present_ids)
         result_set = set(source_ids).difference(target_ids)
         return self.source.revision_ids_to_search_result(result_set)
+
+    def _present_source_revisions_for(self, revision_ids, if_present_ids=None):
+        """Returns set of all revisions in ancestry of revision_ids present in
+        the source repo.
+
+        :param revision_ids: if None, all revisions in source are returned.
+        :param if_present_ids: like revision_ids, but if any/all of these are
+            absent no error is raised.
+        """
+        if revision_ids is not None or if_present_ids is not None:
+            # First, ensure all specified revisions exist.  Callers expect
+            # NoSuchRevision when they pass absent revision_ids here.
+            if revision_ids is None:
+                revision_ids = set()
+            if if_present_ids is None:
+                if_present_ids = set()
+            revision_ids = set(revision_ids)
+            if_present_ids = set(if_present_ids)
+            all_wanted_ids = revision_ids.union(if_present_ids)
+            graph = self.source.get_graph()
+            present_revs = set(graph.get_parent_map(all_wanted_ids))
+            missing = revision_ids.difference(present_revs)
+            if missing:
+                raise errors.NoSuchRevision(self.source, missing.pop())
+            found_ids = all_wanted_ids.intersection(present_revs)
+            source_ids = [rev_id for (rev_id, parents) in
+                          graph.iter_ancestry(found_ids)
+                          if rev_id != _mod_revision.NULL_REVISION
+                          and parents is not None]
+        else:
+            source_ids = self.source.all_revision_ids()
+        return set(source_ids)
 
     @staticmethod
     def _same_model(source, target):
@@ -3814,7 +3880,13 @@ class InterDifferingSerializer(InterRepository):
             fetch_spec=None):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
-            raise AssertionError("Not implemented yet...")
+            if (isinstance(fetch_spec, graph.NotInOtherForRevs) and
+                    len(fetch_spec.required_ids) == 1 and not
+                    fetch_spec.if_present_ids):
+                revision_id = list(fetch_spec.required_ids)[0]
+                del fetch_spec
+            else:
+                raise AssertionError("Not implemented yet...")
         ui.ui_factory.warn_experimental_format_fetch(self)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
@@ -3827,8 +3899,12 @@ class InterDifferingSerializer(InterRepository):
             ui.ui_factory.show_user_warning('cross_format_fetch',
                 from_format=self.source._format,
                 to_format=self.target._format)
+        if revision_id:
+            search_revision_ids = [revision_id]
+        else:
+            search_revision_ids = None
         revision_ids = self.target.search_missing_revision_ids(self.source,
-            revision_id, find_ghosts=find_ghosts).get_keys()
+            revision_ids=search_revision_ids, find_ghosts=find_ghosts).get_keys()
         if not revision_ids:
             return 0, 0
         revision_ids = tsort.topo_sort(

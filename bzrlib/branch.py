@@ -2611,7 +2611,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
         self.update_references(target)
-        if result.old_revid != self.last_revision():
+        if result.old_revid != stop_revision:
             # We assume that during 'push' this repository is closer than
             # the target.
             graph = self.repository.get_graph(target.repository)
