@@ -91,6 +91,19 @@ class DirectoryUrlTests(TestCaseInTempDir):
         self.assertEquals('https://xmlrpc.launchpad.net/bazaar/',
                           factory._service_url)
 
+    def test_qastaging(self):
+        """A launchpad url should map to a http url"""
+        factory = FakeResolveFactory(
+            self, 'apt', dict(urls=[
+                    'http://bazaar.qastaging.launchpad.net/~apt/apt/devel']))
+        url = 'lp://qastaging/apt'
+        directory = LaunchpadDirectory()
+        self.assertEquals('http://bazaar.qastaging.launchpad.net/~apt/apt/devel',
+                          directory._resolve(url, factory))
+        # Make sure that resolve went to the qastaging server.
+        self.assertEquals('https://xmlrpc.qastaging.launchpad.net/bazaar/',
+                          factory._service_url)
+
     def test_staging(self):
         """A launchpad url should map to a http url"""
         factory = FakeResolveFactory(
