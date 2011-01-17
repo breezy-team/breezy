@@ -73,6 +73,7 @@ class TestBase(TestCase):
 
 class WeaveContains(TestBase):
     """Weave __contains__ operator"""
+
     def runTest(self):
         k = Weave(get_scope=lambda:None)
         self.assertFalse('foo' in k)
@@ -81,11 +82,13 @@ class WeaveContains(TestBase):
 
 
 class Easy(TestBase):
+
     def runTest(self):
         k = Weave()
 
 
 class AnnotateOne(TestBase):
+
     def runTest(self):
         k = Weave()
         k.add_lines('text0', [], TEXT_0)
@@ -95,6 +98,7 @@ class AnnotateOne(TestBase):
 
 class InvalidAdd(TestBase):
     """Try to use invalid version number during add."""
+
     def runTest(self):
         k = Weave()
 
@@ -116,6 +120,7 @@ class RepeatedAdd(TestBase):
 
 
 class InvalidRepeatedAdd(TestBase):
+
     def runTest(self):
         k = Weave()
         k.add_lines('basis', [], TEXT_0)
@@ -542,6 +547,7 @@ class ReplaceLine(TestBase):
 
 class Merge(TestBase):
     """Storage of versions that merge diverged parents"""
+
     def runTest(self):
         k = Weave()
 
@@ -658,6 +664,7 @@ class Khayyam(TestBase):
 
 
 class JoinWeavesTests(TestBase):
+
     def setUp(self):
         super(JoinWeavesTests, self).setUp()
         self.weave1 = Weave()

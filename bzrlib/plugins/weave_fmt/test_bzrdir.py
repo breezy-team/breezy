@@ -23,7 +23,9 @@ from bzrlib import (
     bzrdir,
     )
 
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    )
 
 from bzrlib.plugins.weave_fmt.bzrdir import (
     BzrDirFormat5,
@@ -93,3 +95,13 @@ class TestFormat6(TestCaseWithTransport):
         dir = BzrDirFormat6().initialize(self.get_url())
         self.assertTrue(dir.needs_format_conversion(
             bzrdir.BzrDirFormat.get_default_format()))
+
+
+class TestBreakLockOldBranch(TestCaseWithTransport):
+
+    def test_break_lock_format_5_bzrdir(self):
+        # break lock on a format 5 bzrdir should just return
+        self.make_branch_and_tree('foo', format=BzrDirFormat5())
+        out, err = self.run_bzr('break-lock foo')
+        self.assertEqual('', out)
+        self.assertEqual('', err)
