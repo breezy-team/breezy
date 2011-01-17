@@ -39,7 +39,9 @@ from bzrlib.errors import (
     LockNotHeld,
     )
 from bzrlib.lockdir import LockDir
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    TestCaseWithTransport,
+    )
 from bzrlib.trace import note
 
 # These tests sometimes use threads to test the behaviour of lock files with
@@ -875,7 +877,7 @@ class TestLockDirHooks(TestCaseWithTransport):
         self.assertEqual([], self._calls)
 
 
-class TestStaleLockDir(TestCaseWithMemoryTransport):
+class TestStaleLockDir(TestCaseWithTransport):
     """bzr can detect and specially deal with stale locks.
 
     A detectable stale lock is one where the hostname is the same as the one
