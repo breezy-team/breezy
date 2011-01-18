@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -225,7 +225,7 @@ class TestBzrServe(TestBzrServeBase):
         # -Dhpss, and does drop some hpss logging to the file.
         self.make_branch('.')
         log_fname = os.getcwd() + '/server.log'
-        self._captureVar('BZR_LOG', log_fname)
+        self.overrideEnv('BZR_LOG', log_fname)
         process, transport = self.start_server_inet(['-Dhpss'])
         branch = BzrDir.open_from_transport(transport).open_branch()
         self.make_read_requests(branch)

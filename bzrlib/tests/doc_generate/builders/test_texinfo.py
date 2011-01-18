@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,6 +43,8 @@ class TestBuilderLoaded(test_dg.TestSphinx):
 class TestFileProduction(test_dg.TestSphinx):
 
     def test_files_generated(self):
+        if self.sphinx_version() >= (1, 0):
+            raise tests.TestSkipped('Not compatible with sphinx >= 1.0')
         self.build_tree_contents(
             [('index.txt', """
 Table of Contents

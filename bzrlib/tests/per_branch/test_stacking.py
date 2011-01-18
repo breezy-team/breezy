@@ -154,8 +154,6 @@ class TestStacking(TestCaseWithBranch):
         self.assertRevisionInRepository('newbranch', new_branch_revid)
 
     def test_sprout_stacked_from_smart_server(self):
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
-            raise TestNotApplicable('Branch format 4 is not usable via HPSS.')
         # We have a mainline
         trunk_tree = self.make_branch_and_tree('mainline')
         trunk_revid = trunk_tree.commit('mainline')

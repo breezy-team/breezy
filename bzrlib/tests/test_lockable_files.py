@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,8 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from StringIO import StringIO
-
 import bzrlib
 from bzrlib import (
     errors,
@@ -23,11 +21,7 @@ from bzrlib import (
     osutils,
     transport,
     )
-from bzrlib.errors import BzrBadParameterNotString, NoSuchFile, ReadOnlyError
 from bzrlib.lockable_files import LockableFiles, TransportLock
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    )
 from bzrlib.tests import (
     TestCaseInTempDir,
     TestNotApplicable,

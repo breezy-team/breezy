@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,12 @@ when the branch is opened.  Clients should typically do
 # NOTE: I was going to call this tags.py, but vim seems to think all files
 # called tags* are ctags files... mbp 20070220.
 
+from bzrlib.registry import Registry
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import itertools
+import re
+import sys
 
 from bzrlib import (
     bencode,
@@ -33,6 +39,7 @@ from bzrlib import (
     symbol_versioning,
     trace,
     )
+""")
 
 
 class _Tags(object):
@@ -307,3 +314,50 @@ def _merge_tags_if_possible(from_branch, to_branch, ignore_master=False):
             DeprecationWarning)
         from_branch.tags.merge_to(to_branch.tags)
 
+
+def sort_natural(branch, tags):
+    """Sort tags, with numeric substrings as numbers.
+
+    :param branch: Branch
+    :param tags: List of tuples with tag name and revision id.
+    """
+    def natural_sort_key(tag):
+        return [f(s) for f,s in
+                zip(itertools.cycle((unicode.lower,int)),
+                                    re.split('([0-9]+)', tag[0]))]
+    tags.sort(key=natural_sort_key)
+
+
+def sort_alpha(branch, tags):
+    """Sort tags lexicographically, in place.
+
+    :param branch: Branch
+    :param tags: List of tuples with tag name and revision id.
+    """
+    tags.sort()
+
+
+def sort_time(branch, tags):
+    """Sort tags by time inline.
+
+    :param branch: Branch
+    :param tags: List of tuples with tag name and revision id.
+    """
+    timestamps = {}
+    for tag, revid in tags:
+        try:
+            revobj = branch.repository.get_revision(revid)
+        except errors.NoSuchRevision:
+            timestamp = sys.maxint # place them at the end
+        else:
+            timestamp = revobj.timestamp
+        timestamps[revid] = timestamp
+    tags.sort(key=lambda x: timestamps[x[1]])
+
+
+tag_sort_methods = Registry()
+tag_sort_methods.register("natural", sort_natural,
+    'Sort numeric substrings as numbers. (default)')
+tag_sort_methods.register("alpha", sort_alpha, 'Sort tags lexicographically.')
+tag_sort_methods.register("time", sort_time, 'Sort tags chronologically.')
+tag_sort_methods.default_key = "natural"
