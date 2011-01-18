@@ -47,15 +47,12 @@ from launchpadlib.launchpad import (
     STAGING_SERVICE_ROOT,
     Launchpad,
     )
-try:
-    from launchpadlib.uris import LPNET_SERVICE_ROOT
-except ImportError:
-    LPNET_SERVICE_ROOT = 'https://api.launchpad.net/beta/'
-try:
-    from launchpadlib.uris import QASTAGING_SERVICE_ROOT
-except ImportError:
-    QASTAGING_SERVICE_ROOT = 'https://api.qastaging.launchpad.net/'
+from launchpadlib import uris
 
+LPNET_SERVICE_ROOT = getattr(uris, 'LPNET_SERVICE_ROOT',
+                             'https://api.launchpad.net/beta/')
+QASTAGING_SERVICE_ROOT = getattr(uris, 'QASTAGING_SERVICE_ROOT',
+                                 'https://api.qastaging.launchpad.net/')
 
 # Declare the minimum version of launchpadlib that we need in order to work.
 # 1.5.1 is the version of launchpadlib packaged in Ubuntu 9.10, the most
