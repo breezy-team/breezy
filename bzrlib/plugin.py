@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -332,6 +332,11 @@ def _find_plugin_module(dir, name):
     return None, None, (None, None, None)
 
 
+def record_plugin_warning(plugin_name, warning_message):
+    trace.mutter(warning_message)
+    plugin_warnings.setdefault(plugin_name, []).append(warning_message)
+
+
 def _load_plugin_module(name, dir):
     """Load plugin name from dir.
 
@@ -350,8 +355,7 @@ def _load_plugin_module(name, dir):
             "%s of module %s but the minimum exported version is %s, and "
             "the maximum is %s" %
             (name, e.wanted, e.api, e.minimum, e.current))
-        trace.mutter(warning_message)
-        plugin_warnings.setdefault(name, []).append(warning_message)
+        record_plugin_warning(name, warning_message)
     except Exception, e:
         trace.warning("%s" % e)
         if re.search('\.|-| ', name):
@@ -362,7 +366,9 @@ def _load_plugin_module(name, dir):
                     "file path isn't a valid module name; try renaming "
                     "it to %r." % (name, dir, sanitised_name))
         else:
-            trace.warning('Unable to load plugin %r from %r' % (name, dir))
+            record_plugin_warning(
+                name,
+                'Unable to load plugin %r from %r' % (name, dir))
         trace.log_exception_quietly()
         if 'error' in debug.debug_flags:
             trace.print_exception(sys.exc_info(), sys.stderr)
