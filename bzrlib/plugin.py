@@ -63,9 +63,9 @@ _loaded = False
 _plugins_disabled = False
 
 
-plugin_version_warnings = {}
-# Map from plugin name, to warnings about API versions noticed while loading
-# it.
+plugin_warnings = {}
+# Map from plugin name, to list of string warnings about eg plugin
+# dependencies.
 
 
 def are_plugins_disabled():
@@ -351,7 +351,7 @@ def _load_plugin_module(name, dir):
             "the maximum is %s" %
             (name, e.wanted, e.api, e.minimum, e.current))
         trace.mutter(warning_message)
-        plugin_version_warnings[name] = warning_message
+        plugin_warnings[name] = warning_message
     except Exception, e:
         trace.warning("%s" % e)
         if re.search('\.|-| ', name):

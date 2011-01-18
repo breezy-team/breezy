@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -165,6 +165,7 @@ def _write_apport_report_to_file(exc_info):
     pr['BzrPlugins'] = _format_plugin_list()
     pr['PythonLoadedModules'] = _format_module_list()
     pr['BzrDebugFlags'] = pprint.pformat(debug.debug_flags)
+    pr['BzrPluginWarnings'] = pprint.pformat(plugin.plugin_warnings)
 
     # actually we'd rather file directly against the upstream product, but
     # apport does seem to count on there being one in there; we might need to

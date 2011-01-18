@@ -269,7 +269,7 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
     def test_plugin_with_bad_api_version_reports(self):
         # This plugin asks for bzrlib api version 1.0.0, which is not supported
         # anymore.
-        self.overrideAttr(plugin, 'plugin_version_warnings', {})
+        self.overrideAttr(plugin, 'plugin_warnings', {})
         name = 'wants100.py'
         f = file(name, 'w')
         try:
@@ -282,9 +282,9 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
             r"It requested API version")
         self.assertEquals(
             ['wants100'],
-            plugin.plugin_version_warnings.keys())
+            plugin.plugin_warnings.keys())
         self.assertContainsRe(
-            plugin.plugin_version_warnings['wants100'],
+            plugin.plugin_warnings['wants100'],
             r"It requested API version")
 
     def test_plugin_with_bad_name_does_not_load(self):
