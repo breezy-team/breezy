@@ -88,7 +88,7 @@ class Proposer(object):
         self.commit_message = message
         # XXX: this is where bug lp:583638 could be tackled.
         if reviews == []:
-            self.reviews = None
+            self.reviews = []
         else:
             self.reviews = [(self.launchpad.people[reviewer], review_type)
                             for reviewer, review_type in
