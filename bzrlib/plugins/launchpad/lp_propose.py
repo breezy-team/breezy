@@ -88,10 +88,7 @@ class Proposer(object):
         self.commit_message = message
         # XXX: this is where bug lp:583638 could be tackled.
         if reviews == []:
-            target_reviewer = self.target_branch.lp.reviewer
-            if target_reviewer is None:
-                raise errors.BzrCommandError('No reviewer specified')
-            self.reviews = [(target_reviewer, '')]
+            self.reviews = None
         else:
             self.reviews = [(self.launchpad.people[reviewer], review_type)
                             for reviewer, review_type in
