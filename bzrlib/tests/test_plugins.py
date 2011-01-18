@@ -267,8 +267,12 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
             stream.close()
 
     def test_plugin_with_bad_api_version_reports(self):
-        # This plugin asks for bzrlib api version 1.0.0, which is not supported
-        # anymore.
+        """Try loading a plugin that requests an unsupported api.
+        
+        Up to bzr 2.2, the plugin just didn't load.  But now we prefer to let
+        it load, and record a warning that can be shown in error messages.
+        """
+        # https://bugs.launchpad.net/bzr/+bug/704195
         self.overrideAttr(plugin, 'plugin_warnings', {})
         name = 'wants100.py'
         f = file(name, 'w')
@@ -284,7 +288,7 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
             ['wants100'],
             plugin.plugin_warnings.keys())
         self.assertContainsRe(
-            plugin.plugin_warnings['wants100'],
+            plugin.plugin_warnings['wants100'][0],
             r"It requested API version")
 
     def test_plugin_with_bad_name_does_not_load(self):

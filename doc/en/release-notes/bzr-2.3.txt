@@ -33,7 +33,7 @@ Bug Fixes
    or undesirable results.
 
 * Don't show warnings about outdated plugins.
-  (#704219, Martin Pool)
+  (#704195, Martin Pool)
 
 Documentation
 *************

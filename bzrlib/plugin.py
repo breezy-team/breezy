@@ -351,7 +351,7 @@ def _load_plugin_module(name, dir):
             "the maximum is %s" %
             (name, e.wanted, e.api, e.minimum, e.current))
         trace.mutter(warning_message)
-        plugin_warnings[name] = warning_message
+        plugin_warnings.setdefault(name, []).append(warning_message)
     except Exception, e:
         trace.warning("%s" % e)
         if re.search('\.|-| ', name):

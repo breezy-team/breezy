@@ -165,7 +165,6 @@ def _write_apport_report_to_file(exc_info):
     pr['BzrPlugins'] = _format_plugin_list()
     pr['PythonLoadedModules'] = _format_module_list()
     pr['BzrDebugFlags'] = pprint.pformat(debug.debug_flags)
-    pr['BzrPluginWarnings'] = pprint.pformat(plugin.plugin_warnings)
 
     # actually we'd rather file directly against the upstream product, but
     # apport does seem to count on there being one in there; we might need to
@@ -256,9 +255,18 @@ def _open_crash_file():
 
 def _format_plugin_list():
     plugin_lines = []
+    unreported_warnings = plugin.plugin_warnings.copy()
     for name, a_plugin in sorted(plugin.plugins().items()):
         plugin_lines.append("  %-20s %s [%s]" %
             (name, a_plugin.path(), a_plugin.__version__))
+        if name in unreported_warnings:
+            for line in unreported_warnings[name]:
+                plugin_lines.append("  ** " + line)
+            del unreported_warnings[name]
+    for name in sorted(unreported_warnings.keys()):
+        plugin_lines.append("  %s (failed to load)" % name)
+        for line in unreported_warnings[name]:
+            plugin_lines.append("  ** " + line)
     return '\n'.join(plugin_lines)
 
 

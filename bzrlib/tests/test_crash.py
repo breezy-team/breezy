@@ -77,4 +77,6 @@ class TestApportReporting(tests.TestCaseInTempDir):
         self.assertContainsRe(report, 'test_apport_report')
         # should also be in there
         self.assertContainsRe(report, '(?m)^CommandLine:')
-        self.assertContainsRe(report, '(?m)^BzrPluginWarnings:')
+        self.assertContainsRe(
+            report,
+            'Failed to load plugin foo')
