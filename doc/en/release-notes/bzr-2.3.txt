@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Don't show warnings about outdated plugins.
+  (#704219, Martin Pool)
+
 Documentation
 *************
 

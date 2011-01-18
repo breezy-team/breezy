@@ -63,6 +63,11 @@ _loaded = False
 _plugins_disabled = False
 
 
+plugin_version_warnings = {}
+# Map from plugin name, to warnings about API versions noticed while loading
+# it.
+
+
 def are_plugins_disabled():
     return _plugins_disabled
 
@@ -340,10 +345,13 @@ def _load_plugin_module(name, dir):
     except KeyboardInterrupt:
         raise
     except errors.IncompatibleAPI, e:
-        trace.warning("Unable to load plugin %r. It requested API version "
+        warning_message = (
+            "Unable to load plugin %r. It requested API version "
             "%s of module %s but the minimum exported version is %s, and "
             "the maximum is %s" %
             (name, e.wanted, e.api, e.minimum, e.current))
+        trace.mutter(warning_message)
+        plugin_version_warnings[name] = warning_message
     except Exception, e:
         trace.warning("%s" % e)
         if re.search('\.|-| ', name):
