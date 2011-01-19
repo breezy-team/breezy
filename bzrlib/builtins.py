@@ -1962,9 +1962,10 @@ class cmd_diff(Command):
             type=unicode,
             ),
         RegistryOption('format',
+            short_name='F',
             help='Diff format to use.',
             lazy_registry=('bzrlib.diff', 'format_registry'),
-            value_switches=False, title='Diff format'),
+            title='Diff format'),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
