@@ -323,7 +323,7 @@ class TestDiff(DiffBase):
         self.build_tree_contents([('hello', 'hello world!\n')])
         output = self.run_bzr('diff --format=boo', retcode=1)
         self.assertTrue("BOO!" in output[0])
-        output = self.run_bzr('diff --boo', retcode=1)
+        output = self.run_bzr('diff -Fboo', retcode=1)
         self.assertTrue("BOO!" in output[0])
 
 
