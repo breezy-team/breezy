@@ -47,11 +47,12 @@ from launchpadlib.launchpad import (
     STAGING_SERVICE_ROOT,
     Launchpad,
     )
-try:
-    from launchpadlib.uris import LPNET_SERVICE_ROOT
-except ImportError:
-    LPNET_SERVICE_ROOT = 'https://api.launchpad.net/beta/'
+from launchpadlib import uris
 
+LPNET_SERVICE_ROOT = getattr(uris, 'LPNET_SERVICE_ROOT',
+                             'https://api.launchpad.net/beta/')
+QASTAGING_SERVICE_ROOT = getattr(uris, 'QASTAGING_SERVICE_ROOT',
+                                 'https://api.qastaging.launchpad.net/')
 
 # Declare the minimum version of launchpadlib that we need in order to work.
 # 1.5.1 is the version of launchpadlib packaged in Ubuntu 9.10, the most
@@ -80,6 +81,7 @@ def check_launchpadlib_compatibility():
 
 LAUNCHPAD_API_URLS = {
     'production': LPNET_SERVICE_ROOT,
+    'qastaging': QASTAGING_SERVICE_ROOT,
     'staging': STAGING_SERVICE_ROOT,
     'dev': 'https://api.launchpad.dev/beta/',
     }
@@ -189,12 +191,13 @@ class LaunchpadBranch(object):
     @staticmethod
     def tweak_url(url, launchpad):
         """Adjust a URL to work with staging, if needed."""
-        if str(launchpad._root_uri) != STAGING_SERVICE_ROOT:
-            return url
-        if url is None:
-            return None
-        return url.replace('bazaar.launchpad.net',
-                           'bazaar.staging.launchpad.net')
+        if str(launchpad._root_uri) == STAGING_SERVICE_ROOT:
+            return url.replace('bazaar.launchpad.net',
+                               'bazaar.staging.launchpad.net')
+        elif str(launchpad._root_uri) == QASTAGING_SERVICE_ROOT:
+            return url.replace('bazaar.launchpad.net',
+                               'bazaar.qastaging.launchpad.net')
+        return url
 
     @classmethod
     def from_bzr(cls, launchpad, bzr_branch, create_missing=True):
