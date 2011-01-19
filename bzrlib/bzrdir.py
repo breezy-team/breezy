@@ -73,7 +73,10 @@ from bzrlib.transport import (
     get_transport,
     local,
     )
-from bzrlib.weave import Weave
+from bzrlib.weave import (
+    WeaveFile,
+    Weave,
+    )
 """)
 
 from bzrlib.trace import (
