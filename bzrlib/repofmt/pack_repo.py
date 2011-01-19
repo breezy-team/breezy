@@ -1576,22 +1576,25 @@ class RepositoryPackCollection(object):
             total_revisions, hint)
         while True:
             try:
-                # determine which packs need changing
-                pack_operations = [[0, []]]
-                for pack in self.all_packs():
-                    if hint is None or pack.name in hint:
-                        # Either no hint was provided (so we are packing
-                        # everything), or this pack was included in the hint.
-                        pack_operations[-1][0] += pack.get_revision_count()
-                        pack_operations[-1][1].append(pack)
-                self._execute_pack_operations(pack_operations, OptimisingPacker,
-                    reload_func=self._restart_pack_operations)
-            except errors.RetryPackOperations:
+                self._try_pack_operations(hint)
+            except RetryPackOperations:
                 continue
             break
 
         if clean_obsolete_packs:
             self._clear_obsolete_packs()
+
+    def _try_pack_operations(self, hint):
+        # determine which packs need changing
+        pack_operations = [[0, []]]
+        for pack in self.all_packs():
+            if hint is None or pack.name in hint:
+                # Either no hint was provided (so we are packing everything),
+                # or this pack was included in the hint.
+                pack_operations[-1][0] += pack.get_revision_count()
+                pack_operations[-1][1].append(pack)
+        self._execute_pack_operations(pack_operations, OptimisingPacker,
+            reload_func=self._restart_pack_operations)
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
         """Plan a pack operation.
@@ -2054,7 +2057,7 @@ class RepositoryPackCollection(object):
             # Re-raise the original exception, because something went missing
             # and a restart didn't find it
             raise
-        raise errors.RetryPackOperations(self.repo, False, sys.exc_info())
+        raise RetryPackOperations(self.repo, False, sys.exc_info())
 
     def _clear_obsolete_packs(self, preserve=None):
         """Delete everything from the obsolete-packs directory.
@@ -2946,4 +2949,18 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format, currently the same as "
             "1.6.1-subtree with B+Tree indices.\n")
+
+
+class RetryPackOperations(errors.RetryWithNewPacks):
+    """Raised when we are packing and we find a missing file.
+
+    Meant as a signaling exception, to tell the RepositoryPackCollection.pack
+    code it should try again.
+    """
+
+    internal_error = True
+
+    _fmt = ("Pack files have changed, reload and try pack again."
+            " context: %(context)s %(orig_error)s")
+
 
