@@ -222,6 +222,7 @@ finished
             bzrdir.BzrDirMetaFormat1))
         self.assertTrue(t.has(backup_dir2))
 
+
 class SFTPTests(TestCaseWithSFTPServer):
     """Tests for upgrade over sftp."""
 
