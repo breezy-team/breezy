@@ -82,6 +82,33 @@ def disable_plugins():
     load_plugins([])
 
 
+def describe_loaded_plugins(show_paths=False):
+    """Generate text description of loaded plugins.
+
+    :param show_paths: If true,
+    :returns: Iterator of text lines (including newlines.)
+    """
+    from inspect import getdoc
+    result = []
+    for name, plugin in plugins().items():
+        version = plugin.__version__
+        if version == 'unknown':
+            version = ''
+        name_ver = '%s %s' % (name, version)
+        d = getdoc(plugin.module)
+        if d:
+            doc = d.split('\n')[0]
+        else:
+            doc = '(no description)'
+        result.append((name_ver, doc, plugin.path()))
+    for name_ver, doc, path in sorted(result):
+        yield ("%s\n" % name_ver)
+        yield ("   %s\n" % doc)
+        if show_paths:
+            yield ("   %s\n" % path)
+        yield ("\n")
+
+
 def _strip_trailing_sep(path):
     return path.rstrip("\\/")
 
