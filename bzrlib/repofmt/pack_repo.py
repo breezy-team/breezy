@@ -1585,6 +1585,9 @@ class RepositoryPackCollection(object):
             self._clear_obsolete_packs()
 
     def _try_pack_operations(self, hint):
+        """Calculate the pack operations based on the hint (if any), and
+        execute them.
+        """
         # determine which packs need changing
         pack_operations = [[0, []]]
         for pack in self.all_packs():
