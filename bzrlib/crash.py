@@ -254,20 +254,7 @@ def _open_crash_file():
 
 
 def _format_plugin_list():
-    plugin_lines = []
-    unreported_warnings = plugin.plugin_warnings.copy()
-    for name, a_plugin in sorted(plugin.plugins().items()):
-        plugin_lines.append("  %-20s %s [%s]" %
-            (name, a_plugin.path(), a_plugin.__version__))
-        if name in unreported_warnings:
-            for line in unreported_warnings[name]:
-                plugin_lines.append("  ** " + line)
-            del unreported_warnings[name]
-    for name in sorted(unreported_warnings.keys()):
-        plugin_lines.append("  %s (failed to load)" % name)
-        for line in unreported_warnings[name]:
-            plugin_lines.append("  ** " + line)
-    return '\n'.join(plugin_lines)
+    return ''.join(plugin.describe_loaded_plugins(show_paths=True))
 
 
 def _format_module_list():

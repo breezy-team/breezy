@@ -89,8 +89,8 @@ def describe_loaded_plugins(show_paths=False):
     :returns: Iterator of text lines (including newlines.)
     """
     from inspect import getdoc
-    result = []
-    for name, plugin in plugins().items():
+    unreported_warnings = plugin_warnings.copy()
+    for name, plugin in sorted(plugins().items()):
         version = plugin.__version__
         if version == 'unknown':
             version = ''
@@ -100,13 +100,20 @@ def describe_loaded_plugins(show_paths=False):
             doc = d.split('\n')[0]
         else:
             doc = '(no description)'
-        result.append((name_ver, doc, plugin.path()))
-    for name_ver, doc, path in sorted(result):
         yield ("%s\n" % name_ver)
         yield ("   %s\n" % doc)
         if show_paths:
-            yield ("   %s\n" % path)
+            yield ("   %s\n" % plugin.path())
+        if name in unreported_warnings:
+            for line in unreported_warnings[name]:
+                yield "  ** " + line + '\n'
+            del unreported_warnings[name]
         yield ("\n")
+    for name in sorted(unreported_warnings.keys()):
+        yield "%s (failed to load)\n" % name
+        for line in unreported_warnings[name]:
+            yield "  ** " + line + '\n'
+        yield '\n'
 
 
 def _strip_trailing_sep(path):
