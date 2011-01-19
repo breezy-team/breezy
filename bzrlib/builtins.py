@@ -3425,6 +3425,10 @@ class cmd_whoami(Command):
                 self.outf.write(c.username() + '\n')
             return
 
+        if email:
+            raise errors.BzrCommandError("--email can only be used to display existing "
+                                         "identity")
+
         # display a warning if an email address isn't included in the given name.
         try:
             _mod_config.extract_email_address(name)
