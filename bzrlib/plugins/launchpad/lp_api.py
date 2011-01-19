@@ -230,17 +230,26 @@ class LaunchpadBranch(object):
             raise errors.BzrError('%s is not registered on Launchpad' % url)
         return lp_branch
 
-    def get_dev_focus(self):
-        """Return the 'LaunchpadBranch' for the dev focus of this one."""
+    def get_target(self):
+        """Return the 'LaunchpadBranch' for the target of this one."""
         lp_branch = self.lp
-        if lp_branch.project is None:
-            raise errors.BzrError('%s has no product.' %
+        if lp_branch.project is not None:
+            dev_focus = lp_branch.project.development_focus.branch
+            if dev_focus is None:
+                raise errors.BzrError('%s has no development focus.' %
                                   lp_branch.bzr_identity)
-        dev_focus = lp_branch.project.development_focus.branch
-        if dev_focus is None:
-            raise errors.BzrError('%s has no development focus.' %
+            target = dev_focus.branch
+            if target is None:
+                raise errors.BzrError('development focus %s has no branch.' % dev_focus)
+        elif lp_branch.sourcepackage is not None:
+            target = lp_branch.sourcepackage.getBranch(pocket="Release")
+            if target is None:
+                raise errors.BzrError('source package %s has no branch.' %
+                                      lp_branch.sourcepackage)
+        else:
+            raise errors.BzrError('%s has no associated product or source package.' %
                                   lp_branch.bzr_identity)
-        return LaunchpadBranch(dev_focus, dev_focus.bzr_identity)
+        return LaunchpadBranch(target, target.bzr_identity)
 
     def update_lp(self):
         """Update the Launchpad copy of this branch."""

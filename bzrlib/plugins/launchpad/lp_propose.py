@@ -81,7 +81,7 @@ class Proposer(object):
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
             self.launchpad, source_branch)
         if target_branch is None:
-            self.target_branch = self.source_branch.get_dev_focus()
+            self.target_branch = self.source_branch.get_target()
         else:
             self.target_branch = lp_api.LaunchpadBranch.from_bzr(
                 self.launchpad, target_branch)
