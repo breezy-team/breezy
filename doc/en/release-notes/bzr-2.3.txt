@@ -32,7 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
-* Don't show warnings about outdated plugins.
+* Plugins incompatible with bzr no longer produce a warning on every
+  command invocation.  Instead, a message is shown by ``bzr plugins`` and
+  in crash reports.
   (#704195, Martin Pool)
 
 Documentation
