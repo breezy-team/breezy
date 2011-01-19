@@ -328,7 +328,8 @@ class cmd_cat_revision(Command):
         if revision_id is None and revision is None:
             raise errors.BzrCommandError('You must supply either'
                                          ' --revision or a revision_id')
-        b = WorkingTree.open_containing(directory)[0].branch
+
+        b = bzrdir.BzrDir.open_containing_tree_or_branch(directory)[1]
 
         revisions = b.repository.revisions
         if revisions is None:

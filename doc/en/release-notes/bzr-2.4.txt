@@ -29,6 +29,8 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr cat-revision`` no longer requires a working tree. (Jelmer Vernooij, #704405)
+
 Bug Fixes
 *********
 
