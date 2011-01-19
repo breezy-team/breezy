@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.3b5
+bzr 2.3.0
 #########
 
-:2.3.b5: NOT RELEASED YET
+:2.3.0: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -25,6 +25,61 @@ Improvements
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.3b5
+#########
+
+:2.3.b5: 2011-01-13
+
+This is the fifth and **last** beta of the 2.3 series, leading up to a 2.3.0
+release in February. Beta releases are suitable for everyday use but may cause
+some incompatibilities with plugins.
+
+2.3b5 includes bug fixes for committing to stacked branches, smoother upgrades
+of multiple branches, compatibility with python-2.7, full test suite passing
+on Ubuntu Natty and windows, less round-trips for several smart server
+operations, better support text conflicts resolve actions and some more.
+
+All known fixed bugs in other series (2.0, 2.1, 2.2) are also included here.
+
+External Compatibility Breaks
+*****************************
+
+(none)
+
+Improvements
+************
 
 * A redundant parent inventories calculation was removed from
   ``fetch.py``, as ``Repository.insert_stream`` already reports any
@@ -104,16 +159,11 @@ Bug Fixes
 Documentation
 *************
 
-.. Improved or updated documentation.
-
 * Better document the rules to update the bzr freshmeat page when
   doing a release. (Vincent Ladeuil, #690515)
 
 API Changes
 ***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
 
 * ``Branch.sprout``, ``BranchFormat.initalize`` and
   ``ControlDir.create_branch`` now take an optional ``repository`` keyword
@@ -127,18 +177,9 @@ API Changes
   the bzr-2.4 series. Code that was using it can just use the python
   stdlib ``gzip.GzipFile``. (John Arbash Meinel)
 
-Internals
-*********
-
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * ``bzrlib.tests`` defines ``isolated_environ`` with the definitions of all
   the environment variables the tests should care about. It also defines
@@ -161,7 +202,7 @@ Testing
   instead. (Vincent Ladeuil)
 
 * ``TestDebuntuExpansions`` was escaping the test isolation by calling the
-  wrong base class ``setUp``. (Vincent Ladeuil, #684622)
+  wrong base class ``setUp``. (Vincent Ladeuil, #684662)
 
 bzr 2.3b4
 #########
@@ -233,6 +274,11 @@ Bug Fixes
 * ``tools/check-newsbug.py`` is now based on ``lp:hydrazine`` and no longer
   crashes when encountering private bugs (they are just displayed as such).
   (Vincent Ladeuil, #354985)
+
+* The ``revision_id`` parameter of
+  ``Repository.search_missing_revision_ids`` and
+  ``InterRepository.search_missing_revision_ids`` is deprecated.  It is
+  replaced by the ``revision_ids`` parameter.  (Andrew Bennetts)
 
 Internals
 *********

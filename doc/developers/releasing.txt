@@ -163,7 +163,7 @@ Update the source code
    Double check that ./bzr ``_script_version`` matches ``version_info``. Check
    the output of ``bzr --version``.
 
-   For betahttps://code.edge.launchpad.net/~knittl/bzr/fix-inventory-r0/+merge/354985 releases use::
+   For beta releases use::
 
        version_info = (2, 1, 0, 'beta', SERIAL)
 
@@ -251,7 +251,7 @@ Update the source code
    appropriate release branch::
 
      bzr push
-     bzr pqm-submit -m "(mbp) prepare 1.14"
+     bzr pqm-submit -m "(mbp) Release 1.14 (Martin Pool)"
 
    Or with hydrazine::
 
