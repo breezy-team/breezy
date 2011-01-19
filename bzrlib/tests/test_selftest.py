@@ -450,17 +450,16 @@ class TestInterTreeScenarios(tests.TestCase):
         # ones to add.
         from bzrlib.tests.per_tree import (
             return_parameter,
-            revision_tree_from_workingtree
             )
         from bzrlib.tests.per_intertree import (
             make_scenarios,
             )
-        from bzrlib.workingtree import WorkingTreeFormat2, WorkingTreeFormat3
+        from bzrlib.workingtree import WorkingTreeFormat3, WorkingTreeFormat4
         input_test = TestInterTreeScenarios(
             "test_scenarios")
         server1 = "a"
         server2 = "b"
-        format1 = WorkingTreeFormat2()
+        format1 = WorkingTreeFormat4()
         format2 = WorkingTreeFormat3()
         formats = [("1", str, format1, format2, "converter1"),
             ("2", int, format2, format1, "converter2")]
@@ -557,7 +556,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
     def test_make_branch_and_memory_tree_with_format(self):
         """make_branch_and_memory_tree should accept a format option."""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = weaverepo.RepositoryFormat7()
+        format.repository_format = repository.RepositoryFormat.get_default_format()
         tree = self.make_branch_and_memory_tree('dir', format=format)
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
@@ -577,7 +576,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         # Use a repo layout that doesn't conform to a 'named' layout, to ensure
         # that the format objects are used.
         format = bzrdir.BzrDirMetaFormat1()
-        repo_format = weaverepo.RepositoryFormat7()
+        repo_format = repository.RepositoryFormat.get_default_format()
         format.repository_format = repo_format
         builder = self.make_branch_builder('dir', format=format)
         the_branch = builder.get_branch()

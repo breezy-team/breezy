@@ -159,7 +159,7 @@ def branch_scenarios():
     return scenarios
 
 
-def load_tests(standard_tests, module, loader):
+def per_branch_tests(loader):
     per_branch_mod_names = [
         'bound_sftp',
         'branch',
@@ -190,7 +190,11 @@ def load_tests(standard_tests, module, loader):
         'uncommit',
         'update',
         ]
-    sub_tests = loader.loadTestsFromModuleNames(
+    return loader.loadTestsFromModuleNames(
         ['bzrlib.tests.per_branch.test_' + name
          for name in per_branch_mod_names])
-    return tests.multiply_tests(sub_tests, branch_scenarios(), standard_tests)
+
+
+def load_tests(standard_tests, module, loader):
+    return tests.multiply_tests(per_branch_tests(loader), branch_scenarios(),
+        standard_tests)

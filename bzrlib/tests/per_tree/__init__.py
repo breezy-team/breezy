@@ -372,7 +372,7 @@ def create_tree_scenario(transport_server, transport_readonly_server,
     return scenario_options
 
 
-def load_tests(standard_tests, module, loader):
+def per_tree_tests(loader):
     per_tree_mod_names = [
         'annotate_iter',
         'get_file_mtime',
@@ -390,14 +390,17 @@ def load_tests(standard_tests, module, loader):
         'tree',
         'walkdirs',
         ]
-    submod_tests = loader.loadTestsFromModuleNames(
+    return loader.loadTestsFromModuleNames(
         ['bzrlib.tests.per_tree.test_' + name
          for name in per_tree_mod_names])
+
+
+def load_tests(standard_tests, module, loader):
     scenarios = make_scenarios(
         tests.default_transport,
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        WorkingTreeFormat._formats.values() + _legacy_formats)
+        WorkingTreeFormat._formats.values())
     # add the tests for the sub modules
-    return tests.multiply_tests(submod_tests, scenarios, standard_tests)
+    return tests.multiply_tests(per_tree_tests(loader), scenarios, standard_tests)
