@@ -66,7 +66,7 @@ from bzrlib.push import (
     )
 from bzrlib.repofmt import pack_repo
 from bzrlib.smart.client import _SmartClient
-from bzrlib.store.versioned import WeaveStore
+from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import (
     do_catching_redirections,
@@ -2252,9 +2252,11 @@ class ConvertBzrDir4To5(Converter):
             mode=self.bzrdir._get_file_mode())
 
     def _write_all_weaves(self):
-        controlweaves = WeaveStore(self.bzrdir.transport, prefixed=False)
+        controlweaves = VersionedFileStore(self.bzrdir.transport, prefixed=False,
+                                           versionedfile_class=WeaveFile)
         weave_transport = self.bzrdir.transport.clone('weaves')
-        weaves = WeaveStore(weave_transport, prefixed=False)
+        weaves = VersionedFileStore(weave_transport, prefixed=False,
+                            versionedfile_class=WeaveFile)
         transaction = WriteTransaction()
 
         try:
