@@ -66,6 +66,12 @@ class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
         return builder
 
 
+def workingtree_formats():
+    """The known working tree formats."""
+    return (workingtree.WorkingTreeFormat._formats.values() +
+        workingtree._legacy_formats)
+
+
 def per_workingtree_tests(loader):
     test_names = [
         'add_reference',

@@ -64,7 +64,7 @@ from bzrlib.push import (
     )
 from bzrlib.repofmt import pack_repo
 from bzrlib.smart.client import _SmartClient
-from bzrlib.store.versioned import WeaveStore
+from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import (
     do_catching_redirections,
