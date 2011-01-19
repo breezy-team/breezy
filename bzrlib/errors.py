@@ -1581,6 +1581,19 @@ class RetryAutopack(RetryWithNewPacks):
             " context: %(context)s %(orig_error)s")
 
 
+class RetryPackOperations(RetryWithNewPacks):
+    """Raised when we are autopacking and we find a missing file.
+
+    Meant as a signaling exception, to tell the RepositoryPackCollection.pack
+    code it should try again.
+    """
+
+    internal_error = True
+
+    _fmt = ("Pack files have changed, reload and try pack again."
+            " context: %(context)s %(orig_error)s")
+
+
 class NoSuchExportFormat(BzrError):
 
     _fmt = "Export format %(format)r not supported"

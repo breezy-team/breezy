@@ -1574,15 +1574,21 @@ class RepositoryPackCollection(object):
         mutter('Packing repository %s, which has %d pack files, '
             'containing %d revisions with hint %r.', self, total_packs,
             total_revisions, hint)
-        # determine which packs need changing
-        pack_operations = [[0, []]]
-        for pack in self.all_packs():
-            if hint is None or pack.name in hint:
-                # Either no hint was provided (so we are packing everything),
-                # or this pack was included in the hint.
-                pack_operations[-1][0] += pack.get_revision_count()
-                pack_operations[-1][1].append(pack)
-        self._execute_pack_operations(pack_operations, OptimisingPacker)
+        while True:
+            try:
+                # determine which packs need changing
+                pack_operations = [[0, []]]
+                for pack in self.all_packs():
+                    if hint is None or pack.name in hint:
+                        # Either no hint was provided (so we are packing
+                        # everything), or this pack was included in the hint.
+                        pack_operations[-1][0] += pack.get_revision_count()
+                        pack_operations[-1][1].append(pack)
+                self._execute_pack_operations(pack_operations, OptimisingPacker,
+                    reload_func=self._restart_pack_operations)
+            except errors.RetryPackOperations:
+                continue
+            break
 
         if clean_obsolete_packs:
             self._clear_obsolete_packs()
@@ -2041,6 +2047,14 @@ class RepositoryPackCollection(object):
             # and a restart didn't find it
             raise
         raise errors.RetryAutopack(self.repo, False, sys.exc_info())
+
+    def _restart_pack_operations(self):
+        """Reload the pack names list, and restart the autopack code."""
+        if not self.reload_pack_names():
+            # Re-raise the original exception, because something went missing
+            # and a restart didn't find it
+            raise
+        raise errors.RetryPackOperations(self.repo, False, sys.exc_info())
 
     def _clear_obsolete_packs(self, preserve=None):
         """Delete everything from the obsolete-packs directory.
