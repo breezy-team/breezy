@@ -271,8 +271,9 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
         
         Up to bzr 2.2, the plugin just didn't load.  But now we prefer to let
         it load, and record a warning that can be shown in error messages.
+
+        See https://bugs.launchpad.net/bzr/+bug/704195
         """
-        # https://bugs.launchpad.net/bzr/+bug/704195
         self.overrideAttr(plugin, 'plugin_warnings', {})
         name = 'wants100.py'
         f = file(name, 'w')
@@ -857,6 +858,9 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         self.create_plugin_package('test_foo', dir='standard/test_foo')
         # All the tests will load the 'test_foo' plugin from various locations
         self.addCleanup(self._unregister_plugin, 'test_foo')
+        # Unfortunately there's global cached state for the specific
+        # registered paths.
+        self.addCleanup(plugin.PluginImporter.reset)
 
     def assertTestFooLoadedFrom(self, path):
         self.assertPluginKnown('test_foo')
