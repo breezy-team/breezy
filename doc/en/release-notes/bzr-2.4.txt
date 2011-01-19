@@ -47,6 +47,10 @@ Bug Fixes
   Launhcpad without requiring the target branch to be specified. (Jelmer Vernooij,
   #704647)
 
+* ``bzr lp-propose`` no longer requires a reviewer to be specified. It will instead
+  leave setting the reviewer up to Launchpad if it was not specified.
+  (Jelmer Vernooij, #583772)
+
 * ``bzr whoami`` will now display an error if both a new identity and ``--email``
   were specified. (Jelmer Vernooij, #680449)
 
