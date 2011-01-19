@@ -209,13 +209,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         else:
             self._branch = self.bzrdir.open_branch()
         self.basedir = realpath(basedir)
-        # if branch is at our basedir and is a format 6 or less
-        if isinstance(self._format, WorkingTreeFormat2):
-            # share control object
-            self._control_files = self.branch.control_files
-        else:
-            # assume all other formats have their own control files.
-            self._control_files = _control_files
+        self._control_files = _control_files
         self._transport = self._control_files._transport
         # update the whole cache up front and write to disk if anything changed;
         # in the future we might want to do this more selectively
@@ -2974,7 +2968,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
                          inv,
                          _internal=True,
                          _format=self,
-                         _bzrdir=a_bzrdir)
+                         _bzrdir=a_bzrdir,
+                         _control_files=branch.control_files)
         basis_tree = branch.repository.revision_tree(revision_id)
         if basis_tree.inventory.root is not None:
             wt.set_root_id(basis_tree.get_root_id())
@@ -3005,7 +3000,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
                            _internal=True,
                            _format=self,
-                           _bzrdir=a_bzrdir)
+                           _bzrdir=a_bzrdir,
+                           _control_files=a_bzrdir.open_branch().control_files)
         return wt
 
 class WorkingTreeFormat3(WorkingTreeFormat):

@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ Weave based formats scaled linearly with history size and could not represent
 ghosts.
 """
 
+import gzip
 import os
 from cStringIO import StringIO
 import urllib
@@ -39,7 +40,9 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
+    symbol_versioning,
     trace,
+    tuned_gzip,
     urlutils,
     versionedfile,
     weave,
@@ -56,7 +59,6 @@ from bzrlib.repository import (
     RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
-from bzrlib.tuned_gzip import GzipFile, bytes_to_gzip
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,
@@ -339,6 +341,8 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
     has been removed.
     """
 
+    supports_funky_characters = False
+
     _matchingbzrdir = bzrdir.BzrDirFormat4()
 
     def get_format_description(self):
@@ -388,6 +392,8 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat5()
+    supports_funky_characters = False
+
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -433,6 +439,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat6()
+    supports_funky_characters = False
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -482,6 +489,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     _versionedfile_class = weave.WeaveFile
     supports_ghosts = False
     supports_chks = False
+    supports_funky_characters = False
 
     _fetch_order = 'topological'
     _fetch_reconcile = True
@@ -589,7 +597,7 @@ class TextVersionedFiles(VersionedFiles):
             raise ValueError('bad idea to put / in %r' % (key,))
         text = ''.join(lines)
         if self._compressed:
-            text = bytes_to_gzip(text)
+            text = tuned_gzip.bytes_to_gzip(text)
         path = self._map(key)
         self._transport.put_bytes_non_atomic(path, text, create_parent_dir=True)
 
@@ -637,7 +645,7 @@ class TextVersionedFiles(VersionedFiles):
             else:
                 return None
         if compressed:
-            text = GzipFile(mode='rb', fileobj=StringIO(text)).read()
+            text = gzip.GzipFile(mode='rb', fileobj=StringIO(text)).read()
         return text
 
     def _map(self, key):
@@ -743,9 +751,6 @@ class SignatureTextStore(TextVersionedFiles):
 
 class InterWeaveRepo(InterSameDataRepository):
     """Optimised code paths between Weave based repositories.
-
-    This should be in bzrlib/repofmt/weaverepo.py but we have not yet
-    implemented lazy inter-object optimisation.
     """
 
     @classmethod
@@ -803,8 +808,10 @@ class InterWeaveRepo(InterSameDataRepository):
             self.target.fetch(self.source, revision_id=revision_id)
 
     @needs_read_lock
-    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
-        """See InterRepository.missing_revision_ids()."""
+    def search_missing_revision_ids(self,
+            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
+        """See InterRepository.search_missing_revision_ids()."""
         # we want all revisions to satisfy revision_id in source.
         # but we don't want to stat every file here and there.
         # we want then, all revisions other needs to satisfy revision_id
@@ -816,14 +823,19 @@ class InterWeaveRepo(InterSameDataRepository):
         # disk format scales terribly for push anyway due to rewriting
         # inventory.weave, this is considered acceptable.
         # - RBC 20060209
-        if revision_id is not None:
-            source_ids = self.source.get_ancestry(revision_id)
-            if source_ids[0] is not None:
-                raise AssertionError()
-            source_ids.pop(0)
-        else:
-            source_ids = self.source._all_possible_ids()
-        source_ids_set = set(source_ids)
+        if symbol_versioning.deprecated_passed(revision_id):
+            symbol_versioning.warn(
+                'search_missing_revision_ids(revision_id=...) was '
+                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                DeprecationWarning, stacklevel=2)
+            if revision_ids is not None:
+                raise AssertionError(
+                    'revision_ids is mutually exclusive with revision_id')
+            if revision_id is not None:
+                revision_ids = [revision_id]
+        del revision_id
+        source_ids_set = self._present_source_revisions_for(
+            revision_ids, if_present_ids)
         # source_ids is the worst possible case we may need to pull.
         # now we want to filter source_ids against what we actually
         # have in target, but don't try to check for existence where we know
@@ -833,7 +845,7 @@ class InterWeaveRepo(InterSameDataRepository):
         actually_present_revisions = set(
             self.target._eliminate_revisions_not_present(possibly_present_revisions))
         required_revisions = source_ids_set.difference(actually_present_revisions)
-        if revision_id is not None:
+        if revision_ids is not None:
             # we used get_ancestry to determine source_ids then we are assured all
             # revisions referenced are present as they are installed in topological order.
             # and the tip revision was validated by get_ancestry.

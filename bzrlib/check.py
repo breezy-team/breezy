@@ -46,13 +46,15 @@ check_refs are tuples (kind, value). Currently defined kinds are:
   indicating that the revision was found/not found.
 """
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    ui,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import note
-import bzrlib.ui
 from bzrlib.workingtree import WorkingTree
 
 class Check(object):
@@ -88,7 +90,7 @@ class Check(object):
         if callback_refs is None:
             callback_refs = {}
         self.repository.lock_read()
-        self.progress = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.progress = ui.ui_factory.nested_progress_bar()
         try:
             self.progress.update('check', 0, 4)
             if self.check_repo:
@@ -287,7 +289,7 @@ class Check(object):
         """Check all the weaves we can get our hands on.
         """
         weave_ids = []
-        storebar = bzrlib.ui.ui_factory.nested_progress_bar()
+        storebar = ui.ui_factory.nested_progress_bar()
         try:
             self._check_weaves(storebar)
         finally:

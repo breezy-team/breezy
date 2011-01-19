@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -190,7 +190,7 @@ class TestTTYTextUIFactory(TestTextUIFactory):
 
         # Remove 'TERM' == 'dumb' which causes us to *not* treat output as a
         # real terminal, even though isatty returns True
-        self._captureVar('TERM', None)
+        self.overrideEnv('TERM', None)
         self.stderr = TTYStringIO()
         self.stdout = TTYStringIO()
         self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,

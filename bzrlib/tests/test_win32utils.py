@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 """Tests for win32utils."""
 
 import os
-import sys
 
 from bzrlib import (
     osutils,
@@ -217,7 +216,7 @@ class TestLocationsCtypes(TestCase):
     def test_appdata_not_using_environment(self):
         # Test that we aren't falling back to the environment
         first = win32utils.get_appdata_location()
-        self._captureVar("APPDATA", None)
+        self.overrideEnv("APPDATA", None)
         self.assertPathsEqual(first, win32utils.get_appdata_location())
 
     def test_appdata_matches_environment(self):
@@ -234,7 +233,7 @@ class TestLocationsCtypes(TestCase):
     def test_local_appdata_not_using_environment(self):
         # Test that we aren't falling back to the environment
         first = win32utils.get_local_appdata_location()
-        self._captureVar("LOCALAPPDATA", None)
+        self.overrideEnv("LOCALAPPDATA", None)
         self.assertPathsEqual(first, win32utils.get_local_appdata_location())
 
     def test_local_appdata_matches_environment(self):

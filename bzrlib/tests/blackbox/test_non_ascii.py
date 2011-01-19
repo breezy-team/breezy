@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         self.overrideAttr(osutils, '_cached_user_encoding', self.encoding)
         email = self.info['committer'] + ' <joe@foo.com>'
-        os.environ['BZR_EMAIL'] = email.encode(osutils.get_user_encoding())
+        self.overrideEnv('BZR_EMAIL', email.encode(osutils.get_user_encoding()))
         self.create_base()
 
     def run_bzr_decode(self, args, encoding=None, fail=False, retcode=None,

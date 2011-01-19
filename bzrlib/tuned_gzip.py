@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 # Written by Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -27,7 +27,7 @@ import struct
 import zlib
 
 # we want a \n preserved, break on \n only splitlines.
-import bzrlib
+from bzrlib import symbol_versioning
 
 __all__ = ["GzipFile", "bytes_to_gzip"]
 
@@ -117,6 +117,13 @@ class GzipFile(gzip.GzipFile):
 
     Yes, its only 1.6 seconds, but they add up.
     """
+
+    def __init__(self, *args, **kwargs):
+        symbol_versioning.warn(
+            symbol_versioning.deprecated_in((2, 3, 0))
+            % 'bzrlib.tuned_gzip.GzipFile',
+            DeprecationWarning, stacklevel=2)
+        gzip.GzipFile.__init__(self, *args, **kwargs)
 
     def _add_read_data(self, data):
         # 4169 calls in 183

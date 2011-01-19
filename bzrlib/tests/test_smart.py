@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,15 +25,11 @@ Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
 import bz2
-from cStringIO import StringIO
-import tarfile
 
 from bzrlib import (
-    bencode,
     branch as _mod_branch,
     bzrdir,
     errors,
-    pack,
     tests,
     transport,
     urlutils,
@@ -1474,7 +1470,7 @@ class TestSmartServerRepositoryGetRevIdForRevno(
             request.execute('stacked', 1, (3, r3)))
 
 
-class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
+class GetStreamTestBase(tests.TestCaseWithMemoryTransport):
 
     def make_two_commit_repo(self):
         tree = self.make_branch_and_memory_tree('.')
@@ -1485,6 +1481,9 @@ class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
         tree.unlock()
         repo = tree.branch.repository
         return repo, r1, r2
+
+
+class TestSmartServerRepositoryGetStream(GetStreamTestBase):
 
     def test_ancestry_of(self):
         """The search argument may be a 'ancestry-of' some heads'."""
@@ -1508,6 +1507,18 @@ class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
         lines = '\n'.join(fetch_spec)
         request.execute('', repo._format.network_name())
         response = request.do_body(lines)
+        self.assertEqual(('ok',), response.args)
+        stream_bytes = ''.join(response.body_stream)
+        self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
+
+    def test_search_everything(self):
+        """A search of 'everything' returns a stream."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetStream_1_19(backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        serialised_fetch_spec = 'everything'
+        request.execute('', repo._format.network_name())
+        response = request.do_body(serialised_fetch_spec)
         self.assertEqual(('ok',), response.args)
         stream_bytes = ''.join(response.body_stream)
         self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
@@ -1911,6 +1922,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryGetRevisionGraph)
         self.assertHandlerEqual('Repository.get_stream',
             smart_repo.SmartServerRepositoryGetStream)
+        self.assertHandlerEqual('Repository.get_stream_1.19',
+            smart_repo.SmartServerRepositoryGetStream_1_19)
         self.assertHandlerEqual('Repository.has_revision',
             smart_repo.SmartServerRequestHasRevision)
         self.assertHandlerEqual('Repository.insert_stream',
@@ -1927,3 +1940,50 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryUnlock)
         self.assertHandlerEqual('Transport.is_readonly',
             smart_req.SmartServerIsReadonly)
+
+
+class SmartTCPServerHookTests(tests.TestCaseWithMemoryTransport):
+    """Tests for SmartTCPServer hooks."""
+
+    def setUp(self):
+        super(SmartTCPServerHookTests, self).setUp()
+        self.server = server.SmartTCPServer(self.get_transport())
+
+    def test_run_server_started_hooks(self):
+        """Test the server started hooks get fired properly."""
+        started_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_started',
+            lambda backing_urls, url: started_calls.append((backing_urls, url)),
+            None)
+        started_ex_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_started_ex',
+            lambda backing_urls, url: started_ex_calls.append((backing_urls, url)),
+            None)
+        self.server._sockname = ('example.com', 42)
+        self.server.run_server_started_hooks()
+        self.assertEquals(started_calls,
+            [([self.get_transport().base], 'bzr://example.com:42/')])
+        self.assertEquals(started_ex_calls,
+            [([self.get_transport().base], self.server)])
+
+    def test_run_server_started_hooks_ipv6(self):
+        """Test that socknames can contain 4-tuples."""
+        self.server._sockname = ('::', 42, 0, 0)
+        started_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_started',
+            lambda backing_urls, url: started_calls.append((backing_urls, url)),
+            None)
+        self.server.run_server_started_hooks()
+        self.assertEquals(started_calls,
+                [([self.get_transport().base], 'bzr://:::42/')])
+
+    def test_run_server_stopped_hooks(self):
+        """Test the server stopped hooks."""
+        self.server._sockname = ('example.com', 42)
+        stopped_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_stopped',
+            lambda backing_urls, url: stopped_calls.append((backing_urls, url)),
+            None)
+        self.server.run_server_stopped_hooks()
+        self.assertEquals(stopped_calls,
+            [([self.get_transport().base], 'bzr://example.com:42/')])

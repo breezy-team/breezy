@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,11 +17,8 @@
 
 """Black-box tests for bzr whoami."""
 
-import os
-
 import bzrlib
 from bzrlib import (
-    osutils,
     config,
     )
 from bzrlib.tests import TestCaseWithTransport
@@ -39,6 +36,11 @@ class TestWhoami(TestCaseWithTransport):
         self.assertTrue(len(out) > 0)
         self.assertEquals(1, out.count('@'))
 
+    def test_whoami_email_arg(self):
+        # whoami --email is mutually exclusive with any arguments
+        out = self.run_bzr("whoami --email 'foo <foo@example.com>'", 3)[0]
+        self.assertEquals("", out)
+
     def test_whoami_branch(self):
         """branch specific user identity works."""
         wt = self.make_branch_and_tree('.')
@@ -52,7 +54,7 @@ class TestWhoami(TestCaseWithTransport):
 
         # Verify that the environment variable overrides the value
         # in the file
-        os.environ['BZR_EMAIL'] = 'Different ID <other@environ.ment>'
+        self.overrideEnv('BZR_EMAIL', 'Different ID <other@environ.ment>')
         whoami = self.run_bzr("whoami")[0]
         self.assertEquals('Different ID <other@environ.ment>\n', whoami)
         whoami_email = self.run_bzr("whoami --email")[0]
@@ -94,8 +96,8 @@ class TestWhoami(TestCaseWithTransport):
     def test_whoami_not_set(self):
         """Ensure whoami error if username is not set.
         """
-        osutils.set_or_unset_env('EMAIL', None)
-        osutils.set_or_unset_env('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
         out, err = self.run_bzr(['whoami'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
 

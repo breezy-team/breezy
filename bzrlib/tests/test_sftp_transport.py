@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Robey Pointer <robey@lag.net>
+# Copyright (C) 2005-2011 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,6 @@
 import os
 import socket
 import sys
-import threading
 import time
 
 from bzrlib import (
@@ -30,9 +29,7 @@ from bzrlib import (
     ui,
     )
 from bzrlib.osutils import (
-    pathjoin,
     lexists,
-    set_or_unset_env,
     )
 from bzrlib.tests import (
     features,
@@ -46,8 +43,6 @@ import bzrlib.transport.http
 if features.paramiko.available():
     from bzrlib.transport import sftp as _mod_sftp
     from bzrlib.tests import stub_sftp
-
-from bzrlib.workingtree import WorkingTree
 
 
 def set_test_transport_to_sftp(testcase):
@@ -174,27 +169,21 @@ class SFTPNonServerTest(TestCase):
         """Test that if no 'ssh' is available we get builtin paramiko"""
         from bzrlib.transport import ssh
         # set '.' as the only location in the path, forcing no 'ssh' to exist
-        orig_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
-        orig_path = set_or_unset_env('PATH', '.')
-        try:
-            # No vendor defined yet, query for one
-            ssh._ssh_vendor_manager.clear_cache()
-            vendor = ssh._get_ssh_vendor()
-            self.assertIsInstance(vendor, ssh.ParamikoVendor)
-        finally:
-            set_or_unset_env('PATH', orig_path)
-            ssh._ssh_vendor_manager._cached_ssh_vendor = orig_vendor
+        self.overrideAttr(ssh, '_ssh_vendor_manager')
+        self.overrideEnv('PATH', '.')
+        ssh._ssh_vendor_manager.clear_cache()
+        vendor = ssh._get_ssh_vendor()
+        self.assertIsInstance(vendor, ssh.ParamikoVendor)
 
     def test_abspath_root_sibling_server(self):
         server = stub_sftp.SFTPSiblingAbsoluteServer()
         server.start_server()
-        try:
-            transport = _mod_transport.get_transport(server.get_url())
-            self.assertFalse(transport.abspath('/').endswith('/~/'))
-            self.assertTrue(transport.abspath('/').endswith('/'))
-            del transport
-        finally:
-            server.stop_server()
+        self.addCleanup(server.stop_server)
+
+        transport = _mod_transport.get_transport(server.get_url())
+        self.assertFalse(transport.abspath('/').endswith('/~/'))
+        self.assertTrue(transport.abspath('/').endswith('/'))
+        del transport
 
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
