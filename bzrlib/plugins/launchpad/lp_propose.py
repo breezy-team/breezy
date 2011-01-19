@@ -81,17 +81,14 @@ class Proposer(object):
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
             self.launchpad, source_branch)
         if target_branch is None:
-            self.target_branch = self.source_branch.get_dev_focus()
+            self.target_branch = self.source_branch.get_target()
         else:
             self.target_branch = lp_api.LaunchpadBranch.from_bzr(
                 self.launchpad, target_branch)
         self.commit_message = message
         # XXX: this is where bug lp:583638 could be tackled.
         if reviews == []:
-            target_reviewer = self.target_branch.lp.reviewer
-            if target_reviewer is None:
-                raise errors.BzrCommandError('No reviewer specified')
-            self.reviews = [(target_reviewer, '')]
+            self.reviews = []
         else:
             self.reviews = [(self.launchpad.people[reviewer], review_type)
                             for reviewer, review_type in
