@@ -45,6 +45,9 @@ Bug Fixes
   Launhcpad without requiring the target branch to be specified. (Jelmer Vernooij,
   #704647)
 
+* ``bzr whoami`` will now display an error if both a new identity and ``--email``
+  were specified. (Jelmer Vernooij, #680449)
+
 Documentation
 *************
 
