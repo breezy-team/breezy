@@ -269,8 +269,7 @@ class TestLoadingPlugins(BaseTestPlugins):
     def test_plugin_with_bad_api_version_reports(self):
         """Try loading a plugin that requests an unsupported api.
         
-        Up to bzr 2.2, the plugin just didn't load.  But now we prefer to let
-        it load, and record a warning that can be shown in error messages.
+        Observe that it records the problem but doesn't complain on stderr.
 
         See https://bugs.launchpad.net/bzr/+bug/704195
         """
