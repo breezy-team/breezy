@@ -71,6 +71,9 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``HookPoint.lazy_hook`` and ``Hooks.install_named_lazy_hook`` can install 
+  hooks for which the callable is loaded lazily.  (Jelmer Vernooij)
+
 Testing
 *******
 
