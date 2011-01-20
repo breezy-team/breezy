@@ -143,10 +143,11 @@ def _write_apport_report_to_file(exc_info):
     exc_type, exc_object, exc_tb = exc_info
 
     pr = Report()
-    # add_proc_info gives you the memory map of the process, which is not so
-    # useful for Bazaar but does tell you what binary libraries are loaded.
-    # More importantly it sets the ExecutablePath, InterpreterPath, etc.
+    # add_proc_info sets the ExecutablePath, InterpreterPath, etc.
     pr.add_proc_info()
+    # It also adds ProcMaps which for us is rarely useful and mostly noise, so
+    # let's remove it.
+    del pr['ProcMaps']
     pr.add_user_info()
 
     # Package and SourcePackage are needed so that apport will report about even

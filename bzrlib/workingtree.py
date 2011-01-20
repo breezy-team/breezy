@@ -2858,6 +2858,8 @@ class WorkingTreeFormat(object):
 
     upgrade_recommended = False
 
+    requires_normalized_unicode_filenames = False
+
     @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the working tree object in a_bzrdir."""
@@ -2927,6 +2929,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
     """
 
     upgrade_recommended = True
+
+    requires_normalized_unicode_filenames = True
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""

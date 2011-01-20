@@ -20,11 +20,16 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* The ``lp:`` directory service now supports Launchpad's QA staging.
+  (Jelmer Vernooij, #667483)
+
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
+
+* ``bzr cat-revision`` no longer requires a working tree. (Jelmer Vernooij, #704405)
 
 Bug Fixes
 *********
@@ -37,6 +42,17 @@ Bug Fixes
 
 * ``bzr serve`` no longer crashes when a server_started hook is installed and IPv6
   support is available on the system. (Jelmer Vernooij, #293697)
+
+* ``bzr lp-propose`` can now propose merges against packaging branches on
+  Launhcpad without requiring the target branch to be specified. (Jelmer Vernooij,
+  #704647)
+
+* ``bzr lp-propose`` no longer requires a reviewer to be specified. It will instead
+  leave setting the reviewer up to Launchpad if it was not specified.
+  (Jelmer Vernooij, #583772)
+
+* ``bzr whoami`` will now display an error if both a new identity and ``--email``
+  were specified. (Jelmer Vernooij, #680449)
 
 * Plugins incompatible with the current version of bzr no longer produce a
   warning on every command invocation.  Instead, a message is shown by

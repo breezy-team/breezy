@@ -328,7 +328,8 @@ class cmd_cat_revision(Command):
         if revision_id is None and revision is None:
             raise errors.BzrCommandError('You must supply either'
                                          ' --revision or a revision_id')
-        b = WorkingTree.open_containing(directory)[0].branch
+
+        b = bzrdir.BzrDir.open_containing_tree_or_branch(directory)[1]
 
         revisions = b.repository.revisions
         if revisions is None:
@@ -1961,9 +1962,10 @@ class cmd_diff(Command):
             type=unicode,
             ),
         RegistryOption('format',
+            short_name='F',
             help='Diff format to use.',
             lazy_registry=('bzrlib.diff', 'format_registry'),
-            value_switches=False, title='Diff format'),
+            title='Diff format'),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
@@ -3424,6 +3426,10 @@ class cmd_whoami(Command):
             else:
                 self.outf.write(c.username() + '\n')
             return
+
+        if email:
+            raise errors.BzrCommandError("--email can only be used to display existing "
+                                         "identity")
 
         # display a warning if an email address isn't included in the given name.
         try:

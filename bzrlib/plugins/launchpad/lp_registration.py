@@ -86,6 +86,7 @@ class LaunchpadService(object):
 
     LAUNCHPAD_DOMAINS = {
         'production': 'launchpad.net',
+        'qastaging': 'qastaging.launchpad.net',
         'staging': 'staging.launchpad.net',
         'demo': 'demo.launchpad.net',
         'dev': 'launchpad.dev',
