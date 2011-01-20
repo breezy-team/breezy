@@ -8,6 +8,7 @@ bzr (2.3.0~beta5-1) UNRELEASED; urgency=medium
   [ Vincent Ladeuil ]
   * New upstream release.
    + Fix https python-2.7 compatibility. Closes: #608085
+  * Drop unnecessary dependency on graphviz.
 
  -- Vincent Ladeuil <v.ladeuil+lp@free.fr>  Thu, 20 Jan 2011 16:04:43 -0600
 
