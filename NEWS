@@ -28,6 +28,10 @@ Bug Fixes
 * Avoid UnicodeDecodeError in ``bzr add`` with multiple files under a non-ascii
   path on windows from symlink support addition. (Martin [gz], #686611)
 
+* Fix a crash during ``RepositoryPackCollection.pack`` caused by a
+  concurrent repository pack operation.  This was particularly affecting
+  ``bzr-svn`` users.  (Andrew Bennetts, #701940)
+
 * Correctly resolve content (and path) conflicts for files in subdirs.
   (Vincent Ladeuil, #660935)
 
