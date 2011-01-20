@@ -171,13 +171,6 @@ can be used to display the active configuration options in the current
 working tree or branch as well as the ability to set or remove an
 option. Scripts can also use it to get only the value for a given option.
 
-External Merge Tools
-********************
-
-External merge tool configuration has been added to ``bzr`` core. The name
-and commandline of one or more external merge tools can be defined in
-bazaar.conf. See the help topic ``configuration`` for more details.
-
 Expected releases for the 2.3 series
 ************************************
 
