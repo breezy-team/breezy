@@ -318,7 +318,26 @@ Plugins (including hooks) are run on the server if all of these is true:
 
 def hooks_help_text(topic):
     segments = [_help_prefix]
-    for hook_key in sorted(known_hooks.keys()):
-        hooks = known_hooks_key_to_object(hook_key)
+    for (hook_module, hook_attribute, hook_class) in sorted(
+        known_hooks.keys()):
+        hooks = pyutils.get_named_object(hook_module, hook_attribute)
         segments.append(hooks.docs())
     return '\n'.join(segments)
+
+
+_lazy_hooks = {}
+
+
+def install_lazy_named_hook(hookpoints_module, hookpoints_name, hook_name,
+    a_callable, name):
+    """Install a callable in to a hook lazily, and label it name.
+
+    :param hookpoints_module: Module name of the hook points.
+    :param hookpoints_name: Name of the hook points.
+    :param hook_name: A hook name.
+    :param callable: a callable to call for the hook.
+    :param name: A name to associate a_callable with, to show users what is
+        running.
+    """
+    key = (hookpoints_module, hookpoints_name, hook_name)
+    _lazy_hooks.setdefault(key, []).append((a_callable, name))

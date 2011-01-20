@@ -24,9 +24,11 @@ from bzrlib import (
 from bzrlib.hooks import (
     HookPoint,
     Hooks,
+    install_lazy_named_hook,
     known_hooks,
     known_hooks_key_to_object,
     known_hooks_key_to_parent_and_attribute,
+    _lazy_hooks,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -111,6 +113,20 @@ class TestHooks(tests.TestCase):
         hooks['set_rh'] = []
         hooks.install_named_hook('set_rh', None, "demo")
         self.assertEqual("demo", hooks.get_hook_name(None))
+
+    hooks = Hooks()
+
+    def test_install_lazy_named_hook(self):
+        # When the hook points are not yet registered the hook is
+        # added to the _lazy_hooks dictionary in bzrlib.hooks.
+        self.hooks['set_rh'] = []
+        set_rh = lambda: None
+        install_lazy_named_hook('bzrlib.tests.test_hooks',
+            'TestHooks.hooks', 'set_rh', set_rh, "demo")
+        self.assertEquals([(set_rh, "demo")],
+            _lazy_hooks[
+                ('bzrlib.tests.test_hooks', 'TestHooks.hooks', 'set_rh')])
+        self.assertEqual("demo", self.hooks.get_hook_name(set_rh))
 
 
 class TestHook(tests.TestCase):
