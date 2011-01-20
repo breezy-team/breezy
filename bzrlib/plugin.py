@@ -82,37 +82,40 @@ def disable_plugins():
     load_plugins([])
 
 
-def describe_loaded_plugins(show_paths=False):
-    """Generate text description of loaded plugins.
+def describe_plugins(show_paths=False):
+    """Generate text description of plugins.
+
+    Includes both those that have loaded, and those that failed to 
+    load.
 
     :param show_paths: If true,
     :returns: Iterator of text lines (including newlines.)
     """
     from inspect import getdoc
-    unreported_warnings = plugin_warnings.copy()
-    for name, plugin in sorted(plugins().items()):
-        version = plugin.__version__
-        if version == 'unknown':
-            version = ''
-        name_ver = '%s %s' % (name, version)
-        d = getdoc(plugin.module)
-        if d:
-            doc = d.split('\n')[0]
+    loaded_plugins = plugins()
+    all_names = sorted(list(set(
+        loaded_plugins.keys() + plugin_warnings.keys())))
+    for name in all_names:
+        if name in loaded_plugins:
+            plugin = load_plugins[name]
+            version = plugin.__version__
+            if version == 'unknown':
+                version = ''
+            yield '%s %s\n' % (name, version)
+            d = getdoc(plugin.module)
+            if d:
+                doc = d.split('\n')[0]
+            else:
+                doc = '(no description)'
+            yield ("   %s\n" % doc)
+            if show_paths:
+                yield ("   %s\n" % plugin.path())
+            del plugin
         else:
-            doc = '(no description)'
-        yield ("%s\n" % name_ver)
-        yield ("   %s\n" % doc)
-        if show_paths:
-            yield ("   %s\n" % plugin.path())
-        if name in unreported_warnings:
-            for line in unreported_warnings[name]:
+            yield "%s (failed to load)\n" % name
+        if name in plugin_warnings:
+            for line in plugin_warnings[name]:
                 yield "  ** " + line + '\n'
-            del unreported_warnings[name]
-        yield ("\n")
-    for name in sorted(unreported_warnings.keys()):
-        yield "%s (failed to load)\n" % name
-        for line in unreported_warnings[name]:
-            yield "  ** " + line + '\n'
         yield '\n'
 
 

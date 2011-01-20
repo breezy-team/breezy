@@ -38,7 +38,7 @@ from bzrlib import (
 
 # TODO: Write a test for plugin decoration of commands.
 
-class TestPluginMixin(object):
+class BaseTestPlugins(tests.TestCaseInTempDir):
 
     def create_plugin(self, name, source=None, dir='.', file_name=None):
         if source is None:
@@ -99,7 +99,7 @@ dir_source = '%s'
         self.failUnless('bzrlib.plugins.%s' % name in sys.modules)
 
 
-class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
+class TestLoadingPlugins(BaseTestPlugins):
 
     activeattributes = {}
 
@@ -303,7 +303,7 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
             "it to 'bad_plugin_name_'\.")
 
 
-class TestPlugins(tests.TestCaseInTempDir, TestPluginMixin):
+class TestPlugins(BaseTestPlugins):
 
     def setup_plugin(self, source=""):
         # This test tests a new plugin appears in bzrlib.plugin.plugins().
@@ -779,7 +779,7 @@ class TestEnvPluginPath(tests.TestCase):
                         ['+foo', '-bar'])
 
 
-class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
+class TestDisablePlugin(BaseTestPlugins):
 
     def setUp(self):
         super(TestDisablePlugin, self).setUp()
@@ -820,6 +820,7 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         self.assertLength(0, self.warnings)
 
 
+
 class TestLoadPluginAtSyntax(tests.TestCase):
 
     def _get_paths(self, paths):
@@ -843,7 +844,7 @@ class TestLoadPluginAtSyntax(tests.TestCase):
                           os.pathsep.join(['batman@cave', '', 'robin@mobile']))
 
 
-class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
+class TestLoadPluginAt(BaseTestPlugins):
 
     def setUp(self):
         super(TestLoadPluginAt, self).setUp()
@@ -959,3 +960,15 @@ dir_source = '%s'
         self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@%s' % plugin_path)
         plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom(plugin_path)
+
+
+class TestDescribePlugins(BaseTestPlugins):
+
+    def test_describe_plugins(self):
+        self.overrideAttr(plugin, 'plugin_warnings',
+            {'bad': ['Failed to load (just testing)']})
+        self.assertEquals("""\
+bad (failed to load)
+  ** Failed to load (just testing)
+
+""", ''.join(plugin.describe_plugins()))

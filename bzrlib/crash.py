@@ -254,7 +254,7 @@ def _open_crash_file():
 
 
 def _format_plugin_list():
-    return ''.join(plugin.describe_loaded_plugins(show_paths=True))
+    return ''.join(plugin.describe_plugins(show_paths=True))
 
 
 def _format_module_list():

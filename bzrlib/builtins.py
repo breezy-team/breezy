@@ -4583,7 +4583,7 @@ class cmd_plugins(Command):
     def run(self, verbose=False):
         from bzrlib import plugin
         self.outf.writelines(
-            plugin.describe_loaded_plugins(show_paths=verbose))
+            plugin.describe_plugins(show_paths=verbose))
 
 
 class cmd_testament(Command):
