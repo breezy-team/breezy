@@ -170,8 +170,8 @@ class Hooks(dict):
         callable_member, name):
         """Install a_callable in to the hook hook_name lazily, and label it.
 
-        :param hook_name: A hook name. See the __init__ method of BranchHooks
-            for the complete list of hooks.
+        :param hook_name: A hook name. See the __init__ method for the complete
+            list of hooks.
         :param callable_module: Name of the module in which the callable is
             present.
         :param callable_member: Member name of the callable.
@@ -193,11 +193,11 @@ class Hooks(dict):
     def install_named_hook(self, hook_name, a_callable, name):
         """Install a_callable in to the hook hook_name, and label it name.
 
-        :param hook_name: A hook name. See the __init__ method of BranchHooks
-            for the complete list of hooks.
+        :param hook_name: A hook name. See the __init__ method for the complete
+            list of hooks.
         :param a_callable: The callable to be invoked when the hook triggers.
             The exact signature will depend on the hook - see the __init__
-            method of BranchHooks for details on each hook.
+            method for details on each hook.
         :param name: A name to associate a_callable with, to show users what is
             running.
         """
@@ -244,8 +244,7 @@ class HookPoint(object):
         self.__doc__ = doc
         self.introduced = introduced
         self.deprecated = deprecated
-        self._callbacks = []
-        self._callback_names = {}
+        self._direct_callbacks = []
 
     def docs(self):
         """Generate the documentation for this HookPoint.
@@ -285,9 +284,7 @@ class HookPoint(object):
         """
         obj_getter = registry._LazyObjectGetter(callback_module,
             callback_member)
-        self._callbacks.append(obj_getter)
-        if callback_label is not None:
-            self._callback_names[obj_getter] = callback_label
+        self._direct_callbacks.append((obj_getter, callback_label))
 
     def hook(self, callback, callback_label):
         """Register a callback to be called when this HookPoint fires.
@@ -297,15 +294,16 @@ class HookPoint(object):
             processing.
         """
         obj_getter = registry._ObjectGetter(callback)
-        self._callbacks.append(obj_getter)
-        if callback_label is not None:
-            self._callback_names[obj_getter] = callback_label
+        self._direct_callbacks.append((obj_getter, callback_label))
 
     def _get_callbacks(self):
-        ret = []
+        ret = list(self._direct_callbacks)
+        ret += _lazy_hooks[
+            (self.__module__, self.__class__.__name__, self.name)]
+        return ret
 
     def __iter__(self):
-        return (callback.get_obj() for callback in self._get_callbacks())
+        return (callback.get_obj() for callback, name in self._get_callbacks())
 
     def __len__(self):
         return len(self._get_callbacks())
@@ -316,10 +314,10 @@ class HookPoint(object):
         strings.append(self.name)
         strings.append("), callbacks=[")
         callbacks = self._get_callbacks()
-        for callback in callbacks:
+        for (callback, callback_name) in callbacks:
             strings.append(repr(callback.get_obj()))
             strings.append("(")
-            strings.append(self._callback_names[callback])
+            strings.append(callback_name)
             strings.append("),")
         if len(callbacks) == 1:
             strings[-1] = ")"
@@ -383,4 +381,5 @@ def install_lazy_named_hook(hookpoints_module, hookpoints_name, hook_name,
         running.
     """
     key = (hookpoints_module, hookpoints_name, hook_name)
-    _lazy_hooks.setdefault(key, []).append((a_callable, name))
+    obj_getter = registry._ObjectGetter(a_callable)
+    _lazy_hooks.setdefault(key, []).append((obj_getter, name))
