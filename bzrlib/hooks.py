@@ -170,8 +170,8 @@ class Hooks(dict):
         callable_member, name):
         """Install a_callable in to the hook hook_name lazily, and label it.
 
-        :param hook_name: A hook name. See the __init__ method of BranchHooks
-            for the complete list of hooks.
+        :param hook_name: A hook name. See the __init__ method for the complete
+            list of hooks.
         :param callable_module: Name of the module in which the callable is
             present.
         :param callable_member: Member name of the callable.
@@ -193,11 +193,11 @@ class Hooks(dict):
     def install_named_hook(self, hook_name, a_callable, name):
         """Install a_callable in to the hook hook_name, and label it name.
 
-        :param hook_name: A hook name. See the __init__ method of BranchHooks
-            for the complete list of hooks.
+        :param hook_name: A hook name. See the __init__ method for the complete
+            list of hooks.
         :param a_callable: The callable to be invoked when the hook triggers.
             The exact signature will depend on the hook - see the __init__
-            method of BranchHooks for details on each hook.
+            method for details on each hook.
         :param name: A name to associate a_callable with, to show users what is
             running.
         """
@@ -301,23 +301,27 @@ class HookPoint(object):
         if callback_label is not None:
             self._callback_names[obj_getter] = callback_label
 
+    def _get_callbacks(self):
+        
+
     def __iter__(self):
-        return (callback.get_obj() for callback in self._callbacks)
+        return (callback.get_obj() for callback in self._get_callbacks())
 
     def __len__(self):
-        return len(self._callbacks)
+        return len(self._get_callbacks())
 
     def __repr__(self):
         strings = []
         strings.append("<%s(" % type(self).__name__)
         strings.append(self.name)
         strings.append("), callbacks=[")
-        for callback in self._callbacks:
+        callbacks = self._get_callbacks()
+        for callback in callbacks:
             strings.append(repr(callback.get_obj()))
             strings.append("(")
             strings.append(self._callback_names[callback])
             strings.append("),")
-        if len(self._callbacks) == 1:
+        if len(callbacks) == 1:
             strings[-1] = ")"
         strings.append("]>")
         return ''.join(strings)
@@ -362,3 +366,21 @@ def hooks_help_text(topic):
         hooks = known_hooks_key_to_object(hook_key)
         segments.append(hooks.docs())
     return '\n'.join(segments)
+
+
+_lazy_hooks = {}
+
+
+def install_lazy_named_hook(hookpoints_module, hookpoints_name, hook_name,
+    a_callable, name):
+    """Install a callable in to a hook lazily, and label it name.
+
+    :param hookpoints_module: Module name of the hook points.
+    :param hookpoints_name: Name of the hook points.
+    :param hook_name: A hook name.
+    :param callable: a callable to call for the hook.
+    :param name: A name to associate a_callable with, to show users what is
+        running.
+    """
+    key = (hookpoints_module, hookpoints_name, hook_name)
+    _lazy_hooks.setdefault(key, []).append((a_callable, name))
