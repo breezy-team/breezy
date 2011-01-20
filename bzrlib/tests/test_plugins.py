@@ -965,10 +965,21 @@ dir_source = '%s'
 class TestDescribePlugins(BaseTestPlugins):
 
     def test_describe_plugins(self):
+        class DummyModule(object):
+            __doc__ = 'Hi there'
+        class DummyPlugin(object):
+            __version__ = '0.1.0'
+            module = DummyModule()
+        def dummy_plugins():
+            return { 'good': DummyPlugin() }
         self.overrideAttr(plugin, 'plugin_warnings',
             {'bad': ['Failed to load (just testing)']})
+        self.overrideAttr(plugin, 'plugins', dummy_plugins)
         self.assertEquals("""\
 bad (failed to load)
   ** Failed to load (just testing)
+
+good 0.1.0
+  Hi there
 
 """, ''.join(plugin.describe_plugins()))

@@ -97,7 +97,7 @@ def describe_plugins(show_paths=False):
         loaded_plugins.keys() + plugin_warnings.keys())))
     for name in all_names:
         if name in loaded_plugins:
-            plugin = load_plugins[name]
+            plugin = loaded_plugins[name]
             version = plugin.__version__
             if version == 'unknown':
                 version = ''
@@ -107,7 +107,7 @@ def describe_plugins(show_paths=False):
                 doc = d.split('\n')[0]
             else:
                 doc = '(no description)'
-            yield ("   %s\n" % doc)
+            yield ("  %s\n" % doc)
             if show_paths:
                 yield ("   %s\n" % plugin.path())
             del plugin
