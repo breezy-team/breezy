@@ -8,7 +8,10 @@ Bazaar Release Notes
 bzr 2.2.3
 #########
 
-:2.2.3: NOT RELEASED YET
+:2.2.3: 2011-01-20
+
+This is a bugfix release. Upgrading is recommended for all users
+on earlier 2.2 releases.
 
 Compatibility Breaks
 ********************
@@ -22,15 +25,13 @@ Compatibility Breaks
 New Features
 ************
 
+(none)
+
 Bug Fixes
 *********
 
 * Avoid UnicodeDecodeError in ``bzr add`` with multiple files under a non-ascii
   path on windows from symlink support addition. (Martin [gz], #686611)
-
-* Fix a crash during ``RepositoryPackCollection.pack`` caused by a
-  concurrent repository pack operation.  This was particularly affecting
-  ``bzr-svn`` users.  (Andrew Bennetts, #701940)
 
 * Correctly resolve content (and path) conflicts for files in subdirs.
   (Vincent Ladeuil, #660935)
@@ -39,27 +40,16 @@ Bug Fixes
   because this can cause knock-on errors at awkward times.
   (Andrew Bennetts, #687653)
 
+* Fix a crash during ``RepositoryPackCollection.pack`` caused by a
+  concurrent repository pack operation.  This was particularly affecting
+  ``bzr-svn`` users.  (Andrew Bennetts, #701940)
+
 * ``https`` access works again with recent versions of python2.7.
   (Vincent Ladeuil, #693880)
 
 * RevisionTree.is_executable no longer returns None for directories and
   symlinks.  Instead, it returns False, like other Trees and methods.
   (Aaron Bentley, #681885)
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.2.2
