@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 """Tests for finding, parsing and searching rule-based preferences."""
 
-import os
 import sys
 
 from bzrlib import (
@@ -116,10 +115,10 @@ class TestRulesPath(tests.TestCase):
 
     def setUp(self):
         super(TestRulesPath, self).setUp()
-        os.environ['HOME'] = '/home/bogus'
+        self.overrideEnv('HOME', '/home/bogus')
         if sys.platform == 'win32':
-            os.environ['BZR_HOME'] = \
-                r'C:\Documents and Settings\bogus\Application Data'
+            self.overrideEnv(
+                'BZR_HOME', r'C:\Documents and Settings\bogus\Application Data')
             self.bzr_home = \
                 'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
         else:

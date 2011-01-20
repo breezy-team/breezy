@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1769,6 +1769,9 @@ class GraphThunkIdsToKeys(object):
 
     def merge_sort(self, tip_revision):
         return self._graph.merge_sort((tip_revision,))
+
+    def add_node(self, revision, parents):
+        self._graph.add_node((revision,), [(p,) for p in parents])
 
 
 _counters = [0,0,0,0,0,0,0]

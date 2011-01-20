@@ -250,7 +250,7 @@ the data written into the pack body file.
 
 The ``pack-names`` file gives the list of all finished non-obsolete
 packs.  (This should always be the same as the list of files in the
-``packs/`` directory, but the file is needed for readonly http clients
+``packs/`` directory, but the file is needed for read-only HTTP clients
 that can't easily list directories, and it includes other information.)
 The constraint on the ``pack-names`` list is that every file mentioned
 must exist in the ``packs/`` directory.

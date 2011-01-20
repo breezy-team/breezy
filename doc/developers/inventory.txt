@@ -26,7 +26,7 @@ Serialization
 =============
 
 There are several variants of serialised tree shape in use by bzr. To date
-these have been mostly xml based, though plugins have offered non-xml versions.
+these have been mostly XML-based, though plugins have offered non-XML versions.
 
 dirstate
 --------
@@ -35,10 +35,10 @@ The dirstate file in a working tree includes many different tree shapes - one
 for the working tree and one for each parent tree, interleaved to allow
 efficient diff and status operations.
 
-xml
+XML
 ---
 
-All the xml serialized forms write to and read from a single byte string, whose
+All the XML serialized forms write to and read from a single byte string, whose
 hash is then the inventory validator for the commit object.
 
 
@@ -82,14 +82,14 @@ meeting these goals.
 Current situation
 -----------------
 
-The xml based implementation we use today layers the inventory as a bytestring
+The XML-based implementation we use today layers the inventory as a bytestring
 which is stored under a single key; the bytestring is then compressed as a
 delta against the bytestring of its left hand parent by the knit code.
 
 Gap analysis:
 
  1. Succeeds
- 2. Fails - generating a new xml representation needs full tree data.
+ 2. Fails - generating a new XML representation needs full tree data.
  3. Succeeds - the inventory layer accesses the bytestring, which is
     deterministic
  4. Fails - we have to reconstruct both inventories as trees and then delta

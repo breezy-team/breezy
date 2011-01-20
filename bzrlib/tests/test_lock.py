@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,29 +17,26 @@
 """Tests for OS Locks."""
 
 
-
 from bzrlib import (
     debug,
     errors,
     lock,
     tests,
     )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterize tests for all versions of groupcompress."""
-    scenarios = []
-    for name, write_lock, read_lock in lock._lock_classes:
-        scenarios.append((name, {'write_lock': write_lock,
-                                 'read_lock': read_lock}))
-    suite = loader.suiteClass()
-    result = tests.multiply_tests(standard_tests, scenarios, suite)
-    return result
+load_tests = load_tests_apply_scenarios
 
 
 class TestOSLock(tests.TestCaseInTempDir):
 
-    # Set by load_tests
+    scenarios = [(
+        name, {
+            'write_lock': write_lock,
+            'read_lock': read_lock})
+        for name, write_lock, read_lock in lock._lock_classes]
+
     read_lock = None
     write_lock = None
 

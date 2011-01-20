@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,30 +33,12 @@ from bzrlib.tests import (
     test_foreign,
     )
 from bzrlib.tests.blackbox import test_push
+from bzrlib.tests.scenarios import (
+    load_tests_apply_scenarios,
+    )
 
 
-def load_tests(standard_tests, module, loader):
-    """Multiply tests for the dpush command."""
-    result = loader.suiteClass()
-
-    # one for each king of change
-    changes_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((
-                TestDpushStrictWithChanges,
-                )))
-    changes_scenarios = [
-        ('uncommitted',
-         dict(_changes_type= '_uncommitted_changes')),
-        ('pending-merges',
-         dict(_changes_type= '_pending_merges')),
-        ('out-of-sync-trees',
-         dict(_changes_type= '_out_of_sync_trees')),
-        ]
-    tests.multiply_tests(changes_tests, changes_scenarios, result)
-    # No parametrization for the remaining tests
-    result.addTests(remaining_tests)
-
-    return result
+load_tests = load_tests_apply_scenarios
 
 
 class TestDpush(tests.TestCaseWithTransport):
@@ -180,6 +162,8 @@ class TestDpushStrictWithoutChanges(TestDpushStrictMixin,
 class TestDpushStrictWithChanges(TestDpushStrictMixin,
                                  test_push.TestPushStrictWithChanges):
 
+    scenarios = test_push.strict_push_change_scenarios
+
     _changes_type = None # Set by load_tests
 
     def setUp(self):
@@ -188,4 +172,3 @@ class TestDpushStrictWithChanges(TestDpushStrictMixin,
 
     def test_push_with_revision(self):
         raise tests.TestNotApplicable('dpush does not handle --revision')
-

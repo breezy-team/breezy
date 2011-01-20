@@ -25,7 +25,6 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests.script import (
-    ScriptRunner,
     run_script,
     )
 
