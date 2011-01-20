@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,8 +18,15 @@
 
 from cStringIO import StringIO
 
-from bzrlib import config, errors, ignores
-from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
+from bzrlib import (
+    config,
+    ignores,
+    )
+from bzrlib.tests import (
+    TestCase,
+    TestCaseInTempDir,
+    TestCaseWithTransport,
+    )
 
 
 class TestParseIgnoreFile(TestCase):

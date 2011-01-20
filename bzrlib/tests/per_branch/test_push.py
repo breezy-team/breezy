@@ -24,11 +24,9 @@ from bzrlib import (
     builtins,
     bzrdir,
     check,
-    debug,
     errors,
     memorytree,
     push,
-    repository,
     revision,
     symbol_versioning,
     tests,
@@ -36,8 +34,6 @@ from bzrlib import (
     )
 from bzrlib.smart import (
     client,
-    server,
-    repository as _mod_smart_repo,
     )
 from bzrlib.tests import (
     per_branch,

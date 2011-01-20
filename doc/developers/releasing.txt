@@ -163,7 +163,7 @@ Update the source code
    Double check that ./bzr ``_script_version`` matches ``version_info``. Check
    the output of ``bzr --version``.
 
-   For betahttps://code.edge.launchpad.net/~knittl/bzr/fix-inventory-r0/+merge/354985 releases use::
+   For beta releases use::
 
        version_info = (2, 1, 0, 'beta', SERIAL)
 
@@ -251,7 +251,7 @@ Update the source code
    appropriate release branch::
 
      bzr push
-     bzr pqm-submit -m "(mbp) prepare 1.14"
+     bzr pqm-submit -m "(mbp) Release 1.14 (Martin Pool)"
 
    Or with hydrazine::
 
@@ -271,13 +271,14 @@ Making the source tarball
 #. Now we'll try expanding this tarball and running the test suite
    to check for packaging problems::
 
-     make check-dist-tarball
+     make check-dist-tarball | subunit2pyunit
 
-   You may encounter failures while running the test suite caused
-   by your locally installed plugins. Use your own judgment to
-   decide if you can release with these failures. When in doubt,
-   disable the faulty plugins one by one until you get no more
-   failures.
+   You may encounter failures while running the test suite caused by your
+   locally installed plugins. Use your own judgment to decide if you can
+   release with these failures. When in doubt, disable the faulty plugins
+   one by one until you get no more failures. Alternatively, you can use
+   ``BZR_DISABLE_PLUGINS`` or ``BZR_PLUGIN_PATH=-site`` to disable one or
+   all plugins.
 
    Remember that PQM has just tested everything too, this step is
    particularly testing that the pyrex extensions, which are updated
@@ -373,7 +374,7 @@ Now that the release is publicly available, tell people about it.
       feedback.
 
       Bazaar is now available for download from
-      https://launchpad.net/bzr/2.x/2.x/ as a source tarball; packages
+      https://launchpad.net/bzr/x.y/x.y.z/ as a source tarball; packages
       for various systems will be available soon.
 
       <<release notes from this release back to the last major release>>
@@ -390,6 +391,25 @@ Now that the release is publicly available, tell people about it.
    This should be done for beta releases, release candidates and final
    releases. If you do not have a Freshmeat account yet, ask one of the
    existing admins.
+
+   The purpose here is to point users to the latest stable release while still
+   publishing announcements for development releases.
+
+   There are several kinds of modifications that could be done there via the
+   ``Administration`` box in the lower right area of the page:
+
+   * Edit the project: This is where most of the URLs proposed in the
+     ``Links`` box are edited. This should rarely change except for the URLs
+     related to the latest stable release.
+
+   * New announcement: When doing a release (beta, candidates, final), put the
+     summary of the release (you can't embed URLs there, the moderation staff
+     remove them). Users can still access the releases notes via the ``Release
+     Notes`` URL in the ``Links`` box in the upper right area of the page.
+
+   * Set direct download: When releasing a new stable release, this should
+     point to the corresponding launchpad page:
+     <https://launchpad.net/bzr/x.y/x.y.z/>
 
 #. Update `<http://en.wikipedia.org/wiki/Bazaar_(software)>`_ -- this should
    be done for final releases but not for beta releases or Release Candidates.

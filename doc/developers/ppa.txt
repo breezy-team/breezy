@@ -13,24 +13,32 @@ Archives (PPA)`__ on Launchpad.
 
   __ https://help.launchpad.net/PPAQuickStart
 
-As of September 2010, there are four PPAs:
+As of January 2011, there are the following PPAs:
 
 <https://launchpad.net/~bzr/+archive/ppa>
     Final released versions and updates.
     Most users who want updates to bzr should add this.
 
 <https://launchpad.net/~bzr/+archive/proposed>
-    Proposed uploads to move into ~bzr, awaiting testing.
+    Proposed uploads to move into ~bzr/ppa, awaiting testing.
 
-<https://launchpad.net/~bzr-beta-ppa/+archive>
+<https://launchpad.net/~bzr/+archive/obsolete>
+    A preserved copy of the final version of packages from ~bzr/ppa for
+    obsolete Ubuntu series.
+
+<https://launchpad.net/~bzr-beta-ppa/+archive/ppa>
     Beta releases.
 
-<https://launchpad.net/~bzr-nightly-ppa/+archive>
+<https://launchpad.net/~bzr-beta-ppa/+archive/obsolete>
+    A preserved copy of the final version of packages from
+    ~bzr-beta-ppa/ppa for obsolete Ubuntu series.
+
+<https://launchpad.net/~bzr/+archive/daily>
     Automatic nightly builds from trunk.
 
-We build a distinct package for each distrorelease.  
+We build a distinct package for each distrorelease.
 If you upload a release-specific version, you should add a suffix to the
-package version, e.g. ``bzr.1.3-1~bazaar1~dapper1``.
+package version, e.g. ``1.3-1~bazaar1~dapper1``.
 
 Dapper uses the ``python-support`` framework and later distributions use
 ``python-central``.  This has little effect on everyday packaging but does
@@ -46,8 +54,8 @@ or
 <lp:~bzr/ubuntu/hardy/bzr/bzr-ppa>.  These branches are intended to be used
 with the ``bzr-builddeb`` plugin.
 
-**You should almost always upload to the beta ppa first** and then either 
-upload again or copy the packages into the release ppa.  That reduces the 
+**You should almost always upload to the proposed or beta ppa first** and
+then copy the packages into the release ppa.  That reduces the 
 risk of breaking the main archive from which people get bzr updates.
 
 
@@ -82,7 +90,7 @@ Preconditions
 On reasonably recent versions of Ubuntu you no longer need special dput
 configuration, because you can just say ::
 
-  dput ppa:bzr/proposed <source.changes
+  dput ppa:bzr/proposed source.changes
   
 
 However, you may still want to add these lines to ``~/.dput.cf`` prevent 
@@ -140,8 +148,8 @@ It may be useful to locally test builds inside pbuilder.  You may want to
 use the script from <http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=255165> 
 to wrap it, and to give it sensible defaults for your local machine.
 
-Update all packages in proposed before copping the main ppa
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Update all packages in proposed before copying to the main ppa
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If one updates bzr, and there are plugins that are not compatible with the
 new version of bzr, this can cause pain for users using the ppa. In order to

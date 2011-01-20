@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -362,6 +362,35 @@ class TestGetMissingParentInventories(per_repository.TestCaseWithRepository):
         self.assertNotEqual([], tokens)
         sink.insert_stream((), repo._format, tokens)
         self.assertEqual([True], call_log)
+
+    def test_insert_stream_without_locking_fails_without_lock(self):
+        repo = self.make_repository('test-repo')
+        sink = repo._get_sink()
+        stream = [('texts', [versionedfile.FulltextContentFactory(
+            ('file-id', 'rev-id'), (), None, 'lines\n')])]
+        self.assertRaises(errors.ObjectNotLocked,
+            sink.insert_stream_without_locking, stream, repo._format)
+
+    def test_insert_stream_without_locking_fails_without_write_group(self):
+        repo = self.make_repository('test-repo')
+        self.addCleanup(repo.lock_write().unlock)
+        sink = repo._get_sink()
+        stream = [('texts', [versionedfile.FulltextContentFactory(
+            ('file-id', 'rev-id'), (), None, 'lines\n')])]
+        self.assertRaises(errors.BzrError,
+            sink.insert_stream_without_locking, stream, repo._format)
+
+    def test_insert_stream_without_locking(self):
+        repo = self.make_repository('test-repo')
+        self.addCleanup(repo.lock_write().unlock)
+        repo.start_write_group()
+        sink = repo._get_sink()
+        stream = [('texts', [versionedfile.FulltextContentFactory(
+            ('file-id', 'rev-id'), (), None, 'lines\n')])]
+        missing_keys = sink.insert_stream_without_locking(stream, repo._format)
+        repo.commit_write_group()
+        self.assertEqual(set(), missing_keys)
+
 
 
 class TestResumeableWriteGroup(per_repository.TestCaseWithRepository):

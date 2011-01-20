@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -615,7 +615,7 @@ class TestSmartServerStreamMedium(tests.TestCase):
 
     def setUp(self):
         super(TestSmartServerStreamMedium, self).setUp()
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
 
     def portable_socket_pair(self):
         """Return a pair of TCP sockets connected to each other.
@@ -970,7 +970,7 @@ class TestSmartTCPServer(tests.TestCase):
 
     def test_get_error_unexpected(self):
         """Error reported by server with no specific representation"""
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
         class FlakyTransport(object):
             base = 'a_url'
             def external_url(self):
@@ -1077,14 +1077,14 @@ class WritableEndToEndTests(SmartTCPTests):
 
     def test_smart_transport_has(self):
         """Checking for file existence over smart."""
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
         self.backing_transport.put_bytes("foo", "contents of foo\n")
         self.assertTrue(self.transport.has("foo"))
         self.assertFalse(self.transport.has("non-foo"))
 
     def test_smart_transport_get(self):
         """Read back a file over smart."""
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
         self.backing_transport.put_bytes("foo", "contents\nof\nfoo\n")
         fp = self.transport.get("foo")
         self.assertEqual('contents\nof\nfoo\n', fp.read())
@@ -1094,7 +1094,7 @@ class WritableEndToEndTests(SmartTCPTests):
         # The path in a raised NoSuchFile exception should be the precise path
         # asked for by the client. This gives meaningful and unsurprising errors
         # for users.
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
         err = self.assertRaises(
             errors.NoSuchFile, self.transport.get, 'not%20a%20file')
         self.assertSubset([err.path], ['not%20a%20file', './not%20a%20file'])
@@ -1119,7 +1119,7 @@ class WritableEndToEndTests(SmartTCPTests):
 
     def test_open_dir(self):
         """Test changing directory"""
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
         transport = self.transport
         self.backing_transport.mkdir('toffee')
         self.backing_transport.mkdir('toffee/apple')
@@ -1147,7 +1147,7 @@ class ReadOnlyEndToEndTests(SmartTCPTests):
 
     def test_mkdir_error_readonly(self):
         """TransportNotPossible should be preserved from the backing transport."""
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
         self.start_server(readonly=True)
         self.assertRaises(errors.TransportNotPossible, self.transport.mkdir,
             'foo')
@@ -1261,7 +1261,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(SmartServerRequestHandlerTests, self).setUp()
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
 
     def build_handler(self, transport):
         """Returns a handler for the commands in protocol version one."""
@@ -1286,10 +1286,7 @@ class SmartServerRequestHandlerTests(tests.TestCaseWithTransport):
         handler = vfs.HasRequest(None, '/')
         # set environment variable after construction to make sure it's
         # examined.
-        # Note that we can safely clobber BZR_NO_SMART_VFS here, because setUp
-        # has called _captureVar, so it will be restored to the right state
-        # afterwards.
-        os.environ['BZR_NO_SMART_VFS'] = ''
+        self.overrideEnv('BZR_NO_SMART_VFS', '')
         self.assertRaises(errors.DisabledMethod, handler.execute)
 
     def test_readonly_exception_becomes_transport_not_possible(self):
@@ -1602,7 +1599,7 @@ class TestVersionOneFeaturesInProtocolOne(
         self.assertTrue(self.end_received)
 
     def test_accept_request_and_body_all_at_once(self):
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
         mem_transport = memory.MemoryTransport()
         mem_transport.put_bytes('foo', 'abcdefghij')
         out_stream = StringIO()
@@ -1868,7 +1865,7 @@ class TestVersionOneFeaturesInProtocolTwo(
         self.assertTrue(self.end_received)
 
     def test_accept_request_and_body_all_at_once(self):
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
         mem_transport = memory.MemoryTransport()
         mem_transport.put_bytes('foo', 'abcdefghij')
         out_stream = StringIO()
@@ -3517,7 +3514,7 @@ class HTTPTunnellingSmokeTest(tests.TestCase):
     def setUp(self):
         super(HTTPTunnellingSmokeTest, self).setUp()
         # We use the VFS layer as part of HTTP tunnelling tests.
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
 
     def test_smart_http_medium_request_accept_bytes(self):
         medium = FakeHTTPMedium()

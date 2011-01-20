@@ -140,7 +140,7 @@ You can see the history of your branch by browsing its log::
     Initial import
 
 
-Publishing your branch with sftp
+Publishing your branch with SFTP
 ================================
 
 There are a couple of ways to publish your branch. If you already have
@@ -164,7 +164,7 @@ Now anyone can create their own copy of your branch by typing::
 
  $ bzr branch http://www.example.com/myproject
 
-**Note**: to use sftp, you may need to install ``paramiko`` and
+**Note**: to use SFTP, you may need to install ``paramiko`` and
 ``pyCrypto``. See http://wiki.bazaar.canonical.com/InstallationFaq for details.
 
 

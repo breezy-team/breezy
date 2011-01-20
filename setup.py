@@ -395,7 +395,8 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # ditto for the tbzrcommand tool
     tbzrcommand = dict(
         script = os.path.join(tbzr_root, "scripts", "tbzrcommand.py"),
-        icon_resources = [(0,'bzr.ico')],
+        icon_resources = icon_resources,
+        other_resources = other_resources,
     )
     console_targets.append(tbzrcommand)
     tbzrcommandw = tbzrcommand.copy()

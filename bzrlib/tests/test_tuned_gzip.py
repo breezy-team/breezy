@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,11 +21,14 @@
 # do not use bzrlib test cases here - this should be suitable for sending
 # upstream.
 from cStringIO import StringIO
-from unittest import TestCase
 import zlib
 
 
-from bzrlib import tuned_gzip
+from bzrlib import (
+    symbol_versioning,
+    tuned_gzip,
+    tests,
+    )
 
 
 class FakeDecompress(object):
@@ -42,7 +45,7 @@ class FakeDecompress(object):
         return ''
 
 
-class TestFakeDecompress(TestCase):
+class TestFakeDecompress(tests.TestCase):
     """We use a fake decompressor to test GzipFile.
 
     This class tests the behaviours we want from it.
@@ -67,14 +70,16 @@ class TestFakeDecompress(TestCase):
         self.assertEqual('1234567', decompress.unused_data)
 
 
-class TestGzip(TestCase):
+class TestGzip(tests.TestCase):
 
     def test__read_short_remainder(self):
         # a _read call at the end of a compressed hunk should
         # read more bytes if there is less than 8 bytes (the
         # gzip trailer) unread.
         stream = StringIO('\0\0\0\0\0\0\0\0')
-        myfile = tuned_gzip.GzipFile(fileobj=stream)
+        myfile = self.applyDeprecated(
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            tuned_gzip.GzipFile, fileobj=stream)
         # disable the _new_member check, we are microtesting.
         myfile._new_member = False
         myfile.crc = zlib.crc32('')
@@ -89,21 +94,25 @@ class TestGzip(TestCase):
     def test_negative_crc(self):
         """Content with a negative crc should not break when written"""
         sio = StringIO()
-        gfile = tuned_gzip.GzipFile(mode="w", fileobj=sio)
+        gfile = self.applyDeprecated(
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            tuned_gzip.GzipFile, mode="w", fileobj=sio)
         gfile.write("\xFF")
         gfile.close()
         self.assertEqual(gfile.crc & 0xFFFFFFFFL, 0xFF000000L)
         self.assertEqual(sio.getvalue()[-8:-4], "\x00\x00\x00\xFF")
 
 
-class TestToGzip(TestCase):
+class TestToGzip(tests.TestCase):
 
     def assertToGzip(self, chunks):
         bytes = ''.join(chunks)
         gzfromchunks = tuned_gzip.chunks_to_gzip(chunks)
         gzfrombytes = tuned_gzip.bytes_to_gzip(bytes)
         self.assertEqual(gzfrombytes, gzfromchunks)
-        decoded = tuned_gzip.GzipFile(fileobj=StringIO(gzfromchunks)).read()
+        decoded = self.applyDeprecated(
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            tuned_gzip.GzipFile, fileobj=StringIO(gzfromchunks)).read()
         self.assertEqual(bytes, decoded)
 
     def test_single_chunk(self):

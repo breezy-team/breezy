@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ from bzrlib import (
     controldir,
     errors,
     help_topics,
+    lock,
     repository,
     osutils,
     remote,
@@ -1348,6 +1349,12 @@ class _TestBranch(bzrlib.branch.Branch):
 
     def set_parent(self, parent):
         self._parent = parent
+
+    def lock_read(self):
+        return lock.LogicalLockResult(self.unlock)
+
+    def unlock(self):
+        return
 
 
 class TestBzrDirSprout(TestCaseWithMemoryTransport):

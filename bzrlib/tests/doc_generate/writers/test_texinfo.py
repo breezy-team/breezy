@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 """sphinx texinfo writer tests."""
 
+from bzrlib import tests
 from bzrlib.tests import (
     doc_generate as test_dg, # Avoid clash with from bzrlib import doc_generate
     )
@@ -176,6 +177,8 @@ class TestTableGeneration(test_dg.TestSphinx):
 class TestTocTreeGeneration(test_dg.TestSphinx):
 
     def test_toctree(self):
+        if self.sphinx_version() >= (1, 0):
+            raise tests.TestSkipped('Not compatible with sphinx >= 1.0')
         self.build_tree_contents(
             [('index.txt', """
 Table of Contents

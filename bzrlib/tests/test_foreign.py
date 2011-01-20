@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -173,17 +173,19 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
         super(DummyForeignVcsBranchFormat, self).__init__()
         self._matchingbzrdir = DummyForeignVcsDirFormat()
 
-    def open(self, a_bzrdir, name=None, _found=False):
+    def open(self, a_bzrdir, name=None, _found=False, found_repository=None):
         if not _found:
             raise NotImplementedError
         try:
             transport = a_bzrdir.get_branch_transport(None, name=name)
             control_files = lockable_files.LockableFiles(transport, 'lock',
                                                          lockdir.LockDir)
+            if found_repository is None:
+                found_repository = a_bzrdir.find_repository()
             return DummyForeignVcsBranch(_format=self,
                               _control_files=control_files,
                               a_bzrdir=a_bzrdir,
-                              _repository=a_bzrdir.find_repository())
+                              _repository=found_repository)
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
 

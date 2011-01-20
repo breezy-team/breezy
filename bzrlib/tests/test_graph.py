@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 from bzrlib import (
     errors,
     graph as _mod_graph,
-    symbol_versioning,
     tests,
     )
 from bzrlib.revision import NULL_REVISION
@@ -1653,6 +1652,14 @@ class TestGraphThunkIdsToKeys(tests.TestCase):
         self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'B'])))
         self.assertEqual(['D'], sorted(graph_thunk.heads(['D', 'C'])))
         self.assertEqual(['B', 'C'], sorted(graph_thunk.heads(['B', 'C'])))
+
+    def test_add_node(self):
+        d = {('C',):[('A',)], ('B',): [('A',)], ('A',): []}
+        g = _mod_graph.KnownGraph(d)
+        graph_thunk = _mod_graph.GraphThunkIdsToKeys(g)
+        graph_thunk.add_node("D", ["A", "C"])
+        self.assertEqual(['B', 'D'],
+            sorted(graph_thunk.heads(['D', 'B', 'A'])))
 
 
 class TestPendingAncestryResultGetKeys(TestCaseWithMemoryTransport):

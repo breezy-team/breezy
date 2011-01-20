@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -32,8 +32,6 @@ permissions should be inherited individually, rather than all be the same.
 
 import os
 import sys
-import stat
-from cStringIO import StringIO
 import urllib
 
 from bzrlib import transport

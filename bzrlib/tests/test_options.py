@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ from bzrlib import (
     option,
     )
 from bzrlib.builtins import cmd_commit
-from bzrlib.commands import Command, parse_args
+from bzrlib.commands import parse_args
 from bzrlib.tests import TestCase
 from bzrlib.repofmt import knitrepo
 
