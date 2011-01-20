@@ -26,87 +26,10 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     cmdline,
-    config,
-    errors,
     osutils,
     trace,
-    ui,
-    workingtree,
 )
 """)
-
-
-def subprocess_invoker(executable, args, cleanup):
-    retcode = subprocess.call([executable] + args)
-    cleanup(retcode)
-    return retcode
-
-
-_WIN32_PATH_EXT = [unicode(ext.lower())
-                   for ext in os.getenv('PATHEXT', '').split(os.pathsep)]
-
-
-class MergeTool(object):
-
-    def __init__(self, name, command_line):
-        """Initializes the merge tool with a name and a command-line."""
-        self.name = name
-        self.command_line = command_line
-
-    def __repr__(self):
-        return '<%s(%s, %s)>' % (self.__class__, self.name, self.command_line)
-        
-    def _get_command_line(self):
-        return self._command_line
-    
-    def _set_command_line(self, command_line):
-        self._command_line = command_line
-        self._cmd_list = cmdline.split(self.command_line)
-        
-    command_line = property(_get_command_line, _set_command_line)
-
-    def is_available(self):
-        exe = self._cmd_list[0]
-        if sys.platform == 'win32':
-            if os.path.isabs(exe):
-                base, ext = os.path.splitext(exe)
-                return os.path.exists(exe) and ext in _WIN32_PATH_EXT
-            else:
-                return osutils.find_executable_on_path(exe) is not None
-        else:
-            return (os.access(exe, os.X_OK)
-                    or osutils.find_executable_on_path(exe) is not None)
-
-    def invoke(self, filename, invoker=None):
-        if invoker is None:
-            invoker = subprocess_invoker
-        args, tmp_file = self._subst_filename(self._cmd_list, filename)
-        def cleanup(retcode):
-            if tmp_file is not None:
-                if retcode == 0: # on success, replace file with temp file
-                    shutil.move(tmp_file, filename)
-                else: # otherwise, delete temp file
-                    os.remove(tmp_file)
-        return invoker(args[0], args[1:], cleanup)
-
-    def _subst_filename(self, args, filename):
-        subst_names = {
-            u'base': filename + u'.BASE',
-            u'this': filename + u'.THIS',
-            u'other': filename + u'.OTHER',
-            u'result': filename,
-        }
-        tmp_file = None
-        subst_args = []
-        for arg in args:
-            if u'{this_temp}' in arg and not 'this_temp' in subst_names:
-                tmp_file = tempfile.mktemp(u"_bzr_mergetools_%s.THIS" %
-                                           os.path.basename(filename))
-                shutil.copy(filename + u".THIS", tmp_file)
-                subst_names['this_temp'] = tmp_file
-            arg = arg.format(**subst_names)
-            subst_args.append(arg)
-        return subst_args, tmp_file
 
 
 known_merge_tools = {
@@ -117,3 +40,66 @@ known_merge_tools = {
     'opendiff': 'opendiff {this} {other} -ancestor {base} -merge {result}',
     'winmergeu': 'winmergeu {result}',
 }
+
+
+def check_availability(command_line):
+    cmd_list = cmdline.split(command_line)
+    exe = cmd_list[0]
+    if sys.platform == 'win32':
+        if os.path.isabs(exe):
+            base, ext = os.path.splitext(exe)
+            path_ext = [unicode(s.lower())
+                        for s in os.getenv('PATHEXT', '').split(os.pathsep)]
+            return os.path.exists(exe) and ext in path_ext
+        else:
+            return osutils.find_executable_on_path(exe) is not None
+    else:
+        return (os.access(exe, os.X_OK)
+                or osutils.find_executable_on_path(exe) is not None)
+
+
+def invoke(command_line, filename, invoker=None):
+    """Invokes the given merge tool command line, substituting the given
+    filename according to the embedded substitution markers. Optionally, it
+    will use the given invoker function instead of the default
+    subprocess_invoker.
+    """
+    if invoker is None:
+        invoker = subprocess_invoker
+    cmd_list = cmdline.split(command_line)
+    args, tmp_file = _subst_filename(cmd_list, filename)
+    def cleanup(retcode):
+        if tmp_file is not None:
+            if retcode == 0: # on success, replace file with temp file
+                shutil.move(tmp_file, filename)
+            else: # otherwise, delete temp file
+                os.remove(tmp_file)
+    return invoker(args[0], args[1:], cleanup)
+
+
+def _subst_filename(args, filename):
+    subst_names = {
+        u'base': filename + u'.BASE',
+        u'this': filename + u'.THIS',
+        u'other': filename + u'.OTHER',
+        u'result': filename,
+    }
+    tmp_file = None
+    subst_args = []
+    for arg in args:
+        if u'{this_temp}' in arg and not 'this_temp' in subst_names:
+            fh, tmp_file = tempfile.mkstemp(u"_bzr_mergetools_%s.THIS" %
+                                            os.path.basename(filename))
+            trace.mutter('fh=%r, tmp_file=%r', fh, tmp_file)
+            os.close(fh)
+            shutil.copy(filename + u".THIS", tmp_file)
+            subst_names['this_temp'] = tmp_file
+        arg = arg.format(**subst_names)
+        subst_args.append(arg)
+    return subst_args, tmp_file
+
+
+def subprocess_invoker(executable, args, cleanup):
+    retcode = subprocess.call([executable] + args)
+    cleanup(retcode)
+    return retcode

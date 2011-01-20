@@ -20,62 +20,17 @@ import sys
 import tempfile
 
 from bzrlib import (
-    config,
     mergetools,
     tests
 )
 from bzrlib.tests.features import backslashdir_feature
 
 
-class TestBasics(tests.TestCase):
+class TestFilenameSubstitution(tests.TestCaseInTempDir):
 
-    def setUp(self):
-        super(TestBasics, self).setUp()
-        self.tool = mergetools.MergeTool('sometool',
-            '/path/to/tool --opt {base} -x {this} {other} --stuff {result}')
-
-    def test_get_commandline(self):
-        self.assertEqual(
-            '/path/to/tool --opt {base} -x {this} {other} --stuff {result}',
-            self.tool.command_line)
-        
-    def test_set_commandline(self):
-        self.tool.command_line = "/path/to/tool blah"
-        self.assertEqual("/path/to/tool blah", self.tool.command_line)
-        self.assertEqual(['/path/to/tool', 'blah'], self.tool._cmd_list)
-
-    def test_get_name(self):
-        self.assertEqual('sometool', self.tool.name)
-
-
-class TestUnicodeBasics(tests.TestCase):
-
-    def setUp(self):
-        super(TestUnicodeBasics, self).setUp()
-        self.tool = mergetools.MergeTool(
-            u'someb\u0414r',
-            u'/path/to/b\u0414r --opt {base} -x {this} {other}'
-            ' --stuff {result}')
-
-    def test_get_commandline(self):
-        self.assertEqual(
-            u'/path/to/b\u0414r --opt {base} -x {this} {other}'
-            ' --stuff {result}',
-            self.tool.command_line)
-
-    def test_get_name(self):
-        self.assertEqual(u'someb\u0414r', self.tool.name)
-
-
-class TestMergeToolOperations(tests.TestCaseInTempDir):
-
-    def test_filename_substitution(self):
-        def dummy_invoker(executable, args, cleanup):
-            self._commandline = [executable] + args
-            cleanup(0)
-        mt = mergetools.MergeTool('kdiff3',
-                                  'kdiff3 {base} {this} {other} -o {result}')
-        mt.invoke('test.txt', dummy_invoker)
+    def test_simple_filename(self):
+        cmd_list = ['kdiff3', '{base}', '{this}', '{other}', '-o', '{result}']
+        args, tmpfile = mergetools._subst_filename(cmd_list, 'test.txt')
         self.assertEqual(
             ['kdiff3',
              'test.txt.BASE',
@@ -83,56 +38,130 @@ class TestMergeToolOperations(tests.TestCaseInTempDir):
              'test.txt.OTHER',
              '-o',
              'test.txt'],
-            self._commandline)
-        mt.invoke('file with space.txt', dummy_invoker)
+            args)
+        
+    def test_spaces(self):
+        cmd_list = ['kdiff3', '{base}', '{this}', '{other}', '-o', '{result}']
+        args, tmpfile = mergetools._subst_filename(cmd_list,
+                                                   'file with space.txt')
         self.assertEqual(
             ['kdiff3',
-             "file with space.txt.BASE",
-             "file with space.txt.THIS",
-             "file with space.txt.OTHER",
+             'file with space.txt.BASE',
+             'file with space.txt.THIS',
+             'file with space.txt.OTHER',
              '-o',
-             "file with space.txt"],
-            self._commandline)
-        mt.invoke('file with "space and quotes".txt', dummy_invoker)
-        self.assertEqual(
-            ['kdiff3',
-             "file with \"space and quotes\".txt.BASE",
-             "file with \"space and quotes\".txt.THIS",
-             "file with \"space and quotes\".txt.OTHER",
-             '-o',
-             "file with \"space and quotes\".txt"],
-            self._commandline)
+             'file with space.txt'],
+            args)
 
-    def test_expand_commandline_tempfile(self):
-        def dummy_invoker(executable, args, cleanup):
-            self.assertEqual('some_tool', executable)
-            self.failUnlessExists(args[0])
-            cleanup(0)
-            self._tmp_file = args[0]
+    def test_spaces_and_quotes(self):
+        cmd_list = ['kdiff3', '{base}', '{this}', '{other}', '-o', '{result}']
+        args, tmpfile = mergetools._subst_filename(cmd_list,
+            'file with "space and quotes".txt')
+        self.assertEqual(
+            ['kdiff3',
+             'file with "space and quotes".txt.BASE',
+             'file with "space and quotes".txt.THIS',
+             'file with "space and quotes".txt.OTHER',
+             '-o',
+             'file with "space and quotes".txt'],
+            args)
+
+    def test_tempfile(self):
         self.build_tree(('test.txt', 'test.txt.BASE', 'test.txt.THIS',
                          'test.txt.OTHER'))
-        mt = mergetools.MergeTool('some_tool', 'some_tool {this_temp}')
-        mt.invoke('test.txt', dummy_invoker)
-        self.failIfExists(self._tmp_file)
+        cmd_list = ['some_tool', '{this_temp}']
+        args, tmpfile = mergetools._subst_filename(cmd_list, 'test.txt')
+        self.failUnlessExists(tmpfile)
+        os.remove(tmpfile)
 
-    def test_is_available_full_tool_path(self):
-        mt = mergetools.MergeTool(None, sys.executable)
-        self.assertTrue(mt.is_available())
 
-    def test_is_available_tool_on_path(self):
-        mt = mergetools.MergeTool(None, os.path.basename(sys.executable))
-        self.assertTrue(mt.is_available())
+class TestCheckAvailability(tests.TestCaseInTempDir):
 
-    def test_is_available_nonexistent(self):
-        mt = mergetools.MergeTool(None, "ThisExecutableShouldReallyNotExist")
-        self.assertFalse(mt.is_available())
+    def test_full_path(self):
+        self.assertTrue(mergetools.check_availability(sys.executable))
 
-    def test_is_available_non_executable(self):
+    def test_exe_on_path(self):
+        self.assertTrue(mergetools.check_availability(
+            os.path.basename(sys.executable)))
+
+    def test_nonexistent(self):
+        self.assertFalse(mergetools.check_availability('DOES NOT EXIST'))
+
+    def test_non_executable(self):
         f, name = tempfile.mkstemp()
         try:
             self.log('temp filename: %s', name)
-            mt = mergetools.MergeTool('temp', name)
-            self.assertFalse(mt.is_available())
+            self.assertFalse(mergetools.check_availability(name))
         finally:
             os.close(f)
             os.unlink(name)
+
+
+class TestInvoke(tests.TestCaseInTempDir):
+    def setUp(self):
+        super(tests.TestCaseInTempDir, self).setUp()
+        self._exe = None
+        self._args = None
+        self.build_tree_contents((
+            ('test.txt', 'stuff'),
+            ('test.txt.BASE', 'base stuff'),
+            ('test.txt.THIS', 'this stuff'),
+            ('test.txt.OTHER', 'other stuff'),
+        ))
+        
+    def test_success(self):
+        def dummy_invoker(exe, args, cleanup):
+            self._exe = exe
+            self._args = args
+            cleanup(0)
+            return 0
+        retcode = mergetools.invoke('tool {result}', 'test.txt', dummy_invoker)
+        self.assertEqual(0, retcode)
+        self.assertEqual('tool', self._exe)
+        self.assertEqual(['test.txt'], self._args)
+    
+    def test_failure(self):
+        def dummy_invoker(exe, args, cleanup):
+            self._exe = exe
+            self._args = args
+            cleanup(1)
+            return 1
+        retcode = mergetools.invoke('tool {result}', 'test.txt', dummy_invoker)
+        self.assertEqual(1, retcode)
+        self.assertEqual('tool', self._exe)
+        self.assertEqual(['test.txt'], self._args)
+
+    def test_success_tempfile(self):
+        def dummy_invoker(exe, args, cleanup):
+            self._exe = exe
+            self._args = args
+            self.failUnlessExists(args[0])
+            f = open(args[0], 'wt')
+            f.write('temp stuff')
+            f.close()
+            cleanup(0)
+            return 0
+        retcode = mergetools.invoke('tool {this_temp}', 'test.txt',
+                                    dummy_invoker)
+        self.assertEqual(0, retcode)
+        self.assertEqual('tool', self._exe)
+        self.failIfExists(self._args[0])
+        self.assertFileEqual('temp stuff', 'test.txt')
+    
+    def test_failure_tempfile(self):
+        def dummy_invoker(exe, args, cleanup):
+            self._exe = exe
+            self._args = args
+            self.failUnlessExists(args[0])
+            self.log(repr(args))
+            f = open(args[0], 'wt')
+            self.log(repr(f))
+            f.write('temp stuff')
+            f.close()
+            cleanup(1)
+            return 1
+        retcode = mergetools.invoke('tool {this_temp}', 'test.txt',
+                                    dummy_invoker)
+        self.assertEqual(1, retcode)
+        self.assertEqual('tool', self._exe)
+        self.assertFileEqual('stuff', 'test.txt')

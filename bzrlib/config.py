@@ -363,9 +363,9 @@ class Config(object):
         for (oname, value, section, conf_id, parser) in self._get_options():
             if oname.startswith('bzr.mergetool.'):
                 tool_name = oname[len('bzr.mergetool.'):]
-                tools[tool_name] = mergetools.MergeTool(tool_name, value)
+                tools[tool_name] = value
         trace.mutter('loaded merge tools: %r' % tools)
-        return tools.values()
+        return tools
 
     def find_merge_tool(self, name):
         # We fake a defaults mechanism here by checking if the given name can 
@@ -374,12 +374,7 @@ class Config(object):
         # when it becomes available in the future.
         command_line = (self.get_user_option('bzr.mergetool.%s' % name) or
                         mergetools.known_merge_tools.get(name, None))
-        if command_line is None:
-            return None
-        return mergetools.MergeTool(name, command_line)
-
-    def get_default_merge_tool(self):
-        return self.get_user_option('bzr.default_mergetool')
+        return command_line
 
 
 class IniBasedConfig(Config):

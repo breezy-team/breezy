@@ -958,52 +958,39 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         self.assertIs(None, change_editor)
 
     def test_get_merge_tools(self):
-        def cmptool(a, b):
-            return cmp(a.name, b.name)
         conf = self._get_sample_config()
-        tools = sorted(conf.get_merge_tools(), cmptool)
+        tools = conf.get_merge_tools()
         self.log(repr(tools))
-        tools = [(tool.name, tool.command_line) for tool in tools]
-        self.assertEqual([
-            ('funkytool', 'funkytool "arg with spaces" {this_temp}'),
-            ('sometool', 'sometool {base} {this} {other} -o {result}'),
-            ],
+        self.assertEqual(
+            {u'funkytool' : u'funkytool "arg with spaces" {this_temp}',
+            u'sometool' : u'sometool {base} {this} {other} -o {result}'},
             tools)
 
-    def test_get_default_merge_tool(self):
-        conf = self._get_sample_config()
-        self.assertEqual('sometool', conf.get_default_merge_tool())
-
-    def test_get_default_merge_tool_empty(self):
+    def test_get_merge_tools_empty(self):
         conf = self._get_empty_config()
-        tool = conf.get_default_merge_tool()
-        self.assertIs(tool, None)
+        tools = conf.get_merge_tools()
+        self.assertEqual({}, tools)
 
     def test_find_merge_tool(self):
         conf = self._get_sample_config()
-        tool = conf.find_merge_tool('sometool')
-        self.assertIsNot(tool, None)
-        self.assertEqual('sometool', tool.name)
-        self.assertEqual('sometool {base} {this} {other} -o {result}',
-                         tool.command_line)
+        cmdline = conf.find_merge_tool('sometool')
+        self.assertEqual('sometool {base} {this} {other} -o {result}', cmdline)
 
     def test_find_merge_tool_not_found(self):
         conf = self._get_sample_config()
-        tool = conf.find_merge_tool('DOES NOT EXIST')
-        self.assertIs(tool, None)
+        cmdline = conf.find_merge_tool('DOES NOT EXIST')
+        self.assertIs(cmdline, None)
 
     def test_find_merge_tool_known(self):
         conf = self._get_empty_config()
-        tool = conf.find_merge_tool('kdiff3')
-        self.assertIsNot(tool, None)
+        cmdline = conf.find_merge_tool('kdiff3')
+        self.assertEquals('kdiff3 {base} {this} {other} -o {result}', cmdline)
         
     def test_find_merge_tool_override_known(self):
         conf = self._get_empty_config()
         conf.set_user_option('bzr.mergetool.kdiff3', 'kdiff3 blah')
-        tool = conf.find_merge_tool('kdiff3')
-        self.assertIsNot(tool, None)
-        self.assertEqual('kdiff3', tool.name)
-        self.assertEqual('kdiff3 blah', tool.command_line)
+        cmdline = conf.find_merge_tool('kdiff3')
+        self.assertEqual('kdiff3 blah', cmdline)
 
 
 class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
