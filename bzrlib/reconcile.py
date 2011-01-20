@@ -224,8 +224,6 @@ class RepoReconciler(object):
         only data-loss causing issues (!self.thorough) or all issues
         (self.thorough) are treated as requiring the reweave.
         """
-        # local because needing to know about WeaveFile is a wart we want to hide
-        from bzrlib.weave import WeaveFile, Weave
         transaction = self.repo.get_transaction()
         self.pb.update('Reading inventory data')
         self.inventory = self.repo.inventories
