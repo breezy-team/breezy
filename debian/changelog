@@ -7,6 +7,7 @@ bzr (2.3.0~beta5-1) UNRELEASED; urgency=medium
 
   [ Vincent Ladeuil ]
   * New upstream release.
+   + Fix https python-2.7 compatibility. Closes: #608085
 
  -- Vincent Ladeuil <v.ladeuil+lp@free.fr>  Thu, 20 Jan 2011 16:04:43 -0600
 
@@ -14,11 +15,12 @@ bzr (2.3.0~beta4-1) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Make dependency on python-testtools versioned (>= 0.9.5).
-  * Re-remove included elementtree and configobj.
+  * Re-remove included elementtree and configobj. Closes: #555343, #555336
 
   [ Max Bowsher ]
   * Run testsuite for bundled plugins too.
   * New upstream release.
+   + Follow the Freedesktop XDG Base Directory Specification. LP: #195397
 
  -- Jelmer Vernooij <jelmer@debian.org>  Thu, 09 Dec 2010 16:13:02 +0100
 
