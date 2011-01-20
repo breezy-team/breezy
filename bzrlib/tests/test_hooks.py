@@ -128,6 +128,25 @@ class TestHooks(tests.TestCase):
                 ('bzrlib.tests.test_hooks', 'TestHooks.hooks', 'set_rh')])
         self.assertEqual("demo", self.hooks.get_hook_name(set_rh))
 
+    set_rh = lambda: None
+
+    def test_install_named_hook_lazy(self):
+        hooks = Hooks()
+        hooks['set_rh'] = HookPoint("set_rh", "doc", (0, 15), None)
+        hooks.install_named_hook_lazy('set_rh', 'bzrlib.tests.test_hooks',
+            'TestHooks.set_rh', "demo")
+        self.assertEqual(list(hooks['set_rh']), [TestHooks.set_rh])
+
+    def test_install_named_hook_lazy_old(self):
+        # An exception is raised if a lazy hook is raised for
+        # an old style hook point.
+        hooks = Hooks()
+        hooks['set_rh'] = []
+        self.assertRaises(errors.UnsupportedOperation,
+            hooks.install_named_hook_lazy,
+            'set_rh', 'bzrlib.tests.test_hooks', 'TestHooks.set_rh',
+            "demo")
+
 
 class TestHook(tests.TestCase):
 
@@ -159,6 +178,16 @@ class TestHook(tests.TestCase):
             pass
         hook.hook(callback, "my callback")
         self.assertEqual([callback], list(hook))
+
+    def lazy_callback():
+        pass
+
+    def test_lazy_hook(self):
+        hook = HookPoint("foo", "no docs", None, None)
+        hook.hook_lazy(
+            "bzrlib.tests.test_hooks", "TestHook.lazy_callback",
+            "my callback")
+        self.assertEqual([TestHook.lazy_callback], list(hook))
 
     def test___repr(self):
         # The repr should list all the callbacks, with names.
