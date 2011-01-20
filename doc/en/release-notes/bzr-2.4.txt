@@ -38,6 +38,11 @@ Bug Fixes
 * ``bzr serve`` no longer crashes when a server_started hook is installed and IPv6
   support is available on the system. (Jelmer Vernooij, #293697)
 
+* Plugins incompatible with the current version of bzr no longer produce a
+  warning on every command invocation.  Instead, a message is shown by
+  ``bzr plugins`` and in crash reports.
+  (#704195, Martin Pool)
+
 Documentation
 *************
 
