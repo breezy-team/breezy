@@ -1016,6 +1016,10 @@ class cmd_pull(Command):
             log.show_branch_change(
                 branch_to, self.outf, result.old_revno,
                 result.old_revid)
+        if getattr(result, 'tag_conflicts', None):
+            return 1
+        else:
+            return 0
 
 
 class cmd_push(Command):
