@@ -1,4 +1,4 @@
-bzr (2.3.0~beta5-1) UNRELEASED; urgency=medium
+bzr (2.3.0~beta5-1) unstable; urgency=medium
 
   [ Jelmer Vernooij ]
   * Cherrypick fix for compatibility with python2.7 >= 2.7.1-2.  LP: #693880
@@ -16,7 +16,10 @@ bzr (2.3.0~beta5-1) UNRELEASED; urgency=medium
   [ Max Bowsher ]
   * Run testsuite for bundled plugins too.
 
- -- Vincent Ladeuil <v.ladeuil+lp@free.fr>  Thu, 20 Jan 2011 16:04:43 -0600
+  [ Jelmer Vernooij ]
+  * Cherrypick fix around default locales.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 21 Jan 2011 22:08:19 +0100
 
 bzr (2.3.0~beta3-1) unstable; urgency=low
 
