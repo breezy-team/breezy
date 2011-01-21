@@ -79,24 +79,35 @@ def invoke(command_line, filename, invoker=None):
 
 def _subst_filename(args, filename):
     subst_names = {
-        u'base': filename + u'.BASE',
-        u'this': filename + u'.THIS',
-        u'other': filename + u'.OTHER',
-        u'result': filename,
+        'base': filename + u'.BASE',
+        'this': filename + u'.THIS',
+        'other': filename + u'.OTHER',
+        'result': filename,
     }
     tmp_file = None
     subst_args = []
     for arg in args:
-        if u'{this_temp}' in arg and not 'this_temp' in subst_names:
+        if '{this_temp}' in arg and not 'this_temp' in subst_names:
             fh, tmp_file = tempfile.mkstemp(u"_bzr_mergetools_%s.THIS" %
                                             os.path.basename(filename))
             trace.mutter('fh=%r, tmp_file=%r', fh, tmp_file)
             os.close(fh)
             shutil.copy(filename + u".THIS", tmp_file)
             subst_names['this_temp'] = tmp_file
-        arg = arg.format(**subst_names)
+        arg = _format_arg(arg, subst_names)
         subst_args.append(arg)
     return subst_args, tmp_file
+
+
+# This would be better implemented using format() from python 2.6
+def _format_arg(arg, subst_names):
+    arg = arg.replace('{base}', subst_names['base'])
+    arg = arg.replace('{this}', subst_names['this'])
+    arg = arg.replace('{other}', subst_names['other'])
+    arg = arg.replace('{result}', subst_names['result'])
+    if subst_names.has_key('this_temp'):
+        arg = arg.replace('{this_temp}', subst_names['this_temp'])
+    return arg
 
 
 def subprocess_invoker(executable, args, cleanup):
