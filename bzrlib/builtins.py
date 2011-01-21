@@ -4591,26 +4591,9 @@ class cmd_plugins(Command):
 
     @display_command
     def run(self, verbose=False):
-        import bzrlib.plugin
-        from inspect import getdoc
-        result = []
-        for name, plugin in bzrlib.plugin.plugins().items():
-            version = plugin.__version__
-            if version == 'unknown':
-                version = ''
-            name_ver = '%s %s' % (name, version)
-            d = getdoc(plugin.module)
-            if d:
-                doc = d.split('\n')[0]
-            else:
-                doc = '(no description)'
-            result.append((name_ver, doc, plugin.path()))
-        for name_ver, doc, path in sorted(result):
-            self.outf.write("%s\n" % name_ver)
-            self.outf.write("   %s\n" % doc)
-            if verbose:
-                self.outf.write("   %s\n" % path)
-            self.outf.write("\n")
+        from bzrlib import plugin
+        self.outf.writelines(
+            plugin.describe_plugins(show_paths=verbose))
 
 
 class cmd_testament(Command):

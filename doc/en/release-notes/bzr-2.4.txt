@@ -57,6 +57,11 @@ Bug Fixes
 * ``bzr whoami`` will now display an error if both a new identity and ``--email``
   were specified. (Jelmer Vernooij, #680449)
 
+* Plugins incompatible with the current version of bzr no longer produce a
+  warning on every command invocation.  Instead, a message is shown by
+  ``bzr plugins`` and in crash reports.
+  (#704195, Martin Pool)
+
 Documentation
 *************
 
