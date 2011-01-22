@@ -123,10 +123,11 @@ class TestHooks(tests.TestCase):
         set_rh = lambda: None
         install_lazy_named_hook('bzrlib.tests.test_hooks',
             'TestHooks.hooks', 'set_rh', set_rh, "demo")
-        self.assertEquals([(set_rh, "demo")],
-            _lazy_hooks[
-                ('bzrlib.tests.test_hooks', 'TestHooks.hooks', 'set_rh')])
-        self.assertEqual("demo", self.hooks.get_hook_name(set_rh))
+        set_rh_lazy_hooks = _lazy_hooks[
+            ('bzrlib.tests.test_hooks', 'TestHooks.hooks', 'set_rh')]
+        self.assertEquals(1, len(set_rh_lazy_hooks))
+        self.assertEquals(set_rh, set_rh_lazy_hooks[0][0].get_obj())
+        self.assertEquals("demo", set_rh_lazy_hooks[0][1])
 
     set_rh = lambda: None
 

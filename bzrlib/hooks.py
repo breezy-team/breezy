@@ -231,7 +231,8 @@ class HookPoint(object):
         should describe the recommended replacement hook to register for.
     """
 
-    def __init__(self, name, doc, introduced, deprecated):
+    def __init__(self, name, doc, introduced, deprecated=None, module=None,
+                 member_name=None):
         """Create a HookPoint.
 
         :param name: The name of the hook, for clients to use when registering.
@@ -239,12 +240,18 @@ class HookPoint(object):
         :param introduced: When the hook was introduced (e.g. (0, 15)).
         :param deprecated: When the hook was deprecated, None for
             not-deprecated.
+        :param module: The module from which this hook point should be loaded
+            (used for lazy hooks)
+        :param member_name: Name under which these hook points will be available.
+            (used for lazy hooks)
         """
         self.name = name
         self.__doc__ = doc
         self.introduced = introduced
         self.deprecated = deprecated
         self._direct_callbacks = []
+        self._module = module
+        self._member_name = member_name
 
     def docs(self):
         """Generate the documentation for this HookPoint.
@@ -298,8 +305,9 @@ class HookPoint(object):
 
     def _get_callbacks(self):
         ret = list(self._direct_callbacks)
-        ret += _lazy_hooks[
-            (self.__module__, self.__class__.__name__, self.name)]
+        if self._module:
+            ret += _lazy_hooks[
+                (self._module, self._member_name, self.name)]
         return ret
 
     def __iter__(self):
