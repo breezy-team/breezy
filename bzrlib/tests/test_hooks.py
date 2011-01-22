@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     errors,
+    pyutils,
     tests,
     )
 from bzrlib.hooks import (
@@ -119,7 +120,8 @@ class TestHooks(tests.TestCase):
     def test_install_lazy_named_hook(self):
         # When the hook points are not yet registered the hook is
         # added to the _lazy_hooks dictionary in bzrlib.hooks.
-        self.hooks['set_rh'] = []
+        self.hooks['set_rh'] = HookPoint("set_rh", "doc", (0, 15),
+            module="bzrlib.tests.test_hooks", member_name="TestHooks.hooks")
         set_rh = lambda: None
         install_lazy_named_hook('bzrlib.tests.test_hooks',
             'TestHooks.hooks', 'set_rh', set_rh, "demo")
@@ -128,6 +130,7 @@ class TestHooks(tests.TestCase):
         self.assertEquals(1, len(set_rh_lazy_hooks))
         self.assertEquals(set_rh, set_rh_lazy_hooks[0][0].get_obj())
         self.assertEquals("demo", set_rh_lazy_hooks[0][1])
+        self.assertEqual(list(TestHooks.hooks['set_rh']), [set_rh])
 
     set_rh = lambda: None
 
@@ -147,6 +150,15 @@ class TestHooks(tests.TestCase):
             hooks.install_named_hook_lazy,
             'set_rh', 'bzrlib.tests.test_hooks', 'TestHooks.set_rh',
             "demo")
+
+    def test_valid_lazy_hooks(self):
+        # Make sure that all the registered lazy hooks are referring to existing
+        # hook points which allow lazy registration.
+        for (module_name, member_name, hook_name) in _lazy_hooks:
+            obj = pyutils.get_named_object(module_name, member_name)
+            hook = obj[hook_name]
+            self.assertEquals(hook._module, module_name)
+            self.assertEquals(hook._member_name, member_name)
 
 
 class TestHook(tests.TestCase):
