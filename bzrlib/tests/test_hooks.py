@@ -153,11 +153,13 @@ class TestHooks(tests.TestCase):
     def test_valid_lazy_hooks(self):
         # Make sure that all the registered lazy hooks are referring to existing
         # hook points which allow lazy registration.
-        for (module_name, member_name, hook_name) in _lazy_hooks:
+        for key, callbacks in _lazy_hooks.iteritems():
+            (module_name, member_name, hook_name) = key
             obj = pyutils.get_named_object(module_name, member_name)
             self.assertEquals(obj._module, module_name)
             self.assertEquals(obj._member_name, member_name)
             self.assertTrue(hook_name in obj)
+            self.assertIs(callbacks, obj[hook_name]._callbacks)
 
 
 class TestHook(tests.TestCase):
