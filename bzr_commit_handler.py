@@ -603,22 +603,22 @@ class InventoryCommitHandler(GenericCommitHandler):
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)
         (kind, is_executable) = mode_to_kind(filecmd.mode)
-        self._modify_item(filecmd.path, kind,
+        self._modify_item(filecmd.path.decode('utf8'), kind,
             is_executable, data, self.inventory)
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)
-        self._delete_item(filecmd.path, self.inventory)
+        self._delete_item(filecmd.path.decode('utf8'), self.inventory)
 
     def copy_handler(self, filecmd):
-        src_path = filecmd.src_path
-        dest_path = filecmd.dest_path
+        src_path = filecmd.src_path.decode('utf8')
+        dest_path = filecmd.dest_path.decode('utf8')
         self.debug("copying %s to %s", src_path, dest_path)
         self._copy_item(src_path, dest_path, self.inventory)
 
     def rename_handler(self, filecmd):
-        old_path = filecmd.old_path
-        new_path = filecmd.new_path
+        old_path = filecmd.old_path.decode('utf8')
+        new_path = filecmd.new_path.decode('utf8')
         self.debug("renaming %s to %s", old_path, new_path)
         self._rename_item(old_path, new_path, self.inventory)
 
@@ -884,12 +884,12 @@ class InventoryDeltaCommitHandler(GenericCommitHandler):
         else:
             data = filecmd.data
         self.debug("modifying %s", filecmd.path)
-        self._modify_item(filecmd.path, kind,
+        self._modify_item(filecmd.path.decode('utf8'), kind,
             executable, data, self.basis_inventory)
 
     def delete_handler(self, filecmd):
         self.debug("deleting %s", filecmd.path)
-        self._delete_item(filecmd.path, self.basis_inventory)
+        self._delete_item(filecmd.path.decode('utf8'), self.basis_inventory)
 
     def copy_handler(self, filecmd):
         src_path = filecmd.src_path.decode("utf8")
