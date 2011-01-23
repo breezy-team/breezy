@@ -115,9 +115,39 @@ class Hooks(dict):
     FOO hook is triggered.
     """
 
-    def __init__(self):
+    def __init__(self, module=None, member_name=None):
+        """Create a new hooks dictionary.
+
+        :param module: The module from which this hooks dictionary should be loaded
+            (used for lazy hooks)
+        :param member_name: Name under which this hooks dictionary should be loaded.
+            (used for lazy hooks)
+        """
         dict.__init__(self)
         self._callable_names = {}
+        self._module = module
+        self._member_name = member_name
+
+    def add_hook(self, name, doc, introduced, deprecated=None):
+        """Add a hook point to this dictionary.
+
+        :param name: The name of the hook, for clients to use when registering.
+        :param doc: The docs for the hook.
+        :param introduced: When the hook was introduced (e.g. (0, 15)).
+        :param deprecated: When the hook was deprecated, None for
+            not-deprecated.
+        """
+        if name in self:
+            raise errors.DuplicateKey(name)
+        if self._module:
+            callbacks = _lazy_hooks.setdefault(
+                (self._module, self._member_name, name), [])
+        else:
+            callbacks = None
+        hookpoint = HookPoint(name=name, doc=doc, introduced=introduced,
+                              deprecated=deprecated,
+                              callbacks=callbacks)
+        self[name] = hookpoint
 
     def create_hook(self, hook):
         """Create a hook which can have callbacks registered for it.
@@ -231,8 +261,7 @@ class HookPoint(object):
         should describe the recommended replacement hook to register for.
     """
 
-    def __init__(self, name, doc, introduced, deprecated=None, module=None,
-                 member_name=None):
+    def __init__(self, name, doc, introduced, deprecated=None, callbacks=None):
         """Create a HookPoint.
 
         :param name: The name of the hook, for clients to use when registering.
@@ -240,18 +269,15 @@ class HookPoint(object):
         :param introduced: When the hook was introduced (e.g. (0, 15)).
         :param deprecated: When the hook was deprecated, None for
             not-deprecated.
-        :param module: The module from which this hook point should be loaded
-            (used for lazy hooks)
-        :param member_name: Name under which these hook points will be available.
-            (used for lazy hooks)
         """
         self.name = name
         self.__doc__ = doc
         self.introduced = introduced
         self.deprecated = deprecated
-        self._direct_callbacks = []
-        self._module = module
-        self._member_name = member_name
+        if callbacks is None:
+            self._callbacks = []
+        else:
+            self._callbacks = callbacks
 
     def docs(self):
         """Generate the documentation for this HookPoint.
@@ -277,8 +303,7 @@ class HookPoint(object):
         return '\n'.join(strings)
 
     def __eq__(self, other):
-        return (type(other) == type(self) and 
-            other.__dict__ == self.__dict__)
+        return (type(other) == type(self) and other.__dict__ == self.__dict__)
 
     def hook_lazy(self, callback_module, callback_member, callback_label):
         """Lazily register a callback to be called when this HookPoint fires.
@@ -291,7 +316,7 @@ class HookPoint(object):
         """
         obj_getter = registry._LazyObjectGetter(callback_module,
             callback_member)
-        self._direct_callbacks.append((obj_getter, callback_label))
+        self._callbacks.append((obj_getter, callback_label))
 
     def hook(self, callback, callback_label):
         """Register a callback to be called when this HookPoint fires.
@@ -301,27 +326,20 @@ class HookPoint(object):
             processing.
         """
         obj_getter = registry._ObjectGetter(callback)
-        self._direct_callbacks.append((obj_getter, callback_label))
-
-    def _get_callbacks(self):
-        ret = list(self._direct_callbacks)
-        if self._module:
-            ret += _lazy_hooks[
-                (self._module, self._member_name, self.name)]
-        return ret
+        self._callbacks.append((obj_getter, callback_label))
 
     def __iter__(self):
-        return (callback.get_obj() for callback, name in self._get_callbacks())
+        return (callback.get_obj() for callback, name in self._callbacks)
 
     def __len__(self):
-        return len(self._get_callbacks())
+        return len(self._callbacks)
 
     def __repr__(self):
         strings = []
         strings.append("<%s(" % type(self).__name__)
         strings.append(self.name)
         strings.append("), callbacks=[")
-        callbacks = self._get_callbacks()
+        callbacks = self._callbacks
         for (callback, callback_name) in callbacks:
             strings.append(repr(callback.get_obj()))
             strings.append("(")
