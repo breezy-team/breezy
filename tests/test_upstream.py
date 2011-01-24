@@ -178,7 +178,7 @@ class RecordingSource(object):
     def __init__(self, succeed, latest=None):
         self._succeed = succeed
         self._specific_versions = []
-        self._latest = None
+        self._latest = latest
 
     def get_latest_version(self, package, current_version):
         return self._latest
@@ -252,6 +252,7 @@ class UScanSourceTests(TestCaseWithTransport):
 
 
 class UpstreamBranchSourceTests(TestCaseWithTransport):
+    """Tests for UpstreamBranchSource."""
 
     def setUp(self):
         super(UpstreamBranchSourceTests, self).setUp()
