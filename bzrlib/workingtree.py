@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2674,6 +2674,10 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         :return: None. An exception should be raised if there is an error.
         """
         return
+
+    # @needs_tree_write_lock
+    # def check_state(self):
+    #     """Check that the working state is/isn't valid."""
 
     def _get_rules_searcher(self, default_searcher):
         """See Tree._get_rules_searcher."""
