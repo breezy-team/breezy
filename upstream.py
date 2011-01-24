@@ -300,9 +300,6 @@ class UScanSource(UpstreamSource):
         finally:
             os.unlink(tempfilename)
 
-    def get_latest_version(self, package, version, target_dir):
-        pass
-
 
 class SelfSplitSource(UpstreamSource):
 

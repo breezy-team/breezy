@@ -21,17 +21,17 @@
 # so just mock them.
 
 from bzrlib.tests import (
-        TestCase,
-        TestCaseWithTransport,
-        )
+    TestCase,
+    TestCaseWithTransport,
+    )
 from bzrlib.plugins.builddeb.errors import (
-        PackageVersionNotPresent,
-        )
+    PackageVersionNotPresent,
+    )
 from bzrlib.plugins.builddeb.upstream import (
-        AptSource,
-        StackedUpstreamSource,
-        UScanSource,
-        )
+    AptSource,
+    StackedUpstreamSource,
+    UScanSource,
+    )
 
 
 class MockSources(object):
