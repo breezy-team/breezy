@@ -482,6 +482,29 @@ class cmd_remove_tree(Command):
             d.destroy_workingtree()
 
 
+class cmd_reset_workingtree(Command):
+    __doc__ = """Reset the working tree state file.
+
+    This is not meant to be used normally, but more as a way to recover from
+    filesystem corruption, etc. This rebuilds the working inventory back to a
+    'known good' state. Any new modifications (adding a file, renaming, etc)
+    will be lost, though modified files will still be detected as such.
+
+    Most users will want something more like "bzr revert" or "bzr update"
+    unless the state file has become corrupted.
+
+    By default this attempts to recover the current state by looking at the
+    headers of the state file. If the state file is too corrupted to even do
+    that, you can supply --revision to force the state of the tree.
+    """
+
+    takes_options = ['revision']
+    hidden = True
+
+    def run(self, revision=None):
+        pass
+
+
 class cmd_revno(Command):
     __doc__ = """Show current revision number.
 
