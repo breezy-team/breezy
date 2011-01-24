@@ -20,6 +20,11 @@
 # We have a bit of a problem with testing the actual uscan etc. integration,
 # so just mock them.
 
+"""Tests for the upstream module."""
+
+
+import os
+
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -30,6 +35,7 @@ from bzrlib.plugins.builddeb.errors import (
 from bzrlib.plugins.builddeb.upstream import (
     AptSource,
     StackedUpstreamSource,
+    UpstreamBranchSource,
     UScanSource,
     )
 
@@ -233,3 +239,26 @@ class UScanSourceTests(TestCaseWithTransport):
         self.assertEquals(None, src._export_watchfile())
         self.tree.smart_add(['debian/watch'])
         self.assertTrue(src._export_watchfile() is not None)
+
+
+class UpstreamBranchSourceTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(UpstreamBranchSourceTests, self).setUp()
+        self.tree = self.make_branch_and_tree('.')
+
+    def test_fetch_tarball(self):
+        self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("1.0", self.tree.branch.last_revision())
+        source = UpstreamBranchSource(self.tree.branch,
+            {"1.0": self.tree.branch.last_revision()})
+        os.mkdir("mydir")
+        self.assertEquals("mydir/foo_1.0.orig.tar.gz",
+            source.fetch_tarball("foo", "1.0", "mydir"))
+        self.failUnlessExists("mydir/foo_1.0.orig.tar.gz")
+
+    def test_fetch_tarball_not_found(self):
+        source = UpstreamBranchSource(self.tree.branch)
+        self.tree.commit("msg")
+        self.assertRaises(PackageVersionNotPresent,
+            source.fetch_tarball, "foo", "1.0", "mydir")
