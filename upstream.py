@@ -47,7 +47,6 @@ from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 from bzrlib.plugins.builddeb.util import (
     export,
-    get_export_upstream_revision,
     get_snapshot_revision,
     tarball_name,
     )
