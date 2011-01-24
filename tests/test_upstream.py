@@ -103,7 +103,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.get_specific_version,
+        self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
             "apackage", "0.2", "target", _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -118,7 +118,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.get_specific_version,
+        self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
             "apackage", "0.2", "target", _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -133,7 +133,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        src.get_specific_version("apackage", "0.2", "target", 
+        src.fetch_tarball("apackage", "0.2", "target", 
             _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -152,7 +152,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.get_specific_version,
+        self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
             "apackage", "0.2", "target", 
             _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
@@ -173,7 +173,7 @@ class RecordingSource(object):
         self._succeed = succeed
         self._specific_versions = []
 
-    def get_specific_version(self, package, version, target_dir):
+    def fetch_tarball(self, package, version, target_dir):
         self._specific_versions.append((package, version, target_dir))
         if not self._succeed:
             raise PackageVersionNotPresent(package, version, self)
@@ -189,7 +189,7 @@ class StackedUpstreamSourceTests(TestCase):
         b = RecordingSource(True)
         c = RecordingSource(False)
         stack = StackedUpstreamSource([a, b, c])
-        stack.get_specific_version("mypkg", "1.0", "bla")
+        stack.fetch_tarball("mypkg", "1.0", "bla")
         self.assertEquals([("mypkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("mypkg", "1.0", "bla")], a._specific_versions)
         self.assertEquals([], c._specific_versions)
@@ -205,7 +205,7 @@ class StackedUpstreamSourceTests(TestCase):
         b = RecordingSource(False)
         stack = StackedUpstreamSource([a, b])
         self.assertRaises(PackageVersionNotPresent, 
-                stack.get_specific_version, "pkg", "1.0", "bla")
+                stack.fetch_tarball, "pkg", "1.0", "bla")
         self.assertEquals([("pkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("pkg", "1.0", "bla")], a._specific_versions)
 

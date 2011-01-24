@@ -62,14 +62,14 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.get_latest_version)
 
-    def get_specific_version(self, package, version, target_dir):
+    def fetch_tarball(self, package, version, target_dir):
         """Fetch the source tarball for a particular version.
 
         :param package: Name of the package
         :param version: Version string of the version to fetch
         :param target_dir: Directory in which to store the tarball
         """
-        raise NotImplementedError(self.get_specific_version)
+        raise NotImplementedError(self.fetch_tarball)
 
     def _tarball_path(self, package, version, target_dir, format=None):
         return os.path.join(target_dir, tarball_name(package, version,
@@ -83,7 +83,7 @@ class PristineTarSource(UpstreamSource):
         self.branch = branch
         self.tree = tree
 
-    def get_specific_version(self, package, version, target_dir):
+    def fetch_tarball(self, package, version, target_dir):
         db = DistributionBranch(self.branch, None, tree=self.tree)
         if not db.has_upstream_version_in_packaging_branch(version):
             raise PackageVersionNotPresent(package, version, self)
@@ -107,7 +107,7 @@ class PristineTarSource(UpstreamSource):
 class AptSource(UpstreamSource):
     """Upstream source that uses apt-source."""
 
-    def get_specific_version(self, package, upstream_version, target_dir, 
+    def fetch_tarball(self, package, upstream_version, target_dir, 
             _apt_pkg=None):
         if _apt_pkg is None:
             import apt_pkg
@@ -179,7 +179,7 @@ class UpstreamBranchSource(UpstreamSource):
                 revspec).as_revision_id(self.upstream_branch)
         return None
 
-    def get_specific_version(self, package, version, target_dir):
+    def fetch_tarball(self, package, version, target_dir):
         self.upstream_branch.lock_read()
         try:
             revid = self._get_revision_id(version)
@@ -220,7 +220,7 @@ class GetOrigSourceSource(UpstreamSource):
         note("get-orig-source did not create %s", desired_tarball_name)
         return False
 
-    def get_specific_version(self, package, version, target_dir):
+    def fetch_tarball(self, package, version, target_dir):
         if self.larstiq:
             rules_name = 'rules'
         else:
@@ -285,7 +285,7 @@ class UScanSource(UpstreamSource):
             tmp.close()
         return tempfilename
 
-    def get_specific_version(self, package, version, target_dir):
+    def fetch_tarball(self, package, version, target_dir):
         tempfilename = self._export_watchfile()
         if tempfilename is None:
             raise PackageVersionNotPresent(package, version, self)
@@ -320,7 +320,7 @@ class SelfSplitSource(UpstreamSource):
         finally:
             shutil.rmtree(tmpdir)
 
-    def get_specific_version(self, package, version, target_dir):
+    def fetch_tarball(self, package, version, target_dir):
         note("Using the current branch without the 'debian' directory "
                 "to create the tarball")
         self._split(package, version, 
@@ -339,10 +339,10 @@ class StackedUpstreamSource(UpstreamSource):
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self._sources)
 
-    def get_specific_version(self, package, version, target_dir):
+    def fetch_tarball(self, package, version, target_dir):
         for source in self._sources:
             try:
-                return source.get_specific_version(package, version, target_dir)
+                return source.fetch_tarball(package, version, target_dir)
             except PackageVersionNotPresent:
                 pass
         raise PackageVersionNotPresent(package, version, self)
@@ -410,7 +410,7 @@ class UpstreamProvider(object):
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
             try:
-                self.source.get_specific_version(self.package,
+                self.source.fetch_tarball(self.package,
                     self.version.upstream_version, self.store_dir)
             except PackageVersionNotPresent:
                 raise MissingUpstreamTarball(self._tarball_names()[0])
