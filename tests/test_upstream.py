@@ -31,6 +31,7 @@ from bzrlib.tests import (
     )
 from bzrlib.plugins.builddeb.errors import (
     PackageVersionNotPresent,
+    WatchFileMissing,
     )
 from bzrlib.plugins.builddeb.upstream import (
     AptSource,
@@ -234,22 +235,44 @@ class UScanSourceTests(TestCaseWithTransport):
 
     def test_export_watchfile_none(self):
         src = UScanSource(self.tree, False)
-        self.assertEquals(None, src._export_watchfile())
+        self.assertRaises(WatchFileMissing, src._export_watchfile)
 
     def test_export_watchfile_larstiq(self):
         src = UScanSource(self.tree, True)
         self.build_tree(['watch'])
-        self.assertEquals(None, src._export_watchfile())
+        self.assertRaises(WatchFileMissing, src._export_watchfile)
         self.tree.add(['watch'])
         self.assertTrue(src._export_watchfile() is not None)
 
     def test_export_watchfile(self):
         src = UScanSource(self.tree, False)
         self.build_tree(['debian/', 'debian/watch'])
-        self.assertEquals(None, src._export_watchfile())
+        self.assertRaises(WatchFileMissing, src._export_watchfile)
         self.tree.smart_add(['debian/watch'])
         self.assertTrue(src._export_watchfile() is not None)
 
+    def test__xml_report_extract_upstream_version(self):
+        self.assertEquals("1.2.9",
+            UScanSource._xml_report_extract_upstream_version("""
+<dehs>
+<package>tdb</package>
+<debian-uversion>1.2.8</debian-uversion>
+<debian-mangled-uversion>1.2.8</debian-mangled-uversion>
+<upstream-version>1.2.9</upstream-version>
+<upstream-url>ftp://ftp.samba.org/pub/tdb/tdb-1.2.9.tar.gz</upstream-url>
+<status>Newer version available</status>
+</dehs>"""))
+
+    def test__xml_report_extract_upstream_version_warnings(self):
+        self.assertIs(None,
+            UScanSource._xml_report_extract_upstream_version("""
+<dehs>
+<package>tdb</package>
+<warnings>uscan warning: Unable to determine current version
+in debian/watch, skipping:
+ftp://ftp.samba.org/pub/tdb/tdb-(.+).tar.gz</warnings>
+</dehs>
+"""))
 
 class UpstreamBranchSourceTests(TestCaseWithTransport):
     """Tests for UpstreamBranchSource."""
@@ -282,3 +305,4 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.assertEquals("2.1", source.get_latest_version("foo", "1.0"))
         self.tree.commit("msg")
         self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
+
