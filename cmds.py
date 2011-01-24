@@ -560,16 +560,6 @@ class cmd_merge_upstream(Command):
                 merge_type=merge_type, force=force)
         return conflicts
 
-    def _export_tarball(self, package, version, orig_dir, upstream_branch,
-            upstream_revision):
-        # TODO: a way to use bz2 on export
-        dest_name = tarball_name(package, version)
-        tarball_filename = os.path.join(orig_dir, dest_name)
-        upstream = UpstreamBranchSource(upstream_branch,
-                {version: upstream_revision})
-        upstream.fetch_tarball(package, version, orig_dir)
-        return tarball_filename
-
     def _fetch_tarball(self, package, version, orig_dir, location, v3):
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         format = None
