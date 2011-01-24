@@ -279,5 +279,6 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
         source = UpstreamBranchSource(self.tree.branch,
             {"2.1": self.tree.branch.last_revision()})
-        self.tree.commit("msg")
         self.assertEquals("2.1", source.get_latest_version("foo", "1.0"))
+        self.tree.commit("msg")
+        self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
