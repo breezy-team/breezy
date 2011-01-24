@@ -249,17 +249,17 @@ def get_export_upstream_revision(config, version=None):
     """Find the revision to use when exporting the upstream source.
 
     :param config: Config object
-    :param version: Optional version to find revision for, if not the latest.
+    :param version: Optional upstream version to find revision for, if not the
+        latest.
     :return: Revision id
     """
     rev = None
     if version is not None:
-        rev = get_snapshot_revision(str(version.upstream_version))
+        rev = get_snapshot_revision(version)
     if rev is None:
         rev = config._get_best_opt('export-upstream-revision')
         if rev is not None and version is not None:
-            rev = rev.replace('$UPSTREAM_VERSION',
-                              str(version.upstream_version))
+            rev = rev.replace('$UPSTREAM_VERSION', version)
     return rev
 
 
