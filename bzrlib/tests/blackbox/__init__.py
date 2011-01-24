@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -99,6 +99,7 @@ def load_tests(basic_tests, module, loader):
                      'test_remove',
                      'test_re_sign',
                      'test_remove_tree',
+                     'test_reset_workingtree',
                      'test_resolve',
                      'test_revert',
                      'test_revno',
