@@ -2675,9 +2675,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         return
 
-    # @needs_tree_write_lock
-    # def check_state(self):
-    #     """Check that the working state is/isn't valid."""
+    @needs_tree_write_lock
+    def check_state(self):
+        """Check that the working state is/isn't valid."""
 
     def _get_rules_searcher(self, default_searcher):
         """See Tree._get_rules_searcher."""

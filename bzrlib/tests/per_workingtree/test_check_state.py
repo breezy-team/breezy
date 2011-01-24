@@ -28,4 +28,4 @@ class TestCheckState(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('tree')
         # Everything should be fine with an unmodified tree, no exception
         # should be raised.
-        # tree.check_state()
+        tree.check_state()
