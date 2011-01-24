@@ -194,6 +194,10 @@ class UpstreamBranchSource(UpstreamSource):
         finally:
             self.upstream_branch.unlock()
 
+    def __repr__(self):
+        return "<%s for %r>" % (self.__class__.__name__,
+            self.upstream_branch.base)
+
 
 class GetOrigSourceSource(UpstreamSource):
     """Upstream source that uses the get-orig-source rule in debian/rules."""
