@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1292,6 +1292,27 @@ class DirStateWorkingTree(WorkingTree3):
         if had_inventory:
             self._inventory = inv
         self.flush()
+
+    @needs_tree_write_lock
+    def reset_state(self, revision_ids=None):
+        """Reset the state of the working tree.
+
+        This does a hard-reset to a last-known-good state. This is a way to
+        fix if something got corrupted (like the .bzr/checkout/dirstate file)
+        """
+        if revision_ids is None:
+            revision_ids = self.get_parent_ids()
+        if not revision_ids:
+            base_tree = self.branch.repository.revision_tree(
+                _mod_revision.NULL_REVISION)
+            trees = []
+        else:
+            trees = self.branch.repository.revision_trees(revision_ids)
+            base_tree = trees[0]
+        state = self.current_dirstate()
+        self.set_par
+        self._write_inventory(rt.inventory)
+        self.set_parent_ids(revision_ids)
 
 
 class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):

@@ -23,18 +23,19 @@ from bzrlib import (
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
+
 class TestCaseWithState(TestCaseWithWorkingTree):
 
     def make_tree_with_broken_dirstate(self, path):
         tree = self.make_branch_and_tree(path)
-        if getattr(tree, 'current_dirstate', None) is None:
-            raise tests.TestNotApplicable(
-                'Only applies to dirstate-based trees')
         self.break_dirstate(tree)
         return tree
 
     def break_dirstate(self, tree):
         """Write garbage into the dirstate file."""
+        if getattr(tree, 'current_dirstate', None) is None:
+            raise tests.TestNotApplicable(
+                'Only applies to dirstate-based trees')
         tree.lock_read()
         try:
             dirstate = tree.current_dirstate()
@@ -82,3 +83,9 @@ class TestResetState(TestCaseWithState):
         self.assertEqual(None, tree.path2id('baz'))
         self.failIfExists('tree/foo')
         self.failUnlessExists('tree/baz')
+
+    def test_reset_state_handles_corrupted_dirstate(self):
+        tree = self.make_branch_and_tree('tree')
+        self.break_dirstate(tree)
+        tree.reset_state()
+        tree.check_state()
