@@ -507,39 +507,4 @@ class UpstreamProvider(object):
                 tarball_name(self.package, self.version.upstream_version, format='lzma')]
 
 
-class _MissingUpstreamProvider(UpstreamProvider):
-    """For tests"""
 
-    def __init__(self):
-        pass
-
-    def provide(self, target_dir):
-        raise MissingUpstreamTarball("test_tarball")
-
-
-class _TouchUpstreamProvider(UpstreamProvider):
-    """For tests"""
-
-    def __init__(self, desired_tarball_name):
-        self.desired_tarball_name = desired_tarball_name
-
-    def provide(self, target_dir):
-        f = open(os.path.join(target_dir, self.desired_tarball_name), "wb")
-        f.write("I am a tarball, honest\n")
-        f.close()
-
-
-class _SimpleUpstreamProvider(UpstreamProvider):
-    """For tests"""
-
-    def __init__(self, package, version, store_dir):
-        self.package = package
-        self.version = Version(version)
-        self.store_dir = store_dir
-
-    def provide(self, target_dir):
-        path = (self.already_exists_in_target(target_dir)
-                or self.provide_from_store_dir(target_dir))
-        if path is not None:
-            return path
-        raise MissingUpstreamTarball(self._tarball_names()[0])
