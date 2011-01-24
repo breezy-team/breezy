@@ -29,8 +29,9 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
     #586617
   * If possible use uscan to find the latest upstream version string.
     LP: #295274
+  * Add --snapshot option to merge-upstream.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sun, 23 Jan 2011 20:47:57 -0800
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 23 Jan 2011 21:35:21 -0800
 
 bzr-builddeb (2.5) unstable; urgency=low
 

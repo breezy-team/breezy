@@ -528,13 +528,16 @@ class cmd_merge_upstream(Command):
     force_opt = Option('force',
                        help=('Force a merge even if the upstream branch '
                              'has not changed.'))
+    snapshot_opt = Option('snapshot', help="Merge a snapshot from the "
+            "upstream branch rather than a new upstream release.")
+
     v3_opt = Option('v3', help='Use dpkg-source format v3.')
 
 
     takes_options = [package_opt, version_opt,
             distribution_opt, directory_opt, last_version_opt,
-            force_opt, v3_opt, 'revision', 'merge-type']
-
+            force_opt, v3_opt, 'revision', 'merge-type',
+            snapshot_opt]
 
     def _add_changelog_entry(self, tree, package, version, distribution_name,
             changelog):
@@ -633,7 +636,8 @@ class cmd_merge_upstream(Command):
     def run(self, location=None, upstream_branch=None, version=None,
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
-            last_version=None, force=None, v3=None):
+            last_version=None, force=None, v3=None,
+            snapshot=False):
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -681,7 +685,13 @@ class cmd_merge_upstream(Command):
             else:
                 primary_upstream_source = None
             if primary_upstream_source is None:
-                primary_upstream_source = UScanSource(tree, larstiq)
+                if snapshot:
+                    if upstream_branch_source is None:
+                        raise BzrCommandError("--snapshot requires an upstream "
+                            "branch source")
+                    primary_upstream_source = upstream_branch_source
+                else:
+                    primary_upstream_source = UScanSource(tree, larstiq)
 
             if revision is not None:
                 if upstream_branch is None:
