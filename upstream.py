@@ -51,14 +51,12 @@ from bzrlib.plugins.builddeb.util import (
 class UpstreamSource(object):
     """A source for upstream versions (uscan, get-orig-source, etc)."""
 
-    def get_latest_version(self, package, version, target_dir):
-        """Fetch the source tarball for the latest available version.
+    def get_latest_version(self, package, current_version):
+        """Check what the latest upstream version is.
 
         :param package: Name of the package
-        :param version: The current version of the package.
-        :param target_dir: Directory in which to store the tarball
-        :return: The version number of the new version, or None if no newer
-                version is available.
+        :param version: The current upstream version of the package.
+        :return: The version string of the latest available upstream version.
         """
         raise NotImplementedError(self.get_latest_version)
 
@@ -180,6 +178,17 @@ class UpstreamBranchSource(UpstreamSource):
             return RevisionSpec.from_string(
                 revspec).as_revision_id(self.upstream_branch)
         return None
+
+    def get_latest_version(self, package, current_version):
+        return self.get_version(package, current_version,
+            self.upstream_branch.last_revision())
+
+    def get_version(self, package, current_version, revision):
+        from bzrlib.plugins.builddeb.merge_upstream import (
+            upstream_branch_version)
+        version = str(upstream_branch_version(self.upstream_branch,
+            revision, package, current_version))
+        return version
 
     def fetch_tarball(self, package, version, target_dir):
         self.upstream_branch.lock_read()
@@ -354,10 +363,10 @@ class StackedUpstreamSource(UpstreamSource):
                 pass
         raise PackageVersionNotPresent(package, version, self)
 
-    def get_latest_version(self, package, version, target_dir):
+    def get_latest_version(self, package, version):
         for source in self._sources:
             try:
-                new_version = source.get_latest_version(package, version, target_dir)
+                new_version = source.get_latest_version(package, version)
                 if new_version is not None:
                     return new_version
             except NotImplementedError:
