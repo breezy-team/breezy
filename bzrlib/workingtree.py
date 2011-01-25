@@ -256,7 +256,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def _detect_case_handling(self):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
         try:
-            wt_trans.stat("FoRMaT")
+            wt_trans.stat(self._format.case_sensitive_filename)
         except errors.NoSuchFile:
             self.case_sensitive = True
         else:
@@ -2860,6 +2860,8 @@ class WorkingTreeFormat(object):
 
     requires_normalized_unicode_filenames = False
 
+    case_sensitive_filename = "FoRMaT"
+
     @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the working tree object in a_bzrdir."""
@@ -2931,6 +2933,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
     upgrade_recommended = True
 
     requires_normalized_unicode_filenames = True
+
+    case_sensitive_filename = "Branch-FoRMaT"
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""

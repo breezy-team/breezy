@@ -924,6 +924,16 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             case_sensitive = True
         tree = self.make_branch_and_tree('test')
         self.assertEqual(case_sensitive, tree.case_sensitive)
+        # now we cheat, and make a file that matches the case-sensitive name
+        t = tree.bzrdir.get_workingtree_transport(None)
+        try:
+            content = tree._format.get_format_string()
+        except NotImplementedError:
+            # All-in-one formats didn't have a separate format string.
+            content = tree.bzrdir._format.get_format_string()
+        t.put_bytes(tree._format.case_sensitive_filename, content)
+        tree = tree.bzrdir.open_workingtree()
+        self.assertFalse(tree.case_sensitive)
 
     def test_all_file_ids_with_missing(self):
         tree = self.make_branch_and_tree('tree')
