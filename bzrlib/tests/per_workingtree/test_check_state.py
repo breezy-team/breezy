@@ -93,9 +93,11 @@ class TestResetState(TestCaseWithState):
 
     def test_reset_state_handles_corrupted_dirstate(self):
         tree = self.make_initial_tree()
+        rev_id = tree.last_revision()
         self.break_dirstate(tree)
         tree.reset_state()
         tree.check_state()
+        self.assertEqual(rev_id, tree.last_revision())
 
     def test_reset_state_handles_destroyed_dirstate(self):
         # If you pass the revision_id, we can handle a completely destroyed
@@ -105,3 +107,4 @@ class TestResetState(TestCaseWithState):
         self.break_dirstate(tree, completely=True)
         tree.reset_state(revision_ids=[rev_id])
         tree.check_state()
+        self.assertEqual(rev_id, tree.last_revision())

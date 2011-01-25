@@ -21,39 +21,77 @@ from bzrlib import (
 from bzrlib.tests import TestCaseWithTransport
 
 
-def _get_dirstate_path(tree):
-    """Get the path to the dirstate file."""
-    # This is a bit ugly, but the alternative was hard-coding the path
-    tree.lock_read()
-    try:
-        ds = tree.current_dirstate()
-        return ds._filename
-    finally:
-        tree.unlock()
-
-
 class TestResetWorkingTree(TestCaseWithTransport):
 
-    def test_reset_noop(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/foo', 'tree/dir/', 'tree/dir/bar'])
-        tree.add(['foo', 'dir', 'dir/bar'])
-        tree.commit('first')
-        self.run_bzr('reset-workingtree')
-
-    def test_reset_broken_dirstate(self):
-        tree = self.make_branch_and_tree('tree')
+    def break_dirstate(self, tree, completely=False):
+        """Write garbage into the dirstate file."""
         # This test assumes that the format uses a DirState file, which we then
         # manually corrupt. If we change the way to get at that dirstate file,
         # then we can update how this is done
         self.assertIsNot(None, getattr(tree, 'current_dirstate', None))
-        path = _get_dirstate_path(tree)
-        f = open(path, 'ab')
+        tree.lock_read()
         try:
-            f.write('broken-trailing-garbage\n')
+            dirstate = tree.current_dirstate()
+            dirstate_path = dirstate._filename
+            self.failUnlessExists(dirstate_path)
+        finally:
+            tree.unlock()
+        # We have to have the tree unlocked at this point, so we can safely
+        # mutate the state file on all platforms.
+        if completely:
+            f = open(dirstate_path, 'wb')
+        else:
+            f = open(dirstate_path, 'ab')
+        try:
+            f.write('garbage-at-end-of-file\n')
         finally:
             f.close()
-        self.run_bzr('reset-workingtree')
+
+    def make_initial_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/foo', 'tree/dir/', 'tree/dir/bar'])
+        tree.add(['foo', 'dir', 'dir/bar'])
+        tree.commit('first')
+        return tree
+
+    def test_reset_refuses_uncorrupted(self):
+        tree = self.make_initial_tree()
+        # If the tree doesn't appear to be corrupt, we refuse, but prompt the
+        # user to let them know that:
+        # a) they may want to use 'bzr revert' instead of reset-workingtree
+        # b) they can use --force if they really want to do this
+        self.run_bzr_error(['The tree does not appear to be corrupt',
+                            '"bzr revert"',
+                            '--force'],
+                           'reset-workingtree -d tree')
+
+    def test_reset_forced(self):
+        tree = self.make_initial_tree()
+        tree.rename_one('dir', 'alt_dir')
+        self.assertIsNot(None, tree.path2id('alt_dir'))
+        self.run_bzr('reset-workingtree -d tree --force')
+        # This requires the tree has reloaded the working state
+        self.assertIs(None, tree.path2id('alt_dir'))
+        self.failUnlessExists('tree/alt_dir')
+
+    def test_reset_corrupted_dirstate(self):
+        tree = self.make_initial_tree()
+        self.break_dirstate(tree)
+        self.run_bzr('reset-workingtree -d tree')
+        tree = workingtree.WorkingTree.open('tree')
+        # At this point, check should be happy
+        tree.check_state()
+
+    def test_reset_naive_destroyed_fails(self):
+        tree = self.make_initial_tree()
+        self.break_dirstate(tree, completely=True)
+        self.run_bzr_error(['the header appears corrupt, try passing'],
+                           'reset-workingtree -d tree')
+
+    def test_reset_destroyed_with_revs_passes(self):
+        tree = self.make_initial_tree()
+        self.break_dirstate(tree, completely=True)
+        self.run_bzr('reset-workingtree -d tree -r -1')
         tree = workingtree.WorkingTree.open('tree')
         # At this point, check should be happy
         tree.check_state()

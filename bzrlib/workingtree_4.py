@@ -1309,7 +1309,7 @@ class DirStateWorkingTree(WorkingTree3):
         else:
             trees = zip(revision_ids,
                         self.branch.repository.revision_trees(revision_ids))
-            base_tree = trees.pop(0)[1]
+            base_tree = trees[0][1]
         state = self.current_dirstate()
         # We don't support ghosts yet
         state.set_state_from_scratch(base_tree.inventory, trees, [])

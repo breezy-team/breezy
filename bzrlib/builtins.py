@@ -498,11 +498,41 @@ class cmd_reset_workingtree(Command):
     that, you can supply --revision to force the state of the tree.
     """
 
-    takes_options = ['revision']
+    takes_options = ['revision', 'directory',
+        Option('force',
+               help='Reset the tree even if it doesn\'t appear to be'
+                    ' corrupted.'),
+    ]
     hidden = True
 
-    def run(self, revision=None):
-        pass
+    def run(self, revision=None, directory='.', force=False):
+        tree, _ = WorkingTree.open_containing(directory)
+        self.add_cleanup(tree.lock_tree_write().unlock)
+        if not force:
+            try:
+                tree.check_state()
+            except errors.BzrError:
+                pass # There seems to be a real error here, so we'll reset
+            else:
+                # Refuse
+                raise errors.BzrCommandError(
+                    'The tree does not appear to be corrupt. You probably'
+                    ' want "bzr revert" instead. Use "--force" if you are'
+                    ' sure you want to reset the working tree.')
+        if revision is None:
+            revision_ids = None
+        else:
+            revision_ids = [r.as_revision_id(tree.branch) for r in revision]
+        try:
+            tree.reset_state(revision_ids)
+        except errors.BzrError, e:
+            if revision_ids is None:
+                extra = (', the header appears corrupt, try passing -r -1'
+                         ' to set the state to the last commit')
+            else:
+                extra = ''
+            raise errors.BzrCommandError('failed to reset the tree state'
+                                         + extra)
 
 
 class cmd_revno(Command):
