@@ -47,7 +47,12 @@ from launchpadlib.launchpad import (
     STAGING_SERVICE_ROOT,
     Launchpad,
     )
-from launchpadlib import uris
+try:
+    from launchpadlib import uris
+except ImportError:
+    # Create a minimal object so the getattr() calls below fail gently and
+    # provide default values
+    uris = object()
 
 LPNET_SERVICE_ROOT = getattr(uris, 'LPNET_SERVICE_ROOT',
                              'https://api.launchpad.net/beta/')
