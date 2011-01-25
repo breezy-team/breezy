@@ -31,7 +31,7 @@ class TestCaseWithState(TestCaseWithWorkingTree):
         self.break_dirstate(tree)
         return tree
 
-    def break_dirstate(self, tree):
+    def break_dirstate(self, tree, completely=False):
         """Write garbage into the dirstate file."""
         if getattr(tree, 'current_dirstate', None) is None:
             raise tests.TestNotApplicable(
@@ -45,7 +45,10 @@ class TestCaseWithState(TestCaseWithWorkingTree):
             tree.unlock()
         # We have to have the tree unlocked at this point, so we can safely
         # mutate the state file on all platforms.
-        f = open(dirstate_path, 'ab')
+        if completely:
+            f = open(dirstate_path, 'wb')
+        else:
+            f = open(dirstate_path, 'ab')
         try:
             f.write('garbage-at-end-of-file\n')
         finally:
@@ -67,11 +70,15 @@ class TestCheckState(TestCaseWithState):
 
 class TestResetState(TestCaseWithState):
 
-    def test_reset_state_forgets_changes(self):
+    def make_initial_tree(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/foo', 'tree/dir/', 'tree/dir/bar'])
         tree.add(['foo', 'dir', 'dir/bar'])
         tree.commit('initial')
+        return tree
+
+    def test_reset_state_forgets_changes(self):
+        tree = self.make_initial_tree()
         foo_id = tree.path2id('foo')
         tree.rename_one('foo', 'baz')
         self.assertEqual(None, tree.path2id('foo'))
@@ -85,7 +92,16 @@ class TestResetState(TestCaseWithState):
         self.failUnlessExists('tree/baz')
 
     def test_reset_state_handles_corrupted_dirstate(self):
-        tree = self.make_branch_and_tree('tree')
+        tree = self.make_initial_tree()
         self.break_dirstate(tree)
         tree.reset_state()
+        tree.check_state()
+
+    def test_reset_state_handles_destroyed_dirstate(self):
+        # If you pass the revision_id, we can handle a completely destroyed
+        # dirstate file.
+        tree = self.make_initial_tree()
+        rev_id = tree.last_revision()
+        self.break_dirstate(tree, completely=True)
+        tree.reset_state(revision_ids=[rev_id])
         tree.check_state()

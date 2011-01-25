@@ -1307,12 +1307,12 @@ class DirStateWorkingTree(WorkingTree3):
                 _mod_revision.NULL_REVISION)
             trees = []
         else:
-            trees = self.branch.repository.revision_trees(revision_ids)
-            base_tree = trees[0]
+            trees = zip(revision_ids,
+                        self.branch.repository.revision_trees(revision_ids))
+            base_tree = trees.pop(0)[1]
         state = self.current_dirstate()
-        self.set_par
-        self._write_inventory(rt.inventory)
-        self.set_parent_ids(revision_ids)
+        # We don't support ghosts yet
+        state.set_state_from_scratch(base_tree.inventory, trees, [])
 
 
 class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
