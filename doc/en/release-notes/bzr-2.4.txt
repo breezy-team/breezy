@@ -41,7 +41,7 @@ Bug Fixes
   roll back the target branch. (Jelmer Vernooij, #386576)
 
 * ``bzr lp-propose`` can now propose merges against packaging branches on
-  Launhcpad without requiring the target branch to be specified.
+  Launchpad without requiring the target branch to be specified.
   (Jelmer Vernooij, #704647)
 
 * ``bzr lp-propose`` no longer requires a reviewer to be specified. It will
