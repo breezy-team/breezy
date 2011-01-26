@@ -54,6 +54,10 @@ Bug Fixes
 * ``bzr pull`` will now exit with exit code 1 if there were tag conflicts.
   (Jelmer Vernooij, #213185)
 
+* ``bzr mv`` user errors no longer throw UnicodeEncodeError with non-ascii
+  paths, however they may still print junk if not on a UTF-8 terminal.
+  (Martin [gz], #707954)
+
 * ``bzr serve`` no longer crashes when a server_started hook is installed and
   IPv6 support is available on the system. (Jelmer Vernooij, #293697)
 
