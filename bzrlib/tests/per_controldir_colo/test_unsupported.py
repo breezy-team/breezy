@@ -20,12 +20,12 @@ Colocated branch support is optional, and when it is not supported the methods
 and attributes colocated branch support added should fail in known ways.
 """
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    transport,
+    )
 from bzrlib.tests import (
     TestNotApplicable,
-    )
-from bzrlib.transport import (
-    get_transport,
     )
 
 from bzrlib.tests.per_controldir_colo import (
@@ -42,7 +42,7 @@ class TestNoColocatedSupport(TestCaseWithControlDir):
             # because the default open will not open them and
             # they may not be initializable.
             raise TestNotApplicable('Control dir format not supported')
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         return made_control

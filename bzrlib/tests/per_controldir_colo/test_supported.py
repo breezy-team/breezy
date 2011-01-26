@@ -17,12 +17,12 @@
 """Tests for bzr directories that support colocated branches."""
 
 import bzrlib.branch
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    transport,
+    )
 from bzrlib.tests import (
     TestNotApplicable,
-    )
-from bzrlib.transport import (
-    get_transport,
     )
 
 from bzrlib.tests.per_controldir_colo import (
@@ -47,7 +47,7 @@ class TestColocatedBranchSupport(TestCaseWithControlDir):
             # because the default open will not open them and
             # they may not be initializable.
             raise TestNotApplicable('Control dir format not supported')
-        t = get_transport(self.get_url())
+        t = transport.get_transport(self.get_url())
         try:
             made_control = self.bzrdir_format.initialize(t.base)
         except errors.UninitializableFormat:
