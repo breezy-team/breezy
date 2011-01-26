@@ -25,6 +25,8 @@ from dulwich.objects import (
 import os
 import stat
 
+from bzrlib import osutils
+
 from bzrlib.inventory import (
     InventoryFile,
     InventoryDirectory,
@@ -166,7 +168,8 @@ class TdbGitShaMapTests(TestCaseInTempDir,TestGitShaMap):
     def setUp(self):
         TestCaseInTempDir.setUp(self)
         try:
-            self.cache = TdbBzrGitCache(os.path.join(self.test_dir, 'foo.tdb'))
+            self.cache = TdbBzrGitCache(
+                os.path.join(self.test_dir, 'foo.tdb').encode(osutils._fs_enc))
         except ImportError:
             raise UnavailableFeature("Missing tdb")
         self.map = self.cache.idmap

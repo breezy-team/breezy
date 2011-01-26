@@ -4,6 +4,9 @@
 
   * Fix test suite compatibility with Bazaar 2.2. (Max Bowsher, #707434)
 
+  * Fix compatibility with older versions of python-tdb.
+    (Jelmer Vernooij, #707735)
+
 0.5.3	2011-01-21
 
  BUG FIXES

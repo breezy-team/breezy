@@ -521,9 +521,10 @@ class TdbGitCacheFormat(BzrGitCacheFormat):
 
     def open(self, transport):
         try:
-            basepath = transport.local_abspath(".")
+            basepath = transport.local_abspath(".").encode(osutils._fs_enc)
         except bzrlib.errors.NotLocalUrl:
             basepath = get_cache_dir()
+        assert isinstance(basepath, str)
         try:
             return TdbBzrGitCache(os.path.join(basepath, "idmap.tdb"))
         except ImportError:
@@ -552,6 +553,7 @@ class TdbGitShaMap(GitShaMap):
         if path is None:
             self.db = {}
         else:
+            assert isinstance(path, str)
             if not mapdbs().has_key(path):
                 mapdbs()[path] = tdb.Tdb(path, self.TDB_HASH_SIZE, tdb.DEFAULT,
                                           os.O_RDWR|os.O_CREAT)
