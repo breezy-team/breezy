@@ -1960,15 +1960,16 @@ class TransformRenameFailed(BzrError):
 
 class BzrMoveFailedError(BzrError):
 
-    _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
+    _fmt = ("Could not move %(from_path)s%(operator)s %(to_path)s"
+        "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path='', to_path='', extra=None):
         from bzrlib.osutils import splitpath
         BzrError.__init__(self)
         if extra:
-            self.extra = ': ' + str(extra)
+            self.extra, self._has_extra = extra, ': '
         else:
-            self.extra = ''
+            self.extra = self._has_extra = ''
 
         has_from = len(from_path) > 0
         has_to = len(to_path) > 0
@@ -1995,10 +1996,12 @@ class BzrMoveFailedError(BzrError):
 
 class BzrRenameFailedError(BzrMoveFailedError):
 
-    _fmt = "Could not rename %(from_path)s%(operator)s %(to_path)s%(extra)s"
+    _fmt = ("Could not rename %(from_path)s%(operator)s %(to_path)s"
+        "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
+
 
 class BzrRemoveChangedFilesError(BzrError):
     """Used when user is trying to remove changed files."""
