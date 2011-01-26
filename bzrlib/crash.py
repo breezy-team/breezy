@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -143,10 +143,11 @@ def _write_apport_report_to_file(exc_info):
     exc_type, exc_object, exc_tb = exc_info
 
     pr = Report()
-    # add_proc_info gives you the memory map of the process, which is not so
-    # useful for Bazaar but does tell you what binary libraries are loaded.
-    # More importantly it sets the ExecutablePath, InterpreterPath, etc.
+    # add_proc_info sets the ExecutablePath, InterpreterPath, etc.
     pr.add_proc_info()
+    # It also adds ProcMaps which for us is rarely useful and mostly noise, so
+    # let's remove it.
+    del pr['ProcMaps']
     pr.add_user_info()
 
     # Package and SourcePackage are needed so that apport will report about even
@@ -254,11 +255,7 @@ def _open_crash_file():
 
 
 def _format_plugin_list():
-    plugin_lines = []
-    for name, a_plugin in sorted(plugin.plugins().items()):
-        plugin_lines.append("  %-20s %s [%s]" %
-            (name, a_plugin.path(), a_plugin.__version__))
-    return '\n'.join(plugin_lines)
+    return ''.join(plugin.describe_plugins(show_paths=True))
 
 
 def _format_module_list():

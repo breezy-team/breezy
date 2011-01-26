@@ -48,10 +48,16 @@ from launchpadlib.launchpad import (
     Launchpad,
     )
 try:
-    from launchpadlib.uris import LPNET_SERVICE_ROOT
+    from launchpadlib import uris
 except ImportError:
-    LPNET_SERVICE_ROOT = 'https://api.launchpad.net/beta/'
+    # Create a minimal object so the getattr() calls below fail gently and
+    # provide default values
+    uris = object()
 
+LPNET_SERVICE_ROOT = getattr(uris, 'LPNET_SERVICE_ROOT',
+                             'https://api.launchpad.net/beta/')
+QASTAGING_SERVICE_ROOT = getattr(uris, 'QASTAGING_SERVICE_ROOT',
+                                 'https://api.qastaging.launchpad.net/')
 
 # Declare the minimum version of launchpadlib that we need in order to work.
 # 1.5.1 is the version of launchpadlib packaged in Ubuntu 9.10, the most
@@ -80,6 +86,7 @@ def check_launchpadlib_compatibility():
 
 LAUNCHPAD_API_URLS = {
     'production': LPNET_SERVICE_ROOT,
+    'qastaging': QASTAGING_SERVICE_ROOT,
     'staging': STAGING_SERVICE_ROOT,
     'dev': 'https://api.launchpad.dev/beta/',
     }
@@ -189,12 +196,13 @@ class LaunchpadBranch(object):
     @staticmethod
     def tweak_url(url, launchpad):
         """Adjust a URL to work with staging, if needed."""
-        if str(launchpad._root_uri) != STAGING_SERVICE_ROOT:
-            return url
-        if url is None:
-            return None
-        return url.replace('bazaar.launchpad.net',
-                           'bazaar.staging.launchpad.net')
+        if str(launchpad._root_uri) == STAGING_SERVICE_ROOT:
+            return url.replace('bazaar.launchpad.net',
+                               'bazaar.staging.launchpad.net')
+        elif str(launchpad._root_uri) == QASTAGING_SERVICE_ROOT:
+            return url.replace('bazaar.launchpad.net',
+                               'bazaar.qastaging.launchpad.net')
+        return url
 
     @classmethod
     def from_bzr(cls, launchpad, bzr_branch, create_missing=True):
@@ -227,17 +235,26 @@ class LaunchpadBranch(object):
             raise errors.BzrError('%s is not registered on Launchpad' % url)
         return lp_branch
 
-    def get_dev_focus(self):
-        """Return the 'LaunchpadBranch' for the dev focus of this one."""
+    def get_target(self):
+        """Return the 'LaunchpadBranch' for the target of this one."""
         lp_branch = self.lp
-        if lp_branch.project is None:
-            raise errors.BzrError('%s has no product.' %
+        if lp_branch.project is not None:
+            dev_focus = lp_branch.project.development_focus.branch
+            if dev_focus is None:
+                raise errors.BzrError('%s has no development focus.' %
                                   lp_branch.bzr_identity)
-        dev_focus = lp_branch.project.development_focus.branch
-        if dev_focus is None:
-            raise errors.BzrError('%s has no development focus.' %
+            target = dev_focus.branch
+            if target is None:
+                raise errors.BzrError('development focus %s has no branch.' % dev_focus)
+        elif lp_branch.sourcepackage is not None:
+            target = lp_branch.sourcepackage.getBranch(pocket="Release")
+            if target is None:
+                raise errors.BzrError('source package %s has no branch.' %
+                                      lp_branch.sourcepackage)
+        else:
+            raise errors.BzrError('%s has no associated product or source package.' %
                                   lp_branch.bzr_identity)
-        return LaunchpadBranch(dev_focus, dev_focus.bzr_identity)
+        return LaunchpadBranch(target, target.bzr_identity)
 
     def update_lp(self):
         """Update the Launchpad copy of this branch."""

@@ -3802,6 +3802,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_merge3',
         'bzrlib.tests.test_merge_core',
         'bzrlib.tests.test_merge_directive',
+        'bzrlib.tests.test_mergetools',
         'bzrlib.tests.test_missing',
         'bzrlib.tests.test_msgeditor',
         'bzrlib.tests.test_multiparent',

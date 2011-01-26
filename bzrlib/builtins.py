@@ -328,7 +328,8 @@ class cmd_cat_revision(Command):
         if revision_id is None and revision is None:
             raise errors.BzrCommandError('You must supply either'
                                          ' --revision or a revision_id')
-        b = WorkingTree.open_containing(directory)[0].branch
+
+        b = bzrdir.BzrDir.open_containing_tree_or_branch(directory)[1]
 
         revisions = b.repository.revisions
         if revisions is None:
@@ -1015,6 +1016,10 @@ class cmd_pull(Command):
             log.show_branch_change(
                 branch_to, self.outf, result.old_revno,
                 result.old_revid)
+        if getattr(result, 'tag_conflicts', None):
+            return 1
+        else:
+            return 0
 
 
 class cmd_push(Command):
@@ -1961,9 +1966,10 @@ class cmd_diff(Command):
             type=unicode,
             ),
         RegistryOption('format',
+            short_name='F',
             help='Diff format to use.',
             lazy_registry=('bzrlib.diff', 'format_registry'),
-            value_switches=False, title='Diff format'),
+            title='Diff format'),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
@@ -3425,6 +3431,10 @@ class cmd_whoami(Command):
                 self.outf.write(c.username() + '\n')
             return
 
+        if email:
+            raise errors.BzrCommandError("--email can only be used to display existing "
+                                         "identity")
+
         # display a warning if an email address isn't included in the given name.
         try:
             _mod_config.extract_email_address(name)
@@ -4581,26 +4591,9 @@ class cmd_plugins(Command):
 
     @display_command
     def run(self, verbose=False):
-        import bzrlib.plugin
-        from inspect import getdoc
-        result = []
-        for name, plugin in bzrlib.plugin.plugins().items():
-            version = plugin.__version__
-            if version == 'unknown':
-                version = ''
-            name_ver = '%s %s' % (name, version)
-            d = getdoc(plugin.module)
-            if d:
-                doc = d.split('\n')[0]
-            else:
-                doc = '(no description)'
-            result.append((name_ver, doc, plugin.path()))
-        for name_ver, doc, path in sorted(result):
-            self.outf.write("%s\n" % name_ver)
-            self.outf.write("   %s\n" % doc)
-            if verbose:
-                self.outf.write("   %s\n" % path)
-            self.outf.write("\n")
+        from bzrlib import plugin
+        self.outf.writelines(
+            plugin.describe_plugins(show_paths=verbose))
 
 
 class cmd_testament(Command):
