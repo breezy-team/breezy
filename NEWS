@@ -1,5 +1,9 @@
 0.5.4	UNRELEASED
 
+ BUG FIXES
+
+  * Fix test suite compatibility with Bazaar 2.2. (Max Bowsher, #707434)
+
 0.5.3	2011-01-21
 
  BUG FIXES
