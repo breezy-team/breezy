@@ -1384,7 +1384,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         to_dir_id = inv.path2id(to_dir)
         if to_dir_id is None:
             raise errors.BzrMoveFailedError('',to_dir,
-                errors.NotVersionedError(path=str(to_dir)))
+                errors.NotVersionedError(path=to_dir))
 
         to_dir_ie = inv[to_dir_id]
         if to_dir_ie.kind != 'directory':
@@ -1397,7 +1397,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             from_id = inv.path2id(from_rel)
             if from_id is None:
                 raise errors.BzrMoveFailedError(from_rel,to_dir,
-                    errors.NotVersionedError(path=str(from_rel)))
+                    errors.NotVersionedError(path=from_rel))
 
             from_entry = inv[from_id]
             from_parent_id = from_entry.parent_id
@@ -1445,17 +1445,17 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             # check the inventory for source and destination
             if from_id is None:
                 raise errors.BzrMoveFailedError(from_rel,to_rel,
-                    errors.NotVersionedError(path=str(from_rel)))
+                    errors.NotVersionedError(path=from_rel))
             if to_id is not None:
                 raise errors.BzrMoveFailedError(from_rel,to_rel,
-                    errors.AlreadyVersionedError(path=str(to_rel)))
+                    errors.AlreadyVersionedError(path=to_rel))
 
             # try to determine the mode for rename (only change inv or change
             # inv and file system)
             if after:
                 if not self.has_filename(to_rel):
                     raise errors.BzrMoveFailedError(from_id,to_rel,
-                        errors.NoSuchFile(path=str(to_rel),
+                        errors.NoSuchFile(path=to_rel,
                         extra="New file has not been created yet"))
                 only_change_inv = True
             elif not self.has_filename(from_rel) and self.has_filename(to_rel):
@@ -1563,7 +1563,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             from_id = basis_tree.path2id(from_rel)
             if from_id is None:
                 raise errors.BzrRenameFailedError(from_rel,to_rel,
-                    errors.NotVersionedError(path=str(from_rel)))
+                    errors.NotVersionedError(path=from_rel))
             # put entry back in the inventory so we can rename it
             from_entry = basis_tree.inventory[from_id].copy()
             inv.add(from_entry)
@@ -1587,7 +1587,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         # versioned
         if to_dir_id is None:
             raise errors.BzrMoveFailedError(from_rel,to_rel,
-                errors.NotVersionedError(path=str(to_dir)))
+                errors.NotVersionedError(path=to_dir))
 
         # all checks done. now we can continue with our actual work
         mutter('rename_one:\n'
