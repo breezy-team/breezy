@@ -22,18 +22,15 @@ and attributes colocated branch support added should fail in known ways.
 
 from bzrlib import (
     errors,
+    tests,
     transport,
     )
 from bzrlib.tests import (
-    TestNotApplicable,
-    )
-
-from bzrlib.tests.per_controldir_colo import (
-    TestCaseWithControlDir,
+    per_controldir,
     )
 
 
-class TestNoColocatedSupport(TestCaseWithControlDir):
+class TestNoColocatedSupport(per_controldir.TestCaseWithControlDir):
 
     def make_bzrdir_with_repo(self):
         # a bzrdir can construct a branch and repository for itself.
@@ -41,8 +38,8 @@ class TestNoColocatedSupport(TestCaseWithControlDir):
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            raise TestNotApplicable('Control dir format not supported')
-        t = transport.get_transport(self.get_url())
+            raise tests.TestNotApplicable('Control dir format not supported')
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         return made_control

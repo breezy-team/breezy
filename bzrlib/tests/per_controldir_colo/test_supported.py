@@ -19,25 +19,22 @@
 import bzrlib.branch
 from bzrlib import (
     errors,
+    tests,
     transport,
     )
 from bzrlib.tests import (
-    TestNotApplicable,
-    )
-
-from bzrlib.tests.per_controldir_colo import (
-    TestCaseWithControlDir,
+    per_controldir,
     )
 
 
-class TestColocatedBranchSupport(TestCaseWithControlDir):
+class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
 
     def test_destroy_colocated_branch(self):
         branch = self.make_branch('branch')
         bzrdir = branch.bzrdir
         colo_branch = bzrdir.create_branch('colo')
         bzrdir.destroy_branch("colo")
-        self.assertRaises(errors.NotBranchError, bzrdir.open_branch, 
+        self.assertRaises(errors.NotBranchError, bzrdir.open_branch,
                           "colo")
 
     def test_create_colo_branch(self):
@@ -46,13 +43,13 @@ class TestColocatedBranchSupport(TestCaseWithControlDir):
             # unsupported formats are not loopback testable
             # because the default open will not open them and
             # they may not be initializable.
-            raise TestNotApplicable('Control dir format not supported')
-        t = transport.get_transport(self.get_url())
+            raise tests.TestNotApplicable('Control dir format not supported')
+        t = self.get_transport()
         try:
             made_control = self.bzrdir_format.initialize(t.base)
         except errors.UninitializableFormat:
-            raise TestNotApplicable('Control dir does not support creating '
-                'new branches.')
+            raise tests.TestNotApplicable(
+                'Control dir does not support creating new branches.')
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch("colo")
         self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
