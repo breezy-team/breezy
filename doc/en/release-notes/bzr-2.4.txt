@@ -29,7 +29,7 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* A new hidden command ``bzr reset-workingtree``. This is a way to force
+* A new hidden command ``bzr repair-workingtree``. This is a way to force
   the dirstate file to be rebuilt, rather than using a ``bzr checkout``
   workaround. (John Arbash Meinel)
 

@@ -21,7 +21,7 @@ from bzrlib import (
 from bzrlib.tests import TestCaseWithTransport
 
 
-class TestResetWorkingTree(TestCaseWithTransport):
+class TestRepairWorkingTree(TestCaseWithTransport):
 
     def break_dirstate(self, tree, completely=False):
         """Write garbage into the dirstate file."""
@@ -54,44 +54,44 @@ class TestResetWorkingTree(TestCaseWithTransport):
         tree.commit('first')
         return tree
 
-    def test_reset_refuses_uncorrupted(self):
+    def test_repair_refuses_uncorrupted(self):
         tree = self.make_initial_tree()
         # If the tree doesn't appear to be corrupt, we refuse, but prompt the
         # user to let them know that:
-        # a) they may want to use 'bzr revert' instead of reset-workingtree
+        # a) they may want to use 'bzr revert' instead of repair-workingtree
         # b) they can use --force if they really want to do this
         self.run_bzr_error(['The tree does not appear to be corrupt',
                             '"bzr revert"',
                             '--force'],
-                           'reset-workingtree -d tree')
+                           'repair-workingtree -d tree')
 
-    def test_reset_forced(self):
+    def test_repair_forced(self):
         tree = self.make_initial_tree()
         tree.rename_one('dir', 'alt_dir')
         self.assertIsNot(None, tree.path2id('alt_dir'))
-        self.run_bzr('reset-workingtree -d tree --force')
+        self.run_bzr('repair-workingtree -d tree --force')
         # This requires the tree has reloaded the working state
         self.assertIs(None, tree.path2id('alt_dir'))
         self.failUnlessExists('tree/alt_dir')
 
-    def test_reset_corrupted_dirstate(self):
+    def test_repair_corrupted_dirstate(self):
         tree = self.make_initial_tree()
         self.break_dirstate(tree)
-        self.run_bzr('reset-workingtree -d tree')
+        self.run_bzr('repair-workingtree -d tree')
         tree = workingtree.WorkingTree.open('tree')
         # At this point, check should be happy
         tree.check_state()
 
-    def test_reset_naive_destroyed_fails(self):
+    def test_repair_naive_destroyed_fails(self):
         tree = self.make_initial_tree()
         self.break_dirstate(tree, completely=True)
         self.run_bzr_error(['the header appears corrupt, try passing'],
-                           'reset-workingtree -d tree')
+                           'repair-workingtree -d tree')
 
-    def test_reset_destroyed_with_revs_passes(self):
+    def test_repair_destroyed_with_revs_passes(self):
         tree = self.make_initial_tree()
         self.break_dirstate(tree, completely=True)
-        self.run_bzr('reset-workingtree -d tree -r -1')
+        self.run_bzr('repair-workingtree -d tree -r -1')
         tree = workingtree.WorkingTree.open('tree')
         # At this point, check should be happy
         tree.check_state()

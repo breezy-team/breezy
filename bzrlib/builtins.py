@@ -482,7 +482,7 @@ class cmd_remove_tree(Command):
             d.destroy_workingtree()
 
 
-class cmd_reset_workingtree(Command):
+class cmd_repair_workingtree(Command):
     __doc__ = """Reset the working tree state file.
 
     This is not meant to be used normally, but more as a way to recover from
