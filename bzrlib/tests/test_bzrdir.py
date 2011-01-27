@@ -254,7 +254,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # is the right format object found for a branch?
         # create a branch with a few known format objects.
         # this is not quite the same as
-        t = _mod_transport.get_transport(self.get_url())
+        t = self.get_transport()
         self.build_tree(["foo/", "bar/"], transport=t)
         def check_format(format, url):
             format.initialize(url)
@@ -270,7 +270,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
                           _mod_transport.get_transport('.'))
 
     def test_find_format_unknown_format(self):
-        t = _mod_transport.get_transport(self.get_url())
+        t = self.get_transport()
         t.mkdir('.bzr')
         t.put_bytes('.bzr/branch-format', '')
         self.assertRaises(UnknownFormatError,
@@ -742,23 +742,21 @@ class ChrootedTests(TestCaseWithTransport):
         # transport pointing at bzrdir should give a bzrdir with root transport
         # set to the given transport
         control = bzrdir.BzrDir.create(self.get_url())
-        transport = _mod_transport.get_transport(self.get_url())
-        opened_bzrdir = bzrdir.BzrDir.open_from_transport(transport)
-        self.assertEqual(transport.base, opened_bzrdir.root_transport.base)
+        t = self.get_transport()
+        opened_bzrdir = bzrdir.BzrDir.open_from_transport(t)
+        self.assertEqual(t.base, opened_bzrdir.root_transport.base)
         self.assertIsInstance(opened_bzrdir, bzrdir.BzrDir)
 
     def test_open_from_transport_no_bzrdir(self):
-        transport = _mod_transport.get_transport(self.get_url())
-        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport,
-                          transport)
+        t = self.get_transport()
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport, t)
 
     def test_open_from_transport_bzrdir_in_parent(self):
         control = bzrdir.BzrDir.create(self.get_url())
-        transport = _mod_transport.get_transport(self.get_url())
-        transport.mkdir('subdir')
-        transport = transport.clone('subdir')
-        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport,
-                          transport)
+        t = self.get_transport()
+        t.mkdir('subdir')
+        t = t.clone('subdir')
+        self.assertRaises(NotBranchError, bzrdir.BzrDir.open_from_transport, t)
 
     def test_sprout_recursive(self):
         tree = self.make_branch_and_tree('tree1',
@@ -824,9 +822,8 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_find_bzrdirs(self):
         foo, bar, baz = self.make_foo_bar_baz()
-        transport = _mod_transport.get_transport(self.get_url())
-        self.assertEqualBzrdirs([baz, foo, bar],
-                                bzrdir.BzrDir.find_bzrdirs(transport))
+        t = self.get_transport()
+        self.assertEqualBzrdirs([baz, foo, bar], bzrdir.BzrDir.find_bzrdirs(t))
 
     def make_fake_permission_denied_transport(self, transport, paths):
         """Create a transport that raises PermissionDenied for some paths."""
@@ -848,9 +845,9 @@ class ChrootedTests(TestCaseWithTransport):
 
     def test_find_bzrdirs_permission_denied(self):
         foo, bar, baz = self.make_foo_bar_baz()
-        transport = _mod_transport.get_transport(self.get_url())
+        t = self.get_transport()
         path_filter_server, path_filter_transport = \
-            self.make_fake_permission_denied_transport(transport, ['foo'])
+            self.make_fake_permission_denied_transport(t, ['foo'])
         # local transport
         self.assertBranchUrlsEndWith('/baz/',
             bzrdir.BzrDir.find_bzrdirs(path_filter_transport))
@@ -865,10 +862,10 @@ class ChrootedTests(TestCaseWithTransport):
             return [s for s in transport.list_dir('') if s != 'baz']
 
         foo, bar, baz = self.make_foo_bar_baz()
-        transport = _mod_transport.get_transport(self.get_url())
-        self.assertEqualBzrdirs([foo, bar],
-                                bzrdir.BzrDir.find_bzrdirs(transport,
-                                    list_current=list_current))
+        t = self.get_transport()
+        self.assertEqualBzrdirs(
+            [foo, bar],
+            bzrdir.BzrDir.find_bzrdirs(t, list_current=list_current))
 
     def test_find_bzrdirs_evaluate(self):
         def evaluate(bzrdir):
@@ -880,10 +877,9 @@ class ChrootedTests(TestCaseWithTransport):
                 return False, bzrdir.root_transport.base
 
         foo, bar, baz = self.make_foo_bar_baz()
-        transport = _mod_transport.get_transport(self.get_url())
+        t = self.get_transport()
         self.assertEqual([baz.root_transport.base, foo.root_transport.base],
-                         list(bzrdir.BzrDir.find_bzrdirs(transport,
-                                                         evaluate=evaluate)))
+                         list(bzrdir.BzrDir.find_bzrdirs(t, evaluate=evaluate)))
 
     def assertEqualBzrdirs(self, first, second):
         first = list(first)
@@ -896,14 +892,14 @@ class ChrootedTests(TestCaseWithTransport):
         root = self.make_repository('', shared=True)
         foo, bar, baz = self.make_foo_bar_baz()
         qux = self.make_bzrdir('foo/qux')
-        transport = _mod_transport.get_transport(self.get_url())
-        branches = bzrdir.BzrDir.find_branches(transport)
+        t = self.get_transport()
+        branches = bzrdir.BzrDir.find_branches(t)
         self.assertEqual(baz.root_transport.base, branches[0].base)
         self.assertEqual(foo.root_transport.base, branches[1].base)
         self.assertEqual(bar.root_transport.base, branches[2].base)
 
         # ensure this works without a top-level repo
-        branches = bzrdir.BzrDir.find_branches(transport.clone('foo'))
+        branches = bzrdir.BzrDir.find_branches(t.clone('foo'))
         self.assertEqual(foo.root_transport.base, branches[0].base)
         self.assertEqual(bar.root_transport.base, branches[1].base)
 
@@ -911,15 +907,15 @@ class ChrootedTests(TestCaseWithTransport):
 class TestMissingRepoBranchesSkipped(TestCaseWithMemoryTransport):
 
     def test_find_bzrdirs_missing_repo(self):
-        transport = _mod_transport.get_transport(self.get_url())
+        t = self.get_transport()
         arepo = self.make_repository('arepo', shared=True)
         abranch_url = arepo.user_url + '/abranch'
         abranch = bzrdir.BzrDir.create(abranch_url).create_branch()
-        transport.delete_tree('arepo/.bzr')
+        t.delete_tree('arepo/.bzr')
         self.assertRaises(errors.NoRepositoryPresent,
             branch.Branch.open, abranch_url)
         self.make_branch('baz')
-        for actual_bzrdir in bzrdir.BzrDir.find_branches(transport):
+        for actual_bzrdir in bzrdir.BzrDir.find_branches(t):
             self.assertEndsWith(actual_bzrdir.user_url, '/baz/')
 
 
@@ -1101,8 +1097,7 @@ class TestNotBzrDir(TestCaseWithTransport):
         # now probe for it.
         controldir.ControlDirFormat.register_prober(NotBzrDirProber)
         try:
-            found = bzrlib.bzrdir.BzrDirFormat.find_format(
-                _mod_transport.get_transport(self.get_url()))
+            found = bzrlib.bzrdir.BzrDirFormat.find_format(self.get_transport())
             self.assertIsInstance(found, NotBzrDirFormat)
         finally:
             controldir.ControlDirFormat.unregister_prober(NotBzrDirProber)
@@ -1144,7 +1139,7 @@ class NonLocalTests(TestCaseWithTransport):
             self.get_url('foo'),
             force_new_tree=True,
             format=format)
-        t = _mod_transport.get_transport(self.get_url('.'))
+        t = self.get_transport()
         self.assertFalse(t.has('foo'))
 
     def test_clone(self):
@@ -1447,7 +1442,7 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
 
     def setUp(self):
         super(TestGenerateBackupName, self).setUp()
-        self._transport = _mod_transport.get_transport(self.get_url())
+        self._transport = self.get_transport()
         bzrdir.BzrDir.create(self.get_url(),
             possible_transports=[self._transport])
         self._bzrdir = bzrdir.BzrDir.open_from_transport(self._transport)

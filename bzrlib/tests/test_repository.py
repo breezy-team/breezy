@@ -604,7 +604,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
 class TestRepositoryConverter(TestCaseWithTransport):
 
     def test_convert_empty(self):
-        t = transport.get_transport(self.get_url('.'))
+        t = self.get_transport()
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
         repo = weaverepo.RepositoryFormat7().initialize(repo_dir)
