@@ -796,7 +796,7 @@ class TestBTreeIndex(BTreeTestCase):
     def test_eq_ne(self):
         # two indices are equal when constructed with the same parameters:
         t1 = transport.get_transport('trace+' + self.get_url(''))
-        t2 = transport.get_transport(self.get_url(''))
+        t2 = self.get_transport()
         self.assertTrue(
             btree_index.BTreeGraphIndex(t1, 'index', None) ==
             btree_index.BTreeGraphIndex(t1, 'index', None))
@@ -1151,7 +1151,7 @@ class TestBTreeIndex(BTreeTestCase):
         for node in nodes:
             builder.add_node(*node)
         stream = builder.finish()
-        trans = transport.get_transport(self.get_url())
+        trans = self.get_transport()
         size = trans.put_file('index', stream)
         index = btree_index.BTreeGraphIndex(trans, 'index', size)
         self.assertEqual(500, index.key_count())
