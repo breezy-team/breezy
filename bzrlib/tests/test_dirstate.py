@@ -725,6 +725,14 @@ class TestDirStateInitialize(TestCaseWithDirState):
 
 class TestDirStateManipulations(TestCaseWithDirState):
 
+    def make_minimal_tree(self):
+        tree1 = self.make_branch_and_memory_tree('tree1')
+        tree1.lock_write()
+        self.addCleanup(tree1.unlock)
+        tree1.add('')
+        revid1 = tree1.commit('foo')
+        return tree1, revid1
+
     def test_update_minimal_updates_id_index(self):
         state = self.create_dirstate_with_root_and_subdir()
         self.addCleanup(state.unlock)
@@ -743,15 +751,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
 
     def test_set_state_from_inventory_no_content_no_parents(self):
         # setting the current inventory is a slow but important api to support.
-        tree1 = self.make_branch_and_memory_tree('tree1')
-        tree1.lock_write()
-        try:
-            tree1.add('')
-            revid1 = tree1.commit('foo').encode('utf8')
-            root_id = tree1.get_root_id()
-            inv = tree1.inventory
-        finally:
-            tree1.unlock()
+        tree1, revid1 = self.make_minimal_tree()
+        inv = tree1.inventory
+        root_id = inv.path2id('')
         expected_result = [], [
             (('', '', root_id), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT)])]
@@ -759,6 +761,50 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             state.set_state_from_inventory(inv)
             self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                             state._header_state)
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                             state._dirblock_state)
+        except:
+            state.unlock()
+            raise
+        else:
+            # This will unlock it
+            self.check_state_with_reopen(expected_result, state)
+
+    def test_set_state_from_scratch_no_parents(self):
+        tree1, revid1 = self.make_minimal_tree()
+        inv = tree1.inventory
+        root_id = inv.path2id('')
+        expected_result = [], [
+            (('', '', root_id), [
+             ('d', '', 0, False, dirstate.DirState.NULLSTAT)])]
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            state.set_state_from_scratch(inv, [], [])
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                             state._header_state)
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                             state._dirblock_state)
+        except:
+            state.unlock()
+            raise
+        else:
+            # This will unlock it
+            self.check_state_with_reopen(expected_result, state)
+
+    def test_set_state_from_scratch_identical_parent(self):
+        tree1, revid1 = self.make_minimal_tree()
+        inv = tree1.inventory
+        root_id = inv.path2id('')
+        rev_tree1 = tree1.branch.repository.revision_tree(revid1)
+        d_entry = ('d', '', 0, False, dirstate.DirState.NULLSTAT)
+        parent_entry = ('d', '', 0, False, revid1)
+        expected_result = [revid1], [
+            (('', '', root_id), [d_entry, parent_entry])]
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            state.set_state_from_scratch(inv, [(revid1, rev_tree1)], [])
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                              state._header_state)
             self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                              state._dirblock_state)

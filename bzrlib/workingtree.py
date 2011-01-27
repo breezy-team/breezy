@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2674,6 +2674,34 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         :return: None. An exception should be raised if there is an error.
         """
         return
+
+    @needs_read_lock
+    def check_state(self):
+        """Check that the working state is/isn't valid."""
+        check_refs = self._get_check_refs()
+        refs = {}
+        for ref in check_refs:
+            kind, value = ref
+            if kind == 'trees':
+                refs[ref] = self.branch.repository.revision_tree(value)
+        self._check(refs)
+
+    @needs_tree_write_lock
+    def reset_state(self, revision_ids=None):
+        """Reset the state of the working tree.
+
+        This does a hard-reset to a last-known-good state. This is a way to
+        fix if something got corrupted (like the .bzr/checkout/dirstate file)
+        """
+        if revision_ids is None:
+            revision_ids = self.get_parent_ids()
+        if not revision_ids:
+            rt = self.branch.repository.revision_tree(
+                _mod_revision.NULL_REVISION)
+        else:
+            rt = self.branch.repository.revision_tree(revision_ids[0])
+        self._write_inventory(rt.inventory)
+        self.set_parent_ids(revision_ids)
 
     def _get_rules_searcher(self, default_searcher):
         """See Tree._get_rules_searcher."""

@@ -32,6 +32,10 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* A new hidden command ``bzr repair-workingtree``. This is a way to force
+  the dirstate file to be rebuilt, rather than using a ``bzr checkout``
+  workaround. (John Arbash Meinel)
+
 * ``bzr cat-revision`` no longer requires a working tree. (Jelmer Vernooij, #704405)
 
 Bug Fixes
@@ -99,3 +103,5 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+..
+   vim: tw=74 ft=rst ff=unix
