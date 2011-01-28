@@ -769,6 +769,11 @@ class FindPreviousUploadTests(TestCase):
                 ("0.1-1.1", "unstable"), ("0.1-2", "maverick")])
         self.assertEqual(Version("0.1-1"), _find_previous_upload(cl))
 
+    def test_find_previous_upload_ubuntu_pocket(self):
+        cl = self.make_changelog([("0.1-1", "lucid-updates"),
+                ("0.1-2", "lucid-updates")])
+        self.assertEqual(Version("0.1-1"), _find_previous_upload(cl))
+
     def test_find_previous_upload_unknown(self):
         cl = self.make_changelog([("0.1-1", "lucid"),
                 ("0.1-2", "UNRELEASED")])

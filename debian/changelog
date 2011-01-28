@@ -27,8 +27,10 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
   * When adding a changelog entry, support git and svn snapshots.
   * Automatically use debian/source/format if package is native. Closes:
     #586617
+  * Fix "bzr builddeb" if last upload was not to a Ubuntu release pocket.
+    Closes: #709263
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 12 Jan 2011 22:05:40 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 28 Jan 2011 15:13:22 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 
