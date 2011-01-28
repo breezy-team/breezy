@@ -96,6 +96,8 @@ from bzrlib.plugins.builddeb.upstream import (
         StackedUpstreamSource,
         UScanSource,
         UpstreamProvider,
+        )
+from bzrlib.plugins.builddeb.upstream.branch import (
         UpstreamBranchSource,
         )
 from bzrlib.plugins.builddeb.util import (

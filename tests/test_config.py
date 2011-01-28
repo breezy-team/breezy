@@ -79,7 +79,7 @@ class DebBuildConfigTests(TestCaseWithTransport):
 
   def test_no_entry(self):
     self.assertEqual(self.config.merge, False)
-    self.assertEqual(self.config.build_type, BUILD_TYPE_NORMAL)
+    self.assertEqual(self.config.build_type, None)
 
   def test_parse_error(self):
     f = open('invalid.conf', 'wb')
