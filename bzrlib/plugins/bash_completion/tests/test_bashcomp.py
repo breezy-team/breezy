@@ -14,6 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import sys
+
 import bzrlib
 from bzrlib import commands, tests
 from bzrlib.tests import features
@@ -152,6 +154,11 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
     will be replaced by the bzr instance running this selftest.
     """
 
+    def setUp(self):
+        super(TestBashCompletionInvoking, self).setUp()
+        if sys.platform == 'win32':
+            raise tests.KnownFailure(
+                'see bug #709104, completion is broken on windows')
 
     def get_script(self):
         s = super(TestBashCompletionInvoking, self).get_script()
