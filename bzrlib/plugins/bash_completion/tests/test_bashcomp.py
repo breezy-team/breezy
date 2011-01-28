@@ -27,6 +27,7 @@ class BashCompletionMixin(object):
     """Component for testing execution of a bash completion script."""
 
     _test_needs_features = [features.bash_feature]
+    script = None
 
     def complete(self, words, cword=-1):
         """Perform a bash completion.
@@ -95,10 +96,6 @@ class BashCompletionMixin(object):
 class TestBashCompletion(tests.TestCase, BashCompletionMixin):
     """Test bash completions that don't execute bzr."""
 
-    def __init__(self, methodName='testMethod'):
-        super(TestBashCompletion, self).__init__(methodName)
-        self.script = None
-
     def test_simple_scipt(self):
         """Ensure that the test harness works as expected"""
         self.script = """
@@ -155,9 +152,6 @@ class TestBashCompletionInvoking(tests.TestCaseWithTransport,
     will be replaced by the bzr instance running this selftest.
     """
 
-    def __init__(self, methodName='testMethod'):
-        super(TestBashCompletionInvoking, self).__init__(methodName)
-        self.script = None
 
     def get_script(self):
         s = super(TestBashCompletionInvoking, self).get_script()
