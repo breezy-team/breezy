@@ -27,13 +27,15 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
   * When adding a changelog entry, support git and svn snapshots.
   * Automatically use debian/source/format if package is native. Closes:
     #586617
+  * Fix "bzr builddeb" if last upload was not to a Ubuntu release pocket.
+    LP: #709263
   * If possible use uscan to find the latest upstream version string.
     LP: #295274
   * Add --snapshot option to merge-upstream.
   * 'bzr merge-upstream' now also works in merge mode, and will simply
     add a new entry for new upstream versions.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sun, 23 Jan 2011 21:57:08 -0800
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 28 Jan 2011 15:13:22 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 

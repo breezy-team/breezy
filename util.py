@@ -255,6 +255,7 @@ def get_export_upstream_revision(config, version=None):
     """
     rev = None
     if version is not None:
+        assert type(version) is str
         rev = get_snapshot_revision(version)
     if rev is None:
         rev = config._get_best_opt('export-upstream-revision')
@@ -641,8 +642,8 @@ def _find_previous_upload(cl):
     elif current_target in all_ubuntu:
         match_targets = UBUNTU_RELEASES
         if "-" in current_target:
-            match_targets += [current_target.split("-", 1)[0]
-                + t for t in UBUNTU_POCKETS]
+            match_targets += tuple([current_target.split("-", 1)[0]
+                + t for t in UBUNTU_POCKETS])
     else:
         raise UnknownDistribution(current_target)
     previous_version = None
