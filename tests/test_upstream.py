@@ -42,6 +42,7 @@ from bzrlib.plugins.builddeb.errors import (
     )
 from bzrlib.plugins.builddeb.upstream import (
     AptSource,
+    PristineTarSource,
     StackedUpstreamSource,
     UpstreamProvider,
     UScanSource,
@@ -154,7 +155,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        src.fetch_tarball("apackage", "0.2", "target", 
+        src.fetch_tarball("apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -174,7 +175,7 @@ class AptSourceTests(TestCase):
         src = AptSource()
         src._run_apt_source = caller.call
         self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
-            "apackage", "0.2", "target", 
+            "apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -226,16 +227,16 @@ class StackedUpstreamSourceTests(TestCase):
         self.assertEquals("1.1", stack.get_latest_version("mypkg", "1.0"))
 
     def test_repr(self):
-        self.assertEquals("StackedUpstreamSource([])", 
+        self.assertEquals("StackedUpstreamSource([])",
                 repr(StackedUpstreamSource([])))
-        self.assertEquals("StackedUpstreamSource([RecordingSource()])", 
+        self.assertEquals("StackedUpstreamSource([RecordingSource()])",
                 repr(StackedUpstreamSource([RecordingSource(False)])))
 
     def test_none(self):
         a = RecordingSource(False)
         b = RecordingSource(False)
         stack = StackedUpstreamSource([a, b])
-        self.assertRaises(PackageVersionNotPresent, 
+        self.assertRaises(PackageVersionNotPresent,
                 stack.fetch_tarball, "pkg", "1.0", "bla")
         self.assertEquals([("pkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("pkg", "1.0", "bla")], a._specific_versions)
@@ -359,23 +360,23 @@ class TestUpstreamBranchVersion(TestCase):
     def test_new_tagged_release(self):
       """Last revision is tagged - use as upstream version."""
       self.revhistory = ["somerevid"]
-      self.assertEquals(Version("1.3"), 
+      self.assertEquals(Version("1.3"),
           _upstream_branch_version(self.revhistory, {"somerevid": ["1.3"]}, "bla", "1.2", self.get_suffix))
 
     def test_refresh_snapshot_pre(self):
       self.revhistory = ["oldrevid", "somerevid"]
-      self.assertEquals(Version("1.3~bzr2"), 
+      self.assertEquals(Version("1.3~bzr2"),
           _upstream_branch_version(self.revhistory, {}, "bla", "1.3~bzr1", self.get_suffix))
 
     def test_refresh_snapshot_post(self):
       self.revhistory = ["oldrevid", "somerevid"]
-      self.assertEquals(Version("1.3+bzr2"), 
+      self.assertEquals(Version("1.3+bzr2"),
           _upstream_branch_version(self.revhistory, {}, "bla", "1.3+bzr1", self.get_suffix))
 
     def test_new_tag_refresh_snapshot(self):
       self.revhistory = ["oldrevid", "somerevid", "newrevid"]
-      self.assertEquals(Version("1.3+bzr3"), 
-            _upstream_branch_version(self.revhistory, 
+      self.assertEquals(Version("1.3+bzr3"),
+            _upstream_branch_version(self.revhistory,
                 {"somerevid": ["1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
 
 
@@ -417,28 +418,42 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
         return rev
 
     def test_update_plus_rev(self):
-        self.assertEquals("1.3+bzr42", 
+        self.assertEquals("1.3+bzr42",
           upstream_version_add_revision(self, "1.3+bzr23", "somerev"))
 
     def test_update_tilde_rev(self):
-        self.assertEquals("1.3~bzr42", 
+        self.assertEquals("1.3~bzr42",
           upstream_version_add_revision(self, "1.3~bzr23", "somerev"))
 
     def test_new_rev(self):
-        self.assertEquals("1.3+bzr42", 
+        self.assertEquals("1.3+bzr42",
           upstream_version_add_revision(self, "1.3", "somerev"))
 
     def test_svn_new_rev(self):
-        self.assertEquals("1.3+svn45", 
+        self.assertEquals("1.3+svn45",
           upstream_version_add_revision(self, "1.3", "somesvnrev"))
 
     def test_svn_plus_rev(self):
-        self.assertEquals("1.3+svn45", 
+        self.assertEquals("1.3+svn45",
           upstream_version_add_revision(self, "1.3+svn3", "somesvnrev"))
 
     def test_svn_tilde_rev(self):
-        self.assertEquals("1.3~svn45", 
+        self.assertEquals("1.3~svn45",
             upstream_version_add_revision(self, "1.3~svn800", "somesvnrev"))
+
+
+class PristineTarSourceTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(PristineTarSourceTests, self).setUp()
+        self.tree = self.make_branch_and_tree('unstable')
+        root_id = self.tree.path2id("")
+        self.source = PristineTarSource(self.tree, self.tree.branch)
+
+    def test_upstream_tag_name(self):
+        upstream_v_no = "0.1"
+        self.assertEqual(self.source.tag_name(upstream_v_no),
+                "upstream-" + upstream_v_no)
 
 
 class _MissingUpstreamProvider(UpstreamProvider):

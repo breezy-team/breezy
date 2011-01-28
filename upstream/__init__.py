@@ -42,7 +42,6 @@ from bzrlib.plugins.builddeb.errors import (
     PristineTarError,
     WatchFileMissing,
     )
-from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 from bzrlib.plugins.builddeb.util import (
     export,
@@ -92,7 +91,20 @@ class PristineTarSource(UpstreamSource):
         self.branch = branch
         self.tree = tree
 
+    def tag_name(self, version, distro=None):
+        """Gets the tag name for the upstream part of version.
+
+        :param version: the Version object to extract the upstream
+            part of the version number from.
+        :return: a String with the name of the tag.
+        """
+        assert isinstance(version, str)
+        if distro is None:
+            return "upstream-" + version
+        return "upstream-%s-%s" % (distro, version)
+
     def fetch_tarball(self, package, version, target_dir):
+        from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
         db = DistributionBranch(self.branch, None, tree=self.tree)
         if not db.has_upstream_version_in_packaging_branch(version):
             raise PackageVersionNotPresent(package, version, self)

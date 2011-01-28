@@ -135,12 +135,6 @@ class DistributionBranchTests(BuilddebTestCase):
         version = Version(version_no)
         self.assertEqual(db.tag_name(version), version_no)
 
-    def test_upstream_tag_name(self):
-        db = self.db1
-        upstream_v_no = "0.1"
-        self.assertEqual(db.upstream_tag_name(upstream_v_no),
-                "upstream-" + upstream_v_no)
-
     def test_tag_version(self):
         db = self.db1
         tree = self.tree1
@@ -156,7 +150,7 @@ class DistributionBranchTests(BuilddebTestCase):
         version = "0.1"
         revid = tree.commit("one")
         db.tag_upstream_version(version)
-        tag_name = db.upstream_tag_name(version)
+        tag_name = db.pristine_tar_source.tag_name(version)
         self.assertEqual(tree.branch.tags.lookup_tag(tag_name), revid)
 
     def test_has_version(self):

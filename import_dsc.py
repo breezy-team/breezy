@@ -82,6 +82,12 @@ from bzrlib.plugins.builddeb.util import (
     safe_decode,
     subprocess_setup,
     )
+from bzrlib.plugins.builddeb.upstream import (
+    PristineTarSource,
+    )
+from bzrlib.plugins.builddeb.upstream.branch import (
+    UpstreamBranchSource,
+    )
 
 
 class DscCache(object):
@@ -271,9 +277,14 @@ class DistributionBranch(object):
             upstream_branch.
         """
         self.branch = branch
-        self.upstream_branch = upstream_branch
         self.tree = tree
+        self.pristine_tar_source = PristineTarSource(branch, tree)
+        self.upstream_branch = upstream_branch
         self.upstream_tree = upstream_tree
+        if upstream_branch is not None:
+            self.upstream_source = UpstreamBranchSource(self.upstream_branch)
+        else:
+            self.upstream_source = None
         self.get_lesser_branches = None
         self.get_greater_branches = None
 
@@ -322,19 +333,6 @@ class DistributionBranch(object):
         :return: a String with the name of the tag.
         """
         return str(version)
-
-    def upstream_tag_name(self, version, distro=None):
-        """Gets the tag name for the upstream part of version.
-
-        :param version: the Version object to extract the upstream
-            part of the version number from.
-        :return: a String with the name of the tag.
-        """
-        assert isinstance(version, str)
-        tag_name = self.tag_name(version)
-        if distro is None:
-            return "upstream-" + tag_name
-        return "upstream-%s-%s" % (distro, tag_name)
 
     def _has_version(self, branch, tag_name, md5=None):
         if branch.tags.has_tag(tag_name):
@@ -508,13 +506,13 @@ class DistributionBranch(object):
         for tag_name in self.possible_upstream_tag_names(version):
             if self._has_version(self.upstream_branch, tag_name):
                 return self.upstream_branch.tags.lookup_tag(tag_name)
-        tag_name = self.upstream_tag_name(version)
+        tag_name = self.pristine_tar_source.tag_name(version)
         return self.upstream_branch.tags.lookup_tag(tag_name)
 
     def possible_upstream_tag_names(self, version):
-        tags = [self.upstream_tag_name(version),
-                self.upstream_tag_name(version, distro="debian"),
-                self.upstream_tag_name(version, distro="ubuntu"),
+        tags = [self.pristine_tar_source.tag_name(version),
+                self.pristine_tar_source.tag_name(version, distro="debian"),
+                self.pristine_tar_source.tag_name(version, distro="ubuntu"),
                 "upstream/%s" % self.tag_name(version)]
         return tags
 
@@ -549,7 +547,7 @@ class DistributionBranch(object):
         :return The tag name, revid of the added tag.
         """
         assert isinstance(version, str)
-        tag_name = self.upstream_tag_name(version)
+        tag_name = self.pristine_tar_source.tag_name(version)
         if revid is None:
             revid = self.upstream_branch.last_revision()
         self.upstream_branch.tags.set_tag(tag_name, revid)
@@ -1446,20 +1444,13 @@ class DistributionBranch(object):
             shutil.rmtree(tempdir)
             raise
 
-    def _revid_of_upstream_version_from_branch(self, version):
-        """The private method below will go away eventually."""
-        return self.revid_of_upstream_version_from_branch(version)
-
     def revid_of_upstream_version_from_branch(self, version):
-        # TODO: remove the _revid_of_upstream_version_from_branch alias below.
         assert isinstance(version, str)
         for tag_name in self.possible_upstream_tag_names(version):
             if self._has_version(self.branch, tag_name):
                 return self.branch.tags.lookup_tag(tag_name)
-        tag_name = self.upstream_tag_name(version)
+        tag_name = self.pristine_tar_source.tag_name(version)
         return self.branch.tags.lookup_tag(tag_name)
-
-    _revid_of_upstream_version_from_branch = revid_of_upstream_version_from_branch
 
     def _export_previous_upstream_tree(self, previous_version, tempdir, upstream_branch=None):
         assert isinstance(previous_version, str), \
@@ -1479,7 +1470,7 @@ class DistributionBranch(object):
                     "previous upstream version, %s, in the branch: "
                     "%s" % (
                 previous_version,
-                self.upstream_tag_name(previous_version)))
+                self.pristine_tar_source.tag_name(previous_version)))
 
     def merge_upstream(self, tarball_filename, version, previous_version,
             upstream_branch=None, upstream_revision=None, merge_type=None,
