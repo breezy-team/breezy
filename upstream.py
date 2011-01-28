@@ -312,7 +312,7 @@ class UScanSource(UpstreamSource):
             return None
         dehs_tag = dehs_tags[0]
         for w in dehs_tag.getElementsByTagName("warnings"):
-            warning(w)
+            warning(w.firstChild.wholeText)
         upstream_version_tags = dehs_tag.getElementsByTagName("upstream-version")
         if len(upstream_version_tags) != 1:
             return None
