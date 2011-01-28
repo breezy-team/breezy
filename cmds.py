@@ -563,7 +563,7 @@ class cmd_merge_upstream(Command):
         tarball_filename = os.path.join(orig_dir, dest_name)
         upstream = UpstreamBranchSource(upstream_branch,
                 {version: upstream_revision})
-        upstream.get_specific_version(package, version, orig_dir)
+        upstream.fetch_tarball(package, version, orig_dir)
         return tarball_filename
 
     def _fetch_tarball(self, package, version, orig_dir, location, v3):

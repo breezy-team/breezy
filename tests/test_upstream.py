@@ -20,18 +20,24 @@
 # We have a bit of a problem with testing the actual uscan etc. integration,
 # so just mock them.
 
+"""Tests for the upstream module."""
+
+
+import os
+
 from bzrlib.tests import (
-        TestCase,
-        TestCaseWithTransport,
-        )
+    TestCase,
+    TestCaseWithTransport,
+    )
 from bzrlib.plugins.builddeb.errors import (
-        PackageVersionNotPresent,
-        )
+    PackageVersionNotPresent,
+    )
 from bzrlib.plugins.builddeb.upstream import (
-        AptSource,
-        StackedUpstreamSource,
-        UScanSource,
-        )
+    AptSource,
+    StackedUpstreamSource,
+    UpstreamBranchSource,
+    UScanSource,
+    )
 
 
 class MockSources(object):
@@ -103,7 +109,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.get_specific_version,
+        self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
             "apackage", "0.2", "target", _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -118,7 +124,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.get_specific_version,
+        self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
             "apackage", "0.2", "target", _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -133,7 +139,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        src.get_specific_version("apackage", "0.2", "target", 
+        src.fetch_tarball("apackage", "0.2", "target", 
             _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -152,7 +158,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        self.assertRaises(PackageVersionNotPresent, src.get_specific_version,
+        self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
             "apackage", "0.2", "target", 
             _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
@@ -173,7 +179,7 @@ class RecordingSource(object):
         self._succeed = succeed
         self._specific_versions = []
 
-    def get_specific_version(self, package, version, target_dir):
+    def fetch_tarball(self, package, version, target_dir):
         self._specific_versions.append((package, version, target_dir))
         if not self._succeed:
             raise PackageVersionNotPresent(package, version, self)
@@ -189,7 +195,7 @@ class StackedUpstreamSourceTests(TestCase):
         b = RecordingSource(True)
         c = RecordingSource(False)
         stack = StackedUpstreamSource([a, b, c])
-        stack.get_specific_version("mypkg", "1.0", "bla")
+        stack.fetch_tarball("mypkg", "1.0", "bla")
         self.assertEquals([("mypkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("mypkg", "1.0", "bla")], a._specific_versions)
         self.assertEquals([], c._specific_versions)
@@ -205,7 +211,7 @@ class StackedUpstreamSourceTests(TestCase):
         b = RecordingSource(False)
         stack = StackedUpstreamSource([a, b])
         self.assertRaises(PackageVersionNotPresent, 
-                stack.get_specific_version, "pkg", "1.0", "bla")
+                stack.fetch_tarball, "pkg", "1.0", "bla")
         self.assertEquals([("pkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("pkg", "1.0", "bla")], a._specific_versions)
 
@@ -233,3 +239,26 @@ class UScanSourceTests(TestCaseWithTransport):
         self.assertEquals(None, src._export_watchfile())
         self.tree.smart_add(['debian/watch'])
         self.assertTrue(src._export_watchfile() is not None)
+
+
+class UpstreamBranchSourceTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(UpstreamBranchSourceTests, self).setUp()
+        self.tree = self.make_branch_and_tree('.')
+
+    def test_fetch_tarball(self):
+        self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("1.0", self.tree.branch.last_revision())
+        source = UpstreamBranchSource(self.tree.branch,
+            {"1.0": self.tree.branch.last_revision()})
+        os.mkdir("mydir")
+        self.assertEquals("mydir/foo_1.0.orig.tar.gz",
+            source.fetch_tarball("foo", "1.0", "mydir"))
+        self.failUnlessExists("mydir/foo_1.0.orig.tar.gz")
+
+    def test_fetch_tarball_not_found(self):
+        source = UpstreamBranchSource(self.tree.branch)
+        self.tree.commit("msg")
+        self.assertRaises(PackageVersionNotPresent,
+            source.fetch_tarball, "foo", "1.0", "mydir")
