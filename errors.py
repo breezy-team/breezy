@@ -220,3 +220,8 @@ class InconsistentSourceFormatError(BzrError):
         else:
             format_bool = "not "
         BzrError.__init__(self, version_bool=version_bool, format_bool=format_bool)
+
+
+class WatchFileMissing(BzrError):
+
+    _fmt = "No watch file found."

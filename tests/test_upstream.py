@@ -31,6 +31,7 @@ from bzrlib.tests import (
     )
 from bzrlib.plugins.builddeb.errors import (
     PackageVersionNotPresent,
+    WatchFileMissing,
     )
 from bzrlib.plugins.builddeb.upstream import (
     AptSource,
@@ -175,9 +176,13 @@ class AptSourceTests(TestCase):
 
 class RecordingSource(object):
 
-    def __init__(self, succeed):
+    def __init__(self, succeed, latest=None):
         self._succeed = succeed
         self._specific_versions = []
+        self._latest = latest
+
+    def get_latest_version(self, package, current_version):
+        return self._latest
 
     def fetch_tarball(self, package, version, target_dir):
         self._specific_versions.append((package, version, target_dir))
@@ -190,7 +195,7 @@ class RecordingSource(object):
 
 class StackedUpstreamSourceTests(TestCase):
 
-    def test_first_wins(self):
+    def test_fetch_tarball_first_wins(self):
         a = RecordingSource(False)
         b = RecordingSource(True)
         c = RecordingSource(False)
@@ -199,6 +204,12 @@ class StackedUpstreamSourceTests(TestCase):
         self.assertEquals([("mypkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("mypkg", "1.0", "bla")], a._specific_versions)
         self.assertEquals([], c._specific_versions)
+
+    def test_get_latest_version_first_wins(self):
+        a = RecordingSource(False, latest="1.1")
+        b = RecordingSource(False, latest="1.2")
+        stack = StackedUpstreamSource([a, b])
+        self.assertEquals("1.1", stack.get_latest_version("mypkg", "1.0"))
 
     def test_repr(self):
         self.assertEquals("StackedUpstreamSource([])", 
@@ -224,24 +235,47 @@ class UScanSourceTests(TestCaseWithTransport):
 
     def test_export_watchfile_none(self):
         src = UScanSource(self.tree, False)
-        self.assertEquals(None, src._export_watchfile())
+        self.assertRaises(WatchFileMissing, src._export_watchfile)
 
     def test_export_watchfile_larstiq(self):
         src = UScanSource(self.tree, True)
         self.build_tree(['watch'])
-        self.assertEquals(None, src._export_watchfile())
+        self.assertRaises(WatchFileMissing, src._export_watchfile)
         self.tree.add(['watch'])
         self.assertTrue(src._export_watchfile() is not None)
 
     def test_export_watchfile(self):
         src = UScanSource(self.tree, False)
         self.build_tree(['debian/', 'debian/watch'])
-        self.assertEquals(None, src._export_watchfile())
+        self.assertRaises(WatchFileMissing, src._export_watchfile)
         self.tree.smart_add(['debian/watch'])
         self.assertTrue(src._export_watchfile() is not None)
 
+    def test__xml_report_extract_upstream_version(self):
+        self.assertEquals("1.2.9",
+            UScanSource._xml_report_extract_upstream_version("""
+<dehs>
+<package>tdb</package>
+<debian-uversion>1.2.8</debian-uversion>
+<debian-mangled-uversion>1.2.8</debian-mangled-uversion>
+<upstream-version>1.2.9</upstream-version>
+<upstream-url>ftp://ftp.samba.org/pub/tdb/tdb-1.2.9.tar.gz</upstream-url>
+<status>Newer version available</status>
+</dehs>"""))
+
+    def test__xml_report_extract_upstream_version_warnings(self):
+        self.assertIs(None,
+            UScanSource._xml_report_extract_upstream_version("""
+<dehs>
+<package>tdb</package>
+<warnings>uscan warning: Unable to determine current version
+in debian/watch, skipping:
+ftp://ftp.samba.org/pub/tdb/tdb-(.+).tar.gz</warnings>
+</dehs>
+"""))
 
 class UpstreamBranchSourceTests(TestCaseWithTransport):
+    """Tests for UpstreamBranchSource."""
 
     def setUp(self):
         super(UpstreamBranchSourceTests, self).setUp()
@@ -262,3 +296,13 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree.commit("msg")
         self.assertRaises(PackageVersionNotPresent,
             source.fetch_tarball, "foo", "1.0", "mydir")
+
+    def test_get_latest_version(self):
+        self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
+        source = UpstreamBranchSource(self.tree.branch,
+            {"2.1": self.tree.branch.last_revision()})
+        self.assertEquals("2.1", source.get_latest_version("foo", "1.0"))
+        self.tree.commit("msg")
+        self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
+

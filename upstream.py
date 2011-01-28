@@ -31,13 +31,17 @@ except ImportError:
     from debian_bundle.changelog import Version
 
 from bzrlib.revisionspec import RevisionSpec
-from bzrlib.trace import note
+from bzrlib.trace import (
+    note,
+    warning,
+    )
 
 from bzrlib.plugins.builddeb.errors import (
     MissingUpstreamTarball,
     PackageVersionNotPresent,
     PerFileTimestampsNotSupported,
     PristineTarError,
+    WatchFileMissing,
     )
 from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
@@ -51,14 +55,12 @@ from bzrlib.plugins.builddeb.util import (
 class UpstreamSource(object):
     """A source for upstream versions (uscan, get-orig-source, etc)."""
 
-    def get_latest_version(self, package, version, target_dir):
-        """Fetch the source tarball for the latest available version.
+    def get_latest_version(self, package, current_version):
+        """Check what the latest upstream version is.
 
         :param package: Name of the package
-        :param version: The current version of the package.
-        :param target_dir: Directory in which to store the tarball
-        :return: The version number of the new version, or None if no newer
-                version is available.
+        :param version: The current upstream version of the package.
+        :return: The version string of the latest available upstream version.
         """
         raise NotImplementedError(self.get_latest_version)
 
@@ -181,6 +183,17 @@ class UpstreamBranchSource(UpstreamSource):
                 revspec).as_revision_id(self.upstream_branch)
         return None
 
+    def get_latest_version(self, package, current_version):
+        return self.get_version(package, current_version,
+            self.upstream_branch.last_revision())
+
+    def get_version(self, package, current_version, revision):
+        from bzrlib.plugins.builddeb.merge_upstream import (
+            upstream_branch_version)
+        version = str(upstream_branch_version(self.upstream_branch,
+            revision, package, current_version))
+        return version
+
     def fetch_tarball(self, package, version, target_dir):
         self.upstream_branch.lock_read()
         try:
@@ -263,18 +276,6 @@ class UScanSource(UpstreamSource):
         self.tree = tree
         self.larstiq = larstiq
 
-    def _uscan(self, package, upstream_version, watch_file, target_dir):
-        note("Using uscan to look for the upstream tarball.")
-        r = os.system("uscan --upstream-version %s --force-download --rename "
-                      "--package %s --watchfile %s --check-dirname-level 0 " 
-                      "--download --repack --destdir %s --download-version %s" %
-                      (upstream_version, package, watch_file, target_dir,
-                       upstream_version))
-        if r != 0:
-            note("uscan could not find the needed tarball.")
-            return False
-        return True
-
     def _export_watchfile(self):
         if self.larstiq:
             watchfile = 'watch'
@@ -282,8 +283,7 @@ class UScanSource(UpstreamSource):
             watchfile = 'debian/watch'
         watch_id = self.tree.path2id(watchfile)
         if watch_id is None:
-            note("No watch file to use to retrieve upstream tarball.")
-            return None
+            raise WatchFileMissing()
         (tmp, tempfilename) = tempfile.mkstemp()
         try:
             tmp = os.fdopen(tmp, 'wb')
@@ -293,16 +293,57 @@ class UScanSource(UpstreamSource):
             tmp.close()
         return tempfilename
 
-    def fetch_tarball(self, package, version, target_dir):
-        tempfilename = self._export_watchfile()
-        if tempfilename is None:
-            raise PackageVersionNotPresent(package, version, self)
+    @staticmethod
+    def _xml_report_extract_upstream_version(text):
+        from xml.dom.minidom import parseString
+        dom = parseString(text)
+        dehs_tags = dom.getElementsByTagName("dehs")
+        if len(dehs_tags) != 1:
+            return None
+        dehs_tag = dehs_tags[0]
+        for w in dehs_tag.getElementsByTagName("warnings"):
+            warning(w)
+        upstream_version_tags = dehs_tag.getElementsByTagName("upstream-version")
+        if len(upstream_version_tags) != 1:
+            return None
+        upstream_version_tag = upstream_version_tags[0]
+        return upstream_version_tag.firstChild.wholeText.encode("utf-8")
+
+    def get_latest_version(self, package, current_version):
         try:
-            if not self._uscan(package, version, tempfilename,
-                    target_dir):
-                raise PackageVersionNotPresent(package, version, self)
+            tempfilename = self._export_watchfile()
+        except WatchFileMissing:
+            note("No watch file to use to check latest upstream release.")
+            return None
+        try:
+            p = subprocess.Popen(["uscan", "--package=%s" % package, "--report",
+                "--no-download", "--dehs", "--watchfile=%s" % tempfilename,
+                "--upstream-version=%s" % current_version],
+                stdout=subprocess.PIPE)
+            (stdout, stderr) = p.communicate()
         finally:
             os.unlink(tempfilename)
+        return self._xml_report_extract_upstream_version(stdout)
+
+    def fetch_tarball(self, package, version, target_dir):
+        note("Using uscan to look for the upstream tarball.")
+        try:
+            tempfilename = self._export_watchfile()
+        except WatchFileMissing:
+            note("No watch file to use to retrieve upstream tarball.")
+            raise PackageVersionNotPresent(package, version, self)
+        try:
+            r = subprocess.call(["uscan", "--watchfile=%s" % tempfilename, 
+                "--upstream-version=%s" % version,
+                "--force-download", "--rename", "--package=%s" % package,
+                "--check-dirname-level=0",
+                "--download", "--repack", "--destdir=%s" % target_dir,
+                "--download-version=%s" % version])
+        finally:
+            os.unlink(tempfilename)
+        if r != 0:
+            note("uscan could not find the needed tarball.")
+            raise PackageVersionNotPresent(package, version, self)
         return self._tarball_path(package, version, target_dir)
 
 
@@ -354,10 +395,10 @@ class StackedUpstreamSource(UpstreamSource):
                 pass
         raise PackageVersionNotPresent(package, version, self)
 
-    def get_latest_version(self, package, version, target_dir):
+    def get_latest_version(self, package, version):
         for source in self._sources:
             try:
-                new_version = source.get_latest_version(package, version, target_dir)
+                new_version = source.get_latest_version(package, version)
                 if new_version is not None:
                     return new_version
             except NotImplementedError:
