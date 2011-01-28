@@ -308,8 +308,8 @@ class cmd_builddeb(Command):
                 try:
                     if export_upstream_revision is None:
                         export_upstream_revision = \
-                                    get_export_upstream_revision(config,
-                                            version=version)
+                            get_export_upstream_revision(config,
+                                version=str(version.upstream_version))
                     if export_upstream_revision is None:
                         upstream_revision = \
                                 upstream_branch.last_revision()
