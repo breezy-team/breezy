@@ -231,7 +231,7 @@ class LaunchpadBranch(object):
         """Return the 'LaunchpadBranch' for the target of this one."""
         lp_branch = self.lp
         if lp_branch.project is not None:
-            dev_focus = lp_branch.project.development_focus.branch
+            dev_focus = lp_branch.project.development_focus
             if dev_focus is None:
                 raise errors.BzrError('%s has no development focus.' %
                                   lp_branch.bzr_identity)
