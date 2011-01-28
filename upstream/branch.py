@@ -45,16 +45,16 @@ def upstream_tag_to_version(tag_name, package=None):
     return None
 
 
-def _upstream_branch_version(revhistory, reverse_tag_dict, package, 
+def _upstream_branch_version(revhistory, reverse_tag_dict, package,
                             previous_version, add_rev):
     """Determine the version string of an upstream branch.
 
     The upstream version is determined from the most recent tag
-    in the upstream branch. If that tag does not point at the last revision, 
+    in the upstream branch. If that tag does not point at the last revision,
     the revision number is added to it (<version>+bzr<revno>).
 
-    If there are no tags set on the upstream branch, the previous Debian 
-    version is used and combined with the bzr revision number 
+    If there are no tags set on the upstream branch, the previous Debian
+    version is used and combined with the bzr revision number
     (usually <version>+bzr<revno>).
 
     :param revhistory: Branch revision history.
@@ -195,9 +195,8 @@ class UpstreamBranchSource(UpstreamSource):
             self.upstream_branch.last_revision())
 
     def get_version(self, package, current_version, revision):
-        version = str(upstream_branch_version(self.upstream_branch,
-            revision, package, current_version))
-        return version
+        return upstream_branch_version(self.upstream_branch,
+            revision, package, current_version)
 
     def fetch_tarball(self, package, version, target_dir):
         self.upstream_branch.lock_read()
