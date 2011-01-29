@@ -159,6 +159,10 @@ class TestPackageVersion(TestCase):
     self.assertEquals(Version("1.2-1-0ubuntu1"),
         package_version("1.2-1", "ubuntu"))
 
+  def test_ubuntu_with_epoch(self):
+    self.assertEquals(Version("3:1.2-1-0ubuntu1"),
+        package_version("1.2-1", "ubuntu", "3"))
+
 
 class UpstreamMergeChangelogLineTests(TestCase):
 
