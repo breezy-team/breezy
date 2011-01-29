@@ -69,10 +69,16 @@ def check_launchpadlib_compatibility():
             installed_version, installed_version)
 
 
+# Service root URIs for which we do not have constants are derived from the one
+# constant which does always exist - this is because launchpadlib <= 1.5.4
+# requires service root URIs that end in a path of /beta/, whilst launchpadlib
+# >= 1.5.5 requires service root URIs with no path info.
 LAUNCHPAD_API_URLS = {
-    'production': 'https://api.launchpad.net/beta/',
+    'production': STAGING_SERVICE_ROOT.replace('api.staging.launchpad.net',
+        'api.launchpad.net'),
     'staging': STAGING_SERVICE_ROOT,
-    'dev': 'https://api.launchpad.dev/beta/',
+    'dev': STAGING_SERVICE_ROOT.replace('api.staging.launchpad.net',
+        'api.launchpad.dev'),
     }
 
 
