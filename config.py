@@ -272,7 +272,7 @@ class DebBuildConfig(object):
     elif self.split:
       return BUILD_TYPE_SPLIT
     else:
-      return BUILD_TYPE_NORMAL
+      return None
 
   quick_builder = _opt_property('quick-builder',
                           "A quick command to build with", True)

@@ -37,7 +37,7 @@ from bzrlib.plugins.builddeb.source_distiller import (
         NativeSourceDistiller,
         )
 from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
-from bzrlib.plugins.builddeb.upstream import (
+from bzrlib.plugins.builddeb.tests.test_upstream import (
         _MissingUpstreamProvider,
         _SimpleUpstreamProvider,
         _TouchUpstreamProvider,

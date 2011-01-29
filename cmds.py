@@ -638,12 +638,6 @@ class cmd_merge_upstream(Command):
                         "working tree. You must commit before using this "
                         "command.")
             config = debuild_config(tree, tree)
-            if config.build_type == BUILD_TYPE_MERGE:
-                raise BzrCommandError("Merge upstream in merge mode is not "
-                        "yet supported.")
-            if config.build_type == BUILD_TYPE_NATIVE:
-                raise BzrCommandError("Merge upstream in native mode is not "
-                        "yet supported.")
 
             if upstream_branch is None:
                 upstream_branch = config.upstream_branch
@@ -664,6 +658,15 @@ class cmd_merge_upstream(Command):
             (current_version, package, distribution, distribution_name,
              changelog, larstiq) = self._get_changelog_info(tree, last_version,
                  package, distribution)
+            contains_upstream_source = tree_contains_upstream_source(tree)
+            build_type = config.build_type
+            if build_type is None:
+                build_type = guess_build_type(tree, changelog.version,
+                    contains_upstream_source)
+            need_upstream_tarball = (build_type != BUILD_TYPE_MERGE)
+            if build_type == BUILD_TYPE_NATIVE:
+                raise BzrCommandError("Merge upstream in native mode is not "
+                        "supported.")
 
             if location is not None:
                 try:
@@ -703,7 +706,9 @@ class cmd_merge_upstream(Command):
                     version = primary_upstream_source.get_latest_version(
                         package, current_version)
                     target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
-                    location = primary_upstream_source.fetch_tarball(package, version, target_dir)
+                    if need_upstream_tarball:
+                        location = primary_upstream_source.fetch_tarball(
+                            package, version, target_dir)
                     note("Using version string %s." % (version))
                 # Look up the revision id from the version string
                 if upstream_branch_source is not None:
@@ -711,21 +716,26 @@ class cmd_merge_upstream(Command):
                         package, version)
             if version is None:
                 raise BzrCommandError("You must specify the version number using --version.")
-            tarball_filename = self._get_tarball(config, tree, package,
-                version, upstream_branch, upstream_revision, v3,
-                location)
-            conflicts = self._do_merge(tree, tarball_filename, version,
-                current_version, upstream_branch, upstream_revision,
-                merge_type, force)
+            if need_upstream_tarball:
+                tarball_filename = self._get_tarball(config, tree, package,
+                    version, upstream_branch, upstream_revision, v3,
+                    location)
+                conflicts = self._do_merge(tree, tarball_filename, version,
+                    current_version, upstream_branch, upstream_revision,
+                    merge_type, force)
             self._add_changelog_entry(tree, package, version,
                 distribution_name, changelog)
         finally:
             tree.unlock()
-        note("The new upstream version has been imported.")
-        if conflicts:
-            note("You should now resolve the conflicts, review the changes, and then commit.")
+        if not need_upstream_tarball:
+            note("An entry for the new upstream version has been added "
+                 "to the changelog.")
         else:
-            note("You should now review the changes and then commit.")
+            note("The new upstream version has been imported.")
+            if conflicts:
+                note("You should now resolve the conflicts, review the changes, and then commit.")
+            else:
+                note("You should now review the changes and then commit.")
 
 
 class cmd_import_dsc(Command):

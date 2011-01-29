@@ -32,6 +32,8 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
   * If possible use uscan to find the latest upstream version string.
     LP: #295274
   * Add --snapshot option to merge-upstream.
+  * 'bzr merge-upstream' now also works in merge mode, and will simply
+    add a new entry for new upstream versions.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Fri, 28 Jan 2011 15:13:22 +0100
 
