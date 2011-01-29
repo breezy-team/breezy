@@ -69,6 +69,7 @@ from bzrlib.plugins.builddeb.config import (
     )
 from bzrlib.plugins.builddeb.errors import (
     BuildFailedError,
+    MissingChangelogError,
     NoPreviousUpload,
     )
 from bzrlib.plugins.builddeb.hooks import run_hook
@@ -587,7 +588,6 @@ class cmd_merge_upstream(Command):
         return tarball_filename
 
     def _get_changelog_info(self, tree, last_version, package, distribution):
-        from bzrlib.plugins.builddeb.errors import MissingChangelogError
         changelog = None
         current_version = last_version
         try:
@@ -789,7 +789,6 @@ class cmd_import_dsc(Command):
             db.import_package(os.path.join(orig_target, filename))
 
     def run(self, files_list, file=None):
-        from bzrlib.plugins.builddeb.errors import MissingChangelogError
         try:
             tree = WorkingTree.open_containing('.')[0]
         except NotBranchError:
