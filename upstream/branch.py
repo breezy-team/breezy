@@ -18,6 +18,8 @@
 #    along with bzr-builddeb; if not, write to the Free Software
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
+import re
+
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note
@@ -26,7 +28,6 @@ from bzrlib.plugins.builddeb.errors import PackageVersionNotPresent
 from bzrlib.plugins.builddeb.upstream import UpstreamSource
 from bzrlib.plugins.builddeb.util import (
     export,
-    get_snapshot_revision,
     )
 
 
@@ -134,6 +135,31 @@ def upstream_version_add_revision(upstream_branch, version_string, revid):
         return "%s+bzr%d" % (version_string, revno)
 
 
+def get_snapshot_revision(upstream_version):
+    """Return the upstream revision specifier if specified in the upstream
+    version.
+
+    When packaging an upstream snapshot some people use +vcsnn or ~vcsnn to
+    indicate what revision number of the upstream VCS was taken for the
+    snapshot. This given an upstream version number this function will return
+    an identifier of the upstream revision if it appears to be a snapshot. The
+    identifier is a string containing a bzr revision spec, so it can be
+    transformed in to a revision.
+
+    :param upstream_version: a string containing the upstream version number.
+    :return: a string containing a revision specifier for the revision of the
+        upstream branch that the snapshot was taken from, or None if it
+        doesn't appear to be a snapshot.
+    """
+    match = re.search("(?:~|\\+)bzr([0-9]+)$", upstream_version)
+    if match is not None:
+        return match.groups()[0]
+    match = re.search("(?:~|\\+)svn([0-9]+)$", upstream_version)
+    if match is not None:
+        return "svn:%s" % match.groups()[0]
+    return None
+
+
 def upstream_branch_version(upstream_branch, upstream_revision, package,
         previous_version):
     """Determine the version string for a revision in an upstream branch.
@@ -163,6 +189,25 @@ def upstream_branch_version(upstream_branch, upstream_revision, package,
             upstream_branch.tags.get_reverse_tag_dict(), package,
             previous_version,
             lambda version, revision: upstream_version_add_revision(upstream_branch, version, revision))
+
+
+def get_export_upstream_revision(config, version=None):
+    """Find the revision to use when exporting the upstream source.
+
+    :param config: Config object
+    :param version: Optional upstream version to find revision for, if not the
+        latest.
+    :return: Revision id
+    """
+    rev = None
+    if version is not None:
+        assert type(version) is str
+        rev = get_snapshot_revision(version)
+    if rev is None:
+        rev = config._get_best_opt('export-upstream-revision')
+        if rev is not None and version is not None:
+            rev = rev.replace('$UPSTREAM_VERSION', version)
+    return rev
 
 
 class UpstreamBranchSource(UpstreamSource):
@@ -217,3 +262,6 @@ class UpstreamBranchSource(UpstreamSource):
     def __repr__(self):
         return "<%s for %r>" % (self.__class__.__name__,
             self.upstream_branch.base)
+
+
+

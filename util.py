@@ -22,8 +22,10 @@ try:
     import hashlib as md5
 except ImportError:
     import md5
+import errno
 import signal
 import shutil
+import subprocess
 import tempfile
 import os
 import re
@@ -39,11 +41,12 @@ except ImportError:
     from debian_bundle.changelog import Changelog, ChangelogParseError
 
 from bzrlib import (
-        bugtracker,
-        errors,
-        urlutils,
-        version_info as bzr_version_info,
-        )
+    bugtracker,
+    errors,
+    osutils,
+    urlutils,
+    version_info as bzr_version_info,
+    )
 from bzrlib.export import export as bzr_export
 from bzrlib.trace import warning
 from bzrlib.transport import (
@@ -62,14 +65,15 @@ from bzrlib.plugins.builddeb.config import (
     BUILD_TYPE_NORMAL,
     )
 from bzrlib.plugins.builddeb.errors import (
-                MissingChangelogError,
-                AddChangelogError,
-                InconsistentSourceFormatError,
-                NoPreviousUpload,
-                UnableToFindPreviousUpload,
-                UnknownDistribution,
-                UnparseableChangelog,
-                )
+    MissingChangelogError,
+    AddChangelogError,
+    InconsistentSourceFormatError,
+    NoPreviousUpload,
+    PristineTarError,
+    UnableToFindPreviousUpload,
+    UnknownDistribution,
+    UnparseableChangelog,
+    )
 
 
 DEBIAN_RELEASES = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'stable',
@@ -219,49 +223,6 @@ def tarball_name(package, version, format=None):
         format = 'gz'
     return "%s_%s.orig.tar.%s" % (package, str(version), format)
 
-
-def get_snapshot_revision(upstream_version):
-    """Return the upstream revision specifier if specified in the upstream
-    version.
-
-    When packaging an upstream snapshot some people use +vcsnn or ~vcsnn to
-    indicate what revision number of the upstream VCS was taken for the
-    snapshot. This given an upstream version number this function will return
-    an identifier of the upstream revision if it appears to be a snapshot. The
-    identifier is a string containing a bzr revision spec, so it can be
-    transformed in to a revision.
-
-    :param upstream_version: a string containing the upstream version number.
-    :return: a string containing a revision specifier for the revision of the
-        upstream branch that the snapshot was taken from, or None if it
-        doesn't appear to be a snapshot.
-    """
-    match = re.search("(?:~|\\+)bzr([0-9]+)$", upstream_version)
-    if match is not None:
-        return match.groups()[0]
-    match = re.search("(?:~|\\+)svn([0-9]+)$", upstream_version)
-    if match is not None:
-        return "svn:%s" % match.groups()[0]
-    return None
-
-
-def get_export_upstream_revision(config, version=None):
-    """Find the revision to use when exporting the upstream source.
-
-    :param config: Config object
-    :param version: Optional upstream version to find revision for, if not the
-        latest.
-    :return: Revision id
-    """
-    rev = None
-    if version is not None:
-        assert type(version) is str
-        rev = get_snapshot_revision(version)
-    if rev is None:
-        rev = config._get_best_opt('export-upstream-revision')
-        if rev is not None and version is not None:
-            rev = rev.replace('$UPSTREAM_VERSION', version)
-    return rev
 
 
 def suite_to_distribution(suite):
@@ -716,3 +677,53 @@ def guess_build_type(tree, version, contains_upstream_source):
         return BUILD_TYPE_MERGE
     else:
         return BUILD_TYPE_NORMAL
+
+
+def reconstruct_pristine_tar(dest, delta, dest_filename):
+    """Reconstruct a pristine tarball from a directory and a delta.
+
+    :param dest: Directory to pack
+    :param delta: pristine-tar delta
+    :param dest_filename: Destination filename
+    """
+    command = ["pristine-tar", "gentar", "-",
+               os.path.abspath(dest_filename)]
+    try:
+        proc = subprocess.Popen(command, stdin=subprocess.PIPE,
+                cwd=dest, preexec_fn=subprocess_setup,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    except OSError, e:
+        if e.errno == errno.ENOENT:
+            raise PristineTarError("pristine-tar is not installed")
+        else:
+            raise
+    (stdout, stderr) = proc.communicate(delta)
+    if proc.returncode != 0:
+        raise PristineTarError("Generating tar from delta failed: %s" % stdout)
+
+
+def make_pristine_tar_delta(dest, tarball_path):
+    """Create a pristine-tar delta for a tarball.
+
+    :param dest: Directory to generate pristine tar delta for
+    :param tarball_path: Path to the tarball
+    :return: pristine-tarball
+    """
+    # If tarball_path is relative, the cwd=dest parameter to Popen will make
+    # pristine-tar faaaail. pristine-tar doesn't use the VFS either, so we
+    # assume local paths.
+    tarball_path = osutils.abspath(tarball_path)
+    command = ["pristine-tar", "gendelta", tarball_path, "-"]
+    try:
+        proc = subprocess.Popen(command, stdout=subprocess.PIPE,
+                cwd=dest, preexec_fn=subprocess_setup,
+                stderr=subprocess.PIPE)
+    except OSError, e:
+        if e.errno == errno.ENOENT:
+            raise PristineTarError("pristine-tar is not installed")
+        else:
+            raise
+    (stdout, stderr) = proc.communicate()
+    if proc.returncode != 0:
+        raise PristineTarError("Generating delta from tar failed: %s" % stderr)
+    return stdout

@@ -106,7 +106,6 @@ from bzrlib.plugins.builddeb.util import (
         find_changelog,
         find_last_distribution,
         find_previous_upload,
-        get_export_upstream_revision,
         guess_build_type,
         lookup_distribution,
         open_file,
@@ -300,6 +299,9 @@ class cmd_builddeb(Command):
 
     def _get_upstream_branch(self, merge, export_upstream,
             export_upstream_revision, config, version):
+        from bzrlib.plugins.builddeb.upstream.branch import (
+            get_export_upstream_revision,
+            )
         upstream_branch = None
         upstream_revision = None
         if merge:
@@ -551,12 +553,13 @@ class cmd_merge_upstream(Command):
                     'merge had completed failed. Add the new changelog '
                     'entry yourself, review the merge, and then commit.')
 
-    def _do_merge(self, tree, tarball_filename, version, current_version,
-            upstream_branch, upstream_revision, merge_type, force):
+    def _do_merge(self, tree, tarball_filename, package, version,
+            current_version, upstream_branch, upstream_revision, merge_type,
+            force):
         db = DistributionBranch(tree.branch, None, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
-        conflicts = db.merge_upstream(tarball_filename, version,
+        conflicts = db.merge_upstream(tarball_filename, package, version,
                 current_version, upstream_branch=upstream_branch,
                 upstream_revision=upstream_revision,
                 merge_type=merge_type, force=force)
@@ -723,8 +726,8 @@ class cmd_merge_upstream(Command):
                 tarball_filename = self._get_tarball(config, tree, package,
                     version, upstream_branch, upstream_revision, v3,
                     location)
-                conflicts = self._do_merge(tree, tarball_filename, version,
-                    current_version, upstream_branch, upstream_revision,
+                conflicts = self._do_merge(tree, tarball_filename, package,
+                    version, current_version, upstream_branch, upstream_revision,
                     merge_type, force)
             self._add_changelog_entry(tree, package, version,
                 distribution_name, changelog)
@@ -911,7 +914,7 @@ class cmd_import_upstream(Command):
             dir=branch.bzrdir.root_transport.clone('..').local_abspath('.'))
         self.add_cleanup(shutil.rmtree, tempdir)
         db = DistributionBranch(branch, upstream_branch=upstream)
-        if db.has_upstream_version_in_packaging_branch(version):
+        if db.pristine_tar_source.has_version(None, version):
             raise BzrCommandError("Version %s is already present." % version)
         tagged_versions = {}
         for tag_name, tag_revid in branch.tags.get_tag_dict().iteritems():

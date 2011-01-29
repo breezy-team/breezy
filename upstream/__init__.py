@@ -24,12 +24,20 @@ import subprocess
 import tarfile
 import tempfile
 
+from base64 import (
+    standard_b64decode,
+    )
+
+
 try:
     from debian.changelog import Version
 except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
+from bzrlib.errors import (
+    NoSuchRevision,
+    )
 from bzrlib.trace import (
     note,
     warning,
@@ -45,6 +53,8 @@ from bzrlib.plugins.builddeb.errors import (
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 from bzrlib.plugins.builddeb.util import (
     export,
+    make_pristine_tar_delta,
+    reconstruct_pristine_tar,
     tarball_name,
     )
 
@@ -68,6 +78,15 @@ class UpstreamSource(object):
         :package version: Version string
         """
         raise NotImplementedError(self.version_as_revision)
+
+    def has_version(self, package, version, md5=None):
+        """Check whether this upstream source contains a particular package.
+
+        :param package: Package name
+        :param version: Version string
+        :param md5: Optional required MD5sum of the resulting tarball
+        """
+        raise NotImplementedError(self.has_version)
 
     def fetch_tarball(self, package, version, target_dir):
         """Fetch the source tarball for a particular version.
@@ -106,10 +125,11 @@ class PristineTarSource(UpstreamSource):
     def fetch_tarball(self, package, version, target_dir):
         from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
         db = DistributionBranch(self.branch, None, tree=self.tree)
-        if not db.has_upstream_version_in_packaging_branch(version):
+        revid = self.version_as_revision(package, version)
+        try:
+            rev = self.branch.repository.get_revision(revid)
+        except NoSuchRevision:
             raise PackageVersionNotPresent(package, version, self)
-        revid = db.revid_of_upstream_version_from_branch(version)
-        rev = self.branch.repository.get_revision(revid)
         note("Using pristine-tar to reconstruct the needed tarball.")
         if db.has_pristine_tar_delta(rev):
             format = db.pristine_tar_format(rev)
@@ -118,12 +138,97 @@ class PristineTarSource(UpstreamSource):
         target_filename = self._tarball_path(package, version,
                                              target_dir, format=format)
         try:
-            db.reconstruct_pristine_tar(revid, package, version, target_filename)
+            self.reconstruct_pristine_tar(revid, package, version, target_filename)
         except PristineTarError:
             raise PackageVersionNotPresent(package, version, self)
         except PerFileTimestampsNotSupported:
             raise PackageVersionNotPresent(package, version, self)
         return target_filename
+
+    def _has_version(self, tag_name, md5=None):
+        if not self.branch.tags.has_tag(tag_name):
+            return False
+        revid = self.branch.tags.lookup_tag(tag_name)
+        self.branch.lock_read()
+        try:
+            graph = self.branch.repository.get_graph()
+            if not graph.is_ancestor(revid, self.branch.last_revision()):
+                return False
+        finally:
+            self.branch.unlock()
+        if md5 is None:
+            return True
+        rev = self.branch.repository.get_revision(revid)
+        try:
+            return rev.properties['deb-md5'] == md5
+        except KeyError:
+            warning("tag %s present in branch, but there is no "
+                "associated 'deb-md5' property" % tag_name)
+
+    def version_as_revision(self, package, version):
+        assert isinstance(version, str)
+        for tag_name in self.possible_tag_names(version):
+            if self._has_version(tag_name):
+                return self.branch.tags.lookup_tag(tag_name)
+        tag_name = self.tag_name(version)
+        return self.branch.tags.lookup_tag(tag_name)
+
+    def has_version(self, package, version, md5=None):
+        assert isinstance(version, str), str(type(version))
+        for tag_name in self.possible_tag_names(version):
+            if self._has_version(tag_name, md5=md5):
+                return True
+        return False
+
+    def possible_tag_names(self, version):
+        assert isinstance(version, str)
+        tags = [self.tag_name(version),
+                self.tag_name(version, distro="debian"),
+                self.tag_name(version, distro="ubuntu"),
+                "upstream/%s" % version]
+        return tags
+
+    def has_pristine_tar_delta(self, rev):
+        return ('deb-pristine-delta' in rev.properties
+                or 'deb-pristine-delta-bz2' in rev.properties)
+
+    def pristine_tar_format(self, rev):
+        if 'deb-pristine-delta' in rev.properties:
+            return 'gz'
+        elif 'deb-pristine-delta-bz2' in rev.properties:
+            return 'bz2'
+        assert self.has_pristine_tar_delta(rev)
+        raise AssertionError("Not handled new delta type in "
+                "pristine_tar_format")
+
+    def pristine_tar_delta(self, rev):
+        if 'deb-pristine-delta' in rev.properties:
+            uuencoded = rev.properties['deb-pristine-delta']
+        elif 'deb-pristine-delta-bz2' in rev.properties:
+            uuencoded = rev.properties['deb-pristine-delta-bz2']
+        else:
+            assert self.has_pristine_tar_delta(rev)
+            raise AssertionError("Not handled new delta type in "
+                    "pristine_tar_delta")
+        delta = standard_b64decode(uuencoded)
+        return delta
+
+    def reconstruct_pristine_tar(self, revid, package, version,
+            dest_filename):
+        """Reconstruct a pristine-tar tarball from a bzr revision."""
+        tree = self.branch.repository.revision_tree(revid)
+        tmpdir = tempfile.mkdtemp(prefix="builddeb-pristine-")
+        try:
+            dest = os.path.join(tmpdir, "orig")
+            rev = self.branch.repository.get_revision(revid)
+            if self.has_pristine_tar_delta(rev):
+                export(tree, dest, format='dir')
+                delta = self.pristine_tar_delta(rev)
+                reconstruct_pristine_tar(dest, delta, dest_filename)
+            else:
+                export(tree, dest_filename, require_per_file_timestamps=True)
+        finally:
+            shutil.rmtree(tmpdir)
 
 
 class AptSource(UpstreamSource):

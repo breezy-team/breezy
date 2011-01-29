@@ -53,9 +53,7 @@ from bzrlib.plugins.builddeb.util import (
                   find_last_distribution,
                   _find_previous_upload,
                   find_thanks,
-                  get_export_upstream_revision,
                   get_commit_info_from_changelog,
-                  get_snapshot_revision,
                   get_source_format,
                   guess_build_type,
                   lookup_distribution,
@@ -263,27 +261,6 @@ class TarballNameTests(TestCase):
                     format='bz2'), "package_0.1.orig.tar.bz2")
         self.assertEqual(tarball_name("package", Version("0.1"),
                     format='lzma'), "package_0.1.orig.tar.lzma")
-
-
-class GetRevisionSnapshotTests(TestCase):
-
-    def test_with_snapshot(self):
-        self.assertEquals("30", get_snapshot_revision("0.4.4~bzr30"))
-
-    def test_with_snapshot_plus(self):
-        self.assertEquals("30", get_snapshot_revision("0.4.4+bzr30"))
-
-    def test_without_snapshot(self):
-        self.assertEquals(None, get_snapshot_revision("0.4.4"))
-
-    def test_non_numeric_snapshot(self):
-        self.assertEquals(None, get_snapshot_revision("0.4.4~bzra"))
-
-    def test_with_svn_snapshot(self):
-        self.assertEquals("svn:4242", get_snapshot_revision("0.4.4~svn4242"))
-
-    def test_with_svn_snapshot_plus(self):
-        self.assertEquals("svn:2424", get_snapshot_revision("0.4.4+svn2424"))
 
 
 class SuiteToDistributionTests(TestCase):
@@ -714,32 +691,6 @@ class FindLastDistributionTests(TestCase):
     def test_only_unreleased(self):
         changelog = self.create_changelog("UNRELEASED")
         self.assertEquals(None, find_last_distribution(changelog))
-
-
-class GetExportUpstreamRevisionTests(TestCase):
-
-    def test_snapshot_rev(self):
-        config = DebBuildConfig([])
-        self.assertEquals("34", 
-            get_export_upstream_revision(config, "0.1+bzr34"))
-
-    def test_export_upstream_rev(self):
-        config = DebBuildConfig([
-            ({"BUILDDEB": {"export-upstream-revision": "tag:foobar"}}, True)])
-        self.assertEquals("tag:foobar", 
-            get_export_upstream_revision(config, "0.1"))
-
-    def test_export_upstream_rev_var(self):
-        config = DebBuildConfig([({"BUILDDEB": 
-            {"export-upstream-revision": "tag:foobar-$UPSTREAM_VERSION"}},
-            True)])
-        self.assertEquals("tag:foobar-0.1", 
-            get_export_upstream_revision(config, "0.1"))
-
-    def test_export_upstream_rev_not_set(self):
-        config = DebBuildConfig([])
-        self.assertEquals(None, 
-            get_export_upstream_revision(config, "0.1"))
 
 
 class FindPreviousUploadTests(TestCase):

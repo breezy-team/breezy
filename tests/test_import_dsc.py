@@ -1493,7 +1493,7 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream(tarball_filename, "0.2", "0.1")
+        conflicts = db.merge_upstream(tarball_filename, "foo", "0.2", "0.1")
         self.assertEqual(0,  conflicts)
 
     def test_merge_upstream_initial_with_branch(self):
@@ -1530,9 +1530,9 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream(tarball_filename, "0.2", "0.1",
-                upstream_branch=upstream_tree.branch,
-                upstream_revision=upstream_rev)
+        conflicts = db.merge_upstream(tarball_filename, "foo", "0.2", "0.1",
+            upstream_branch=upstream_tree.branch,
+            upstream_revision=upstream_rev)
         self.assertEqual(0,  conflicts)
 
     def test_merge_upstream_initial_with_removed_debian(self):
@@ -1570,9 +1570,9 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream(tarball_filename, "0.2", "0.1",
-                upstream_branch=upstream_tree.branch,
-                upstream_revision=upstream_rev)
+        conflicts = db.merge_upstream(tarball_filename, "foo", "0.2", "0.1",
+            upstream_branch=upstream_tree.branch,
+            upstream_revision=upstream_rev)
         # ./debian conflicts.
         self.assertEqual(3,  conflicts)
 
@@ -1611,7 +1611,7 @@ class DistributionBranchTests(BuilddebTestCase):
         dbs.add_branch(db)
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        db.merge_upstream(builder.tar_name(), str(version2),
+        db.merge_upstream(builder.tar_name(), "package", str(version2),
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
             upstream_revision=upstream_rev)
@@ -1650,7 +1650,8 @@ class DistributionBranchTests(BuilddebTestCase):
             tf.add("a")
         finally:
             tf.close()
-        conflicts = db.merge_upstream(tarball_filename, "0.2-1", "0.1")
+        conflicts = db.merge_upstream(tarball_filename, "package", "0.2-1",
+            "0.1")
         # Check that we tagged wiht the dash version
         self.assertTrue(tree.branch.tags.has_tag('upstream-0.2-1'))
 
@@ -1688,7 +1689,8 @@ class DistributionBranchTests(BuilddebTestCase):
         # We don't add the new file upstream, as the new file id would
         # be picked up from there.
         upstream_rev2 = upstream_tree.commit("two")
-        db.merge_upstream(builder.tar_name(), version2.upstream_version,
+        db.merge_upstream(builder.tar_name(), "package",
+            version2.upstream_version,
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
             upstream_revision=upstream_rev2)
@@ -1724,7 +1726,8 @@ class DistributionBranchTests(BuilddebTestCase):
         # We don't add the new file upstream, as the new file id would
         # be picked up from there.
         upstream_rev2 = upstream_tree.commit("two")
-        db.merge_upstream(builder.tar_name(), version2.upstream_version,
+        db.merge_upstream(builder.tar_name(), "package",
+            version2.upstream_version,
             version1.upstream_version,
             upstream_branch=upstream_tree.branch,
             upstream_revision=upstream_rev2)
@@ -1756,8 +1759,8 @@ class DistributionBranchTests(BuilddebTestCase):
         builder.add_upstream_file("a", "New a")
         builder.add_upstream_file("b", "Renamed a")
         builder.build()
-        db.merge_upstream(builder.tar_name(), version2.upstream_version,
-            version1.upstream_version)
+        db.merge_upstream(builder.tar_name(), "packaging",
+            version2.upstream_version, version1.upstream_version)
         self.assertEqual("a-id", packaging_tree.path2id("b"))
         self.assertEqual("other-a-id", packaging_tree.path2id("a"))
 
@@ -1914,20 +1917,3 @@ class SourceExtractorTests(tests.TestCaseInTempDir):
         finally:
             extractor.cleanup()
 
-
-class PossibleUpstreamTagNamesTests(BuilddebTestCase):
-
-    def setUp(self):
-        super(PossibleUpstreamTagNamesTests, self).setUp()
-        self.tree = self.make_branch_and_tree('unstable')
-        root_id = self.tree.path2id("")
-        self.up_tree = self.make_branch_and_tree('unstable-upstream')
-        self.up_tree.set_root_id(root_id)
-        self.db = DistributionBranch(self.tree.branch,
-                self.up_tree.branch, tree=self.tree,
-                upstream_tree=self.up_tree)
-
-    def test_version(self):
-        self.assertEquals(['upstream-3.3', 'upstream-debian-3.3',
-            'upstream-ubuntu-3.3', 'upstream/3.3'],
-            self.db.possible_upstream_tag_names("3.3"))

@@ -49,6 +49,8 @@ from bzrlib.plugins.builddeb.upstream import (
     Version,
     )
 from bzrlib.plugins.builddeb.upstream.branch import (
+    get_export_upstream_revision,
+    get_snapshot_revision,
     UpstreamBranchSource,
     _upstream_branch_version,
     upstream_tag_to_version,
@@ -442,6 +444,53 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
             upstream_version_add_revision(self, "1.3~svn800", "somesvnrev"))
 
 
+class GetExportUpstreamRevisionTests(TestCase):
+
+    def test_snapshot_rev(self):
+        config = DebBuildConfig([])
+        self.assertEquals("34",
+            get_export_upstream_revision(config, "0.1+bzr34"))
+
+    def test_export_upstream_rev(self):
+        config = DebBuildConfig([
+            ({"BUILDDEB": {"export-upstream-revision": "tag:foobar"}}, True)])
+        self.assertEquals("tag:foobar",
+            get_export_upstream_revision(config, "0.1"))
+
+    def test_export_upstream_rev_var(self):
+        config = DebBuildConfig([({"BUILDDEB":
+            {"export-upstream-revision": "tag:foobar-$UPSTREAM_VERSION"}},
+            True)])
+        self.assertEquals("tag:foobar-0.1",
+            get_export_upstream_revision(config, "0.1"))
+
+    def test_export_upstream_rev_not_set(self):
+        config = DebBuildConfig([])
+        self.assertEquals(None,
+            get_export_upstream_revision(config, "0.1"))
+
+
+class GetRevisionSnapshotTests(TestCase):
+
+    def test_with_snapshot(self):
+        self.assertEquals("30", get_snapshot_revision("0.4.4~bzr30"))
+
+    def test_with_snapshot_plus(self):
+        self.assertEquals("30", get_snapshot_revision("0.4.4+bzr30"))
+
+    def test_without_snapshot(self):
+        self.assertEquals(None, get_snapshot_revision("0.4.4"))
+
+    def test_non_numeric_snapshot(self):
+        self.assertEquals(None, get_snapshot_revision("0.4.4~bzra"))
+
+    def test_with_svn_snapshot(self):
+        self.assertEquals("svn:4242", get_snapshot_revision("0.4.4~svn4242"))
+
+    def test_with_svn_snapshot_plus(self):
+        self.assertEquals("svn:2424", get_snapshot_revision("0.4.4+svn2424"))
+
+
 class PristineTarSourceTests(TestCaseWithTransport):
 
     def setUp(self):
@@ -454,6 +503,11 @@ class PristineTarSourceTests(TestCaseWithTransport):
         upstream_v_no = "0.1"
         self.assertEqual(self.source.tag_name(upstream_v_no),
                 "upstream-" + upstream_v_no)
+
+    def test_version(self):
+        self.assertEquals(['upstream-3.3', 'upstream-debian-3.3',
+            'upstream-ubuntu-3.3', 'upstream/3.3'],
+            self.source.possible_tag_names("3.3"))
 
 
 class _MissingUpstreamProvider(UpstreamProvider):
