@@ -93,6 +93,7 @@ from bzrlib.plugins.builddeb.upstream import (
         GetOrigSourceSource,
         PristineTarSource,
         SelfSplitSource,
+        StackedUpstreamSource,
         UScanSource,
         UpstreamProvider,
         UpstreamBranchSource,
@@ -135,6 +136,7 @@ export_upstream_opt = Option('export-upstream',
 export_upstream_revision_opt = Option('export-upstream-revision',
     help="Select the upstream revision that will be exported.",
     type=str)
+
 
 class cmd_builddeb(Command):
     """Builds a Debian package from a branch.
@@ -392,7 +394,7 @@ class cmd_builddeb(Command):
                 upstream_branch = Branch.open(config.upstream_branch)
                 upstream_sources.append(UpstreamBranchSource(upstream_branch))
             upstream_sources.extend([
-                GetOrigSourceSource(tree, larstiq), 
+                GetOrigSourceSource(tree, larstiq),
                 UScanSource(tree, larstiq),
                 ])
             if split:
@@ -527,13 +529,16 @@ class cmd_merge_upstream(Command):
     force_opt = Option('force',
                        help=('Force a merge even if the upstream branch '
                              'has not changed.'))
+    snapshot_opt = Option('snapshot', help="Merge a snapshot from the "
+            "upstream branch rather than a new upstream release.")
+
     v3_opt = Option('v3', help='Use dpkg-source format v3.')
 
 
     takes_options = [package_opt, version_opt,
             distribution_opt, directory_opt, last_version_opt,
-            force_opt, v3_opt, 'revision', 'merge-type']
-
+            force_opt, v3_opt, 'revision', 'merge-type',
+            snapshot_opt]
 
     def _add_changelog_entry(self, tree, package, version, distribution_name,
             changelog):
@@ -556,16 +561,6 @@ class cmd_merge_upstream(Command):
                 merge_type=merge_type, force=force)
         return conflicts
 
-    def _export_tarball(self, package, version, orig_dir, upstream_branch,
-            upstream_revision):
-        # TODO: a way to use bz2 on export
-        dest_name = tarball_name(package, version)
-        tarball_filename = os.path.join(orig_dir, dest_name)
-        upstream = UpstreamBranchSource(upstream_branch,
-                {version: upstream_revision})
-        upstream.fetch_tarball(package, version, orig_dir)
-        return tarball_filename
-
     def _fetch_tarball(self, package, version, orig_dir, location, v3):
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         format = None
@@ -587,67 +582,21 @@ class cmd_merge_upstream(Command):
         return tarball_filename
 
     def _get_tarball(self, config, tree, package, version, upstream_branch,
-            upstream_revision, no_tarball, v3, location):
+            upstream_revision, v3, location):
         orig_dir = config.orig_dir or default_orig_dir
         orig_dir = os.path.join(tree.basedir, orig_dir)
         if not os.path.exists(orig_dir):
             os.makedirs(orig_dir)
-        if upstream_branch and no_tarball:
-            tarball_filename = self._export_tarball(package, version,
-                orig_dir, upstream_branch, upstream_revision)
-        else:
-            tarball_filename = self._fetch_tarball(package, version, orig_dir,
-                location, v3)
+        tarball_filename = self._fetch_tarball(package, version, orig_dir,
+            location, v3)
         return tarball_filename
-
-    def _get_version(self, version, package, no_tarball, upstream_branch,
-            upstream_revision, current_version):
-        from bzrlib.plugins.builddeb.merge_upstream import (
-            upstream_branch_version)
-        if version is None:
-            if upstream_branch and no_tarball:
-                version = str(upstream_branch_version(upstream_branch,
-                        upstream_revision, package,
-                        current_version))
-                note("Using version string %s for upstream branch." % (version))
-            else:
-                raise BzrCommandError("You must specify the "
-                        "version number using --version.")
-        return version
-
-    def _get_upstream_revision(self, upstream_branch, revision):
-        upstream_revision = None
-        if upstream_branch is not None:
-            if revision is not None:
-                if len(revision) > 1:
-                    raise BzrCommandError("merge-upstream takes only a single --revision")
-                upstream_revspec = revision[0]
-                upstream_revision = upstream_revspec.as_revision_id(upstream_branch)
-            else:
-                upstream_revision = upstream_branch.last_revision()
-        return upstream_revision
-
-    def _get_upstream_branch(self, location, upstream_branch, revision):
-        no_tarball = False
-        if upstream_branch is None:
-            try:
-                upstream_branch = Branch.open(location)
-                no_tarball = True
-            except NotBranchError:
-                upstream_branch = None
-                if revision is not None:
-                    raise BzrCommandError("--revision is not allowed when"
-                            " merging only a tarball")
-        else:
-            upstream_branch = Branch.open(upstream_branch)
-        return no_tarball, upstream_branch
 
     def _get_changelog_info(self, tree, last_version, package, distribution):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
         changelog = None
         current_version = last_version
         try:
-            changelog = find_changelog(tree, False, max_blocks=2)[0]
+            (changelog, larstiq) = find_changelog(tree, False, max_blocks=2)
             if last_version is None:
                 current_version = changelog.version.upstream_version
             if package is None:
@@ -672,20 +621,14 @@ class cmd_merge_upstream(Command):
         if distribution_name is None:
             raise BzrCommandError("Unknown target distribution: %s" \
                         % distribution)
-        return current_version, package, distribution, distribution_name, changelog
-
-    def _get_upstream_location(self, location, config):
-        if location is None:
-            if config.upstream_branch is not None:
-                location = config.upstream_branch
-            else:
-                raise BzrCommandError("No location specified to merge")
-        return location
+        return (current_version, package, distribution, distribution_name,
+                changelog, larstiq)
 
     def run(self, location=None, upstream_branch=None, version=None,
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
-            last_version=None, force=None, v3=None):
+            last_version=None, force=None, v3=None,
+            snapshot=False):
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -702,18 +645,74 @@ class cmd_merge_upstream(Command):
                 raise BzrCommandError("Merge upstream in native mode is not "
                         "yet supported.")
 
-            location = self._get_upstream_location(location, config)
+            if upstream_branch is None:
+                upstream_branch = config.upstream_branch
+
+            if upstream_branch is None and location is not None:
+                try:
+                    upstream_branch = Branch.open(location)
+                except NotBranchError:
+                    upstream_branch = None
+            elif upstream_branch is not None:
+                upstream_branch = Branch.open(upstream_branch)
+            if upstream_branch is not None:
+                upstream_branch_source = UpstreamBranchSource(
+                    upstream_branch, config=config)
+            else:
+                upstream_branch_source = None
+
             (current_version, package, distribution, distribution_name,
-             changelog) = self._get_changelog_info( tree, last_version,
+             changelog, larstiq) = self._get_changelog_info(tree, last_version,
                  package, distribution)
-            no_tarball, upstream_branch = self._get_upstream_branch(
-                location, upstream_branch, revision)
-            upstream_revision = self._get_upstream_revision(upstream_branch,
-                revision)
-            version = self._get_version(version, package, no_tarball,
-                upstream_branch, upstream_revision, current_version)
+
+            if location is not None:
+                try:
+                    primary_upstream_source = UpstreamBranchSource(
+                        Branch.open(location), config=config)
+                except NotBranchError:
+                    primary_upstream_source = None
+            else:
+                if snapshot:
+                    if upstream_branch_source is None:
+                        raise BzrCommandError("--snapshot requires an upstream "
+                            "branch source")
+                    primary_upstream_source = upstream_branch_source
+                else:
+                    primary_upstream_source = UScanSource(tree, larstiq)
+
+            if revision is not None:
+                if upstream_branch is None:
+                    raise BzrCommandError("--revision can only be used with a"
+                        "valid upstream branch")
+                if len(revision) > 1:
+                    raise BzrCommandError("merge-upstream takes only a "
+                        "single --revision")
+                upstream_revspec = revision[0]
+                upstream_revision = upstream_revspec.as_revision_id(
+                    upstream_branch)
+            else:
+                upstream_revision = None
+
+            if version is None and upstream_revision is not None:
+                # Look up the version from the upstream revision
+                version = upstream_branch_source.get_version(package,
+                    current_version, upstream_revision)
+            elif upstream_revision is None:
+                # Look up the revision from the branch, if possible
+                if version is None and location is not None:
+                    version = primary_upstream_source.get_latest_version(
+                        package, current_version)
+                    target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
+                    location = primary_upstream_source.fetch_tarball(package, version, target_dir)
+                    note("Using version string %s." % (version))
+                # Look up the revision id from the version string
+                if upstream_branch_source is not None:
+                    upstream_revision = upstream_branch_source.version_as_revision(
+                        package, version)
+            if version is None:
+                raise BzrCommandError("You must specify the version number using --version.")
             tarball_filename = self._get_tarball(config, tree, package,
-                version, upstream_branch, upstream_revision, no_tarball, v3,
+                version, upstream_branch, upstream_revision, v3,
                 location)
             conflicts = self._do_merge(tree, tarball_filename, version,
                 current_version, upstream_branch, upstream_revision,

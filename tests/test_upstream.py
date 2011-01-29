@@ -29,6 +29,9 @@ from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
     )
+from bzrlib.plugins.builddeb.config import (
+    DebBuildConfig,
+    )
 from bzrlib.plugins.builddeb.errors import (
     PackageVersionNotPresent,
     WatchFileMissing,
@@ -274,6 +277,7 @@ ftp://ftp.samba.org/pub/tdb/tdb-(.+).tar.gz</warnings>
 </dehs>
 """))
 
+
 class UpstreamBranchSourceTests(TestCaseWithTransport):
     """Tests for UpstreamBranchSource."""
 
@@ -306,3 +310,16 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.tree.commit("msg")
         self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
 
+    def test_version_as_revision(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
+        config = DebBuildConfig(
+            [('user.conf', True), ('default.conf', False)],
+            branch=self.tree.branch)
+        source = UpstreamBranchSource(self.tree.branch,
+            {"2.1": self.tree.branch.last_revision()},
+            config=config)
+        revid2 = self.tree.commit("msg")
+        self.assertEquals(revid2,
+            source.version_as_revision("foo", "2.1+bzr2"))
+        self.assertEquals(revid1, source.version_as_revision("foo", "2.1"))

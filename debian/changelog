@@ -29,6 +29,9 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
     #586617
   * Fix "bzr builddeb" if last upload was not to a Ubuntu release pocket.
     LP: #709263
+  * If possible use uscan to find the latest upstream version string.
+    LP: #295274
+  * Add --snapshot option to merge-upstream.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Fri, 28 Jan 2011 15:13:22 +0100
 

@@ -64,6 +64,14 @@ class UpstreamSource(object):
         """
         raise NotImplementedError(self.get_latest_version)
 
+    def version_as_revision(self, package, version):
+        """Lookup the revision id for a particular version.
+
+        :param package: Package name
+        :package version: Version string
+        """
+        raise NotImplementedError(self.version_as_revision)
+
     def fetch_tarball(self, package, version, target_dir):
         """Fetch the source tarball for a particular version.
 
@@ -167,14 +175,16 @@ class UpstreamBranchSource(UpstreamSource):
     :ivar upstream_version_map: Map from version strings to revids
     """
 
-    def __init__(self, upstream_branch, upstream_revision_map=None):
+    def __init__(self, upstream_branch, upstream_revision_map=None,
+                 config=None):
         self.upstream_branch = upstream_branch
+        self.config = config
         if upstream_revision_map is None:
             self.upstream_revision_map = {}
         else:
             self.upstream_revision_map = upstream_revision_map
 
-    def _get_revision_id(self, version):
+    def version_as_revision(self, package, version):
         if version in self.upstream_revision_map:
              return self.upstream_revision_map[version]
         revspec = get_snapshot_revision(version)
@@ -197,7 +207,7 @@ class UpstreamBranchSource(UpstreamSource):
     def fetch_tarball(self, package, version, target_dir):
         self.upstream_branch.lock_read()
         try:
-            revid = self._get_revision_id(version)
+            revid = self.version_as_revision(package, version)
             if revid is None:
                 raise PackageVersionNotPresent(package, version, self)
             note("Exporting upstream branch revision %s to create the tarball",
@@ -302,7 +312,7 @@ class UScanSource(UpstreamSource):
             return None
         dehs_tag = dehs_tags[0]
         for w in dehs_tag.getElementsByTagName("warnings"):
-            warning(w)
+            warning(w.firstChild.wholeText)
         upstream_version_tags = dehs_tag.getElementsByTagName("upstream-version")
         if len(upstream_version_tags) != 1:
             return None
