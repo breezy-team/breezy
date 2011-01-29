@@ -34,8 +34,9 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
   * Add --snapshot option to merge-upstream.
   * 'bzr merge-upstream' now also works in merge mode, and will simply
     add a new entry for new upstream versions.
+  * merge-upstream will now keep epochs around. LP: #622678
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 28 Jan 2011 15:13:22 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 29 Jan 2011 04:29:41 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 
