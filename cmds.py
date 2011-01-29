@@ -639,16 +639,17 @@ class cmd_merge_upstream(Command):
                         "command.")
             config = debuild_config(tree, tree)
 
-            if upstream_branch is None:
-                upstream_branch = config.upstream_branch
-
-            if upstream_branch is None and location is not None:
+            if upstream_branch is not None:
+                upstream_branch = Branch.open(upstream_branch)
+            elif location is not None:
                 try:
                     upstream_branch = Branch.open(location)
                 except NotBranchError:
                     upstream_branch = None
-            elif upstream_branch is not None:
-                upstream_branch = Branch.open(upstream_branch)
+            elif upstream_branch is None:
+                upstream_branch = Branch.open(config.upstream_branch)
+            else:
+                upstream_branch = None
             if upstream_branch is not None:
                 upstream_branch_source = UpstreamBranchSource(
                     upstream_branch, config=config)
@@ -700,22 +701,20 @@ class cmd_merge_upstream(Command):
                 # Look up the version from the upstream revision
                 version = upstream_branch_source.get_version(package,
                     current_version, upstream_revision)
-            elif upstream_revision is None:
-                # Look up the revision from the branch, if possible
-                if version is None and location is not None:
-                    version = primary_upstream_source.get_latest_version(
-                        package, current_version)
-                    target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
-                    if need_upstream_tarball:
-                        location = primary_upstream_source.fetch_tarball(
-                            package, version, target_dir)
-                    note("Using version string %s." % (version))
-                # Look up the revision id from the version string
-                if upstream_branch_source is not None:
-                    upstream_revision = upstream_branch_source.version_as_revision(
-                        package, version)
+            elif version is None and primary_upstream_source is not None:
+                version = primary_upstream_source.get_latest_version(
+                    package, current_version)
+                target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
+                if need_upstream_tarball:
+                    location = primary_upstream_source.fetch_tarball(
+                        package, version, target_dir)
+                note("Using version string %s." % (version))
             if version is None:
                 raise BzrCommandError("You must specify the version number using --version.")
+            # Look up the revision id from the version string
+            if upstream_revision is None and upstream_branch_source is not None:
+                upstream_revision = upstream_branch_source.version_as_revision(
+                    package, version)
             if need_upstream_tarball:
                 tarball_filename = self._get_tarball(config, tree, package,
                     version, upstream_branch, upstream_revision, v3,
