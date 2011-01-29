@@ -191,7 +191,7 @@ def upstream_branch_version(upstream_branch, upstream_revision, package,
             lambda version, revision: upstream_version_add_revision(upstream_branch, version, revision))
 
 
-def get_export_upstream_revision(config, version=None):
+def get_export_upstream_revision(config=None, version=None):
     """Find the revision to use when exporting the upstream source.
 
     :param config: Config object
@@ -203,7 +203,7 @@ def get_export_upstream_revision(config, version=None):
     if version is not None:
         assert type(version) is str
         rev = get_snapshot_revision(version)
-    if rev is None:
+    if rev is None and config is not None:
         rev = config._get_best_opt('export-upstream-revision')
         if rev is not None and version is not None:
             rev = rev.replace('$UPSTREAM_VERSION', version)
@@ -229,7 +229,8 @@ class UpstreamBranchSource(UpstreamSource):
     def version_as_revision(self, package, version):
         if version in self.upstream_revision_map:
              return self.upstream_revision_map[version]
-        revspec = get_snapshot_revision(version)
+        revspec = get_export_upstream_revision(self.config,
+            version=version)
         if revspec is not None:
             return RevisionSpec.from_string(
                 revspec).as_revision_id(self.upstream_branch)

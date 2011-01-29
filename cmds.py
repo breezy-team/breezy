@@ -299,32 +299,23 @@ class cmd_builddeb(Command):
 
     def _get_upstream_branch(self, merge, export_upstream,
             export_upstream_revision, config, version):
-        from bzrlib.plugins.builddeb.upstream.branch import (
-            get_export_upstream_revision,
-            )
         upstream_branch = None
         upstream_revision = None
-        if merge:
-            if export_upstream is None:
-                export_upstream = config.export_upstream
-            if export_upstream:
-                upstream_branch = Branch.open(export_upstream)
-                upstream_branch.lock_read()
-                try:
-                    if export_upstream_revision is None:
-                        export_upstream_revision = \
-                            get_export_upstream_revision(config,
-                                version=str(version.upstream_version))
-                    if export_upstream_revision is None:
-                        upstream_revision = \
-                                upstream_branch.last_revision()
-                    else:
-                        upstream_revspec = RevisionSpec.from_string(
-                                export_upstream_revision)
-                        upstream_revision = \
-                            upstream_revspec.as_revision_id(upstream_branch)
-                finally:
-                    upstream_branch.unlock()
+        if export_upstream is None:
+            export_upstream = config.export_upstream
+        if export_upstream:
+            upstream_branch = Branch.open(export_upstream)
+            upstream_branch.lock_read()
+            try:
+                upstream_source = UpstreamBranchSource(upstream_branch,
+                    config=config)
+                if version is None:
+                    upstream_revision = upstream_branch.last_revision()
+                else:
+                    upstream_revision = upstream_source.version_as_revision(
+                        version)
+            finally:
+                upstream_branch.unlock()
         return (upstream_branch, upstream_revision)
 
     def run(self, branch_or_build_options_list=None, verbose=False,
@@ -336,7 +327,7 @@ class cmd_builddeb(Command):
             quick=False, reuse=False, native=None,
             source=False, revision=None, result=None, package_merge=None):
         if result is not None:
-            warning("--result is deprected, use --result-dir instead")
+            warning("--result is deprecated, use --result-dir instead")
         branch, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
         tree, branch, is_local = self._get_tree_and_branch(branch)
@@ -402,7 +393,7 @@ class cmd_builddeb(Command):
                 ])
             if split:
                 upstream_sources.append(SelfSplitSource(tree))
- 
+
             upstream_provider = UpstreamProvider(changelog.package,
                 changelog.version, orig_dir, upstream_sources)
 
