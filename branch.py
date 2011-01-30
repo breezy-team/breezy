@@ -209,7 +209,7 @@ class LocalGitTagDict(GitTags):
             self.branch.lookup_bzr_revision_id(revid)
 
 
-class DictTagDict(LocalGitTagDict):
+class DictTagDict(tag.BasicTags):
 
     def __init__(self, branch, tags):
         super(DictTagDict, self).__init__(branch)
