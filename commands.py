@@ -421,7 +421,7 @@ class cmd_rebase_foreign(Command):
     takes_options = ['verbose',
         Option("idmap-file", help="Write map with old and new revision ids.",
                type=str),
-        Option('directory', 
+        Option('directory',
             short_name='d',
             help="Branch to replay onto, rather than the one containing the working directory.",
             type=str)
