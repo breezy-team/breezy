@@ -113,7 +113,7 @@ class GenericCommitHandler(processor.CommitHandler):
 
         # Convert the parent commit-ids to bzr revision-ids
         if parents:
-            self.parents = [self.cache_mgr.revision_ids[p]
+            self.parents = [self.cache_mgr.revision_ids[p.lstrip(':')]
                 for p in parents]
         else:
             self.parents = []

@@ -533,9 +533,9 @@ class GenericProcessor(processor.ImportProcessor):
         except:
             print "ABORT: exception occurred processing commit %s" % (cmd.id)
             raise
-        self.cache_mgr.revision_ids[cmd.id] = handler.revision_id
+        self.cache_mgr.revision_ids[cmd.id.lstrip(':')] = handler.revision_id
         self._revision_count += 1
-        self.report_progress("(%s)" % cmd.id)
+        self.report_progress("(%s)" % cmd.id.lstrip(':'))
 
         if cmd.ref.startswith('refs/tags/'):
             tag_name = cmd.ref[len('refs/tags/'):]
