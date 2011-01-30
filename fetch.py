@@ -519,11 +519,19 @@ class InterGitNonGitRepository(InterGitRepository):
             interesting_heads = None
         def determine_wants(refs):
             if interesting_heads is None:
-                ret = [sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")]
+                todo = [(sha, None) for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")]
             else:
-                ret = [self.source.lookup_bzr_revision_id(revid)[0] for revid in interesting_heads if revid not in (None, NULL_REVISION)]
-            return [rev for rev in ret if not self.target.has_revision(self.source.lookup_foreign_revision_id(rev))]
-        (pack_hint, _, remote_refs) = self.fetch_objects(determine_wants, mapping, pb)
+                todo = [(self.source.lookup_bzr_revision_id(revid)[0], revid) for revid in interesting_heads if revid not in (None, NULL_REVISION)]
+            ret = []
+            for (sha, revid) in todo:
+                if revid is None:
+                    revid = self.source.lookup_foreign_revision_id(sha)
+                if not self.target.has_revision(revid):
+                    ret.append(sha)
+            return ret
+
+        (pack_hint, _, remote_refs) = self.fetch_objects(determine_wants,
+            mapping, pb)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
         return remote_refs
