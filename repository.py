@@ -47,6 +47,7 @@ from bzrlib.plugins.git.versionedfiles import (
 
 from dulwich.objects import (
     Commit,
+    Tag,
     )
 
 
@@ -171,6 +172,8 @@ class LocalGitRepository(GitRepository):
         if foreign_revid == ZERO_SHA:
             return revision.NULL_REVISION
         commit = self._git[foreign_revid]
+        while isinstance(commit, Tag):
+            commit = self._git[commit.object[1]]
         rev, roundtrip_revid, verifiers = mapping.import_commit(commit,
             lambda x: None)
         # FIXME: check testament before doing this?

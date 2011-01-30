@@ -9,6 +9,8 @@
 
   * Fix 'bzr git-import' from remote repositories. (Jelmer Vernooij, #706990)
 
+  * Cope with tags when doing local fetches. (Jelmer Vernooij, #675637)
+
 0.5.3	2011-01-21
 
  BUG FIXES
