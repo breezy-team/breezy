@@ -298,11 +298,11 @@ class cmd_builddeb(Command):
             source = True
         return branch, build_options, source
 
-    def _get_upstream_branch(self, merge, export_upstream,
+    def _get_upstream_branch(self, build_type, export_upstream,
             export_upstream_revision, config, version):
         upstream_branch = None
         upstream_revision = None
-        if merge:
+        if build_type == BUILD_TYPE_MERGE:
             if export_upstream is None:
                 export_upstream = config.export_upstream
             if export_upstream:
@@ -382,9 +382,9 @@ class cmd_builddeb(Command):
                 PristineTarSource(tree, branch),
                 AptSource(),
                 ]
-            if merge:
+            if build_type == BUILD_TYPE_MERGE:
                 upstream_branch, upstream_revision = self._get_upstream_branch(
-                    merge, export_upstream, export_upstream_revision, config,
+                    build_type, export_upstream, export_upstream_revision, config,
                     changelog.version)
                 if upstream_branch is not None:
                     upstream_sources.append(UpstreamBranchSource(
@@ -398,15 +398,15 @@ class cmd_builddeb(Command):
                 GetOrigSourceSource(tree, larstiq),
                 UScanSource(tree, larstiq),
                 ])
-            if split:
+            if build_type == BUILD_TYPE_SPLIT:
                 upstream_sources.append(SelfSplitSource(tree))
  
             upstream_provider = UpstreamProvider(changelog.package,
                 changelog.version, orig_dir, upstream_sources)
 
-            if merge:
+            if build_type == BUILD_TYPE_MERGE:
                 distiller_cls = MergeModeDistiller
-            elif native:
+            elif build_type == BUILD_TYPE_NATIVE:
                 distiller_cls = NativeSourceDistiller
             else:
                 distiller_cls = FullSourceDistiller

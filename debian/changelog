@@ -37,6 +37,8 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
   * merge-upstream will now keep epochs around. LP: #622678
   * 'bzr builddeb' now searches for directories relative to the working
     tree rather than relative to the branch. Closes: #676456
+  * Use enums for build types, and a priority scheme to figure out the
+    build type. LP: #655277
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 30 Jan 2011 23:09:45 +0100
 
