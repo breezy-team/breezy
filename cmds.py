@@ -708,9 +708,9 @@ class cmd_merge_upstream(Command):
                 if need_upstream_tarball:
                     location = primary_upstream_source.fetch_tarball(
                         package, version, target_dir)
-                note("Using version string %s." % (version))
             if version is None:
                 raise BzrCommandError("You must specify the version number using --version.")
+            note("Using version string %s." % (version))
             # Look up the revision id from the version string
             if upstream_revision is None and upstream_branch_source is not None:
                 upstream_revision = upstream_branch_source.version_as_revision(
@@ -722,6 +722,9 @@ class cmd_merge_upstream(Command):
                 conflicts = self._do_merge(tree, tarball_filename, version,
                     current_version, upstream_branch, upstream_revision,
                     merge_type, force)
+            if Version(current_version) >= Version(version):
+                raise BzrCommandError(
+                    "Upstream version %s has already been merged." % version)
             self._add_changelog_entry(tree, package, version,
                 distribution_name, changelog)
         finally:
