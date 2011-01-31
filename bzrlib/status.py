@@ -450,7 +450,7 @@ def _show_shelve_summary(params):
     manager = get_shelf_manager()
     shelves = manager.active_shelves()
     if shelves:
-        singular = '%d shelve exists. '
+        singular = '%d shelf exists. '
         plural = '%d shelves exist. '
         if len(shelves) == 1:
             fmt = singular
