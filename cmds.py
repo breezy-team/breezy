@@ -213,8 +213,9 @@ class cmd_builddeb(Command):
         if location is None:
             location = "."
         is_local = urlparse.urlsplit(location)[0] in ('', 'file')
-        tree, branch, relpath = BzrDir.open_containing_tree_or_branch(location)
-        return tree, branch, is_local
+        bzrdir, relpath = BzrDir.open_containing(location)
+        tree, branch = bzrdir._get_tree_branch()
+        return tree, branch, is_local, bzrdir.user_url
 
     def _get_build_tree(self, revision, tree, branch):
         if revision is None and tree is not None:
@@ -256,7 +257,7 @@ class cmd_builddeb(Command):
             builder += " " + " ".join(build_options)
         return builder
 
-    def _get_dirs(self, config, branch, is_local, result_dir, build_dir, orig_dir):
+    def _get_dirs(self, config, location, is_local, result_dir, build_dir, orig_dir):
         def _get_dir(supplied, if_local, if_not):
             if supplied is None:
                 if is_local:
@@ -266,7 +267,7 @@ class cmd_builddeb(Command):
             if supplied is not None:
                 if is_local:
                     supplied = os.path.join(
-                            urlutils.local_path_from_url(branch.base),
+                            urlutils.local_path_from_url(location),
                             supplied)
                     supplied = os.path.realpath(supplied)
             return supplied
@@ -334,9 +335,9 @@ class cmd_builddeb(Command):
             source=False, revision=None, result=None, package_merge=None):
         if result is not None:
             warning("--result is deprected, use --result-dir instead")
-        branch, build_options, source = self._branch_and_build_options(
+        location, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
-        tree, branch, is_local = self._get_tree_and_branch(branch)
+        tree, branch, is_local, location = self._get_tree_and_branch(location)
         tree, working_tree = self._get_build_tree(revision, tree, branch)
 
         if len(tree.conflicts()) > 0:
@@ -374,8 +375,8 @@ class cmd_builddeb(Command):
                     build_options.append("-sa")
             build_cmd = self._get_build_command(config, builder, quick,
                     build_options)
-            result_dir, build_dir, orig_dir = self._get_dirs(config, branch,
-                    is_local, result_dir or result, build_dir, orig_dir)
+            result_dir, build_dir, orig_dir = self._get_dirs(config,
+                location or ".", is_local, result_dir or result, build_dir, orig_dir)
 
             upstream_sources = [
                 PristineTarSource(tree, branch),
@@ -450,7 +451,7 @@ class cmd_builddeb(Command):
                     if is_local:
                         target_dir = result_dir or default_result_dir
                         target_dir = os.path.join(
-                                urlutils.local_path_from_url(branch.base),
+                                urlutils.local_path_from_url(location),
                                 target_dir)
                     else:
                         target_dir = "."
