@@ -240,7 +240,7 @@ class GetOrigSourceSource(UpstreamSource):
         ret = proc.wait()
         if ret != 0:
             note("Trying to run get-orig-source rule failed")
-            return False
+            return None
         for desired_tarball_name in desired_tarball_names:
             fetched_tarball = os.path.join(source_dir, desired_tarball_name)
             if os.path.exists(fetched_tarball):
@@ -400,9 +400,12 @@ class StackedUpstreamSource(UpstreamSource):
     def fetch_tarball(self, package, version, target_dir):
         for source in self._sources:
             try:
-                return source.fetch_tarball(package, version, target_dir)
+                path = source.fetch_tarball(package, version, target_dir)
             except PackageVersionNotPresent:
                 pass
+            else:
+                assert isinstance(path, basestring)
+                return path
         raise PackageVersionNotPresent(package, version, self)
 
     def get_latest_version(self, package, version):
@@ -468,12 +471,13 @@ class UpstreamProvider(object):
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
             try:
-                self.source.fetch_tarball(self.package,
+                path = self.source.fetch_tarball(self.package,
                     self.version.upstream_version, self.store_dir)
             except PackageVersionNotPresent:
                 raise MissingUpstreamTarball(self._tarball_names()[0])
+            assert isinstance(path, basestring)
         else:
-             note("Using the upstream tarball that is present in %s" %
+            note("Using the upstream tarball that is present in %s" %
                  self.store_dir)
         path = self.provide_from_store_dir(target_dir)
         assert path is not None

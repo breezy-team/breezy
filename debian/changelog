@@ -39,8 +39,10 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
     tree rather than relative to the branch. Closes: #676456
   * Use enums for build types, and a priority scheme to figure out the
     build type. LP: #655277
+  * Fix finding upstream tarball when get-orig-source is not available.
+    Closes: #552893
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sun, 30 Jan 2011 23:09:45 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 01 Feb 2011 00:13:07 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 
