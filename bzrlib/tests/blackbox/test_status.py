@@ -562,7 +562,16 @@ class BranchStatus(TestCaseWithTransport):
         self.assertStatus([
                 'added:\n',
                 '  bye.c\n',
-                '1 shelves exist. See "bzr shelve --list" for details.\n',
+                '1 shelve exists. See "bzr shelve --list" for details.\n',
+            ],
+            wt)
+        self.run_bzr(['shelve', '--all', '-m', 'bar'])
+        self.build_tree(['spam.c'])
+        wt.add('spam.c')
+        self.assertStatus([
+                'added:\n',
+                '  spam.c\n',
+                '2 shelves exist. See "bzr shelve --list" for details.\n',
             ],
             wt)
 
