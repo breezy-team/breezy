@@ -96,7 +96,7 @@ class CacheManager(object):
 
         # import commmit-ids -> revision-id lookup table
         # we need to keep all of these but they are small
-        self.revision_ids = {}
+        self.marks = {}
 
         # (path, branch_ref) -> file-ids - as generated.
         # (Use store_file_id/fetch_fileid methods rather than direct access.)
@@ -121,12 +121,25 @@ class CacheManager(object):
 
         self.reftracker = RefTracker()
 
+    def add_mark(self, mark, commit_id):
+        assert mark[0] != ':'
+        self.marks[mark] = commit_id
+
+    def lookup_committish(self, committish):
+        """Resolve a 'committish' to a revision id.
+
+        :param committish: A "committish" string
+        :return: Bazaar revision id
+        """
+        assert committish[0] == ':'
+        return self.marks[committish.lstrip(':')]
+
     def dump_stats(self, note=trace.note):
         """Dump some statistics about what we cached."""
         # TODO: add in inventory stastistics
         note("Cache statistics:")
         self._show_stats_for(self._sticky_blobs, "sticky blobs", note=note)
-        self._show_stats_for(self.revision_ids, "revision-ids", note=note)
+        self._show_stats_for(self.marks, "revision-ids", note=note)
         # These aren't interesting so omit from the output, at least for now
         #self._show_stats_for(self._blobs, "other blobs", note=note)
         #self.reftracker.dump_stats(note=note)
@@ -157,7 +170,7 @@ class CacheManager(object):
         """Free up any memory used by the caches."""
         self._blobs.clear()
         self._sticky_blobs.clear()
-        self.revision_ids.clear()
+        self.marks.clear()
         self.reftracker.clear()
         self.inventories.clear()
 

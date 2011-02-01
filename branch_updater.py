@@ -121,7 +121,7 @@ class BranchUpdater(object):
                 except errors.BzrError, ex:
                     error("ERROR: failed to create branch %s: %s",
                         location, ex)
-            lost_head = self.cache_mgr.revision_ids[tip]
+            lost_head = self.cache_mgr.lookup_committish(tip)
             lost_info = (name, lost_head)
             lost_heads.append(lost_info)
         return branch_tips, lost_heads
@@ -147,12 +147,11 @@ class BranchUpdater(object):
 
     def _update_branch(self, br, last_mark):
         """Update a branch with last revision and tag information.
-        
+
         :return: whether the branch was changed or not
         """
         from fastimport.helpers import single_plural
-        last_mark = last_mark.lstrip(':')
-        last_rev_id = self.cache_mgr.revision_ids[last_mark]
+        last_rev_id = self.cache_mgr.lookup_committish(last_mark)
         revs = list(self.repo.iter_reverse_revision_history(last_rev_id))
         revno = len(revs)
         existing_revno, existing_last_rev_id = br.last_revision_info()
