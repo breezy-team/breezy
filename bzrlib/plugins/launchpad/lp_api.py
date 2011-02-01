@@ -69,10 +69,19 @@ def check_launchpadlib_compatibility():
             installed_version, installed_version)
 
 
-# Service root URIs for which we do not have constants are derived from the one
-# constant which does always exist - this is because launchpadlib <= 1.5.4
-# requires service root URIs that end in a path of /beta/, whilst launchpadlib
-# >= 1.5.5 requires service root URIs with no path info.
+# The older versions of launchpadlib only provided service root constants for
+# edge and staging, whilst newer versions drop edge. Therefore service root
+# URIs for which we do not always have constants are derived from the staging
+# one, which does always exist.
+#
+# It is necessary to derive, rather than use hardcoded URIs because
+# launchpadlib <= 1.5.4 requires service root URIs that end in a path of
+# /beta/, whilst launchpadlib >= 1.5.5 requires service root URIs with no path
+# info.
+#
+# Once we have a hard dependency on launchpadlib >= 1.5.4 we can replace all of
+# bzr's local knowledge of individual Launchpad instances with use of the
+# launchpadlib.uris module.
 LAUNCHPAD_API_URLS = {
     'production': STAGING_SERVICE_ROOT.replace('api.staging.launchpad.net',
         'api.launchpad.net'),
