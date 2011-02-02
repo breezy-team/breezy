@@ -25,6 +25,7 @@
 
 import os
 import tarfile
+import zipfile
 
 from bzrlib.tests import (
     TestCase,
@@ -350,6 +351,15 @@ class TarfileSourceTests(TestCaseWithTransport):
         self.assertEquals("bar/foo_1.0.orig.tar.gz",
             source.fetch_tarball("foo", "1.0", "bar"))
         self.failUnlessExists("bar/foo_1.0.orig.tar.gz")
+
+    def test_fetch_tarball_repack(self):
+        zf = zipfile.ZipFile("bla-2.0.zip", "w")
+        zf.close()
+        source = TarfileSource("bla-2.0.zip", "2.0")
+        os.mkdir("bar")
+        self.assertEquals("bar/foo_2.0.orig.tar.gz",
+            source.fetch_tarball("foo", "2.0", "bar"))
+        self.failUnlessExists("bar/foo_2.0.orig.tar.gz")
 
     def test_fetch_tarball_not_present(self):
         source = TarfileSource("foo-1.0.tar.gz", "1.0")

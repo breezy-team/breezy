@@ -522,6 +522,8 @@ class TarfileSource(UpstreamSource):
     def fetch_tarball(self, package, version, target_dir):
         if version != self.version:
             raise PackageVersionNotPresent(package, version, self)
+        dest_name = tarball_name(package, version)
+        repack_tarball(self.path, dest_name, target_dir=target_dir)
         target_filename = self._tarball_path(package, version, target_dir)
         shutil.copy(self.path, target_filename)
         return target_filename
