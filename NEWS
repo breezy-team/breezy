@@ -38,6 +38,8 @@ Bug fixes
 
 * Cope with non-utf8 characters in commit messages. (Jelmer Vernooij, #444896)
 
+* Include download_url in setup.py for use on pypi. (Jelmer Vernooij, #456957)
+
 0.9 28-Feb-2010
 ===============
 
