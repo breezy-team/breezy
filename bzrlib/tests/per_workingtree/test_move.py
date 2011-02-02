@@ -21,6 +21,7 @@ import os
 from bzrlib import (
     errors,
     osutils,
+    tests,
     )
 
 from bzrlib.workingtree_4 import DirStateWorkingTreeFormat
@@ -543,3 +544,25 @@ class TestMove(TestCaseWithWorkingTree):
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('c', 'c-id'),
                                ('a/b', 'b-id')], tree.basis_tree())
         tree._validate()
+
+    def test_move_to_unversioned_non_ascii_dir(self):
+        """Check error when moving to unversioned non-ascii directory"""
+        self.requireFeature(tests.UnicodeFilename)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["a", u"\xA7/"])
+        tree.add(["a"])
+        e = self.assertRaises(errors.BzrMoveFailedError,
+            tree.move, ["a"], u"\xA7")
+        self.assertIsInstance(e.extra, errors.NotVersionedError)
+        self.assertEqual(e.extra.path, u"\xA7")
+
+    def test_move_unversioned_non_ascii(self):
+        """Check error when moving an unversioned non-ascii file"""
+        self.requireFeature(tests.UnicodeFilename)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree([u"\xA7", "dir/"])
+        tree.add("dir")
+        e = self.assertRaises(errors.BzrMoveFailedError,
+            tree.move, [u"\xA7"], "dir")
+        self.assertIsInstance(e.extra, errors.NotVersionedError)
+        self.assertEqual(e.extra.path, u"\xA7")

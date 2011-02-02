@@ -754,7 +754,7 @@ class VersionedFileTestMixIn(object):
         self.assertEquals(('references_ghost', 'line_c\n'), origins[2])
 
     def test_readonly_mode(self):
-        t = transport.get_transport(self.get_url('.'))
+        t = self.get_transport()
         factory = self.get_factory()
         vf = factory('id', t, 0777, create=True, access_mode='w')
         vf = factory('id', t, access_mode='r')
@@ -785,12 +785,12 @@ class VersionedFileTestMixIn(object):
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+        return WeaveFile(name, self.get_transport(),
                          create=True,
                          get_scope=self.get_transaction)
 
     def get_file_corrupted_text(self):
-        w = WeaveFile('foo', transport.get_transport(self.get_url('.')),
+        w = WeaveFile('foo', self.get_transport(),
                       create=True,
                       get_scope=self.get_transaction)
         w.add_lines('v1', [], ['hello\n'])
@@ -826,7 +826,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         return w
 
     def reopen_file(self, name='foo', create=False):
-        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+        return WeaveFile(name, self.get_transport(),
                          create=create,
                          get_scope=self.get_transaction)
 
@@ -834,7 +834,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         self.assertRaises(errors.NoSuchFile,
                           WeaveFile,
                           'foo',
-                          transport.get_transport(self.get_url('.')),
+                          self.get_transport(),
                           get_scope=self.get_transaction)
 
     def get_factory(self):
@@ -928,7 +928,7 @@ class TestReadonlyHttpMixin(object):
 class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_file(self):
-        return WeaveFile('foo', transport.get_transport(self.get_url('.')),
+        return WeaveFile('foo', self.get_transport(),
                          create=True,
                          get_scope=self.get_transaction)
 
@@ -1180,7 +1180,7 @@ class MergeCasesMixin(object):
 class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+        return WeaveFile(name, self.get_transport(),
                          create=True)
 
     def log_contents(self, w):

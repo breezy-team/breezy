@@ -47,6 +47,7 @@ from bzrlib import (
     remote,
     repository,
     revision as _mod_revision,
+    transport as _mod_transport,
     ui,
     urlutils,
     versionedfile,
@@ -68,7 +69,6 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import (
     do_catching_redirections,
-    get_transport,
     local,
     )
 from bzrlib.weave import (
@@ -273,7 +273,7 @@ class BzrDir(controldir.ControlDir):
     # TODO: This should be given a Transport, and should chdir up; otherwise
     # this will open a new connection.
     def _make_tail(self, url):
-        t = get_transport(url)
+        t = _mod_transport.get_transport(url)
         t.ensure_base()
 
     @staticmethod
@@ -463,7 +463,7 @@ class BzrDir(controldir.ControlDir):
         """
         if force_new_tree:
             # check for non local urls
-            t = get_transport(base, possible_transports)
+            t = _mod_transport.get_transport(base, possible_transports)
             if not isinstance(t, local.LocalTransport):
                 raise errors.NotLocalUrl(base)
         bzrdir = BzrDir.create(base, format, possible_transports)
@@ -491,7 +491,7 @@ class BzrDir(controldir.ControlDir):
         :param format: Override for the bzrdir format to create.
         :return: The WorkingTree object.
         """
-        t = get_transport(base)
+        t = _mod_transport.get_transport(base)
         if not isinstance(t, local.LocalTransport):
             raise errors.NotLocalUrl(base)
         bzrdir = BzrDir.create_branch_and_repo(base,
@@ -711,7 +711,7 @@ class BzrDir(controldir.ControlDir):
 
         :param _unsupported: a private parameter to the BzrDir class.
         """
-        t = get_transport(base, possible_transports=possible_transports)
+        t = _mod_transport.get_transport(base, possible_transports)
         return BzrDir.open_from_transport(t, _unsupported=_unsupported)
 
     @staticmethod
@@ -756,7 +756,7 @@ class BzrDir(controldir.ControlDir):
         :param url: url to search from.
         See open_containing_from_transport for more detail.
         """
-        transport = get_transport(url, possible_transports)
+        transport = _mod_transport.get_transport(url, possible_transports)
         return BzrDir.open_containing_from_transport(transport)
 
     @staticmethod
@@ -918,7 +918,7 @@ class BzrDir(controldir.ControlDir):
         if cls is not BzrDir:
             raise AssertionError("BzrDir.create always creates the"
                 "default format, not one of %r" % cls)
-        t = get_transport(base, possible_transports)
+        t = _mod_transport.get_transport(base, possible_transports)
         t.ensure_base()
         if format is None:
             format = controldir.ControlDirFormat.get_default_format()

@@ -32,6 +32,7 @@ from bzrlib import (
     btree_index,
     graph,
     tests,
+    transport,
     )
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex
@@ -39,9 +40,6 @@ from bzrlib.repository import RepositoryFormat
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
-    )
-from bzrlib.transport import (
-    get_transport,
     )
 from bzrlib import (
     bzrdir,
@@ -125,7 +123,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
-            t = get_transport(url)
+            t = transport.get_transport(url)
             found_format = repository.RepositoryFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
@@ -386,7 +384,7 @@ class TestRepositoryConverter(TestCaseWithTransport):
 
     def test_convert_empty(self):
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
-        t = get_transport(self.get_url('.'))
+        t = transport.get_transport()
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
         repo = RepositoryFormat7().initialize(repo_dir)

@@ -47,7 +47,12 @@ from launchpadlib.launchpad import (
     STAGING_SERVICE_ROOT,
     Launchpad,
     )
-from launchpadlib import uris
+try:
+    from launchpadlib import uris
+except ImportError:
+    # Create a minimal object so the getattr() calls below fail gently and
+    # provide default values
+    uris = object()
 
 LPNET_SERVICE_ROOT = getattr(uris, 'LPNET_SERVICE_ROOT',
                              'https://api.launchpad.net/beta/')
@@ -234,7 +239,7 @@ class LaunchpadBranch(object):
         """Return the 'LaunchpadBranch' for the target of this one."""
         lp_branch = self.lp
         if lp_branch.project is not None:
-            dev_focus = lp_branch.project.development_focus.branch
+            dev_focus = lp_branch.project.development_focus
             if dev_focus is None:
                 raise errors.BzrError('%s has no development focus.' %
                                   lp_branch.bzr_identity)
