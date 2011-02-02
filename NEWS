@@ -19,6 +19,10 @@ New Features
 Bug Fixes
 *********
 
+* Fix communications with the Launchpad web service when using
+  launchpadlib >= 1.5.5.  This was a regression exposed by the switch away
+  from Launchpad's edge platform, in bzr 2.2.3.  (Max Bowsher, #707075)
+
 Improvements
 ************
 
