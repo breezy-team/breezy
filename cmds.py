@@ -105,6 +105,7 @@ from bzrlib.plugins.builddeb.util import (
         find_last_distribution,
         find_previous_upload,
         get_export_upstream_revision,
+        get_source_format,
         guess_build_type,
         lookup_distribution,
         open_file,
@@ -714,6 +715,9 @@ class cmd_merge_upstream(Command):
                 target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
                 location = primary_upstream_source.fetch_tarball(
                     package, version, target_dir)
+                if v3 is None:
+                    source_format = get_source_format(tree)
+                    v3 = (source_format in ["3.0 (quilt)", "3.0 (native)"])
                 tarball_filename = self._get_tarball(config, tree, package,
                     version, upstream_branch, upstream_revision, v3,
                     location)
