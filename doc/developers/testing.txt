@@ -971,6 +971,37 @@ method of ``TestCaseWithTransport``).
 
 Please see bzrlib.treebuilder for more details.
 
+PreviewTree
+~~~~~~~~~~~
+
+PreviewTrees are based on TreeTransforms.  This means they can represent
+virtually any state that a WorkingTree can have, including unversioned files.
+They can be used to test the output of anything that produces TreeTransforms,
+such as merge algorithms and revert.  They can also be used to test anything
+that takes arbitrary Trees as its input.
+
+  # Get an empty tree to base the transform on.
+  b = self.make_branch('.')
+  empty_tree = b.repository.revision_tree(_mod_revision.NULL_REVISION)
+  tt = TransformPreview(empty_tree)
+  self.addCleanup(tt.finalize)
+  # Empty trees don't have a root, so add it first.
+  root = tt.new_directory('', ROOT_PARENT, 'tree-root')
+  # Set the contents of a file.
+  tt.new_file('new-file', root, 'contents', 'file-id')
+  preview = tt.get_preview_tree()
+  # Test the contents.
+  self.assertEqual('contents', preview.get_file_text('file-id'))
+
+PreviewTrees can stack, with each tree falling back to the previous:
+
+  tt2 = TransformPreview(preview)
+  self.addCleanup(tt2.finalize)
+  tt2.new_file('new-file2', tt2.root, 'contents2', 'file-id2')
+  preview2 = tt2.get_preview_tree()
+  self.assertEqual('contents', preview2.get_file_text('file-id'))
+  self.assertEqual('contents2', preview2.get_file_text('file-id2'))
+
 
 Temporarily changing state
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
