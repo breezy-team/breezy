@@ -93,18 +93,21 @@ from bzrlib.plugins.builddeb.upstream import (
         GetOrigSourceSource,
         PristineTarSource,
         SelfSplitSource,
-        StackedUpstreamSource,
+        TarfileSource,
         UScanSource,
         UpstreamProvider,
         UpstreamBranchSource,
         )
 from bzrlib.plugins.builddeb.util import (
+        FORMAT_3_0_QUILT,
+        FORMAT_3_0_NATIVE,
         debuild_config,
         dget_changes,
         find_changelog,
         find_last_distribution,
         find_previous_upload,
         get_export_upstream_revision,
+        get_source_format,
         guess_build_type,
         lookup_distribution,
         open_file,
@@ -533,12 +536,9 @@ class cmd_merge_upstream(Command):
     snapshot_opt = Option('snapshot', help="Merge a snapshot from the "
             "upstream branch rather than a new upstream release.")
 
-    v3_opt = Option('v3', help='Use dpkg-source format v3.')
-
-
     takes_options = [package_opt, version_opt,
             distribution_opt, directory_opt, last_version_opt,
-            force_opt, v3_opt, 'revision', 'merge-type',
+            force_opt, 'revision', 'merge-type',
             snapshot_opt]
 
     def _add_changelog_entry(self, tree, package, version, distribution_name,
@@ -566,8 +566,7 @@ class cmd_merge_upstream(Command):
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         format = None
         if v3:
-            if (location.endswith(".tar.bz2")
-                    or location.endswith(".tbz2")):
+            if location.endswith(".tar.bz2") or location.endswith(".tbz2"):
                 format = "bz2"
         dest_name = tarball_name(package, version, format=format)
         tarball_filename = os.path.join(orig_dir, dest_name)
@@ -588,9 +587,8 @@ class cmd_merge_upstream(Command):
         orig_dir = os.path.join(tree.basedir, orig_dir)
         if not os.path.exists(orig_dir):
             os.makedirs(orig_dir)
-        tarball_filename = self._fetch_tarball(package, version, orig_dir,
+        return self._fetch_tarball(package, version, orig_dir,
             location, v3)
-        return tarball_filename
 
     def _get_changelog_info(self, tree, last_version, package, distribution):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
@@ -628,8 +626,7 @@ class cmd_merge_upstream(Command):
     def run(self, location=None, upstream_branch=None, version=None,
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
-            last_version=None, force=None, v3=None,
-            snapshot=False):
+            last_version=None, force=None, snapshot=False):
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -675,12 +672,12 @@ class cmd_merge_upstream(Command):
                     primary_upstream_source = UpstreamBranchSource(
                         Branch.open(location), config=config)
                 except NotBranchError:
-                    primary_upstream_source = None
+                    primary_upstream_source = TarfileSource(location, version)
             else:
                 if snapshot:
                     if upstream_branch_source is None:
-                        raise BzrCommandError("--snapshot requires an upstream "
-                            "branch source")
+                        raise BzrCommandError("--snapshot requires an upstream"
+                            " branch source")
                     primary_upstream_source = upstream_branch_source
                 else:
                     primary_upstream_source = UScanSource(tree, larstiq)
@@ -705,10 +702,6 @@ class cmd_merge_upstream(Command):
             elif version is None and primary_upstream_source is not None:
                 version = primary_upstream_source.get_latest_version(
                     package, current_version)
-                target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
-                if need_upstream_tarball:
-                    location = primary_upstream_source.fetch_tarball(
-                        package, version, target_dir)
             if version is None:
                 raise BzrCommandError("You must specify the version number using --version.")
             note("Using version string %s." % (version))
@@ -717,6 +710,12 @@ class cmd_merge_upstream(Command):
                 upstream_revision = upstream_branch_source.version_as_revision(
                     package, version)
             if need_upstream_tarball:
+                target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
+                location = primary_upstream_source.fetch_tarball(
+                    package, version, target_dir)
+                source_format = get_source_format(tree)
+                v3 = (source_format in [
+                    FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
                 tarball_filename = self._get_tarball(config, tree, package,
                     version, upstream_branch, upstream_revision, v3,
                     location)

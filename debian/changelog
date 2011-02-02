@@ -41,8 +41,10 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
     build type. LP: #655277
   * Fix finding upstream tarball when get-orig-source is not available.
     Closes: #552893
+  * merge-upstream now looks at the package source format to see what
+    kind of compression is supported on tarballs. LP: #627718
 
- -- Jelmer Vernooij <jelmer@debian.org>  Tue, 01 Feb 2011 00:13:07 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Wed, 02 Feb 2011 14:40:55 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 

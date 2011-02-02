@@ -101,7 +101,7 @@ def run_dh_make(tree, package_name, version, use_v3=False):
             tree.add("debian/source")
         f = open("debian/source/format")
         try:
-            f.write("3.0 (quilt)\n")
+            f.write("%s\n" % util.FORMAT_3_0_QUILT)
         finally:
             f.close()
         if tree.path2id("debian/source/format") is None:
