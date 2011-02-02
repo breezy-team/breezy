@@ -536,11 +536,9 @@ class cmd_merge_upstream(Command):
     snapshot_opt = Option('snapshot', help="Merge a snapshot from the "
             "upstream branch rather than a new upstream release.")
 
-    v3_opt = Option('v3', help='Use dpkg-source format v3.')
-
     takes_options = [package_opt, version_opt,
             distribution_opt, directory_opt, last_version_opt,
-            force_opt, v3_opt, 'revision', 'merge-type',
+            force_opt, 'revision', 'merge-type',
             snapshot_opt]
 
     def _add_changelog_entry(self, tree, package, version, distribution_name,
@@ -628,8 +626,7 @@ class cmd_merge_upstream(Command):
     def run(self, location=None, upstream_branch=None, version=None,
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
-            last_version=None, force=None, v3=None,
-            snapshot=False):
+            last_version=None, force=None, snapshot=False):
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -716,10 +713,9 @@ class cmd_merge_upstream(Command):
                 target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
                 location = primary_upstream_source.fetch_tarball(
                     package, version, target_dir)
-                if v3 is None:
-                    source_format = get_source_format(tree)
-                    v3 = (source_format in [
-                        FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
+                source_format = get_source_format(tree)
+                v3 = (source_format in [
+                    FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
                 tarball_filename = self._get_tarball(config, tree, package,
                     version, upstream_branch, upstream_revision, v3,
                     location)
