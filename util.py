@@ -675,12 +675,16 @@ def get_source_format(tree):
     :return: String with package format
     """
     if not tree.has_filename("debian/source/format"):
-        return "1.0"
+        return FORMAT_1_0
     return tree.get_file_text(tree.path2id("debian/source/format")).strip()
 
 
-NATIVE_SOURCE_FORMATS = ["3.0 (native)"]
-NORMAL_SOURCE_FORMATS = ["3.0 (quilt)"]
+FORMAT_1_0 = "1.0"
+FORMAT_3_0_QUILT = "3.0 (quilt)"
+FORMAT_3_0_NATIVE = "3.0 (native)"
+
+NATIVE_SOURCE_FORMATS = [FORMAT_3_0_NATIVE]
+NORMAL_SOURCE_FORMATS = [FORMAT_3_0_QUILT]
 
 
 def guess_build_type(tree, version, contains_upstream_source):

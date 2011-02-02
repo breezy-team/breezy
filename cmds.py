@@ -99,6 +99,8 @@ from bzrlib.plugins.builddeb.upstream import (
         UpstreamBranchSource,
         )
 from bzrlib.plugins.builddeb.util import (
+        FORMAT_3_0_QUILT,
+        FORMAT_3_0_NATIVE,
         debuild_config,
         dget_changes,
         find_changelog,
@@ -587,9 +589,8 @@ class cmd_merge_upstream(Command):
         orig_dir = os.path.join(tree.basedir, orig_dir)
         if not os.path.exists(orig_dir):
             os.makedirs(orig_dir)
-        tarball_filename = self._fetch_tarball(package, version, orig_dir,
+        return self._fetch_tarball(package, version, orig_dir,
             location, v3)
-        return tarball_filename
 
     def _get_changelog_info(self, tree, last_version, package, distribution):
         from bzrlib.plugins.builddeb.errors import MissingChangelogError
@@ -717,7 +718,8 @@ class cmd_merge_upstream(Command):
                     package, version, target_dir)
                 if v3 is None:
                     source_format = get_source_format(tree)
-                    v3 = (source_format in ["3.0 (quilt)", "3.0 (native)"])
+                    v3 = (source_format in [
+                        FORMAT_3_0_QUILT, FORMAT_3_0_NATIVE])
                 tarball_filename = self._get_tarball(config, tree, package,
                     version, upstream_branch, upstream_revision, v3,
                     location)
