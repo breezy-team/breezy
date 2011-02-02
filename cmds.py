@@ -997,7 +997,7 @@ class cmd_bd_do(Command):
             orig_dir = default_orig_dir
 
         upstream_provider = UpstreamProvider(changelog.package, 
-                changelog.version.upstream_version, orig_dir, 
+                changelog.version, orig_dir, 
                 [PristineTarSource(t, t.branch),
                  AptSource(),
                  GetOrigSourceSource(t, larstiq),
