@@ -276,10 +276,11 @@ class GenericCommitHandler(processor.CommitHandler):
         who = self._format_name_email("committer", committer[0], committer[1])
         try:
             message = self.command.message.decode("utf-8")
+
         except UnicodeDecodeError:
             self.warning(
                 "commit message not in utf8 - replacing unknown characters")
-            message = message.decode('utf-8', 'replace')
+            message = self.command.message.decode('utf-8', 'replace')
         if not _serializer_handles_escaping:
             # We need to assume the bad ol' days
             message = helpers.escape_commit_message(message)

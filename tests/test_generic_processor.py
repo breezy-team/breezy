@@ -1910,3 +1910,20 @@ class TestModifyRevertInBranch(TestCaseForGenericProcessor):
         self.assertEqual(rev_b, rtree_b.inventory[foo_id].revision)
         self.assertEqual(rev_c, rtree_c.inventory[foo_id].revision)
         self.assertEqual(rev_c, rtree_d.inventory[foo_id].revision)
+
+
+class TestCommitCommands(TestCaseForGenericProcessor):
+
+    def test_non_utf8_commit_message(self):
+        handler, branch = self.get_handler()
+        def files_one():
+            yield commands.FileModifyCommand('a',
+                kind_to_mode('file', False), None, "data")
+        def command_list():
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            yield commands.CommitCommand('head', '1', None,
+                committer, 'This is a funky character: \x83', None, [],
+                files_one)
+        handler.process(command_list)
+        rev = branch.repository.get_revision(branch.last_revision())
+        self.assertEquals(u"This is a funky character: \ufffd", rev.message)

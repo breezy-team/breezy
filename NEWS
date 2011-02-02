@@ -36,6 +36,8 @@ Bug fixes
 * Strip leading slashes when exporting Subversion repositories.
   (Jelmer Vernooij, #477869)
 
+* Cope with non-utf8 characters in commit messages. (Jelmer Vernooij, #444896)
+
 0.9 28-Feb-2010
 ===============
 
