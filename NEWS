@@ -40,6 +40,9 @@ Bug fixes
 
 * Include download_url in setup.py for use on pypi. (Jelmer Vernooij, #456957)
 
+* Fix incremental imports from incremental import streams.
+  (termie, Jelmer Vernooij, #328494)
+
 0.9 28-Feb-2010
 ===============
 

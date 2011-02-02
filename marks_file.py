@@ -53,8 +53,7 @@ def import_marks(filename):
     while line:
         line = line.rstrip('\n')
         mark, revid = line.split(' ', 1)
-        if mark.startswith(':'):
-            mark = mark[1:]
+        mark = mark.lstrip(':')
         revision_ids[mark] = revid
         line = f.readline()
     f.close()
@@ -76,5 +75,5 @@ def export_marks(filename, revision_ids):
 
     # Write the revision info
     for mark, revid in revision_ids.iteritems():
-        f.write(':%s %s\n' % (mark, revid))
+        f.write(':%s %s\n' % (str(mark).lstrip(':'), revid))
     f.close()

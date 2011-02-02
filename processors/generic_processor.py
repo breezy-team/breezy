@@ -150,11 +150,11 @@ class GenericProcessor(processor.ImportProcessor):
             self.note("Starting import ...")
         self.cache_mgr = cache_manager.CacheManager(self.info, self.verbose,
             self.inventory_cache_size)
-        
+
         if self.params.get("import-marks") is not None:
             mark_info = marks_file.import_marks(self.params.get("import-marks"))
             if mark_info is not None:
-                self.cache_mgr.revision_ids = mark_info
+                self.cache_mgr.marks = mark_info
             self.skip_total = False
             self.first_incremental_commit = True
         else:
@@ -334,7 +334,7 @@ class GenericProcessor(processor.ImportProcessor):
 
         if self.params.get("export-marks") is not None:
             marks_file.export_marks(self.params.get("export-marks"),
-                self.cache_mgr.revision_ids)
+                self.cache_mgr.marks)
 
         if self.cache_mgr.reftracker.last_ref == None:
             """Nothing to refresh"""
@@ -474,7 +474,7 @@ class GenericProcessor(processor.ImportProcessor):
         # Currently, we just check the size. In the future, we might
         # decide to be more paranoid and check that the revision-ids
         # are identical as well.
-        self.cache_mgr.revision_ids, known = idmapfile.load_id_map(
+        self.cache_mgr.marks, known = idmapfile.load_id_map(
             self.id_map_path)
         existing_count = len(self.repo.all_revision_ids())
         if existing_count < known:
@@ -485,7 +485,7 @@ class GenericProcessor(processor.ImportProcessor):
         """Save the id-map."""
         # Save the whole lot every time. If this proves a problem, we can
         # change to 'append just the new ones' at a later time.
-        idmapfile.save_id_map(self.id_map_path, self.cache_mgr.revision_ids)
+        idmapfile.save_id_map(self.id_map_path, self.cache_mgr.marks)
 
     def blob_handler(self, cmd):
         """Process a BlobCommand."""
@@ -509,11 +509,12 @@ class GenericProcessor(processor.ImportProcessor):
 
     def commit_handler(self, cmd):
         """Process a CommitCommand."""
+        mark = cmd.id.lstrip(':')
         if self.skip_total and self._revision_count < self.skip_total:
             self.cache_mgr.reftracker.track_heads(cmd)
             # Check that we really do know about this commit-id
-            if not self.cache_mgr.revision_ids.has_key(cmd.id):
-                raise plugin_errors.BadRestart(cmd.id)
+            if not self.cache_mgr.marks.has_key(mark):
+                raise plugin_errors.BadRestart(mark)
             self.cache_mgr._blobs = {}
             self._revision_count += 1
             if cmd.ref.startswith('refs/tags/'):
@@ -533,9 +534,9 @@ class GenericProcessor(processor.ImportProcessor):
         except:
             print "ABORT: exception occurred processing commit %s" % (cmd.id)
             raise
-        self.cache_mgr.revision_ids[cmd.id] = handler.revision_id
+        self.cache_mgr.add_mark(mark, handler.revision_id)
         self._revision_count += 1
-        self.report_progress("(%s)" % cmd.id)
+        self.report_progress("(%s)" % cmd.id.lstrip(':'))
 
         if cmd.ref.startswith('refs/tags/'):
             tag_name = cmd.ref[len('refs/tags/'):]
@@ -597,7 +598,7 @@ class GenericProcessor(processor.ImportProcessor):
     def _set_tag(self, name, from_):
         """Define a tag given a name and import 'from' reference."""
         bzr_tag_name = name.decode('utf-8', 'replace')
-        bzr_rev_id = self.cache_mgr.revision_ids[from_]
+        bzr_rev_id = self.cache_mgr.lookup_committish(from_)
         self.tags[bzr_tag_name] = bzr_rev_id
 
     def feature_handler(self, cmd):
