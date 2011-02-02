@@ -23,11 +23,18 @@ New Features
 * The ``lp:`` directory service now supports Launchpad's QA staging.
   (Jelmer Vernooij, #667483)
 
+* External merge tools can now be configured in bazaar.conf. See
+  ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
+
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
+
+* A new hidden command ``bzr repair-workingtree``. This is a way to force
+  the dirstate file to be rebuilt, rather than using a ``bzr checkout``
+  workaround. (John Arbash Meinel)
 
 * ``bzr cat-revision`` no longer requires a working tree. (Jelmer Vernooij, #704405)
 
@@ -40,19 +47,34 @@ Bug Fixes
 * ``bzr push --overwrite`` with an older revision specified will now correctly
   roll back the target branch. (Jelmer Vernooij, #386576)
 
-* ``bzr serve`` no longer crashes when a server_started hook is installed and IPv6
-  support is available on the system. (Jelmer Vernooij, #293697)
-
 * ``bzr lp-propose`` can now propose merges against packaging branches on
-  Launhcpad without requiring the target branch to be specified. (Jelmer Vernooij,
-  #704647)
+  Launchpad without requiring the target branch to be specified.
+  (Jelmer Vernooij, #704647)
 
-* ``bzr lp-propose`` no longer requires a reviewer to be specified. It will instead
-  leave setting the reviewer up to Launchpad if it was not specified.
+* ``bzr lp-propose`` no longer requires a reviewer to be specified. It will
+  instead leave setting the reviewer up to Launchpad if it was not specified.
   (Jelmer Vernooij, #583772)
 
-* ``bzr whoami`` will now display an error if both a new identity and ``--email``
-  were specified. (Jelmer Vernooij, #680449)
+* ``bzr pull`` will now exit with exit code 1 if there were tag conflicts.
+  (Jelmer Vernooij, #213185)
+
+* ``bzr mv`` user errors no longer throw UnicodeEncodeError with non-ascii
+  paths, however they may still print junk if not on a UTF-8 terminal.
+  (Martin [gz], #707954)
+
+* ``bzr serve`` no longer crashes when a server_started hook is installed and
+  IPv6 support is available on the system. (Jelmer Vernooij, #293697)
+
+* ``bzr whoami`` will now display an error if both a new identity and
+  ``--email`` were specified. (Jelmer Vernooij, #680449)
+
+* ``launchpadlib`` doesn't provide the ``uris`` module in some old versions.
+  (Vincent Ladeuil, #706835)
+
+* Plugins incompatible with the current version of bzr no longer produce a
+  warning on every command invocation.  Instead, a message is shown by
+  ``bzr plugins`` and in crash reports.
+  (#704195, Martin Pool)
 
 Documentation
 *************
@@ -64,6 +86,9 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* Added ``bzrlib.mergetools`` module with helper functions for working with
+  the list of external merge tools. (Gordon Tyler, #489915)
 
 Internals
 *********
@@ -78,3 +103,5 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+..
+   vim: tw=74 ft=rst ff=unix

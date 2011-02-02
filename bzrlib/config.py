@@ -82,6 +82,7 @@ from bzrlib import (
     errors,
     lockdir,
     mail_client,
+    mergetools,
     osutils,
     registry,
     symbol_versioning,
@@ -356,6 +357,24 @@ class Config(object):
             return False
         else:
             return True
+
+    def get_merge_tools(self):
+        tools = {}
+        for (oname, value, section, conf_id, parser) in self._get_options():
+            if oname.startswith('bzr.mergetool.'):
+                tool_name = oname[len('bzr.mergetool.'):]
+                tools[tool_name] = value
+        trace.mutter('loaded merge tools: %r' % tools)
+        return tools
+
+    def find_merge_tool(self, name):
+        # We fake a defaults mechanism here by checking if the given name can 
+        # be found in the known_merge_tools if it's not found in the config.
+        # This should be done through the proposed config defaults mechanism
+        # when it becomes available in the future.
+        command_line = (self.get_user_option('bzr.mergetool.%s' % name) or
+                        mergetools.known_merge_tools.get(name, None))
+        return command_line
 
 
 class IniBasedConfig(Config):

@@ -482,6 +482,59 @@ class cmd_remove_tree(Command):
             d.destroy_workingtree()
 
 
+class cmd_repair_workingtree(Command):
+    __doc__ = """Reset the working tree state file.
+
+    This is not meant to be used normally, but more as a way to recover from
+    filesystem corruption, etc. This rebuilds the working inventory back to a
+    'known good' state. Any new modifications (adding a file, renaming, etc)
+    will be lost, though modified files will still be detected as such.
+
+    Most users will want something more like "bzr revert" or "bzr update"
+    unless the state file has become corrupted.
+
+    By default this attempts to recover the current state by looking at the
+    headers of the state file. If the state file is too corrupted to even do
+    that, you can supply --revision to force the state of the tree.
+    """
+
+    takes_options = ['revision', 'directory',
+        Option('force',
+               help='Reset the tree even if it doesn\'t appear to be'
+                    ' corrupted.'),
+    ]
+    hidden = True
+
+    def run(self, revision=None, directory='.', force=False):
+        tree, _ = WorkingTree.open_containing(directory)
+        self.add_cleanup(tree.lock_tree_write().unlock)
+        if not force:
+            try:
+                tree.check_state()
+            except errors.BzrError:
+                pass # There seems to be a real error here, so we'll reset
+            else:
+                # Refuse
+                raise errors.BzrCommandError(
+                    'The tree does not appear to be corrupt. You probably'
+                    ' want "bzr revert" instead. Use "--force" if you are'
+                    ' sure you want to reset the working tree.')
+        if revision is None:
+            revision_ids = None
+        else:
+            revision_ids = [r.as_revision_id(tree.branch) for r in revision]
+        try:
+            tree.reset_state(revision_ids)
+        except errors.BzrError, e:
+            if revision_ids is None:
+                extra = (', the header appears corrupt, try passing -r -1'
+                         ' to set the state to the last commit')
+            else:
+                extra = ''
+            raise errors.BzrCommandError('failed to reset the tree state'
+                                         + extra)
+
+
 class cmd_revno(Command):
     __doc__ = """Show current revision number.
 
@@ -1016,6 +1069,10 @@ class cmd_pull(Command):
             log.show_branch_change(
                 branch_to, self.outf, result.old_revno,
                 result.old_revid)
+        if getattr(result, 'tag_conflicts', None):
+            return 1
+        else:
+            return 0
 
 
 class cmd_push(Command):
@@ -4587,26 +4644,9 @@ class cmd_plugins(Command):
 
     @display_command
     def run(self, verbose=False):
-        import bzrlib.plugin
-        from inspect import getdoc
-        result = []
-        for name, plugin in bzrlib.plugin.plugins().items():
-            version = plugin.__version__
-            if version == 'unknown':
-                version = ''
-            name_ver = '%s %s' % (name, version)
-            d = getdoc(plugin.module)
-            if d:
-                doc = d.split('\n')[0]
-            else:
-                doc = '(no description)'
-            result.append((name_ver, doc, plugin.path()))
-        for name_ver, doc, path in sorted(result):
-            self.outf.write("%s\n" % name_ver)
-            self.outf.write("   %s\n" % doc)
-            if verbose:
-                self.outf.write("   %s\n" % path)
-            self.outf.write("\n")
+        from bzrlib import plugin
+        self.outf.writelines(
+            plugin.describe_plugins(show_paths=verbose))
 
 
 class cmd_testament(Command):

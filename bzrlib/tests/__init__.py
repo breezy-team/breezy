@@ -2504,7 +2504,7 @@ class TestCaseWithMemoryTransport(TestCase):
                 self.addCleanup(t.disconnect)
             return t
 
-        orig_get_transport = self.overrideAttr(_mod_transport, '_get_transport',
+        orig_get_transport = self.overrideAttr(_mod_transport, 'get_transport',
                                                get_transport_with_cleanup)
         self._make_test_root()
         self.addCleanup(os.chdir, os.getcwdu())
@@ -3802,6 +3802,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_merge3',
         'bzrlib.tests.test_merge_core',
         'bzrlib.tests.test_merge_directive',
+        'bzrlib.tests.test_mergetools',
         'bzrlib.tests.test_missing',
         'bzrlib.tests.test_msgeditor',
         'bzrlib.tests.test_multiparent',

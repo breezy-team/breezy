@@ -33,6 +33,7 @@ from bzrlib import (
     errors,
     osutils,
     mail_client,
+    mergetools,
     ui,
     urlutils,
     tests,
@@ -70,6 +71,9 @@ change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
 log_format=short
 user_global_option=something
+bzr.mergetool.sometool=sometool {base} {this} {other} -o {result}
+bzr.mergetool.funkytool=funkytool "arg with spaces" {this_temp}
+bzr.default_mergetool=sometool
 [ALIASES]
 h=help
 ll=""" + sample_long_alias + "\n"
@@ -952,6 +956,41 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         my_config = self._get_empty_config()
         change_editor = my_config.get_change_editor('old', 'new')
         self.assertIs(None, change_editor)
+
+    def test_get_merge_tools(self):
+        conf = self._get_sample_config()
+        tools = conf.get_merge_tools()
+        self.log(repr(tools))
+        self.assertEqual(
+            {u'funkytool' : u'funkytool "arg with spaces" {this_temp}',
+            u'sometool' : u'sometool {base} {this} {other} -o {result}'},
+            tools)
+
+    def test_get_merge_tools_empty(self):
+        conf = self._get_empty_config()
+        tools = conf.get_merge_tools()
+        self.assertEqual({}, tools)
+
+    def test_find_merge_tool(self):
+        conf = self._get_sample_config()
+        cmdline = conf.find_merge_tool('sometool')
+        self.assertEqual('sometool {base} {this} {other} -o {result}', cmdline)
+
+    def test_find_merge_tool_not_found(self):
+        conf = self._get_sample_config()
+        cmdline = conf.find_merge_tool('DOES NOT EXIST')
+        self.assertIs(cmdline, None)
+
+    def test_find_merge_tool_known(self):
+        conf = self._get_empty_config()
+        cmdline = conf.find_merge_tool('kdiff3')
+        self.assertEquals('kdiff3 {base} {this} {other} -o {result}', cmdline)
+        
+    def test_find_merge_tool_override_known(self):
+        conf = self._get_empty_config()
+        conf.set_user_option('bzr.mergetool.kdiff3', 'kdiff3 blah')
+        cmdline = conf.find_merge_tool('kdiff3')
+        self.assertEqual('kdiff3 blah', cmdline)
 
 
 class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):

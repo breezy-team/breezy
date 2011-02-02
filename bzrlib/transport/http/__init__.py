@@ -30,6 +30,7 @@ import weakref
 from bzrlib import (
     debug,
     errors,
+    transport,
     ui,
     urlutils,
     )
@@ -41,7 +42,6 @@ from bzrlib.trace import mutter
 from bzrlib.transport import (
     ConnectedTransport,
     _CoalescedOffset,
-    get_transport,
     Transport,
     )
 
@@ -570,14 +570,14 @@ class HttpTransportBase(ConnectedTransport):
                                             self._user, self._password,
                                             host, port,
                                             base_path)
-                new_transport = get_transport(new_url)
+                new_transport = transport.get_transport(new_url)
         else:
             # Redirected to a different protocol
             new_url = self._unsplit_url(scheme,
                                         user, password,
                                         host, port,
                                         base_path)
-            new_transport = get_transport(new_url)
+            new_transport = transport.get_transport(new_url)
         return new_transport
 
 

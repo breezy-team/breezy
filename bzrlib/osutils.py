@@ -2403,3 +2403,36 @@ def set_fd_cloexec(fd):
     except (ImportError, AttributeError):
         # Either the fcntl module or specific constants are not present
         pass
+
+
+def find_executable_on_path(name):
+    """Finds an executable on the PATH.
+    
+    On Windows, this will try to append each extension in the PATHEXT
+    environment variable to the name, if it cannot be found with the name
+    as given.
+    
+    :param name: The base name of the executable.
+    :return: The path to the executable found or None.
+    """
+    path = os.environ.get('PATH')
+    if path is None:
+        return None
+    path = path.split(os.pathsep)
+    if sys.platform == 'win32':
+        exts = os.environ.get('PATHEXT', '').split(os.pathsep)
+        exts = [ext.lower() for ext in exts]
+        base, ext = os.path.splitext(name)
+        if ext != '':
+            if ext.lower() not in exts:
+                return None
+            name = base
+            exts = [ext]
+    else:
+        exts = ['']
+    for ext in exts:
+        for d in path:
+            f = os.path.join(d, name) + ext
+            if os.access(f, os.X_OK):
+                return f
+    return None
