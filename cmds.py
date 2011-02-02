@@ -93,7 +93,7 @@ from bzrlib.plugins.builddeb.upstream import (
         GetOrigSourceSource,
         PristineTarSource,
         SelfSplitSource,
-        StackedUpstreamSource,
+        TarfileSource,
         UScanSource,
         UpstreamProvider,
         UpstreamBranchSource,
@@ -673,7 +673,7 @@ class cmd_merge_upstream(Command):
                     primary_upstream_source = UpstreamBranchSource(
                         Branch.open(location), config=config)
                 except NotBranchError:
-                    primary_upstream_source = None
+                    primary_upstream_source = TarfileSource(location, version)
             else:
                 if snapshot:
                     if upstream_branch_source is None:
@@ -711,10 +711,9 @@ class cmd_merge_upstream(Command):
                 upstream_revision = upstream_branch_source.version_as_revision(
                     package, version)
             if need_upstream_tarball:
-                if location is None:
-                    target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
-                    location = primary_upstream_source.fetch_tarball(
-                        package, version, target_dir)
+                target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
+                location = primary_upstream_source.fetch_tarball(
+                    package, version, target_dir)
                 tarball_filename = self._get_tarball(config, tree, package,
                     version, upstream_branch, upstream_revision, v3,
                     location)

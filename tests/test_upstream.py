@@ -24,6 +24,7 @@
 
 
 import os
+import tarfile
 
 from bzrlib.tests import (
     TestCase,
@@ -40,8 +41,10 @@ from bzrlib.plugins.builddeb.errors import (
 from bzrlib.plugins.builddeb.upstream import (
     AptSource,
     StackedUpstreamSource,
+    TarfileSource,
     UpstreamBranchSource,
     UpstreamProvider,
+    UpstreamSource,
     UScanSource,
     Version,
     )
@@ -180,7 +183,7 @@ class AptSourceTests(TestCase):
         self.assertEqual("target", caller.target_dir)
 
 
-class RecordingSource(object):
+class RecordingSource(UpstreamSource):
 
     def __init__(self, succeed, latest=None):
         self._succeed = succeed
@@ -194,6 +197,7 @@ class RecordingSource(object):
         self._specific_versions.append((package, version, target_dir))
         if not self._succeed:
             raise PackageVersionNotPresent(package, version, self)
+        return self._tarball_path(package, version, target_dir)
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -326,6 +330,32 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.assertEquals(revid2,
             source.version_as_revision("foo", "2.1+bzr2"))
         self.assertEquals(revid1, source.version_as_revision("foo", "2.1"))
+
+
+class TarfileSourceTests(TestCaseWithTransport):
+    """Tests for TarfileSource."""
+
+    def setUp(self):
+        super(TarfileSourceTests, self).setUp()
+        tar = tarfile.open("foo-1.0.tar.gz", "w:gz")
+        tar.close()
+
+    def test_version(self):
+        source = TarfileSource("foo-1.0.tar.gz", "1.0")
+        self.assertEquals("1.0", source.get_latest_version("foo", "0.9"))
+
+    def test_fetch_tarball(self):
+        source = TarfileSource("foo-1.0.tar.gz", "1.0")
+        os.mkdir("bar")
+        self.assertEquals("bar/foo_1.0.orig.tar.gz",
+            source.fetch_tarball("foo", "1.0", "bar"))
+        self.failUnlessExists("bar/foo_1.0.orig.tar.gz")
+
+    def test_fetch_tarball_not_present(self):
+        source = TarfileSource("foo-1.0.tar.gz", "1.0")
+        os.mkdir("bar")
+        self.assertRaises(PackageVersionNotPresent,
+            source.fetch_tarball, "foo", "0.9", "bar")
 
 
 class _MissingUpstreamProvider(UpstreamProvider):

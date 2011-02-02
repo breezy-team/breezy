@@ -511,4 +511,20 @@ class UpstreamProvider(object):
                 tarball_name(self.package, self.version.upstream_version, format='lzma')]
 
 
+class TarfileSource(UpstreamSource):
+    """Source that uses a single local tarball."""
 
+    def __init__(self, path, version=None):
+        self.path = path
+        # TODO: Parse self.path for version is version is None?
+        self.version = version
+
+    def fetch_tarball(self, package, version, target_dir):
+        if version != self.version:
+            raise PackageVersionNotPresent(package, version, self)
+        target_filename = self._tarball_path(package, version, target_dir)
+        shutil.copy(self.path, target_filename)
+        return target_filename
+
+    def get_latest_version(self, package, version):
+        return self.version
