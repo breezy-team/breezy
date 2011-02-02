@@ -535,7 +535,6 @@ class cmd_merge_upstream(Command):
 
     v3_opt = Option('v3', help='Use dpkg-source format v3.')
 
-
     takes_options = [package_opt, version_opt,
             distribution_opt, directory_opt, last_version_opt,
             force_opt, v3_opt, 'revision', 'merge-type',
@@ -566,8 +565,7 @@ class cmd_merge_upstream(Command):
         from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
         format = None
         if v3:
-            if (location.endswith(".tar.bz2")
-                    or location.endswith(".tbz2")):
+            if location.endswith(".tar.bz2") or location.endswith(".tbz2"):
                 format = "bz2"
         dest_name = tarball_name(package, version, format=format)
         tarball_filename = os.path.join(orig_dir, dest_name)
@@ -679,8 +677,8 @@ class cmd_merge_upstream(Command):
             else:
                 if snapshot:
                     if upstream_branch_source is None:
-                        raise BzrCommandError("--snapshot requires an upstream "
-                            "branch source")
+                        raise BzrCommandError("--snapshot requires an upstream"
+                            " branch source")
                     primary_upstream_source = upstream_branch_source
                 else:
                     primary_upstream_source = UScanSource(tree, larstiq)
@@ -705,10 +703,6 @@ class cmd_merge_upstream(Command):
             elif version is None and primary_upstream_source is not None:
                 version = primary_upstream_source.get_latest_version(
                     package, current_version)
-                target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
-                if need_upstream_tarball:
-                    location = primary_upstream_source.fetch_tarball(
-                        package, version, target_dir)
             if version is None:
                 raise BzrCommandError("You must specify the version number using --version.")
             note("Using version string %s." % (version))
@@ -717,6 +711,10 @@ class cmd_merge_upstream(Command):
                 upstream_revision = upstream_branch_source.version_as_revision(
                     package, version)
             if need_upstream_tarball:
+                if location is None:
+                    target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
+                    location = primary_upstream_source.fetch_tarball(
+                        package, version, target_dir)
                 tarball_filename = self._get_tarball(config, tree, package,
                     version, upstream_branch, upstream_revision, v3,
                     location)
