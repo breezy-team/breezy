@@ -980,6 +980,8 @@ They can be used to test the output of anything that produces TreeTransforms,
 such as merge algorithms and revert.  They can also be used to test anything
 that takes arbitrary Trees as its input.
 
+::
+
   # Get an empty tree to base the transform on.
   b = self.make_branch('.')
   empty_tree = b.repository.revision_tree(_mod_revision.NULL_REVISION)
@@ -993,7 +995,7 @@ that takes arbitrary Trees as its input.
   # Test the contents.
   self.assertEqual('contents', preview.get_file_text('file-id'))
 
-PreviewTrees can stack, with each tree falling back to the previous:
+PreviewTrees can stack, with each tree falling back to the previous::
 
   tt2 = TransformPreview(preview)
   self.addCleanup(tt2.finalize)
