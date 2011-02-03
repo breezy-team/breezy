@@ -225,3 +225,8 @@ class InconsistentSourceFormatError(BzrError):
 class WatchFileMissing(BzrError):
 
     _fmt = "No watch file found."
+
+
+class StrictBuildFailed(BzrError):
+
+    _fmt = "Build refused because there are unknown files in the tree"
