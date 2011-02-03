@@ -110,6 +110,12 @@ class TestBuilddeb(BuilddebTestCase):
       ['There are conflicts in the working tree. You must resolve these'],
       "builddeb --native --builder true --dont-purge")
 
+  def test_builddeb_strict(self):
+    tree = self.build_really_simple_tree()
+    self.run_bzr_error(
+      ['bzr: ERROR: Build refused because there are unknown files in the tree'],
+      "builddeb --strict")
+
   def test_builddeb_uses_revision_when_told(self):
     self.build_really_simple_tree()
     self.run_bzr("builddeb --native --builder true --dont-purge -r-1")
