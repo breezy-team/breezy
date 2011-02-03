@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ from bzrlib import (
 
 # TODO: Write a test for plugin decoration of commands.
 
-class TestPluginMixin(object):
+class BaseTestPlugins(tests.TestCaseInTempDir):
 
     def create_plugin(self, name, source=None, dir='.', file_name=None):
         if source is None:
@@ -99,7 +99,7 @@ dir_source = '%s'
         self.failUnless('bzrlib.plugins.%s' % name in sys.modules)
 
 
-class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
+class TestLoadingPlugins(BaseTestPlugins):
 
     activeattributes = {}
 
@@ -267,8 +267,13 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
             stream.close()
 
     def test_plugin_with_bad_api_version_reports(self):
-        # This plugin asks for bzrlib api version 1.0.0, which is not supported
-        # anymore.
+        """Try loading a plugin that requests an unsupported api.
+        
+        Observe that it records the problem but doesn't complain on stderr.
+
+        See https://bugs.launchpad.net/bzr/+bug/704195
+        """
+        self.overrideAttr(plugin, 'plugin_warnings', {})
         name = 'wants100.py'
         f = file(name, 'w')
         try:
@@ -276,9 +281,14 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
                 "bzrlib.api.require_any_api(bzrlib, [(1, 0, 0)])\n")
         finally:
             f.close()
-
         log = self.load_and_capture(name)
-        self.assertContainsRe(log,
+        self.assertNotContainsRe(log,
+            r"It requested API version")
+        self.assertEquals(
+            ['wants100'],
+            plugin.plugin_warnings.keys())
+        self.assertContainsRe(
+            plugin.plugin_warnings['wants100'][0],
             r"It requested API version")
 
     def test_plugin_with_bad_name_does_not_load(self):
@@ -292,7 +302,7 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
             "it to 'bad_plugin_name_'\.")
 
 
-class TestPlugins(tests.TestCaseInTempDir, TestPluginMixin):
+class TestPlugins(BaseTestPlugins):
 
     def setup_plugin(self, source=""):
         # This test tests a new plugin appears in bzrlib.plugin.plugins().
@@ -768,7 +778,7 @@ class TestEnvPluginPath(tests.TestCase):
                         ['+foo', '-bar'])
 
 
-class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
+class TestDisablePlugin(BaseTestPlugins):
 
     def setUp(self):
         super(TestDisablePlugin, self).setUp()
@@ -809,6 +819,7 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         self.assertLength(0, self.warnings)
 
 
+
 class TestLoadPluginAtSyntax(tests.TestCase):
 
     def _get_paths(self, paths):
@@ -832,7 +843,7 @@ class TestLoadPluginAtSyntax(tests.TestCase):
                           os.pathsep.join(['batman@cave', '', 'robin@mobile']))
 
 
-class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
+class TestLoadPluginAt(BaseTestPlugins):
 
     def setUp(self):
         super(TestLoadPluginAt, self).setUp()
@@ -847,6 +858,9 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         self.create_plugin_package('test_foo', dir='standard/test_foo')
         # All the tests will load the 'test_foo' plugin from various locations
         self.addCleanup(self._unregister_plugin, 'test_foo')
+        # Unfortunately there's global cached state for the specific
+        # registered paths.
+        self.addCleanup(plugin.PluginImporter.reset)
 
     def assertTestFooLoadedFrom(self, path):
         self.assertPluginKnown('test_foo')
@@ -945,3 +959,26 @@ dir_source = '%s'
         self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@%s' % plugin_path)
         plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom(plugin_path)
+
+
+class TestDescribePlugins(BaseTestPlugins):
+
+    def test_describe_plugins(self):
+        class DummyModule(object):
+            __doc__ = 'Hi there'
+        class DummyPlugin(object):
+            __version__ = '0.1.0'
+            module = DummyModule()
+        def dummy_plugins():
+            return { 'good': DummyPlugin() }
+        self.overrideAttr(plugin, 'plugin_warnings',
+            {'bad': ['Failed to load (just testing)']})
+        self.overrideAttr(plugin, 'plugins', dummy_plugins)
+        self.assertEquals("""\
+bad (failed to load)
+  ** Failed to load (just testing)
+
+good 0.1.0
+  Hi there
+
+""", ''.join(plugin.describe_plugins()))

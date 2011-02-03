@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -323,6 +323,9 @@ class TestDiff(DiffBase):
         self.build_tree_contents([('hello', 'hello world!\n')])
         output = self.run_bzr('diff --format=boo', retcode=1)
         self.assertTrue("BOO!" in output[0])
+        output = self.run_bzr('diff -Fboo', retcode=1)
+        self.assertTrue("BOO!" in output[0])
+
 
 class TestCheckoutDiff(TestDiff):
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -2680,6 +2680,23 @@ class DirState(object):
         self._packed_stat_index = None
         if tracing:
             trace.mutter("set_state_from_inventory complete.")
+
+    def set_state_from_scratch(self, working_inv, parent_trees, parent_ghosts):
+        """Wipe the currently stored state and set it to something new.
+
+        This is a hard-reset for the data we are working with.
+        """
+        # Technically, we really want a write lock, but until we write, we
+        # don't really need it.
+        self._requires_lock()
+        # root dir and root dir contents with no children. We have to have a
+        # root for set_state_from_inventory to work correctly.
+        empty_root = (('', '', inventory.ROOT_ID),
+                      [('d', '', 0, False, DirState.NULLSTAT)])
+        empty_tree_dirblocks = [('', [empty_root]), ('', [])]
+        self._set_data([], empty_tree_dirblocks)
+        self.set_state_from_inventory(working_inv)
+        self.set_parent_trees(parent_trees, parent_ghosts)
 
     def _make_absent(self, current_old):
         """Mark current_old - an entry - as absent for tree 0.

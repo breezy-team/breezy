@@ -20,6 +20,11 @@ previous versions.
 Changed Behaviour
 *****************
 
+* Committing a new revision in a stacked branch is now supported, as long as
+  you are using the current repository format (2a). It will preserve the
+  stacking invariants, etc, so that fetching after commit is guaranteed to
+  work. (John Arbash Meinel, #375013)
+
 * Support for some old development formats have been removed:
   ``development-rich-root``, ``development6-rich-root``, and
   ``development7-rich-root``.  These formats were always labelled experimental

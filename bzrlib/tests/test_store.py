@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2005-2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,15 +21,15 @@ import os
 import gzip
 
 import bzrlib.errors as errors
-from bzrlib.errors import BzrError, UnlistableStore, NoSuchFile
-from bzrlib.transport.local import LocalTransport
+from bzrlib.errors import BzrError
+from bzrlib.store import TransportStore
 from bzrlib.store.text import TextStore
+from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.tests import TestCase, TestCaseInTempDir, TestCaseWithTransport
-import bzrlib.store as store
-import bzrlib.store.versioned
 import bzrlib.transactions as transactions
 import bzrlib.transport as transport
 from bzrlib.transport.memory import MemoryTransport
+from bzrlib.weave import WeaveFile
 
 
 class TestStores(object):
@@ -204,7 +204,7 @@ class MockTransport(transport.Transport):
         return
 
 
-class InstrumentedTransportStore(store.TransportStore):
+class InstrumentedTransportStore(TransportStore):
     """An instrumented TransportStore.
 
     Here we replace template method worker methods with calls that record the
@@ -242,37 +242,37 @@ class TestMockTransport(TestCase):
 class TestTransportStore(TestCase):
 
     def test__relpath_invalid(self):
-        my_store = store.TransportStore(MockTransport())
+        my_store = TransportStore(MockTransport())
         self.assertRaises(ValueError, my_store._relpath, '/foo')
         self.assertRaises(ValueError, my_store._relpath, 'foo/')
 
     def test_register_invalid_suffixes(self):
-        my_store = store.TransportStore(MockTransport())
+        my_store = TransportStore(MockTransport())
         self.assertRaises(ValueError, my_store.register_suffix, '/')
         self.assertRaises(ValueError, my_store.register_suffix, '.gz/bar')
 
     def test__relpath_unregister_suffixes(self):
-        my_store = store.TransportStore(MockTransport())
+        my_store = TransportStore(MockTransport())
         self.assertRaises(ValueError, my_store._relpath, 'foo', ['gz'])
         self.assertRaises(ValueError, my_store._relpath, 'foo', ['dsc', 'gz'])
 
     def test__relpath_simple(self):
-        my_store = store.TransportStore(MockTransport())
+        my_store = TransportStore(MockTransport())
         self.assertEqual("foo", my_store._relpath('foo'))
 
     def test__relpath_prefixed(self):
-        my_store = store.TransportStore(MockTransport(), True)
+        my_store = TransportStore(MockTransport(), True)
         self.assertEqual('45/foo', my_store._relpath('foo'))
 
     def test__relpath_simple_suffixed(self):
-        my_store = store.TransportStore(MockTransport())
+        my_store = TransportStore(MockTransport())
         my_store.register_suffix('bar')
         my_store.register_suffix('baz')
         self.assertEqual('foo.baz', my_store._relpath('foo', ['baz']))
         self.assertEqual('foo.bar.baz', my_store._relpath('foo', ['bar', 'baz']))
 
     def test__relpath_prefixed_suffixed(self):
-        my_store = store.TransportStore(MockTransport(), True)
+        my_store = TransportStore(MockTransport(), True)
         my_store.register_suffix('bar')
         my_store.register_suffix('baz')
         self.assertEqual('45/foo.baz', my_store._relpath('foo', ['baz']))
@@ -394,12 +394,12 @@ class TestTransportStore(TestCase):
         self.assertRaises(KeyError, to_store.get, 'missing', 'sig')
 
     def test_relpath_escaped(self):
-        my_store = store.TransportStore(MemoryTransport())
+        my_store = TransportStore(MemoryTransport())
         self.assertEqual('%25', my_store._relpath('%'))
 
     def test_escaped_uppercase(self):
         """Uppercase letters are escaped for safety on Windows"""
-        my_store = store.TransportStore(MemoryTransport(), prefixed=True,
+        my_store = TransportStore(MemoryTransport(), prefixed=True,
             escaped=True)
         # a particularly perverse file-id! :-)
         self.assertEquals(my_store._relpath('C:<>'), 'be/%2543%253a%253c%253e')
@@ -412,7 +412,8 @@ class TestVersionFileStore(TestCaseWithTransport):
 
     def setUp(self):
         super(TestVersionFileStore, self).setUp()
-        self.vfstore = store.versioned.VersionedFileStore(MemoryTransport())
+        self.vfstore = VersionedFileStore(MemoryTransport(),
+            versionedfile_class=WeaveFile)
         self.vfstore.get_scope = self.get_scope
         self._transaction = None
 
@@ -437,8 +438,8 @@ class TestVersionFileStore(TestCaseWithTransport):
         self.assertRaises(errors.ReadOnlyError, vf.add_lines, 'b', [], [])
 
     def test___iter__escaped(self):
-        self.vfstore = store.versioned.VersionedFileStore(MemoryTransport(),
-            prefixed=True, escaped=True)
+        self.vfstore = VersionedFileStore(MemoryTransport(),
+            prefixed=True, escaped=True, versionedfile_class=WeaveFile)
         self.vfstore.get_scope = self.get_scope
         self._transaction = transactions.WriteTransaction()
         vf = self.vfstore.get_weave_or_empty(' ', self._transaction)

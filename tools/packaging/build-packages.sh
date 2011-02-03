@@ -1,5 +1,5 @@
 #!/bin/bash
-# A helper script to build packages for the various distributions
+# Helper to build packages for the various distributions
 
 if [ -z "$UBUNTU_RELEASES" ]; then
     echo "Configure the distro platforms that you want to"

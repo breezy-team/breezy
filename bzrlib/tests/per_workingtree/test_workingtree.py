@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #           and others
 #
@@ -19,7 +19,6 @@
 from cStringIO import StringIO
 import errno
 import os
-import sys
 
 from bzrlib import (
     branch,
@@ -29,17 +28,21 @@ from bzrlib import (
     osutils,
     tests,
     urlutils,
-    workingtree,
     )
-from bzrlib.errors import (NotBranchError, NotVersionedError,
-                           UnsupportedOperation, PathsNotVersionedError)
+from bzrlib.errors import (
+    UnsupportedOperation,
+    PathsNotVersionedError,
+    )
 from bzrlib.inventory import Inventory
 from bzrlib.osutils import pathjoin, getcwd, has_symlinks
 from bzrlib.tests import TestSkipped, TestNotApplicable
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
-from bzrlib.trace import mutter
-from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree, WorkingTree2)
+from bzrlib.workingtree import (
+    TreeDirectory,
+    TreeFile,
+    TreeLink,
+    WorkingTree,
+    )
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
 
 
@@ -920,9 +923,17 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         else:
             case_sensitive = True
         tree = self.make_branch_and_tree('test')
-        if tree.__class__ == WorkingTree2:
-            raise TestSkipped('WorkingTree2 is not supported')
         self.assertEqual(case_sensitive, tree.case_sensitive)
+        # now we cheat, and make a file that matches the case-sensitive name
+        t = tree.bzrdir.get_workingtree_transport(None)
+        try:
+            content = tree._format.get_format_string()
+        except NotImplementedError:
+            # All-in-one formats didn't have a separate format string.
+            content = tree.bzrdir._format.get_format_string()
+        t.put_bytes(tree._format.case_sensitive_filename, content)
+        tree = tree.bzrdir.open_workingtree()
+        self.assertFalse(tree.case_sensitive)
 
     def test_all_file_ids_with_missing(self):
         tree = self.make_branch_and_tree('tree')

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -63,6 +63,11 @@ _loaded = False
 _plugins_disabled = False
 
 
+plugin_warnings = {}
+# Map from plugin name, to list of string warnings about eg plugin
+# dependencies.
+
+
 def are_plugins_disabled():
     return _plugins_disabled
 
@@ -75,6 +80,43 @@ def disable_plugins():
     global _plugins_disabled
     _plugins_disabled = True
     load_plugins([])
+
+
+def describe_plugins(show_paths=False):
+    """Generate text description of plugins.
+
+    Includes both those that have loaded, and those that failed to 
+    load.
+
+    :param show_paths: If true,
+    :returns: Iterator of text lines (including newlines.)
+    """
+    from inspect import getdoc
+    loaded_plugins = plugins()
+    all_names = sorted(list(set(
+        loaded_plugins.keys() + plugin_warnings.keys())))
+    for name in all_names:
+        if name in loaded_plugins:
+            plugin = loaded_plugins[name]
+            version = plugin.__version__
+            if version == 'unknown':
+                version = ''
+            yield '%s %s\n' % (name, version)
+            d = getdoc(plugin.module)
+            if d:
+                doc = d.split('\n')[0]
+            else:
+                doc = '(no description)'
+            yield ("  %s\n" % doc)
+            if show_paths:
+                yield ("   %s\n" % plugin.path())
+            del plugin
+        else:
+            yield "%s (failed to load)\n" % name
+        if name in plugin_warnings:
+            for line in plugin_warnings[name]:
+                yield "  ** " + line + '\n'
+        yield '\n'
 
 
 def _strip_trailing_sep(path):
@@ -327,6 +369,11 @@ def _find_plugin_module(dir, name):
     return None, None, (None, None, None)
 
 
+def record_plugin_warning(plugin_name, warning_message):
+    trace.mutter(warning_message)
+    plugin_warnings.setdefault(plugin_name, []).append(warning_message)
+
+
 def _load_plugin_module(name, dir):
     """Load plugin name from dir.
 
@@ -340,10 +387,12 @@ def _load_plugin_module(name, dir):
     except KeyboardInterrupt:
         raise
     except errors.IncompatibleAPI, e:
-        trace.warning("Unable to load plugin %r. It requested API version "
+        warning_message = (
+            "Unable to load plugin %r. It requested API version "
             "%s of module %s but the minimum exported version is %s, and "
             "the maximum is %s" %
             (name, e.wanted, e.api, e.minimum, e.current))
+        record_plugin_warning(name, warning_message)
     except Exception, e:
         trace.warning("%s" % e)
         if re.search('\.|-| ', name):
@@ -354,7 +403,9 @@ def _load_plugin_module(name, dir):
                     "file path isn't a valid module name; try renaming "
                     "it to %r." % (name, dir, sanitised_name))
         else:
-            trace.warning('Unable to load plugin %r from %r' % (name, dir))
+            record_plugin_warning(
+                name,
+                'Unable to load plugin %r from %r' % (name, dir))
         trace.log_exception_quietly()
         if 'error' in debug.debug_flags:
             trace.print_exception(sys.exc_info(), sys.stderr)
