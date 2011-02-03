@@ -353,6 +353,7 @@ class TarfileSourceTests(TestCaseWithTransport):
 
     def test_fetch_tarball_repack(self):
         zf = zipfile.ZipFile("bla-2.0.zip", "w")
+        zf.writestr('avoid', 'empty zip to make the repacker happy\n')
         zf.close()
         source = TarfileSource("bla-2.0.zip", "2.0")
         os.mkdir("bar")
