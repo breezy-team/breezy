@@ -24,6 +24,7 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
+from bzrlib import tests
 from bzrlib.revision import Revision
 from bzrlib.tests import TestCase, TestCaseWithTransport
 
@@ -34,6 +35,22 @@ from bzrlib.plugins.builddeb.merge_upstream import (
         upstream_tag_to_version,
         upstream_version_add_revision
         )
+
+# Unless bug #712474 is fixed and available in the minimum bzrlib required, we
+# can't use:
+# svn_plugin = tests.ModuleAvailableFeature('bzrlib.plugins.svn')
+class SvnPluginAvailable(tests.Feature):
+
+    def feature_name(self):
+        return 'bzr-svn plugin'
+
+    def _probe(self):
+        try:
+            import bzrlib.plugins.svn
+            return True
+        except ImportError:
+            return False
+svn_plugin = SvnPluginAvailable()
 
 
 class TestUpstreamVersionAddRevision(TestCaseWithTransport):
@@ -52,7 +69,11 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
   def get_revision(self, revid):
     rev = Revision(revid)
     if revid in self.svn_revnos:
+      self.requireFeature(svn_plugin)
+      # Fake a bzr-svn revision
       rev.foreign_revid = ("uuid", "bp", self.svn_revnos[revid])
+      from bzrlib.plugins.svn import mapping
+      rev.mapping = mapping.mapping_registry.get_default()()
     return rev
 
   def test_update_plus_rev(self):
@@ -68,6 +89,7 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
         upstream_version_add_revision(self, "1.3", "somerev"))
 
   def test_svn_new_rev(self):
+    
     self.assertEquals("1.3+svn45", 
         upstream_version_add_revision(self, "1.3", "somesvnrev"))
 
