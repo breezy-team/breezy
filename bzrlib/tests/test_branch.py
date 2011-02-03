@@ -480,7 +480,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
 
     def test_create_open_reference(self):
         bzrdirformat = bzrdir.BzrDirMetaFormat1()
-        t = transport.get_transport(self.get_url('.'))
+        t = self.get_transport()
         t.mkdir('repo')
         dir = bzrdirformat.initialize(self.get_url('repo'))
         dir.create_repository()

@@ -450,8 +450,14 @@ def _show_shelve_summary(params):
     manager = get_shelf_manager()
     shelves = manager.active_shelves()
     if shelves:
-        params.to_file.write('%d shelves exist. '
-            'See "bzr shelve --list" for details.\n' % len(shelves))
+        singular = '%d shelf exists. '
+        plural = '%d shelves exist. '
+        if len(shelves) == 1:
+            fmt = singular
+        else:
+            fmt = plural
+        params.to_file.write(fmt % len(shelves))
+        params.to_file.write('See "bzr shelve --list" for details.\n')
 
 
 hooks = StatusHooks()

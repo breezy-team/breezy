@@ -31,6 +31,7 @@ from bzrlib import (
     repository,
     revision as _mod_revision,
     tests,
+    transport,
     ui,
     )
 from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
@@ -42,7 +43,6 @@ from bzrlib.tests import (
     TestNotApplicable,
     )
 from bzrlib.transport import (
-    get_transport,
     memory,
     )
 from bzrlib.tests import test_server
@@ -266,8 +266,8 @@ class TestPackRepository(TestCaseWithTransport):
         format = self.get_format()
         server = test_server.FakeNFSServer()
         self.start_server(server)
-        transport = get_transport(server.get_url())
-        bzrdir = self.get_format().initialize_on_transport(transport)
+        t = transport.get_transport(server.get_url())
+        bzrdir = self.get_format().initialize_on_transport(t)
         repo = bzrdir.create_repository()
         repo_transport = bzrdir.get_repository_transport(None)
         self.assertTrue(repo_transport.has('obsolete_packs'))
