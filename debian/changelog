@@ -45,8 +45,10 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
     kind of compression is supported on tarballs. LP: #627718
   * Support upstream version strings containing dashes. Patch by Stefano
     Rivera. LP: #711826
+  * Support unversioned debian/ symlink in working tree when finding
+    changelog and larstiq mode. LP: #619295
 
- -- Jelmer Vernooij <jelmer@debian.org>  Thu, 03 Feb 2011 11:36:59 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 03 Feb 2011 11:59:26 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 

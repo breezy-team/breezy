@@ -170,6 +170,15 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         self.assertEqual(str(cl), cl_block1)
         self.assertEqual(lq, True)
 
+    def test_find_changelog_lq_unversioned_debian_symlink(self):
+        # LarstiQ mode, but with an unversioned "debian" -> "." symlink.
+        # Bug 619295
+        tree = self.make_branch_and_tree('.')
+        self.write_changelog('changelog')
+        tree.add(['changelog'])
+        os.symlink('.', 'debian')
+        self.assertRaises(AddChangelogError, find_changelog, tree, True)
+
     def test_find_changelog_nomerge_lq(self):
         tree = self.make_branch_and_tree('.')
         self.write_changelog('changelog')
