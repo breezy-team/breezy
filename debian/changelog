@@ -47,6 +47,8 @@ bzr-builddeb (2.5.1) unstable; urgency=low
     Rivera. LP: #711826
   * Run test suite unless nocheck is set (consistent with policy).
   * Fix build dependencies for test suite.
+  * Support unversioned debian/ symlink in working tree when finding
+    changelog and larstiq mode. LP: #619295
 
  -- Jelmer Vernooij <jelmer@debian.org>  Thu, 03 Feb 2011 14:38:04 +0100
 

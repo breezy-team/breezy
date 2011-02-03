@@ -158,7 +158,9 @@ def find_changelog(t, merge, max_blocks=1):
             # If it is a "larstiq" pacakge and debian is a symlink to
             # "." then it will have found debian/changelog. Try and detect
             # this.
-            if (t.kind(t.path2id('debian')) == 'symlink' and 
+            debian_file_id = t.path2id('debian')
+            if (debian_file_id is not None and 
+                t.kind(debian_file_id) == 'symlink' and 
                 t.get_symlink_target(t.path2id('debian')) == '.'):
                 changelog_file = 'changelog'
                 larstiq = True
