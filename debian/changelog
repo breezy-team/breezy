@@ -1,3 +1,9 @@
+bzr (2.3.0-1) UNRELEASED; urgency=low
+
+  * New upstream release.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 03 Feb 2011 18:58:06 +0100
+
 bzr (2.3.0~beta5-1) unstable; urgency=medium
 
   [ Jelmer Vernooij ]
