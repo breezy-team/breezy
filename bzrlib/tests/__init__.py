@@ -4340,7 +4340,8 @@ class ModuleAvailableFeature(Feature):
 
     def _probe(self):
         try:
-            self._module = __import__(self.module_name, {}, {}, [''])
+            exec 'import %s' % (self.module_name)
+            self._module = sys.modules[self.module_name]
             return True
         except ImportError:
             return False

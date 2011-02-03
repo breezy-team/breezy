@@ -36,7 +36,8 @@ Improvements
   the dirstate file to be rebuilt, rather than using a ``bzr checkout``
   workaround. (John Arbash Meinel)
 
-* ``bzr cat-revision`` no longer requires a working tree. (Jelmer Vernooij, #704405)
+* ``bzr cat-revision`` no longer requires a working tree. 
+  (Jelmer Vernooij, #704405)
 
 Bug Fixes
 *********
@@ -102,6 +103,10 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* ``ModuleAvailableFeature`` can now be used for modules with side-effects
+  that can't be imported twice with ``__import__``.
+  (Vincent Ladeuil, #712474)
 
 ..
    vim: tw=74 ft=rst ff=unix
