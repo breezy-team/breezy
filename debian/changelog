@@ -1,4 +1,4 @@
-bzr-builddeb (2.5.1) UNRELEASED; urgency=low
+bzr-builddeb (2.5.1) unstable; urgency=low
 
   [ James Westby ]
 
@@ -45,8 +45,10 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
     kind of compression is supported on tarballs. LP: #627718
   * Support upstream version strings containing dashes. Patch by Stefano
     Rivera. LP: #711826
+  * Run test suite unless nocheck is set (consistent with policy).
+  * Fix build dependencies for test suite.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Thu, 03 Feb 2011 11:36:59 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 03 Feb 2011 14:38:04 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 
