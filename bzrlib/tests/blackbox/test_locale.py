@@ -16,6 +16,7 @@
 
 """Test that bzr handles locales in a reasonable way"""
 
+import os
 import sys
 
 from bzrlib import (
@@ -43,13 +44,10 @@ class TestLocale(tests.TestCaseWithTransport):
 
     def test_log_C(self):
         self.disable_missing_extensions_warning()
-        # C is not necessarily the default locale, so set both LANG and LC_ALL
-        # explicitly because LC_ALL is preferred on (some?) Linux systems but
-        # only LANG is respected on Windows.
         out, err = self.run_bzr_subprocess(
             '--no-aliases --no-plugins log -q --log-format=long tree',
-               env_changes={'LANG': 'C', 'BZR_PROGRESS_BAR':'none',
-                            'LC_ALL': 'C', 'LC_CTYPE':None, 'LANGUAGE':None})
+               env_changes={'LANG':'C', 'BZR_PROGRESS_BAR':'none',
+                            'LC_ALL':None, 'LC_CTYPE':None, 'LANGUAGE':None})
         self.assertEqual('', err)
         self.assertEqualDiff("""\
 ------------------------------------------------------------

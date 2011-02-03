@@ -44,10 +44,10 @@ except ImportError:
     mutter('WARNING: using slower ElementTree; consider installing cElementTree'
            " and make sure it's on your PYTHONPATH")
     # this copy is shipped with bzr
-    from elementtree.ElementTree import (ElementTree, SubElement,
+    from util.elementtree.ElementTree import (ElementTree, SubElement,
                                               Element, XMLTreeBuilder,
                                               fromstring, tostring)
-    import elementtree
+    import util.elementtree as elementtree
     from xml.parsers.expat import ExpatError as ParseError
 
 from bzrlib import errors

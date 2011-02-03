@@ -26,7 +26,7 @@ from bzrlib import (
     globbing,
     osutils,
     )
-import configobj
+from bzrlib.util.configobj import configobj
 
 
 # Name of the file holding rules in a tree
