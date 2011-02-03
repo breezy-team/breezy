@@ -1089,6 +1089,16 @@ class TestHttpProxyWhiteBox(tests.TestCase):
         self.overrideEnv('http_proxy', 'host:1234')
         self.assertRaises(errors.InvalidURL, self._proxied_request)
 
+    def test_evaluate_proxy_bypass(self):
+        """Test matching of no_proxy etc"""
+        handler = _urllib2_wrappers.ProxyHandler()
+        # https://bugs.launchpad.net/bzr/+bug/586341
+        self.assertEquals(
+            None,
+            handler.evaluate_proxy_bypass(
+                'example.com',
+                ','))
+
 
 class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
     """Tests proxy server.
