@@ -37,11 +37,12 @@ except ImportError:
 TAG_PREFIX = "upstream-"
 
 
-def package_version(upstream_version, distribution_name):
+def package_version(upstream_version, distribution_name, epoch=None):
     """Determine the package version for a new upstream.
 
     :param upstream_version: Upstream version string
     :param distribution_name: Distribution the package is for
+    :param epoch: Optional epoch
     """
     assert isinstance(upstream_version, str), \
         "upstream_version should be a str, not %s" % str(
@@ -50,6 +51,7 @@ def package_version(upstream_version, distribution_name):
         ret = Version("%s-0ubuntu1" % upstream_version)
     else:
         ret = Version("%s-1" % upstream_version)
+    ret.epoch = epoch
     return ret
 
 
@@ -88,7 +90,8 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
                  type(upstream_version))
     entry_description = upstream_merge_changelog_line(upstream_version)
     proc = subprocess.Popen(["dch", "-v",
-            str(package_version(upstream_version, distribution_name)),
+            str(package_version(upstream_version, distribution_name,
+                                changelog.epoch)),
             "-D", "UNRELEASED", "--release-heuristic", "changelog", entry_description],
             cwd=tree.basedir)
     proc.wait()

@@ -70,10 +70,12 @@ from bzrlib.plugins.builddeb.util import (
                   )
 
 from bzrlib import errors as bzr_errors
-from bzrlib.tests import (TestCaseWithTransport,
-                          TestCaseInTempDir,
-                          TestCase,
-                          )
+from bzrlib.tests import (
+    SymlinkFeature,
+    TestCaseWithTransport,
+    TestCaseInTempDir,
+    TestCase,
+    )
 
 
 class RecursiveCopyTests(TestCaseInTempDir):
@@ -170,6 +172,16 @@ bzr-builddeb (0.16.2) unstable; urgency=low
         self.assertEqual(str(cl), cl_block1)
         self.assertEqual(lq, True)
 
+    def test_find_changelog_lq_unversioned_debian_symlink(self):
+        # LarstiQ mode, but with an unversioned "debian" -> "." symlink.
+        # Bug 619295
+        self.requireFeature(SymlinkFeature)
+        tree = self.make_branch_and_tree('.')
+        self.write_changelog('changelog')
+        tree.add(['changelog'])
+        os.symlink('.', 'debian')
+        self.assertRaises(AddChangelogError, find_changelog, tree, True)
+
     def test_find_changelog_nomerge_lq(self):
         tree = self.make_branch_and_tree('.')
         self.write_changelog('changelog')
@@ -187,6 +199,7 @@ bzr-builddeb (0.16.2) unstable; urgency=low
 
     def test_find_changelog_symlink(self):
         """When there was a symlink debian -> . then the code used to break"""
+        self.requireFeature(SymlinkFeature)
         tree = self.make_branch_and_tree('.')
         self.write_changelog('changelog')
         tree.add(['changelog'])

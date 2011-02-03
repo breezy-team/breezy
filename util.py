@@ -158,7 +158,9 @@ def find_changelog(t, merge, max_blocks=1):
             # If it is a "larstiq" pacakge and debian is a symlink to
             # "." then it will have found debian/changelog. Try and detect
             # this.
-            if (t.kind(t.path2id('debian')) == 'symlink' and 
+            debian_file_id = t.path2id('debian')
+            if (debian_file_id is not None and 
+                t.kind(debian_file_id) == 'symlink' and 
                 t.get_symlink_target(t.path2id('debian')) == '.'):
                 changelog_file = 'changelog'
                 larstiq = True
@@ -675,12 +677,16 @@ def get_source_format(tree):
     :return: String with package format
     """
     if not tree.has_filename("debian/source/format"):
-        return "1.0"
+        return FORMAT_1_0
     return tree.get_file_text(tree.path2id("debian/source/format")).strip()
 
 
-NATIVE_SOURCE_FORMATS = ["3.0 (native)"]
-NORMAL_SOURCE_FORMATS = ["3.0 (quilt)"]
+FORMAT_1_0 = "1.0"
+FORMAT_3_0_QUILT = "3.0 (quilt)"
+FORMAT_3_0_NATIVE = "3.0 (native)"
+
+NATIVE_SOURCE_FORMATS = [FORMAT_3_0_NATIVE]
+NORMAL_SOURCE_FORMATS = [FORMAT_3_0_QUILT]
 
 
 def guess_build_type(tree, version, contains_upstream_source):

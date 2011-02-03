@@ -1,4 +1,4 @@
-bzr-builddeb (2.5.1) UNRELEASED; urgency=low
+bzr-builddeb (2.5.1) unstable; urgency=low
 
   [ James Westby ]
 
@@ -34,8 +34,23 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
   * Add --snapshot option to merge-upstream.
   * 'bzr merge-upstream' now also works in merge mode, and will simply
     add a new entry for new upstream versions.
+  * merge-upstream will now keep epochs around. LP: #622678
+  * 'bzr builddeb' now searches for directories relative to the working
+    tree rather than relative to the branch. Closes: #676456
+  * Use enums for build types, and a priority scheme to figure out the
+    build type. LP: #655277
+  * Fix finding upstream tarball when get-orig-source is not available.
+    Closes: #552893
+  * merge-upstream now looks at the package source format to see what
+    kind of compression is supported on tarballs. LP: #627718
+  * Support upstream version strings containing dashes. Patch by Stefano
+    Rivera. LP: #711826
+  * Run test suite unless nocheck is set (consistent with policy).
+  * Fix build dependencies for test suite.
+  * Support unversioned debian/ symlink in working tree when finding
+    changelog and larstiq mode. LP: #619295
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 28 Jan 2011 15:13:22 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 03 Feb 2011 14:38:04 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 

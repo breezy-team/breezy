@@ -24,13 +24,13 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
-from bzrlib.revision import Revision
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCase
 
 from bzrlib.plugins.builddeb.merge_upstream import (
     upstream_merge_changelog_line,
     package_version,
     )
+
 
 class TestPackageVersion(TestCase):
 
@@ -49,6 +49,10 @@ class TestPackageVersion(TestCase):
   def test_ubuntu_with_dash(self):
     self.assertEquals(Version("1.2-1-0ubuntu1"),
         package_version("1.2-1", "ubuntu"))
+
+  def test_ubuntu_with_epoch(self):
+    self.assertEquals(Version("3:1.2-1-0ubuntu1"),
+        package_version("1.2-1", "ubuntu", "3"))
 
 
 class UpstreamMergeChangelogLineTests(TestCase):

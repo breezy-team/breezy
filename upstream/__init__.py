@@ -181,7 +181,7 @@ class GetOrigSourceSource(UpstreamSource):
         ret = proc.wait()
         if ret != 0:
             note("Trying to run get-orig-source rule failed")
-            return False
+            return None
         for desired_tarball_name in desired_tarball_names:
             fetched_tarball = os.path.join(source_dir, desired_tarball_name)
             if os.path.exists(fetched_tarball):
@@ -341,9 +341,12 @@ class StackedUpstreamSource(UpstreamSource):
     def fetch_tarball(self, package, version, target_dir):
         for source in self._sources:
             try:
-                return source.fetch_tarball(package, version, target_dir)
+                path = source.fetch_tarball(package, version, target_dir)
             except PackageVersionNotPresent:
                 pass
+            else:
+                assert isinstance(path, basestring)
+                return path
         raise PackageVersionNotPresent(package, version, self)
 
     def get_latest_version(self, package, version):
@@ -372,7 +375,7 @@ class UpstreamProvider(object):
         :param store_dir: A directory to cache the tarballs.
         """
         self.package = package
-        self.version = Version(version)
+        self.version = version
         self.store_dir = store_dir
         self.source = StackedUpstreamSource(sources)
 
@@ -409,12 +412,13 @@ class UpstreamProvider(object):
             if not os.path.exists(self.store_dir):
                 os.makedirs(self.store_dir)
             try:
-                self.source.fetch_tarball(self.package,
-                    self.version.upstream_version, self.store_dir)
+                path = self.source.fetch_tarball(self.package,
+                    self.version, self.store_dir)
             except PackageVersionNotPresent:
                 raise MissingUpstreamTarball(self._tarball_names()[0])
+            assert isinstance(path, basestring)
         else:
-             note("Using the upstream tarball that is present in %s" %
+            note("Using the upstream tarball that is present in %s" %
                  self.store_dir)
         path = self.provide_from_store_dir(target_dir)
         assert path is not None
@@ -443,9 +447,27 @@ class UpstreamProvider(object):
         return path
 
     def _tarball_names(self):
-        return [tarball_name(self.package, self.version.upstream_version),
-                tarball_name(self.package, self.version.upstream_version, format='bz2'),
-                tarball_name(self.package, self.version.upstream_version, format='lzma')]
+        return [tarball_name(self.package, self.version),
+                tarball_name(self.package, self.version, format='bz2'),
+                tarball_name(self.package, self.version, format='lzma')]
 
 
+class TarfileSource(UpstreamSource):
+    """Source that uses a single local tarball."""
 
+    def __init__(self, path, version=None):
+        self.path = path
+        # TODO: Parse self.path for version is version is None?
+        self.version = version
+
+    def fetch_tarball(self, package, version, target_dir):
+        if version != self.version:
+            raise PackageVersionNotPresent(package, version, self)
+        dest_name = tarball_name(package, version)
+        repack_tarball(self.path, dest_name, target_dir=target_dir)
+        target_filename = self._tarball_path(package, version, target_dir)
+        shutil.copy(self.path, target_filename)
+        return target_filename
+
+    def get_latest_version(self, package, version):
+        return self.version
