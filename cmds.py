@@ -405,7 +405,7 @@ class cmd_builddeb(Command):
                 upstream_sources.append(SelfSplitSource(tree))
  
             upstream_provider = UpstreamProvider(changelog.package,
-                changelog.version, orig_dir, upstream_sources)
+                changelog.version.upstream_version, orig_dir, upstream_sources)
 
             if build_type == BUILD_TYPE_MERGE:
                 distiller_cls = MergeModeDistiller
@@ -996,8 +996,8 @@ class cmd_bd_do(Command):
         if orig_dir is None:
             orig_dir = default_orig_dir
 
-        upstream_provider = UpstreamProvider(changelog.package, 
-                changelog.version.upstream_version, orig_dir, 
+        upstream_provider = UpstreamProvider(changelog.package,
+                changelog.version.upstream_version, orig_dir,
                 [PristineTarSource(t, t.branch),
                  AptSource(),
                  GetOrigSourceSource(t, larstiq),

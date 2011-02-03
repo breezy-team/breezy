@@ -434,7 +434,7 @@ class UpstreamProvider(object):
         :param store_dir: A directory to cache the tarballs.
         """
         self.package = package
-        self.version = Version(version)
+        self.version = version
         self.store_dir = store_dir
         self.source = StackedUpstreamSource(sources)
 
@@ -472,7 +472,7 @@ class UpstreamProvider(object):
                 os.makedirs(self.store_dir)
             try:
                 path = self.source.fetch_tarball(self.package,
-                    self.version.upstream_version, self.store_dir)
+                    self.version, self.store_dir)
             except PackageVersionNotPresent:
                 raise MissingUpstreamTarball(self._tarball_names()[0])
             assert isinstance(path, basestring)
@@ -506,9 +506,9 @@ class UpstreamProvider(object):
         return path
 
     def _tarball_names(self):
-        return [tarball_name(self.package, self.version.upstream_version),
-                tarball_name(self.package, self.version.upstream_version, format='bz2'),
-                tarball_name(self.package, self.version.upstream_version, format='lzma')]
+        return [tarball_name(self.package, self.version),
+                tarball_name(self.package, self.version, format='bz2'),
+                tarball_name(self.package, self.version, format='lzma')]
 
 
 class TarfileSource(UpstreamSource):

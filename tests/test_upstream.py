@@ -47,7 +47,6 @@ from bzrlib.plugins.builddeb.upstream import (
     UpstreamProvider,
     UpstreamSource,
     UScanSource,
-    Version,
     )
 
 
@@ -395,7 +394,7 @@ class _SimpleUpstreamProvider(UpstreamProvider):
 
     def __init__(self, package, version, store_dir):
         self.package = package
-        self.version = Version(version)
+        self.version = version
         self.store_dir = store_dir
 
     def provide(self, target_dir):

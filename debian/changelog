@@ -43,8 +43,10 @@ bzr-builddeb (2.5.1) UNRELEASED; urgency=low
     Closes: #552893
   * merge-upstream now looks at the package source format to see what
     kind of compression is supported on tarballs. LP: #627718
+  * Support upstream version strings containing dashes. Patch by Stefano
+    Rivera. LP: #711826
 
- -- Jelmer Vernooij <jelmer@debian.org>  Wed, 02 Feb 2011 14:40:55 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 03 Feb 2011 11:36:59 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 
