@@ -23,7 +23,7 @@ import sys
 import warnings
 
 # update this on each release
-_script_version = (2, 3, 0)
+_script_version = (2, 3, 1)
 
 try:
     version_info = sys.version_info
