@@ -1056,7 +1056,7 @@ class TestGraphIndex(tests.TestCaseWithMemoryTransport):
     def test_supports_unlimited_cache(self):
         builder = index.GraphIndexBuilder(0, key_elements=1)
         stream = builder.finish()
-        trans = transport.get_transport(self.get_url())
+        trans = self.get_transport()
         size = trans.put_file('index', stream)
         # It doesn't matter what unlimited_cache does here, just that it can be
         # passed

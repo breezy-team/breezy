@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 """Tests for control directory implementations - tests a controldir format."""
 
 from itertools import izip
-import os
 
 import bzrlib.branch
 from bzrlib import (
@@ -34,16 +33,19 @@ from bzrlib import (
     )
 import bzrlib.revision
 from bzrlib.tests import (
-                          ChrootedTestCase,
-                          TestNotApplicable,
-                          TestSkipped,
-                          )
+    ChrootedTestCase,
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.per_controldir import TestCaseWithControlDir
 from bzrlib.transport.local import LocalTransport
 from bzrlib.ui import (
     CannedInputUIFactory,
     )
-from bzrlib.remote import RemoteBzrDir, RemoteRepository
+from bzrlib.remote import (
+    RemoteBzrDir,
+    RemoteRepository,
+    )
 from bzrlib.repofmt import weaverepo
 
 
@@ -755,12 +757,11 @@ class TestControlDir(TestCaseWithControlDir):
         tree.commit('revision 1', rev_id='1')
         tree.commit('revision 2', rev_id='2', allow_pointless=True)
         dir = tree.bzrdir
-        if isinstance(dir, (bzrdir.BzrDirPreSplitOut,)):
-            self.assertRaises(errors.MustHaveWorkingTree, dir.sprout,
-                              self.get_url('target'),
-                              create_tree_if_local=False)
-            return
-        target = dir.sprout(self.get_url('target'), create_tree_if_local=False)
+        try:
+            target = dir.sprout(self.get_url('target'),
+                create_tree_if_local=False)
+        except errors.MustHaveWorkingTree:
+            raise TestNotApplicable("control dir format requires working tree")
         self.failIfExists('target/foo')
         self.assertEqual(tree.branch.last_revision(),
                          target.open_branch().last_revision())
@@ -803,8 +804,8 @@ class TestControlDir(TestCaseWithControlDir):
             '_network_name', None),
             None)
         # supported formats must be able to init and open
-        t = transport.get_transport(self.get_url())
-        readonly_t = transport.get_transport(self.get_readonly_url())
+        t = self.get_transport()
+        readonly_t = self.get_readonly_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         self.failUnless(isinstance(made_control, controldir.ControlDir))
         self.assertEqual(self.bzrdir_format,
@@ -1024,7 +1025,7 @@ class TestControlDir(TestCaseWithControlDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
@@ -1037,7 +1038,7 @@ class TestControlDir(TestCaseWithControlDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
@@ -1052,7 +1053,7 @@ class TestControlDir(TestCaseWithControlDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch()
@@ -1073,7 +1074,7 @@ class TestControlDir(TestCaseWithControlDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
@@ -1088,7 +1089,7 @@ class TestControlDir(TestCaseWithControlDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         try:
             made_repo = made_control.create_repository(shared=True)
@@ -1105,7 +1106,7 @@ class TestControlDir(TestCaseWithControlDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository(shared=False)
         self.assertFalse(made_repo.is_shared())
@@ -1116,7 +1117,7 @@ class TestControlDir(TestCaseWithControlDir):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         opened_repo = made_control.open_repository()
@@ -1206,7 +1207,7 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertTrue(isinstance(dir.get_repository_transport(None),
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
-        # repositories, or it supports anonymous  repository formats, but not both.
+        # repositories, or it supports anonymous repository formats, but not both.
         anonymous_format = weaverepo.RepositoryFormat6()
         identifiable_format = weaverepo.RepositoryFormat7()
         try:
@@ -1244,7 +1245,7 @@ class TestControlDir(TestCaseWithControlDir):
     def test_root_transport(self):
         dir = self.make_bzrdir('.')
         self.assertEqual(dir.root_transport.base,
-                         transport.get_transport(self.get_url('.')).base)
+                         self.get_transport().base)
 
     def test_find_repository_no_repo_under_standalone_branch(self):
         # finding a repo stops at standalone branches even if there is a
@@ -1255,8 +1256,9 @@ class TestControlDir(TestCaseWithControlDir):
             # need a shared repository to test this.
             return
         url = self.get_url('intermediate')
-        transport.get_transport(self.get_url()).mkdir('intermediate')
-        transport.get_transport(self.get_url()).mkdir('intermediate/child')
+        t = self.get_transport()
+        t.mkdir('intermediate')
+        t.mkdir('intermediate/child')
         made_control = self.bzrdir_format.initialize(url)
         made_control.create_repository()
         innermost_control = self.bzrdir_format.initialize(
@@ -1280,7 +1282,7 @@ class TestControlDir(TestCaseWithControlDir):
             # need a shared repository to test this.
             return
         url = self.get_url('childbzrdir')
-        transport.get_transport(self.get_url()).mkdir('childbzrdir')
+        self.get_transport().mkdir('childbzrdir')
         made_control = self.bzrdir_format.initialize(url)
         try:
             child_repo = made_control.open_repository()
@@ -1314,7 +1316,7 @@ class TestControlDir(TestCaseWithControlDir):
             # need a shared repository to test this.
             return
         url = self.get_url('childrepo')
-        transport.get_transport(self.get_url()).mkdir('childrepo')
+        self.get_transport().mkdir('childrepo')
         child_control = self.bzrdir_format.initialize(url)
         child_repo = child_control.create_repository(shared=True)
         opened_control = bzrdir.BzrDir.open(self.get_url('childrepo'))
@@ -1333,8 +1335,9 @@ class TestControlDir(TestCaseWithControlDir):
             # need a shared repository to test this.
             return
         url = self.get_url('intermediate')
-        transport.get_transport(self.get_url()).mkdir('intermediate')
-        transport.get_transport(self.get_url()).mkdir('intermediate/child')
+        t = self.get_transport()
+        t.mkdir('intermediate')
+        t.mkdir('intermediate/child')
         made_control = self.bzrdir_format.initialize(url)
         try:
             child_repo = made_control.open_repository()

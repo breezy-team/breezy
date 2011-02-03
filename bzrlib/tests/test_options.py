@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@ from bzrlib import (
     option,
     )
 from bzrlib.builtins import cmd_commit
-from bzrlib.commands import Command, parse_args
+from bzrlib.commands import parse_args
 from bzrlib.tests import TestCase
 from bzrlib.repofmt import knitrepo
 
@@ -395,6 +395,14 @@ class TestOptionDefinitions(TestCase):
         format = option.RegistryOption('format', '', registry, str)
         self.assertTrue(format.is_hidden('hidden'))
         self.assertFalse(format.is_hidden('visible'))
+
+    def test_short_name(self):
+        registry = controldir.ControlDirFormatRegistry()
+        opt = option.RegistryOption('format', help='', registry=registry)
+        self.assertEquals(None, opt.short_name())
+        opt = option.RegistryOption('format', short_name='F', help='',
+            registry=registry)
+        self.assertEquals('F', opt.short_name())
 
     def test_option_custom_help(self):
         the_opt = option.Option.OPTIONS['help']

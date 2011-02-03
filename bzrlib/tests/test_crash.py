@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@ from bzrlib import (
     config,
     crash,
     osutils,
-    symbol_versioning,
+    plugin,
     tests,
     )
 
@@ -42,6 +42,11 @@ class TestApportReporting(tests.TestCaseInTempDir):
         os.mkdir(crash_dir)
         self.overrideEnv('APPORT_CRASH_DIR', crash_dir)
         self.assertEquals(crash_dir, config.crash_dir())
+
+        self.overrideAttr(
+            plugin,
+            'plugin_warnings',
+            {'example': ['Failed to load plugin foo']})
 
         stderr = StringIO()
 
@@ -72,3 +77,6 @@ class TestApportReporting(tests.TestCaseInTempDir):
         self.assertContainsRe(report, 'test_apport_report')
         # should also be in there
         self.assertContainsRe(report, '(?m)^CommandLine:')
+        self.assertContainsRe(
+            report,
+            'Failed to load plugin foo')

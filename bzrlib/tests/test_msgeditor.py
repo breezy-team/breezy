@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,8 +29,6 @@ from bzrlib import (
     tests,
     trace,
     )
-from bzrlib.branch import Branch
-from bzrlib.config import ensure_config_dir_exists, config_filename
 from bzrlib.msgeditor import (
     make_commit_message_template_encoded,
     edit_commit_message_encoded

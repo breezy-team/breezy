@@ -34,6 +34,7 @@ from bzrlib import (
     btree_index,
     graph,
     tests,
+    transport,
     )
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
 from bzrlib.index import GraphIndex
@@ -41,9 +42,6 @@ from bzrlib.repository import RepositoryFormat
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
-    )
-from bzrlib.transport import (
-    get_transport,
     )
 from bzrlib import (
     bzrdir,
@@ -128,7 +126,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
-            t = get_transport(url)
+            t = transport.get_transport(url)
             found_format = repository.RepositoryFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(weaverepo.RepositoryFormat7(), "bar")
@@ -606,7 +604,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
 class TestRepositoryConverter(TestCaseWithTransport):
 
     def test_convert_empty(self):
-        t = get_transport(self.get_url('.'))
+        t = self.get_transport()
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
         repo = weaverepo.RepositoryFormat7().initialize(repo_dir)
@@ -1659,7 +1657,7 @@ class TestCrossFormatPacks(TestCaseWithTransport):
         self.orig_pack = target.pack
         target.pack = self.log_pack
         search = target.search_missing_revision_ids(
-            source_tree.branch.repository, tip)
+            source_tree.branch.repository, revision_ids=[tip])
         stream = source.get_stream(search)
         from_format = source_tree.branch.repository._format
         sink = target._get_sink()

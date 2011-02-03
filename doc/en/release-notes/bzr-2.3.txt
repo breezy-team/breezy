@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.3b5
+bzr 2.3.0
 #########
 
-:2.3.b5: NOT RELEASED YET
+:2.3.0: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -26,6 +26,61 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.3b5
+#########
+
+:2.3.b5: 2011-01-13
+
+This is the fifth and **last** beta of the 2.3 series, leading up to a 2.3.0
+release in February. Beta releases are suitable for everyday use but may cause
+some incompatibilities with plugins.
+
+2.3b5 includes bug fixes for committing to stacked branches, smoother upgrades
+of multiple branches, compatibility with python-2.7, full test suite passing
+on Ubuntu Natty and windows, less round-trips for several smart server
+operations, better support text conflicts resolve actions and some more.
+
+All known fixed bugs in other series (2.0, 2.1, 2.2) are also included here.
+
+External Compatibility Breaks
+*****************************
+
+(none)
+
+Improvements
+************
+
 * A redundant parent inventories calculation was removed from
   ``fetch.py``, as ``Repository.insert_stream`` already reports any
   missing inventories.  This removes at least one network roundtrip when
@@ -35,10 +90,17 @@ Improvements
   once.  This avoids some unnecessary IO, and removes a network roundtrip
   when doing ``bzr branch`` to a smart server URL.  (Andrew Bennetts)
 
+* ``bzr modified`` now read-locks the working tree (and branch and
+  repository) just once.  (Andrew Bennetts)
+  
 * ``bzr resolve`` now accepts ``--take-this`` and ``--take-other`` actions
   for text conflicts. This *replace* the whole file with the content
   designated by the action. This will *ignore* all differences that would
   have been merge cleanly otherwise. (Vincent Ladeuil, #638451)
+
+* ``bzr tags``'s "sort" argument now allows registering custom sort
+  methods using the ``bzrlib.tag.tag_sort_methods`` registry. 
+  (Jelmer Vernooij, #701244)
 
 * ``bt.test_http`` was breaking ``os.environ`` by erasing the values saved by
   ``TestCase`` leading to ``bt.test_import_tariff`` failures.
@@ -55,19 +117,53 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Avoid leaking SSH subprocess communication socket into unrelated child
+  processes, which could cause bzr to hang on exit. (Max Bowsher, #696285)
+
+* ``bzr break-lock`` on a corrupted lock file works correctly, rather than
+  raising a PermissionDenied error. We were accidentally holding open the
+  file we were trying to delete. (John Arbash Meinel, #659978)
+
+* ``bzr update`` in a checkout of a readonly branch works again, without
+  trying to set the tags in the master branch. This had been broken by the
+  bug fix for bug #603395.  (John Arbash Meinel, #701212)
+
+* Per-transport tests now prefer to use ``Transport.get_bytes()`` rather
+  than ``Transport.get().read()``. The SFTP code uses an async message to
+  close the file handle if you let the handle die from refcounting, while
+  it uses a synchronous message if you close it directly. This should help
+  prevent random test suite failures from race conditions.
+  (John Arbash Meinel, #681047)
+
+* Stop using ``bzrlib.tuned_gzip.GzipFile``. It is incompatible with
+  python-2.7 and was only used for Knit format repositories, which haven't
+  been recommended since 2007. The file itself will be removed in the next
+  release. (John Arbash Meinel)
+
+* The BZR_COLUMNS environment variable can be set to 0 to indicate no
+  limitation on the width of the terminal.  (Neil Martinsen-Burrell, #675652)
+
+* Treat WSAECONNABORTED the same as WSAECONNRESET for the purposes of
+  considering a smart data stream as being interrupted. This fixes a
+  failure in the windows test suite, that was trying to ensure we cleanly
+  handled a server disconnect.  (John Arbash Meinel, #581311, #686587)
+
+* Unshelving changes that occur in a now-unversioned directory now restore
+  the directory properly rather than crashing.
+  (John Arbash Meinel, #389674)
+
+* You are now able to commit directly to a stacked branch. Any needed
+  parent inventories will be filled in as part of the commit process.
+  (John Arbash Meinel, #375013)
+
 Documentation
 *************
-
-.. Improved or updated documentation.
 
 * Better document the rules to update the bzr freshmeat page when
   doing a release. (Vincent Ladeuil, #690515)
 
 API Changes
 ***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
 
 * ``Branch.sprout``, ``BranchFormat.initalize`` and
   ``ControlDir.create_branch`` now take an optional ``repository`` keyword
@@ -77,18 +173,20 @@ API Changes
   already opened that repository).  Implementations of these APIs will
   need to be updated to accept these arguments.  (Andrew Bennetts)
 
-Internals
-*********
+* ``bzrlib.tuned_gzip.GzipFile`` is now deprecated and will be removed in
+  the bzr-2.4 series. Code that was using it can just use the python
+  stdlib ``gzip.GzipFile``. (John Arbash Meinel)
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
 
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
+* ``bzrlib.tests`` defines ``isolated_environ`` with the definitions of all
+  the environment variables the tests should care about. It also defines
+  ``override_os_environ`` and ``restore_os_environ`` to properly implement
+  isolation from ``os.environ`` for tests. ``bzrlib.tests`` now defines a
+  ``DocTestSuite`` class using this facility for all ``bzrlib``
+  doctests. (Vincent Ladeuil, #321320)
 
 * Catch exceptions related to bug #637821 during test cleanup to avoid
   spurious failures. (Vincent Ladeuil, #686008).
@@ -96,8 +194,15 @@ Testing
 * Check sphinx compatibility for tests requiring older sphinx versions.
   (Vincent Ladeuil, #688072)
 
+* ``test_onto_transport`` in the Launchpad plugin can now run with Python
+  2.7. (Vincent Ladeuil, #654733)
+
+* ``TestCase._captureVar`` and ``TestCase._old_env`` have been deleted due to
+  bug #690563. Test writers are encouraged to use ``TestCase.overrideEnv``
+  instead. (Vincent Ladeuil)
+
 * ``TestDebuntuExpansions`` was escaping the test isolation by calling the
-  wrong base class ``setUp``. (Vincent Ladeuil, #684622)
+  wrong base class ``setUp``. (Vincent Ladeuil, #684662)
 
 bzr 2.3b4
 #########
@@ -169,6 +274,11 @@ Bug Fixes
 * ``tools/check-newsbug.py`` is now based on ``lp:hydrazine`` and no longer
   crashes when encountering private bugs (they are just displayed as such).
   (Vincent Ladeuil, #354985)
+
+* The ``revision_id`` parameter of
+  ``Repository.search_missing_revision_ids`` and
+  ``InterRepository.search_missing_revision_ids`` is deprecated.  It is
+  replaced by the ``revision_ids`` parameter.  (Andrew Bennetts)
 
 Internals
 *********

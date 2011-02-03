@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,6 @@ from bzrlib import (
     pyutils,
     revision as _mod_revision,
     static_tuple,
-    symbol_versioning,
     trace,
     tsort,
     versionedfile,
@@ -53,10 +52,10 @@ from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
 
-import sys
 from bzrlib import (
     errors,
     registry,
+    symbol_versioning,
     ui,
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
@@ -176,6 +175,41 @@ class CommitBuilder(object):
             self._validate_unicode_text(value,
                                         'revision property (%s)' % (key,))
 
+    def _ensure_fallback_inventories(self):
+        """Ensure that appropriate inventories are available.
+
+        This only applies to repositories that are stacked, and is about
+        enusring the stacking invariants. Namely, that for any revision that is
+        present, we either have all of the file content, or we have the parent
+        inventory and the delta file content.
+        """
+        if not self.repository._fallback_repositories:
+            return
+        if not self.repository._format.supports_chks:
+            raise errors.BzrError("Cannot commit directly to a stacked branch"
+                " in pre-2a formats. See "
+                "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
+        # This is a stacked repo, we need to make sure we have the parent
+        # inventories for the parents.
+        parent_keys = [(p,) for p in self.parents]
+        parent_map = self.repository.inventories._index.get_parent_map(parent_keys)
+        missing_parent_keys = set([pk for pk in parent_keys
+                                       if pk not in parent_map])
+        fallback_repos = list(reversed(self.repository._fallback_repositories))
+        missing_keys = [('inventories', pk[0])
+                        for pk in missing_parent_keys]
+        resume_tokens = []
+        while missing_keys and fallback_repos:
+            fallback_repo = fallback_repos.pop()
+            source = fallback_repo._get_source(self.repository._format)
+            sink = self.repository._get_sink()
+            stream = source.get_stream_for_missing_keys(missing_keys)
+            missing_keys = sink.insert_stream_without_locking(stream,
+                self.repository._format)
+        if missing_keys:
+            raise errors.BzrError('Unable to fill in parent inventories for a'
+                                  ' stacked branch')
+
     def commit(self, message):
         """Make the actual commit.
 
@@ -193,6 +227,7 @@ class CommitBuilder(object):
         rev.parent_ids = self.parents
         self.repository.add_revision(self._new_revision_id, rev,
             self.new_inventory, self._config)
+        self._ensure_fallback_inventories()
         self.repository.commit_write_group()
         return self._new_revision_id
 
@@ -1561,15 +1596,28 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         return ret
 
     @needs_read_lock
-    def search_missing_revision_ids(self, other, revision_id=None, find_ghosts=True):
+    def search_missing_revision_ids(self, other,
+            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
 
         revision_id: only return revision ids included by revision_id.
         """
+        if symbol_versioning.deprecated_passed(revision_id):
+            symbol_versioning.warn(
+                'search_missing_revision_ids(revision_id=...) was '
+                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                DeprecationWarning, stacklevel=3)
+            if revision_ids is not None:
+                raise AssertionError(
+                    'revision_ids is mutually exclusive with revision_id')
+            if revision_id is not None:
+                revision_ids = [revision_id]
         return InterRepository.get(other, self).search_missing_revision_ids(
-            revision_id, find_ghosts)
+            find_ghosts=find_ghosts, revision_ids=revision_ids,
+            if_present_ids=if_present_ids)
 
     @staticmethod
     def open(base):
@@ -1761,9 +1809,9 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
         """
-        if self._fallback_repositories:
-            raise errors.BzrError("Cannot commit from a lightweight checkout "
-                "to a stacked branch. See "
+        if self._fallback_repositories and not self._format.supports_chks:
+            raise errors.BzrError("Cannot commit directly to a stacked branch"
+                " in pre-2a formats. See "
                 "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
         result = self._commit_builder_class(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id)
@@ -2822,39 +2870,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
 
 
-# remove these delegates a while after bzr 0.15
-def __make_delegated(name, from_module):
-    def _deprecated_repository_forwarder():
-        symbol_versioning.warn('%s moved to %s in bzr 0.15'
-            % (name, from_module),
-            DeprecationWarning,
-            stacklevel=2)
-        try:
-            return pyutils.get_named_object(from_module, name)
-        except AttributeError:
-            raise AttributeError('module %s has no name %s'
-                    % (sys.modules[from_module], name))
-    globals()[name] = _deprecated_repository_forwarder
-
-for _name in [
-        'AllInOneRepository',
-        'WeaveMetaDirRepository',
-        'PreSplitOutRepositoryFormat',
-        'RepositoryFormat4',
-        'RepositoryFormat5',
-        'RepositoryFormat6',
-        'RepositoryFormat7',
-        ]:
-    __make_delegated(_name, 'bzrlib.repofmt.weaverepo')
-
-for _name in [
-        'KnitRepository',
-        'RepositoryFormatKnit',
-        'RepositoryFormatKnit1',
-        ]:
-    __make_delegated(_name, 'bzrlib.repofmt.knitrepo')
-
-
 def install_revision(repository, rev, revision_tree):
     """Install all revision data into a repository."""
     install_revisions(repository, [(rev, revision_tree, None)])
@@ -3079,6 +3094,9 @@ class RepositoryFormat(object):
     supports_tree_reference = None
     # Is the format experimental ?
     experimental = False
+    # Does this repository format escape funky characters, or does it create files with
+    # similar names as the versioned files in its contents on disk ?
+    supports_funky_characters = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -3430,7 +3448,7 @@ class InterRepository(InterObject):
                                fetch_spec=fetch_spec,
                                find_ghosts=find_ghosts)
 
-    def _walk_to_common_revisions(self, revision_ids):
+    def _walk_to_common_revisions(self, revision_ids, if_present_ids=None):
         """Walk out from revision_ids in source to revisions target has.
 
         :param revision_ids: The start point for the search.
@@ -3438,10 +3456,14 @@ class InterRepository(InterObject):
         """
         target_graph = self.target.get_graph()
         revision_ids = frozenset(revision_ids)
+        if if_present_ids:
+            all_wanted_revs = revision_ids.union(if_present_ids)
+        else:
+            all_wanted_revs = revision_ids
         missing_revs = set()
         source_graph = self.source.get_graph()
         # ensure we don't pay silly lookup costs.
-        searcher = source_graph._make_breadth_first_searcher(revision_ids)
+        searcher = source_graph._make_breadth_first_searcher(all_wanted_revs)
         null_set = frozenset([_mod_revision.NULL_REVISION])
         searcher_exhausted = False
         while True:
@@ -3483,29 +3505,78 @@ class InterRepository(InterObject):
         return searcher.get_result()
 
     @needs_read_lock
-    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
+    def search_missing_revision_ids(self,
+            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
         """Return the revision ids that source has that target does not.
 
         :param revision_id: only return revision ids included by this
-                            revision_id.
+            revision_id.
+        :param revision_ids: return revision ids included by these
+            revision_ids.  NoSuchRevision will be raised if any of these
+            revisions are not present.
+        :param if_present_ids: like revision_ids, but will not cause
+            NoSuchRevision if any of these are absent, instead they will simply
+            not be in the result.  This is useful for e.g. finding revisions
+            to fetch for tags, which may reference absent revisions.
         :param find_ghosts: If True find missing revisions in deep history
             rather than just finding the surface difference.
         :return: A bzrlib.graph.SearchResult.
         """
+        if symbol_versioning.deprecated_passed(revision_id):
+            symbol_versioning.warn(
+                'search_missing_revision_ids(revision_id=...) was '
+                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                DeprecationWarning, stacklevel=2)
+            if revision_ids is not None:
+                raise AssertionError(
+                    'revision_ids is mutually exclusive with revision_id')
+            if revision_id is not None:
+                revision_ids = [revision_id]
+        del revision_id
         # stop searching at found target revisions.
-        if not find_ghosts and revision_id is not None:
-            return self._walk_to_common_revisions([revision_id])
+        if not find_ghosts and (revision_ids is not None or if_present_ids is
+                not None):
+            return self._walk_to_common_revisions(revision_ids,
+                    if_present_ids=if_present_ids)
         # generic, possibly worst case, slow code path.
         target_ids = set(self.target.all_revision_ids())
-        if revision_id is not None:
-            source_ids = self.source.get_ancestry(revision_id)
-            if source_ids[0] is not None:
-                raise AssertionError()
-            source_ids.pop(0)
-        else:
-            source_ids = self.source.all_revision_ids()
+        source_ids = self._present_source_revisions_for(
+            revision_ids, if_present_ids)
         result_set = set(source_ids).difference(target_ids)
         return self.source.revision_ids_to_search_result(result_set)
+
+    def _present_source_revisions_for(self, revision_ids, if_present_ids=None):
+        """Returns set of all revisions in ancestry of revision_ids present in
+        the source repo.
+
+        :param revision_ids: if None, all revisions in source are returned.
+        :param if_present_ids: like revision_ids, but if any/all of these are
+            absent no error is raised.
+        """
+        if revision_ids is not None or if_present_ids is not None:
+            # First, ensure all specified revisions exist.  Callers expect
+            # NoSuchRevision when they pass absent revision_ids here.
+            if revision_ids is None:
+                revision_ids = set()
+            if if_present_ids is None:
+                if_present_ids = set()
+            revision_ids = set(revision_ids)
+            if_present_ids = set(if_present_ids)
+            all_wanted_ids = revision_ids.union(if_present_ids)
+            graph = self.source.get_graph()
+            present_revs = set(graph.get_parent_map(all_wanted_ids))
+            missing = revision_ids.difference(present_revs)
+            if missing:
+                raise errors.NoSuchRevision(self.source, missing.pop())
+            found_ids = all_wanted_ids.intersection(present_revs)
+            source_ids = [rev_id for (rev_id, parents) in
+                          graph.iter_ancestry(found_ids)
+                          if rev_id != _mod_revision.NULL_REVISION
+                          and parents is not None]
+        else:
+            source_ids = self.source.all_revision_ids()
+        return set(source_ids)
 
     @staticmethod
     def _same_model(source, target):
@@ -3830,7 +3901,13 @@ class InterDifferingSerializer(InterRepository):
             fetch_spec=None):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
-            raise AssertionError("Not implemented yet...")
+            if (isinstance(fetch_spec, graph.NotInOtherForRevs) and
+                    len(fetch_spec.required_ids) == 1 and not
+                    fetch_spec.if_present_ids):
+                revision_id = list(fetch_spec.required_ids)[0]
+                del fetch_spec
+            else:
+                raise AssertionError("Not implemented yet...")
         ui.ui_factory.warn_experimental_format_fetch(self)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
@@ -3843,8 +3920,12 @@ class InterDifferingSerializer(InterRepository):
             ui.ui_factory.show_user_warning('cross_format_fetch',
                 from_format=self.source._format,
                 to_format=self.target._format)
+        if revision_id:
+            search_revision_ids = [revision_id]
+        else:
+            search_revision_ids = None
         revision_ids = self.target.search_missing_revision_ids(self.source,
-            revision_id, find_ghosts=find_ghosts).get_keys()
+            revision_ids=search_revision_ids, find_ghosts=find_ghosts).get_keys()
         if not revision_ids:
             return 0, 0
         revision_ids = tsort.topo_sort(
@@ -4087,15 +4168,46 @@ class StreamSink(object):
                 is_resume = False
             try:
                 # locked_insert_stream performs a commit|suspend.
-                return self._locked_insert_stream(stream, src_format,
-                    is_resume)
+                missing_keys = self.insert_stream_without_locking(stream,
+                                    src_format, is_resume)
+                if missing_keys:
+                    # suspend the write group and tell the caller what we is
+                    # missing. We know we can suspend or else we would not have
+                    # entered this code path. (All repositories that can handle
+                    # missing keys can handle suspending a write group).
+                    write_group_tokens = self.target_repo.suspend_write_group()
+                    return write_group_tokens, missing_keys
+                hint = self.target_repo.commit_write_group()
+                to_serializer = self.target_repo._format._serializer
+                src_serializer = src_format._serializer
+                if (to_serializer != src_serializer and
+                    self.target_repo._format.pack_compresses):
+                    self.target_repo.pack(hint=hint)
+                return [], set()
             except:
                 self.target_repo.abort_write_group(suppress_errors=True)
                 raise
         finally:
             self.target_repo.unlock()
 
-    def _locked_insert_stream(self, stream, src_format, is_resume):
+    def insert_stream_without_locking(self, stream, src_format,
+                                      is_resume=False):
+        """Insert a stream's content into the target repository.
+
+        This assumes that you already have a locked repository and an active
+        write group.
+
+        :param src_format: a bzr repository format.
+        :param is_resume: Passed down to get_missing_parent_inventories to
+            indicate if we should be checking for missing texts at the same
+            time.
+
+        :return: A set of keys that are missing.
+        """
+        if not self.target_repo.is_write_locked():
+            raise errors.ObjectNotLocked(self)
+        if not self.target_repo.is_in_write_group():
+            raise errors.BzrError('you must already be in a write group')
         to_serializer = self.target_repo._format._serializer
         src_serializer = src_format._serializer
         new_pack = None
@@ -4180,19 +4292,7 @@ class StreamSink(object):
             # cannot even attempt suspending, and missing would have failed
             # during stream insertion.
             missing_keys = set()
-        else:
-            if missing_keys:
-                # suspend the write group and tell the caller what we is
-                # missing. We know we can suspend or else we would not have
-                # entered this code path. (All repositories that can handle
-                # missing keys can handle suspending a write group).
-                write_group_tokens = self.target_repo.suspend_write_group()
-                return write_group_tokens, missing_keys
-        hint = self.target_repo.commit_write_group()
-        if (to_serializer != src_serializer and
-            self.target_repo._format.pack_compresses):
-            self.target_repo.pack(hint=hint)
-        return [], set()
+        return missing_keys
 
     def _extract_and_insert_inventory_deltas(self, substream, serializer):
         target_rich_root = self.target_repo._format.rich_root_data

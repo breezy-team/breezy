@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,19 +18,14 @@
 
 from bzrlib import (
     branchbuilder,
-    bzrdir,
     tag,
     )
 from bzrlib.branch import (
     Branch,
     )
-from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
     script,
     TestCaseWithTransport,
-    )
-from bzrlib.repository import (
-    Repository,
     )
 from bzrlib.workingtree import WorkingTree
 
@@ -278,6 +273,40 @@ class TestTagging(TestCaseWithTransport):
             error_regexes=["bzr: ERROR: Requested revision: '123.123' "
                 "does not exist in branch:"])
 
+    def test_sort_tags_custom(self):
+        def sort_by_dots(branch, tags):
+            def sort_key((tag, revid)):
+                return tag.count(".")
+            tags.sort(key=sort_key)
+
+        # Register a custom sort method
+        tag.tag_sort_methods.register("dots", sort_by_dots, "Sort by dots.")
+        self.addCleanup(tag.tag_sort_methods.remove, "dots")
+
+        tree1 = self.make_branch_and_tree('branch1')
+        tree1.commit(allow_pointless=True, message='revision 1',
+                rev_id='revid-1', timestamp=10)
+        tree1.commit(allow_pointless=True, message='revision 2',
+                rev_id='revid-2', timestamp=15)
+
+        b1 = tree1.branch
+
+        b1.tags.set_tag(u'tag..', 'revid-2')
+        b1.tags.set_tag(u'tag....', 'missing') # not present in repository
+        b1.tags.set_tag(u'tag.', 'revid-1')
+        b1.tags.set_tag(u'tag...', 'revid-1')
+        b1.tags.set_tag(u'tag....', 'revid-1')
+
+        # sorted by number of dots
+        out, err = self.run_bzr('tags --sort=dots -d branch1')
+        self.assertEquals(err, '')
+        self.assertEquals([
+            'tag.                 1',
+            'tag..                2',
+            'tag...               1',
+            'tag....              1'],
+            out.splitlines())
+
     def _check_tag_filter(self, argstr, expected_revnos):
         #upper bound of laziness
         out, err = self.run_bzr('tags ' + argstr)
@@ -299,7 +328,8 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(out,
                 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
         # pull should give a warning about the tags
-        out, err = self.run_bzr('pull -d one two', encoding='utf-8')
+        out, err = self.run_bzr('pull -d one two', encoding='utf-8',
+            retcode=1)
         self.assertContainsRe(out,
                 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
         # merge should give a warning about the tags -- not implemented yet

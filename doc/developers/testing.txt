@@ -329,8 +329,11 @@ Doctests
 We make selective use of doctests__.  In general they should provide
 *examples* within the API documentation which can incidentally be tested.  We
 don't try to test every important case using doctests |--| regular Python
-tests are generally a better solution.  That is, we just use doctests to
-make our documentation testable, rather than as a way to make tests.
+tests are generally a better solution.  That is, we just use doctests to make
+our documentation testable, rather than as a way to make tests. Be aware that
+doctests are not as well isolated as the unit tests, if you need more
+isolation, you're likely want to write unit tests anyway if only to get a
+better control of the test environment.
 
 Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 
@@ -967,6 +970,39 @@ method of ``TestCaseWithMemoryTransport``) or ``make_branch_and_tree`` (a
 method of ``TestCaseWithTransport``).
 
 Please see bzrlib.treebuilder for more details.
+
+PreviewTree
+~~~~~~~~~~~
+
+PreviewTrees are based on TreeTransforms.  This means they can represent
+virtually any state that a WorkingTree can have, including unversioned files.
+They can be used to test the output of anything that produces TreeTransforms,
+such as merge algorithms and revert.  They can also be used to test anything
+that takes arbitrary Trees as its input.
+
+::
+
+  # Get an empty tree to base the transform on.
+  b = self.make_branch('.')
+  empty_tree = b.repository.revision_tree(_mod_revision.NULL_REVISION)
+  tt = TransformPreview(empty_tree)
+  self.addCleanup(tt.finalize)
+  # Empty trees don't have a root, so add it first.
+  root = tt.new_directory('', ROOT_PARENT, 'tree-root')
+  # Set the contents of a file.
+  tt.new_file('new-file', root, 'contents', 'file-id')
+  preview = tt.get_preview_tree()
+  # Test the contents.
+  self.assertEqual('contents', preview.get_file_text('file-id'))
+
+PreviewTrees can stack, with each tree falling back to the previous::
+
+  tt2 = TransformPreview(preview)
+  self.addCleanup(tt2.finalize)
+  tt2.new_file('new-file2', tt2.root, 'contents2', 'file-id2')
+  preview2 = tt2.get_preview_tree()
+  self.assertEqual('contents', preview2.get_file_text('file-id'))
+  self.assertEqual('contents2', preview2.get_file_text('file-id2'))
 
 
 Temporarily changing state

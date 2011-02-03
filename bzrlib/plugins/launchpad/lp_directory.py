@@ -24,10 +24,7 @@ from bzrlib import (
     debug,
     errors,
     trace,
-    )
-from bzrlib.transport import (
-    get_transport,
-    register_urlparse_netloc_protocol,
+    transport,
     )
 
 from bzrlib.plugins.launchpad.lp_registration import (
@@ -37,8 +34,8 @@ from bzrlib.plugins.launchpad.account import get_lp_login
 
 # As bzrlib.transport.remote may not be loaded yet, make sure bzr+ssh
 # is counted as a netloc protocol.
-register_urlparse_netloc_protocol('bzr+ssh')
-register_urlparse_netloc_protocol('lp')
+transport.register_urlparse_netloc_protocol('bzr+ssh')
+transport.register_urlparse_netloc_protocol('lp')
 
 _ubuntu_series_shortcuts = {
     'n': 'natty',
@@ -147,7 +144,7 @@ class LaunchpadDirectory(object):
             else:
                 # Use the URL if we can create a transport for it.
                 try:
-                    get_transport(url)
+                    transport.get_transport(url)
                 except (errors.PathError, errors.TransportError):
                     pass
                 else:

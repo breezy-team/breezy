@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 """Tests for the test framework."""
 
 from cStringIO import StringIO
-from doctest import ELLIPSIS
+import doctest
 import os
 import signal
 import sys
@@ -42,7 +42,6 @@ import bzrlib
 from bzrlib import (
     branchbuilder,
     bzrdir,
-    debug,
     errors,
     lockdir,
     memorytree,
@@ -56,7 +55,6 @@ from bzrlib import (
     )
 from bzrlib.repofmt import (
     groupcompress_repo,
-    pack_repo,
     weaverepo,
     )
 from bzrlib.symbol_versioning import (
@@ -68,12 +66,10 @@ from bzrlib.tests import (
     features,
     test_lsprof,
     test_server,
-    test_sftp_transport,
     TestUtil,
     )
 from bzrlib.trace import note, mutter
 from bzrlib.transport import memory
-from bzrlib.version import _get_bzr_source_tree
 
 
 def _test_ids(test_suite):
@@ -92,7 +88,7 @@ class MetaTestLog(tests.TestCase):
             "text", "plain", {"charset": "utf8"})))
         self.assertThat(u"".join(log.iter_text()), Equals(self.get_log()))
         self.assertThat(self.get_log(),
-            DocTestMatches(u"...a test message\n", ELLIPSIS))
+            DocTestMatches(u"...a test message\n", doctest.ELLIPSIS))
 
 
 class TestUnicodeFilename(tests.TestCase):
@@ -3210,7 +3206,8 @@ class TestTestPrefixRegistry(tests.TestCase):
         tpr.register('bar', 'bBB.aAA.rRR')
         self.assertEquals('bbb.aaa.rrr', tpr.get('bar'))
         self.assertThat(self.get_log(),
-            DocTestMatches("...bar...bbb.aaa.rrr...BB.aAA.rRR", ELLIPSIS))
+            DocTestMatches("...bar...bbb.aaa.rrr...BB.aAA.rRR",
+                           doctest.ELLIPSIS))
 
     def test_get_unknown_prefix(self):
         tpr = self._get_registry()
@@ -3251,10 +3248,8 @@ class TestThreadLeakDetection(tests.TestCase):
         class Test(unittest.TestCase):
             def runTest(self):
                 pass
-            addCleanup = None # for when on Python 2.7 with native addCleanup
         result = self.LeakRecordingResult()
         test = Test()
-        self.assertIs(getattr(test, "addCleanup", None), None)
         result.startTestRun()
         test.run(result)
         result.stopTestRun()
@@ -3414,28 +3409,6 @@ class TestRunSuite(tests.TestCase):
 
 class TestEnvironHandling(tests.TestCase):
 
-    def test__captureVar_None_called_twice_leaks(self):
-        self.failIf('MYVAR' in os.environ)
-        self._captureVar('MYVAR', '42')
-        # We need an embedded test to observe the bug
-        class Test(tests.TestCase):
-            def test_me(self):
-                # The first call save the 42 value
-                self._captureVar('MYVAR', None)
-                self.assertEquals(None, os.environ.get('MYVAR'))
-                self.assertEquals('42', self._old_env.get('MYVAR'))
-                # But the second one erases it !
-                self._captureVar('MYVAR', None)
-                self.assertEquals(None, self._old_env.get('MYVAR'))
-        output = StringIO()
-        result = tests.TextTestResult(output, 0, 1)
-        Test('test_me').run(result)
-        if not result.wasStrictlySuccessful():
-            self.fail(output.getvalue())
-        # And we have lost all trace of the original value
-        self.assertEquals(None, os.environ.get('MYVAR'))
-        self.assertEquals(None, self._old_env.get('MYVAR'))
-
     def test_overrideEnv_None_called_twice_doesnt_leak(self):
         self.failIf('MYVAR' in os.environ)
         self.overrideEnv('MYVAR', '42')
@@ -3455,3 +3428,121 @@ class TestEnvironHandling(tests.TestCase):
             self.fail(output.getvalue())
         # We get our value back
         self.assertEquals('42', os.environ.get('MYVAR'))
+
+
+class TestIsolatedEnv(tests.TestCase):
+    """Test isolating tests from os.environ.
+
+    Since we use tests that are already isolated from os.environ a bit of care
+    should be taken when designing the tests to avoid bootstrap side-effects.
+    The tests start an already clean os.environ which allow doing valid
+    assertions about which variables are present or not and design tests around
+    these assertions.
+    """
+
+    class ScratchMonkey(tests.TestCase):
+
+        def test_me(self):
+            pass
+
+    def test_basics(self):
+        # Make sure we know the definition of BZR_HOME: not part of os.environ
+        # for tests.TestCase.
+        self.assertTrue('BZR_HOME' in tests.isolated_environ)
+        self.assertEquals(None, tests.isolated_environ['BZR_HOME'])
+        # Being part of isolated_environ, BZR_HOME should not appear here
+        self.assertFalse('BZR_HOME' in os.environ)
+        # Make sure we know the definition of LINES: part of os.environ for
+        # tests.TestCase
+        self.assertTrue('LINES' in tests.isolated_environ)
+        self.assertEquals('25', tests.isolated_environ['LINES'])
+        self.assertEquals('25', os.environ['LINES'])
+
+    def test_injecting_unknown_variable(self):
+        # BZR_HOME is known to be absent from os.environ
+        test = self.ScratchMonkey('test_me')
+        tests.override_os_environ(test, {'BZR_HOME': 'foo'})
+        self.assertEquals('foo', os.environ['BZR_HOME'])
+        tests.restore_os_environ(test)
+        self.assertFalse('BZR_HOME' in os.environ)
+
+    def test_injecting_known_variable(self):
+        test = self.ScratchMonkey('test_me')
+        # LINES is known to be present in os.environ
+        tests.override_os_environ(test, {'LINES': '42'})
+        self.assertEquals('42', os.environ['LINES'])
+        tests.restore_os_environ(test)
+        self.assertEquals('25', os.environ['LINES'])
+
+    def test_deleting_variable(self):
+        test = self.ScratchMonkey('test_me')
+        # LINES is known to be present in os.environ
+        tests.override_os_environ(test, {'LINES': None})
+        self.assertTrue('LINES' not in os.environ)
+        tests.restore_os_environ(test)
+        self.assertEquals('25', os.environ['LINES'])
+
+
+class TestDocTestSuiteIsolation(tests.TestCase):
+    """Test that `tests.DocTestSuite` isolates doc tests from os.environ.
+
+    Since tests.TestCase alreay provides an isolation from os.environ, we use
+    the clean environment as a base for testing. To precisely capture the
+    isolation provided by tests.DocTestSuite, we use doctest.DocTestSuite to
+    compare against.
+
+    We want to make sure `tests.DocTestSuite` respect `tests.isolated_environ`,
+    not `os.environ` so each test overrides it to suit its needs.
+
+    """
+
+    def get_doctest_suite_for_string(self, klass, string):
+        class Finder(doctest.DocTestFinder):
+
+            def find(*args, **kwargs):
+                test = doctest.DocTestParser().get_doctest(
+                    string, {}, 'foo', 'foo.py', 0)
+                return [test]
+
+        suite = klass(test_finder=Finder())
+        return suite
+
+    def run_doctest_suite_for_string(self, klass, string):
+        suite = self.get_doctest_suite_for_string(klass, string)
+        output = StringIO()
+        result = tests.TextTestResult(output, 0, 1)
+        suite.run(result)
+        return result, output
+
+    def assertDocTestStringSucceds(self, klass, string):
+        result, output = self.run_doctest_suite_for_string(klass, string)
+        if not result.wasStrictlySuccessful():
+            self.fail(output.getvalue())
+
+    def assertDocTestStringFails(self, klass, string):
+        result, output = self.run_doctest_suite_for_string(klass, string)
+        if result.wasStrictlySuccessful():
+            self.fail(output.getvalue())
+
+    def test_injected_variable(self):
+        self.overrideAttr(tests, 'isolated_environ', {'LINES': '42'})
+        test = """
+            >>> import os
+            >>> os.environ['LINES']
+            '42'
+            """
+        # doctest.DocTestSuite fails as it sees '25'
+        self.assertDocTestStringFails(doctest.DocTestSuite, test)
+        # tests.DocTestSuite sees '42'
+        self.assertDocTestStringSucceds(tests.IsolatedDocTestSuite, test)
+
+    def test_deleted_variable(self):
+        self.overrideAttr(tests, 'isolated_environ', {'LINES': None})
+        test = """
+            >>> import os
+            >>> os.environ.get('LINES')
+            """
+        # doctest.DocTestSuite fails as it sees '25'
+        self.assertDocTestStringFails(doctest.DocTestSuite, test)
+        # tests.DocTestSuite sees None
+        self.assertDocTestStringSucceds(tests.IsolatedDocTestSuite, test)

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,11 +17,8 @@
 
 """Black-box tests for bzr whoami."""
 
-import os
-
 import bzrlib
 from bzrlib import (
-    osutils,
     config,
     )
 from bzrlib.tests import TestCaseWithTransport
@@ -38,6 +35,11 @@ class TestWhoami(TestCaseWithTransport):
         out = self.run_bzr("whoami --email")[0]
         self.assertTrue(len(out) > 0)
         self.assertEquals(1, out.count('@'))
+
+    def test_whoami_email_arg(self):
+        # whoami --email is mutually exclusive with any arguments
+        out = self.run_bzr("whoami --email 'foo <foo@example.com>'", 3)[0]
+        self.assertEquals("", out)
 
     def test_whoami_branch(self):
         """branch specific user identity works."""

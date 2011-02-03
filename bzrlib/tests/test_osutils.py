@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1988,6 +1988,10 @@ class TestTerminalWidth(tests.TestCase):
         self.overrideEnv('BZR_COLUMNS', '12')
         self.assertEqual(12, osutils.terminal_width())
 
+    def test_BZR_COLUMNS_0_no_limit(self):
+        self.overrideEnv('BZR_COLUMNS', '0')
+        self.assertEqual(None, osutils.terminal_width())
+
     def test_falls_back_to_COLUMNS(self):
         self.overrideEnv('BZR_COLUMNS', None)
         self.assertNotEqual('42', os.environ['COLUMNS'])
@@ -2115,3 +2119,25 @@ class TestBackupNames(tests.TestCase):
         # revisited if we test against all implementations.
         self.backups.remove('file.~2~')
         self.assertBackupName('file.~2~', 'file')
+
+
+class TestFindExecutableInPath(tests.TestCase):
+
+    def test_windows(self):
+        if sys.platform != 'win32':
+            raise tests.TestSkipped('test requires win32')
+        self.assertTrue(osutils.find_executable_on_path('explorer') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('explorer.exe') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('EXPLORER.EXE') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
+        self.assertTrue(osutils.find_executable_on_path('file.txt') is None)
+
+    def test_other(self):
+        if sys.platform == 'win32':
+            raise tests.TestSkipped('test requires non-win32')
+        self.assertTrue(osutils.find_executable_on_path('sh') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)

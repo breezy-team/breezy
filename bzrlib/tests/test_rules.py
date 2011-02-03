@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,16 +16,13 @@
 
 """Tests for finding, parsing and searching rule-based preferences."""
 
-import os
 import sys
 
 from bzrlib import (
-    config,
     errors,
     rules,
     tests,
     )
-from bzrlib.util.configobj import configobj
 
 
 class TestIniBasedRulesSearcher(tests.TestCase):

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -21,6 +21,7 @@
 # TODO: might be nice to create a versionedfile with some type of corruption
 # considered typical and check that it can be detected/corrected.
 
+from gzip import GzipFile
 from itertools import chain, izip
 from StringIO import StringIO
 
@@ -37,14 +38,11 @@ from bzrlib import (
 from bzrlib.errors import (
                            RevisionNotPresent,
                            RevisionAlreadyPresent,
-                           WeaveParentMismatch
                            )
 from bzrlib.knit import (
     cleanup_pack_knit,
     make_file_factory,
     make_pack_factory,
-    KnitAnnotateFactory,
-    KnitPlainFactory,
     )
 from bzrlib.tests import (
     TestCase,
@@ -53,10 +51,7 @@ from bzrlib.tests import (
     TestSkipped,
     )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
-from bzrlib.trace import mutter
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.tsort import topo_sort
-from bzrlib.tuned_gzip import GzipFile
 import bzrlib.versionedfile as versionedfile
 from bzrlib.versionedfile import (
     ConstantMapper,
@@ -66,7 +61,7 @@ from bzrlib.versionedfile import (
     make_versioned_files_factory,
     )
 from bzrlib.weave import WeaveFile
-from bzrlib.weavefile import read_weave, write_weave
+from bzrlib.weavefile import write_weave
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
@@ -756,7 +751,7 @@ class VersionedFileTestMixIn(object):
         self.assertEquals(('references_ghost', 'line_c\n'), origins[2])
 
     def test_readonly_mode(self):
-        t = transport.get_transport(self.get_url('.'))
+        t = self.get_transport()
         factory = self.get_factory()
         vf = factory('id', t, 0777, create=True, access_mode='w')
         vf = factory('id', t, access_mode='r')
@@ -787,12 +782,12 @@ class VersionedFileTestMixIn(object):
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+        return WeaveFile(name, self.get_transport(),
                          create=True,
                          get_scope=self.get_transaction)
 
     def get_file_corrupted_text(self):
-        w = WeaveFile('foo', transport.get_transport(self.get_url('.')),
+        w = WeaveFile('foo', self.get_transport(),
                       create=True,
                       get_scope=self.get_transaction)
         w.add_lines('v1', [], ['hello\n'])
@@ -828,7 +823,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         return w
 
     def reopen_file(self, name='foo', create=False):
-        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+        return WeaveFile(name, self.get_transport(),
                          create=create,
                          get_scope=self.get_transaction)
 
@@ -836,7 +831,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         self.assertRaises(errors.NoSuchFile,
                           WeaveFile,
                           'foo',
-                          transport.get_transport(self.get_url('.')),
+                          self.get_transport(),
                           get_scope=self.get_transaction)
 
     def get_factory(self):
@@ -930,7 +925,7 @@ class TestReadonlyHttpMixin(object):
 class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_file(self):
-        return WeaveFile('foo', transport.get_transport(self.get_url('.')),
+        return WeaveFile('foo', self.get_transport(),
                          create=True,
                          get_scope=self.get_transaction)
 
@@ -1182,7 +1177,7 @@ class MergeCasesMixin(object):
 class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+        return WeaveFile(name, self.get_transport(),
                          create=True)
 
     def log_contents(self, w):
