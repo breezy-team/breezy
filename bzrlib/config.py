@@ -156,24 +156,30 @@ class ConfigObj(configobj.ConfigObj):
             # for '{bar{baz}}' we will get '{baz}'
             self.option_ref_re = re.compile('({[^{}]+})')
         result = string
-        is_ref = False
-        chunks = []
-        import pdb; pdb.set_trace()
-        # Split will isolate refs so that every other chunk is a ref
-        for chunk in self.option_ref_re.split(result):
-            if not is_ref:
-                chunks.append(chunk)
-                is_ref = True
-            else:
-                name = chunk[1:-1]
-                if name in ref_stack:
-                    raise errors.InterpolationLoop(string, ref_stack)
-                ref_stack.append(name)
-                value = self._interpolate_option(name, env, ref_stack)
-                raw_chunks.append(value)
-                ref_stack.pop()
-                is_ref = False
-        result = ''.join(chunks)
+        # We need to iterate until no more refs appear ({{foo}} will need two
+        # iterations for example).
+        while True:
+            is_ref = False
+            raw_chunks = self.option_ref_re.split(result)
+            if len(raw_chunks) == 1:
+                # Shorcut the trivial case: no refs
+                return result
+            chunks = []
+            # Split will isolate refs so that every other chunk is a ref
+            for chunk in raw_chunks:
+                if not is_ref:
+                    chunks.append(chunk)
+                    is_ref = True
+                else:
+                    name = chunk[1:-1]
+                    if name in ref_stack:
+                        raise errors.InterpolationLoop(string, ref_stack)
+                    ref_stack.append(name)
+                    value = self._interpolate_option(name, env, ref_stack)
+                    chunks.append(value)
+                    ref_stack.pop()
+                    is_ref = False
+            result = ''.join(chunks)
         return result
 
     def _interpolate_option(self, name, env, ref_stack):
