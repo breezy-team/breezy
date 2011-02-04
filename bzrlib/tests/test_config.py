@@ -355,8 +355,12 @@ class TestConfigObjInterpolation(tests.TestCase):
         c = self.get_config('')
         self.assertInterpolate('foo', c, 'foo')
 
-    def test_in_env(self):
+    def test_env_adding_options(self):
         c = self.get_config('')
+        self.assertInterpolate('bar', c, '{foo}', {'foo': 'bar'})
+
+    def test_env_overriding_options(self):
+        c = self.get_config('foo=baz')
         self.assertInterpolate('bar', c, '{foo}', {'foo': 'bar'})
 
     def test_simple_ref(self):
@@ -364,15 +368,17 @@ class TestConfigObjInterpolation(tests.TestCase):
         self.assertInterpolate('xxx', c, '{foo}')
 
     def test_indirect_ref(self):
-        c = self.get_config("""foo=xxx
+        c = self.get_config('''
+foo=xxx
 bar={foo}
-""")
+''')
         self.assertInterpolate('xxx', c, '{bar}')
 
     def test_embedded_ref(self):
-        c = self.get_config("""foo=xxx
+        c = self.get_config('''
+foo=xxx
 bar=foo
-""")
+''')
         self.assertInterpolate('xxx', c, '{{bar}}')
 
     def test_simple_loop(self):
@@ -380,7 +386,10 @@ bar=foo
         self.assertRaises(errors.InterpolationLoop, c.interpolate, '{foo}')
 
     def test_indirect_loop(self):
-        c = self.get_config('foo={bar}\nbar={baz}\nbaz={foo}')
+        c = self.get_config('''
+foo={bar}
+bar={baz}
+baz={foo}''')
         e = self.assertRaises(errors.InterpolationLoop,
                               c.interpolate, '{foo}')
         self.assertEquals('foo->bar->baz', e.refs)
