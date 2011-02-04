@@ -379,6 +379,13 @@ bar=foo
         c = self.get_config('foo={foo}')
         self.assertRaises(errors.InterpolationLoop, c.interpolate, '{foo}')
 
+    def test_indirect_loop(self):
+        c = self.get_config('foo={bar}\nbar={baz}\nbaz={foo}')
+        e = self.assertRaises(errors.InterpolationLoop,
+                              c.interpolate, '{foo}')
+        self.assertEquals('foo->bar->baz', e.refs)
+        self.assertEquals('{foo}', e.string)
+
 
 class TestConfig(tests.TestCase):
 
