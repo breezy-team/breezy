@@ -32,6 +32,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Restore proper logging of bytes transferred. We accidentally reset the
+  counter when commands finished before we logged the total transferred.
+  (John Arbash Meinel, #713258)
+
 Documentation
 *************
 
