@@ -47,7 +47,6 @@ from bzrlib.errors import (
     NoWorkingTree,
     )
 from bzrlib.option import Option
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.tag import _merge_tags_if_possible
 from bzrlib.trace import note, warning
 from bzrlib.workingtree import WorkingTree
@@ -69,6 +68,7 @@ from bzrlib.plugins.builddeb.config import (
     )
 from bzrlib.plugins.builddeb.errors import (
     BuildFailedError,
+    MissingChangelogError,
     NoPreviousUpload,
     )
 from bzrlib.plugins.builddeb.hooks import run_hook
@@ -96,6 +96,8 @@ from bzrlib.plugins.builddeb.upstream import (
         TarfileSource,
         UScanSource,
         UpstreamProvider,
+        )
+from bzrlib.plugins.builddeb.upstream.branch import (
         UpstreamBranchSource,
         )
 from bzrlib.plugins.builddeb.util import (
@@ -106,7 +108,6 @@ from bzrlib.plugins.builddeb.util import (
         find_changelog,
         find_last_distribution,
         find_previous_upload,
-        get_export_upstream_revision,
         get_source_format,
         guess_build_type,
         lookup_distribution,
@@ -312,18 +313,13 @@ class cmd_builddeb(Command):
                 upstream_branch = Branch.open(export_upstream)
                 upstream_branch.lock_read()
                 try:
-                    if export_upstream_revision is None:
-                        export_upstream_revision = \
-                            get_export_upstream_revision(config,
-                                version=str(version.upstream_version))
-                    if export_upstream_revision is None:
-                        upstream_revision = \
-                                upstream_branch.last_revision()
+                    upstream_source = UpstreamBranchSource(upstream_branch,
+                        config=config)
+                    if version is None:
+                        upstream_revision = upstream_branch.last_revision()
                     else:
-                        upstream_revspec = RevisionSpec.from_string(
-                                export_upstream_revision)
-                        upstream_revision = \
-                            upstream_revspec.as_revision_id(upstream_branch)
+                        upstream_revision = upstream_source.version_as_revision(
+                            version)
                 finally:
                     upstream_branch.unlock()
         return (upstream_branch, upstream_revision)
@@ -337,7 +333,7 @@ class cmd_builddeb(Command):
             quick=False, reuse=False, native=None,
             source=False, revision=None, result=None, package_merge=None):
         if result is not None:
-            warning("--result is deprected, use --result-dir instead")
+            warning("--result is deprecated, use --result-dir instead")
         location, build_options, source = self._branch_and_build_options(
                 branch_or_build_options_list, source)
         tree, branch, is_local, location = self._get_tree_and_branch(location)
@@ -403,7 +399,7 @@ class cmd_builddeb(Command):
                 ])
             if build_type == BUILD_TYPE_SPLIT:
                 upstream_sources.append(SelfSplitSource(tree))
- 
+
             upstream_provider = UpstreamProvider(changelog.package,
                 changelog.version.upstream_version, orig_dir, upstream_sources)
 
@@ -551,12 +547,13 @@ class cmd_merge_upstream(Command):
                     'merge had completed failed. Add the new changelog '
                     'entry yourself, review the merge, and then commit.')
 
-    def _do_merge(self, tree, tarball_filename, version, current_version,
-            upstream_branch, upstream_revision, merge_type, force):
+    def _do_merge(self, tree, tarball_filename, package, version,
+            current_version, upstream_branch, upstream_revision, merge_type,
+            force):
         db = DistributionBranch(tree.branch, None, tree=tree)
         dbs = DistributionBranchSet()
         dbs.add_branch(db)
-        conflicts = db.merge_upstream(tarball_filename, version,
+        conflicts = db.merge_upstream(tarball_filename, package, version,
                 current_version, upstream_branch=upstream_branch,
                 upstream_revision=upstream_revision,
                 merge_type=merge_type, force=force)
@@ -591,7 +588,6 @@ class cmd_merge_upstream(Command):
             location, v3)
 
     def _get_changelog_info(self, tree, last_version, package, distribution):
-        from bzrlib.plugins.builddeb.errors import MissingChangelogError
         changelog = None
         current_version = last_version
         try:
@@ -719,8 +715,8 @@ class cmd_merge_upstream(Command):
                 tarball_filename = self._get_tarball(config, tree, package,
                     version, upstream_branch, upstream_revision, v3,
                     location)
-                conflicts = self._do_merge(tree, tarball_filename, version,
-                    current_version, upstream_branch, upstream_revision,
+                conflicts = self._do_merge(tree, tarball_filename, package,
+                    version, current_version, upstream_branch, upstream_revision,
                     merge_type, force)
             if Version(current_version) >= Version(version):
                 raise BzrCommandError(
@@ -794,7 +790,6 @@ class cmd_import_dsc(Command):
             db.import_package(os.path.join(orig_target, filename))
 
     def run(self, files_list, file=None):
-        from bzrlib.plugins.builddeb.errors import MissingChangelogError
         try:
             tree = WorkingTree.open_containing('.')[0]
         except NotBranchError:
@@ -910,7 +905,7 @@ class cmd_import_upstream(Command):
             dir=branch.bzrdir.root_transport.clone('..').local_abspath('.'))
         self.add_cleanup(shutil.rmtree, tempdir)
         db = DistributionBranch(branch, upstream_branch=upstream)
-        if db.has_upstream_version_in_packaging_branch(version):
+        if db.pristine_tar_source.has_version(None, version):
             raise BzrCommandError("Version %s is already present." % version)
         tagged_versions = {}
         for tag_name, tag_revid in branch.tags.get_tag_dict().iteritems():

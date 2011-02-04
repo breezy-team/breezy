@@ -27,7 +27,11 @@ import os
 import tarfile
 import zipfile
 
+from bzrlib.revision import (
+    Revision,
+    )
 from bzrlib.tests import (
+    Feature,
     TestCase,
     TestCaseWithTransport,
     )
@@ -41,13 +45,39 @@ from bzrlib.plugins.builddeb.errors import (
     )
 from bzrlib.plugins.builddeb.upstream import (
     AptSource,
+    PristineTarSource,
     StackedUpstreamSource,
     TarfileSource,
-    UpstreamBranchSource,
     UpstreamProvider,
     UpstreamSource,
     UScanSource,
+    Version,
     )
+from bzrlib.plugins.builddeb.upstream.branch import (
+    get_export_upstream_revision,
+    get_snapshot_revision,
+    UpstreamBranchSource,
+    _upstream_branch_version,
+    upstream_tag_to_version,
+    upstream_version_add_revision
+    )
+
+
+# Unless bug #712474 is fixed and available in the minimum bzrlib required, we
+# can't use:
+# svn_plugin = tests.ModuleAvailableFeature('bzrlib.plugins.svn')
+class SvnPluginAvailable(Feature):
+
+    def feature_name(self):
+        return 'bzr-svn plugin'
+
+    def _probe(self):
+        try:
+            import bzrlib.plugins.svn
+            return True
+        except ImportError:
+            return False
+svn_plugin = SvnPluginAvailable()
 
 
 class MockSources(object):
@@ -149,7 +179,7 @@ class AptSourceTests(TestCase):
         apt_pkg = MockAptPkg(sources)
         src = AptSource()
         src._run_apt_source = caller.call
-        src.fetch_tarball("apackage", "0.2", "target", 
+        src.fetch_tarball("apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -169,7 +199,7 @@ class AptSourceTests(TestCase):
         src = AptSource()
         src._run_apt_source = caller.call
         self.assertRaises(PackageVersionNotPresent, src.fetch_tarball,
-            "apackage", "0.2", "target", 
+            "apackage", "0.2", "target",
             _apt_pkg=apt_pkg)
         self.assertEqual(1, apt_pkg.init_called_times)
         self.assertEqual(1, apt_pkg.get_pkg_source_records_called_times)
@@ -222,16 +252,16 @@ class StackedUpstreamSourceTests(TestCase):
         self.assertEquals("1.1", stack.get_latest_version("mypkg", "1.0"))
 
     def test_repr(self):
-        self.assertEquals("StackedUpstreamSource([])", 
+        self.assertEquals("StackedUpstreamSource([])",
                 repr(StackedUpstreamSource([])))
-        self.assertEquals("StackedUpstreamSource([RecordingSource()])", 
+        self.assertEquals("StackedUpstreamSource([RecordingSource()])",
                 repr(StackedUpstreamSource([RecordingSource(False)])))
 
     def test_none(self):
         a = RecordingSource(False)
         b = RecordingSource(False)
         stack = StackedUpstreamSource([a, b])
-        self.assertRaises(PackageVersionNotPresent, 
+        self.assertRaises(PackageVersionNotPresent,
                 stack.fetch_tarball, "pkg", "1.0", "bla")
         self.assertEquals([("pkg", "1.0", "bla")], b._specific_versions)
         self.assertEquals([("pkg", "1.0", "bla")], a._specific_versions)
@@ -330,6 +360,181 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.assertEquals(revid2,
             source.version_as_revision("foo", "2.1+bzr2"))
         self.assertEquals(revid1, source.version_as_revision("foo", "2.1"))
+
+
+class TestUpstreamBranchVersion(TestCase):
+    """Test that the upstream version of a branch can be determined correctly.
+    """
+
+    def get_suffix(self, version_string, revid):
+        revno = self.revhistory.index(revid)+1
+        if "bzr" in version_string:
+            return "%sbzr%d" % (version_string.split("bzr")[0], revno)
+        return "%s+bzr%d" % (version_string, revno)
+
+    def test_snapshot_none_existing(self):
+      self.revhistory = ["somerevid"]
+      self.assertEquals(Version("1.2+bzr1"),
+          _upstream_branch_version(self.revhistory, {}, "bla", "1.2", self.get_suffix))
+
+    def test_snapshot_nothing_new(self):
+      self.revhistory = []
+      self.assertEquals(Version("1.2"),
+          _upstream_branch_version(self.revhistory, {}, "bla", "1.2", self.get_suffix))
+
+    def test_new_tagged_release(self):
+      """Last revision is tagged - use as upstream version."""
+      self.revhistory = ["somerevid"]
+      self.assertEquals(Version("1.3"),
+          _upstream_branch_version(self.revhistory, {"somerevid": ["1.3"]}, "bla", "1.2", self.get_suffix))
+
+    def test_refresh_snapshot_pre(self):
+      self.revhistory = ["oldrevid", "somerevid"]
+      self.assertEquals(Version("1.3~bzr2"),
+          _upstream_branch_version(self.revhistory, {}, "bla", "1.3~bzr1", self.get_suffix))
+
+    def test_refresh_snapshot_post(self):
+      self.revhistory = ["oldrevid", "somerevid"]
+      self.assertEquals(Version("1.3+bzr2"),
+          _upstream_branch_version(self.revhistory, {}, "bla", "1.3+bzr1", self.get_suffix))
+
+    def test_new_tag_refresh_snapshot(self):
+      self.revhistory = ["oldrevid", "somerevid", "newrevid"]
+      self.assertEquals(Version("1.3+bzr3"),
+            _upstream_branch_version(self.revhistory,
+                {"somerevid": ["1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
+
+
+class TestUpstreamTagToVersion(TestCase):
+
+    def test_prefix(self):
+        self.assertEquals(Version("5.0"), upstream_tag_to_version("release-5.0"))
+
+    def test_gibberish(self):
+        self.assertIs(None, upstream_tag_to_version("blabla"))
+
+    def test_vprefix(self):
+        self.assertEquals(Version("2.0"), upstream_tag_to_version("v2.0"))
+
+    def test_plain(self):
+        self.assertEquals(Version("2.0"), upstream_tag_to_version("2.0"))
+
+    def test_package_prefix(self):
+        self.assertEquals(Version("42.0"), upstream_tag_to_version("bla-42.0", "bla"))
+
+
+class TestUpstreamVersionAddRevision(TestCaseWithTransport):
+    """Test that updating the version string works."""
+
+    def setUp(self):
+        super(TestUpstreamVersionAddRevision, self).setUp()
+        self.revnos = {}
+        self.svn_revnos = {"somesvnrev": 45}
+        self.revnos = {"somerev": 42, "somesvnrev": 12}
+        self.repository = self
+
+    def revision_id_to_revno(self, revid):
+        return self.revnos[revid]
+
+    def get_revision(self, revid):
+        rev = Revision(revid)
+        if revid in self.svn_revnos:
+            self.requireFeature(svn_plugin)
+            # Fake a bzr-svn revision
+            rev.foreign_revid = ("uuid", "bp", self.svn_revnos[revid])
+            from bzrlib.plugins.svn import mapping
+            rev.mapping = mapping.mapping_registry.get_default()()
+        return rev
+
+    def test_update_plus_rev(self):
+        self.assertEquals("1.3+bzr42",
+          upstream_version_add_revision(self, "1.3+bzr23", "somerev"))
+
+    def test_update_tilde_rev(self):
+        self.assertEquals("1.3~bzr42",
+          upstream_version_add_revision(self, "1.3~bzr23", "somerev"))
+
+    def test_new_rev(self):
+        self.assertEquals("1.3+bzr42",
+          upstream_version_add_revision(self, "1.3", "somerev"))
+
+    def test_svn_new_rev(self):
+        self.assertEquals("1.3+svn45",
+          upstream_version_add_revision(self, "1.3", "somesvnrev"))
+
+    def test_svn_plus_rev(self):
+        self.assertEquals("1.3+svn45",
+          upstream_version_add_revision(self, "1.3+svn3", "somesvnrev"))
+
+    def test_svn_tilde_rev(self):
+        self.assertEquals("1.3~svn45",
+            upstream_version_add_revision(self, "1.3~svn800", "somesvnrev"))
+
+
+class GetExportUpstreamRevisionTests(TestCase):
+
+    def test_snapshot_rev(self):
+        config = DebBuildConfig([])
+        self.assertEquals("34",
+            get_export_upstream_revision(config, "0.1+bzr34"))
+
+    def test_export_upstream_rev(self):
+        config = DebBuildConfig([
+            ({"BUILDDEB": {"export-upstream-revision": "tag:foobar"}}, True)])
+        self.assertEquals("tag:foobar",
+            get_export_upstream_revision(config, "0.1"))
+
+    def test_export_upstream_rev_var(self):
+        config = DebBuildConfig([({"BUILDDEB":
+            {"export-upstream-revision": "tag:foobar-$UPSTREAM_VERSION"}},
+            True)])
+        self.assertEquals("tag:foobar-0.1",
+            get_export_upstream_revision(config, "0.1"))
+
+    def test_export_upstream_rev_not_set(self):
+        config = DebBuildConfig([])
+        self.assertEquals(None,
+            get_export_upstream_revision(config, "0.1"))
+
+
+class GetRevisionSnapshotTests(TestCase):
+
+    def test_with_snapshot(self):
+        self.assertEquals("30", get_snapshot_revision("0.4.4~bzr30"))
+
+    def test_with_snapshot_plus(self):
+        self.assertEquals("30", get_snapshot_revision("0.4.4+bzr30"))
+
+    def test_without_snapshot(self):
+        self.assertEquals(None, get_snapshot_revision("0.4.4"))
+
+    def test_non_numeric_snapshot(self):
+        self.assertEquals(None, get_snapshot_revision("0.4.4~bzra"))
+
+    def test_with_svn_snapshot(self):
+        self.assertEquals("svn:4242", get_snapshot_revision("0.4.4~svn4242"))
+
+    def test_with_svn_snapshot_plus(self):
+        self.assertEquals("svn:2424", get_snapshot_revision("0.4.4+svn2424"))
+
+
+class PristineTarSourceTests(TestCaseWithTransport):
+
+    def setUp(self):
+        super(PristineTarSourceTests, self).setUp()
+        self.tree = self.make_branch_and_tree('unstable')
+        root_id = self.tree.path2id("")
+        self.source = PristineTarSource(self.tree, self.tree.branch)
+
+    def test_upstream_tag_name(self):
+        upstream_v_no = "0.1"
+        self.assertEqual(self.source.tag_name(upstream_v_no),
+                "upstream-" + upstream_v_no)
+
+    def test_version(self):
+        self.assertEquals(['upstream-3.3', 'upstream-debian-3.3',
+            'upstream-ubuntu-3.3', 'upstream/3.3'],
+            self.source.possible_tag_names("3.3"))
 
 
 class TarfileSourceTests(TestCaseWithTransport):

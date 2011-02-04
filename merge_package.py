@@ -60,7 +60,7 @@ def _upstream_version_data(source, target):
         db = DistributionBranch(branch, branch)
         uver = _latest_version(branch).upstream_version
         results.append((Version(uver),
-                    db.revid_of_upstream_version_from_branch(uver)))
+                    db.pristine_tar_source.version_as_revision(None, uver)))
 
     return results
 
