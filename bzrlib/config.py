@@ -146,30 +146,48 @@ class ConfigObj(configobj.ConfigObj):
 
     option_ref_re = None
 
-    def interpolate(self, string, env=None):
+    def interpolate(self, string, env=None, ref_stack=None):
+        if ref_stack is None:
+            # What references are currently resolved (to detect loops)
+            ref_stack = []
         if self.option_ref_re is None:
             # We want to match the most embedded reference first (i.e. for
             # '{{foo}}' we will get '{foo}',
             # for '{bar{baz}}' we will get '{baz}'
             self.option_ref_re = re.compile('({[^{}]+})')
-        while True:
-            found = self.option_ref_re.search(string)
-            if found is None:
-                # No more references, interpolation is done
-                break
-            ref = found.group()
-            name = ref[1:-1]
-            if env is not None and name in env:
-                # Special case, values provided in env takes precedence over
-                # anything else
-                value = env[name]
+        result = string
+        is_ref = False
+        chunks = []
+        import pdb; pdb.set_trace()
+        # Split will isolate refs so that every other chunk is a ref
+        for chunk in self.option_ref_re.split(result):
+            if not is_ref:
+                chunks.append(chunk)
+                is_ref = True
             else:
-                # FIXME: This is a limited implementation, what we really need
-                # is a way to query the bzr config for the value of an option,
-                # respecting the scope rules -- vila 20101222
-                value = self[name]
-            string = string.replace(ref, value)
-        return string
+                name = chunk[1:-1]
+                if name in ref_stack:
+                    raise errors.InterpolationLoop(string, ref_stack)
+                ref_stack.append(name)
+                value = self._interpolate_option(name, env, ref_stack)
+                raw_chunks.append(value)
+                ref_stack.pop()
+                is_ref = False
+        result = ''.join(chunks)
+        return result
+
+    def _interpolate_option(self, name, env, ref_stack):
+        if env is not None and name in env:
+            # Special case, values provided in env takes precedence over
+            # anything else
+            value = env[name]
+        else:
+            # FIXME: This is a limited implementation, what we really need
+            # is a way to query the bzr config for the value of an option,
+            # respecting the scope rules -- vila 20101222
+            value = self[name]
+        return self.interpolate(value, env, ref_stack)
+
 
 class Config(object):
     """A configuration policy - what username, editor, gpg needs etc."""

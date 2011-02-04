@@ -376,7 +376,7 @@ bar=foo
         self.assertInterpolate('xxx', c, '{{bar}}')
 
     def test_simple_loop(self):
-        c = self.get_config('foo=food')
+        c = self.get_config('foo={foo}')
         self.assertRaises(errors.InterpolationLoop, c.interpolate, '{foo}')
 
 
