@@ -153,10 +153,22 @@ class ConfigObj(configobj.ConfigObj):
 
     option_ref_re = None
 
-    def interpolate(self, string, env=None, ref_stack=None):
-        if ref_stack is None:
+    def interpolate(self, string, env=None, _ref_stack=None):
+        """Interpolate the string in the configuration context.
+
+        :param string: The string to interpolate
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :param _ref_stack: Private list containing the options being
+            interpolated to detect loops.
+
+        :returns: The interpolated string.
+        """
+        if _ref_stack is None:
             # What references are currently resolved (to detect loops)
-            ref_stack = []
+            _ref_stack = []
         if self.option_ref_re is None:
             # We want to match the most embedded reference first (i.e. for
             # '{{foo}}' we will get '{foo}',
@@ -179,12 +191,12 @@ class ConfigObj(configobj.ConfigObj):
                     is_ref = True
                 else:
                     name = chunk[1:-1]
-                    if name in ref_stack:
-                        raise errors.InterpolationLoop(string, ref_stack)
-                    ref_stack.append(name)
-                    value = self._interpolate_option(name, env, ref_stack)
+                    if name in _ref_stack:
+                        raise errors.InterpolationLoop(string, _ref_stack)
+                    _ref_stack.append(name)
+                    value = self._interpolate_option(name, env, _ref_stack)
                     chunks.append(value)
-                    ref_stack.pop()
+                    _ref_stack.pop()
                     is_ref = False
             result = ''.join(chunks)
         return result
