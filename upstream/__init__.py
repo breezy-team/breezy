@@ -30,7 +30,6 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import (
     note,
     warning,
@@ -47,7 +46,6 @@ from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 from bzrlib.plugins.builddeb.util import (
     export,
-    get_snapshot_revision,
     tarball_name,
     )
 
@@ -166,63 +164,6 @@ class AptSource(UpstreamSource):
         if proc.returncode != 0:
             return False
         return True
-
-
-class UpstreamBranchSource(UpstreamSource):
-    """Upstream source that uses the upstream branch.
-
-    :ivar upstream_branch: Branch with upstream sources
-    :ivar upstream_version_map: Map from version strings to revids
-    """
-
-    def __init__(self, upstream_branch, upstream_revision_map=None,
-                 config=None):
-        self.upstream_branch = upstream_branch
-        self.config = config
-        if upstream_revision_map is None:
-            self.upstream_revision_map = {}
-        else:
-            self.upstream_revision_map = upstream_revision_map
-
-    def version_as_revision(self, package, version):
-        if version in self.upstream_revision_map:
-             return self.upstream_revision_map[version]
-        revspec = get_snapshot_revision(version)
-        if revspec is not None:
-            return RevisionSpec.from_string(
-                revspec).as_revision_id(self.upstream_branch)
-        return None
-
-    def get_latest_version(self, package, current_version):
-        return self.get_version(package, current_version,
-            self.upstream_branch.last_revision())
-
-    def get_version(self, package, current_version, revision):
-        from bzrlib.plugins.builddeb.merge_upstream import (
-            upstream_branch_version)
-        version = str(upstream_branch_version(self.upstream_branch,
-            revision, package, current_version))
-        return version
-
-    def fetch_tarball(self, package, version, target_dir):
-        self.upstream_branch.lock_read()
-        try:
-            revid = self.version_as_revision(package, version)
-            if revid is None:
-                raise PackageVersionNotPresent(package, version, self)
-            note("Exporting upstream branch revision %s to create the tarball",
-                 revid)
-            target_filename = self._tarball_path(package, version, target_dir)
-            tarball_base = "%s-%s" % (package, version)
-            rev_tree = self.upstream_branch.repository.revision_tree(revid)
-            export(rev_tree, target_filename, 'tgz', tarball_base)
-        finally:
-            self.upstream_branch.unlock()
-        return target_filename
-
-    def __repr__(self):
-        return "<%s for %r>" % (self.__class__.__name__,
-            self.upstream_branch.base)
 
 
 class GetOrigSourceSource(UpstreamSource):
