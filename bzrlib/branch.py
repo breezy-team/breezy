@@ -1744,7 +1744,8 @@ class BranchFormat(object):
     def register_extra_format(klass, format):
         """Register a branch format that can not be part of a metadir.
 
-        This is mainly useful to allow custom branch formats to be tested.
+        This is mainly useful to allow custom branch formats, such as
+        older Bazaar formats and foreign formats, to be tested
         """
         klass._extra_formats.append(format)
         network_format_registry.register(
