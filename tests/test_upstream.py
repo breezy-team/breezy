@@ -24,11 +24,14 @@
 
 
 import os
+import tarfile
+import zipfile
 
 from bzrlib.revision import (
     Revision,
     )
 from bzrlib.tests import (
+    Feature,
     TestCase,
     TestCaseWithTransport,
     )
@@ -44,7 +47,9 @@ from bzrlib.plugins.builddeb.upstream import (
     AptSource,
     PristineTarSource,
     StackedUpstreamSource,
+    TarfileSource,
     UpstreamProvider,
+    UpstreamSource,
     UScanSource,
     Version,
     )
@@ -56,6 +61,23 @@ from bzrlib.plugins.builddeb.upstream.branch import (
     upstream_tag_to_version,
     upstream_version_add_revision
     )
+
+
+# Unless bug #712474 is fixed and available in the minimum bzrlib required, we
+# can't use:
+# svn_plugin = tests.ModuleAvailableFeature('bzrlib.plugins.svn')
+class SvnPluginAvailable(Feature):
+
+    def feature_name(self):
+        return 'bzr-svn plugin'
+
+    def _probe(self):
+        try:
+            import bzrlib.plugins.svn
+            return True
+        except ImportError:
+            return False
+svn_plugin = SvnPluginAvailable()
 
 
 class MockSources(object):
@@ -191,7 +213,7 @@ class AptSourceTests(TestCase):
         self.assertEqual("target", caller.target_dir)
 
 
-class RecordingSource(object):
+class RecordingSource(UpstreamSource):
 
     def __init__(self, succeed, latest=None):
         self._succeed = succeed
@@ -205,6 +227,7 @@ class RecordingSource(object):
         self._specific_versions.append((package, version, target_dir))
         if not self._succeed:
             raise PackageVersionNotPresent(package, version, self)
+        return self._tarball_path(package, version, target_dir)
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -416,7 +439,11 @@ class TestUpstreamVersionAddRevision(TestCaseWithTransport):
     def get_revision(self, revid):
         rev = Revision(revid)
         if revid in self.svn_revnos:
+            self.requireFeature(svn_plugin)
+            # Fake a bzr-svn revision
             rev.foreign_revid = ("uuid", "bp", self.svn_revnos[revid])
+            from bzrlib.plugins.svn import mapping
+            rev.mapping = mapping.mapping_registry.get_default()()
         return rev
 
     def test_update_plus_rev(self):
@@ -510,6 +537,42 @@ class PristineTarSourceTests(TestCaseWithTransport):
             self.source.possible_tag_names("3.3"))
 
 
+class TarfileSourceTests(TestCaseWithTransport):
+    """Tests for TarfileSource."""
+
+    def setUp(self):
+        super(TarfileSourceTests, self).setUp()
+        tar = tarfile.open("foo-1.0.tar.gz", "w:gz")
+        tar.close()
+
+    def test_version(self):
+        source = TarfileSource("foo-1.0.tar.gz", "1.0")
+        self.assertEquals("1.0", source.get_latest_version("foo", "0.9"))
+
+    def test_fetch_tarball(self):
+        source = TarfileSource("foo-1.0.tar.gz", "1.0")
+        os.mkdir("bar")
+        self.assertEquals("bar/foo_1.0.orig.tar.gz",
+            source.fetch_tarball("foo", "1.0", "bar"))
+        self.failUnlessExists("bar/foo_1.0.orig.tar.gz")
+
+    def test_fetch_tarball_repack(self):
+        zf = zipfile.ZipFile("bla-2.0.zip", "w")
+        zf.writestr('avoid', 'empty zip to make the repacker happy\n')
+        zf.close()
+        source = TarfileSource("bla-2.0.zip", "2.0")
+        os.mkdir("bar")
+        self.assertEquals("bar/foo_2.0.orig.tar.gz",
+            source.fetch_tarball("foo", "2.0", "bar"))
+        self.failUnlessExists("bar/foo_2.0.orig.tar.gz")
+
+    def test_fetch_tarball_not_present(self):
+        source = TarfileSource("foo-1.0.tar.gz", "1.0")
+        os.mkdir("bar")
+        self.assertRaises(PackageVersionNotPresent,
+            source.fetch_tarball, "foo", "0.9", "bar")
+
+
 class _MissingUpstreamProvider(UpstreamProvider):
     """For tests"""
 
@@ -537,7 +600,7 @@ class _SimpleUpstreamProvider(UpstreamProvider):
 
     def __init__(self, package, version, store_dir):
         self.package = package
-        self.version = Version(version)
+        self.version = version
         self.store_dir = store_dir
 
     def provide(self, target_dir):

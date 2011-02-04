@@ -71,6 +71,8 @@ from bzrlib.plugins.builddeb.errors import (
     UpstreamBranchAlreadyMerged,
     )
 from bzrlib.plugins.builddeb.util import (
+    FORMAT_3_0_QUILT,
+    FORMAT_3_0_NATIVE,
     export,
     get_commit_info_from_changelog,
     make_pristine_tar_delta,
@@ -1607,5 +1609,5 @@ class ThreeDotZeroQuiltSourceExtractor(SourceExtractor):
 
 SOURCE_EXTRACTORS = {}
 SOURCE_EXTRACTORS["1.0"] = SourceExtractor
-SOURCE_EXTRACTORS["3.0 (native)"] = ThreeDotZeroNativeSourceExtractor
-SOURCE_EXTRACTORS["3.0 (quilt)"] = ThreeDotZeroQuiltSourceExtractor
+SOURCE_EXTRACTORS[FORMAT_3_0_NATIVE] = ThreeDotZeroNativeSourceExtractor
+SOURCE_EXTRACTORS[FORMAT_3_0_QUILT] = ThreeDotZeroQuiltSourceExtractor

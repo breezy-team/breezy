@@ -66,7 +66,7 @@ def _get_tarball(tree, tarball, package_name, version, use_v3=False):
     trace.note("Fetching tarball")
     repack_tarball(tarball, dest_name, target_dir=orig_dir,
             force_gz=not use_v3)
-    provider = upstream.UpstreamProvider(package_name, "%s-1" % version,
+    provider = upstream.UpstreamProvider(package_name, version,
             orig_dir, [])
     provider.provide(os.path.join(tree.basedir, ".."))
     return tarball_filename, util.md5sum_filename(tarball_filename)
@@ -101,7 +101,7 @@ def run_dh_make(tree, package_name, version, use_v3=False):
             tree.add("debian/source")
         f = open("debian/source/format")
         try:
-            f.write("3.0 (quilt)\n")
+            f.write("%s\n" % util.FORMAT_3_0_QUILT)
         finally:
             f.close()
         if tree.path2id("debian/source/format") is None:

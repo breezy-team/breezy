@@ -18,12 +18,12 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.config import ConfigObj, TreeConfig
+from bzrlib.config import (
+  configobj,
+  ConfigObj,
+  TreeConfig,
+  )
 from bzrlib.trace import mutter, warning
-try:
-  from bzrlib.util.configobj.configobj import ParseError
-except ImportError:
-  from configobj import ParseError
 
 
 BUILD_TYPE_NORMAL = "normal"
@@ -100,7 +100,7 @@ class DebBuildConfig(object):
     for input in files:
       try:
         config = ConfigObj(input[0])
-      except ParseError, e:
+      except configobj.ParseError, e:
         if len(input) > 2:
           content = input[2]
         else:
