@@ -59,24 +59,3 @@ class TestFormat2WorkingTree(TestCaseWithTransport):
         os.mkdir('lala.OTHER')
         expected = conflicts.ContentsConflict('lala', file_id='lala-id')
         self.assertEqual(list(tree.conflicts()), [expected])
-
-
-def load_tests(basic_tests, module, loader):
-    from bzrlib import tests
-    from bzrlib.tests.per_workingtree import (
-        make_scenarios as make_workingtree_scenarios,
-        per_workingtree_tests,
-        )
-    from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
-    workingtree_scenarios = make_workingtree_scenarios(tests.default_transport, None,
-        [WorkingTreeFormat2()])
-    tests.multiply_tests(per_workingtree_tests(loader), workingtree_scenarios,
-        basic_tests)
-    from bzrlib.tests.per_tree import (
-        make_scenarios as make_tree_scenarios,
-        per_tree_tests,
-        )
-    tree_scenarios = make_tree_scenarios(tests.default_transport, None,
-        [WorkingTreeFormat2()])
-    tests.multiply_tests(per_tree_tests(loader), tree_scenarios, basic_tests)
-    return basic_tests

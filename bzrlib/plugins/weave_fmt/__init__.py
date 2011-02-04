@@ -24,6 +24,7 @@ from bzrlib import (
     bzrdir,
     controldir,
     repository,
+    workingtree,
     )
 
 # Pre-0.8 formats that don't have a disk format string (because they are
@@ -84,9 +85,11 @@ branch.network_format_registry.register_lazy(
 from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
 branch.BranchFormat.register_extra_format(BzrBranchFormat4())
 
+from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
+workingtree.WorkingTreeFormat.register_extra_format(WorkingTreeFormat2())
+
 def load_tests(basic_tests, module, loader):
     testmod_names = [
-        'test_branch',
         'test_bzrdir',
         'test_repository',
         'test_workingtree',
