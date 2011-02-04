@@ -2882,6 +2882,9 @@ class WorkingTreeFormat(object):
     _formats = {}
     """The known formats."""
 
+    _extra_formats = []
+    """Extra formats, not for use in working trees."""
+
     requires_rich_root = False
 
     upgrade_recommended = False
@@ -2942,6 +2945,18 @@ class WorkingTreeFormat(object):
     @classmethod
     def register_format(klass, format):
         klass._formats[format.get_format_string()] = format
+
+    @classmethod
+    def register_extra_format(klass, format):
+        klass._extra_formats.append(format)
+
+    @classmethod
+    def unregister_extra_format(klass, format):
+        klass._extra_formats.remove(format)
+
+    @classmethod
+    def get_formats(klass):
+        return klass._formats.values() + klass._extra_formats
 
     @classmethod
     def set_default_format(klass, format):
@@ -3179,5 +3194,4 @@ WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-_legacy_formats = [WorkingTreeFormat2(),
-                   ]
+WorkingTreeFormat.register_extra_format(WorkingTreeFormat2())
