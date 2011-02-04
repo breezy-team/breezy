@@ -132,6 +132,13 @@ STORE_GLOBAL = 4
 
 class ConfigObj(configobj.ConfigObj):
 
+    def __init__(self, infile=None, **kwargs):
+        # We define our own interpolation mechanism
+        super(ConfigObj, self).__init__(infile=infile,
+                                        interpolation=False,
+                                        **kwargs)
+
+
     def get_bool(self, section, key):
         return self[section].as_bool(key)
 
