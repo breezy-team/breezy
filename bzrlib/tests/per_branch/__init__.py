@@ -28,7 +28,8 @@ from bzrlib import (
     errors,
     tests,
     )
-from bzrlib.branch import BranchFormat
+from bzrlib.branch import (BranchFormat,
+                           )
 from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
 from bzrlib.tests import test_server
 from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
@@ -157,7 +158,7 @@ def branch_scenarios():
     return scenarios
 
 
-def per_branch_tests(loader):
+def load_tests(standard_tests, module, loader):
     per_branch_mod_names = [
         'bound_sftp',
         'branch',
@@ -188,11 +189,7 @@ def per_branch_tests(loader):
         'uncommit',
         'update',
         ]
-    return loader.loadTestsFromModuleNames(
+    sub_tests = loader.loadTestsFromModuleNames(
         ['bzrlib.tests.per_branch.test_' + name
          for name in per_branch_mod_names])
-
-
-def load_tests(standard_tests, module, loader):
-    return tests.multiply_tests(per_branch_tests(loader), branch_scenarios(),
-        standard_tests)
+    return tests.multiply_tests(sub_tests, branch_scenarios(), standard_tests)

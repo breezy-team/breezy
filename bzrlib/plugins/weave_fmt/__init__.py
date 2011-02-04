@@ -81,6 +81,8 @@ branch.network_format_registry.register_lazy(
     "Bazaar-NG branch, format 6\n", "bzrlib.plugins.weave_fmt.branch",
     "BzrBranchFormat4")
 
+from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+branch.BranchFormat.register_extra_format(BzrBranchFormat4())
 
 def load_tests(basic_tests, module, loader):
     testmod_names = [

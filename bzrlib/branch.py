@@ -1552,6 +1552,9 @@ class BranchFormat(object):
     _formats = {}
     """The known formats."""
 
+    _extra_formats = []
+    """Extra formats that can not be part of a metadir."""
+
     can_set_append_revisions_only = True
 
     def __eq__(self, other):
@@ -1592,7 +1595,7 @@ class BranchFormat(object):
             if isinstance(fmt, MetaDirBranchFormatFactory):
                 fmt = fmt()
             result.append(fmt)
-        return result
+        return result + klass._extra_formats
 
     def get_reference(self, a_bzrdir, name=None):
         """Get the target reference of the branch in a_bzrdir.
@@ -1738,6 +1741,17 @@ class BranchFormat(object):
         raise NotImplementedError(self.open)
 
     @classmethod
+    def register_extra_format(klass, format):
+        """Register a branch format that can not be part of a metadir.
+
+        This is mainly useful to allow custom branch formats, such as
+        older Bazaar formats and foreign formats, to be tested
+        """
+        klass._extra_formats.append(format)
+        network_format_registry.register(
+            format.network_name(), format.__class__)
+
+    @classmethod
     def register_format(klass, format):
         """Register a metadir format.
         
@@ -1768,6 +1782,10 @@ class BranchFormat(object):
     @classmethod
     def unregister_format(klass, format):
         del klass._formats[format.get_format_string()]
+
+    @classmethod
+    def unregister_extra_format(klass, format):
+        klass._extra_formats.remove(format)
 
     def __str__(self):
         return self.get_format_description().rstrip()
