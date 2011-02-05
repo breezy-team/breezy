@@ -71,6 +71,10 @@ Bug Fixes
 * ``launchpadlib`` doesn't provide the ``uris`` module in some old versions.
   (Vincent Ladeuil, #706835)
 
+* Empty entries in the ``NO_PROXY`` variable are no longer treated as matching
+  every host.
+  (Martin Pool, #586341)
+
 * Plugins incompatible with the current version of bzr no longer produce a
   warning on every command invocation.  Instead, a message is shown by
   ``bzr plugins`` and in crash reports.
