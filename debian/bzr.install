@@ -1,3 +1,2 @@
 contrib/bash/bzr	etc/bash_completion.d/
-debian/tmp/usr/bin
-debian/tmp/usr/lib
+usr/bin
