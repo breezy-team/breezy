@@ -80,7 +80,7 @@ default_orig_dir = '..'
 default_result_dir = '..'
 
 
-directories.register_lazy("deb:", 'bzrlib.plugins.builddeb.directory', 
+directories.register_lazy("apt:", 'bzrlib.plugins.builddeb.directory', 
         'VcsDirectory', 
         "Directory that uses Debian Vcs-* control fields to look up branches")
 
