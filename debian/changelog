@@ -49,8 +49,10 @@ bzr-builddeb (2.5.1) unstable; urgency=low
   * Fix build dependencies for test suite.
   * Support unversioned debian/ symlink in working tree when finding
     changelog and larstiq mode. LP: #619295
+  * The deb: directory service has been renamed to apt: to avoid
+    confusion.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Thu, 03 Feb 2011 14:38:04 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 06 Feb 2011 14:25:32 +0100
 
 bzr-builddeb (2.5) unstable; urgency=low
 
