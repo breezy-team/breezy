@@ -1,11 +1,13 @@
 #!/usr/bin/make -f
 
 DEB_PYTHON_SYSTEM = pysupport
+DEB_PYTHON_MODULE_PACKAGES = bzr python-bzrlib
 
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/python-distutils.mk
 
 DEB_PYTHON_INSTALL_ARGS_ALL += --install-data=/usr/share
+DEB_DH_INSTALL_ARGS += --list-missing --fail-missing
 DEB_PYTHON_BUILD_ARGS += --executable "/usr/bin/python"
 DEB_COMPRESS_EXCLUDE += .svg .pdf
 

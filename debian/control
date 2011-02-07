@@ -12,7 +12,7 @@ Dm-Upload-Allowed: yes
 
 Package: bzr
 Architecture: all
-Depends: ${python:Depends}, python-bzrlib (= ${source:Version}), ${misc:Depends}
+Depends: ${python:Depends}, python-bzrlib (>= ${source:Version}), ${misc:Depends}
 Recommends: bzrtools
 Suggests: bzr-gtk, bzr-svn, bzr-doc, python-testtools (>= 0.9.5~)
 XB-Python-Version: ${python:Versions}

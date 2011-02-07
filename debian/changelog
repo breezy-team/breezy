@@ -1,4 +1,4 @@
-bzr (2.3.0-1ubuntu1) natty; urgency=low
+bzr (2.3.0-2) unstable; urgency=low
 
   * Split python library into a separate package. Closes: #561647
 
