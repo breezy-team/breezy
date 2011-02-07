@@ -229,4 +229,5 @@ class WatchFileMissing(BzrError):
 
 class StrictBuildFailed(BzrError):
 
-    _fmt = "Build refused because there are unknown files in the tree"
+    _fmt = ("Build refused because there are unknown files in the tree."
+            "To list all known files, run 'bzr unknowns'.")
