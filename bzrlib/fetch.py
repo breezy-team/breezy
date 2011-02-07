@@ -389,7 +389,7 @@ class FetchSpecFactory(object):
                 # We want everything not already in the target (or target's
                 # fallbacks).
                 return graph.EverythingNotInOther(
-                    self.target_repo, self.source_repo)
+                    self.target_repo, self.source_repo).execute()
         heads_to_fetch = set(self._explicit_rev_ids)
         tags_to_fetch = set()
         if self.source_branch is not None:
@@ -411,6 +411,7 @@ class FetchSpecFactory(object):
             all_heads = heads_to_fetch.union(tags_to_fetch)
             return graph.PendingAncestryResult(all_heads, self.source_repo)
         return graph.NotInOtherForRevs(self.target_repo, self.source_repo,
-            required_ids=heads_to_fetch, if_present_ids=tags_to_fetch)
+            required_ids=heads_to_fetch, if_present_ids=tags_to_fetch
+            ).execute()
 
 

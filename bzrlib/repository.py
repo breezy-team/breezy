@@ -3900,10 +3900,9 @@ class InterDifferingSerializer(InterRepository):
             fetch_spec=None):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
-            if (isinstance(fetch_spec, graph.NotInOtherForRevs) and
-                    len(fetch_spec.required_ids) == 1 and not
-                    fetch_spec.if_present_ids):
-                revision_id = list(fetch_spec.required_ids)[0]
+            if (isinstance(fetch_spec, graph.SearchResult) and
+                    len(fetch_spec.get_keys()) == 1):
+                revision_id = list(fetch_spec.get_keys())[0]
                 del fetch_spec
             else:
                 raise AssertionError("Not implemented yet...")
