@@ -24,11 +24,9 @@ from bzrlib import (
     builtins,
     bzrdir,
     check,
-    debug,
     errors,
     memorytree,
     push,
-    repository,
     revision,
     symbol_versioning,
     tests,
@@ -36,8 +34,6 @@ from bzrlib import (
     )
 from bzrlib.smart import (
     client,
-    server,
-    repository as _mod_smart_repo,
     )
 from bzrlib.tests import (
     per_branch,
@@ -173,6 +169,21 @@ class TestPush(per_branch.TestCaseWithBranch):
 
         self.assertEqual(tree.branch.last_revision(),
                          to_branch.last_revision())
+
+    def test_push_overwrite_with_older_mainline_rev(self):
+        """Pushing an older mainline revision with overwrite.
+
+        This was <https://bugs.launchpad.net/bzr/+bug/386576>.
+        """
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch('target')
+
+        source.commit('1st commit')
+        source.commit('2nd commit', rev_id='rev-2')
+        source.commit('3rd commit')
+        source.branch.push(target)
+        source.branch.push(target, stop_revision='rev-2', overwrite=True)
+        self.assertEqual('rev-2', target.last_revision())
 
     def test_push_overwrite_of_non_tip_with_stop_revision(self):
         """Combining the stop_revision and overwrite options works.

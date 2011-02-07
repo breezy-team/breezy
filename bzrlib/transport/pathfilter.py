@@ -18,7 +18,6 @@
 
 
 from bzrlib.transport import (
-    get_transport,
     register_transport,
     Server,
     Transport,

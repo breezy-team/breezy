@@ -598,7 +598,9 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                         'Bad status line received',
                         orig_error=exc_val)
                 elif (isinstance(exc_val, socket.error) and len(exc_val.args)
-                      and exc_val.args[0] in (errno.ECONNRESET, 10054)):
+                      and exc_val.args[0] in (errno.ECONNRESET, 10053, 10054)):
+                      # 10053 == WSAECONNABORTED
+                      # 10054 == WSAECONNRESET
                     raise errors.ConnectionReset(
                         "Connection lost while sending request.")
                 else:
@@ -940,9 +942,31 @@ class ProxyHandler(urllib2.ProxyHandler):
         return None
 
     def proxy_bypass(self, host):
-        """Check if host should be proxied or not"""
+        """Check if host should be proxied or not.
+
+        :returns: True to skip the proxy, False otherwise.
+        """
         no_proxy = self.get_proxy_env_var('no', default_to=None)
+        bypass = self.evaluate_proxy_bypass(host, no_proxy)
+        if bypass is None:
+            # Nevertheless, there are platform-specific ways to
+            # ignore proxies...
+            return urllib.proxy_bypass(host)
+        else:
+            return bypass
+
+    def evaluate_proxy_bypass(self, host, no_proxy):
+        """Check the host against a comma-separated no_proxy list as a string.
+
+        :param host: ``host:port`` being requested
+
+        :param no_proxy: comma-separated list of hosts to access directly.
+
+        :returns: True to skip the proxy, False not to, or None to
+            leave it to urllib.
+        """
         if no_proxy is None:
+            # All hosts are proxied
             return False
         hhost, hport = urllib.splitport(host)
         # Does host match any of the domains mentioned in
@@ -950,6 +974,9 @@ class ProxyHandler(urllib2.ProxyHandler):
         # are fuzzy (to say the least). We try to allow most
         # commonly seen values.
         for domain in no_proxy.split(','):
+            domain = domain.strip()
+            if domain == '':
+                continue
             dhost, dport = urllib.splitport(domain)
             if hport == dport or dport is None:
                 # Protect glob chars
@@ -958,9 +985,8 @@ class ProxyHandler(urllib2.ProxyHandler):
                 dhost = dhost.replace("?", r".")
                 if re.match(dhost, hhost, re.IGNORECASE):
                     return True
-        # Nevertheless, there are platform-specific ways to
-        # ignore proxies...
-        return urllib.proxy_bypass(host)
+        # Nothing explicitly avoid the host
+        return None
 
     def set_proxy(self, request, type):
         if self.proxy_bypass(request.get_host()):
