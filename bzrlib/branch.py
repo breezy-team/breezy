@@ -1045,7 +1045,7 @@ class Branch(controldir.ControlComponent):
         return InterBranch.get(other, self).update_revisions(stop_revision,
             overwrite, graph, fetch_tags=fetch_tags)
 
-    @deprecated_method(deprecated_in((2, 3, 0)))
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def import_last_revision_info(self, source_repo, revno, revid):
         """Set the last revision info, importing from another repo if necessary.
 

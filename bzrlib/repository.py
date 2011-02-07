@@ -3479,12 +3479,8 @@ class InterRepository(InterObject):
             # them, make sure that they are present in the target.
             # We don't care about other ghosts as we can't fetch them and
             # haven't been asked to.
-            mutter('reqd: %r  if-present: %r  ->  ghosts: %r', revision_ids,
-                if_present_ids, ghosts)
             ghosts_to_check = set(revision_ids.intersection(ghosts))
             revs_to_get = set(next_revs).union(ghosts_to_check)
-            mutter('ghosts_to_check: %r  revs_to_get: %r  searcher_exhausted: %r',
-                ghosts_to_check, revs_to_get, searcher_exhausted)
             if revs_to_get:
                 have_revs = set(target_graph.get_parent_map(revs_to_get))
                 # we always have NULL_REVISION present.

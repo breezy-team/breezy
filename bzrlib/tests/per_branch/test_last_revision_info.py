@@ -41,7 +41,7 @@ class TestLastRevisionInfo(TestCaseWithTransport):
         tree1.commit('1st post')
         revid = tree1.commit('2st post', allow_pointless=True)
         branch2 = self.make_branch('branch2')
-        self.applyDeprecated(deprecated_in((2, 3, 0)),
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
             branch2.import_last_revision_info, tree1.branch.repository, 2, revid)
         self.assertEqual((2, revid), branch2.last_revision_info())
         self.assertTrue(branch2.repository.has_revision(revid))
@@ -52,7 +52,7 @@ class TestLastRevisionInfo(TestCaseWithTransport):
         tree.commit('1st post')
         revid = tree.commit('2st post', allow_pointless=True)
         tree.branch.set_last_revision_info(0, NULL_REVISION)
-        self.applyDeprecated(deprecated_in((2, 3, 0)),
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
             tree.branch.import_last_revision_info, tree.branch.repository, 2, revid)
         self.assertEqual((2, revid), tree.branch.last_revision_info())
 
