@@ -123,6 +123,26 @@ class SampleTreeFormat(workingtree.WorkingTreeFormat):
         return "opened tree."
 
 
+class SampleExtraTreeFormat(workingtree.WorkingTreeFormat):
+    """A sample format that does not support use in a metadir.
+
+    """
+
+    def get_format_string(self):
+        # Not usable in a metadir, so no format string
+        return None
+
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None, hardlink=False):
+        raise NotImplementedError(self.initialize)
+
+    def is_supported(self):
+        return False
+
+    def open(self, transport, _found=False):
+        raise NotImplementedError(self.open)
+
+
 class TestWorkingTreeFormat(TestCaseWithTransport):
     """Tests for the WorkingTreeFormat facility."""
 
@@ -165,12 +185,21 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         format.initialize(dir)
         # register a format for it.
         workingtree.WorkingTreeFormat.register_format(format)
+        self.assertTrue(format in workingtree.WorkingTreeFormat.get_formats())
         # which branch.Open will refuse (not supported)
         self.assertRaises(errors.UnsupportedFormatError, workingtree.WorkingTree.open, '.')
         # but open_downlevel will work
         self.assertEqual(format.open(dir), workingtree.WorkingTree.open_downlevel('.'))
         # unregister the format
         workingtree.WorkingTreeFormat.unregister_format(format)
+        self.assertFalse(format in workingtree.WorkingTreeFormat.get_formats())
+
+    def test_register_unregister_extra_format(self):
+        format = SampleExtraTreeFormat()
+        workingtree.WorkingTreeFormat.register_extra_format(format)
+        self.assertTrue(format in workingtree.WorkingTreeFormat.get_formats())
+        workingtree.WorkingTreeFormat.unregister_extra_format(format)
+        self.assertFalse(format in workingtree.WorkingTreeFormat.get_formats())
 
 
 class TestWorkingTreeFormat3(TestCaseWithTransport):

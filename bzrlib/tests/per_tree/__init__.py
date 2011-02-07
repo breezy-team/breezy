@@ -39,7 +39,6 @@ from bzrlib.revisiontree import RevisionTree
 from bzrlib.transform import TransformPreview
 from bzrlib.workingtree import (
     WorkingTreeFormat,
-    _legacy_formats,
     )
 from bzrlib.workingtree_4 import (
     DirStateRevisionTree,
@@ -398,6 +397,6 @@ def load_tests(standard_tests, module, loader):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        WorkingTreeFormat._formats.values() + _legacy_formats)
+        WorkingTreeFormat.get_formats())
     # add the tests for the sub modules
     return tests.multiply_tests(submod_tests, scenarios, standard_tests)
