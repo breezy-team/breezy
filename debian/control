@@ -65,7 +65,8 @@ Architecture: all
 Section: doc
 Depends: ${misc:Depends}
 Suggests: bzr
-Conflicts: bzr (<< 2.0.1)
+Replaces: bzr (<< 2.0.1)
+Breaks: bzr (<< 2.0.1)
 Description: easy to use distributed version control system (documentation)
  Bazaar is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
