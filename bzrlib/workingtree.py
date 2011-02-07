@@ -2883,7 +2883,7 @@ class WorkingTreeFormat(object):
     """The known formats."""
 
     _extra_formats = []
-    """Extra formats, not for use in working trees."""
+    """Extra formats that can not be used in a metadir."""
 
     requires_rich_root = False
 
@@ -3192,6 +3192,7 @@ WorkingTreeFormat.register_format(WorkingTreeFormat5())
 WorkingTreeFormat.register_format(WorkingTreeFormat4())
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)
-# formats which have no format string are not discoverable
-# and not independently creatable, so are not registered.
+# Register extra formats which have no format string are not discoverable
+# and not independently creatable. They are implicitly created as part of
+# e.g. older Bazaar formats or foreign formats.
 WorkingTreeFormat.register_extra_format(WorkingTreeFormat2())
