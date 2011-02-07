@@ -18,7 +18,7 @@
 
 bzr_plugin_name = 'builddeb'
 
-bzr_plugin_version = (2, 2, 0, 'final', 0)
+bzr_plugin_version = (2, 5, 1, 'dev', 0)
 
 bzr_commands = [
     "test_builddeb",
