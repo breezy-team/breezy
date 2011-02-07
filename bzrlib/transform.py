@@ -40,6 +40,7 @@ from bzrlib import (
     revision as _mod_revision,
     trace,
     ui,
+    urlutils,
     )
 """)
 from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
@@ -64,8 +65,6 @@ from bzrlib.symbol_versioning import (
     deprecated_method,
     )
 from bzrlib.trace import warning
-import bzrlib.ui
-import bzrlib.urlutils as urlutils
 
 
 ROOT_PARENT = "root-parent"
@@ -1677,7 +1676,7 @@ class TreeTransform(DiskTreeTransform):
         """
         if not no_conflicts:
             self._check_malformed()
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        child_pb = ui.ui_factory.nested_progress_bar()
         try:
             if precomputed_delta is None:
                 child_pb.update('Apply phase', 0, 2)
@@ -1710,7 +1709,7 @@ class TreeTransform(DiskTreeTransform):
     def _generate_inventory_delta(self):
         """Generate an inventory delta for the current transform."""
         inventory_delta = []
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        child_pb = ui.ui_factory.nested_progress_bar()
         new_paths = self._inventory_altered()
         total_entries = len(new_paths) + len(self._removed_id)
         try:
@@ -1778,7 +1777,7 @@ class TreeTransform(DiskTreeTransform):
         """
         tree_paths = list(self._tree_path_ids.iteritems())
         tree_paths.sort(reverse=True)
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        child_pb = ui.ui_factory.nested_progress_bar()
         try:
             for num, data in enumerate(tree_paths):
                 path, trans_id = data
@@ -1813,7 +1812,7 @@ class TreeTransform(DiskTreeTransform):
         modified_paths = []
         new_path_file_ids = dict((t, self.final_file_id(t)) for p, t in
                                  new_paths)
-        child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        child_pb = ui.ui_factory.nested_progress_bar()
         try:
             for num, (path, trans_id) in enumerate(new_paths):
                 if (num % 10) == 0:
@@ -2431,7 +2430,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         if num > 0:  # more than just a root
             raise errors.WorkingTreeAlreadyPopulated(base=wt.basedir)
     file_trans_id = {}
-    top_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    top_pb = ui.ui_factory.nested_progress_bar()
     pp = ProgressPhase("Build phase", 2, top_pb)
     if tree.inventory.root is not None:
         # This is kind of a hack: we should be altering the root
@@ -2450,7 +2449,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
         pp.next_phase()
         file_trans_id[wt.get_root_id()] = \
             tt.trans_id_tree_file_id(wt.get_root_id())
-        pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        pb = ui.ui_factory.nested_progress_bar()
         try:
             deferred_contents = []
             num = 0
@@ -2780,7 +2779,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
 def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
                               backups, pp, basis_tree=None,
                               merge_modified=None):
-    child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    child_pb = ui.ui_factory.nested_progress_bar()
     try:
         if merge_modified is None:
             merge_modified = working_tree.merge_modified()
@@ -2789,7 +2788,7 @@ def _prepare_revert_transform(working_tree, target_tree, tt, filenames,
                                       merge_modified, basis_tree)
     finally:
         child_pb.finished()
-    child_pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    child_pb = ui.ui_factory.nested_progress_bar()
     try:
         raw_conflicts = resolve_conflicts(tt, child_pb,
             lambda t, c: conflict_pass(t, c, target_tree))

@@ -494,4 +494,13 @@ class TestPull(TestCaseWithTransport):
         self.assertEqual(out,
                          ('','bzr: ERROR: Need working tree for --show-base.\n'))
 
-
+    def test_pull_tag_conflicts(self):
+        """pulling tags with conflicts will change the exit code"""
+        # create a branch, see that --show-base fails
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        out = self.run_bzr(['pull','-d','to','from'],retcode=1)
+        self.assertEqual(out,
+            ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))

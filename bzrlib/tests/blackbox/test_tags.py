@@ -18,6 +18,7 @@
 
 from bzrlib import (
     branchbuilder,
+    tag,
     )
 from bzrlib.branch import (
     Branch,
@@ -327,7 +328,8 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(out,
                 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
         # pull should give a warning about the tags
-        out, err = self.run_bzr('pull -d one two', encoding='utf-8')
+        out, err = self.run_bzr('pull -d one two', encoding='utf-8',
+            retcode=1)
         self.assertContainsRe(out,
                 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
         # merge should give a warning about the tags -- not implemented yet

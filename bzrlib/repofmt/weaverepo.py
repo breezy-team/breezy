@@ -341,6 +341,8 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
     has been removed.
     """
 
+    supports_funky_characters = False
+
     _matchingbzrdir = bzrdir.BzrDirFormat4()
 
     def get_format_description(self):
@@ -390,6 +392,8 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat5()
+    supports_funky_characters = False
+
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -435,6 +439,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
 
     _versionedfile_class = weave.WeaveFile
     _matchingbzrdir = bzrdir.BzrDirFormat6()
+    supports_funky_characters = False
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -484,6 +489,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     _versionedfile_class = weave.WeaveFile
     supports_ghosts = False
     supports_chks = False
+    supports_funky_characters = False
 
     _fetch_order = 'topological'
     _fetch_reconcile = True
@@ -820,7 +826,7 @@ class InterWeaveRepo(InterSameDataRepository):
         if symbol_versioning.deprecated_passed(revision_id):
             symbol_versioning.warn(
                 'search_missing_revision_ids(revision_id=...) was '
-                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                'deprecated in 2.4.  Use revision_ids=[...] instead.',
                 DeprecationWarning, stacklevel=2)
             if revision_ids is not None:
                 raise AssertionError(

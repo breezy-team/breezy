@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -430,8 +430,8 @@ class LockDir(lock.Lock):
         # there's a small race window between checking it and doing the
         # rename.
         broken_info_path = tmpname + self.__INFO_NAME
-        f = self.transport.get(broken_info_path)
-        broken_lines = f.readlines()
+        broken_content = self.transport.get_bytes(broken_info_path)
+        broken_lines = osutils.split_lines(broken_content)
         if broken_lines != corrupt_info_lines:
             raise LockBreakMismatch(self, broken_lines, corrupt_info_lines)
         self.transport.delete(broken_info_path)
