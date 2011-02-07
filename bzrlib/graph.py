@@ -1576,14 +1576,15 @@ class AbstractSearchResult(object):
 
 class AbstractSearch(object):
 
-    def get_search_result(self):
+    def execute(self):
         """Construct a network-ready search result from this search description.
 
         This may take some time to search repositories, etc.
 
-        :return: A search result.
+        :return: A search result (an object that implements
+            AbstractSearchResult's API).
         """
-        raise NotImplementedError(self.get_search_result)
+        raise NotImplementedError(self.execute)
 
 
 class SearchResult(AbstractSearchResult):
@@ -1705,7 +1706,8 @@ class PendingAncestryResult(AbstractSearchResult):
 
     def __repr__(self):
         if len(self.heads) > 5:
-            heads_repr = repr(list(self.heads)[:5] + ', ...]')
+            heads_repr = repr(list(self.heads)[:5])[:-1]
+            heads_repr += ', <%d more>...]' % (len(self.heads) - 5,)
         else:
             heads_repr = repr(self.heads)
         return '<%s heads:%s repo:%r>' % (
@@ -1813,7 +1815,7 @@ class EverythingNotInOther(AbstractSearch):
         self.from_repo = from_repo
         self.find_ghosts = find_ghosts
 
-    def get_search_result(self):
+    def execute(self):
         return self.to_repo.search_missing_revision_ids(
             self.from_repo, find_ghosts=self.find_ghosts)
 
@@ -1853,7 +1855,7 @@ class NotInOtherForRevs(AbstractSearch):
             self.__class__.__name__, self.from_repo, self.to_repo,
             self.find_ghosts, reqd_revs_repr, ifp_revs_repr)
 
-    def get_search_result(self):
+    def execute(self):
         return self.to_repo.search_missing_revision_ids(
             self.from_repo, revision_ids=self.required_ids,
             if_present_ids=self.if_present_ids, find_ghosts=self.find_ghosts)

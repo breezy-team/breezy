@@ -275,11 +275,6 @@ Bug Fixes
   crashes when encountering private bugs (they are just displayed as such).
   (Vincent Ladeuil, #354985)
 
-* The ``revision_id`` parameter of
-  ``Repository.search_missing_revision_ids`` and
-  ``InterRepository.search_missing_revision_ids`` is deprecated.  It is
-  replaced by the ``revision_ids`` parameter.  (Andrew Bennetts)
-
 Internals
 *********
 

@@ -1608,7 +1608,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         if symbol_versioning.deprecated_passed(revision_id):
             symbol_versioning.warn(
                 'search_missing_revision_ids(revision_id=...) was '
-                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                'deprecated in 2.4.  Use revision_ids=[...] instead.',
                 DeprecationWarning, stacklevel=3)
             if revision_ids is not None:
                 raise AssertionError(
@@ -1785,9 +1785,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 not _mod_revision.is_null(revision_id)):
                 self.get_revision(revision_id)
             return 0, []
-        # if there is no specific appropriate InterRepository, this will get
-        # the InterRepository base class, which raises an
-        # IncompatibleRepositories when asked to fetch.
         inter = InterRepository.get(source, self)
         return inter.fetch(revision_id=revision_id, pb=pb,
             find_ghosts=find_ghosts, fetch_spec=fetch_spec)
@@ -3526,7 +3523,7 @@ class InterRepository(InterObject):
         if symbol_versioning.deprecated_passed(revision_id):
             symbol_versioning.warn(
                 'search_missing_revision_ids(revision_id=...) was '
-                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                'deprecated in 2.4.  Use revision_ids=[...] instead.',
                 DeprecationWarning, stacklevel=2)
             if revision_ids is not None:
                 raise AssertionError(
@@ -3901,13 +3898,9 @@ class InterDifferingSerializer(InterRepository):
             fetch_spec=None):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
-            if (isinstance(fetch_spec, graph.NotInOtherForRevs) and
-                    len(fetch_spec.required_ids) == 1 and not
-                    fetch_spec.if_present_ids):
-                revision_id = list(fetch_spec.required_ids)[0]
-                del fetch_spec
-            else:
-                raise AssertionError("Not implemented yet...")
+            revision_ids = fetch_spec.get_keys()
+        else:
+            revision_ids = None
         ui.ui_factory.warn_experimental_format_fetch(self)
         if (not self.source.supports_rich_root()
             and self.target.supports_rich_root()):
@@ -3920,12 +3913,14 @@ class InterDifferingSerializer(InterRepository):
             ui.ui_factory.show_user_warning('cross_format_fetch',
                 from_format=self.source._format,
                 to_format=self.target._format)
-        if revision_id:
-            search_revision_ids = [revision_id]
-        else:
-            search_revision_ids = None
-        revision_ids = self.target.search_missing_revision_ids(self.source,
-            revision_ids=search_revision_ids, find_ghosts=find_ghosts).get_keys()
+        if revision_ids is None:
+            if revision_id:
+                search_revision_ids = [revision_id]
+            else:
+                search_revision_ids = None
+            revision_ids = self.target.search_missing_revision_ids(self.source,
+                revision_ids=search_revision_ids,
+                find_ghosts=find_ghosts).get_keys()
         if not revision_ids:
             return 0, 0
         revision_ids = tsort.topo_sort(
