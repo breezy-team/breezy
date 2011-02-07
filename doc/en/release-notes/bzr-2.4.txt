@@ -36,6 +36,9 @@ Improvements
   the dirstate file to be rebuilt, rather than using a ``bzr checkout``
   workaround. (John Arbash Meinel)
 
+* Branching, merging and pulling a branch now copies revisions named in
+  tags, not just the tag metadata.  (Andrew Bennetts, #309682)
+  
 * ``bzr cat-revision`` no longer requires a working tree. (Jelmer Vernooij, #704405)
 
 Bug Fixes
@@ -93,6 +96,13 @@ API Changes
 
 * Added ``bzrlib.mergetools`` module with helper functions for working with
   the list of external merge tools. (Gordon Tyler, #489915)
+
+* ``Branch.fetch`` implementations must now accept an optional
+  ``fetch_spec`` keyword argument. (Andrew Bennetts)
+
+* ``Branch.import_last_revision_info`` is deprecated.  Use the
+  ``import_last_revision_info_and_tags`` method instead.
+  (Andrew Bennetts)
 
 * The ``revision_id`` parameter of
   ``Repository.search_missing_revision_ids`` and
