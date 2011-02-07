@@ -113,7 +113,8 @@ class TestBuilddeb(BuilddebTestCase):
   def test_builddeb_strict(self):
     tree = self.build_really_simple_tree()
     self.run_bzr_error(
-      ['bzr: ERROR: Build refused because there are unknown files in the tree'],
+      ['bzr: ERROR: Build refused because there are unknown files in the tree. '
+       "To list all known files, run 'bzr unknowns'."],
       "builddeb --strict")
 
   def test_builddeb_uses_revision_when_told(self):
