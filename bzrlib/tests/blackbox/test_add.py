@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -229,3 +229,12 @@ class TestAdd(tests.TestCaseWithTransport):
         $ bzr add tree1/a tree2/b
         2>bzr: ERROR: Path "...tree2/b" is not a child of path "...tree1"
         ''')
+
+    def test_add_multiple_files_in_unicode_cwd(self):
+        """Adding multiple files in a non-ascii cwd, see lp:686611"""
+        self.requireFeature(tests.UnicodeFilename)
+        self.make_branch_and_tree(u"\xA7")
+        self.build_tree([u"\xA7/a", u"\xA7/b"])
+        out, err = self.run_bzr(["add", "a", "b"], working_dir=u"\xA7")
+        self.assertEquals(out, "adding a\n" "adding b\n")
+        self.assertEquals(err, "")

@@ -86,7 +86,7 @@ To display the log for the last ten revisions::
 revid
 ~~~~~
 
-**revid** allows specifying a an internal revision ID, as shown by ``bzr
+**revid** allows specifying an internal revision ID, as shown by ``bzr
 log --show-ids`` and some other commands.
 
 For example::

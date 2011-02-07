@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1360,7 +1360,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         if symbol_versioning.deprecated_passed(revision_id):
             symbol_versioning.warn(
                 'search_missing_revision_ids(revision_id=...) was '
-                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                'deprecated in 2.4.  Use revision_ids=[...] instead.',
                 DeprecationWarning, stacklevel=2)
             if revision_ids is not None:
                 raise AssertionError(
@@ -1991,11 +1991,11 @@ class RemoteStreamSource(repository.StreamSource):
                 if isinstance(search, graph.EverythingResult):
                     error_verb = e.error_from_smart_server.error_verb
                     if error_verb == 'BadSearch':
-                        # Pre-2.3 servers don't support this sort of search.
+                        # Pre-2.4 servers don't support this sort of search.
                         # XXX: perhaps falling back to VFS on BadSearch is a
                         # good idea in general?  It might provide a little bit
                         # of protection against client-side bugs.
-                        medium._remember_remote_is_before((2, 3))
+                        medium._remember_remote_is_before((2, 4))
                         break
                 raise
             else:

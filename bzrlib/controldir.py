@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ from bzrlib import (
     fetch,
     graph,
     revision as _mod_revision,
+    transport as _mod_transport,
     urlutils,
     )
 from bzrlib.push import (
@@ -41,7 +42,6 @@ from bzrlib.trace import (
     mutter,
     )
 from bzrlib.transport import (
-    get_transport,
     local,
     )
 
@@ -383,7 +383,8 @@ class ControlDir(ControlComponent):
         if revision_id is not None:
             fetch_spec_factory.add_revision_ids([revision_id])
             fetch_spec_factory.source_branch_stop_revision_id = revision_id
-        target_transport = get_transport(url, possible_transports)
+        target_transport = _mod_transport.get_transport(url,
+            possible_transports)
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir(stacked)
         # Create/update the result branch
@@ -594,7 +595,7 @@ class ControlDir(ControlComponent):
         :param preserve_stacking: When cloning a stacked branch, stack the
             new branch on top of the other branch's stacked-on branch.
         """
-        return self.clone_on_transport(get_transport(url),
+        return self.clone_on_transport(_mod_transport.get_transport(url),
                                        revision_id=revision_id,
                                        force_new_repo=force_new_repo,
                                        preserve_stacking=preserve_stacking)
@@ -771,8 +772,9 @@ class ControlDirFormat(object):
         Subclasses should typically override initialize_on_transport
         instead of this method.
         """
-        return self.initialize_on_transport(get_transport(url,
-                                                          possible_transports))
+        return self.initialize_on_transport(
+            _mod_transport.get_transport(url, possible_transports))
+
     def initialize_on_transport(self, transport):
         """Initialize a new controldir in the base directory of a Transport."""
         raise NotImplementedError(self.initialize_on_transport)

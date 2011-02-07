@@ -570,7 +570,8 @@ class Merger(object):
             except errors.TagsNotSupported:
                 tags_to_fetch = None
             fetch_spec = _mod_graph.NotInOtherForRevs(target.repository,
-                source.repository, [revision_id], if_present_ids=tags_to_fetch)
+                source.repository, [revision_id],
+                if_present_ids=tags_to_fetch).execute()
             target.fetch(source, fetch_spec=fetch_spec)
 
     def find_base(self):

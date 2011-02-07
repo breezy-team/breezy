@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,18 +17,15 @@
 """Test read_bundle works properly across various transports."""
 
 import cStringIO
-import os
 
 import bzrlib.bundle
 from bzrlib.bundle.serializer import write_bundle
 import bzrlib.bzrdir
 import bzrlib.errors as errors
-from bzrlib.symbol_versioning import deprecated_in
 from bzrlib import tests
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.tests.per_transport import transport_test_permutations
 import bzrlib.transport
-from bzrlib.transport.memory import MemoryTransport
 import bzrlib.urlutils
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
@@ -69,7 +66,7 @@ class TestReadMergeableBundleFromURL(TestTransportImplementation):
         # from the one we want to test, so we must inject a correct transport
         # into possible_transports first).
         self.possible_transports = [self.get_transport(self.bundle_name)]
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
         wt = self.create_test_bundle()
 
     def read_mergeable_from_url(self, url):

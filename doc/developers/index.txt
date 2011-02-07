@@ -38,6 +38,7 @@ Architecture overviews
 
    transports
    ui
+   fetch
 
 Releasing and Packaging
 =======================

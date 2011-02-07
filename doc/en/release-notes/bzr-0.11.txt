@@ -35,7 +35,7 @@ Improvements
 
 * Knit files now wait to create their contents until the first data is
   added. The old code used to create an empty .knit and a .kndx with just
-  the header. However, this caused a lot of extra round trips over sftp.
+  the header. However, this caused a lot of extra round trips over SFTP.
   This can change the time for ``bzr push`` to create a new remote branch
   from 160s down to 100s. This also affects ``bzr commit`` performance when
   adding new files, ``bzr commit`` on a new kernel-like tree drops from 50s
@@ -60,7 +60,7 @@ Improvements
   modules will not actually be imported if they are not used.
   (John Arbash Meinel)
 
-* Support ``bzr://`` and ``bzr+ssh://`` urls to work with the new RPC-based
+* Support ``bzr://`` and ``bzr+ssh://`` URLS to work with the new RPC-based
   transport which will be used with the upcoming high-performance smart
   server. The new command ``bzr serve`` will invoke bzr in server mode,
   which processes these requests. (Andrew Bennetts, Robert Collins, Martin
@@ -145,7 +145,7 @@ Internals
   take a ``universal_newlines=True``, which helps when checking the output
   of the command. (John Arbash Meinel)
 
-* Refactor SFTP vendors to allow easier re-use when ssh is used.
+* Refactor SFTP vendors to allow easier re-use when SSH is used.
   (Andrew Bennetts)
 
 * ``Transport.list_dir()`` and ``Transport.iter_files_recursive()`` should always

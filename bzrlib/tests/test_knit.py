@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 """Tests for Knit data structure"""
 
 from cStringIO import StringIO
+import gzip
 import sys
 
 from bzrlib import (
@@ -27,7 +28,6 @@ from bzrlib import (
     pack,
     tests,
     transport,
-    tuned_gzip,
     )
 from bzrlib.errors import (
     KnitHeaderError,
@@ -337,6 +337,33 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos.extend(access.add_raw_records([('key2', 5)], '12345'))
         writer.end()
         return memos
+
+    def test_pack_collection_pack_retries(self):
+        """An explicit pack of a pack collection succeeds even when a
+        concurrent pack happens.
+        """
+        builder = self.make_branch_builder('.')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\nrev 1\n')),
+            ])
+        builder.build_snapshot('rev-2', ['rev-1'], [
+            ('modify', ('file-id', 'content\nrev 2\n')),
+            ])
+        builder.build_snapshot('rev-3', ['rev-2'], [
+            ('modify', ('file-id', 'content\nrev 3\n')),
+            ])
+        self.addCleanup(builder.finish_series)
+        b = builder.get_branch()
+        self.addCleanup(b.lock_write().unlock)
+        repo = b.repository
+        collection = repo._pack_collection
+        # Concurrently repack the repo.
+        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo.pack()
+        # Pack the new pack.
+        collection.pack()
 
     def make_vf_for_retrying(self):
         """Create 3 packs and a reload function.
@@ -692,7 +719,7 @@ class LowLevelKnitDataTests(TestCase):
 
     def create_gz_content(self, text):
         sio = StringIO()
-        gz_file = tuned_gzip.GzipFile(mode='wb', fileobj=sio)
+        gz_file = gzip.GzipFile(mode='wb', fileobj=sio)
         gz_file.write(text)
         gz_file.close()
         return sio.getvalue()

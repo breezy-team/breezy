@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1300,8 +1300,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_stacked_repositories_reject_commit_builder(self):
         # As per bug 375013, committing to stacked repositories is currently
-        # broken, so repositories with fallbacks refuse to hand out a commit
-        # builder.
+        # broken if we aren't in a chk repository. So old repositories with
+        # fallbacks refuse to hand out a commit builder.
         repo_basis = self.make_repository('basis')
         branch = self.make_branch('local')
         repo_local = branch.repository
@@ -1309,15 +1309,19 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             repo_local.add_fallback_repository(repo_basis)
         except errors.UnstackableRepositoryFormat:
             raise tests.TestNotApplicable("not a stackable format.")
-        repo_local.lock_write()
-        self.addCleanup(repo_local.unlock)
-        self.assertRaises(errors.BzrError, repo_local.get_commit_builder,
-            branch, [], branch.get_config())
+        self.addCleanup(repo_local.lock_write().unlock)
+        if not repo_local._format.supports_chks:
+            self.assertRaises(errors.BzrError, repo_local.get_commit_builder,
+                branch, [], branch.get_config())
+        else:
+            builder = repo_local.get_commit_builder(branch, [],
+                                                    branch.get_config())
+            builder.abort()
 
     def test_committer_no_username(self):
         # Ensure that when no username is available but a committer is
         # supplied, commit works.
-        del os.environ['EMAIL']
+        self.overrideEnv('EMAIL', None)
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:

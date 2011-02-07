@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -89,6 +89,19 @@ class DirectoryUrlTests(TestCaseInTempDir):
                           directory._resolve('lp:apt', factory))
         # Make sure that resolve went to the production server.
         self.assertEquals('https://xmlrpc.launchpad.net/bazaar/',
+                          factory._service_url)
+
+    def test_qastaging(self):
+        """A launchpad url should map to a http url"""
+        factory = FakeResolveFactory(
+            self, 'apt', dict(urls=[
+                    'http://bazaar.qastaging.launchpad.net/~apt/apt/devel']))
+        url = 'lp://qastaging/apt'
+        directory = LaunchpadDirectory()
+        self.assertEquals('http://bazaar.qastaging.launchpad.net/~apt/apt/devel',
+                          directory._resolve(url, factory))
+        # Make sure that resolve went to the qastaging server.
+        self.assertEquals('https://xmlrpc.qastaging.launchpad.net/bazaar/',
                           factory._service_url)
 
     def test_staging(self):
@@ -298,7 +311,7 @@ class TestXMLRPCTransport(tests.TestCase):
         self.server = self.server_class()
         self.server.start_server()
         # Ensure we don't clobber env
-        self._captureVar('BZR_LP_XMLRPC_URL', None)
+        self.overrideEnv('BZR_LP_XMLRPC_URL', None)
 
     def tearDown(self):
         self.server.stop_server()

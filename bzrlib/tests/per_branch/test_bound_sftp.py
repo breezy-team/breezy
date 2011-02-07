@@ -150,7 +150,7 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         # TestCaseWithSFTPServer only allows you to connect one time
         # to the SFTP server. So we have to create a connection and
         # keep it around, so that it can be reused
-        __unused_t = transport.get_transport(self.get_url('.'))
+        __unused_t = self.get_transport()
 
         wt_base = b_base.bzrdir.open_workingtree()
         open('base/a', 'wb').write('new base contents\n')

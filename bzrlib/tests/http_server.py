@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,23 +20,12 @@ import os
 import posixpath
 import random
 import re
-import select
 import SimpleHTTPServer
 import socket
-import SocketServer
-import sys
-import threading
-import time
 import urllib
 import urlparse
 
-from bzrlib import (
-    osutils,
-    tests,
-    transport,
-    )
 from bzrlib.tests import test_server
-from bzrlib.transport import local
 
 
 class BadWebserverPath(ValueError):

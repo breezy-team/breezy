@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 import errno
 import socket
 import SocketServer
-import select
 import sys
 import threading
 
@@ -695,8 +694,6 @@ class TestingSmartServer(TestingThreadingTCPServer, server.SmartTCPServer):
         server.SmartTCPServer.__init__(self, backing_transport,
                                        root_client_path)
     def serve(self):
-        # FIXME: No test are exercising the hooks for the test server
-        # -- vila 20100618
         self.run_server_started_hooks()
         try:
             TestingThreadingTCPServer.serve(self)
@@ -804,7 +801,3 @@ class ReadonlySmartTCPServer_for_testing_v2_only(
         """Get a backing transport from a server we are decorating."""
         url = 'readonly+' + backing_transport_server.get_url()
         return transport.get_transport(url)
-
-
-
-

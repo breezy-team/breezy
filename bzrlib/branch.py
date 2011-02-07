@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1074,7 +1074,8 @@ class Branch(controldir.ControlComponent):
             except errors.TagsNotSupported:
                 tags_to_fetch = set()
             fetch_spec = _mod_graph.NotInOtherForRevs(self.repository,
-                source.repository, [revid], if_present_ids=tags_to_fetch)
+                source.repository, [revid],
+                if_present_ids=tags_to_fetch).execute()
             self.repository.fetch(source.repository, fetch_spec=fetch_spec)
         self.set_last_revision_info(revno, revid)
 
@@ -1410,13 +1411,8 @@ class Branch(controldir.ControlComponent):
         """Return the most suitable metadir for a checkout of this branch.
         Weaves are used if this branch's repository uses weaves.
         """
-        if isinstance(self.bzrdir, bzrdir.BzrDirPreSplitOut):
-            from bzrlib.repofmt import weaverepo
-            format = bzrdir.BzrDirMetaFormat1()
-            format.repository_format = weaverepo.RepositoryFormat7()
-        else:
-            format = self.repository.bzrdir.checkout_metadir()
-            format.set_branch_format(self._format)
+        format = self.repository.bzrdir.checkout_metadir()
+        format.set_branch_format(self._format)
         return format
 
     def create_clone_on_transport(self, to_transport, revision_id=None,
@@ -1587,6 +1583,9 @@ class BranchFormat(object):
     _formats = {}
     """The known formats."""
 
+    _extra_formats = []
+    """Extra formats that can not be part of a metadir."""
+
     can_set_append_revisions_only = True
 
     def __eq__(self, other):
@@ -1627,7 +1626,7 @@ class BranchFormat(object):
             if isinstance(fmt, MetaDirBranchFormatFactory):
                 fmt = fmt()
             result.append(fmt)
-        return result
+        return result + klass._extra_formats
 
     def get_reference(self, a_bzrdir, name=None):
         """Get the target reference of the branch in a_bzrdir.
@@ -1773,6 +1772,17 @@ class BranchFormat(object):
         raise NotImplementedError(self.open)
 
     @classmethod
+    def register_extra_format(klass, format):
+        """Register a branch format that can not be part of a metadir.
+
+        This is mainly useful to allow custom branch formats, such as
+        older Bazaar formats and foreign formats, to be tested
+        """
+        klass._extra_formats.append(format)
+        network_format_registry.register(
+            format.network_name(), format.__class__)
+
+    @classmethod
     def register_format(klass, format):
         """Register a metadir format.
         
@@ -1803,6 +1813,10 @@ class BranchFormat(object):
     @classmethod
     def unregister_format(klass, format):
         del klass._formats[format.get_format_string()]
+
+    @classmethod
+    def unregister_extra_format(klass, format):
+        klass._extra_formats.remove(format)
 
     def __str__(self):
         return self.get_format_description().rstrip()
@@ -2087,7 +2101,7 @@ class BzrBranchFormat4(BranchFormat):
             raise NotImplementedError
         if found_repository is None:
             found_repository = a_bzrdir.open_repository()
-        return BzrBranch(_format=self,
+        return BzrBranchPreSplitOut(_format=self,
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
                          name=name,
@@ -2414,10 +2428,7 @@ BranchFormat.register_format(__format6)
 BranchFormat.register_format(__format7)
 BranchFormat.register_format(__format8)
 BranchFormat.set_default_format(__format7)
-_legacy_formats = [BzrBranchFormat4(),
-    ]
-network_format_registry.register(
-    _legacy_formats[0].network_name(), _legacy_formats[0].__class__)
+BranchFormat.register_extra_format(BzrBranchFormat4())
 
 
 class BranchWriteLockResult(LogicalLockResult):
@@ -2699,7 +2710,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         result.target_branch = target
         result.old_revno, result.old_revid = target.last_revision_info()
         self.update_references(target)
-        if result.old_revid != self.last_revision():
+        if result.old_revid != stop_revision:
             # We assume that during 'push' this repository is closer than
             # the target.
             graph = self.repository.get_graph(target.repository)
@@ -2726,6 +2737,19 @@ class BzrBranch(Branch, _RelockDebugMixin):
         else:
             self._transport.put_bytes('parent', url + '\n',
                 mode=self.bzrdir._get_file_mode())
+
+
+class BzrBranchPreSplitOut(BzrBranch):
+
+    def _get_checkout_format(self):
+        """Return the most suitable metadir for a checkout of this branch.
+        Weaves are used if this branch's repository uses weaves.
+        """
+        from bzrlib.repofmt.weaverepo import RepositoryFormat7
+        from bzrlib.bzrdir import BzrDirMetaFormat1
+        format = BzrDirMetaFormat1()
+        format.repository_format = RepositoryFormat7()
+        return format
 
 
 class BzrBranch5(BzrBranch):
@@ -3461,7 +3485,7 @@ class GenericInterBranch(InterBranch):
             fetch_spec = fetch_spec_factory.make_fetch_spec()
         else:
             fetch_spec = _mod_graph.NotInOtherForRevs(self.target.repository,
-                self.source.repository, revision_ids=[stop_revision])
+                self.source.repository, revision_ids=[stop_revision]).execute()
         self.target.fetch(self.source, fetch_spec=fetch_spec)
         # Check to see if one is an ancestor of the other
         if not overwrite:
@@ -3496,7 +3520,8 @@ class GenericInterBranch(InterBranch):
         if local and not bound_location:
             raise errors.LocalRequiresBoundBranch()
         master_branch = None
-        if not local and bound_location and self.source.user_url != bound_location:
+        source_is_master = (self.source.user_url == bound_location)
+        if not local and bound_location and not source_is_master:
             # not pulling from master, so we need to update master.
             master_branch = self.target.get_master_branch(possible_transports)
             master_branch.lock_write()
@@ -3508,7 +3533,8 @@ class GenericInterBranch(InterBranch):
             return self._pull(overwrite,
                 stop_revision, _hook_master=master_branch,
                 run_hooks=run_hooks,
-                _override_hook_target=_override_hook_target)
+                _override_hook_target=_override_hook_target,
+                merge_tags_to_master=not source_is_master)
         finally:
             if master_branch:
                 master_branch.unlock()
@@ -3581,7 +3607,8 @@ class GenericInterBranch(InterBranch):
 
     def _pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, _hook_master=None, run_hooks=True,
-             _override_hook_target=None, local=False):
+             _override_hook_target=None, local=False,
+             merge_tags_to_master=True):
         """See Branch.pull.
 
         This function is the core worker, used by GenericInterBranch.pull to
@@ -3622,7 +3649,7 @@ class GenericInterBranch(InterBranch):
             # so a tags implementation that versions tags can only 
             # pull in the most recent changes. -- JRV20090506
             result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
-                overwrite)
+                overwrite, ignore_master=not merge_tags_to_master)
             result.new_revno, result.new_revid = self.target.last_revision_info()
             if _hook_master:
                 result.master_branch = _hook_master

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,8 +21,6 @@ import os
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import cStringIO
-import itertools
-import re
 import sys
 import time
 
@@ -330,7 +328,8 @@ class cmd_cat_revision(Command):
         if revision_id is None and revision is None:
             raise errors.BzrCommandError('You must supply either'
                                          ' --revision or a revision_id')
-        b = WorkingTree.open_containing(directory)[0].branch
+
+        b = bzrdir.BzrDir.open_containing_tree_or_branch(directory)[1]
 
         revisions = b.repository.revisions
         if revisions is None:
@@ -481,6 +480,59 @@ class cmd_remove_tree(Command):
                                              " from a lightweight checkout")
 
             d.destroy_workingtree()
+
+
+class cmd_repair_workingtree(Command):
+    __doc__ = """Reset the working tree state file.
+
+    This is not meant to be used normally, but more as a way to recover from
+    filesystem corruption, etc. This rebuilds the working inventory back to a
+    'known good' state. Any new modifications (adding a file, renaming, etc)
+    will be lost, though modified files will still be detected as such.
+
+    Most users will want something more like "bzr revert" or "bzr update"
+    unless the state file has become corrupted.
+
+    By default this attempts to recover the current state by looking at the
+    headers of the state file. If the state file is too corrupted to even do
+    that, you can supply --revision to force the state of the tree.
+    """
+
+    takes_options = ['revision', 'directory',
+        Option('force',
+               help='Reset the tree even if it doesn\'t appear to be'
+                    ' corrupted.'),
+    ]
+    hidden = True
+
+    def run(self, revision=None, directory='.', force=False):
+        tree, _ = WorkingTree.open_containing(directory)
+        self.add_cleanup(tree.lock_tree_write().unlock)
+        if not force:
+            try:
+                tree.check_state()
+            except errors.BzrError:
+                pass # There seems to be a real error here, so we'll reset
+            else:
+                # Refuse
+                raise errors.BzrCommandError(
+                    'The tree does not appear to be corrupt. You probably'
+                    ' want "bzr revert" instead. Use "--force" if you are'
+                    ' sure you want to reset the working tree.')
+        if revision is None:
+            revision_ids = None
+        else:
+            revision_ids = [r.as_revision_id(tree.branch) for r in revision]
+        try:
+            tree.reset_state(revision_ids)
+        except errors.BzrError, e:
+            if revision_ids is None:
+                extra = (', the header appears corrupt, try passing -r -1'
+                         ' to set the state to the last commit')
+            else:
+                extra = ''
+            raise errors.BzrCommandError('failed to reset the tree state'
+                                         + extra)
 
 
 class cmd_revno(Command):
@@ -1017,6 +1069,10 @@ class cmd_pull(Command):
             log.show_branch_change(
                 branch_to, self.outf, result.old_revno,
                 result.old_revid)
+        if getattr(result, 'tag_conflicts', None):
+            return 1
+        else:
+            return 0
 
 
 class cmd_push(Command):
@@ -1963,9 +2019,10 @@ class cmd_diff(Command):
             type=unicode,
             ),
         RegistryOption('format',
+            short_name='F',
             help='Diff format to use.',
             lazy_registry=('bzrlib.diff', 'format_registry'),
-            value_switches=False, title='Diff format'),
+            title='Diff format'),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
@@ -2052,7 +2109,9 @@ class cmd_modified(Command):
     @display_command
     def run(self, null=False, directory=u'.'):
         tree = WorkingTree.open_containing(directory)[0]
+        self.add_cleanup(tree.lock_read().unlock)
         td = tree.changes_from(tree.basis_tree())
+        self.cleanup_now()
         for path, id, kind, text_modified, meta_modified in td.modified:
             if null:
                 self.outf.write(path + '\0')
@@ -3328,27 +3387,62 @@ class cmd_check(Command):
 
 
 class cmd_upgrade(Command):
-    __doc__ = """Upgrade branch storage to current format.
+    __doc__ = """Upgrade a repository, branch or working tree to a newer format.
 
-    The check command or bzr developers may sometimes advise you to run
-    this command. When the default format has changed you may also be warned
-    during other operations to upgrade.
+    When the default format has changed after a major new release of
+    Bazaar, you may be informed during certain operations that you
+    should upgrade. Upgrading to a newer format may improve performance
+    or make new features available. It may however limit interoperability
+    with older repositories or with older versions of Bazaar.
+
+    If you wish to upgrade to a particular format rather than the
+    current default, that can be specified using the --format option.
+    As a consequence, you can use the upgrade command this way to
+    "downgrade" to an earlier format, though some conversions are
+    a one way process (e.g. changing from the 1.x default to the
+    2.x default) so downgrading is not always possible.
+
+    A backup.bzr.~#~ directory is created at the start of the conversion
+    process (where # is a number). By default, this is left there on
+    completion. If the conversion fails, delete the new .bzr directory
+    and rename this one back in its place. Use the --clean option to ask
+    for the backup.bzr directory to be removed on successful conversion.
+    Alternatively, you can delete it by hand if everything looks good
+    afterwards.
+
+    If the location given is a shared repository, dependent branches
+    are also converted provided the repository converts successfully.
+    If the conversion of a branch fails, remaining branches are still
+    tried.
+
+    For more information on upgrades, see the Bazaar Upgrade Guide,
+    http://doc.bazaar.canonical.com/latest/en/upgrade-guide/.
     """
 
-    _see_also = ['check']
+    _see_also = ['check', 'reconcile', 'formats']
     takes_args = ['url?']
     takes_options = [
-                    RegistryOption('format',
-                        help='Upgrade to a specific format.  See "bzr help'
-                             ' formats" for details.',
-                        lazy_registry=('bzrlib.bzrdir', 'format_registry'),
-                        converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
-                        value_switches=True, title='Branch format'),
-                    ]
+        RegistryOption('format',
+            help='Upgrade to a specific format.  See "bzr help'
+                 ' formats" for details.',
+            lazy_registry=('bzrlib.bzrdir', 'format_registry'),
+            converter=lambda name: bzrdir.format_registry.make_bzrdir(name),
+            value_switches=True, title='Branch format'),
+        Option('clean',
+            help='Remove the backup.bzr directory if successful.'),
+        Option('dry-run',
+            help="Show what would be done, but don't actually do anything."),
+    ]
 
-    def run(self, url='.', format=None):
+    def run(self, url='.', format=None, clean=False, dry_run=False):
         from bzrlib.upgrade import upgrade
-        upgrade(url, format)
+        exceptions = upgrade(url, format, clean_up=clean, dry_run=dry_run)
+        if exceptions:
+            if len(exceptions) == 1:
+                # Compatibility with historical behavior
+                raise exceptions[0]
+            else:
+                return 3
 
 
 class cmd_whoami(Command):
@@ -3389,6 +3483,10 @@ class cmd_whoami(Command):
             else:
                 self.outf.write(c.username() + '\n')
             return
+
+        if email:
+            raise errors.BzrCommandError("--email can only be used to display existing "
+                                         "identity")
 
         # display a warning if an email address isn't included in the given name.
         try:
@@ -4546,26 +4644,9 @@ class cmd_plugins(Command):
 
     @display_command
     def run(self, verbose=False):
-        import bzrlib.plugin
-        from inspect import getdoc
-        result = []
-        for name, plugin in bzrlib.plugin.plugins().items():
-            version = plugin.__version__
-            if version == 'unknown':
-                version = ''
-            name_ver = '%s %s' % (name, version)
-            d = getdoc(plugin.module)
-            if d:
-                doc = d.split('\n')[0]
-            else:
-                doc = '(no description)'
-            result.append((name_ver, doc, plugin.path()))
-        for name_ver, doc, path in sorted(result):
-            self.outf.write("%s\n" % name_ver)
-            self.outf.write("   %s\n" % doc)
-            if verbose:
-                self.outf.write("   %s\n" % path)
-            self.outf.write("\n")
+        from bzrlib import plugin
+        self.outf.writelines(
+            plugin.describe_plugins(show_paths=verbose))
 
 
 class cmd_testament(Command):
@@ -5447,24 +5528,17 @@ class cmd_tags(Command):
     takes_options = [
         custom_help('directory',
             help='Branch whose tags should be displayed.'),
-        RegistryOption.from_kwargs('sort',
+        RegistryOption('sort',
             'Sort tags by different criteria.', title='Sorting',
-            natural='Sort numeric substrings as numbers:'
-                    ' suitable for version numbers. (default)',
-            alpha='Sort tags lexicographically.',
-            time='Sort tags chronologically.',
+            lazy_registry=('bzrlib.tag', 'tag_sort_methods')
             ),
         'show-ids',
         'revision',
     ]
 
     @display_command
-    def run(self,
-            directory='.',
-            sort='natural',
-            show_ids=False,
-            revision=None,
-            ):
+    def run(self, directory='.', sort=None, show_ids=False, revision=None):
+        from bzrlib.tag import tag_sort_methods
         branch, relpath = Branch.open_containing(directory)
 
         tags = branch.tags.get_tag_dict().items()
@@ -5479,25 +5553,9 @@ class cmd_tags(Command):
             # only show revisions between revid1 and revid2 (inclusive)
             tags = [(tag, revid) for tag, revid in tags if
                 graph.is_between(revid, revid1, revid2)]
-        if sort == 'natural':
-            def natural_sort_key(tag):
-                return [f(s) for f,s in 
-                        zip(itertools.cycle((unicode.lower,int)),
-                                            re.split('([0-9]+)', tag[0]))]
-            tags.sort(key=natural_sort_key)
-        elif sort == 'alpha':
-            tags.sort()
-        elif sort == 'time':
-            timestamps = {}
-            for tag, revid in tags:
-                try:
-                    revobj = branch.repository.get_revision(revid)
-                except errors.NoSuchRevision:
-                    timestamp = sys.maxint # place them at the end
-                else:
-                    timestamp = revobj.timestamp
-                timestamps[revid] = timestamp
-            tags.sort(key=lambda x: timestamps[x[1]])
+        if sort is None:
+            sort = tag_sort_methods.get()
+        sort(branch, tags)
         if not show_ids:
             # [ (tag, revid), ... ] -> [ (tag, dotted_revno), ... ]
             for index, (tag, revid) in enumerate(tags):
