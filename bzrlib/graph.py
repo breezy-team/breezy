@@ -1537,6 +1537,13 @@ class _BreadthFirstSearcher(object):
 
 
 class AbstractSearchResult(object):
+    """The result of a search, describing a set of keys.
+    
+    Search results are typically used as the 'fetch_spec' parameter when
+    fetching revisions.
+
+    :seealso: AbstractSearch
+    """
 
     def get_recipe(self):
         """Return a recipe that can be used to replay this search.
@@ -1575,6 +1582,10 @@ class AbstractSearchResult(object):
 
 
 class AbstractSearch(object):
+    """A search that can be executed, producing a search result.
+
+    :seealso: AbstractSearchResult
+    """
 
     def execute(self):
         """Construct a network-ready search result from this search description.
