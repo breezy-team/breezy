@@ -5,44 +5,45 @@ Bazaar Architectural Overview
 This document describes the key classes and concepts within Bazaar.  It is
 intended to be useful to people working on the Bazaar codebase, or to
 people writing plugins.  People writing plugins may also like to read the 
-guide to `Integrating with Bazaar <integration.html>`_ for some specific
-recipes.
+guide to `Integrating with Bazaar <integration.html>`_ for some specific recipes.
+
+There's some overlap between this and the `Core Concepts`_ section of the
+user guide, but this document is targetted to people interested in the
+internals.  In particular the user guide doesn't go any deeper than
+"revision", because regular users don't care about lower-level details
+like inventories, but this guide does.
 
 If you have any questions, or if something seems to be incorrect, unclear
-or missing, please talk to us in ``irc://irc.freenode.net/#bzr``, or write
-to the Bazaar mailing list.  
+or missing, please talk to us in ``irc://irc.freenode.net/#bzr``, write to
+the Bazaar mailing list, or simply file a bug report.
 
 
-Using bzrlib
+IDs and keys
 ############
 
-Within bzr
-==========
+IDs
+===
 
-When using bzrlib within the ``bzr`` program (for instance as a bzr
-plugin), bzrlib's global state is already available for use.
+All IDs are globally unique identifiers.  Inside bzrlib they are almost
+always represented as UTF-8 encoded bytestrings (i.e. ``str`` objects).
 
-From outside bzr
-================
+The main two IDs are:
 
-To use bzrlib outside of ``bzr`` some global state needs to be setup.
-bzrlib needs ways to handle user input, passwords, a place to emit
-progress bars, logging setup appropriately for your program. The easiest
-way to set all this up in the same fashion ``bzr`` does is to call
-``bzrlib.initialize``. This returns a context manager within which bzrlib
-functions will work correctly. See the pydoc for ``bzrlib.initialize`` for
-more information. In Python 2.4 the ``with`` keyword is not supported and
-so you need to use the context manager manually::
+:Revision IDs: The unique identifier of a single revision, such as
+  ``pqm@pqm.ubuntu.com-20110201161347-ao76mv267gc1b5v2``
+:File IDs: The unique identifier of a single file.  It is allocated when
+  a user does ``bzr add`` and is unchanged by renames.
 
-  # This sets up your ~/.bzr.log, ui factory and so on and so forth. It is
-  # not safe to use as a doctest.
-  library_state = bzrlib.initialize()
-  library_state.__enter__()
-  try:
-      pass
-      # do stuff here
-  finally:
-      library_state.__exit__(None, None, None)
+By convention, in the bzrlib API, parameters of methods that are expected
+to be IDs (as opposed to keys, revision numbers, or some other handle)
+will end in ``id``, e.g.  ``revid`` or ``file_id``.
+
+Keys
+====
+
+A composite of one or more ID elements.  E.g. a (file-id, revision-id)
+pair is the key to the "texts" store, but a single element key of
+(revision-id) is the key to the "revisions" store.
 
 
 Core classes
@@ -98,6 +99,28 @@ they *only* deal with URLs; conversion of other strings to URLs is done
 elsewhere.  Information that Transports return, such as from ``list_dir``,
 is also in the form of URL components.
 
+More information
+----------------
+
+See also:
+
+* `Developer guide to bzrlib transports <transports.html>`_ 
+* API docs for ``bzrlib.transport.Transport``
+
+Tree
+====
+
+A representation of a directory of files (and other directories and
+symlinks etc).  The most important kinds of Tree are:
+
+:WorkingTree: the files on disk editable by the user
+:RevisionTree: a tree as recorded at some point in the past
+
+Trees can map file paths to file-ids and vice versa (although trees such
+as WorkingTree may have unversioned files not described in that mapping).
+Trees have an inventory and parents (an ordered list of zero or more
+revision IDs).
+
 
 WorkingTree
 ===========
@@ -107,19 +130,20 @@ directory on disk, where the user can directly modify the files.
 
 Responsibilities:
 
- * Maintaining a WorkingTree on disk at a file path.
- * Maintaining the basis inventory (the inventory of the last commit done)
- * Maintaining the working inventory.
- * Maintaining the pending merges list.
- * Maintaining the stat cache.
- * Maintaining the last revision the working tree was updated to.
- * Knows where its Branch is located.
+* Maintaining a WorkingTree on disk at a file path.
+* Maintaining the basis inventory (the inventory of the last commit done)
+* Maintaining the working inventory.
+* Maintaining the pending merges list.
+* Maintaining the stat cache.
+* Maintaining the last revision the working tree was updated to.
+* Knows where its Branch is located.
 
 Dependencies:
 
- * a Branch
- * an MutableInventory
- * local access to the working tree
+* a Branch
+* an MutableInventory
+* local access to the working tree
+
 
 Branch
 ======
@@ -129,15 +153,18 @@ more people have been committing to.
 
 A Branch is responsible for:
 
- * Holding user preferences that are set in a Branch.
- * Holding the 'tip': the last revision to be committed to this Branch. (And the revno of that revision.)
- * Knowing how to open the Repository that holds its history.
- * Allowing write locks to be taken out to prevent concurrent alterations to the branch.
+* Holding user preferences that are set in a Branch.
+* Holding the 'tip': the last revision to be committed to this Branch.
+  (And the revno of that revision.)
+* Knowing how to open the Repository that holds its history.
+* Allowing write locks to be taken out to prevent concurrent alterations to the branch.
 
 Depends on:
- * URL access to its base directory.
- * A Transport to access its files.
- * A Repository to hold its history.
+
+* URL access to its base directory.
+* A Transport to access its files.
+* A Repository to hold its history.
+
 
 Repository
 ==========
@@ -146,17 +173,17 @@ Repositories store committed history: file texts, revisions, inventories,
 and graph relationships between them.  A repository holds a bag of
 revision data that can be pointed to by various branches:
 
- * Maintains storage of various history data at a URL:
+* Maintains storage of various history data at a URL:
+  
+  * Revisions (Must have a matching inventory)
+  * Digital Signatures
+  * Inventories for each Revision. (Must have all the file texts available).
+  * File texts
 
-   * Revisions (Must have a matching inventory)
-   * Digital Signatures
-   * Inventories for each Revision. (Must have all the file texts available).
-   * File texts
-
- * Synchronizes concurrent access to the repository by different
-   processes.  (Most repository implementations use a physical 
-   mutex only for a short period, and effectively support multiple readers
-   and writers.)
+* Synchronizes concurrent access to the repository by different
+  processes.  (Most repository implementations use a physical mutex only
+  for a short period, and effectively support multiple readers and
+  writers.)
 
 Stacked Repositories
 --------------------
@@ -184,6 +211,141 @@ side, because this could cause complexity or security problems with the
 server acting as a proxy for the client.  Instead, the branch on the
 server exposes the stacked-on URL and the client can open that.
 
+
+Storage model
+#############
+
+This section describes the model for how bzr stores its data.  The
+representation of that data on disk varies considerable depending on the
+format of the repository (and to a lesser extent the format of the branch
+and working tree), but ultimately the set of objects being represented is
+the same.
+
+Branch
+======
+
+A branch directly contains:
+
+* the ID of the current revision that branch (a.k.a. the “tip”)
+* some settings for that branch (the values in “branch.conf”)
+* the set of tags for that branch (not supported in all formats)
+
+A branch implicitly references:
+
+* A repository.  The repository might be colocated in the same directory
+  as the branch, or it might be somewhere else entirely.
+
+
+Repository
+==========
+
+A repository contains:
+
+* a revision store
+* an inventory store
+* a text store
+* a signature store
+
+A store is a key-value mapping.  This says nothing about the layout on
+disk, just that conceptually there are distinct stores, each with a
+separate namespace for the keys.  Internally the repository may serialize
+stores in the same file, and/or e.g. apply compression algorithms that
+combine records from separate stores in one block, etc.
+
+You can consider the repository as a single key space, with keys that look
+like *(store-name, ...)*.  For example, *('revisions',
+revision-id)* or *('texts', revision-id, file-id)*.
+
+Revision store
+--------------
+
+Stores revision objects.  The keys are GUIDs.  The value is a revision
+object (the exact representation on disk depends on the repository
+format).
+
+As described in `Core Concepts`_ a revision describes a snapshot of the
+tree of files and some metadata about them.
+
+* metadata:
+
+  * parent revisions (an ordered sequence of zero or more revision IDs)
+  * commit message
+  * author(s)
+  * timestamp
+  * (and all other revision properties)
+
+* an inventory ID (that inventory describes the tree contents).  Is often
+  the same as the revision ID, but doesn't have to be (e.g. if no files
+  were changed between two revisions then both revisions will refer to
+  the same inventory).
+
+
+Inventory store
+---------------
+
+Stores inventory objects.  The keys are GUIDs.  (Footnote: there will
+usually be a revision with the same key in the revision store, but there
+are rare cases where this is not true.)
+
+An inventory object contains:
+
+* a set of inventory entries
+
+An inventory entry has the following attributes
+
+* a file-id (a GUID, or the special value TREE_ROOT for the root entry of
+  inventories created by older versions of bzr)
+* a revision-id, a GUID (generally corresponding to the ID of a
+  revision).  The combination of (file-id, revision-id) is a key into the
+  texts store.
+* a kind: one of file, directory, symlink, tree-reference (tree-reference
+  is only supported in unsupported developer formats)
+* parent-id: the file-id of the directory that contains this entry (this
+  value is unset for the root of the tree).
+* name: the name of the file/directory/etc in that parent directory
+* executable: a flag indicating if the executable bit is set for that
+  file.
+
+An inventory entry will have other attributes, depending on the kind:
+
+* file:
+
+  * SHA1
+  * size
+
+* directory
+
+  * children
+
+* symlink
+
+  * symlink_target
+
+* tree-reference
+
+  * reference_revision
+
+For some more details see `Inventories <inventories.html>`_.
+
+
+Texts store
+-----------
+
+Stores the contents of individual versions of files.  The keys are pairs
+of (file-id, revision-id), and the values are the full content (or
+"text") of a version of a file.
+
+For consistency/simplicity text records exist for all inventory entries,
+but in general only entries with of kind "file" have interesting records.
+
+
+Signature store
+---------------
+
+Stores cryptographic signatures of revision contents.  The keys match
+those of the revision store.
+
+.. _Core Concepts: http://doc.bazaar.canonical.com/latest/en/user-guide/core_concepts.html
 
 ..
    vim: ft=rst tw=74 ai
