@@ -117,6 +117,15 @@ class SampleRepositoryFormat(repository.RepositoryFormat):
         return "opened repository."
 
 
+class SampleExtraRepositoryFormat(repository.RepositoryFormat):
+    """A sample format that can not be used in a metadir
+
+    """
+
+    def get_format_string(self):
+        raise NotImplementedError
+
+
 class TestRepositoryFormat(TestCaseWithTransport):
     """Tests for the Repository format detection used by the bzr meta dir facility.BzrBranchFormat facility."""
 
@@ -181,9 +190,23 @@ class TestRepositoryFormatRegistry(TestCase):
 
     def test_get_all(self):
         format = SampleRepositoryFormat()
-        self.assertFalse(format in self.registry.get_all())
+        self.assertEquals([], self.registry.get_all())
         self.registry.register(format)
-        self.assertTrue(format in self.registry.get_all())
+        self.assertEquals([format], self.registry.get_all())
+
+    def test_register_extra(self):
+        format = SampleExtraRepositoryFormat()
+        self.assertEquals([], self.registry.get_all())
+        self.registry.register_extra(format)
+        self.assertEquals([format], self.registry.get_all())
+
+    def test_register_extra_lazy(self):
+        self.assertEquals([], self.registry.get_all())
+        self.registry.register_extra_lazy("bzrlib.tests.test_repository",
+            "SampleExtraRepositoryFormat")
+        formats = self.registry.get_all()
+        self.assertEquals(1, len(formats))
+        self.assertIsInstance(formats[0], SampleExtraRepositoryFormat)
 
 
 class TestFormat6(TestCaseWithTransport):
