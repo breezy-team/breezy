@@ -26,10 +26,11 @@ from stat import S_ISDIR
 import sys
 
 import bzrlib
-from bzrlib.errors import (NoSuchFile,
-                           UnknownFormatError,
-                           UnsupportedFormatError,
-                           )
+from bzrlib.errors import (
+    NoSuchFile,
+    UnknownFormatError,
+    UnsupportedFormatError,
+    )
 from bzrlib import (
     btree_index,
     graph,
@@ -145,6 +146,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
                           dir)
 
     def test_register_unregister_format(self):
+        # Test deprecated format registration functions
         format = SampleRepositoryFormat()
         # make a control dir
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -153,11 +155,32 @@ class TestRepositoryFormat(TestCaseWithTransport):
         # register a format for it.
         repository.RepositoryFormat.register_format(format)
         # which repository.Open will refuse (not supported)
-        self.assertRaises(UnsupportedFormatError, repository.Repository.open, self.get_url())
+        self.assertRaises(UnsupportedFormatError, repository.Repository.open,
+            self.get_url())
         # but open(unsupported) will work
         self.assertEqual(format.open(dir), "opened repository.")
         # unregister the format
         repository.RepositoryFormat.unregister_format(format)
+
+
+class TestRepositoryFormatRegistry(TestCase):
+
+    def setUp(self):
+        super(TestRepositoryFormatRegistry, self).setUp()
+        self.registry = repository.RepositoryFormatRegistry()
+
+    def test_register_unregister_format(self):
+        format = SampleRepositoryFormat()
+        self.registry.register(format)
+        self.assertEquals(format, self.registry.get("Sample .bzr repository format."))
+        self.registry.remove(format)
+        self.assertRaises(KeyError, self.registry.get, "Sample .bzr repository format.")
+
+    def test_get_all_formats(self):
+        format = SampleRepositoryFormat()
+        self.assertEquals([], self.registry.get_all())
+        self.registry.register(format)
+        self.assertEquals([format], self.registry.get_all())
 
 
 class TestFormat6(TestCaseWithTransport):

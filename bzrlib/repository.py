@@ -3004,6 +3004,27 @@ class MetaDirVersionedFileRepository(MetaDirRepository):
             control_files)
 
 
+class RepositoryFormatRegistry(registry.FormatRegistry):
+    """Repository format registry."""
+
+    def register(self, format):
+        super(RepositoryFormatRegistry, self).register(
+            format.get_format_string(), format)
+
+    def remove(self, format):
+        super(RepositoryFormatRegistry, self).remove(
+            format.get_format_string())
+
+    def get_default(self):
+        """Return the current default format."""
+        from bzrlib import bzrdir
+        return bzrdir.format_registry.make_bzrdir('default').repository_format
+
+    def get_all_formats(self):
+        from bzrlib.repofmt import weaverepo
+        return [v for k, v in self.iteritems()] + weaverepo._legacy_formats
+
+
 network_format_registry = registry.FormatRegistry()
 """Registry of formats indexed by their network name.
 
@@ -3013,7 +3034,7 @@ RepositoryFormat.network_name() for more detail.
 """
 
 
-format_registry = registry.FormatRegistry(network_format_registry)
+format_registry = RepositoryFormatRegistry(network_format_registry)
 """Registry of formats, indexed by their BzrDirMetaFormat format string.
 
 This can contain either format instances themselves, or classes/factories that
@@ -3124,18 +3145,20 @@ class RepositoryFormat(object):
                                             kind='repository')
 
     @classmethod
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def register_format(klass, format):
-        format_registry.register(format.get_format_string(), format)
+        format_registry.register(format)
 
     @classmethod
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def unregister_format(klass, format):
-        format_registry.remove(format.get_format_string())
+        format_registry.remove(format)
 
     @classmethod
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def get_default_format(klass):
         """Return the current default format."""
-        from bzrlib import bzrdir
-        return bzrdir.format_registry.make_bzrdir('default').repository_format
+        return format_registry.get_default()
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format.
