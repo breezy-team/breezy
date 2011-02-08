@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,10 +21,10 @@ import signal
 import sys
 import time
 
-from bzrlib.tests import TestCaseInTempDir
+from bzrlib import debug, tests
 
 
-class TestDebugOption(TestCaseInTempDir):
+class TestDebugOption(tests.TestCaseInTempDir):
 
     def test_dash_derror(self):
         """With -Derror, tracebacks are shown even for user errors"""
@@ -39,3 +39,22 @@ class TestDebugOption(TestCaseInTempDir):
         # With -Dlock, locking and unlocking is recorded into the log
         self.run_bzr("-Dlock init foo")
         self.assertContainsRe(self.get_log(), "lock_write")
+
+
+class TestDebugBytes(tests.TestCaseWithTransport):
+
+    def test_bytes_reports_activity(self):
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/one'])
+        tree.add('one')
+        rev_id = tree.commit('first')
+        remote_trans = self.make_smart_server('.')
+        # I would like to avoid run_bzr_subprocess here, but we need it to be
+        # connected to a real TextUIFactory. The NullProgressView always
+        # ignores transport activity.
+        env = {'BZR_PROGRESS_BAR': 'text'}
+        out, err = self.run_bzr_subprocess('branch -Dbytes %s/tree target'
+                                           % (remote_trans.base,),
+                                           env_changes=env)
+        self.assertContainsRe(err, 'Branched 1 revision')
+        self.assertContainsRe(err, 'Transferred:.*kB')
