@@ -28,28 +28,26 @@ import urllib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    debug,
+    xml5,
     graph as _mod_graph,
+    ui,
+    )
+""")
+from bzrlib import (
+    debug,
+    errors,
     lockable_files,
     lockdir,
     osutils,
     symbol_versioning,
     trace,
     tuned_gzip,
-    ui,
     urlutils,
     versionedfile,
     weave,
-    xml5,
+    weavefile,
     )
-""")
-from bzrlib import (
-    errors,
-    )
-from bzrlib.decorators import (
-    needs_read_lock,
-    needs_write_lock,
-    )
+from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     CommitBuilder,
     InterRepository,
@@ -66,11 +64,7 @@ from bzrlib.versionedfile import (
     VersionedFiles,
     )
 
-from bzrlib.plugins.weave_fmt.bzrdir import (
-    BzrDirFormat4,
-    BzrDirFormat5,
-    BzrDirFormat6,
-    )
+from bzrlib.plugins.weave_fmt import bzrdir as weave_bzrdir
 
 
 class AllInOneRepository(Repository):
@@ -296,7 +290,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
 
         # Create an empty weave
         sio = StringIO()
-        weave.write_weave_v5(weave.Weave(), sio)
+        weavefile.write_weave_v5(weave.Weave(), sio)
         empty_weave = sio.getvalue()
 
         trace.mutter('creating repository in %s.', a_bzrdir.transport.base)
@@ -350,7 +344,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
 
     supports_funky_characters = False
 
-    _matchingbzrdir = BzrDirFormat4()
+    _matchingbzrdir = weave_bzrdir.BzrDirFormat4()
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -398,7 +392,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = BzrDirFormat5()
+    _matchingbzrdir = weave_bzrdir.BzrDirFormat5()
     supports_funky_characters = False
 
     @property
@@ -445,9 +439,8 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = BzrDirFormat6()
+    _matchingbzrdir = weave_bzrdir.BzrDirFormat6()
     supports_funky_characters = False
-
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -543,7 +536,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         """
         # Create an empty weave
         sio = StringIO()
-        weave.write_weave_v5(weave.Weave(), sio)
+        weavefile.write_weave_v5(weave.Weave(), sio)
         empty_weave = sio.getvalue()
 
         trace.mutter('creating repository in %s.', a_bzrdir.transport.base)

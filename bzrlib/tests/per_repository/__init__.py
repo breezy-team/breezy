@@ -839,7 +839,7 @@ all_broken_scenario_classes = [
     ]
 
 
-def per_repository_tests(loader):
+def load_tests(standard_tests, module, loader):
     prefix = 'bzrlib.tests.per_repository.'
     test_repository_modules = [
         'test_add_fallback_repository',
@@ -867,12 +867,8 @@ def per_repository_tests(loader):
         'test_write_group',
         ]
     # Parameterize per_repository test modules by format.
-    return loader.loadTestsFromModuleNames(
+    submod_tests = loader.loadTestsFromModuleNames(
         [prefix + module_name for module_name in test_repository_modules])
-
-
-def load_tests(standard_tests, module, loader):
-    submod_tests = per_repository_tests(loader)
     format_scenarios = all_repository_format_scenarios()
     multiply_tests(submod_tests, format_scenarios, standard_tests)
 
@@ -883,6 +879,5 @@ def load_tests(standard_tests, module, loader):
     broken_scenarios_for_all_formats = multiply_scenarios(
         format_scenarios, broken_scenarios)
     return multiply_tests(
-        loader.loadTestsFromModuleNames(
-            ['bzrlib.tests.per_repository.test_check_reconcile']),
-            broken_scenarios_for_all_formats, standard_tests)
+        loader.loadTestsFromModuleNames([prefix + 'test_check_reconcile']),
+        broken_scenarios_for_all_formats, standard_tests)

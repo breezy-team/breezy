@@ -55,13 +55,13 @@ repository.format_registry.register_lazy(
     )
 
 repository.format_registry.register_extra_lazy(
-    'bzrlib.repofmt.weaverepo',
+    'bzrlib.plugins.weave_fmt.repository',
     'RepositoryFormat4')
 repository.format_registry.register_extra_lazy(
-    'bzrlib.repofmt.weaverepo',
+    'bzrlib.plugins.weave_fmt.repository',
     'RepositoryFormat5')
 repository.format_registry.register_extra_lazy(
-    'bzrlib.repofmt.weaverepo',
+    'bzrlib.plugins.weave_fmt.repository',
     'RepositoryFormat6')
 
 
