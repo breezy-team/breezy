@@ -34,6 +34,7 @@ from bzrlib.errors import (
 from bzrlib import (
     btree_index,
     graph,
+    symbol_versioning,
     tests,
     transport,
     )
@@ -68,7 +69,7 @@ class TestDefaultFormat(TestCase):
     def test_get_set_default_format(self):
         old_default = bzrdir.format_registry.get('default')
         private_default = old_default().repository_format.__class__
-        old_format = repository.RepositoryFormat.get_default_format()
+        old_format = repository.format_registry.get_default()
         self.assertTrue(isinstance(old_format, private_default))
         def make_sample_bzrdir():
             my_bzrdir = bzrdir.BzrDirMetaFormat1()
@@ -88,7 +89,7 @@ class TestDefaultFormat(TestCase):
             bzrdir.format_registry.remove('default')
             bzrdir.format_registry.remove('sample')
             bzrdir.format_registry.register('default', old_default, '')
-        self.assertIsInstance(repository.RepositoryFormat.get_default_format(),
+        self.assertIsInstance(repository.format_registry.get_default(),
                               old_format.__class__)
 
 
@@ -153,14 +154,16 @@ class TestRepositoryFormat(TestCaseWithTransport):
         # make a repo
         format.initialize(dir)
         # register a format for it.
-        repository.RepositoryFormat.register_format(format)
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            repository.RepositoryFormat.register_format, format)
         # which repository.Open will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, repository.Repository.open,
             self.get_url())
         # but open(unsupported) will work
         self.assertEqual(format.open(dir), "opened repository.")
         # unregister the format
-        repository.RepositoryFormat.unregister_format(format)
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            repository.RepositoryFormat.unregister_format, format)
 
 
 class TestRepositoryFormatRegistry(TestCase):
@@ -176,11 +179,11 @@ class TestRepositoryFormatRegistry(TestCase):
         self.registry.remove(format)
         self.assertRaises(KeyError, self.registry.get, "Sample .bzr repository format.")
 
-    def test_get_all_formats(self):
+    def test_get_all(self):
         format = SampleRepositoryFormat()
-        self.assertEquals([], self.registry.get_all())
+        self.assertFalse(format in self.registry.get_all())
         self.registry.register(format)
-        self.assertEquals([format], self.registry.get_all())
+        self.assertTrue(format in self.registry.get_all())
 
 
 class TestFormat6(TestCaseWithTransport):

@@ -3020,9 +3020,11 @@ class RepositoryFormatRegistry(registry.FormatRegistry):
         from bzrlib import bzrdir
         return bzrdir.format_registry.make_bzrdir('default').repository_format
 
-    def get_all_formats(self):
+    def get_all(self):
         from bzrlib.repofmt import weaverepo
-        return [v for k, v in self.iteritems()] + weaverepo._legacy_formats
+        all_formats = [self.get(k) for k in self.keys()]
+        all_formats += weaverepo._legacy_formats
+        return all_formats
 
 
 network_format_registry = registry.FormatRegistry()
