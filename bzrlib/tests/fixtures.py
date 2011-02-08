@@ -27,6 +27,11 @@ should be passed to `addCleanup` on the test.
 
 import itertools
 
+from bzrlib import (
+    errors,
+    tests,
+    )
+
 
 def generate_unicode_names():
     """Generate a sequence of arbitrary unique unicode names.
@@ -97,3 +102,35 @@ class RecordingContextManager(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._calls.append('__exit__')
         return False # propogate exceptions.
+
+
+def build_branch_with_non_ancestral_tag(branch_builder):
+    """Builds a branch with a tag not in the ancestry of the tip.
+
+    This is the revision graph::
+
+      rev-2
+        |
+      rev-1
+        |
+      (null)
+
+    The branch tip is 'rev-1', and the branch tags will be {'tag-a': 'rev-2'}.
+
+    :param branch_builder: A BranchBuilder (e.g. from
+        TestCaseWithMemoryTransport.make_branch_builder).
+    :returns: the branch
+    :raises: TestNotApplicable if the branch built by branch_builder doesn't
+        support tags.
+    """
+    branch_builder.build_commit(message="Rev 1", rev_id='rev-1')
+    source = branch_builder.get_branch()
+    # Add a non-ancestry tag to source
+    branch_builder.build_commit(message="Rev 2", rev_id='rev-2')
+    try:
+        source.tags.set_tag('tag-a', 'rev-2')
+    except errors.TagsNotSupported:
+        raise tests.TestNotApplicable('format does not support tags.')
+    source.set_last_revision_info(1, 'rev-1')
+    return source
+

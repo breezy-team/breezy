@@ -880,13 +880,14 @@ class Branch(controldir.ControlComponent):
                 # XXX: If you unstack a branch while it has a working tree
                 # with a pending merge, the pending-merged revisions will no
                 # longer be present.  You can (probably) revert and remerge.
-                #
-                # XXX: This only fetches up to the tip of the repository; it
-                # doesn't bring across any tags.  That's fairly consistent
-                # with how branch works, but perhaps not ideal.
-                self.repository.fetch(old_repository,
-                    revision_id=self.last_revision(),
-                    find_ghosts=True)
+                try:
+                    tags_to_fetch = set(self.tags.get_reverse_tag_dict())
+                except errors.TagsNotSupported:
+                    tags_to_fetch = set()
+                fetch_spec = _mod_graph.NotInOtherForRevs(self.repository,
+                    old_repository, required_ids=[self.last_revision()],
+                    if_present_ids=tags_to_fetch, find_ghosts=True).execute()
+                self.repository.fetch(old_repository, fetch_spec=fetch_spec)
             finally:
                 old_repository.unlock()
         finally:

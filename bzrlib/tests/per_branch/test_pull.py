@@ -25,7 +25,11 @@ from bzrlib import (
     memorytree,
     revision,
     )
-from bzrlib.tests import per_branch, TestNotApplicable
+from bzrlib.tests import (
+    fixtures,
+    per_branch,
+    TestNotApplicable,
+    )
 
 
 class TestPull(per_branch.TestCaseWithBranch):
@@ -144,16 +148,10 @@ class TestPull(per_branch.TestCaseWithBranch):
             builder = self.make_branch_builder('source')
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
-        builder.build_commit(message="Rev 1", rev_id='rev-1')
-        source = builder.get_branch()
+        source = fixtures.build_branch_with_non_ancestral_tag(builder)
+        source.tags.delete_tag('tag-a')
         target = source.bzrdir.sprout('target').open_branch()
-        # Add a non-ancestry tag to source
-        builder.build_commit(message="Rev 2", rev_id='rev-2')
-        try:
-            source.tags.set_tag('tag-a', 'rev-2')
-        except errors.TagsNotSupported:
-            raise TestNotApplicable('format does not support tags.')
-        source.set_last_revision_info(1, 'rev-1')
+        source.tags.set_tag('tag-a', 'rev-2')
         # Pull from source
         target.pull(source)
         # The tag is present, and so is its revision.
@@ -167,16 +165,10 @@ class TestPull(per_branch.TestCaseWithBranch):
             builder = self.make_branch_builder('source')
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
-        builder.build_commit(message="Rev 1", rev_id='rev-1')
-        source = builder.get_branch()
+        source = fixtures.build_branch_with_non_ancestral_tag(builder)
+        source.tags.delete_tag('tag-a')
         target = source.bzrdir.sprout('target').open_branch()
-        # Add a non-ancestry tag to source
-        builder.build_commit(message="Rev 2", rev_id='rev-2')
-        try:
-            source.tags.set_tag('tag-a', 'rev-2')
-        except errors.TagsNotSupported:
-            raise TestNotApplicable('format does not support tags.')
-        source.set_last_revision_info(1, 'rev-1')
+        source.tags.set_tag('tag-a', 'rev-2')
         # Add a new commit to the ancestry
         builder.build_commit(message="Rev 2 again", rev_id='rev-2-again')
         # Pull from source
