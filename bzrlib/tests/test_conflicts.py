@@ -22,6 +22,7 @@ from bzrlib import (
     conflicts,
     errors,
     option,
+    osutils,
     tests,
     )
 from bzrlib.tests import (
@@ -376,17 +377,26 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
 
     scenarios = mirror_scenarios(
         [
-            # File modified/deleted
+            # File modified on both sides
             (dict(_base_actions='create_file',
                   _path='file', _file_id='file-id'),
              ('filed_modified_A',
               dict(actions='modify_file_A', check='file_has_content_A')),
              ('file_modified_B',
               dict(actions='modify_file_B', check='file_has_content_B')),),
+            # File modified on both sides in dir
+            (dict(_base_actions='create_file_in_dir',
+                  _path='dir/file', _file_id='file-id'),
+             ('filed_modified_A_in_dir',
+              dict(actions='modify_file_A',
+                   check='file_in_dir_has_content_A')),
+             ('file_modified_B',
+              dict(actions='modify_file_B',
+                   check='file_in_dir_has_content_B')),),
             ])
 
-    def do_create_file(self):
-        return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
+    def do_create_file(self, path='file'):
+        return [('add', (path, 'file-id', 'file', 'trunk content\n'))]
 
     def do_modify_file_A(self):
         return [('modify', ('file-id', 'trunk content\nfeature A\n'))]
@@ -394,11 +404,23 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
     def do_modify_file_B(self):
         return [('modify', ('file-id', 'trunk content\nfeature B\n'))]
 
-    def check_file_has_content_A(self):
-        self.assertFileEqual('trunk content\nfeature A\n', 'branch/file')
+    def check_file_has_content_A(self, path='file'):
+        self.assertFileEqual('trunk content\nfeature A\n',
+                             osutils.pathjoin('branch', path))
 
-    def check_file_has_content_B(self):
-        self.assertFileEqual('trunk content\nfeature B\n', 'branch/file')
+    def check_file_has_content_B(self, path='file'):
+        self.assertFileEqual('trunk content\nfeature B\n',
+                             osutils.pathjoin('branch', path))
+
+    def do_create_file_in_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', '')),
+            ] + self.do_create_file('dir/file')
+
+    def check_file_in_dir_has_content_A(self):
+        self.check_file_has_content_A('dir/file')
+
+    def check_file_in_dir_has_content_B(self):
+        self.check_file_has_content_B('dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         return self._path
