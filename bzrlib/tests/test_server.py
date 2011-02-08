@@ -243,7 +243,7 @@ class TestingChrootServer(chroot.ChrootServer):
         raise NotImplementedError
 
 
-class TestThread(thread.ThreadWithException):
+class TestThread(thread.CatchingExceptionThread):
 
     def join(self, timeout=5):
         """Overrides to use a default timeout.
@@ -438,7 +438,7 @@ class TestingThreadingTCPServer(TestingTCPServerMixin,
         started = threading.Event()
         stopped = threading.Event()
         t = TestThread(
-            event=stopped,
+            sync_event=stopped,
             name='%s -> %s' % (client_address, self.server_address),
             target = self.process_request_thread,
             args = (started, stopped, request, client_address))
@@ -505,7 +505,7 @@ class TestingTCPServerInAThread(transport.Server):
     def start_server(self):
         self.server = self.create_server()
         self._server_thread = TestThread(
-            event=self.server.started,
+            sync_event=self.server.started,
             target=self.run_server)
         self._server_thread.start()
         # Wait for the server thread to start (i.e release the lock)
@@ -521,7 +521,7 @@ class TestingTCPServerInAThread(transport.Server):
         self._server_thread.pending_exception()
         # From now on, we'll use a different event to ensure the server can set
         # its exception
-        self._server_thread.set_ready_event(self.server.stopped)
+        self._server_thread.set_sync_event(self.server.stopped)
 
     def run_server(self):
         self.server.serve()

@@ -22,13 +22,13 @@ from bzrlib import (
     )
 
 
-class TestThreadWithException(tests.TestCase):
+class TestCatchingExceptionThread(tests.TestCase):
 
     def test_start_and_join_smoke_test(self):
         def do_nothing():
             pass
 
-        tt = thread.ThreadWithException(target=do_nothing)
+        tt = thread.CatchingExceptionThread(target=do_nothing)
         tt.start()
         tt.join()
 
@@ -39,7 +39,7 @@ class TestThreadWithException(tests.TestCase):
         def raise_my_exception():
             raise MyException()
 
-        tt = thread.ThreadWithException(target=raise_my_exception)
+        tt = thread.CatchingExceptionThread(target=raise_my_exception)
         tt.start()
         self.assertRaises(MyException, tt.join)
 
@@ -54,7 +54,7 @@ class TestThreadWithException(tests.TestCase):
             # Now we can raise
             raise MyException()
 
-        tt = thread.ThreadWithException(target=raise_my_exception)
+        tt = thread.CatchingExceptionThread(target=raise_my_exception)
         tt.start()
         tt.join(timeout=0)
         self.assertIs(None, tt.exception)

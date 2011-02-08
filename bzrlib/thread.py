@@ -18,8 +18,8 @@ import sys
 import threading
 
 
-class ThreadWithException(threading.Thread):
-    """A catching exception thread.
+class CatchingExceptionThread(threading.Thread):
+    """A thread that keeps track of exceptions.
 
     If an exception occurs during the thread execution, it's caught and
     re-raised when the thread is joined().
@@ -31,12 +31,12 @@ class ThreadWithException(threading.Thread):
         # blocked. The main example is a calling thread that want to wait for
         # the called thread to be in a given state before continuing.
         try:
-            event = kwargs.pop('event')
+            sync_event = kwargs.pop('sync_event')
         except KeyError:
             # If the caller didn't pass a specific event, create our own
-            event = threading.Event()
-        super(ThreadWithException, self).__init__(*args, **kwargs)
-        self.set_ready_event(event)
+            sync_event = threading.Event()
+        super(CatchingExceptionThread, self).__init__(*args, **kwargs)
+        self.set_sync_event(sync_event)
         self.exception = None
         self.ignored_exceptions = None # see set_ignored_exceptions
 
@@ -44,8 +44,8 @@ class ThreadWithException(threading.Thread):
     if sys.version_info < (2, 6):
         name = property(threading.Thread.getName, threading.Thread.setName)
 
-    def set_ready_event(self, event):
-        """Set the ``ready`` event used to synchronize exception catching.
+    def set_sync_event(self, event):
+        """Set the ``sync_event`` event used to synchronize exception catching.
 
         When the thread uses an event to synchronize itself with another thread
         (setting it when the other thread can wake up from a ``wait`` call),
@@ -54,8 +54,11 @@ class ThreadWithException(threading.Thread):
 
         Some threads require multiple events and should set the relevant one
         when appropriate.
+
+        Note that the event should be cleared so the caller can wait() on him
+        and be released when the thread set the event.
         """
-        self.ready = event
+        self.sync_event = event
 
     def set_ignored_exceptions(self, ignored):
         """Declare which exceptions will be ignored.
@@ -77,28 +80,24 @@ class ThreadWithException(threading.Thread):
 
     def run(self):
         """Overrides Thread.run to capture any exception."""
-        self.ready.clear()
+        self.sync_event.clear()
         try:
             try:
-                super(ThreadWithException, self).run()
+                super(CatchingExceptionThread, self).run()
             except:
                 self.exception = sys.exc_info()
         finally:
             # Make sure the calling thread is released
-            self.ready.set()
+            self.sync_event.set()
 
 
-    def join(self, timeout=5):
+    def join(self, timeout=None):
         """Overrides Thread.join to raise any exception caught.
-
 
         Calling join(timeout=0) will raise the caught exception or return None
         if the thread is still alive.
-
-        The default timeout is set to 5 and should expire only when a thread
-        serving a client connection is hung.
         """
-        super(ThreadWithException, self).join(timeout)
+        super(CatchingExceptionThread, self).join(timeout)
         if self.exception is not None:
             exc_class, exc_value, exc_tb = self.exception
             self.exception = None # The exception should be raised only once
