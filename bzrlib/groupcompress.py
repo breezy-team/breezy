@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1294,6 +1294,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # ancestry.
         parent_map, missing_keys = self._index.find_ancestry(keys)
         for fallback in self._fallback_vfs:
+            import pdb;pdb.set_trace()
             if not missing_keys:
                 break
             (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
