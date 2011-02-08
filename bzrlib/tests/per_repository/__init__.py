@@ -70,7 +70,7 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
 def all_repository_format_scenarios():
     """Return a list of test scenarios for parameterising repository tests.
     """
-    all_formats = repository.format_registry.get_all()
+    all_formats = repository.format_registry._get_all()
     # format_scenarios is all the implementations of Repository; i.e. all disk
     # formats plus RemoteRepository.
     format_scenarios = formats_to_scenarios(
