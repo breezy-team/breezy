@@ -54,6 +54,16 @@ repository.format_registry.register_lazy(
     'RepositoryFormat7'
     )
 
+repository.format_registry.register_extra_lazy(
+    'bzrlib.repofmt.weaverepo',
+    'RepositoryFormat4')
+repository.format_registry.register_extra_lazy(
+    'bzrlib.repofmt.weaverepo',
+    'RepositoryFormat5')
+repository.format_registry.register_extra_lazy(
+    'bzrlib.repofmt.weaverepo',
+    'RepositoryFormat6')
+
 
 # The pre-0.8 formats have their repository format network name registered in
 # repository.py. MetaDir formats have their repository format network name

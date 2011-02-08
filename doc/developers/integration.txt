@@ -14,8 +14,33 @@ here, just ask us.
 Starting with bzrlib
 ====================
 
-Before doing anything else with bzrlib, you should run `bzrlib.initialize`
-which sets up some global state.  
+Within bzr
+----------
+
+When using bzrlib within the ``bzr`` program (for instance as a bzr
+plugin), bzrlib's global state is already available for use.
+
+From outside bzr
+----------------
+
+To use bzrlib outside of ``bzr`` some global state needs to be setup.
+bzrlib needs ways to handle user input, passwords, a place to emit
+progress bars, logging setup appropriately for your program. The easiest
+way to set all this up in the same fashion ``bzr`` does is to call
+``bzrlib.initialize``. This returns a context manager within which bzrlib
+functions will work correctly. See the pydoc for ``bzrlib.initialize`` for
+more information. In Python 2.4 the ``with`` keyword is not supported and
+so you need to use the context manager manually::
+
+  # This sets up your ~/.bzr.log, ui factory and so on and so forth. It is
+  # not safe to use as a doctest.
+  library_state = bzrlib.initialize()
+  library_state.__enter__()
+  try:
+      pass
+      # do stuff here
+  finally:
+      library_state.__exit__(None, None, None)
 
 
 Running bzr commands

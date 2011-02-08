@@ -28,7 +28,7 @@ from bzrlib import (
     repository,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.remote import RemoteBzrDirFormat, RemoteRepositoryFormat
+from bzrlib.remote import RemoteRepositoryFormat
 from bzrlib.tests import (
     default_transport,
     multiply_scenarios,
@@ -70,8 +70,7 @@ def formats_to_scenarios(formats, transport_server, transport_readonly_server,
 def all_repository_format_scenarios():
     """Return a list of test scenarios for parameterising repository tests.
     """
-    registry = repository.format_registry
-    all_formats = [registry.get(k) for k in registry.keys()]
+    all_formats = repository.format_registry._get_all()
     # format_scenarios is all the implementations of Repository; i.e. all disk
     # formats plus RemoteRepository.
     format_scenarios = formats_to_scenarios(

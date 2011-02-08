@@ -23,7 +23,6 @@ import os
 
 from bzrlib import (
     branch,
-    branchbuilder,
     bzrdir,
     conflicts,
     merge_directive,
@@ -624,6 +623,27 @@ class TestMerge(tests.TestCaseWithTransport):
             self.failIfExists("a")
             tree.revert()
             self.failUnlessExists("a")
+
+    def test_merge_fetches_tags(self):
+        """Tags are updated by merge, and revisions named in those tags are
+        fetched.
+        """
+        # Make a source, sprout a target off it
+        builder = self.make_branch_builder('source')
+        builder.build_commit(message="Rev 1", rev_id='rev-1')
+        source = builder.get_branch()
+        target_bzrdir = source.bzrdir.sprout('target')
+        # Add a non-ancestry tag to source
+        builder.build_commit(message="Rev 2a", rev_id='rev-2a')
+        source.tags.set_tag('tag-a', 'rev-2a')
+        source.set_last_revision_info(1, 'rev-1')
+        builder.build_commit(message="Rev 2b", rev_id='rev-2b')
+        # Merge from source
+        self.run_bzr('merge -d target source')
+        target = target_bzrdir.open_branch()
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2a', target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision('rev-2a')
 
 
 class TestMergeForce(tests.TestCaseWithTransport):

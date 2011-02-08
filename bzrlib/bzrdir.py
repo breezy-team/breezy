@@ -1623,8 +1623,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
         """Circular import protection."""
         if self._repository_format:
             return self._repository_format
-        from bzrlib.repository import RepositoryFormat
-        return RepositoryFormat.get_default_format()
+        from bzrlib.repository import format_registry
+        return format_registry.get_default()
 
     def _set_repository_format(self, value):
         """Allow changing the repository format for metadir formats."""

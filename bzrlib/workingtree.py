@@ -2825,7 +2825,7 @@ class WorkingTreeFormat(object):
     """The known formats."""
 
     _extra_formats = []
-    """Extra formats, not for use in working trees."""
+    """Extra formats that can not be used in a metadir."""
 
     requires_rich_root = False
 

@@ -133,3 +133,17 @@ certain patterns. Per-user rule-based preferences are defined in
 For further information on how rules are searched and the detailed syntax of
 the relevant files, see `Rules <../user-reference/index.html#rules>`_
 in the Bazaar User Reference.
+
+
+Escaping command lines
+----------------------
+
+When you give a program name or command line in configuration, you can quote
+to include special characters or whitespace.  The same rules are used across
+all platforms.
+
+The rules are: strings surrounded by double-quotes are interpreted as single
+"words" even if they contain whitespace, and backslash may be used to quote
+quotation marks.  For example::
+
+    BZR_EDITOR="C:\Program Files\My Editor\myeditor.exe"

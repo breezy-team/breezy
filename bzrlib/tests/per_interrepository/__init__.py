@@ -36,9 +36,10 @@ from bzrlib.repository import (
     InterRepository,
     )
 from bzrlib.tests import (
-                          default_transport,
-                          multiply_tests,
-                          )
+    TestSkipped,
+    default_transport,
+    multiply_tests,
+    )
 from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 
 

@@ -142,6 +142,26 @@ class TestPull(TestCaseWithTransport):
         self.run_bzr('pull -r 4')
         self.assertEqual(a.revision_history(), b.revision_history())
 
+    def test_pull_tags(self):
+        """Tags are updated by pull, and revisions named in those tags are
+        fetched.
+        """
+        # Make a source, sprout a target off it
+        builder = self.make_branch_builder('source')
+        builder.build_commit(message="Rev 1", rev_id='rev-1')
+        source = builder.get_branch()
+        target_bzrdir = source.bzrdir.sprout('target')
+        # Add a non-ancestry tag to source
+        builder.build_commit(message="Rev 2", rev_id='rev-2')
+        source.tags.set_tag('tag-a', 'rev-2')
+        source.set_last_revision_info(1, 'rev-1')
+        # Pull from source
+        self.run_bzr('pull -d target source')
+        target = target_bzrdir.open_branch()
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision('rev-2')
+
     def test_overwrite_uptodate(self):
         # Make sure pull --overwrite overwrites
         # even if the target branch has merged

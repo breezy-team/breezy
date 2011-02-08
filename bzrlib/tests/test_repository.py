@@ -25,12 +25,14 @@ also see this file.
 from stat import S_ISDIR
 
 import bzrlib
-from bzrlib.errors import (UnknownFormatError,
-                           UnsupportedFormatError,
-                           )
+from bzrlib.errors import (
+    UnknownFormatError,
+    UnsupportedFormatError,
+    )
 from bzrlib import (
     btree_index,
     graph,
+    symbol_versioning,
     tests,
     transport,
     )
@@ -64,7 +66,7 @@ class TestDefaultFormat(TestCase):
     def test_get_set_default_format(self):
         old_default = bzrdir.format_registry.get('default')
         private_default = old_default().repository_format.__class__
-        old_format = repository.RepositoryFormat.get_default_format()
+        old_format = repository.format_registry.get_default()
         self.assertTrue(isinstance(old_format, private_default))
         def make_sample_bzrdir():
             my_bzrdir = bzrdir.BzrDirMetaFormat1()
@@ -84,7 +86,7 @@ class TestDefaultFormat(TestCase):
             bzrdir.format_registry.remove('default')
             bzrdir.format_registry.remove('sample')
             bzrdir.format_registry.register('default', old_default, '')
-        self.assertIsInstance(repository.RepositoryFormat.get_default_format(),
+        self.assertIsInstance(repository.format_registry.get_default(),
                               old_format.__class__)
 
 
@@ -110,6 +112,15 @@ class SampleRepositoryFormat(repository.RepositoryFormat):
 
     def open(self, a_bzrdir, _found=False):
         return "opened repository."
+
+
+class SampleExtraRepositoryFormat(repository.RepositoryFormat):
+    """A sample format that can not be used in a metadir
+
+    """
+
+    def get_format_string(self):
+        raise NotImplementedError
 
 
 class TestRepositoryFormat(TestCaseWithTransport):
@@ -143,19 +154,57 @@ class TestRepositoryFormat(TestCaseWithTransport):
                           dir)
 
     def test_register_unregister_format(self):
+        # Test deprecated format registration functions
         format = SampleRepositoryFormat()
         # make a control dir
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         # make a repo
         format.initialize(dir)
         # register a format for it.
-        repository.RepositoryFormat.register_format(format)
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            repository.RepositoryFormat.register_format, format)
         # which repository.Open will refuse (not supported)
-        self.assertRaises(UnsupportedFormatError, repository.Repository.open, self.get_url())
+        self.assertRaises(UnsupportedFormatError, repository.Repository.open,
+            self.get_url())
         # but open(unsupported) will work
         self.assertEqual(format.open(dir), "opened repository.")
         # unregister the format
-        repository.RepositoryFormat.unregister_format(format)
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            repository.RepositoryFormat.unregister_format, format)
+
+
+class TestRepositoryFormatRegistry(TestCase):
+
+    def setUp(self):
+        super(TestRepositoryFormatRegistry, self).setUp()
+        self.registry = repository.RepositoryFormatRegistry()
+
+    def test_register_unregister_format(self):
+        format = SampleRepositoryFormat()
+        self.registry.register(format)
+        self.assertEquals(format, self.registry.get("Sample .bzr repository format."))
+        self.registry.remove(format)
+        self.assertRaises(KeyError, self.registry.get, "Sample .bzr repository format.")
+
+    def test_get_all(self):
+        format = SampleRepositoryFormat()
+        self.assertEquals([], self.registry.get_all())
+        self.registry.register(format)
+        self.assertEquals([format], self.registry.get_all())
+
+    def test_register_extra(self):
+        format = SampleExtraRepositoryFormat()
+        self.assertEquals([], self.registry.get_all())
+        self.registry.register_extra(format)
+        self.assertEquals([format], self.registry.get_all())
+
+    def test_register_extra_lazy(self):
+        self.assertEquals([], self.registry.get_all())
+        self.registry.register_extra_lazy("bzrlib.tests.test_repository",
+            "SampleExtraRepositoryFormat")
+        formats = self.registry.get_all()
+        self.assertEquals(1, len(formats))
+        self.assertIsInstance(formats[0], SampleExtraRepositoryFormat)
 
 
 class TestFormatKnit1(TestCaseWithTransport):
