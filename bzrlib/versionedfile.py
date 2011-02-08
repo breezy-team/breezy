@@ -1090,6 +1090,19 @@ class VersionedFiles(object):
     def _extract_blocks(self, version_id, source, target):
         return None
 
+    def _transitive_fallbacks(self):
+        """Return the whole stack of fallback versionedfiles.
+
+        This VersionedFiles may have a list of fallbacks, but it doesn't
+        necessarily know about the whole stack going down, and it can't know
+        at open time because they may change after the objects are opened.
+        """
+        all_fallbacks = []
+        for a_vfs in self._fallback_vfs:
+            all_fallbacks.append(a_vfs)
+            all_fallbacks.extend(a_vfs._transitive_fallbacks())
+        return all_fallbacks
+
 
 class ThunkedVersionedFiles(VersionedFiles):
     """Storage for many versioned files thunked onto a 'VersionedFile' class.
