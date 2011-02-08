@@ -2454,10 +2454,7 @@ class TestCaseWithMemoryTransport(TestCase):
                 format = 'default'
             if isinstance(format, basestring):
                 format = bzrdir.format_registry.make_bzrdir(format)
-            try:
-                return format.initialize_on_transport(t)
-            except AttributeError:
-                import pdb; pdb.set_trace()
+            return format.initialize_on_transport(t)
         except errors.UninitializableFormat:
             raise TestSkipped("Format %s is not initializable." % format)
 
