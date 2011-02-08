@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Correctly resolve text conflicts for files in subdirs.
+  (Vincent Ladeuil, #715058)
+
 * Restore proper logging of bytes transferred. We accidentally reset the
   counter when commands finished before we logged the total transferred.
   (John Arbash Meinel, #713258)
