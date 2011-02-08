@@ -8,13 +8,11 @@ Bazaar Release Notes
 bzr 2.2.4
 #########
 
-:2.2.4: NOT RELEASED YET
+:2.2.4: 2011-02-04
 
-Compatibility Breaks
-********************
-
-New Features
-************
+This is a bugfix release. Only one bug has been fixed, a regression from 2.2.3
+involving only certain operations with launchpad. Upgrading is recommended for
+all users on earlier 2.2 releases.
 
 Bug Fixes
 *********
@@ -24,21 +22,6 @@ Bug Fixes
   with Launchpad's production instance, which only became a problem when
   the default instance was switched from edge to production in bzr 2.2.3.
   (Max Bowsher, #707075)
-
-Improvements
-************
-
-Documentation
-*************
-
-API Changes
-***********
-
-Internals
-*********
-
-Testing
-*******
 
 
 bzr 2.2.3
