@@ -83,6 +83,9 @@ Bug Fixes
   ``bzr plugins`` and in crash reports.
   (#704195, Martin Pool)
 
+* ``bzr dump-btree --raw`` no longer tracebacks on a B-Tree file
+  containing no rows. (Eric Siegerman)
+
 Documentation
 *************
 
