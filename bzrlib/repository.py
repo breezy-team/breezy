@@ -3054,8 +3054,9 @@ class RepositoryFormatRegistry(registry.FormatRegistry):
             result.append(f)
         return result
 
-    def get_all(self):
-        """Return all available repository formats."""
+    def _get_all(self):
+        """Return all repository formats, even those not usable in metadirs.
+        """
         return [self.get(k) for k in self.keys()] + self._get_extra()
 
 
