@@ -24,15 +24,14 @@ rather starts again from the run_bzr function.
 """
 
 
-import os
+from bzrlib import tests
 
 from bzrlib.branch import Branch
 from bzrlib.config import extract_email_address
-from bzrlib.tests import TestCaseWithTransport
 from bzrlib.urlutils import joinpath
 
 
-class TestAnnotate(TestCaseWithTransport):
+class TestAnnotate(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestAnnotate, self).setUp()
@@ -151,7 +150,7 @@ class TestAnnotate(TestCaseWithTransport):
                          err)
 
 
-class TestSimpleAnnotate(TestCaseWithTransport):
+class TestSimpleAnnotate(tests.TestCaseWithTransport):
     """Annotate tests with no complex setup."""
 
     def _setup_edited_file(self, relpath='.'):
@@ -168,8 +167,8 @@ class TestSimpleAnnotate(TestCaseWithTransport):
     def test_annotate_cmd_revspec_branch(self):
         tree = self._setup_edited_file('trunk')
         tree.branch.create_checkout(self.get_url('work'), lightweight=True)
-        os.chdir('work')
-        out, err = self.run_bzr('annotate file -r branch:../trunk')
+        out, err = self.run_bzr(['annotate', 'file', '-r', 'branch:../trunk'],
+                                working_dir='work')
         self.assertEqual('', err)
         self.assertEqual(
             '1   test@ho | foo\n'
@@ -236,60 +235,50 @@ class TestSimpleAnnotate(TestCaseWithTransport):
             out)
 
     def test_annotate_empty_file(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/empty', '')])
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('empty', '')])
         tree.add('empty')
         tree.commit('add empty file')
-
-        os.chdir('tree')
-        out, err = self.run_bzr('annotate empty')
+        out, err = self.run_bzr(['annotate', 'empty'])
         self.assertEqual('', out)
 
     def test_annotate_removed_file(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/empty', '')])
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('empty', '')])
         tree.add('empty')
         tree.commit('add empty file')
         # delete the file.
         tree.remove('empty')
         tree.commit('remove empty file')
-        
-        os.chdir('tree')
-        out, err = self.run_bzr('annotate -r1 empty')
+        out, err = self.run_bzr(['annotate', '-r1', 'empty'])
         self.assertEqual('', out)
 
     def test_annotate_empty_file_show_ids(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree_contents([('tree/empty', '')])
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('empty', '')])
         tree.add('empty')
         tree.commit('add empty file')
-
-        os.chdir('tree')
         out, err = self.run_bzr(['annotate', '--show-ids', 'empty'])
         self.assertEqual('', out)
 
     def test_annotate_nonexistant_file(self):
-        tree = self.make_branch_and_tree('tree')
-        self.build_tree(['tree/file'])
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
         tree.add(['file'])
         tree.commit('add a file')
-
-        os.chdir('tree')
-        out, err = self.run_bzr("annotate doesnotexist", retcode=3)
+        out, err = self.run_bzr(['annotate', 'doesnotexist'], retcode=3)
         self.assertEqual('', out)
         self.assertEqual("bzr: ERROR: doesnotexist is not versioned.\n", err)
 
     def test_annotate_without_workingtree(self):
-        tree = self.make_branch_and_tree('branch')
-        self.build_tree_contents([('branch/empty', '')])
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('empty', '')])
         tree.add('empty')
         tree.commit('add empty file')
         bzrdir = tree.branch.bzrdir
         bzrdir.destroy_workingtree()
         self.assertFalse(bzrdir.has_workingtree())
-
-        os.chdir('branch')
-        out, err = self.run_bzr('annotate empty')
+        out, err = self.run_bzr(['annotate', 'empty'])
         self.assertEqual('', out)
 
     def test_annotate_directory(self):
@@ -298,5 +287,5 @@ class TestSimpleAnnotate(TestCaseWithTransport):
         self.build_tree_contents([('a/hello.txt', 'my helicopter\n')])
         wt.add(['hello.txt'])
         wt.commit('commit', committer='test@user')
-        out, err = self.run_bzr('annotate -d a hello.txt')
+        out, err = self.run_bzr(['annotate', '-d', 'a', 'hello.txt'])
         self.assertEqualDiff('1   test@us | my helicopter\n', out)
