@@ -181,12 +181,9 @@ class TestStacking(TestCaseWithBranch):
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
         # We have a mainline
-        trunk = fixtures.build_branch_with_non_ancestral_tag(builder)
+        trunk = fixtures.build_branch_with_non_ancestral_rev(builder)
         mainline_revid = 'rev-1'
-        tagged_revid = 'rev-2'
-        self.assertRevisionInRepository('trunk', tagged_revid)
         # and make branch from it which is stacked (with no tags)
-        trunk.tags.delete_tag('tag-a')
         try:
             new_dir = trunk.bzrdir.sprout(self.get_url('newbranch'), stacked=True)
         except unstackable_format_errors, e:
@@ -201,16 +198,21 @@ class TestStacking(TestCaseWithBranch):
         # now when we unstack that should implicitly fetch, to make sure that
         # the branch will still work
         new_branch = new_dir.open_branch()
-        new_branch.tags.set_tag('tag-a', 'rev-2')
+        try:
+            new_branch.tags.set_tag('tag-a', 'rev-2')
+        except errors.TagsNotSupported:
+            tags_supported = False
+        else:
+            tags_supported = True
         new_branch.set_stacked_on_url(None)
         self.assertRevisionInRepository('newbranch', mainline_revid)
         # of course it's still in the mainline
         self.assertRevisionInRepository('trunk', mainline_revid)
-        # the tagged revision in trunk is now in newbranch too
-        self.assertRevisionInRepository('newbranch', tagged_revid)
+        if tags_supported:
+            # the tagged revision in trunk is now in newbranch too
+            self.assertRevisionInRepository('newbranch', 'rev-2')
         # and now we're no longer stacked
-        self.assertRaises(errors.NotStacked,
-            new_branch.get_stacked_on_url)
+        self.assertRaises(errors.NotStacked, new_branch.get_stacked_on_url)
 
     def test_unstack_already_locked(self):
         """Removing the stacked-on branch with an already write-locked branch

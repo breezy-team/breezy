@@ -148,11 +148,14 @@ class TestPull(per_branch.TestCaseWithBranch):
             builder = self.make_branch_builder('source')
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
-        source = fixtures.build_branch_with_non_ancestral_tag(builder)
-        source.tags.delete_tag('tag-a')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
         target = source.bzrdir.sprout('target').open_branch()
+        # Add a tag to the source, then pull from source
+        try:
+            source.tags.set_tag('tag-a', 'rev-2')
+        except errors.TagsNotSupported:
+            raise TestNotApplicable('format does not support tags.')
         source.tags.set_tag('tag-a', 'rev-2')
-        # Pull from source
         target.pull(source)
         # The tag is present, and so is its revision.
         self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
@@ -165,13 +168,15 @@ class TestPull(per_branch.TestCaseWithBranch):
             builder = self.make_branch_builder('source')
         except errors.UninitializableFormat:
             raise TestNotApplicable('uninitializeable format')
-        source = fixtures.build_branch_with_non_ancestral_tag(builder)
-        source.tags.delete_tag('tag-a')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
         target = source.bzrdir.sprout('target').open_branch()
-        source.tags.set_tag('tag-a', 'rev-2')
         # Add a new commit to the ancestry
         builder.build_commit(message="Rev 2 again", rev_id='rev-2-again')
-        # Pull from source
+        # Add a tag to the source, then pull rev-2-again from source
+        try:
+            source.tags.set_tag('tag-a', 'rev-2')
+        except errors.TagsNotSupported:
+            raise TestNotApplicable('format does not support tags.')
         target.pull(source, 'rev-2-again')
         # The tag is present, and so is its revision.
         self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
