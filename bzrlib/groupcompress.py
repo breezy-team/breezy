@@ -1186,7 +1186,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             _unadded_refs = {}
         self._unadded_refs = _unadded_refs
         self._group_cache = LRUSizeCache(max_size=50*1024*1024)
-        self._fallback_vfs = []
+        self._immediate_fallbacks = []
 
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
@@ -1266,7 +1266,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
 
         :param a_versioned_files: A VersionedFiles object.
         """
-        self._fallback_vfs.append(a_versioned_files)
+        self._immediate_fallbacks.append(a_versioned_files)
 
     def annotate(self, key):
         """See VersionedFiles.annotate."""
@@ -1342,7 +1342,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             and so on.
         """
         result = {}
-        sources = [self._index] + self._fallback_vfs
+        sources = [self._index] + self._immediate_fallbacks
         source_results = []
         missing = set(keys)
         for source in sources:
@@ -1449,7 +1449,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         parent_map = {}
         key_to_source_map = {}
         source_results = []
-        for source in self._fallback_vfs:
+        for source in self._immediate_fallbacks:
             if not missing:
                 break
             source_parents = source.get_parent_map(missing)
@@ -1832,7 +1832,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         """See VersionedFiles.keys."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(2, "keys scales with size of history")
-        sources = [self._index] + self._fallback_vfs
+        sources = [self._index] + self._immediate_fallbacks
         result = set()
         for source in sources:
             result.update(source.keys())
