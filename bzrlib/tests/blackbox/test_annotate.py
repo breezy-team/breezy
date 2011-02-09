@@ -26,7 +26,6 @@ rather starts again from the run_bzr function.
 
 from bzrlib import tests
 
-from bzrlib.branch import Branch
 from bzrlib.config import extract_email_address
 from bzrlib.urlutils import joinpath
 
@@ -210,11 +209,12 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
         tree.merge_from_branch(tree.branch, "rev1.1.1")
         # edit the file to be 'resolved' and have a further local edit
         self.build_tree_contents([('file', 'local\nfoo\nbar\nbaz\ngam\n')])
+        return tree
 
     def test_annotated_edited_merged_file_revnos(self):
-        self._create_merged_file()
-        out, err = self.run_bzr('annotate file')
-        email = extract_email_address(Branch.open('.').get_config().username())
+        wt = self._create_merged_file()
+        out, err = self.run_bzr(['annotate', 'file'])
+        email = extract_email_address(wt.branch.get_config().username())
         self.assertEqual(
             '3?    %-7s | local\n'
             '1     test@ho | foo\n'
@@ -225,7 +225,7 @@ class TestSimpleAnnotate(tests.TestCaseWithTransport):
 
     def test_annotated_edited_merged_file_ids(self):
         self._create_merged_file()
-        out, err = self.run_bzr('annotate file --show-ids')
+        out, err = self.run_bzr(['annotate', 'file', '--show-ids'])
         self.assertEqual(
             'current: | local\n'
             '    rev1 | foo\n'
