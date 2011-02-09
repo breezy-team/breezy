@@ -4714,19 +4714,19 @@ class cmd_annotate(Command):
             self.add_cleanup(branch.lock_read().unlock)
         tree = _get_one_revision_tree('annotate', revision, branch=branch)
         self.add_cleanup(tree.lock_read().unlock)
-        if wt is not None:
+        if wt is not None and revision is None:
             file_id = wt.path2id(relpath)
         else:
             file_id = tree.path2id(relpath)
         if file_id is None:
             raise errors.NotVersionedError(filename)
-        file_version = tree.inventory[file_id].revision
         if wt is not None and revision is None:
             # If there is a tree and we're not annotating historical
             # versions, annotate the working tree's content.
             annotate_file_tree(wt, file_id, self.outf, long, all,
                 show_ids=show_ids)
         else:
+            file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, self.outf,
                           show_ids=show_ids)
 
