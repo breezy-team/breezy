@@ -413,9 +413,12 @@ class cmd_dump_btree(Command):
                 self.outf.write(page_bytes[:header_end])
                 page_bytes = data
             self.outf.write('\nPage %d\n' % (page_idx,))
-            decomp_bytes = zlib.decompress(page_bytes)
-            self.outf.write(decomp_bytes)
-            self.outf.write('\n')
+            if len(page_bytes) == 0:
+                self.outf.write('(empty)\n');
+            else:
+                decomp_bytes = zlib.decompress(page_bytes)
+                self.outf.write(decomp_bytes)
+                self.outf.write('\n')
 
     def _dump_entries(self, trans, basename):
         try:
