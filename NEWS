@@ -20,6 +20,10 @@ New Features
 Bug Fixes
 *********
 
+* Correctly handle ``bzr log`` and `get_known_graph_ancestry` on a
+  doubly-stacked branch.
+  (James Westby, Martin Pool, #715000)
+
 Improvements
 ************
 
