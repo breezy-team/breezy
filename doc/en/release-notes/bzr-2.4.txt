@@ -104,6 +104,10 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
+* Repository formats should now be registered on the format registry
+  (``bzrlib.repository.format_registry``) rather than using the class
+  methods on ``RepositoryFormat``. (Jelmer Vernooij)
+
 * The ``revision_id`` parameter of
   ``Repository.search_missing_revision_ids`` and
   ``InterRepository.search_missing_revision_ids`` is deprecated.  It is
