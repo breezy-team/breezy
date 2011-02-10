@@ -32,12 +32,12 @@ import threading
 import bzrlib
 from bzrlib import (
     bzrdir,
+    cethread,
     config,
     errors,
     osutils,
     remote as _mod_remote,
     tests,
-    thread,
     transport,
     ui,
     )

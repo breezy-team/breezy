@@ -22,8 +22,8 @@ import threading
 
 
 from bzrlib import (
+    cethread,
     osutils,
-    thread,
     transport,
     urlutils,
     )
@@ -243,7 +243,7 @@ class TestingChrootServer(chroot.ChrootServer):
         raise NotImplementedError
 
 
-class TestThread(thread.CatchingExceptionThread):
+class TestThread(cethread.CatchingExceptionThread):
 
     def join(self, timeout=5):
         """Overrides to use a default timeout.

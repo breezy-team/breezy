@@ -17,8 +17,8 @@
 import threading
 
 from bzrlib import (
+    cethread,
     tests,
-    thread,
     )
 
 
@@ -28,7 +28,7 @@ class TestCatchingExceptionThread(tests.TestCase):
         def do_nothing():
             pass
 
-        tt = thread.CatchingExceptionThread(target=do_nothing)
+        tt = cethread.CatchingExceptionThread(target=do_nothing)
         tt.start()
         tt.join()
 
@@ -39,7 +39,7 @@ class TestCatchingExceptionThread(tests.TestCase):
         def raise_my_exception():
             raise MyException()
 
-        tt = thread.CatchingExceptionThread(target=raise_my_exception)
+        tt = cethread.CatchingExceptionThread(target=raise_my_exception)
         tt.start()
         self.assertRaises(MyException, tt.join)
 
@@ -54,7 +54,7 @@ class TestCatchingExceptionThread(tests.TestCase):
             # Now we can raise
             raise MyException()
 
-        tt = thread.CatchingExceptionThread(target=raise_my_exception)
+        tt = cethread.CatchingExceptionThread(target=raise_my_exception)
         tt.start()
         tt.join(timeout=0)
         self.assertIs(None, tt.exception)
@@ -73,7 +73,7 @@ class TestCatchingExceptionThread(tests.TestCase):
             # Now we can raise
             raise MyException()
 
-        tt = thread.CatchingExceptionThread(target=raise_my_exception,
+        tt = cethread.CatchingExceptionThread(target=raise_my_exception,
                                             sync_event=in_thread)
         tt.start()
         tt.join(timeout=0)
@@ -89,7 +89,7 @@ class TestCatchingExceptionThread(tests.TestCase):
         control2 = threading.Event()
         control3 = threading.Event()
 
-        class TestThread(thread.CatchingExceptionThread):
+        class TestThread(cethread.CatchingExceptionThread):
 
             def __init__(self, *args, **kwargs):
                 super(TestThread, self).__init__(*args,
@@ -131,7 +131,7 @@ class TestCatchingExceptionThread(tests.TestCase):
         class MyException(Exception):
             pass
 
-        class TestThread(thread.CatchingExceptionThread):
+        class TestThread(cethread.CatchingExceptionThread):
 
             def __init__(self, *args, **kwargs):
                 self.step1 = threading.Event()
