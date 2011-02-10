@@ -859,9 +859,4 @@ class InterWeaveRepo(InterSameDataRepository):
         return self.source.revision_ids_to_search_result(result_set)
 
 
-_legacy_formats = [RepositoryFormat4(),
-                   RepositoryFormat5(),
-                   RepositoryFormat6()]
-
-
 InterRepository.register_optimiser(InterWeaveRepo)

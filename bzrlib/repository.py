@@ -3004,6 +3004,62 @@ class MetaDirVersionedFileRepository(MetaDirRepository):
             control_files)
 
 
+class RepositoryFormatRegistry(registry.FormatRegistry):
+    """Repository format registry."""
+
+    def __init__(self, other_registry=None):
+        super(RepositoryFormatRegistry, self).__init__(other_registry)
+        self._extra_formats = []
+
+    def register(self, format):
+        """Register a new repository format."""
+        super(RepositoryFormatRegistry, self).register(
+            format.get_format_string(), format)
+
+    def remove(self, format):
+        """Remove a registered repository format."""
+        super(RepositoryFormatRegistry, self).remove(
+            format.get_format_string())
+
+    def register_extra(self, format):
+        """Register a repository format that can not be used in a metadir.
+
+        This is mainly useful to allow custom repository formats, such as older
+        Bazaar formats and foreign formats, to be tested.
+        """
+        self._extra_formats.append(registry._ObjectGetter(format))
+
+    def remove_extra(self, format):
+        """Remove an extra repository format.
+        """
+        self._extra_formats.remove(registry._ObjectGetter(format))
+
+    def register_extra_lazy(self, module_name, member_name):
+        """Register a repository format lazily.
+        """
+        self._extra_formats.append(
+            registry._LazyObjectGetter(module_name, member_name))
+
+    def get_default(self):
+        """Return the current default format."""
+        from bzrlib import bzrdir
+        return bzrdir.format_registry.make_bzrdir('default').repository_format
+
+    def _get_extra(self):
+        result = []
+        for getter in self._extra_formats:
+            f = getter.get_obj()
+            if callable(f):
+                f = f()
+            result.append(f)
+        return result
+
+    def _get_all(self):
+        """Return all repository formats, even those not usable in metadirs.
+        """
+        return [self.get(k) for k in self.keys()] + self._get_extra()
+
+
 network_format_registry = registry.FormatRegistry()
 """Registry of formats indexed by their network name.
 
@@ -3013,7 +3069,7 @@ RepositoryFormat.network_name() for more detail.
 """
 
 
-format_registry = registry.FormatRegistry(network_format_registry)
+format_registry = RepositoryFormatRegistry(network_format_registry)
 """Registry of formats, indexed by their BzrDirMetaFormat format string.
 
 This can contain either format instances themselves, or classes/factories that
@@ -3124,18 +3180,20 @@ class RepositoryFormat(object):
                                             kind='repository')
 
     @classmethod
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def register_format(klass, format):
-        format_registry.register(format.get_format_string(), format)
+        format_registry.register(format)
 
     @classmethod
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def unregister_format(klass, format):
-        format_registry.remove(format.get_format_string())
+        format_registry.remove(format)
 
     @classmethod
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def get_default_format(klass):
         """Return the current default format."""
-        from bzrlib import bzrdir
-        return bzrdir.format_registry.make_bzrdir('default').repository_format
+        return format_registry.get_default()
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format.
@@ -3293,6 +3351,16 @@ network_format_registry.register_lazy(
     'bzrlib.repofmt.weaverepo',
     'RepositoryFormat6',
 )
+
+format_registry.register_extra_lazy(
+    'bzrlib.repofmt.weaverepo',
+    'RepositoryFormat4')
+format_registry.register_extra_lazy(
+    'bzrlib.repofmt.weaverepo',
+    'RepositoryFormat5')
+format_registry.register_extra_lazy(
+    'bzrlib.repofmt.weaverepo',
+    'RepositoryFormat6')
 
 # formats which have no format string are not discoverable or independently
 # creatable on disk, so are not registered in format_registry.  They're
