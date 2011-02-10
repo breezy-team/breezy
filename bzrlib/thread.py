@@ -39,6 +39,7 @@ class CatchingExceptionThread(threading.Thread):
         self.set_sync_event(sync_event)
         self.exception = None
         self.ignored_exceptions = None # see set_ignored_exceptions
+        self.lock = threading.Lock()
 
     # compatibility thunk for python-2.4 and python-2.5...
     if sys.version_info < (2, 6):
@@ -55,10 +56,48 @@ class CatchingExceptionThread(threading.Thread):
         Some threads require multiple events and should set the relevant one
         when appropriate.
 
-        Note that the event should be cleared so the caller can wait() on him
-        and be released when the thread set the event.
+        Note that the event should be initially cleared so the caller can
+        wait() on him and be released when the thread set the event.
+
+        Also note that the thread can use multiple events, setting them as it
+        progress, while the caller can chose to wait on any of them. What
+        matters is that there is always one event set so that the caller is
+        always released when an exception is caught. Re-using the same event is
+        therefore risky as the thread itself has no idea about which event the
+        caller is waiting on. If the caller has already been released then a
+        cleared event won't guarantee that the caller is still waiting on it.
         """
         self.sync_event = event
+
+    def set_and_switch(self, new):
+        """Set the current ``sync_event`` and switch to a new one.
+
+        Using this method protects against race conditions while setting a new
+        ``sync_event``.
+
+        Note that this allows a caller to wait either on the old or the new
+        event depending on whether it wants a fine control on what is happening
+        inside a thread.
+
+        :param new: The event that will become ``sync_event``
+        """
+        cur = self.sync_event
+        self.lock.acquire()
+        try: # Always release the lock
+            try:
+                self.set_sync_event(new)
+                # From now on, any exception will be synced with the new event
+            except:
+                # Unlucky, we couldn't set the new sync event, try restoring a
+                # safe state
+                self.set_sync_event(cur)
+                raise
+            # Setting the current ``sync_event`` will release callers waiting
+            # on it, note that it will also be set in run() if an exception is
+            # raised
+            cur.set()
+        finally:
+            self.lock.release()
 
     def set_ignored_exceptions(self, ignored):
         """Declare which exceptions will be ignored.
