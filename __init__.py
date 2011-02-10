@@ -347,10 +347,20 @@ transport_server_registry.register_lazy('git',
 
 
 from bzrlib.repository import (
+    format_registry as repository_format_registry,
     network_format_registry as repository_network_format_registry,
     )
 repository_network_format_registry.register_lazy('git',
     'bzrlib.plugins.git.repository', 'GitRepositoryFormat')
+
+try:
+    register_extra_lazy_repository_format = getattr(repository_format_registry,
+        "register_extra_lazy")
+except AttributeError:
+    pass
+else:
+    register_extra_lazy_repository_format('bzrlib.plugins.git.repository',
+        'GitRepositoryFormat')
 
 try:
     from bzrlib.controldir import (

@@ -276,6 +276,11 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_tree_reference = False
     rich_root_data = True
 
+    @property
+    def _matchingbzrdir(self):
+        from bzrlib.plugins.git.dir import LocalGitControlDirFormat
+        return LocalGitControlDirFormat()
+
     def get_format_description(self):
         return "Git Repository"
 
