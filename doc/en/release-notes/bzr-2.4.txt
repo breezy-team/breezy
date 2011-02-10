@@ -47,6 +47,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr annotate -r-1 file`` will now properly annotate a deleted file.
+  (Andrew King, #537442)
+
 * ``bzr push --overwrite`` with an older revision specified will now correctly
   roll back the target branch. (Jelmer Vernooij, #386576)
 
@@ -83,6 +86,9 @@ Bug Fixes
   ``bzr plugins`` and in crash reports.
   (#704195, Martin Pool)
 
+* ``bzr dump-btree --raw`` no longer tracebacks on a B-Tree file
+  containing no rows. (Eric Siegerman, #715508)
+
 Documentation
 *************
 
@@ -104,6 +110,10 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
+* Repository formats should now be registered on the format registry
+  (``bzrlib.repository.format_registry``) rather than using the class
+  methods on ``RepositoryFormat``. (Jelmer Vernooij)
+
 * The ``revision_id`` parameter of
   ``Repository.search_missing_revision_ids`` and
   ``InterRepository.search_missing_revision_ids`` is deprecated.  It is
@@ -114,6 +124,12 @@ Internals
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* ``CatchingExceptionThread`` (formerly ThreadWithException) has been moved
+  out of the ``bzrlib.tests`` hierarchy to make it clearer that it can be used
+  outside of tests. This class makes it easier to track exceptions in threads
+  by cacthing them so they can be re-raised in the controlling thread.
+  (Vincent Ladeuil)
 
 Testing
 *******

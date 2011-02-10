@@ -174,7 +174,7 @@ class TestFormatRegistry(TestCase):
             self.assertIs(bzrdir.format_registry.get('dirstate-with-subtree'),
                           bzrdir.format_registry.get('default'))
             self.assertIs(
-                repository.RepositoryFormat.get_default_format().__class__,
+                repository.format_registry.get_default().__class__,
                 knitrepo.RepositoryFormatKnit3)
         finally:
             bzrdir.format_registry.set_default_repository(old_default)

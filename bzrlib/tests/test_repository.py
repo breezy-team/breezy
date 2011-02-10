@@ -188,21 +188,21 @@ class TestRepositoryFormatRegistry(TestCase):
 
     def test_get_all(self):
         format = SampleRepositoryFormat()
-        self.assertEquals([], self.registry.get_all())
+        self.assertEquals([], self.registry._get_all())
         self.registry.register(format)
-        self.assertEquals([format], self.registry.get_all())
+        self.assertEquals([format], self.registry._get_all())
 
     def test_register_extra(self):
         format = SampleExtraRepositoryFormat()
-        self.assertEquals([], self.registry.get_all())
+        self.assertEquals([], self.registry._get_all())
         self.registry.register_extra(format)
-        self.assertEquals([format], self.registry.get_all())
+        self.assertEquals([format], self.registry._get_all())
 
     def test_register_extra_lazy(self):
-        self.assertEquals([], self.registry.get_all())
+        self.assertEquals([], self.registry._get_all())
         self.registry.register_extra_lazy("bzrlib.tests.test_repository",
             "SampleExtraRepositoryFormat")
-        formats = self.registry.get_all()
+        formats = self.registry._get_all()
         self.assertEquals(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraRepositoryFormat)
 

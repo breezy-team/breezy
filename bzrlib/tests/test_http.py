@@ -37,6 +37,7 @@ from bzrlib import (
     osutils,
     remote as _mod_remote,
     tests,
+    thread,
     transport,
     ui,
     )
@@ -178,8 +179,8 @@ class RecordingServer(object):
         self._sock.bind(('127.0.0.1', 0))
         self.host, self.port = self._sock.getsockname()
         self._ready = threading.Event()
-        self._thread = test_server.ThreadWithException(
-            event=self._ready, target=self._accept_read_and_reply)
+        self._thread = test_server.TestThread(
+            sync_event=self._ready, target=self._accept_read_and_reply)
         self._thread.start()
         if 'threads' in tests.selftest_debug_flags:
             sys.stderr.write('Thread started: %s\n' % (self._thread.ident,))

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -691,7 +691,10 @@ class Command(object):
             return self.run(**all_cmd_args)
         finally:
             # reset it, so that other commands run in the same process won't
-            # inherit state
+            # inherit state. Before we reset it, log any activity, so that it
+            # gets properly tracked.
+            ui.ui_factory.log_transport_activity(
+                display=('bytes' in debug.debug_flags))
             trace.set_verbosity_level(0)
 
     def _setup_run(self):
@@ -1202,8 +1205,6 @@ def main(argv=None):
     argv = _specified_or_unicode_argv(argv)
     _register_builtin_commands()
     ret = run_bzr_catch_errors(argv)
-    bzrlib.ui.ui_factory.log_transport_activity(
-        display=('bytes' in debug.debug_flags))
     trace.mutter("return code %d", ret)
     return ret
 
