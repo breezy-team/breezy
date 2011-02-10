@@ -69,8 +69,8 @@ class CatchingExceptionThread(threading.Thread):
         """
         self.sync_event = event
 
-    def set_and_switch(self, new):
-        """Set the current ``sync_event`` and switch to a new one.
+    def switch_and_set(self, new):
+        """Switch to a new ``sync_event`` and set the current one.
 
         Using this method protects against race conditions while setting a new
         ``sync_event``.

@@ -83,7 +83,7 @@ class TestCatchingExceptionThread(tests.TestCase):
         self.assertRaises(MyException, tt.join)
         self.assertEquals(True, tt.sync_event.isSet())
 
-    def test_set_and_switch(self):
+    def test_switch_and_set(self):
         """Caller can precisely control a thread."""
         control1 = threading.Event()
         control2 = threading.Event()
@@ -104,10 +104,10 @@ class TestCatchingExceptionThread(tests.TestCase):
             def step_by_step(self):
                 control1.wait()
                 self.current_step = 'step1'
-                self.set_and_switch(self.step2)
+                self.switch_and_set(self.step2)
                 control2.wait()
                 self.current_step = 'step2'
-                self.set_and_switch(self.final)
+                self.switch_and_set(self.final)
                 control3.wait()
                 self.current_step = 'done'
 
@@ -125,7 +125,7 @@ class TestCatchingExceptionThread(tests.TestCase):
         tt.join()
         self.assertEquals('done', tt.current_step)
 
-    def test_exception_while_set_and_switch(self):
+    def test_exception_while_switch_and_set(self):
         control1 = threading.Event()
 
         class MyException(Exception):
@@ -146,7 +146,7 @@ class TestCatchingExceptionThread(tests.TestCase):
             def step_by_step(self):
                 control1.wait()
                 self.current_step = 'step1'
-                self.set_and_switch(self.step2)
+                self.switch_and_set(self.step2)
 
             def set_sync_event(self, event):
                 # We force an exception while trying to set step2
