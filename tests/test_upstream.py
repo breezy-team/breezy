@@ -22,6 +22,7 @@
 
 """Tests for the upstream module."""
 
+from base64 import standard_b64encode
 
 import os
 import tarfile
@@ -531,10 +532,39 @@ class PristineTarSourceTests(TestCaseWithTransport):
         self.assertEqual(self.source.tag_name(upstream_v_no),
                 "upstream-" + upstream_v_no)
 
+    def test_tag_name_distro(self):
+        self.assertEquals(self.source.tag_name("0.3", "ubuntu"),
+                "upstream-ubuntu-0.3")
+
     def test_version(self):
         self.assertEquals(['upstream-3.3', 'upstream-debian-3.3',
             'upstream-ubuntu-3.3', 'upstream/3.3'],
             self.source.possible_tag_names("3.3"))
+
+    def test_pristine_tar_format_gz(self):
+        rev = Revision("myrevid")
+        rev.properties["deb-pristine-delta"] = "1"
+        self.assertEquals("gz", self.source.pristine_tar_format(rev))
+
+    def test_pristine_tar_format_bz2(self):
+        rev = Revision("myrevid")
+        rev.properties["deb-pristine-delta-bz2"] = "1"
+        self.assertEquals("bz2", self.source.pristine_tar_format(rev))
+
+    def test_pristine_tar_format_unknown(self):
+        rev = Revision("myrevid")
+        self.assertRaises(AssertionError,
+            self.source.pristine_tar_format, rev)
+
+    def test_pristine_tar_delta_unknown(self):
+        rev = Revision("myrevid")
+        self.assertRaises(AssertionError,
+            self.source.pristine_tar_delta, rev)
+
+    def test_pristine_tar_delta_gz(self):
+        rev = Revision("myrevid")
+        rev.properties["deb-pristine-delta"] = standard_b64encode("bla")
+        self.assertEquals("bla", self.source.pristine_tar_delta(rev))
 
 
 class TarfileSourceTests(TestCaseWithTransport):
