@@ -68,6 +68,10 @@ Bug Fixes
   paths, however they may still print junk if not on a UTF-8 terminal.
   (Martin [gz], #707954)
 
+* ``bzr reconfigure --unstacked`` now copies revisions (and their
+  ancestors) named in tags into the unstacked repository, not just the
+  ancestry of the branch's tip.  (Andrew Bennetts, #401646)
+
 * ``bzr serve`` no longer crashes when a server_started hook is installed and
   IPv6 support is available on the system. (Jelmer Vernooij, #293697)
 

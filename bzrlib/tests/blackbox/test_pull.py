@@ -29,7 +29,10 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.osutils import pathjoin
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    fixtures,
+    TestCaseWithTransport,
+    )
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
 
@@ -148,13 +151,9 @@ class TestPull(TestCaseWithTransport):
         """
         # Make a source, sprout a target off it
         builder = self.make_branch_builder('source')
-        builder.build_commit(message="Rev 1", rev_id='rev-1')
-        source = builder.get_branch()
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
         target_bzrdir = source.bzrdir.sprout('target')
-        # Add a non-ancestry tag to source
-        builder.build_commit(message="Rev 2", rev_id='rev-2')
         source.tags.set_tag('tag-a', 'rev-2')
-        source.set_last_revision_info(1, 'rev-1')
         # Pull from source
         self.run_bzr('pull -d target source')
         target = target_bzrdir.open_branch()

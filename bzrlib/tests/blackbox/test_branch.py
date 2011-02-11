@@ -28,6 +28,7 @@ from bzrlib import (
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
+    fixtures,
     HardlinkFeature,
     test_server,
     )
@@ -270,11 +271,8 @@ class TestBranch(TestCaseWithTransport):
 
     def test_branch_fetches_all_tags(self):
         builder = self.make_branch_builder('source')
-        builder.build_commit(message="Rev 1", rev_id='rev-1')
-        builder.build_commit(message="Rev 2", rev_id='rev-2')
-        source = builder.get_branch()
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.tags.set_tag('tag-a', 'rev-2')
-        source.set_last_revision_info(1, 'rev-1')
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.run_bzr('branch source new-branch')
         new_branch = branch.Branch.open('new-branch')
@@ -466,12 +464,9 @@ class TestSmartServerBranching(TestCaseWithTransport):
     def test_branch_from_branch_with_tags(self):
         self.setup_smart_server_with_call_log()
         builder = self.make_branch_builder('source')
-        builder.build_commit(message="Rev 1", rev_id='rev-1')
-        builder.build_commit(message="Rev 2", rev_id='rev-2')
-        source = builder.get_branch()
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
         source.tags.set_tag('tag-a', 'rev-2')
         source.tags.set_tag('tag-missing', 'missing-rev')
-        source.set_last_revision_info(1, 'rev-1')
         # Now source has a tag not in its ancestry.  Make a branch from it.
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', self.get_url('source'), 'target'])
