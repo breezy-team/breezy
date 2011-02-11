@@ -135,8 +135,8 @@ Internals
 * ``CatchingExceptionThread`` (formerly ThreadWithException) has been moved
   out of the ``bzrlib.tests`` hierarchy to make it clearer that it can be used
   outside of tests. This class makes it easier to track exceptions in threads
-  by cacthing them so they can be re-raised in the controlling thread.
-  (Vincent Ladeuil)
+  by cacthing them so they can be re-raised in the controlling thread. It's
+  available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
 
 Testing
 *******
