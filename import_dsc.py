@@ -65,7 +65,6 @@ from bzrlib.transport import (
 
 from bzrlib.plugins.builddeb.bzrtools_import import import_dir
 from bzrlib.plugins.builddeb.errors import (
-    PristineTarError,
     TarFailed,
     UpstreamAlreadyImported,
     UpstreamBranchAlreadyMerged,
