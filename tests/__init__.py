@@ -136,7 +136,6 @@ def load_tests(standard_tests, module, loader):
                                             for i in testmod_names]))
 
     doctest_mod_names = [
-             'changes',
              'config'
              ]
     for mod in doctest_mod_names:
