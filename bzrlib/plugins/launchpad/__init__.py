@@ -299,8 +299,9 @@ class cmd_launchpad_mirror(Command):
         branch = _mod_branch.Branch.open(location)
         service = LaunchpadService()
         launchpad = lp_api.login(service)
-        lp_branch = lp_api.load_branch(launchpad, branch)
-        lp_branch.requestMirror()
+        lp_branch = lp_api.LaunchpadBranch.from_bzr(launchpad, branch,
+                create_missing=False)
+        lp_branch.lp.requestMirror()
 
 
 register_command(cmd_launchpad_mirror)

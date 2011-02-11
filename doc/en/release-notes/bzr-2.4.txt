@@ -89,6 +89,9 @@ Bug Fixes
 * ``bzr dump-btree --raw`` no longer tracebacks on a B-Tree file
   containing no rows. (Eric Siegerman, #715508)
 
+* Fix ``bzr lp-mirror`` to work on command line branch URLs and branches
+  without an explicit public location. (Max Bowsher)
+
 Documentation
 *************
 
