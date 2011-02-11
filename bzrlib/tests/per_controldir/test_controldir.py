@@ -33,6 +33,7 @@ from bzrlib import (
     )
 import bzrlib.revision
 from bzrlib.tests import (
+    fixtures,
     ChrootedTestCase,
     TestNotApplicable,
     TestSkipped,
@@ -676,14 +677,11 @@ class TestControlDir(TestCaseWithControlDir):
         # when sprouting a branch all revisions named in the tags are copied
         # too.
         builder = self.make_branch_builder('source')
-        builder.build_commit(message="Rev 1", rev_id='rev-1')
-        builder.build_commit(message="Rev 2", rev_id='rev-2')
-        source = builder.get_branch()
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
         try:
             source.tags.set_tag('tag-a', 'rev-2')
         except errors.TagsNotSupported:
             raise TestNotApplicable('Branch format does not support tags.')
-        source.set_last_revision_info(1, 'rev-1')
         # Now source has a tag not in its ancestry.  Sprout its controldir.
         dir = source.bzrdir
         target = dir.sprout(self.get_url('target'))
