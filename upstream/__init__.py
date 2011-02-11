@@ -53,7 +53,6 @@ from bzrlib.plugins.builddeb.errors import (
 from bzrlib.plugins.builddeb.repack_tarball import repack_tarball
 from bzrlib.plugins.builddeb.util import (
     export,
-    make_pristine_tar_delta,
     reconstruct_pristine_tar,
     tarball_name,
     )
@@ -123,16 +122,14 @@ class PristineTarSource(UpstreamSource):
         return "upstream-%s-%s" % (distro, version)
 
     def fetch_tarball(self, package, version, target_dir):
-        from bzrlib.plugins.builddeb.import_dsc import DistributionBranch
-        db = DistributionBranch(self.branch, None, tree=self.tree)
         revid = self.version_as_revision(package, version)
         try:
             rev = self.branch.repository.get_revision(revid)
         except NoSuchRevision:
             raise PackageVersionNotPresent(package, version, self)
         note("Using pristine-tar to reconstruct the needed tarball.")
-        if db.has_pristine_tar_delta(rev):
-            format = db.pristine_tar_format(rev)
+        if self.has_pristine_tar_delta(rev):
+            format = self.pristine_tar_format(rev)
         else:
             format = 'gz'
         target_filename = self._tarball_path(package, version,
@@ -164,6 +161,7 @@ class PristineTarSource(UpstreamSource):
         except KeyError:
             warning("tag %s present in branch, but there is no "
                 "associated 'deb-md5' property" % tag_name)
+            return True
 
     def version_as_revision(self, package, version):
         assert isinstance(version, str)
@@ -210,8 +208,7 @@ class PristineTarSource(UpstreamSource):
             assert self.has_pristine_tar_delta(rev)
             raise AssertionError("Not handled new delta type in "
                     "pristine_tar_delta")
-        delta = standard_b64decode(uuencoded)
-        return delta
+        return standard_b64decode(uuencoded)
 
     def reconstruct_pristine_tar(self, revid, package, version,
             dest_filename):
