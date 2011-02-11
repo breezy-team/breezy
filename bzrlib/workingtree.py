@@ -1652,17 +1652,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             # - RBC 20060907
             self._write_inventory(self._inventory)
 
-    def _iter_conflicts(self):
-        conflicted = set()
-        for info in self.list_files():
-            path = info[0]
-            stem = get_conflicted_stem(path)
-            if stem is None:
-                continue
-            if stem not in conflicted:
-                conflicted.add(stem)
-                yield stem
-
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
@@ -2427,31 +2416,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def add_conflicts(self, arg):
         raise errors.UnsupportedOperation(self.add_conflicts, self)
 
-    @needs_read_lock
     def conflicts(self):
-        conflicts = _mod_conflicts.ConflictList()
-        for conflicted in self._iter_conflicts():
-            text = True
-            try:
-                if file_kind(self.abspath(conflicted)) != "file":
-                    text = False
-            except errors.NoSuchFile:
-                text = False
-            if text is True:
-                for suffix in ('.THIS', '.OTHER'):
-                    try:
-                        kind = file_kind(self.abspath(conflicted+suffix))
-                        if kind != "file":
-                            text = False
-                    except errors.NoSuchFile:
-                        text = False
-                    if text == False:
-                        break
-            ctype = {True: 'text conflict', False: 'contents conflict'}[text]
-            conflicts.append(_mod_conflicts.Conflict.factory(ctype,
-                             path=conflicted,
-                             file_id=self.path2id(conflicted)))
-        return conflicts
+        raise NotImplementedError(self.conflicts)
 
     def walkdirs(self, prefix=""):
         """Walk the directories of this tree.
@@ -2792,12 +2758,6 @@ class WorkingTree3(WorkingTree):
             return self._control_files.unlock()
         finally:
             self.branch.unlock()
-
-
-def get_conflicted_stem(path):
-    for suffix in _mod_conflicts.CONFLICT_SUFFIXES:
-        if path.endswith(suffix):
-            return path[:-len(suffix)]
 
 
 class WorkingTreeFormat(object):

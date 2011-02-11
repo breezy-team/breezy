@@ -19,17 +19,26 @@
 from cStringIO import StringIO
 
 from bzrlib import (
+    conflicts as _mod_conflicts,
     errors,
     inventory,
+    osutils,
     revision as _mod_revision,
     transform,
     xml5,
     )
+from bzrlib.decorators import needs_read_lock
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
     WorkingTreeFormat,
     WorkingTree,
     )
+
+
+def get_conflicted_stem(path):
+    for suffix in _mod_conflicts.CONFLICT_SUFFIXES:
+        if path.endswith(suffix):
+            return path[:-len(suffix)]
 
 
 class WorkingTreeFormat2(WorkingTreeFormat):
@@ -176,3 +185,42 @@ class WorkingTree2(WorkingTree):
             return self._control_files.unlock()
         finally:
             self.branch.unlock()
+
+    def _iter_conflicts(self):
+        conflicted = set()
+        for info in self.list_files():
+            path = info[0]
+            stem = get_conflicted_stem(path)
+            if stem is None:
+                continue
+            if stem not in conflicted:
+                conflicted.add(stem)
+                yield stem
+
+    @needs_read_lock
+    def conflicts(self):
+        conflicts = _mod_conflicts.ConflictList()
+        for conflicted in self._iter_conflicts():
+            text = True
+            try:
+                if osutils.file_kind(self.abspath(conflicted)) != "file":
+                    text = False
+            except errors.NoSuchFile:
+                text = False
+            if text is True:
+                for suffix in ('.THIS', '.OTHER'):
+                    try:
+                        kind = osutils.file_kind(self.abspath(conflicted+suffix))
+                        if kind != "file":
+                            text = False
+                    except errors.NoSuchFile:
+                        text = False
+                    if text == False:
+                        break
+            ctype = {True: 'text conflict', False: 'contents conflict'}[text]
+            conflicts.append(_mod_conflicts.Conflict.factory(ctype,
+                             path=conflicted,
+                             file_id=self.path2id(conflicted)))
+        return conflicts
+
+
