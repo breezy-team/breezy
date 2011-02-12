@@ -37,6 +37,7 @@ except ImportError:
 
 from bzrlib.errors import (
     NoSuchRevision,
+    NoSuchTag,
     )
 from bzrlib.trace import (
     note,
@@ -169,7 +170,10 @@ class PristineTarSource(UpstreamSource):
             if self._has_version(tag_name):
                 return self.branch.tags.lookup_tag(tag_name)
         tag_name = self.tag_name(version)
-        return self.branch.tags.lookup_tag(tag_name)
+        try:
+            return self.branch.tags.lookup_tag(tag_name)
+        except NoSuchTag:
+            raise PackageVersionNotPresent(package, version, self)
 
     def has_version(self, package, version, md5=None):
         assert isinstance(version, str), str(type(version))
