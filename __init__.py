@@ -84,8 +84,6 @@ from bzrlib.plugins.email import emailer as _emailer
 
 def post_commit(branch, revision_id):
     """This is the post_commit hook that should get run after commit."""
-    if not use_legacy:
-        return
     _emailer.EmailSender(branch, revision_id, branch.get_config()).send_maybe()
 
 
@@ -102,20 +100,6 @@ def branch_post_change_hook(params):
         params.branch.get_config(), local_branch=None, op='change').send_maybe()
 
 
-def install_hooks():
-    """Install CommitSender to send after commits with bzr >= 0.15 """
-    install_named_hook = getattr(Branch.hooks, 'install_named_hook', None)
-    if install_named_hook is not None:
-        install_named_hook('post_commit', branch_commit_hook, 'bzr-email')
-        if 'post_change_branch_tip' in Branch.hooks:
-            install_named_hook('post_change_branch_tip',
-                branch_post_change_hook, 'bzr-email')
-    else:
-        Branch.hooks.install_hook('post_commit', branch_commit_hook)
-        if getattr(Branch.hooks, 'name_hook', None) is not None:
-            Branch.hooks.name_hook(branch_commit_hook, "bzr-email")
-
-
 def test_suite():
     from unittest import TestSuite
     import bzrlib.plugins.email.tests
@@ -124,13 +108,6 @@ def test_suite():
     return result
 
 
-# setup the email plugin with > 0.15 hooks.
-try:
-    install_hooks()
-    use_legacy = False
-except AttributeError:
-    # bzr < 0.15 - no Branch.hooks
-    use_legacy = True
-except errors.UnknownHook:
-    # bzr 0.15 dev before post_commit was added
-    use_legacy = True
+Branch.hooks.install_named_hook('post_commit', branch_commit_hook, 'bzr-email')
+Branch.hooks.install_named_hook('post_change_branch_tip', branch_post_change_hook,
+    'bzr-email')
