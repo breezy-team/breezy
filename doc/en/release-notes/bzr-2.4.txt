@@ -90,6 +90,10 @@ Bug Fixes
   ``bzr plugins`` and in crash reports.
   (#704195, Martin Pool)
 
+* The "pretty" version of ``needs_read_lock`` and ``needs_write_lock`` now
+  preserves the identity of default parameter values.
+  (Andrew Bennetts, #718569)
+
 * ``bzr dump-btree --raw`` no longer tracebacks on a B-Tree file
   containing no rows. (Eric Siegerman, #715508)
 
