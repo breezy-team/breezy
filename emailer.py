@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 import errno
 import subprocess
+import tempfile
 
 from bzrlib import (
     errors,
@@ -204,33 +205,23 @@ class EmailSender(object):
         """Spawn a 'mail' subprocess to send the email."""
         # TODO think up a good test for this, but I think it needs
         # a custom binary shipped with. RBC 20051021
+        msgfile = tempfile.NamedTemporaryFile()
         try:
+            msgfile.write(self.body().encode('utf8'))
+            diff = self.get_diff()
+            if diff:
+                msgfile.write(diff)
+            msgfile.flush()
+            msgfile.seek(0)
+
             process = subprocess.Popen(self._command_line(),
-                                       stdin=subprocess.PIPE)
-            try:
-                message = self.body().encode('utf8')
-                diff = self.get_diff()
-                if diff:
-                    message += diff
-                result = process.communicate(message)[0]
-                if process.returncode is None:
-                    process.wait()
-                if process.returncode != 0:
-                    raise errors.BzrError("Failed to send email")
-                return result
-            except OSError, e:
-                if e.errno == errno.EPIPE:
-                    raise errors.BzrError("Failed to send email.")
-                else:
-                    raise
-        except ValueError:
-            # bad subprocess parameters, should never happen.
-            raise
-        except OSError, e:
-            if e.errno == errno.ENOENT:
-                raise errors.BzrError("mail is not installed !?")
-            else:
-                raise
+                stdin=msgfile.fileno())
+
+            rc = process.wait()
+            if rc != 0:
+                raise errors.BzrError("Failed to send email: exit status %s" % (rc,))
+        finally:
+            msgfile.close()
 
     def _send_using_smtplib(self):
         """Use python's smtplib to send the email."""
