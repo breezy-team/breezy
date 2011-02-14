@@ -77,6 +77,11 @@ class SMTPConnection(object):
                 msg="Unable to connect to smtp server to send email to",
                 orig_error=e)
 
+        # If the server is sending a weird TLS error, but the SMTP would work
+        # fine without requesting TLS, offer the user a chance to ignore the TLS call.
+        if self._config.get_user_option('smtp_ignore_tls'):
+            return
+
         # If this fails, it just returns an error, but it shouldn't raise an
         # exception unless something goes really wrong (in which case we want
         # to fail anyway).
