@@ -1,28 +1,11 @@
-bzr-builddeb (2.5.1) unstable; urgency=low
+bzr-builddeb (2.7) UNRELEASED; urgency=low
 
   [ James Westby ]
 
-  * Don't fail if asked to use a .bz2 tarball that is already in the desired
-    location. LP: #616786
-  * Don't crash if we are asked to merge-upstream with an unrelated branch.
-    LP: #619614.
-  * Don't strip -n from the version we get in merge-upstream, as some
-    upstreams have this in there, and trying to support both means supporting
-    both badly. If you are used to doing "bzr merge-upstream --version
-    <package version>" then it will no longer work for you, use the
-    upstream version instead.
-  * Don't crash when doing merge-upstream with a branch that does a rename
-    and then ships another file with the old path in the tarball that isn't
-    in the branch.
   * Accept None as a valid previous_version value in merge_upstream(). LP: #680945
 
   [ Jelmer Vernooij ]
 
-  * Fix the auto-detection of merge mode.
-  * Don't crash on merge mode packages where there is no export-upstream
-    if we can't find the tarball.
-  * Determine Bazaar home directory using bzrlib to prevent test
-    isolation issues. LP: #614125
   * Support 'bzr tags --sort=debversion'. Closes #701244.
   * When adding a changelog entry, support git and svn snapshots.
   * Automatically use debian/source/format if package is native. Closes:
@@ -53,6 +36,33 @@ bzr-builddeb (2.5.1) unstable; urgency=low
     confusion.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 06 Feb 2011 14:25:32 +0100
+
+bzr-builddeb (2.6) unstable; urgency=low
+
+  [ James Westby ]
+
+  * Don't fail if asked to use a .bz2 tarball that is already in the desired
+    location. LP: #616786
+  * Don't crash if we are asked to merge-upstream with an unrelated branch.
+    LP: #619614.
+  * Don't strip -n from the version we get in merge-upstream, as some
+    upstreams have this in there, and trying to support both means supporting
+    both badly. If you are used to doing "bzr merge-upstream --version
+    <package version>" then it will no longer work for you, use the
+    upstream version instead.
+  * Don't crash when doing merge-upstream with a branch that does a rename
+    and then ships another file with the old path in the tarball that isn't
+    in the branch.
+
+  [ Jelmer Vernooij ]
+
+  * Fix the auto-detection of merge mode.
+  * Don't crash on merge mode packages where there is no export-upstream
+    if we can't find the tarball.
+  * Determine Bazaar home directory using bzrlib to prevent test
+    isolation issues. LP: #614125
+
+ -- James Westby <james.westby@ubuntu.com>  Wed, 18 Aug 2010 20:12:20 -0400
 
 bzr-builddeb (2.5) unstable; urgency=low
 
