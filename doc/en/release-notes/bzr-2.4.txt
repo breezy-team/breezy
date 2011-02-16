@@ -50,6 +50,9 @@ Bug Fixes
 * ``bzr annotate -r-1 file`` will now properly annotate a deleted file.
   (Andrew King, #537442)
 
+* ``bzr export`` to zip files will now set a mode on directories.
+  (Jelmer Vernooij, #207253)
+
 * ``bzr push --overwrite`` with an older revision specified will now correctly
   roll back the target branch. (Jelmer Vernooij, #386576)
 
