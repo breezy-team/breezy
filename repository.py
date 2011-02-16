@@ -57,6 +57,7 @@ class GitRepository(ForeignRepository):
     _serializer = None
     _commit_builder_class = GitCommitBuilder
     vcs = foreign_git
+    chk_bytes = None
 
     def __init__(self, gitdir, lockfiles):
         ForeignRepository.__init__(self, GitRepositoryFormat(), gitdir,
