@@ -48,7 +48,7 @@ class GitRevisions(VersionedFiles):
 
     def iterkeys(self):
         for sha in self.object_store:
-            if type(sha) == Commit:
+            if isinstance(self.object_store[sha], Commit):
                 yield (sha,)
 
     def keys(self):

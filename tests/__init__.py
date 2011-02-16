@@ -202,6 +202,7 @@ def test_suite():
         'test_revspec',
         'test_roundtrip',
         'test_transportgit',
+        'test_versionedfiles',
         ]
     testmod_names = ['%s.%s' % (__name__, t) for t in testmod_names]
     suite.addTests(loader.loadTestsFromModuleNames(testmod_names))
