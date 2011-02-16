@@ -148,7 +148,8 @@ class TestExport(TestCaseWithTransport):
         self.assertEqual(['test/a', 'test/b/', 'test/b/c', 'test/d/'], names)
 
         file_attr = stat.S_IFREG | export.zip_exporter.FILE_PERMISSIONS
-        dir_attr = stat.S_IFDIR | export.zip_exporter.ZIP_DIRECTORY_BIT
+        dir_attr = (stat.S_IFDIR | export.zip_exporter.ZIP_DIRECTORY_BIT |
+                    export.zip_exporter.DIR_PERMISSIONS)
 
         a_info = zfile.getinfo(names[0])
         self.assertEqual(file_attr, a_info.external_attr)
