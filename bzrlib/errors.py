@@ -3230,3 +3230,10 @@ class InterpolationLoop(BzrError):
     def __init__(self, string, refs):
         self.string = string
         self.refs = '->'.join(refs)
+
+class InterpolationUnknownOption(BzrError):
+
+    _fmt = 'Option %(name)s is not defined.'
+
+    def __init__(self, name):
+        self.name = name

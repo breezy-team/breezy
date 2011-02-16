@@ -367,6 +367,11 @@ class TestConfigObjInterpolation(tests.TestCase):
         c = self.get_config('foo=xxx')
         self.assertInterpolate('xxx', c, '{foo}')
 
+    def test_unknown_ref(self):
+        c = self.get_config('')
+        self.assertRaises(errors.InterpolationUnknownOption,
+                          c.interpolate, '{foo}')
+
     def test_indirect_ref(self):
         c = self.get_config('''
 foo=xxx

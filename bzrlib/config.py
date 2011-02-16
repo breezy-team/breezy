@@ -210,7 +210,10 @@ class ConfigObj(configobj.ConfigObj):
             # FIXME: This is a limited implementation, what we really need
             # is a way to query the bzr config for the value of an option,
             # respecting the scope rules -- vila 20101222
-            value = self[name]
+            try:
+                value = self[name]
+            except KeyError:
+                raise errors.InterpolationUnknownOption(name)
         return self.interpolate(value, env, ref_stack)
 
 
