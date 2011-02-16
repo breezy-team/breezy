@@ -284,8 +284,11 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     def get_format_description(self):
         return "Git Repository"
 
-    def initialize(self, url, shared=False, _internal=False):
-        raise errors.UninitializableFormat(self)
+    def initialize(self, controldir, shared=False, _internal=False):
+        from bzrlib.plugins.git.dir import GitDir
+        if not isinstance(controldir, GitDir):
+            raise errors.UninitializableFormat(self)
+        return controldir.open_repository()
 
     def check_conversion_target(self, target_repo_format):
         return target_repo_format.rich_root_data
