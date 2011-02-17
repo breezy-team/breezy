@@ -3226,7 +3226,7 @@ class RecursiveBind(BzrError):
 # config.py but the lazy import mechanism proscribes this -- vila 20101222
 class InterpolationLoop(BzrError):
 
-    _fmt = 'Loop involving %(refs)r while evaluating <%(string)s>.'
+    _fmt = 'Loop involving %(refs)r while evaluating "%(string)s".'
 
     def __init__(self, string, refs):
         self.string = string
