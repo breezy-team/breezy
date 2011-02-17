@@ -484,7 +484,7 @@ class CommitBuilderRevisionRewriter(object):
 
 
 class WorkingTreeRevisionRewriter(object):
-    
+
     def __init__(self, wt, state, merge_type=None):
         """
         :param wt: Working tree in which to do the replays.
