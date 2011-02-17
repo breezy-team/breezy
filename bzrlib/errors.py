@@ -3221,6 +3221,7 @@ class RecursiveBind(BzrError):
     def __init__(self, branch_url):
         self.branch_url = branch_url
 
+
 # FIXME: I would prefer to define the config related exception classes in
 # config.py but the lazy import mechanism proscribes this -- vila 20101222
 class InterpolationLoop(BzrError):
@@ -3230,6 +3231,7 @@ class InterpolationLoop(BzrError):
     def __init__(self, string, refs):
         self.string = string
         self.refs = '->'.join(refs)
+
 
 class InterpolationUnknownOption(BzrError):
 
