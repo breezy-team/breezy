@@ -29,7 +29,10 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.osutils import pathjoin
-from bzrlib.tests import TestCaseWithTransport
+from bzrlib.tests import (
+    fixtures,
+    TestCaseWithTransport,
+    )
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
 
@@ -141,6 +144,22 @@ class TestPull(TestCaseWithTransport):
         self.assertEqual(b.revno(),3)
         self.run_bzr('pull -r 4')
         self.assertEqual(a.revision_history(), b.revision_history())
+
+    def test_pull_tags(self):
+        """Tags are updated by pull, and revisions named in those tags are
+        fetched.
+        """
+        # Make a source, sprout a target off it
+        builder = self.make_branch_builder('source')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        target_bzrdir = source.bzrdir.sprout('target')
+        source.tags.set_tag('tag-a', 'rev-2')
+        # Pull from source
+        self.run_bzr('pull -d target source')
+        target = target_bzrdir.open_branch()
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision('rev-2')
 
     def test_overwrite_uptodate(self):
         # Make sure pull --overwrite overwrites

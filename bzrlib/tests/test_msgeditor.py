@@ -141,23 +141,34 @@ added:
   hell\u00d8
 """.encode('utf8') in template)
 
-    def make_do_nothing_editor(self):
+    def make_do_nothing_editor(self, basename='fed'):
         if sys.platform == "win32":
-            f = file('fed.bat', 'w')
+            name = basename + '.bat'
+            f = file(name, 'w')
             f.write('@rem dummy fed')
             f.close()
-            return 'fed.bat'
+            return name
         else:
-            f = file('fed.sh', 'wb')
+            name = basename + '.sh'
+            f = file(name, 'wb')
             f.write('#!/bin/sh\n')
             f.close()
-            os.chmod('fed.sh', 0755)
-            return './fed.sh'
+            os.chmod(name, 0755)
+            return './' + name
 
     def test_run_editor(self):
         self.overrideEnv('BZR_EDITOR', self.make_do_nothing_editor())
         self.assertEqual(True, msgeditor._run_editor(''),
                          'Unable to run dummy fake editor')
+
+    def test_parse_editor_name(self):
+        """Correctly interpret names with spaces.
+
+        See <https://bugs.launchpad.net/bzr/+bug/220331>
+        """
+        self.overrideEnv('BZR_EDITOR',
+            '"%s"' % self.make_do_nothing_editor('name with spaces'))
+        self.assertEqual(True, msgeditor._run_editor('a_filename'))    
 
     def make_fake_editor(self, message='test message from fed\\n'):
         """Set up environment so that an editor will be a known script.

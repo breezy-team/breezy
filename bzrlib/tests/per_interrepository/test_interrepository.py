@@ -138,7 +138,7 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
             find_ghosts=False)
         self.callDeprecated(
             ['search_missing_revision_ids(revision_id=...) was deprecated in '
-             '2.3.  Use revision_ids=[...] instead.'],
+             '2.4.  Use revision_ids=[...] instead.'],
             self.assertRaises, errors.NoSuchRevision,
             repo_b.search_missing_revision_ids, repo_a, revision_id='pizza',
             find_ghosts=False)

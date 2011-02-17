@@ -2,13 +2,14 @@
 Bazaar Release Notes
 ####################
 
-.. toctree::
-   :maxdepth: 1
+.. contents:: List of Releases
+   :depth: 1
 
-bzr 2.2.4
+bzr 2.2.5
 #########
 
-:2.2.4: NOT RELEASED YET
+:Codename: Suggestions welcome
+:2.2.5: NOT RELEASED YET
 
 Compatibility Breaks
 ********************
@@ -19,11 +20,9 @@ New Features
 Bug Fixes
 *********
 
-* Fix communications with the Launchpad web service when using
-  launchpadlib >= 1.5.5.  This was a latent bug in bzr's communication
-  with Launchpad's production instance, which only became a problem when
-  the default instance was switched from edge to production in bzr 2.2.3.
-  (Max Bowsher, #707075)
+* Correctly handle ``bzr log`` and `get_known_graph_ancestry` on a
+  doubly-stacked branch.
+  (James Westby, Martin Pool, #715000)
 
 Improvements
 ************
@@ -39,6 +38,61 @@ Internals
 
 Testing
 *******
+
+
+bzr 2.2.4
+#########
+
+:2.2.4: 2011-02-04
+
+This is a bugfix release. Only one bug has been fixed, a regression from 2.2.3
+involving only certain operations with launchpad. Upgrading is recommended for
+all users on earlier 2.2 releases.
+
+Bug Fixes
+*********
+
+* Fix communications with the Launchpad web service when using
+  launchpadlib >= 1.5.5.  This was a latent bug in bzr's communication
+  with Launchpad's production instance, which only became a problem when
+  the default instance was switched from edge to production in bzr 2.2.3.
+  (Max Bowsher, #707075)
+
+
+bzr 2.2.3
+#########
+
+:2.2.3: 2011-01-20
+
+This is a bugfix release. Upgrading is recommended for all users
+on earlier 2.2 releases.
+
+Compatibility Breaks
+********************
+
+* Launchpad has announced that the ``edge.launchpad.net`` instance is
+  deprecated and may be shut down in the future
+  <http://blog.launchpad.net/general/edge-is-deprecated>.  Bazaar has therefore
+  been updated in this release to talk to the main (``launchpad.net``) servers,
+  rather than the ``edge`` ones. (Vincent Ladeuil, #583667)
+
+bzr 2.2.4
+#########
+
+:2.2.4: 2011-02-04
+
+This is a bugfix release. Only one bug has been fixed, a regression from 2.2.3
+involving only certain operations with launchpad. Upgrading is recommended for
+all users on earlier 2.2 releases.
+
+Bug Fixes
+*********
+
+* Fix communications with the Launchpad web service when using
+  launchpadlib >= 1.5.5.  This was a latent bug in bzr's communication
+  with Launchpad's production instance, which only became a problem when
+  the default instance was switched from edge to production in bzr 2.2.3.
+  (Max Bowsher, #707075)
 
 
 bzr 2.2.3

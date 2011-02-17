@@ -32,6 +32,7 @@ import threading
 import bzrlib
 from bzrlib import (
     bzrdir,
+    cethread,
     config,
     errors,
     osutils,
@@ -178,8 +179,8 @@ class RecordingServer(object):
         self._sock.bind(('127.0.0.1', 0))
         self.host, self.port = self._sock.getsockname()
         self._ready = threading.Event()
-        self._thread = test_server.ThreadWithException(
-            event=self._ready, target=self._accept_read_and_reply)
+        self._thread = test_server.TestThread(
+            sync_event=self._ready, target=self._accept_read_and_reply)
         self._thread.start()
         if 'threads' in tests.selftest_debug_flags:
             sys.stderr.write('Thread started: %s\n' % (self._thread.ident,))
@@ -1079,6 +1080,11 @@ class TestHttpProxyWhiteBox(tests.TestCase):
         handler.set_proxy(request, 'http')
         return request
 
+    def assertEvaluateProxyBypass(self, expected, host, no_proxy):
+        handler = _urllib2_wrappers.ProxyHandler()
+        self.assertEquals(expected,
+                          handler.evaluate_proxy_bypass(host, no_proxy))
+
     def test_empty_user(self):
         self.overrideEnv('http_proxy', 'http://bar.com')
         request = self._proxied_request()
@@ -1088,6 +1094,26 @@ class TestHttpProxyWhiteBox(tests.TestCase):
         """A proxy env variable without scheme"""
         self.overrideEnv('http_proxy', 'host:1234')
         self.assertRaises(errors.InvalidURL, self._proxied_request)
+
+    def test_evaluate_proxy_bypass_true(self):
+        """The host is not proxied"""
+        self.assertEvaluateProxyBypass(True, 'example.com', 'example.com')
+        self.assertEvaluateProxyBypass(True, 'bzr.example.com', '*example.com')
+
+    def test_evaluate_proxy_bypass_false(self):
+        """The host is proxied"""
+        self.assertEvaluateProxyBypass(False, 'bzr.example.com', None)
+
+    def test_evaluate_proxy_bypass_unknown(self):
+        """The host is not explicitly proxied"""
+        self.assertEvaluateProxyBypass(None, 'example.com', 'not.example.com')
+        self.assertEvaluateProxyBypass(None, 'bzr.example.com', 'example.com')
+
+    def test_evaluate_proxy_bypass_empty_entries(self):
+        """Ignore empty entries"""
+        self.assertEvaluateProxyBypass(None, 'example.com', '')
+        self.assertEvaluateProxyBypass(None, 'example.com', ',')
+        self.assertEvaluateProxyBypass(None, 'example.com', 'foo,,bar')
 
 
 class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):

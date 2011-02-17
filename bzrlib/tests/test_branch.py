@@ -147,6 +147,24 @@ class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
         return "opened supported branch."
 
 
+class SampleExtraBranchFormat(_mod_branch.BranchFormat):
+    """A sample format that is not usable in a metadir."""
+
+    def get_format_string(self):
+        # This format is not usable in a metadir.
+        return None
+
+    def network_name(self):
+        # Network name always has to be provided.
+        return "extra"
+
+    def initialize(self, a_bzrdir, name=None):
+        raise NotImplementedError(self.initialize)
+
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+        raise NotImplementedError(self.open)
+
+
 class TestBzrBranchFormat(tests.TestCaseWithTransport):
     """Tests for the BzrBranchFormat facility."""
 
@@ -162,6 +180,17 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             found_format = _mod_branch.BranchFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(_mod_branch.BzrBranchFormat5(), "bar")
+
+    def test_extra_format(self):
+        dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
+        SampleSupportedBranchFormat().initialize(dir)
+        format = SampleExtraBranchFormat()
+        _mod_branch.BranchFormat.register_extra_format(format)
+        self.addCleanup(_mod_branch.BranchFormat.unregister_extra_format,
+            format)
+        self.assertTrue(format in _mod_branch.BranchFormat.get_formats())
+        self.assertEquals(format,
+            _mod_branch.network_format_registry.get("extra"))
 
     def test_find_format_factory(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())

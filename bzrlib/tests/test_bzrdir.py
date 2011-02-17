@@ -31,6 +31,7 @@ from bzrlib import (
     help_topics,
     lock,
     repository,
+    revision as _mod_revision,
     osutils,
     remote,
     symbol_versioning,
@@ -171,7 +172,7 @@ class TestFormatRegistry(TestCase):
             self.assertIs(bzrdir.format_registry.get('dirstate-with-subtree'),
                           bzrdir.format_registry.get('default'))
             self.assertIs(
-                repository.RepositoryFormat.get_default_format().__class__,
+                repository.format_registry.get_default().__class__,
                 knitrepo.RepositoryFormatKnit3)
         finally:
             bzrdir.format_registry.set_default_repository(old_default)
@@ -1340,6 +1341,9 @@ class _TestBranch(bzrlib.branch.Branch):
 
     def copy_content_into(self, destination, revision_id=None):
         self.calls.append('copy_content_into')
+
+    def last_revision(self):
+        return _mod_revision.NULL_REVISION
 
     def get_parent(self):
         return self._parent

@@ -826,7 +826,7 @@ class InterWeaveRepo(InterSameDataRepository):
         if symbol_versioning.deprecated_passed(revision_id):
             symbol_versioning.warn(
                 'search_missing_revision_ids(revision_id=...) was '
-                'deprecated in 2.3.  Use revision_ids=[...] instead.',
+                'deprecated in 2.4.  Use revision_ids=[...] instead.',
                 DeprecationWarning, stacklevel=2)
             if revision_ids is not None:
                 raise AssertionError(
@@ -857,11 +857,6 @@ class InterWeaveRepo(InterSameDataRepository):
             result_set = set(
                 self.source._eliminate_revisions_not_present(required_revisions))
         return self.source.revision_ids_to_search_result(result_set)
-
-
-_legacy_formats = [RepositoryFormat4(),
-                   RepositoryFormat5(),
-                   RepositoryFormat6()]
 
 
 InterRepository.register_optimiser(InterWeaveRepo)

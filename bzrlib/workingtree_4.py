@@ -1406,6 +1406,8 @@ class WorkingTree6(ContentFilteringDirStateWorkingTree):
 
 class DirStateWorkingTreeFormat(WorkingTreeFormat3):
 
+    missing_parent_conflicts = True
+
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
         """See WorkingTreeFormat.initialize().

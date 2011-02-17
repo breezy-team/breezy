@@ -2882,6 +2882,9 @@ class WorkingTreeFormat(object):
     _formats = {}
     """The known formats."""
 
+    _extra_formats = []
+    """Extra formats that can not be used in a metadir."""
+
     requires_rich_root = False
 
     upgrade_recommended = False
@@ -2889,6 +2892,9 @@ class WorkingTreeFormat(object):
     requires_normalized_unicode_filenames = False
 
     case_sensitive_filename = "FoRMaT"
+
+    missing_parent_conflicts = False
+    """If this format supports missing parent conflicts."""
 
     @classmethod
     def find_format(klass, a_bzrdir):
@@ -2944,6 +2950,18 @@ class WorkingTreeFormat(object):
         klass._formats[format.get_format_string()] = format
 
     @classmethod
+    def register_extra_format(klass, format):
+        klass._extra_formats.append(format)
+
+    @classmethod
+    def unregister_extra_format(klass, format):
+        klass._extra_formats.remove(format)
+
+    @classmethod
+    def get_formats(klass):
+        return klass._formats.values() + klass._extra_formats
+
+    @classmethod
     def set_default_format(klass, format):
         klass._default_format = format
 
@@ -2963,6 +2981,8 @@ class WorkingTreeFormat2(WorkingTreeFormat):
     requires_normalized_unicode_filenames = True
 
     case_sensitive_filename = "Branch-FoRMaT"
+
+    missing_parent_conflicts = False
 
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
@@ -3053,6 +3073,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
     """
 
     upgrade_recommended = True
+
+    missing_parent_conflicts = True
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""
@@ -3177,7 +3199,7 @@ WorkingTreeFormat.register_format(WorkingTreeFormat5())
 WorkingTreeFormat.register_format(WorkingTreeFormat4())
 WorkingTreeFormat.register_format(WorkingTreeFormat3())
 WorkingTreeFormat.set_default_format(__default_format)
-# formats which have no format string are not discoverable
-# and not independently creatable, so are not registered.
-_legacy_formats = [WorkingTreeFormat2(),
-                   ]
+# Register extra formats which have no format string are not discoverable
+# and not independently creatable. They are implicitly created as part of
+# e.g. older Bazaar formats or foreign formats.
+WorkingTreeFormat.register_extra_format(WorkingTreeFormat2())
