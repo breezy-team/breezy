@@ -3233,7 +3233,8 @@ class InterpolationLoop(BzrError):
 
 class InterpolationUnknownOption(BzrError):
 
-    _fmt = 'Option %(name)s is not defined.'
+    _fmt = 'Option %(name)s is not defined while interpolating "%(string)s".'
 
-    def __init__(self, name):
+    def __init__(self, name, string):
         self.name = name
+        self.string = string

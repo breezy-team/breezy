@@ -161,11 +161,11 @@ class ConfigObj(configobj.ConfigObj):
         :param env: An option dict defining additional configuration options or
             overriding existing ones.
 
-        :param _ref_stack: Private list containing the options being
-            interpolated to detect loops.
-
         :returns: The interpolated string.
         """
+        return self._interpolate_string(string, env)
+
+    def _interpolate_string(self, string, env=None, _ref_stack=None):
         if _ref_stack is None:
             # What references are currently resolved (to detect loops)
             _ref_stack = []
@@ -194,7 +194,10 @@ class ConfigObj(configobj.ConfigObj):
                     if name in _ref_stack:
                         raise errors.InterpolationLoop(string, _ref_stack)
                     _ref_stack.append(name)
-                    value = self._interpolate_option(name, env, _ref_stack)
+                    try:
+                        value = self._interpolate_option(name, env, _ref_stack)
+                    except KeyError:
+                        raise errors.InterpolationUnknownOption(name, string)
                     chunks.append(value)
                     _ref_stack.pop()
                     is_ref = False
@@ -210,11 +213,8 @@ class ConfigObj(configobj.ConfigObj):
             # FIXME: This is a limited implementation, what we really need
             # is a way to query the bzr config for the value of an option,
             # respecting the scope rules -- vila 20101222
-            try:
-                value = self[name]
-            except KeyError:
-                raise errors.InterpolationUnknownOption(name)
-        return self.interpolate(value, env, ref_stack)
+            value = self[name]
+        return self._interpolate_string(value, env, ref_stack)
 
 
 class Config(object):
