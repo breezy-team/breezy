@@ -326,6 +326,8 @@ class Config(object):
         if interpolate:
             if isinstance(value, list):
                 value = self._interpolate_list(value)
+            elif isinstance(value, dict):
+                raise ValueError('Dicts do not support interpolation')
             else:
                 value = self._interpolate_string(value)
         return value
