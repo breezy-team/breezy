@@ -331,7 +331,6 @@ class Config(object):
             else:
                 value = self._interpolate_string(value)
         return value
-        
 
     def get_user_option_as_bool(self, option_name):
         """Get a generic option as a boolean - no special process, no default.
