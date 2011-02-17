@@ -151,70 +151,6 @@ class ConfigObj(configobj.ConfigObj):
                 pass
         return self[section][name]
 
-    option_ref_re = None
-
-    def interpolate(self, string, env=None, _ref_stack=None):
-        """Interpolate the string in the configuration context.
-
-        :param string: The string to interpolate
-
-        :param env: An option dict defining additional configuration options or
-            overriding existing ones.
-
-        :returns: The interpolated string.
-        """
-        return self._interpolate_string(string, env)
-
-    def _interpolate_string(self, string, env=None, _ref_stack=None):
-        if _ref_stack is None:
-            # What references are currently resolved (to detect loops)
-            _ref_stack = []
-        if self.option_ref_re is None:
-            # We want to match the most embedded reference first (i.e. for
-            # '{{foo}}' we will get '{foo}',
-            # for '{bar{baz}}' we will get '{baz}'
-            self.option_ref_re = re.compile('({[^{}]+})')
-        result = string
-        # We need to iterate until no more refs appear ({{foo}} will need two
-        # iterations for example).
-        while True:
-            is_ref = False
-            raw_chunks = self.option_ref_re.split(result)
-            if len(raw_chunks) == 1:
-                # Shorcut the trivial case: no refs
-                return result
-            chunks = []
-            # Split will isolate refs so that every other chunk is a ref
-            for chunk in raw_chunks:
-                if not is_ref:
-                    chunks.append(chunk)
-                    is_ref = True
-                else:
-                    name = chunk[1:-1]
-                    if name in _ref_stack:
-                        raise errors.InterpolationLoop(string, _ref_stack)
-                    _ref_stack.append(name)
-                    try:
-                        value = self._interpolate_option(name, env, _ref_stack)
-                    except KeyError:
-                        raise errors.InterpolationUnknownOption(name, string)
-                    chunks.append(value)
-                    _ref_stack.pop()
-                    is_ref = False
-            result = ''.join(chunks)
-        return result
-
-    def _interpolate_option(self, name, env, ref_stack):
-        if env is not None and name in env:
-            # Special case, values provided in env takes precedence over
-            # anything else
-            value = env[name]
-        else:
-            # FIXME: This is a limited implementation, what we really need
-            # is a way to query the bzr config for the value of an option,
-            # respecting the scope rules -- vila 20101222
-            value = self[name]
-        return self._interpolate_string(value, env, ref_stack)
 
 
 class Config(object):
@@ -256,13 +192,144 @@ class Config(object):
     def _get_signing_policy(self):
         """Template method to override signature creation policy."""
 
+    option_ref_re = None
+
+    def interpolate(self, string, env=None):
+        """Interpolate the string in the configuration context.
+
+        :param string: The string to interpolate
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :returns: The interpolated string.
+        """
+        return self._interpolate_string(string, env)
+
+    def _interpolate_list(self, slist, env=None, _ref_stack=None):
+        """Interpolate a list of strings in the configuration context.
+
+        :param slist: A list of strings.
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :param _ref_stack: Private list containing the options being
+            interpolated to detect loops.
+
+        :returns: The flatten list of interpolated strings.
+        """
+        # interpolate each value separately flattening lists
+        result = []
+        for s in slist:
+            value = self._interpolate_string(s, env, _ref_stack)
+            if isinstance(value, list):
+                result.extend(value)
+            else:
+                result.append(value)
+        return result
+
+    def _interpolate_string(self, string, env=None, _ref_stack=None):
+        """Interpolate the string in the configuration context.
+
+        :param string: The string to interpolate
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :param _ref_stack: Private list containing the options being
+            interpolated to detect loops.
+
+        :returns: The interpolated string.
+        """
+        if string is None:
+            # Not much to interpolate there
+            return None
+        if _ref_stack is None:
+            # What references are currently resolved (to detect loops)
+            _ref_stack = []
+        if self.option_ref_re is None:
+            # We want to match the most embedded reference first (i.e. for
+            # '{{foo}}' we will get '{foo}',
+            # for '{bar{baz}}' we will get '{baz}'
+            self.option_ref_re = re.compile('({[^{}]+})')
+        result = string
+        # We need to iterate until no more refs appear ({{foo}} will need two
+        # iterations for example).
+        while True:
+            try:
+                raw_chunks = self.option_ref_re.split(result)
+            except TypeError:
+                import pdb; pdb.set_trace()
+            if len(raw_chunks) == 1:
+                # Shorcut the trivial case: no refs
+                return result
+            chunks = []
+            list_value = False
+            # Split will isolate refs so that every other chunk is a ref
+            chunk_is_ref = False
+            for chunk in raw_chunks:
+                if not chunk_is_ref:
+                    if chunk:
+                        # Keep only non-empty strings
+                        chunks.append(chunk)
+                    chunk_is_ref = True
+                else:
+                    name = chunk[1:-1]
+                    if name in _ref_stack:
+                        raise errors.InterpolationLoop(string, _ref_stack)
+                    _ref_stack.append(name)
+                    value = self._interpolate_option(name, env, _ref_stack)
+                    if value is None:
+                        raise errors.InterpolationUnknownOption(name, string)
+                    if isinstance(value, list):
+                        list_value = True
+                        chunks.extend(value)
+                    else:
+                        chunks.append(value)
+                    _ref_stack.pop()
+                    chunk_is_ref = False
+            if list_value:
+                # Once a list appears as the result of an interpolation, all
+                # callers will get a list result. This allows a consistent
+                # behavior even when some options in the interpolation chain
+                # may be seen defined as strings even if their interpolated
+                # value is a list.
+                return self._interpolate_list(chunks, env, _ref_stack)
+            else:
+                result = ''.join(chunks)
+        return result
+
+    def _interpolate_option(self, name, env, _ref_stack):
+        if env is not None and name in env:
+            # Special case, values provided in env takes precedence over
+            # anything else
+            value = env[name]
+        else:
+            # FIXME: This is a limited implementation, what we really need
+            # is a way to query the bzr config for the value of an option,
+            # respecting the scope rules -- vila 20101222
+            value = self.get_user_option(name, interpolate=False)
+            if isinstance(value, list):
+                value = self._interpolate_list(value, env, _ref_stack)
+            else:
+                value = self._interpolate_string(value, env, _ref_stack)
+        return value
+
     def _get_user_option(self, option_name):
         """Template method to provide a user option."""
         return None
 
-    def get_user_option(self, option_name):
+    def get_user_option(self, option_name, interpolate=True):
         """Get a generic option - no special process, no default."""
-        return self._get_user_option(option_name)
+        value = self._get_user_option(option_name)
+        if interpolate:
+            if isinstance(value, list):
+                value = self._interpolate_list(value)
+            else:
+                value = self._interpolate_string(value)
+        return value
+        
 
     def get_user_option_as_bool(self, option_name):
         """Get a generic option as a boolean - no special process, no default.
@@ -289,7 +356,8 @@ class Config(object):
         """
         l = self._get_user_option(option_name)
         if isinstance(l, (str, unicode)):
-            # A single value, most probably the user forgot the final ','
+            # A single value, most probably the user forgot (or didn't care to
+            # add) the final ','
             l = [l]
         return l
 
@@ -439,8 +507,9 @@ class Config(object):
         # be found in the known_merge_tools if it's not found in the config.
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.
-        command_line = (self.get_user_option('bzr.mergetool.%s' % name) or
-                        mergetools.known_merge_tools.get(name, None))
+        command_line = (self.get_user_option('bzr.mergetool.%s' % name,
+                                             interpolate=False)
+                        or mergetools.known_merge_tools.get(name, None))
         return command_line
 
 

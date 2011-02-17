@@ -338,69 +338,6 @@ class TestConfigObjErrors(tests.TestCase):
             self.fail('Error in config file not detected')
 
 
-
-class TestConfigObjInterpolation(tests.TestCase):
-
-    def get_config(self, string=None):
-        if string is None:
-            string = ''
-        string = StringIO(string.encode('utf-8'))
-        c = config.ConfigObj(string, encoding='utf-8')
-        return c
-
-    def assertInterpolate(self, expected, conf, string, env=None):
-        self.assertEquals(expected, conf.interpolate(string, env))
-
-    def test_no_interpolation(self):
-        c = self.get_config('')
-        self.assertInterpolate('foo', c, 'foo')
-
-    def test_env_adding_options(self):
-        c = self.get_config('')
-        self.assertInterpolate('bar', c, '{foo}', {'foo': 'bar'})
-
-    def test_env_overriding_options(self):
-        c = self.get_config('foo=baz')
-        self.assertInterpolate('bar', c, '{foo}', {'foo': 'bar'})
-
-    def test_simple_ref(self):
-        c = self.get_config('foo=xxx')
-        self.assertInterpolate('xxx', c, '{foo}')
-
-    def test_unknown_ref(self):
-        c = self.get_config('')
-        self.assertRaises(errors.InterpolationUnknownOption,
-                          c.interpolate, '{foo}')
-
-    def test_indirect_ref(self):
-        c = self.get_config('''
-foo=xxx
-bar={foo}
-''')
-        self.assertInterpolate('xxx', c, '{bar}')
-
-    def test_embedded_ref(self):
-        c = self.get_config('''
-foo=xxx
-bar=foo
-''')
-        self.assertInterpolate('xxx', c, '{{bar}}')
-
-    def test_simple_loop(self):
-        c = self.get_config('foo={foo}')
-        self.assertRaises(errors.InterpolationLoop, c.interpolate, '{foo}')
-
-    def test_indirect_loop(self):
-        c = self.get_config('''
-foo={bar}
-bar={baz}
-baz={foo}''')
-        e = self.assertRaises(errors.InterpolationLoop,
-                              c.interpolate, '{foo}')
-        self.assertEquals('foo->bar->baz', e.refs)
-        self.assertEquals('{foo}', e.string)
-
-
 class TestConfig(tests.TestCase):
 
     def test_constructs(self):
@@ -577,6 +514,7 @@ class TestIniConfigBuilding(TestIniConfig):
             ' Use IniBasedConfig(_content=xxx) instead.'],
             conf._get_parser, file=config_file)
 
+
 class TestIniConfigSaving(tests.TestCaseInTempDir):
 
     def test_cant_save_without_a_file_name(self):
@@ -588,6 +526,116 @@ class TestIniConfigSaving(tests.TestCaseInTempDir):
         conf = config.IniBasedConfig.from_string(
             content, file_name='./test.conf', save=True)
         self.assertFileEqual(content, 'test.conf')
+
+
+class TestIniConfigInterpolate(tests.TestCaseInTempDir):
+
+    def test_simple_ref(self):
+        conf = config.IniBasedConfig.from_string('foo={bar}\nbar=baz\n')
+        self.assertEquals('baz', conf.get_user_option('foo'))
+
+
+class TestIniConfigInterpolation(tests.TestCase):
+    """Test interpolation from the IniConfig level.
+
+    What we really want here is to test the Config level, but the class being
+    abstract as far as storing values is concerned, this can't be done
+    properly (yet).
+    """
+    # FIXME: This should be rewritten when all configs share a storage
+    # implementation.
+
+    def get_config(self, string=None):
+        if string is None:
+            string = ''
+        c = config.IniBasedConfig.from_string(string)
+        return c
+
+    def assertInterpolate(self, expected, conf, string, env=None):
+        self.assertEquals(expected, conf.interpolate(string, env))
+
+    def test_no_interpolation(self):
+        c = self.get_config('')
+        self.assertInterpolate('foo', c, 'foo')
+
+    def test_env_adding_options(self):
+        c = self.get_config('')
+        self.assertInterpolate('bar', c, '{foo}', {'foo': 'bar'})
+
+    def test_env_overriding_options(self):
+        c = self.get_config('foo=baz')
+        self.assertInterpolate('bar', c, '{foo}', {'foo': 'bar'})
+
+    def test_simple_ref(self):
+        c = self.get_config('foo=xxx')
+        self.assertInterpolate('xxx', c, '{foo}')
+
+    def test_unknown_ref(self):
+        c = self.get_config('')
+        self.assertRaises(errors.InterpolationUnknownOption,
+                          c.interpolate, '{foo}')
+
+    def test_indirect_ref(self):
+        c = self.get_config('''
+foo=xxx
+bar={foo}
+''')
+        self.assertInterpolate('xxx', c, '{bar}')
+
+    def test_embedded_ref(self):
+        c = self.get_config('''
+foo=xxx
+bar=foo
+''')
+        self.assertInterpolate('xxx', c, '{{bar}}')
+
+    def test_simple_loop(self):
+        c = self.get_config('foo={foo}')
+        self.assertRaises(errors.InterpolationLoop, c.interpolate, '{foo}')
+
+    def test_indirect_loop(self):
+        c = self.get_config('''
+foo={bar}
+bar={baz}
+baz={foo}''')
+        e = self.assertRaises(errors.InterpolationLoop,
+                              c.interpolate, '{foo}')
+        self.assertEquals('foo->bar->baz', e.refs)
+        self.assertEquals('{foo}', e.string)
+
+    def test_list(self):
+        conf = self.get_config('''
+foo=start
+bar=middle
+baz=end
+list={foo},{bar},{baz}
+''')
+        self.assertEquals(['start', 'middle', 'end'],
+                           conf.get_user_option('list'))
+
+    def test_cascading_list(self):
+        conf = self.get_config('''
+foo=start,{bar}
+bar=middle,{baz}
+baz=end
+list={foo}
+''')
+        self.assertEquals(['start', 'middle', 'end'],
+                           conf.get_user_option('list'))
+
+    def test_pathological_hidden_list(self):
+        conf = self.get_config('''
+foo=bin
+bar=go
+start={foo
+middle=},{
+end=bar}
+hidden={start}{middle}{end}
+''')
+        # Nope, it's either a string or a list, and the list wins as soon as a
+        # ',' appears, so the string concatenation never occur.
+        self.assertEquals(['{foo', '}', '{', 'bar}'],
+                          conf.get_user_option('hidden'))
 
 
 class TestIniBaseConfigOnDisk(tests.TestCaseInTempDir):
@@ -1048,7 +1096,7 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         conf = self._get_empty_config()
         cmdline = conf.find_merge_tool('kdiff3')
         self.assertEquals('kdiff3 {base} {this} {other} -o {result}', cmdline)
-        
+
     def test_find_merge_tool_override_known(self):
         conf = self._get_empty_config()
         conf.set_user_option('bzr.mergetool.kdiff3', 'kdiff3 blah')
