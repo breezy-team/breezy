@@ -30,14 +30,16 @@ from bzrlib import trace
 def _get_parameters(func):
     """Recreate the parameters for a function using introspection.
 
-    :return: (function_params, calling_params)
+    :return: (function_params, calling_params, default_values)
         function_params: is a string representing the parameters of the
             function. (such as "a, b, c=None, d=1")
             This is used in the function declaration.
         calling_params: is another string representing how you would call the
             function with the correct parameters. (such as "a, b, c=c, d=d")
-            Assuming you sued function_params in the function declaration, this
+            Assuming you used function_params in the function declaration, this
             is the parameters to put in the function call.
+        default_values_block: a dict with the default values to be passed as
+            the scope for the 'exec' statement.
 
         For example:
 
@@ -49,9 +51,15 @@ def _get_parameters(func):
     # it globally.
     import inspect
     args, varargs, varkw, defaults = inspect.getargspec(func)
+    defaults_dict = {}
+    def formatvalue(value):
+        default_name = '__default_%d' % len(defaults_dict)
+        defaults_dict[default_name] = value
+        return '=' + default_name
     formatted = inspect.formatargspec(args, varargs=varargs,
                                       varkw=varkw,
-                                      defaults=defaults)
+                                      defaults=defaults,
+                                      formatvalue=formatvalue)
     if defaults is None:
         args_passed = args
     else:
@@ -65,7 +73,7 @@ def _get_parameters(func):
         args_passed.append('**' + varkw)
     args_passed = ', '.join(args_passed)
 
-    return formatted[1:-1], args_passed
+    return formatted[1:-1], args_passed, defaults_dict
 
 
 def _pretty_needs_read_lock(unbound):
@@ -107,14 +115,17 @@ def %(name)s_read_locked(%(params)s):
         return result
 read_locked = %(name)s_read_locked
 """
-    params, passed_params = _get_parameters(unbound)
+    params, passed_params, defaults_dict = _get_parameters(unbound)
     variables = {'name':unbound.__name__,
                  'params':params,
                  'passed_params':passed_params,
                 }
     func_def = template % variables
 
-    exec func_def in locals()
+    scope = dict(defaults_dict)
+    scope['unbound'] = unbound
+    exec func_def in scope
+    read_locked = scope['read_locked']
 
     read_locked.__doc__ = unbound.__doc__
     read_locked.__name__ = unbound.__name__
@@ -172,14 +183,17 @@ def %(name)s_write_locked(%(params)s):
         return result
 write_locked = %(name)s_write_locked
 """
-    params, passed_params = _get_parameters(unbound)
+    params, passed_params, defaults_dict = _get_parameters(unbound)
     variables = {'name':unbound.__name__,
                  'params':params,
                  'passed_params':passed_params,
                 }
     func_def = template % variables
 
-    exec func_def in locals()
+    scope = dict(defaults_dict)
+    scope['unbound'] = unbound
+    exec func_def in scope
+    write_locked = scope['write_locked']
 
     write_locked.__doc__ = unbound.__doc__
     write_locked.__name__ = unbound.__name__

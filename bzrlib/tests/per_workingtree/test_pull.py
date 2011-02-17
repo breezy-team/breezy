@@ -15,7 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 
 from bzrlib import tests
 from bzrlib.tests import per_workingtree
@@ -85,10 +84,10 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         return builder.get_branch()
 
     def test_pull_orphans(self):
-        from bzrlib import workingtree
-        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+        if not self.workingtree_format.missing_parent_conflicts:
             raise tests.TestSkipped(
-                'WorkingTreeFormat2 does not support missing parent conflicts')
+                '%r does not support missing parent conflicts' %
+                    self.workingtree_format)
         trunk = self.make_branch_deleting_dir('trunk')
         work = trunk.bzrdir.sprout('work', revision_id='2').open_workingtree()
         work.branch.get_config().set_user_option(

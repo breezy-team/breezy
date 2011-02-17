@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ from subprocess import call
 import sys
 
 from bzrlib import (
+    cmdline,
     config,
     osutils,
     trace,
@@ -59,7 +60,7 @@ def _get_editor():
 def _run_editor(filename):
     """Try to execute an editor to edit the commit message."""
     for candidate, candidate_source in _get_editor():
-        edargs = candidate.split(' ')
+        edargs = cmdline.split(candidate)
         try:
             ## mutter("trying editor: %r", (edargs +[filename]))
             x = call(edargs + [filename])
