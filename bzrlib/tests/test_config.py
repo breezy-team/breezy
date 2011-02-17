@@ -528,13 +528,6 @@ class TestIniConfigSaving(tests.TestCaseInTempDir):
         self.assertFileEqual(content, 'test.conf')
 
 
-class TestIniConfigInterpolate(tests.TestCaseInTempDir):
-
-    def test_simple_ref(self):
-        conf = config.IniBasedConfig.from_string('foo={bar}\nbar=baz\n')
-        self.assertEquals('baz', conf.get_user_option('foo'))
-
-
 class TestIniConfigInterpolation(tests.TestCase):
     """Test interpolation from the IniConfig level.
 
