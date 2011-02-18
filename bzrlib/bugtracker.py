@@ -247,7 +247,7 @@ class URLParametrizedBugTracker(BugTracker):
     def get(self, abbreviation, branch):
         config = branch.get_config()
         url = config.get_user_option(
-            "%s_%s_url" % (self.type_name, abbreviation), interpolate=False)
+            "%s_%s_url" % (self.type_name, abbreviation), expand=False)
         if url is None:
             return None
         self._base_url = url

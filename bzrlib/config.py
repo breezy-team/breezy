@@ -133,7 +133,7 @@ STORE_GLOBAL = 4
 class ConfigObj(configobj.ConfigObj):
 
     def __init__(self, infile=None, **kwargs):
-        # We define our own interpolation mechanism
+        # We define our own interpolation mechanism calling it option expansion
         super(ConfigObj, self).__init__(infile=infile,
                                         interpolation=False,
                                         **kwargs)
@@ -194,20 +194,20 @@ class Config(object):
 
     option_ref_re = None
 
-    def interpolate(self, string, env=None):
-        """Interpolate the string in the configuration context.
+    def expand_options(self, string, env=None):
+        """Expand option references in the string in the configuration context.
 
-        :param string: The string to interpolate
+        :param string: The string containing option to expand.
 
         :param env: An option dict defining additional configuration options or
             overriding existing ones.
 
-        :returns: The interpolated string.
+        :returns: The expanded string.
         """
-        return self._interpolate_string(string, env)
+        return self._expand_options_in_string(string, env)
 
-    def _interpolate_list(self, slist, env=None, _ref_stack=None):
-        """Interpolate a list of strings in the configuration context.
+    def _expand_options_in_list(self, slist, env=None, _ref_stack=None):
+        """Expand options in  a list of strings in the configuration context.
 
         :param slist: A list of strings.
 
@@ -215,35 +215,35 @@ class Config(object):
             overriding existing ones.
 
         :param _ref_stack: Private list containing the options being
-            interpolated to detect loops.
+            expanded to detect loops.
 
-        :returns: The flatten list of interpolated strings.
+        :returns: The flatten list of expanded strings.
         """
-        # interpolate each value separately flattening lists
+        # expand options in each value separately flattening lists
         result = []
         for s in slist:
-            value = self._interpolate_string(s, env, _ref_stack)
+            value = self._expand_options_in_string(s, env, _ref_stack)
             if isinstance(value, list):
                 result.extend(value)
             else:
                 result.append(value)
         return result
 
-    def _interpolate_string(self, string, env=None, _ref_stack=None):
-        """Interpolate the string in the configuration context.
+    def _expand_options_in_string(self, string, env=None, _ref_stack=None):
+        """Expand options in the string in the configuration context.
 
-        :param string: The string to interpolate
+        :param string: The string to be expanded.
 
         :param env: An option dict defining additional configuration options or
             overriding existing ones.
 
         :param _ref_stack: Private list containing the options being
-            interpolated to detect loops.
+            expanded to detect loops.
 
-        :returns: The interpolated string.
+        :returns: The expanded string.
         """
         if string is None:
-            # Not much to interpolate there
+            # Not much to expand there
             return None
         if _ref_stack is None:
             # What references are currently resolved (to detect loops)
@@ -277,11 +277,11 @@ class Config(object):
                 else:
                     name = chunk[1:-1]
                     if name in _ref_stack:
-                        raise errors.InterpolationLoop(string, _ref_stack)
+                        raise errors.OptionExpansionLoop(string, _ref_stack)
                     _ref_stack.append(name)
-                    value = self._interpolate_option(name, env, _ref_stack)
+                    value = self._expand_option(name, env, _ref_stack)
                     if value is None:
-                        raise errors.InterpolationUnknownOption(name, string)
+                        raise errors.ExpandingUnknownOption(name, string)
                     if isinstance(value, list):
                         list_value = True
                         chunks.extend(value)
@@ -290,17 +290,17 @@ class Config(object):
                     _ref_stack.pop()
                     chunk_is_ref = False
             if list_value:
-                # Once a list appears as the result of an interpolation, all
+                # Once a list appears as the result of an expansion, all
                 # callers will get a list result. This allows a consistent
-                # behavior even when some options in the interpolation chain
-                # may be seen defined as strings even if their interpolated
+                # behavior even when some options in the expansion chain
+                # may be seen defined as strings even if their expanded
                 # value is a list.
-                return self._interpolate_list(chunks, env, _ref_stack)
+                return self._expand_options_in_list(chunks, env, _ref_stack)
             else:
                 result = ''.join(chunks)
         return result
 
-    def _interpolate_option(self, name, env, _ref_stack):
+    def _expand_option(self, name, env, _ref_stack):
         if env is not None and name in env:
             # Special case, values provided in env takes precedence over
             # anything else
@@ -309,29 +309,37 @@ class Config(object):
             # FIXME: This is a limited implementation, what we really need
             # is a way to query the bzr config for the value of an option,
             # respecting the scope rules -- vila 20101222
-            value = self.get_user_option(name, interpolate=False)
+            value = self.get_user_option(name, expand=False)
             if isinstance(value, list):
-                value = self._interpolate_list(value, env, _ref_stack)
+                value = self._expand_options_in_list(value, env, _ref_stack)
             else:
-                value = self._interpolate_string(value, env, _ref_stack)
+                value = self._expand_options_in_string(value, env, _ref_stack)
         return value
 
     def _get_user_option(self, option_name):
         """Template method to provide a user option."""
         return None
 
-    def get_user_option(self, option_name, interpolate=True):
-        """Get a generic option - no special process, no default."""
+    def get_user_option(self, option_name, expand=True):
+        """Get a generic option - no special process, no default.
+
+
+        :param option_name: The queried option.
+
+        :param expand: Whether options references should be expanded.
+
+        :returns: The value of the option.
+        """
         value = self._get_user_option(option_name)
-        if interpolate:
+        if expand:
             if isinstance(value, list):
-                value = self._interpolate_list(value)
+                value = self._expand_options_in_list(value)
             elif isinstance(value, dict):
                 trace.warning('Cannot expand "%s":'
                               ' Dicts do not support option expansion'
                               % (option_name,))
             else:
-                value = self._interpolate_string(value)
+                value = self._expand_options_in_string(value)
         return value
 
     def get_user_option_as_bool(self, option_name):
@@ -340,7 +348,7 @@ class Config(object):
         :return None if the option doesn't exist or its value can't be
             interpreted as a boolean. Returns True or False otherwise.
         """
-        s = self._get_user_option(option_name)
+        s = self.get_user_option(option_name)
         if s is None:
             # The option doesn't exist
             return None
@@ -357,7 +365,7 @@ class Config(object):
         :return None if the option doesn't exist. Returns the value as a list
             otherwise.
         """
-        l = self._get_user_option(option_name)
+        l = self.get_user_option(option_name)
         if isinstance(l, (str, unicode)):
             # A single value, most probably the user forgot (or didn't care to
             # add) the final ','
@@ -511,7 +519,7 @@ class Config(object):
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.
         command_line = (self.get_user_option('bzr.mergetool.%s' % name,
-                                             interpolate=False)
+                                             expand=False)
                         or mergetools.known_merge_tools.get(name, None))
         return command_line
 

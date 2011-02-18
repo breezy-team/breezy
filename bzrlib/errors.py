@@ -3224,18 +3224,18 @@ class RecursiveBind(BzrError):
 
 # FIXME: I would prefer to define the config related exception classes in
 # config.py but the lazy import mechanism proscribes this -- vila 20101222
-class InterpolationLoop(BzrError):
+class OptionExpansionLoop(BzrError):
 
-    _fmt = 'Loop involving %(refs)r while evaluating "%(string)s".'
+    _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
 
     def __init__(self, string, refs):
         self.string = string
         self.refs = '->'.join(refs)
 
 
-class InterpolationUnknownOption(BzrError):
+class ExpandingUnknownOption(BzrError):
 
-    _fmt = 'Option %(name)s is not defined while interpolating "%(string)s".'
+    _fmt = 'Option %(name)s is not defined while expanding "%(string)s".'
 
     def __init__(self, name, string):
         self.name = name

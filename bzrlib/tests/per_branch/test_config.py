@@ -33,8 +33,6 @@ class TestGetConfig(per_branch.TestCaseWithBranch):
         value_dict = {
             'ascii': 'abcd', u'unicode \N{WATCH}': u'foo \N{INTERROBANG}'}
         config.set_user_option('name', value_dict.copy())
-        self.assertEqual(value_dict, config.get_user_option('name',
-                                                            interpolate=False))
-        self.assertRaises(ValueError, config.get_user_option, 'name')
+        self.assertEqual(value_dict, config.get_user_option('name'))
 
 
