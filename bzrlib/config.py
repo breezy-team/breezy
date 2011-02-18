@@ -327,7 +327,9 @@ class Config(object):
             if isinstance(value, list):
                 value = self._interpolate_list(value)
             elif isinstance(value, dict):
-                raise ValueError('Dicts do not support interpolation')
+                trace.warning('Cannot expand "%s":'
+                              ' Dicts do not support option expansion'
+                              % (option_name,))
             else:
                 value = self._interpolate_string(value)
         return value
