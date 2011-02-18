@@ -271,7 +271,8 @@ class Config(object):
             for chunk in raw_chunks:
                 if not chunk_is_ref:
                     if chunk:
-                        # Keep only non-empty strings
+                        # Keep only non-empty strings (or we get bogus empty
+                        # slots when a list value is involved).
                         chunks.append(chunk)
                     chunk_is_ref = True
                 else:
@@ -293,8 +294,8 @@ class Config(object):
                 # Once a list appears as the result of an expansion, all
                 # callers will get a list result. This allows a consistent
                 # behavior even when some options in the expansion chain
-                # may be seen defined as strings even if their expanded
-                # value is a list.
+                # defined as strings (no comma in their value) but their
+                # expanded value is a list.
                 return self._expand_options_in_list(chunks, env, _ref_stack)
             else:
                 result = ''.join(chunks)
@@ -306,9 +307,11 @@ class Config(object):
             # anything else
             value = env[name]
         else:
-            # FIXME: This is a limited implementation, what we really need
-            # is a way to query the bzr config for the value of an option,
-            # respecting the scope rules -- vila 20101222
+            # FIXME: This is a limited implementation, what we really need is a
+            # way to query the bzr config for the value of an option,
+            # respecting the scope rules (That is, once we implement fallback
+            # configs, getting the option value should restart from the top
+            # config, not the current one) -- vila 20101222
             value = self.get_user_option(name, expand=False)
             if isinstance(value, list):
                 value = self._expand_options_in_list(value, env, _ref_stack)
@@ -322,7 +325,6 @@ class Config(object):
 
     def get_user_option(self, option_name, expand=True):
         """Get a generic option - no special process, no default.
-
 
         :param option_name: The queried option.
 

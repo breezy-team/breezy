@@ -536,7 +536,7 @@ class TestIniConfigOptionExpansion(tests.TestCase):
     properly (yet).
     """
     # FIXME: This should be rewritten when all configs share a storage
-    # implementation.
+    # implementation -- vila 2011-02-18
 
     def get_config(self, string=None):
         if string is None:
