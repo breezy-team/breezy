@@ -1879,7 +1879,7 @@ class TestRepositoryFormat(TestRemoteRepository):
 
     def test_get_format_description(self):
         remote_repo_format = RemoteRepositoryFormat()
-        real_format = repository.RepositoryFormat.get_default_format()
+        real_format = repository.format_registry.get_default()
         remote_repo_format._network_name = real_format.network_name()
         self.assertEqual(remoted_description(real_format),
             remote_repo_format.get_format_description())
@@ -2443,7 +2443,7 @@ class TestRepositoryInsertStreamBase(TestRemoteRepository):
         the client is finished.
         """
         sink = repo._get_sink()
-        fmt = repository.RepositoryFormat.get_default_format()
+        fmt = repository.format_registry.get_default()
         resume_tokens, missing_keys = sink.insert_stream([], fmt, [])
         self.assertEqual([], resume_tokens)
         self.assertEqual(set(), missing_keys)
@@ -2549,7 +2549,7 @@ class TestRepositoryInsertStream(TestRepositoryInsertStreamBase):
                 return True
         repo._real_repository = FakeRealRepository()
         sink = repo._get_sink()
-        fmt = repository.RepositoryFormat.get_default_format()
+        fmt = repository.format_registry.get_default()
         stream = self.make_stream_with_inv_deltas(fmt)
         resume_tokens, missing_keys = sink.insert_stream(stream, fmt, [])
         # Every record from the first inventory delta should have been sent to
@@ -3211,15 +3211,15 @@ class TestRemoteBranchEffort(tests.TestCaseWithTransport):
                 override_existing=True)
 
     def test_fetch_everything_backwards_compat(self):
-        """Can fetch with EverythingResult even with pre 2.3 servers.
+        """Can fetch with EverythingResult even with pre 2.4 servers.
         
-        Pre-2.3 do not support 'everything' searches with the
+        Pre-2.4 do not support 'everything' searches with the
         Repository.get_stream_1.19 verb.
         """
         verb_log = []
         class OldGetStreamVerb(SmartServerRepositoryGetStream_1_19):
             """A version of the Repository.get_stream_1.19 verb patched to
-            reject 'everything' searches the way 2.2 and earlier do.
+            reject 'everything' searches the way 2.3 and earlier do.
             """
             def recreate_search(self, repository, search_bytes, discard_excess=False):
                 verb_log.append(search_bytes.split('\n', 1)[0])

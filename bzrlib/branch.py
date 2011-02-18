@@ -28,6 +28,8 @@ from bzrlib import (
         controldir,
         debug,
         errors,
+        fetch,
+        graph as _mod_graph,
         lockdir,
         lockable_files,
         remote,
@@ -660,15 +662,22 @@ class Branch(controldir.ControlComponent):
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     @needs_write_lock
-    def fetch(self, from_branch, last_revision=None, pb=None):
+    def fetch(self, from_branch, last_revision=None, pb=None, fetch_spec=None):
         """Copy revisions from from_branch into this branch.
 
         :param from_branch: Where to copy from.
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
         :param pb: An optional progress bar to use.
+        :param fetch_spec: If specified, a SearchResult or
+            PendingAncestryResult that describes which revisions to copy.  This
+            allows copying multiple heads at once.  Mutually exclusive with
+            last_revision.
         :return: None
         """
+        if fetch_spec is not None and last_revision is not None:
+            raise AssertionError(
+                "fetch_spec and last_revision are mutually exclusive.")
         if self.base == from_branch.base:
             return (0, [])
         if pb is not None:
@@ -677,12 +686,12 @@ class Branch(controldir.ControlComponent):
                 % "pb parameter to fetch()")
         from_branch.lock_read()
         try:
-            if last_revision is None:
+            if last_revision is None and fetch_spec is None:
                 last_revision = from_branch.last_revision()
                 last_revision = _mod_revision.ensure_null(last_revision)
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
-                                         pb=pb)
+                                         pb=pb, fetch_spec=fetch_spec)
         finally:
             from_branch.unlock()
 
@@ -871,13 +880,14 @@ class Branch(controldir.ControlComponent):
                 # XXX: If you unstack a branch while it has a working tree
                 # with a pending merge, the pending-merged revisions will no
                 # longer be present.  You can (probably) revert and remerge.
-                #
-                # XXX: This only fetches up to the tip of the repository; it
-                # doesn't bring across any tags.  That's fairly consistent
-                # with how branch works, but perhaps not ideal.
-                self.repository.fetch(old_repository,
-                    revision_id=self.last_revision(),
-                    find_ghosts=True)
+                try:
+                    tags_to_fetch = set(self.tags.get_reverse_tag_dict())
+                except errors.TagsNotSupported:
+                    tags_to_fetch = set()
+                fetch_spec = _mod_graph.NotInOtherForRevs(self.repository,
+                    old_repository, required_ids=[self.last_revision()],
+                    if_present_ids=tags_to_fetch, find_ghosts=True).execute()
+                self.repository.fetch(old_repository, fetch_spec=fetch_spec)
             finally:
                 old_repository.unlock()
         finally:
@@ -1020,7 +1030,7 @@ class Branch(controldir.ControlComponent):
         return other_history[self_len:stop_revision]
 
     def update_revisions(self, other, stop_revision=None, overwrite=False,
-                         graph=None):
+                         graph=None, fetch_tags=True):
         """Pull in new perfect-fit revisions.
 
         :param other: Another Branch to pull from
@@ -1029,16 +1039,16 @@ class Branch(controldir.ControlComponent):
             to see if it is a proper descendant.
         :param graph: A Graph object that can be used to query history
             information. This can be None.
+        :param fetch_tags: Flag that specifies if tags from other should be
+            fetched too.
         :return: None
         """
         return InterBranch.get(other, self).update_revisions(stop_revision,
-            overwrite, graph)
+            overwrite, graph, fetch_tags=fetch_tags)
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def import_last_revision_info(self, source_repo, revno, revid):
         """Set the last revision info, importing from another repo if necessary.
-
-        This is used by the bound branch code to upload a revision to
-        the master branch first before updating the tip of the local branch.
 
         :param source_repo: Source repository to optionally fetch from
         :param revno: Revision number of the new tip
@@ -1046,6 +1056,28 @@ class Branch(controldir.ControlComponent):
         """
         if not self.repository.has_same_location(source_repo):
             self.repository.fetch(source_repo, revision_id=revid)
+        self.set_last_revision_info(revno, revid)
+
+    def import_last_revision_info_and_tags(self, source, revno, revid):
+        """Set the last revision info, importing from another repo if necessary.
+
+        This is used by the bound branch code to upload a revision to
+        the master branch first before updating the tip of the local branch.
+        Revisions referenced by source's tags are also transferred.
+
+        :param source: Source branch to optionally fetch from
+        :param revno: Revision number of the new tip
+        :param revid: Revision id of the new tip
+        """
+        if not self.repository.has_same_location(source.repository):
+            try:
+                tags_to_fetch = set(source.tags.get_reverse_tag_dict())
+            except errors.TagsNotSupported:
+                tags_to_fetch = set()
+            fetch_spec = _mod_graph.NotInOtherForRevs(self.repository,
+                source.repository, [revid],
+                if_present_ids=tags_to_fetch).execute()
+            self.repository.fetch(source.repository, fetch_spec=fetch_spec)
         self.set_last_revision_info(revno, revid)
 
     def revision_id_to_revno(self, revision_id):
@@ -1552,6 +1584,9 @@ class BranchFormat(object):
     _formats = {}
     """The known formats."""
 
+    _extra_formats = []
+    """Extra formats that can not be part of a metadir."""
+
     can_set_append_revisions_only = True
 
     def __eq__(self, other):
@@ -1592,7 +1627,7 @@ class BranchFormat(object):
             if isinstance(fmt, MetaDirBranchFormatFactory):
                 fmt = fmt()
             result.append(fmt)
-        return result
+        return result + klass._extra_formats
 
     def get_reference(self, a_bzrdir, name=None):
         """Get the target reference of the branch in a_bzrdir.
@@ -1738,6 +1773,17 @@ class BranchFormat(object):
         raise NotImplementedError(self.open)
 
     @classmethod
+    def register_extra_format(klass, format):
+        """Register a branch format that can not be part of a metadir.
+
+        This is mainly useful to allow custom branch formats, such as
+        older Bazaar formats and foreign formats, to be tested
+        """
+        klass._extra_formats.append(format)
+        network_format_registry.register(
+            format.network_name(), format.__class__)
+
+    @classmethod
     def register_format(klass, format):
         """Register a metadir format.
         
@@ -1768,6 +1814,10 @@ class BranchFormat(object):
     @classmethod
     def unregister_format(klass, format):
         del klass._formats[format.get_format_string()]
+
+    @classmethod
+    def unregister_extra_format(klass, format):
+        klass._extra_formats.remove(format)
 
     def __str__(self):
         return self.get_format_description().rstrip()
@@ -2379,10 +2429,7 @@ BranchFormat.register_format(__format6)
 BranchFormat.register_format(__format7)
 BranchFormat.register_format(__format8)
 BranchFormat.set_default_format(__format7)
-_legacy_formats = [BzrBranchFormat4(),
-    ]
-network_format_registry.register(
-    _legacy_formats[0].network_name(), _legacy_formats[0].__class__)
+BranchFormat.register_extra_format(BzrBranchFormat4())
 
 
 class BranchWriteLockResult(LogicalLockResult):
@@ -3338,7 +3385,7 @@ class InterBranch(InterObject):
 
     @needs_write_lock
     def update_revisions(self, stop_revision=None, overwrite=False,
-                         graph=None):
+                         graph=None, fetch_tags=True):
         """Pull in new perfect-fit revisions.
 
         :param stop_revision: Updated until the given revision
@@ -3346,6 +3393,8 @@ class InterBranch(InterObject):
             to see if it is a proper descendant.
         :param graph: A Graph object that can be used to query history
             information. This can be None.
+        :param fetch_tags: Flag that specifies if tags from source should be
+            fetched too.
         :return: None
         """
         raise NotImplementedError(self.update_revisions)
@@ -3409,7 +3458,7 @@ class GenericInterBranch(InterBranch):
 
     @needs_write_lock
     def update_revisions(self, stop_revision=None, overwrite=False,
-        graph=None):
+        graph=None, fetch_tags=True):
         """See InterBranch.update_revisions()."""
         other_revno, other_last_revision = self.source.last_revision_info()
         stop_revno = None # unknown
@@ -3427,7 +3476,18 @@ class GenericInterBranch(InterBranch):
         # case of having something to pull, and so that the check for
         # already merged can operate on the just fetched graph, which will
         # be cached in memory.
-        self.target.fetch(self.source, stop_revision)
+        if fetch_tags:
+            fetch_spec_factory = fetch.FetchSpecFactory()
+            fetch_spec_factory.source_branch = self.source
+            fetch_spec_factory.source_branch_stop_revision_id = stop_revision
+            fetch_spec_factory.source_repo = self.source.repository
+            fetch_spec_factory.target_repo = self.target.repository
+            fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+            fetch_spec = fetch_spec_factory.make_fetch_spec()
+        else:
+            fetch_spec = _mod_graph.NotInOtherForRevs(self.target.repository,
+                self.source.repository, revision_ids=[stop_revision]).execute()
+        self.target.fetch(self.source, fetch_spec=fetch_spec)
         # Check to see if one is an ancestor of the other
         if not overwrite:
             if graph is None:

@@ -23,12 +23,22 @@ New Features
 * The ``lp:`` directory service now supports Launchpad's QA staging.
   (Jelmer Vernooij, #667483)
 
+* External merge tools can now be configured in bazaar.conf. See
+  ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
+
 Improvements
 ************
 
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* A new hidden command ``bzr repair-workingtree``. This is a way to force
+  the dirstate file to be rebuilt, rather than using a ``bzr checkout``
+  workaround. (John Arbash Meinel)
+
+* Branching, merging and pulling a branch now copies revisions named in
+  tags, not just the tag metadata.  (Andrew Bennetts, #309682)
+  
 * ``bzr cat-revision`` no longer requires a working tree. (Jelmer Vernooij, #704405)
 
 Bug Fixes
@@ -37,22 +47,61 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr annotate -r-1 file`` will now properly annotate a deleted file.
+  (Andrew King, #537442)
+
+* ``bzr export`` to zip files will now set a mode on directories.
+  (Jelmer Vernooij, #207253)
+
 * ``bzr push --overwrite`` with an older revision specified will now correctly
   roll back the target branch. (Jelmer Vernooij, #386576)
 
-* ``bzr serve`` no longer crashes when a server_started hook is installed and IPv6
-  support is available on the system. (Jelmer Vernooij, #293697)
-
 * ``bzr lp-propose`` can now propose merges against packaging branches on
-  Launhcpad without requiring the target branch to be specified. (Jelmer Vernooij,
-  #704647)
+  Launchpad without requiring the target branch to be specified.
+  (Jelmer Vernooij, #704647)
 
-* ``bzr lp-propose`` no longer requires a reviewer to be specified. It will instead
-  leave setting the reviewer up to Launchpad if it was not specified.
+* ``bzr lp-propose`` no longer requires a reviewer to be specified. It will
+  instead leave setting the reviewer up to Launchpad if it was not specified.
   (Jelmer Vernooij, #583772)
 
-* ``bzr whoami`` will now display an error if both a new identity and ``--email``
-  were specified. (Jelmer Vernooij, #680449)
+* ``bzr pull`` will now exit with exit code 1 if there were tag conflicts.
+  (Jelmer Vernooij, #213185)
+
+* ``bzr mv`` user errors no longer throw UnicodeEncodeError with non-ascii
+  paths, however they may still print junk if not on a UTF-8 terminal.
+  (Martin [gz], #707954)
+
+* ``bzr reconfigure --unstacked`` now copies revisions (and their
+  ancestors) named in tags into the unstacked repository, not just the
+  ancestry of the branch's tip.  (Andrew Bennetts, #401646)
+
+* ``bzr serve`` no longer crashes when a server_started hook is installed and
+  IPv6 support is available on the system. (Jelmer Vernooij, #293697)
+
+* ``bzr whoami`` will now display an error if both a new identity and
+  ``--email`` were specified. (Jelmer Vernooij, #680449)
+
+* ``launchpadlib`` doesn't provide the ``uris`` module in some old versions.
+  (Vincent Ladeuil, #706835)
+
+* Empty entries in the ``NO_PROXY`` variable are no longer treated as matching
+  every host.
+  (Martin Pool, #586341)
+
+* Plugins incompatible with the current version of bzr no longer produce a
+  warning on every command invocation.  Instead, a message is shown by
+  ``bzr plugins`` and in crash reports.
+  (#704195, Martin Pool)
+
+* The "pretty" version of ``needs_read_lock`` and ``needs_write_lock`` now
+  preserves the identity of default parameter values.
+  (Andrew Bennetts, #718569)
+
+* ``bzr dump-btree --raw`` no longer tracebacks on a B-Tree file
+  containing no rows. (Eric Siegerman, #715508)
+
+* Fix ``bzr lp-mirror`` to work on command line branch URLs and branches
+  without an explicit public location. (Max Bowsher)
 
 Documentation
 *************
@@ -65,11 +114,36 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Added ``bzrlib.mergetools`` module with helper functions for working with
+  the list of external merge tools. (Gordon Tyler, #489915)
+
+* ``Branch.fetch`` implementations must now accept an optional
+  ``fetch_spec`` keyword argument. (Andrew Bennetts)
+
+* ``Branch.import_last_revision_info`` is deprecated.  Use the
+  ``import_last_revision_info_and_tags`` method instead.
+  (Andrew Bennetts)
+
+* Repository formats should now be registered on the format registry
+  (``bzrlib.repository.format_registry``) rather than using the class
+  methods on ``RepositoryFormat``. (Jelmer Vernooij)
+
+* The ``revision_id`` parameter of
+  ``Repository.search_missing_revision_ids`` and
+  ``InterRepository.search_missing_revision_ids`` is deprecated.  It is
+  replaced by the ``revision_ids`` parameter.  (Andrew Bennetts)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* ``CatchingExceptionThread`` (formerly ThreadWithException) has been moved
+  out of the ``bzrlib.tests`` hierarchy to make it clearer that it can be used
+  outside of tests. This class makes it easier to track exceptions in threads
+  by cacthing them so they can be re-raised in the controlling thread. It's
+  available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
 
 * ``HookPoint.lazy_hook`` and ``Hooks.install_named_lazy_hook`` can install 
   hooks for which the callable is loaded lazily.  (Jelmer Vernooij)
@@ -81,3 +155,5 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+..
+   vim: tw=74 ft=rst ff=unix

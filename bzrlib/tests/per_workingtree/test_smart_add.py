@@ -301,10 +301,9 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
     def test_accessible_explicit(self):
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+        if self.workingtree_format.requires_normalized_unicode_filenames:
             self.expectFailure(
-                'With WorkingTreeFormat2, smart_add requires'
-                ' normalized unicode filenames',
+                'Working tree format smart_add requires normalized unicode filenames',
                 self.assertRaises, errors.NoSuchFile,
                 self.wt.smart_add, [u'a\u030a'])
         else:
@@ -317,10 +316,9 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
 
     def test_accessible_implicit(self):
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+        if self.workingtree_format.requires_normalized_unicode_filenames:
             self.expectFailure(
-                'With WorkingTreeFormat2, smart_add requires'
-                ' normalized unicode filenames',
+                'Working tree format smart_add requires normalized unicode filenames',
                 self.assertRaises, errors.NoSuchFile,
                 self.wt.smart_add, [])
         else:

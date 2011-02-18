@@ -29,8 +29,10 @@ import textwrap
 from bzrlib import (
     cleanup,
     errors,
+    fetch,
     graph,
     revision as _mod_revision,
+    transport as _mod_transport,
     urlutils,
     )
 from bzrlib.push import (
@@ -40,7 +42,6 @@ from bzrlib.trace import (
     mutter,
     )
 from bzrlib.transport import (
-    get_transport,
     local,
     )
 
@@ -378,52 +379,41 @@ class ControlDir(ControlComponent):
                accelerator_tree=None, hardlink=False, stacked=False,
                source_branch=None, create_tree_if_local=True):
         add_cleanup = op.add_cleanup
-        target_transport = get_transport(url, possible_transports)
+        fetch_spec_factory = fetch.FetchSpecFactory()
+        if revision_id is not None:
+            fetch_spec_factory.add_revision_ids([revision_id])
+            fetch_spec_factory.source_branch_stop_revision_id = revision_id
+        target_transport = _mod_transport.get_transport(url,
+            possible_transports)
         target_transport.ensure_base()
         cloning_format = self.cloning_metadir(stacked)
         # Create/update the result branch
         result = cloning_format.initialize_on_transport(target_transport)
+        source_branch, source_repository = self._find_source_repo(
+            add_cleanup, source_branch)
+        fetch_spec_factory.source_branch = source_branch
         # if a stacked branch wasn't requested, we don't create one
         # even if the origin was stacked
-        stacked_branch_url = None
-        if source_branch is not None:
-            add_cleanup(source_branch.lock_read().unlock)
-            if stacked:
-                stacked_branch_url = self.root_transport.base
-            source_repository = source_branch.repository
+        if stacked and source_branch is not None:
+            stacked_branch_url = self.root_transport.base
         else:
-            try:
-                source_branch = self.open_branch()
-                source_repository = source_branch.repository
-                if stacked:
-                    stacked_branch_url = self.root_transport.base
-            except errors.NotBranchError:
-                source_branch = None
-                try:
-                    source_repository = self.open_repository()
-                except errors.NoRepositoryPresent:
-                    source_repository = None
-                else:
-                    add_cleanup(source_repository.lock_read().unlock)
-            else:
-                add_cleanup(source_branch.lock_read().unlock)
+            stacked_branch_url = None
         repository_policy = result.determine_repository_policy(
             force_new_repo, stacked_branch_url, require_stacking=stacked)
         result_repo, is_new_repo = repository_policy.acquire_repository()
         add_cleanup(result_repo.lock_write().unlock)
-        is_stacked = stacked or (len(result_repo._fallback_repositories) != 0)
-        if is_new_repo and revision_id is not None and not is_stacked:
-            fetch_spec = graph.PendingAncestryResult(
-                [revision_id], source_repository)
+        fetch_spec_factory.source_repo = source_repository
+        fetch_spec_factory.target_repo = result_repo
+        if stacked or (len(result_repo._fallback_repositories) != 0):
+            target_repo_kind = fetch.TargetRepoKinds.STACKED
+        elif is_new_repo:
+            target_repo_kind = fetch.TargetRepoKinds.EMPTY
         else:
-            fetch_spec = None
+            target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+        fetch_spec_factory.target_repo_kind = target_repo_kind
         if source_repository is not None:
-            # Fetch while stacked to prevent unstacked fetch from
-            # Branch.sprout.
-            if fetch_spec is None:
-                result_repo.fetch(source_repository, revision_id=revision_id)
-            else:
-                result_repo.fetch(source_repository, fetch_spec=fetch_spec)
+            fetch_spec = fetch_spec_factory.make_fetch_spec()
+            result_repo.fetch(source_repository, fetch_spec=fetch_spec)
 
         if source_branch is None:
             # this is for sprouting a controldir without a branch; is that
@@ -454,33 +444,53 @@ class ControlDir(ControlComponent):
         else:
             wt = None
         if recurse == 'down':
+            basis = None
             if wt is not None:
                 basis = wt.basis_tree()
-                basis.lock_read()
-                subtrees = basis.iter_references()
             elif result_branch is not None:
                 basis = result_branch.basis_tree()
-                basis.lock_read()
-                subtrees = basis.iter_references()
             elif source_branch is not None:
                 basis = source_branch.basis_tree()
-                basis.lock_read()
+            if basis is not None:
+                add_cleanup(basis.lock_read().unlock)
                 subtrees = basis.iter_references()
             else:
                 subtrees = []
-                basis = None
-            try:
-                for path, file_id in subtrees:
-                    target = urlutils.join(url, urlutils.escape(path))
-                    sublocation = source_branch.reference_parent(file_id, path)
-                    sublocation.bzrdir.sprout(target,
-                        basis.get_reference_revision(file_id, path),
-                        force_new_repo=force_new_repo, recurse=recurse,
-                        stacked=stacked)
-            finally:
-                if basis is not None:
-                    basis.unlock()
+            for path, file_id in subtrees:
+                target = urlutils.join(url, urlutils.escape(path))
+                sublocation = source_branch.reference_parent(file_id, path)
+                sublocation.bzrdir.sprout(target,
+                    basis.get_reference_revision(file_id, path),
+                    force_new_repo=force_new_repo, recurse=recurse,
+                    stacked=stacked)
         return result
+
+    def _find_source_repo(self, add_cleanup, source_branch):
+        """Find the source branch and repo for a sprout operation.
+        
+        This is helper intended for use by _sprout.
+
+        :returns: (source_branch, source_repository).  Either or both may be
+            None.  If not None, they will be read-locked (and their unlock(s)
+            scheduled via the add_cleanup param).
+        """
+        if source_branch is not None:
+            add_cleanup(source_branch.lock_read().unlock)
+            return source_branch, source_branch.repository
+        try:
+            source_branch = self.open_branch()
+            source_repository = source_branch.repository
+        except errors.NotBranchError:
+            source_branch = None
+            try:
+                source_repository = self.open_repository()
+            except errors.NoRepositoryPresent:
+                source_repository = None
+            else:
+                add_cleanup(source_repository.lock_read().unlock)
+        else:
+            add_cleanup(source_branch.lock_read().unlock)
+        return source_branch, source_repository
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
         remember=False, create_prefix=False):
@@ -585,14 +595,14 @@ class ControlDir(ControlComponent):
         :param preserve_stacking: When cloning a stacked branch, stack the
             new branch on top of the other branch's stacked-on branch.
         """
-        return self.clone_on_transport(get_transport(url),
+        return self.clone_on_transport(_mod_transport.get_transport(url),
                                        revision_id=revision_id,
                                        force_new_repo=force_new_repo,
                                        preserve_stacking=preserve_stacking)
 
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
-        create_prefix=False, use_existing_dir=True):
+        create_prefix=False, use_existing_dir=True, no_tree=False):
         """Clone this bzrdir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -607,6 +617,7 @@ class ControlDir(ControlComponent):
         :param create_prefix: Create any missing directories leading up to
             to_transport.
         :param use_existing_dir: Use an existing directory if one exists.
+        :param no_tree: If set to true prevents creation of a working tree.
         """
         raise NotImplementedError(self.clone_on_transport)
 
@@ -762,8 +773,9 @@ class ControlDirFormat(object):
         Subclasses should typically override initialize_on_transport
         instead of this method.
         """
-        return self.initialize_on_transport(get_transport(url,
-                                                          possible_transports))
+        return self.initialize_on_transport(
+            _mod_transport.get_transport(url, possible_transports))
+
     def initialize_on_transport(self, transport):
         """Initialize a new controldir in the base directory of a Transport."""
         raise NotImplementedError(self.initialize_on_transport)
