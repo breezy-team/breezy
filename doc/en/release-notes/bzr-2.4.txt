@@ -26,6 +26,12 @@ New Features
 * External merge tools can now be configured in bazaar.conf. See
   ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
 
+* Configuration options can now use references to other options in the same
+  file by enclosing them with curly brackets (``{other_opt}``). This makes it
+  possible to use, for example,
+  ``push_location=lp:~vila/bzr/config-{nickname}`` in ``branch.conf`` when
+  using a loom.  (Vincent Ladeuil)
+
 Improvements
 ************
 
