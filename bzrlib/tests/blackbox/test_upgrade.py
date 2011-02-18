@@ -109,7 +109,7 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
     def test_upgrade_explicit_metaformat(self):
         # users can force an upgrade to metadir format.
         path = self.make_format_5_branch()
-        url = transport.get_transport(self.get_url(path)).base
+        url = self.get_transport(path).base
         # check --format takes effect
         controldir.ControlDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         backup_dir = 'backup.bzr.~1~'
@@ -134,7 +134,7 @@ finished
         # users can force an upgrade to knit format from a metadir weave
         # branch
         self.make_metadir_weave_branch()
-        url = transport.get_transport(self.get_url('metadir_weave_branch')).base
+        url = self.get_transport('metadir_weave_branch').base
         # check --format takes effect
         controldir.ControlDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         backup_dir = 'backup.bzr.~1~'
@@ -196,7 +196,7 @@ finished
 
     def test_upgrade_with_existing_backup_dir(self):
         path = self.make_format_5_branch()
-        t = transport.get_transport(self.get_url(path))
+        t = self.get_transport(path)
         url = t.base
         controldir.ControlDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         backup_dir1 = 'backup.bzr.~1~'
@@ -222,12 +222,13 @@ finished
             bzrdir.BzrDirMetaFormat1))
         self.assertTrue(t.has(backup_dir2))
 
+
 class SFTPTests(TestCaseWithSFTPServer):
     """Tests for upgrade over sftp."""
 
     def test_upgrade_url(self):
         self.run_bzr('init --format=weave')
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         url = t.base
         out, err = self.run_bzr(['upgrade', '--format=knit', url])
         backup_dir = 'backup.bzr.~1~'

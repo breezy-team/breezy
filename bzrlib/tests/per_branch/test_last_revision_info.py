@@ -17,6 +17,7 @@
 """Tests for branch.last_revision_info."""
 
 from bzrlib.revision import NULL_REVISION
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -34,13 +35,34 @@ class TestLastRevisionInfo(TestCaseWithTransport):
         revid = tree.commit('2st post', allow_pointless=True)
         self.assertEqual((2, revid), tree.branch.last_revision_info())
 
+    def test_import_deprecated(self):
+        # importing and setting last revision
+        tree1 = self.make_branch_and_tree('branch1')
+        tree1.commit('1st post')
+        revid = tree1.commit('2st post', allow_pointless=True)
+        branch2 = self.make_branch('branch2')
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch2.import_last_revision_info, tree1.branch.repository, 2, revid)
+        self.assertEqual((2, revid), branch2.last_revision_info())
+        self.assertTrue(branch2.repository.has_revision(revid))
+
+    def test_same_repo_deprecated(self):
+        # importing and setting last revision within the same repo
+        tree = self.make_branch_and_tree('branch1')
+        tree.commit('1st post')
+        revid = tree.commit('2st post', allow_pointless=True)
+        tree.branch.set_last_revision_info(0, NULL_REVISION)
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            tree.branch.import_last_revision_info, tree.branch.repository, 2, revid)
+        self.assertEqual((2, revid), tree.branch.last_revision_info())
+
     def test_import(self):
         # importing and setting last revision
         tree1 = self.make_branch_and_tree('branch1')
         tree1.commit('1st post')
         revid = tree1.commit('2st post', allow_pointless=True)
         branch2 = self.make_branch('branch2')
-        branch2.import_last_revision_info(tree1.branch.repository, 2, revid)
+        branch2.import_last_revision_info_and_tags(tree1.branch, 2, revid)
         self.assertEqual((2, revid), branch2.last_revision_info())
         self.assertTrue(branch2.repository.has_revision(revid))
 
@@ -50,5 +72,5 @@ class TestLastRevisionInfo(TestCaseWithTransport):
         tree.commit('1st post')
         revid = tree.commit('2st post', allow_pointless=True)
         tree.branch.set_last_revision_info(0, NULL_REVISION)
-        tree.branch.import_last_revision_info(tree.branch.repository, 2, revid)
+        tree.branch.import_last_revision_info_and_tags(tree.branch, 2, revid)
         self.assertEqual((2, revid), tree.branch.last_revision_info())

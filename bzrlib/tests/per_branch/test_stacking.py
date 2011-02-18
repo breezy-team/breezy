@@ -23,7 +23,7 @@ from bzrlib import (
     errors,
     )
 from bzrlib.revision import NULL_REVISION
-from bzrlib.tests import TestNotApplicable, transport_util
+from bzrlib.tests import fixtures, TestNotApplicable, transport_util
 from bzrlib.tests.per_branch import TestCaseWithBranch
 
 
@@ -176,17 +176,20 @@ class TestStacking(TestCaseWithBranch):
 
     def test_unstack_fetches(self):
         """Removing the stacked-on branch pulls across all data"""
-        # We have a mainline
-        trunk_tree = self.make_branch_and_tree('mainline')
-        trunk_revid = trunk_tree.commit('revision on mainline')
-        # and make branch from it which is stacked
         try:
-            new_dir = trunk_tree.bzrdir.sprout(self.get_url('newbranch'),
-                stacked=True)
+            builder = self.make_branch_builder('trunk')
+        except errors.UninitializableFormat:
+            raise TestNotApplicable('uninitializeable format')
+        # We have a mainline
+        trunk = fixtures.build_branch_with_non_ancestral_rev(builder)
+        mainline_revid = 'rev-1'
+        # and make branch from it which is stacked (with no tags)
+        try:
+            new_dir = trunk.bzrdir.sprout(self.get_url('newbranch'), stacked=True)
         except unstackable_format_errors, e:
             raise TestNotApplicable(e)
         # stacked repository
-        self.assertRevisionNotInRepository('newbranch', trunk_revid)
+        self.assertRevisionNotInRepository('newbranch', mainline_revid)
         # TODO: we'd like to commit in the stacked repository; that requires
         # some care (maybe a BranchBuilder) if it's remote and has no
         # workingtree
@@ -195,13 +198,21 @@ class TestStacking(TestCaseWithBranch):
         # now when we unstack that should implicitly fetch, to make sure that
         # the branch will still work
         new_branch = new_dir.open_branch()
+        try:
+            new_branch.tags.set_tag('tag-a', 'rev-2')
+        except errors.TagsNotSupported:
+            tags_supported = False
+        else:
+            tags_supported = True
         new_branch.set_stacked_on_url(None)
-        self.assertRevisionInRepository('newbranch', trunk_revid)
+        self.assertRevisionInRepository('newbranch', mainline_revid)
         # of course it's still in the mainline
-        self.assertRevisionInRepository('mainline', trunk_revid)
+        self.assertRevisionInRepository('trunk', mainline_revid)
+        if tags_supported:
+            # the tagged revision in trunk is now in newbranch too
+            self.assertRevisionInRepository('newbranch', 'rev-2')
         # and now we're no longer stacked
-        self.assertRaises(errors.NotStacked,
-            new_branch.get_stacked_on_url)
+        self.assertRaises(errors.NotStacked, new_branch.get_stacked_on_url)
 
     def test_unstack_already_locked(self):
         """Removing the stacked-on branch with an already write-locked branch

@@ -23,13 +23,12 @@ from bzrlib import (
     branch,
     bzrdir,
     errors,
-    repository,
     revision as _mod_revision,
     )
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
-    KnownFailure,
+    fixtures,
     HardlinkFeature,
     test_server,
     )
@@ -270,6 +269,17 @@ class TestBranch(TestCaseWithTransport):
         self.run_bzr('checkout --lightweight a b')
         self.assertLength(2, calls)
 
+    def test_branch_fetches_all_tags(self):
+        builder = self.make_branch_builder('source')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.tags.set_tag('tag-a', 'rev-2')
+        # Now source has a tag not in its ancestry.  Make a branch from it.
+        self.run_bzr('branch source new-branch')
+        new_branch = branch.Branch.open('new-branch')
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2', new_branch.tags.lookup_tag('tag-a'))
+        new_branch.repository.get_revision('rev-2')
+
 
 class TestBranchStacked(TestCaseWithTransport):
     """Tests for branch --stacked"""
@@ -450,6 +460,22 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(14, self.hpss_calls)
+
+    def test_branch_from_branch_with_tags(self):
+        self.setup_smart_server_with_call_log()
+        builder = self.make_branch_builder('source')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.tags.set_tag('tag-a', 'rev-2')
+        source.tags.set_tag('tag-missing', 'missing-rev')
+        # Now source has a tag not in its ancestry.  Make a branch from it.
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('source'), 'target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(9, self.hpss_calls)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

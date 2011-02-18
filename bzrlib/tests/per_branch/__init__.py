@@ -29,7 +29,6 @@ from bzrlib import (
     tests,
     )
 from bzrlib.branch import (BranchFormat,
-                           _legacy_formats,
                            )
 from bzrlib.remote import RemoteBranchFormat, RemoteBzrDirFormat
 from bzrlib.tests import test_server
@@ -132,7 +131,7 @@ def branch_scenarios():
     # Generate a list of branch formats and their associated bzrdir formats to
     # use.
     combinations = [(format, format._matchingbzrdir) for format in
-         BranchFormat.get_formats() + _legacy_formats]
+         BranchFormat.get_formats()]
     scenarios = make_scenarios(
         # None here will cause the default vfs transport server to be used.
         None,

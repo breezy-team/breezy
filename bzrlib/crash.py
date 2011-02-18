@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -255,11 +255,7 @@ def _open_crash_file():
 
 
 def _format_plugin_list():
-    plugin_lines = []
-    for name, a_plugin in sorted(plugin.plugins().items()):
-        plugin_lines.append("  %-20s %s [%s]" %
-            (name, a_plugin.path(), a_plugin.__version__))
-    return '\n'.join(plugin_lines)
+    return ''.join(plugin.describe_plugins(show_paths=True))
 
 
 def _format_module_list():

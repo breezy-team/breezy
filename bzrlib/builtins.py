@@ -413,9 +413,12 @@ class cmd_dump_btree(Command):
                 self.outf.write(page_bytes[:header_end])
                 page_bytes = data
             self.outf.write('\nPage %d\n' % (page_idx,))
-            decomp_bytes = zlib.decompress(page_bytes)
-            self.outf.write(decomp_bytes)
-            self.outf.write('\n')
+            if len(page_bytes) == 0:
+                self.outf.write('(empty)\n');
+            else:
+                decomp_bytes = zlib.decompress(page_bytes)
+                self.outf.write(decomp_bytes)
+                self.outf.write('\n')
 
     def _dump_entries(self, trans, basename):
         try:
@@ -480,6 +483,59 @@ class cmd_remove_tree(Command):
                                              " from a lightweight checkout")
 
             d.destroy_workingtree()
+
+
+class cmd_repair_workingtree(Command):
+    __doc__ = """Reset the working tree state file.
+
+    This is not meant to be used normally, but more as a way to recover from
+    filesystem corruption, etc. This rebuilds the working inventory back to a
+    'known good' state. Any new modifications (adding a file, renaming, etc)
+    will be lost, though modified files will still be detected as such.
+
+    Most users will want something more like "bzr revert" or "bzr update"
+    unless the state file has become corrupted.
+
+    By default this attempts to recover the current state by looking at the
+    headers of the state file. If the state file is too corrupted to even do
+    that, you can supply --revision to force the state of the tree.
+    """
+
+    takes_options = ['revision', 'directory',
+        Option('force',
+               help='Reset the tree even if it doesn\'t appear to be'
+                    ' corrupted.'),
+    ]
+    hidden = True
+
+    def run(self, revision=None, directory='.', force=False):
+        tree, _ = WorkingTree.open_containing(directory)
+        self.add_cleanup(tree.lock_tree_write().unlock)
+        if not force:
+            try:
+                tree.check_state()
+            except errors.BzrError:
+                pass # There seems to be a real error here, so we'll reset
+            else:
+                # Refuse
+                raise errors.BzrCommandError(
+                    'The tree does not appear to be corrupt. You probably'
+                    ' want "bzr revert" instead. Use "--force" if you are'
+                    ' sure you want to reset the working tree.')
+        if revision is None:
+            revision_ids = None
+        else:
+            revision_ids = [r.as_revision_id(tree.branch) for r in revision]
+        try:
+            tree.reset_state(revision_ids)
+        except errors.BzrError, e:
+            if revision_ids is None:
+                extra = (', the header appears corrupt, try passing -r -1'
+                         ' to set the state to the last commit')
+            else:
+                extra = ''
+            raise errors.BzrCommandError('failed to reset the tree state'
+                                         + extra)
 
 
 class cmd_revno(Command):
@@ -1016,6 +1072,10 @@ class cmd_pull(Command):
             log.show_branch_change(
                 branch_to, self.outf, result.old_revno,
                 result.old_revid)
+        if getattr(result, 'tag_conflicts', None):
+            return 1
+        else:
+            return 0
 
 
 class cmd_push(Command):
@@ -1962,9 +2022,10 @@ class cmd_diff(Command):
             type=unicode,
             ),
         RegistryOption('format',
+            short_name='F',
             help='Diff format to use.',
             lazy_registry=('bzrlib.diff', 'format_registry'),
-            value_switches=False, title='Diff format'),
+            title='Diff format'),
         ]
     aliases = ['di', 'dif']
     encoding_type = 'exact'
@@ -4586,26 +4647,9 @@ class cmd_plugins(Command):
 
     @display_command
     def run(self, verbose=False):
-        import bzrlib.plugin
-        from inspect import getdoc
-        result = []
-        for name, plugin in bzrlib.plugin.plugins().items():
-            version = plugin.__version__
-            if version == 'unknown':
-                version = ''
-            name_ver = '%s %s' % (name, version)
-            d = getdoc(plugin.module)
-            if d:
-                doc = d.split('\n')[0]
-            else:
-                doc = '(no description)'
-            result.append((name_ver, doc, plugin.path()))
-        for name_ver, doc, path in sorted(result):
-            self.outf.write("%s\n" % name_ver)
-            self.outf.write("   %s\n" % doc)
-            if verbose:
-                self.outf.write("   %s\n" % path)
-            self.outf.write("\n")
+        from bzrlib import plugin
+        self.outf.writelines(
+            plugin.describe_plugins(show_paths=verbose))
 
 
 class cmd_testament(Command):
@@ -4673,19 +4717,19 @@ class cmd_annotate(Command):
             self.add_cleanup(branch.lock_read().unlock)
         tree = _get_one_revision_tree('annotate', revision, branch=branch)
         self.add_cleanup(tree.lock_read().unlock)
-        if wt is not None:
+        if wt is not None and revision is None:
             file_id = wt.path2id(relpath)
         else:
             file_id = tree.path2id(relpath)
         if file_id is None:
             raise errors.NotVersionedError(filename)
-        file_version = tree.inventory[file_id].revision
         if wt is not None and revision is None:
             # If there is a tree and we're not annotating historical
             # versions, annotate the working tree's content.
             annotate_file_tree(wt, file_id, self.outf, long, all,
                 show_ids=show_ids)
         else:
+            file_version = tree.inventory[file_id].revision
             annotate_file(branch, file_version, file_id, long, all, self.outf,
                           show_ids=show_ids)
 
@@ -6059,7 +6103,7 @@ class cmd_clean_tree(Command):
     """
     takes_options = ['directory',
                      Option('ignored', help='Delete all ignored files.'),
-                     Option('detritus', help='Delete conflict files, merge'
+                     Option('detritus', help='Delete conflict files, merge and revert'
                             ' backups, and failed selftest dirs.'),
                      Option('unknown',
                             help='Delete files unknown to bzr (default).'),

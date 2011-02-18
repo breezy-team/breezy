@@ -32,6 +32,7 @@ from bzrlib import (
     osutils,
     pyutils,
     tests,
+    transport as _mod_transport,
     urlutils,
     )
 from bzrlib.errors import (ConnectionError,
@@ -52,7 +53,6 @@ from bzrlib.tests import test_server
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
     ConnectedTransport,
-    get_transport,
     _get_transport_modules,
     )
 from bzrlib.transport.memory import MemoryTransport
@@ -1041,7 +1041,7 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        t = get_transport(url)
+        t = _mod_transport.get_transport(url)
         self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
 
     def test_stat(self):
@@ -1398,6 +1398,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(transport.clone("/").abspath('foo'),
                          transport.abspath("/foo"))
 
+    # GZ 2011-01-26: Test in per_transport but not using self.get_transport?
     def test_win32_abspath(self):
         # Note: we tried to set sys.platform='win32' so we could test on
         # other platforms too, but then osutils does platform specific
@@ -1408,11 +1409,11 @@ class TransportTests(TestTransportImplementation):
 
         # smoke test for abspath on win32.
         # a transport based on 'file:///' never fully qualifies the drive.
-        transport = get_transport("file:///")
+        transport = _mod_transport.get_transport("file:///")
         self.failUnlessEqual(transport.abspath("/"), "file:///")
 
         # but a transport that starts with a drive spec must keep it.
-        transport = get_transport("file:///C:/")
+        transport = _mod_transport.get_transport("file:///C:/")
         self.failUnlessEqual(transport.abspath("/"), "file:///C:/")
 
     def test_local_abspath(self):

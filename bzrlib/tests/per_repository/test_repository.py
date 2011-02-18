@@ -279,8 +279,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # they may not be initializable.
             return
         # supported formats must be able to init and open
-        t = transport.get_transport(self.get_url())
-        readonly_t = transport.get_transport(self.get_readonly_url())
+        t = self.get_transport()
+        readonly_t = self.get_readonly_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = self.repository_format.initialize(made_control)
         self.assertEqual(made_control, made_repo.bzrdir)
@@ -339,7 +339,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         made_repo = made_control.create_repository()
         # Check that we have a repository object.
@@ -353,7 +353,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # because the default open will not open them and
             # they may not be initializable.
             return
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         try:
             made_repo = made_control.create_repository(shared=True)
