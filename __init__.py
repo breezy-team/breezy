@@ -83,9 +83,6 @@ from bzrlib.transport import (
 from bzrlib.commands import (
     plugin_cmds,
     )
-from bzrlib.version_info_formats.format_rio import (
-    RioVersionInfoBuilder,
-    )
 from bzrlib.send import (
     format_registry as send_format_registry,
     )
@@ -335,8 +332,18 @@ def update_stanza(rev, stanza):
     if mapping is not None and mapping.revid_prefix.startswith("git-"):
         stanza.add("git-commit", rev.foreign_revid)
 
-
-RioVersionInfoBuilder.hooks.install_named_hook('revision', update_stanza, None)
+try:
+    from bzrlib.hooks import install_lazy_named_hook
+except ImportError: # Compatibility with bzr < 2.4
+    from bzrlib.version_info_formats.format_rio import (
+        RioVersionInfoBuilder,
+        )
+    RioVersionInfoBuilder.hooks.install_named_hook('revision', update_stanza, 
+        "git commits")
+else:
+    install_lazy_named_hook("bzrlib.version_info_formats.format_rio",
+        "RioVersionInfoBuilder.hooks", "revision", update_stanza,
+        "git commits")
 
 
 from bzrlib.transport import transport_server_registry
