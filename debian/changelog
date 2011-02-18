@@ -1,9 +1,15 @@
-bzr (2.3.0-2ubuntu1) UNRELEASED; urgency=low
+bzr (2.3.0-3) UNRELEASED; urgency=low
 
+  [ Jelmer Vernooij ]
   * Bump debhelper dependency to debhelper 7.4.16, required for our use
     of --list-missing and --fail-missing.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 18 Feb 2011 21:50:12 +0100
+  [ Max Bowsher ]
+  * Run testsuite on bzr including compiled extensions.
+  * Run testsuite on all architectures, not just when doing an
+    architecture-independent build.
+
+ -- Max Bowsher <maxb@f2s.com>  Fri, 18 Feb 2011 23:43:25 +0000
 
 bzr (2.3.0-2) unstable; urgency=low
 

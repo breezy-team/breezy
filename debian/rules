@@ -11,20 +11,25 @@ DEB_DH_INSTALL_ARGS += --list-missing --fail-missing
 DEB_PYTHON_BUILD_ARGS += --executable "/usr/bin/python"
 DEB_COMPRESS_EXCLUDE += .svg .pdf
 
-ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-common-post-build-indep::
-	BZR_PLUGIN_PATH=-site:-user ./bzr selftest
-endif
-
 build/bzr:: debian/stamp-doc
 
 debian/stamp-doc:
 	$(MAKE) docs
 	touch $@
 
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+build/bzr:: debian/stamp-selftest
+
+debian/stamp-selftest:
+	BZR_PLUGIN_PATH=-site:-user \
+	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(cdbs_python_current_version)) \
+	build/scripts-$(cdbs_python_current_version)/bzr selftest
+	touch $@
+endif
+
 clean::
 	$(MAKE) clean-docs
-	rm -f debian/stamp-doc
+	rm -f debian/stamp-*
 
 install/bzr-doc::
 # Install the documentation; since html and txt and intermixed
