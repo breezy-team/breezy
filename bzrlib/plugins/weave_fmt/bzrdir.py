@@ -953,6 +953,3 @@ class BzrDir6(BzrDirPreSplitOut):
         # bzrdir as a whole
         from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
         return WorkingTreeFormat2().open(self, _found=True)
-
-
-

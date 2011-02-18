@@ -41,11 +41,12 @@ from bzrlib import (
     workingtree,
     )
 import bzrlib.branch
-from bzrlib.errors import (NotBranchError,
-                           NoColocatedBranchSupport,
-                           UnknownFormatError,
-                           UnsupportedFormatError,
-                           )
+from bzrlib.errors import (
+    NotBranchError,
+    NoColocatedBranchSupport,
+    UnknownFormatError,
+    UnsupportedFormatError,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithMemoryTransport,

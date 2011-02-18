@@ -26,7 +26,10 @@ from bzrlib import (
     upgrade,
     workingtree,
     )
-
+from bzrlib.osutils import (
+    lexists,
+    )
+from bzrlib.tests.test_sftp_server import TestCaseWithSFTPServer
 from bzrlib.tests import (
     TestCaseWithTransport,
     )
@@ -401,3 +404,19 @@ class TestUpgrade(TestCaseWithTransport):
             tree.get_parent_ids())
 
 
+class SFTPBranchTest(TestCaseWithSFTPServer):
+    """Test some stuff when accessing a bzr Branch over sftp"""
+
+    def test_lock_file(self):
+        # old format branches use a special lock file on sftp.
+        b = self.make_branch('', format=BzrDirFormat6())
+        b = branch.Branch.open(self.get_url())
+        self.failUnlessExists('.bzr/')
+        self.failUnlessExists('.bzr/branch-format')
+        self.failUnlessExists('.bzr/branch-lock')
+
+        self.failIf(lexists('.bzr/branch-lock.write-lock'))
+        b.lock_write()
+        self.failUnlessExists('.bzr/branch-lock.write-lock')
+        b.unlock()
+        self.failIf(lexists('.bzr/branch-lock.write-lock'))
