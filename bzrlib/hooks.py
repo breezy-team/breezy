@@ -301,21 +301,18 @@ class HookPoint(object):
         if callback_label is not None:
             self._callback_names[obj_getter] = callback_label
 
-    def _get_callbacks(self):
-        
-
     def __iter__(self):
-        return (callback.get_obj() for callback in self._get_callbacks())
+        return (callback.get_obj() for callback in self._callbacks)
 
     def __len__(self):
-        return len(self._get_callbacks())
+        return len(self._callbacks)
 
     def __repr__(self):
         strings = []
         strings.append("<%s(" % type(self).__name__)
         strings.append(self.name)
         strings.append("), callbacks=[")
-        callbacks = self._get_callbacks()
+        callbacks = self._callbacks
         for callback in callbacks:
             strings.append(repr(callback.get_obj()))
             strings.append("(")
