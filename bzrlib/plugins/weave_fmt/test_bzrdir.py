@@ -29,7 +29,7 @@ from bzrlib import (
 from bzrlib.osutils import (
     lexists,
     )
-from bzrlib.tests.test_sftp_server import TestCaseWithSFTPServer
+from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests import (
     TestCaseWithTransport,
     )
