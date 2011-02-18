@@ -630,6 +630,38 @@ hidden={start}{middle}{end}
         self.assertEquals(['{foo', '}', '{', 'bar}'],
                           conf.get_user_option('hidden'))
 
+class TestLocationConfigOptionExpansion(tests.TestCaseInTempDir):
+
+    def get_config(self, location, string=None):
+        if string is None:
+            string = ''
+        # Since we don't save the config we won't strictly require to inherit
+        # from TestCaseInTempDir, but an error occurs so quickly...
+        c = config.LocationConfig.from_string(string, location)
+        return c
+
+    def test_dont_cross_unrelated_section(self):
+        c = self.get_config('/another/branch/path','''
+[/one/branch/path]
+foo = hello
+bar = {foo}/2
+
+[/another/branch/path]
+bar = {foo}/2
+''')
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          c.get_user_option, 'bar')
+
+    def test_cross_related_sections(self):
+        c = self.get_config('/project/branch/path','''
+[/project]
+foo = qu
+
+[/project/branch/path]
+bar = {foo}ux
+''')
+        self.assertEquals('quux', c.get_user_option('bar'))
+
 
 class TestIniBaseConfigOnDisk(tests.TestCaseInTempDir):
 
