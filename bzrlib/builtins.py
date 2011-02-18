@@ -6103,7 +6103,7 @@ class cmd_clean_tree(Command):
     """
     takes_options = ['directory',
                      Option('ignored', help='Delete all ignored files.'),
-                     Option('detritus', help='Delete conflict files, merge'
+                     Option('detritus', help='Delete conflict files, merge and revert'
                             ' backups, and failed selftest dirs.'),
                      Option('unknown',
                             help='Delete files unknown to bzr (default).'),
