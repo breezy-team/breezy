@@ -1,3 +1,10 @@
+bzr (2.3.0-2ubuntu1) UNRELEASED; urgency=low
+
+  * Bump debhelper dependency to debhelper 7.4.16, required for our use
+    of --list-missing and --fail-missing.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 18 Feb 2011 21:50:12 +0100
+
 bzr (2.3.0-2) unstable; urgency=low
 
   * Split python library into a separate package. Closes: #561647
