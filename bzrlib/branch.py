@@ -1673,47 +1673,29 @@ class BranchFormat(object):
             hook(params)
 
     def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
-                           repository=None, lock_type='metadir',
-                           set_format=True):
+                           repository=None):
         """Initialize a branch in a bzrdir, with specified files
 
         :param a_bzrdir: The bzrdir to initialize the branch in
         :param utf8_files: The files to create as a list of
             (filename, content) tuples
         :param name: Name of colocated branch to create, if any
-        :param set_format: If True, set the format with
-            self.get_format_string.  (BzrBranch4 has its format set
-            elsewhere)
         :return: a branch in this format
         """
         mutter('creating branch %r in %s', self, a_bzrdir.user_url)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
-        lock_map = {
-            'metadir': ('lock', lockdir.LockDir),
-            'branch4': ('branch-lock', lockable_files.TransportLock),
-        }
-        lock_name, lock_class = lock_map[lock_type]
         control_files = lockable_files.LockableFiles(branch_transport,
-            lock_name, lock_class)
+            'lock', lockdir.LockDir)
         control_files.create_lock()
+        control_files.lock_write()
         try:
-            control_files.lock_write()
-        except errors.LockContention:
-            if lock_type != 'branch4':
-                raise
-            lock_taken = False
-        else:
-            lock_taken = True
-        if set_format:
             utf8_files += [('format', self.get_format_string())]
-        try:
             for (filename, content) in utf8_files:
                 branch_transport.put_bytes(
                     filename, content,
                     mode=a_bzrdir._get_file_mode())
         finally:
-            if lock_taken:
-                control_files.unlock()
+            control_files.unlock()
         branch = self.open(a_bzrdir, name, _found=True,
                 found_repository=repository)
         self._run_post_branch_init_hooks(a_bzrdir, name, branch)

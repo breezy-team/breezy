@@ -16,6 +16,12 @@
 
 """Weave-era branch implementations."""
 
+from bzrlib import (
+    errors,
+    lockable_files,
+    )
+
+from bzrlib.trace import mutter
 
 from bzrlib.branch import (
     BranchFormat,
@@ -48,6 +54,39 @@ class BzrBranchFormat4(BranchFormat):
         """See BranchFormat.get_format_description()."""
         return "Branch format 4"
 
+    def _initialize_helper(self, a_bzrdir, utf8_files, name=None):
+        """Initialize a branch in a bzrdir, with specified files
+
+        :param a_bzrdir: The bzrdir to initialize the branch in
+        :param utf8_files: The files to create as a list of
+            (filename, content) tuples
+        :param name: Name of colocated branch to create, if any
+        :return: a branch in this format
+        """
+        mutter('creating branch %r in %s', self, a_bzrdir.user_url)
+        branch_transport = a_bzrdir.get_branch_transport(self, name=name)
+        control_files = lockable_files.LockableFiles(branch_transport,
+            'branch-lock', lockable_files.TransportLock)
+        control_files.create_lock()
+        try:
+            control_files.lock_write()
+        except errors.LockContention:
+            lock_taken = False
+        else:
+            lock_taken = True
+        try:
+            for (filename, content) in utf8_files:
+                branch_transport.put_bytes(
+                    filename, content,
+                    mode=a_bzrdir._get_file_mode())
+        finally:
+            if lock_taken:
+                control_files.unlock()
+        branch = self.open(a_bzrdir, name, _found=True,
+                found_repository=None)
+        self._run_post_branch_init_hooks(a_bzrdir, name, branch)
+        return branch
+
     def initialize(self, a_bzrdir, name=None, repository=None):
         """Create a branch of this format in a_bzrdir."""
         if repository is not None:
@@ -56,8 +95,7 @@ class BzrBranchFormat4(BranchFormat):
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
-        return self._initialize_helper(a_bzrdir, utf8_files, name=name,
-                                       lock_type='branch4', set_format=False)
+        return self._initialize_helper(a_bzrdir, utf8_files, name=name)
 
     def __init__(self):
         super(BzrBranchFormat4, self).__init__()
