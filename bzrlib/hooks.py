@@ -166,14 +166,38 @@ class Hooks(dict):
         """
         return self._callable_names.get(a_callable, "No hook name")
 
+    def install_named_hook_lazy(self, hook_name, callable_module,
+        callable_member, name):
+        """Install a_callable in to the hook hook_name lazily, and label it.
+
+        :param hook_name: A hook name. See the __init__ method for the complete
+            list of hooks.
+        :param callable_module: Name of the module in which the callable is
+            present.
+        :param callable_member: Member name of the callable.
+        :param name: A name to associate the callable with, to show users what
+            is running.
+        """
+        try:
+            hook = self[hook_name]
+        except KeyError:
+            raise errors.UnknownHook(self.__class__.__name__, hook_name)
+        try:
+            hook_lazy = getattr(hook, "hook_lazy")
+        except AttributeError:
+            raise errors.UnsupportedOperation(self.install_named_hook_lazy,
+                self)
+        else:
+            hook_lazy(callable_module, callable_member, name)
+
     def install_named_hook(self, hook_name, a_callable, name):
         """Install a_callable in to the hook hook_name, and label it name.
 
-        :param hook_name: A hook name. See the __init__ method of BranchHooks
-            for the complete list of hooks.
+        :param hook_name: A hook name. See the __init__ method for the complete
+            list of hooks.
         :param a_callable: The callable to be invoked when the hook triggers.
             The exact signature will depend on the hook - see the __init__
-            method of BranchHooks for details on each hook.
+            method for details on each hook.
         :param name: A name to associate a_callable with, to show users what is
             running.
         """
@@ -250,6 +274,21 @@ class HookPoint(object):
         return (type(other) == type(self) and 
             other.__dict__ == self.__dict__)
 
+    def hook_lazy(self, callback_module, callback_member, callback_label):
+        """Lazily register a callback to be called when this HookPoint fires.
+
+        :param callback_module: Module of the callable to use when this
+            HookPoint fires.
+        :param callback_member: Member name of the callback.
+        :param callback_label: A label to show in the UI while this callback is
+            processing.
+        """
+        obj_getter = registry._LazyObjectGetter(callback_module,
+            callback_member)
+        self._callbacks.append(obj_getter)
+        if callback_label is not None:
+            self._callback_names[obj_getter] = callback_label
+
     def hook(self, callback, callback_label):
         """Register a callback to be called when this HookPoint fires.
 
@@ -257,12 +296,13 @@ class HookPoint(object):
         :param callback_label: A label to show in the UI while this callback is
             processing.
         """
-        self._callbacks.append(callback)
+        obj_getter = registry._ObjectGetter(callback)
+        self._callbacks.append(obj_getter)
         if callback_label is not None:
-            self._callback_names[callback] = callback_label
+            self._callback_names[obj_getter] = callback_label
 
     def __iter__(self):
-        return iter(self._callbacks)
+        return (callback.get_obj() for callback in self._callbacks)
 
     def __len__(self):
         return len(self._callbacks)
@@ -272,12 +312,13 @@ class HookPoint(object):
         strings.append("<%s(" % type(self).__name__)
         strings.append(self.name)
         strings.append("), callbacks=[")
-        for callback in self._callbacks:
-            strings.append(repr(callback))
+        callbacks = self._callbacks
+        for callback in callbacks:
+            strings.append(repr(callback.get_obj()))
             strings.append("(")
             strings.append(self._callback_names[callback])
             strings.append("),")
-        if len(self._callbacks) == 1:
+        if len(callbacks) == 1:
             strings[-1] = ")"
         strings.append("]>")
         return ''.join(strings)
@@ -322,3 +363,21 @@ def hooks_help_text(topic):
         hooks = known_hooks_key_to_object(hook_key)
         segments.append(hooks.docs())
     return '\n'.join(segments)
+
+
+_lazy_hooks = {}
+
+
+def install_lazy_named_hook(hookpoints_module, hookpoints_name, hook_name,
+    a_callable, name):
+    """Install a callable in to a hook lazily, and label it name.
+
+    :param hookpoints_module: Module name of the hook points.
+    :param hookpoints_name: Name of the hook points.
+    :param hook_name: A hook name.
+    :param callable: a callable to call for the hook.
+    :param name: A name to associate a_callable with, to show users what is
+        running.
+    """
+    key = (hookpoints_module, hookpoints_name, hook_name)
+    _lazy_hooks.setdefault(key, []).append((a_callable, name))

@@ -145,6 +145,9 @@ Internals
   by cacthing them so they can be re-raised in the controlling thread. It's
   available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
 
+* ``HookPoint.lazy_hook`` and ``Hooks.install_named_lazy_hook`` can install 
+  hooks for which the callable is loaded lazily.  (Jelmer Vernooij)
+
 Testing
 *******
 
