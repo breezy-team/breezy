@@ -19,6 +19,8 @@
 For interface contract tests, see tests/per_bzr_dir.
 """
 
+import sys
+
 from bzrlib import (
     branch,
     bzrdir,
@@ -420,3 +422,91 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         self.failUnlessExists('.bzr/branch-lock.write-lock')
         b.unlock()
         self.failIf(lexists('.bzr/branch-lock.write-lock'))
+
+
+class TestInfo(TestCaseWithTransport):
+
+    def test_info_locking_oslocks(self):
+        if sys.platform == "win32":
+            self.skip("don't use oslocks on win32 in unix manner")
+        # This test tests old (all-in-one, OS lock using) behaviour which
+        # simply cannot work on windows (and is indeed why we changed our
+        # design. As such, don't try to remove the thisFailsStrictLockCheck
+        # call here.
+        self.thisFailsStrictLockCheck()
+
+        tree = self.make_branch_and_tree('branch',
+                                         format=BzrDirFormat6())
+
+        # Test all permutations of locking the working tree, branch and repository
+        # XXX: Well not yet, as we can't query oslocks yet. Currently, it's
+        # implemented by raising NotImplementedError and get_physical_lock_status()
+        # always returns false. This makes bzr info hide the lock status.  (Olaf)
+        # W B R
+
+        # U U U
+        out, err = self.run_bzr('info -v branch')
+        self.assertEqualDiff(
+"""Standalone tree (format: weave)
+Location:
+  branch root: %s
+
+Format:
+       control: All-in-one format 6
+  working tree: Working tree format 2
+        branch: Branch format 4
+    repository: %s
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Repository:
+         0 revisions
+""" % ('branch', tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
+        # L L L
+        tree.lock_write()
+        out, err = self.run_bzr('info -v branch')
+        self.assertEqualDiff(
+"""Standalone tree (format: weave)
+Location:
+  branch root: %s
+
+Format:
+       control: All-in-one format 6
+  working tree: Working tree format 2
+        branch: Branch format 4
+    repository: %s
+
+In the working tree:
+         0 unchanged
+         0 modified
+         0 added
+         0 removed
+         0 renamed
+         0 unknown
+         0 ignored
+         0 versioned subdirectories
+
+Branch history:
+         0 revisions
+
+Repository:
+         0 revisions
+""" % ('branch', tree.branch.repository._format.get_format_description(),
+       ), out)
+        self.assertEqual('', err)
+        tree.unlock()
+
+
