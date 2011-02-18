@@ -185,6 +185,7 @@ class BzrDir(controldir.ControlDir):
         :param create_prefix: Create any missing directories leading up to
             to_transport.
         :param use_existing_dir: Use an existing directory if one exists.
+        :param no_tree: If set to true prevents creation of a working tree.
         """
         # Overview: put together a broad description of what we want to end up
         # with; then make as few api calls as possible to do it.

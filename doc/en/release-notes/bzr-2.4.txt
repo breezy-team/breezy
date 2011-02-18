@@ -50,6 +50,9 @@ Bug Fixes
 * ``bzr annotate -r-1 file`` will now properly annotate a deleted file.
   (Andrew King, #537442)
 
+* ``bzr export`` to zip files will now set a mode on directories.
+  (Jelmer Vernooij, #207253)
+
 * ``bzr push --overwrite`` with an older revision specified will now correctly
   roll back the target branch. (Jelmer Vernooij, #386576)
 
@@ -67,6 +70,10 @@ Bug Fixes
 * ``bzr mv`` user errors no longer throw UnicodeEncodeError with non-ascii
   paths, however they may still print junk if not on a UTF-8 terminal.
   (Martin [gz], #707954)
+
+* ``bzr reconfigure --unstacked`` now copies revisions (and their
+  ancestors) named in tags into the unstacked repository, not just the
+  ancestry of the branch's tip.  (Andrew Bennetts, #401646)
 
 * ``bzr serve`` no longer crashes when a server_started hook is installed and
   IPv6 support is available on the system. (Jelmer Vernooij, #293697)
@@ -86,8 +93,15 @@ Bug Fixes
   ``bzr plugins`` and in crash reports.
   (#704195, Martin Pool)
 
+* The "pretty" version of ``needs_read_lock`` and ``needs_write_lock`` now
+  preserves the identity of default parameter values.
+  (Andrew Bennetts, #718569)
+
 * ``bzr dump-btree --raw`` no longer tracebacks on a B-Tree file
   containing no rows. (Eric Siegerman, #715508)
+
+* Fix ``bzr lp-mirror`` to work on command line branch URLs and branches
+  without an explicit public location. (Max Bowsher)
 
 Documentation
 *************
@@ -128,8 +142,11 @@ Internals
 * ``CatchingExceptionThread`` (formerly ThreadWithException) has been moved
   out of the ``bzrlib.tests`` hierarchy to make it clearer that it can be used
   outside of tests. This class makes it easier to track exceptions in threads
-  by cacthing them so they can be re-raised in the controlling thread.
-  (Vincent Ladeuil)
+  by cacthing them so they can be re-raised in the controlling thread. It's
+  available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
+
+* ``HookPoint.lazy_hook`` and ``Hooks.install_named_lazy_hook`` can install 
+  hooks for which the callable is loaded lazily.  (Jelmer Vernooij)
 
 Testing
 *******

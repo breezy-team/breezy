@@ -2795,6 +2795,9 @@ class WorkingTreeFormat(object):
 
     case_sensitive_filename = "FoRMaT"
 
+    missing_parent_conflicts = False
+    """If this format supports missing parent conflicts."""
+
     @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the working tree object in a_bzrdir."""
@@ -2882,6 +2885,8 @@ class WorkingTreeFormat3(WorkingTreeFormat):
     """
 
     upgrade_recommended = True
+
+    missing_parent_conflicts = True
 
     def get_format_string(self):
         """See WorkingTreeFormat.get_format_string()."""

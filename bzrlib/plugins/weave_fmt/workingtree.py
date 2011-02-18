@@ -51,6 +51,10 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     requires_normalized_unicode_filenames = True
 
+    case_sensitive_filename = "Branch-FoRMaT"
+
+    missing_parent_conflicts = False
+
     def get_format_description(self):
         """See WorkingTreeFormat.get_format_description()."""
         return "Working tree format 2"

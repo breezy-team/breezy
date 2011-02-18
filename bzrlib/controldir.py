@@ -602,7 +602,7 @@ class ControlDir(ControlComponent):
 
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
-        create_prefix=False, use_existing_dir=True):
+        create_prefix=False, use_existing_dir=True, no_tree=False):
         """Clone this bzrdir and its contents to transport verbatim.
 
         :param transport: The transport for the location to produce the clone
@@ -617,6 +617,7 @@ class ControlDir(ControlComponent):
         :param create_prefix: Create any missing directories leading up to
             to_transport.
         :param use_existing_dir: Use an existing directory if one exists.
+        :param no_tree: If set to true prevents creation of a working tree.
         """
         raise NotImplementedError(self.clone_on_transport)
 
