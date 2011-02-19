@@ -41,7 +41,7 @@ class TestDefaultFormat(tests.TestCase):
 
     def test_default_format(self):
         # update this if you change the default branch format
-        self.assertIsInstance(_mod_branch.BranchFormat.get_default_format(),
+        self.assertIsInstance(_mod_branch.format_registry.get_default(),
                 _mod_branch.BzrBranchFormat7)
 
     def test_default_format_is_same_as_bzrdir_default(self):
@@ -49,12 +49,12 @@ class TestDefaultFormat(tests.TestCase):
         # set, but at the moment that's not true -- mbp 20070814 --
         # https://bugs.launchpad.net/bzr/+bug/132376
         self.assertEqual(
-            _mod_branch.BranchFormat.get_default_format(),
+            _mod_branch.format_registry.get_default(),
             bzrdir.BzrDirFormat.get_default_format().get_branch_format())
 
     def test_get_set_default_format(self):
         # set the format and then set it back again
-        old_format = _mod_branch.BranchFormat.get_default_format()
+        old_format = _mod_branch.format_registry.get_default()
         _mod_branch.BranchFormat.set_default_format(SampleBranchFormat())
         try:
             # the default branch format is used by the meta dir format
@@ -65,7 +65,7 @@ class TestDefaultFormat(tests.TestCase):
         finally:
             _mod_branch.BranchFormat.set_default_format(old_format)
         self.assertEqual(old_format,
-                         _mod_branch.BranchFormat.get_default_format())
+                         _mod_branch.format_registry.get_default())
 
 
 class TestBranchFormat5(tests.TestCaseWithTransport):
