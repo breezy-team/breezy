@@ -368,7 +368,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         return None
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml4 import serializer_v4
+        from bzrlib.plugins.weave_fmt.xml4 import serializer_v4
         return RevisionTextStore(repo_transport.clone('revision-store'),
             serializer_v4, True, versionedfile.PrefixMapper(),
             repo.is_locked, repo.is_write_locked)

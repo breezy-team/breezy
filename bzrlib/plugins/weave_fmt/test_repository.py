@@ -20,6 +20,7 @@ For interface tests see tests/per_repository/*.py.
 
 """
 
+from cStringIO import StringIO
 from stat import S_ISDIR
 import sys
 
@@ -34,10 +35,15 @@ from bzrlib.repository import (
     InterRepository,
     Repository,
     )
+from bzrlib.serializer import (
+    format_registry as serializer_format_registry,
+    )
 from bzrlib.tests import (
+    TestCase,
     TestCaseWithTransport,
     )
 
+from bzrlib.plugins.weave_fmt import xml4
 from bzrlib.plugins.weave_fmt.bzrdir import (
     BzrDirFormat6,
     )
@@ -268,3 +274,56 @@ class TestInterWeaveRepo(TestCaseWithTransport):
                 self.assertTrue(is_compatible(repo_a, repo_b))
         self.assertEqual(InterWeaveRepo,
                          InterRepository.get(repo_a, repo_b).__class__)
+
+
+_working_inventory_v4 = """<inventory file_id="TREE_ROOT">
+<entry file_id="bar-20050901064931-73b4b1138abc9cd2" kind="file" name="bar" parent_id="TREE_ROOT" />
+<entry file_id="foo-20050801201819-4139aa4a272f4250" kind="directory" name="foo" parent_id="TREE_ROOT" />
+<entry file_id="bar-20050824000535-6bc48cfad47ed134" kind="file" name="bar" parent_id="foo-20050801201819-4139aa4a272f4250" />
+</inventory>"""
+
+
+_revision_v4 = """<revision committer="Martin Pool &lt;mbp@sourcefrog.net&gt;"
+    inventory_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
+    inventory_sha1="e79c31c1deb64c163cf660fdedd476dd579ffd41"
+    revision_id="mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9"
+    timestamp="1125907235.212"
+    timezone="36000">
+<message>- start splitting code for xml (de)serialization away from objects
+  preparatory to supporting multiple formats by a single library
+</message>
+<parents>
+<revision_ref revision_id="mbp@sourcefrog.net-20050905063503-43948f59fa127d92" revision_sha1="7bdf4cc8c5bdac739f8cf9b10b78cf4b68f915ff" />
+</parents>
+</revision>
+"""
+
+
+class TestSerializer(TestCase):
+    """Test serializer"""
+
+    def test_registry(self):
+        self.assertIs(xml4.serializer_v4,
+                      serializer_format_registry.get('4'))
+
+    def test_canned_inventory(self):
+        """Test unpacked a canned inventory v4 file."""
+        inp = StringIO(_working_inventory_v4)
+        inv = xml4.serializer_v4.read_inventory(inp)
+        self.assertEqual(len(inv), 4)
+        self.assert_('bar-20050901064931-73b4b1138abc9cd2' in inv)
+
+    def test_unpack_revision(self):
+        """Test unpacking a canned revision v4"""
+        inp = StringIO(_revision_v4)
+        rev = xml4.serializer_v4.read_revision(inp)
+        eq = self.assertEqual
+        eq(rev.committer,
+           "Martin Pool <mbp@sourcefrog.net>")
+        eq(rev.inventory_id,
+           "mbp@sourcefrog.net-20050905080035-e0439293f8b6b9f9")
+        eq(len(rev.parent_ids), 1)
+        eq(rev.parent_ids[0],
+           "mbp@sourcefrog.net-20050905063503-43948f59fa127d92")
+
+

@@ -94,6 +94,10 @@ branch.BranchFormat.register_extra_format(BzrBranchFormat4())
 from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
 workingtree.WorkingTreeFormat.register_extra_format(WorkingTreeFormat2())
 
+from bzrlib.serializer import format_registry as serializer_format_registry
+serializer_format_registry.register_lazy('4', 'bzrlib.plugins.weave_fmt.xml4',
+    'serializer_v4')
+
 def load_tests(basic_tests, module, loader):
     testmod_names = [
         'test_bzrdir',

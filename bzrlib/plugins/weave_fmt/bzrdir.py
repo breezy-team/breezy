@@ -40,6 +40,7 @@ from bzrlib.transport import (
     get_transport,
     local,
     )
+from bzrlib.plugins.weave_fmt import xml4
 """)
 
 

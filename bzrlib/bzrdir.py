@@ -54,8 +54,6 @@ from bzrlib import (
     win32utils,
     workingtree,
     workingtree_4,
-    xml4,
-    xml5,
     )
 from bzrlib.osutils import (
     sha_string,
