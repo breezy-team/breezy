@@ -18,7 +18,10 @@
 
 
 from bzrlib import tests
-from bzrlib.plugins.keywords import compress_keywords, expand_keywords
+from bzrlib.plugins.keywords.keywords import (
+    compress_keywords,
+    expand_keywords,
+    )
 
 
 # Sample unexpanded and expanded pairs for a keyword dictionary

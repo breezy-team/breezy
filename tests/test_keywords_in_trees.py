@@ -18,12 +18,8 @@
 
 ## TODO: add tests for xml_escaped
 
-from cStringIO import StringIO
-import sys
-
-from bzrlib import config, rules
-from bzrlib.tests import TestCaseWithTransport, TestSkipped
-from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
+from bzrlib import rules
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
@@ -90,7 +86,7 @@ class TestKeywordsInTrees(TestCaseWithTransport):
         t.add('file1', 'file1-id')
         t.commit("add file1", rev_id="rev1-id",
             committer="Jane Smith <jane@example.com>",
-            author="Sue Smith <sue@example.com>")
+            authors=["Sue Smith <sue@example.com>"])
         basis = t.basis_tree()
         basis.lock_read()
         self.addCleanup(basis.unlock)
