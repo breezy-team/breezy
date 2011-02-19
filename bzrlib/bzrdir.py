@@ -2132,8 +2132,10 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def __get_workingtree_format(self):
         if self._workingtree_format is None:
-            from bzrlib.workingtree import WorkingTreeFormat
-            self._workingtree_format = WorkingTreeFormat.get_default_format()
+            from bzrlib.workingtree import (
+                format_registry as wt_format_registry,
+                )
+            self._workingtree_format = wt_format_registry.get_default()
         return self._workingtree_format
 
     def __set_workingtree_format(self, wt_format):
@@ -3158,7 +3160,7 @@ register_metadir(controldir.format_registry, 'dirstate',
     branch_format='bzrlib.branch.BzrBranchFormat5',
     # this uses bzrlib.workingtree.WorkingTreeFormat4 because importing
     # directly from workingtree_4 triggers a circular import.
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
 register_metadir(controldir.format_registry, 'dirstate-tags',
@@ -3167,7 +3169,7 @@ register_metadir(controldir.format_registry, 'dirstate-tags',
         'network operations. Additionally adds support for tags.'
         ' Incompatible with bzr < 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
 register_metadir(controldir.format_registry, 'rich-root',
@@ -3175,7 +3177,7 @@ register_metadir(controldir.format_registry, 'rich-root',
     help='New in 1.0.  Better handling of tree roots.  Incompatible with'
         ' bzr < 1.0.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     deprecated=True)
 register_metadir(controldir.format_registry, 'dirstate-with-subtree',
@@ -3184,7 +3186,7 @@ register_metadir(controldir.format_registry, 'dirstate-with-subtree',
         'network operations. Additionally adds support for versioning nested '
         'bzr branches. Incompatible with bzr < 0.15.',
     branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     experimental=True,
     hidden=True,
     )
@@ -3195,7 +3197,7 @@ register_metadir(controldir.format_registry, 'pack-0.92',
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
         ,
     branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     )
 register_metadir(controldir.format_registry, 'pack-0.92-subtree',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
@@ -3204,7 +3206,7 @@ register_metadir(controldir.format_registry, 'pack-0.92-subtree',
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
         ,
     branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     experimental=True,
     )
@@ -3213,7 +3215,7 @@ register_metadir(controldir.format_registry, 'rich-root-pack',
     help='New in 1.0: A variant of pack-0.92 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat6',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.6',
@@ -3222,7 +3224,7 @@ register_metadir(controldir.format_registry, '1.6',
          '(stacked) repository that should be used to access data that is '
          'not present locally.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.6.1-rich-root',
@@ -3230,7 +3232,7 @@ register_metadir(controldir.format_registry, '1.6.1-rich-root',
     help='A variant of 1.6 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.9',
@@ -3239,7 +3241,7 @@ register_metadir(controldir.format_registry, '1.9',
          'are smaller in size, have smarter caching and provide faster '
          'performance for most operations.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.9-rich-root',
@@ -3247,21 +3249,21 @@ register_metadir(controldir.format_registry, '1.9-rich-root',
     help='A variant of 1.9 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat4',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat4',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.14',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
     help='A working-tree format that supports content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
     )
 register_metadir(controldir.format_registry, '1.14-rich-root',
     'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of 1.14 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat5',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat5',
     )
 # The following un-numbered 'development' formats should always just be aliases.
 register_metadir(controldir.format_registry, 'development-subtree',
@@ -3273,7 +3275,7 @@ register_metadir(controldir.format_registry, 'development-subtree',
         'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat6',
     experimental=True,
     hidden=True,
     alias=False, # Restore to being an alias when an actual development subtree format is added
@@ -3289,7 +3291,7 @@ register_metadir(controldir.format_registry, 'development5-subtree',
         'http://doc.bazaar.canonical.com/latest/developers/development-repo.html '
         'before use.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat6',
     experimental=True,
     hidden=True,
     alias=False,
@@ -3306,7 +3308,7 @@ register_metadir(controldir.format_registry, '2a',
         # 'storage in packs, 255-way hashed CHK inventory, bencode revision, group compress, '
         # 'rich roots. Supported by bzr 1.16 and later.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat6',
     experimental=False,
     )
 
@@ -3315,7 +3317,7 @@ register_metadir(controldir.format_registry, '2a',
 register_metadir(controldir.format_registry, 'default-rich-root',
     'bzrlib.repofmt.groupcompress_repo.RepositoryFormat2a',
     branch_format='bzrlib.branch.BzrBranchFormat7',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+    tree_format='bzrlib.workingtree_4.WorkingTreeFormat6',
     alias=True,
     hidden=True,
     help='Same as 2a.')
