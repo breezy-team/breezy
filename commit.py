@@ -95,7 +95,8 @@ class GitCommitBuilder(CommitBuilder):
             self._any_changes = True
             self._blobs[path[1].encode("utf-8")] = (mode, sha)
             file_sha1 = workingtree.get_file_sha1(file_id, path[1])
-            yield file_id, path[1], (file_sha1, os.lstat(workingtree.abspath(path[1])))
+            _, st = workingtree.get_file_with_stat(file_id, path[1])
+            yield file_id, path[1], (file_sha1, st)
         # Fill in entries that were not changed
         basis_tree = workingtree.basis_tree()
         assert basis_tree.get_revision_id() == basis_revid
