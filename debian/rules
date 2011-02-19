@@ -23,7 +23,7 @@ build/bzr:: debian/stamp-selftest
 debian/stamp-selftest:
 	BZR_PLUGIN_PATH=-site:-user \
 	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(cdbs_python_current_version)) \
-	build/scripts-$(cdbs_python_current_version)/bzr selftest
+	$(CURDIR)/build/scripts-$(cdbs_python_current_version)/bzr selftest
 	touch $@
 endif
 
