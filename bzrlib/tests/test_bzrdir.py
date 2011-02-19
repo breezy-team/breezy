@@ -72,7 +72,7 @@ class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
         old_format = bzrdir.BzrDirFormat.get_default_format()
-        # default is BzrDirFormat6
+        # default is BzrDirMetaFormat1
         self.failUnless(isinstance(old_format, bzrdir.BzrDirMetaFormat1))
         controldir.ControlDirFormat._set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
@@ -84,16 +84,21 @@ class TestDefaultFormat(TestCase):
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
 
 
+class DeprecatedBzrDirFormat(bzrdir.BzrDirFormat):
+    """A deprecated bzr dir format."""
+
+
+
 class TestFormatRegistry(TestCase):
 
     def make_format_registry(self):
         my_format_registry = controldir.ControlDirFormatRegistry()
-        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
-        my_format_registry.register('weave', BzrDirFormat6,
-            'Pre-0.8 format.  Slower and does not support checkouts or shared'
-            ' repositories', deprecated=True)
-        my_format_registry.register_lazy('lazy', 'bzrlib.plugins.weave_fmt.bzrdir',
-            'BzrDirFormat6', 'Format registered lazily', deprecated=True)
+        my_format_registry.register('deprecated', DeprecatedBzrDirFormat,
+            'Some format.  Slower and unawesome and deprecated.',
+            deprecated=True)
+        my_format_registry.register_lazy('lazy', 'bzrlib.tests.test_bzrdir',
+            'DeprecatedBzrDirFormat', 'Format registered lazily',
+            deprecated=True)
         bzrdir.register_metadir(my_format_registry, 'knit',
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
             'Format using knits',
@@ -110,21 +115,20 @@ class TestFormatRegistry(TestCase):
             'bzrlib.repofmt.knitrepo.RepositoryFormatKnit3',
             'Experimental successor to knit.  Use at your own risk.',
             branch_format='bzrlib.branch.BzrBranchFormat6', hidden=True)
-        my_format_registry.register('hiddenweave', BzrDirFormat6,
-            'Pre-0.8 format.  Slower and does not support checkouts or shared'
-            ' repositories', hidden=True)
-        my_format_registry.register_lazy('hiddenlazy', 'bzrlib.plugins.weave_fmt.bzrdir',
-            'BzrDirFormat6', 'Format registered lazily', deprecated=True,
-            hidden=True)
+        my_format_registry.register('hiddendeprecated', DeprecatedBzrDirFormat,
+            'Old format.  Slower and does not support things. ', hidden=True)
+        my_format_registry.register_lazy('hiddenlazy', 'bzrlib.tests.test_bzrdir',
+            'DeprecatedBzrDirFormat', 'Format registered lazily',
+            deprecated=True, hidden=True)
         return my_format_registry
 
     def test_format_registry(self):
         from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
         my_format_registry = self.make_format_registry()
         my_bzrdir = my_format_registry.make_bzrdir('lazy')
-        self.assertIsInstance(my_bzrdir, BzrDirFormat6)
-        my_bzrdir = my_format_registry.make_bzrdir('weave')
-        self.assertIsInstance(my_bzrdir, BzrDirFormat6)
+        self.assertIsInstance(my_bzrdir, DeprecatedBzrDirFormat)
+        my_bzrdir = my_format_registry.make_bzrdir('deprecated')
+        self.assertIsInstance(my_bzrdir, DeprecatedBzrDirFormat)
         my_bzrdir = my_format_registry.make_bzrdir('default')
         self.assertIsInstance(my_bzrdir.repository_format,
             knitrepo.RepositoryFormatKnit1)
@@ -143,9 +147,8 @@ class TestFormatRegistry(TestCase):
                          my_format_registry.get_help('knit'))
         self.assertEqual('Format using knits',
                          my_format_registry.get_help('default'))
-        self.assertEqual('Pre-0.8 format.  Slower and does not support'
-                         ' checkouts or shared repositories',
-                         my_format_registry.get_help('weave'))
+        self.assertEqual('Some format.  Slower and unawesome and deprecated.',
+                         my_format_registry.get_help('deprecated'))
 
     def test_help_topic(self):
         topics = help_topics.HelpTopicRegistry()
@@ -182,14 +185,13 @@ class TestFormatRegistry(TestCase):
 
     def test_aliases(self):
         a_registry = controldir.ControlDirFormatRegistry()
-        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
-        a_registry.register('weave', BzrDirFormat6,
-            'Pre-0.8 format.  Slower and does not support checkouts or shared'
-            ' repositories', deprecated=True)
-        a_registry.register('weavealias', BzrDirFormat6,
-            'Pre-0.8 format.  Slower and does not support checkouts or shared'
-            ' repositories', deprecated=True, alias=True)
-        self.assertEqual(frozenset(['weavealias']), a_registry.aliases())
+        a_registry.register('deprecated', DeprecatedBzrDirFormat,
+            'Old format.  Slower and does not support stuff',
+            deprecated=True)
+        a_registry.register('deprecatedalias', DeprecatedBzrDirFormat,
+            'Old format.  Slower and does not support stuff',
+            deprecated=True, alias=True)
+        self.assertEqual(frozenset(['deprecatedalias']), a_registry.aliases())
 
 
 class SampleBranch(bzrlib.branch.Branch):
@@ -252,13 +254,30 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
         return "opened branch."
 
 
+class BzrDirFormat1(bzrdir.BzrDirMetaFormat1):
+
+    @staticmethod
+    def get_format_string():
+        return "Test format 1"
+
+
+class BzrDirFormat2(bzrdir.BzrDirMetaFormat1):
+
+    @staticmethod
+    def get_format_string():
+        return "Test format 2"
+
+
 class TestBzrDirFormat(TestCaseWithTransport):
     """Tests for the BzrDirFormat facility."""
 
     def test_find_format(self):
         # is the right format object found for a branch?
         # create a branch with a few known format objects.
-        # this is not quite the same as
+        bzrdir.BzrDirFormat.register_format(BzrDirFormat1())
+        self.addCleanup(bzrdir.BzrDirFormat.unregister_format, BzrDirFormat1())
+        bzrdir.BzrDirFormat.register_format(BzrDirFormat2())
+        self.addCleanup(bzrdir.BzrDirFormat.unregister_format, BzrDirFormat2())
         t = self.get_transport()
         self.build_tree(["foo/", "bar/"], transport=t)
         def check_format(format, url):
@@ -266,9 +285,8 @@ class TestBzrDirFormat(TestCaseWithTransport):
             t = _mod_transport.get_transport(url)
             found_format = bzrdir.BzrDirFormat.find_format(t)
             self.failUnless(isinstance(found_format, format.__class__))
-        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5, BzrDirFormat6
-        check_format(BzrDirFormat5(), "foo")
-        check_format(BzrDirFormat6(), "bar")
+        check_format(BzrDirFormat1(), "foo")
+        check_format(BzrDirFormat2(), "bar")
 
     def test_find_format_nothing_there(self):
         self.assertRaises(NotBranchError,
@@ -937,9 +955,11 @@ class TestMeta1DirFormat(TestCaseWithTransport):
                          dir.get_branch_transport(bzrlib.branch.BzrBranchFormat5()).base)
         repository_base = t.clone('repository').base
         self.assertEqual(repository_base, dir.get_repository_transport(None).base)
-        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
+        # Pick a random format to use.
+        format_name = repository.format_registry.keys()[0]
+        repository_format = repository.format_registry.get(format_name)
         self.assertEqual(repository_base,
-                         dir.get_repository_transport(RepositoryFormat7()).base)
+                         dir.get_repository_transport(repository_format).base)
         checkout_base = t.clone('checkout').base
         self.assertEqual(checkout_base, dir.get_workingtree_transport(None).base)
         self.assertEqual(checkout_base,
