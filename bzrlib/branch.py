@@ -1785,7 +1785,7 @@ class BranchFormat(object):
 
     @classmethod
     def unregister_format(klass, format):
-        format_registry.unregister(format)
+        format_registry.remove(format)
 
     def __str__(self):
         return self.get_format_description().rstrip()
@@ -1804,6 +1804,7 @@ class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
     bzrlib.plugins.loom.formats).
     """
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def __init__(self, format_string, module_name, member_name):
         """Create a MetaDirBranchFormatFactory.
 
@@ -2407,7 +2408,8 @@ class BranchFormatRegistry(registry.FormatRegistry):
         older Bazaar formats and foreign formats, to be tested
         """
         self._extra_formats.append(format)
-        network_format_registry.register(format.network_name(), format.__class__)
+        network_format_registry.register(
+            format.network_name(), format.__class__)
 
     @classmethod
     def unregister_extra(self, format):
