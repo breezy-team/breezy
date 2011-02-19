@@ -122,7 +122,6 @@ class TestFormatRegistry(TestCase):
         return my_format_registry
 
     def test_format_registry(self):
-        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
         my_format_registry = self.make_format_registry()
         my_bzrdir = my_format_registry.make_bzrdir('lazy')
         self.assertIsInstance(my_bzrdir, DeprecatedBzrDirFormat)
