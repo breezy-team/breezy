@@ -1745,7 +1745,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     def _resume_write_group(self, tokens):
         raise errors.UnsuspendableWriteGroup(self)
 
-    def fetch(self, source, revision_id=None, pb=None, find_ghosts=False,
+    def fetch(self, source, revision_id=None, find_ghosts=False,
             fetch_spec=None):
         """Fetch the content required to construct revision_id from source.
 
@@ -1786,7 +1786,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 self.get_revision(revision_id)
             return 0, []
         inter = InterRepository.get(source, self)
-        return inter.fetch(revision_id=revision_id, pb=pb,
+        return inter.fetch(revision_id=revision_id,
             find_ghosts=find_ghosts, fetch_spec=fetch_spec)
 
     def create_bundle(self, target, base, fileobj, format=None):
@@ -3489,7 +3489,7 @@ class InterRepository(InterObject):
         self.target.fetch(self.source, revision_id=revision_id)
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+    def fetch(self, revision_id=None, find_ghosts=False,
             fetch_spec=None):
         """Fetch the content required to construct revision_id.
 
@@ -3497,7 +3497,6 @@ class InterRepository(InterObject):
 
         :param revision_id: if None all content is copied, if NULL_REVISION no
                             content is copied.
-        :param pb: ignored.
         :return: None.
         """
         ui.ui_factory.warn_experimental_format_fetch(self)
@@ -3962,7 +3961,7 @@ class InterDifferingSerializer(InterRepository):
                   len(revision_ids))
 
     @needs_write_lock
-    def fetch(self, revision_id=None, pb=None, find_ghosts=False,
+    def fetch(self, revision_id=None, find_ghosts=False,
             fetch_spec=None):
         """See InterRepository.fetch()."""
         if fetch_spec is not None:
@@ -3998,19 +3997,11 @@ class InterDifferingSerializer(InterRepository):
         # Walk though all revisions; get inventory deltas, copy referenced
         # texts that delta references, insert the delta, revision and
         # signature.
-        if pb is None:
-            my_pb = ui.ui_factory.nested_progress_bar()
-            pb = my_pb
-        else:
-            symbol_versioning.warn(
-                symbol_versioning.deprecated_in((1, 14, 0))
-                % "pb parameter to fetch()")
-            my_pb = None
+        pb = ui.ui_factory.nested_progress_bar()
         try:
             self._fetch_all_revisions(revision_ids, pb)
         finally:
-            if my_pb is not None:
-                my_pb.finished()
+            pb.finished()
         return len(revision_ids), 0
 
     def _get_basis(self, first_revision_id):
