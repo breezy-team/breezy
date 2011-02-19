@@ -604,7 +604,7 @@ baz=end
 list={foo},{bar},{baz}
 ''')
         self.assertEquals(['start', 'middle', 'end'],
-                           conf.get_user_option('list'))
+                           conf.get_user_option('list', expand=True))
 
     def test_cascading_list(self):
         conf = self.get_config('''
@@ -614,7 +614,7 @@ baz=end
 list={foo}
 ''')
         self.assertEquals(['start', 'middle', 'end'],
-                           conf.get_user_option('list'))
+                           conf.get_user_option('list', expand=True))
 
     def test_pathological_hidden_list(self):
         conf = self.get_config('''
@@ -628,7 +628,7 @@ hidden={start}{middle}{end}
         # Nope, it's either a string or a list, and the list wins as soon as a
         # ',' appears, so the string concatenation never occur.
         self.assertEquals(['{foo', '}', '{', 'bar}'],
-                          conf.get_user_option('hidden'))
+                          conf.get_user_option('hidden', expand=True))
 
 class TestLocationConfigOptionExpansion(tests.TestCaseInTempDir):
 
@@ -650,7 +650,7 @@ bar = {foo}/2
 bar = {foo}/2
 ''')
         self.assertRaises(errors.ExpandingUnknownOption,
-                          c.get_user_option, 'bar')
+                          c.get_user_option, 'bar', expand=True)
 
     def test_cross_related_sections(self):
         c = self.get_config('/project/branch/path','''
@@ -660,7 +660,7 @@ foo = qu
 [/project/branch/path]
 bar = {foo}ux
 ''')
-        self.assertEquals('quux', c.get_user_option('bar'))
+        self.assertEquals('quux', c.get_user_option('bar', expand=True))
 
 
 class TestIniBaseConfigOnDisk(tests.TestCaseInTempDir):

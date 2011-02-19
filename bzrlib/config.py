@@ -323,7 +323,7 @@ class Config(object):
         """Template method to provide a user option."""
         return None
 
-    def get_user_option(self, option_name, expand=True):
+    def get_user_option(self, option_name, expand=None):
         """Get a generic option - no special process, no default.
 
         :param option_name: The queried option.
