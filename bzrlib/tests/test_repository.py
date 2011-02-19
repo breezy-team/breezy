@@ -140,7 +140,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
             t = transport.get_transport(url)
             found_format = repository.RepositoryFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
-        check_format(weaverepo.RepositoryFormat7(), "bar")
+        check_format(repository.format_registry.get_default(), "bar")
 
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
