@@ -32,7 +32,6 @@ from bzrlib import (
     symbol_versioning,
     tests,
     trace,
-    transport,
     urlutils,
     )
 
@@ -742,5 +741,3 @@ class TestRunWithWriteLockedTarget(tests.TestCase):
                           _mod_branch._run_with_write_locked_target,
                           lockable, self.func_that_raises)
         self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
-
-
