@@ -137,8 +137,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
             t = transport.get_transport(url)
             found_format = repository.RepositoryFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
-        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
-        check_format(RepositoryFormat7(), "bar")
+        check_format(repository.format_registry.get_default(), "bar")
 
     def test_find_format_no_repository(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
@@ -433,7 +432,7 @@ class TestRepositoryConverter(TestCaseWithTransport):
 
     def test_convert_empty(self):
         from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
-        t = transport.get_transport()
+        t = transport.get_transport(".")
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
         repo = RepositoryFormat7().initialize(repo_dir)
