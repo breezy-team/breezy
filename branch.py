@@ -235,6 +235,11 @@ class GitBranchFormat(branch.BranchFormat):
     def supports_tags(self):
         return True
 
+    @property
+    def _matchingbzrdir(self):
+        from bzrlib.plugins.git import LocalGitControlDirFormat
+        return LocalGitControlDirFormat()
+
     def get_foreign_tests_branch_factory(self):
         from bzrlib.plugins.git.tests.test_branch import ForeignTestsBranchFactory
         return ForeignTestsBranchFactory()
