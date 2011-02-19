@@ -1581,9 +1581,6 @@ class BranchFormat(object):
     _default_format = None
     """The default format used for new branches."""
 
-    _formats = {}
-    """The known formats."""
-
     _extra_formats = []
     """Extra formats that can not be part of a metadir."""
 
@@ -1601,7 +1598,7 @@ class BranchFormat(object):
         try:
             transport = a_bzrdir.get_branch_transport(None, name=name)
             format_string = transport.get_bytes("format")
-            format = klass._formats[format_string]
+            format = format_registry.get(format_string)
             if isinstance(format, MetaDirBranchFormatFactory):
                 return format()
             return format
@@ -1623,7 +1620,7 @@ class BranchFormat(object):
         use except when that is desireed.
         """
         result = []
-        for fmt in klass._formats.values():
+        for name, fmt in format_registry.iteritems():
             if isinstance(fmt, MetaDirBranchFormatFactory):
                 fmt = fmt()
             result.append(fmt)
@@ -1780,8 +1777,7 @@ class BranchFormat(object):
         older Bazaar formats and foreign formats, to be tested
         """
         klass._extra_formats.append(format)
-        network_format_registry.register(
-            format.network_name(), format.__class__)
+        network_format_registry.register(format.network_name(), format.__class__)
 
     @classmethod
     def register_format(klass, format):
@@ -1790,7 +1786,7 @@ class BranchFormat(object):
         See MetaDirBranchFormatFactory for the ability to register a format
         without loading the code the format needs until it is actually used.
         """
-        klass._formats[format.get_format_string()] = format
+        format_registry.register(format)
         # Metadir formats have a network name of their format string, and get
         # registered as factories.
         if isinstance(format, MetaDirBranchFormatFactory):
@@ -1813,7 +1809,7 @@ class BranchFormat(object):
 
     @classmethod
     def unregister_format(klass, format):
-        del klass._formats[format.get_format_string()]
+        format_registry.unregister(format)
 
     @classmethod
     def unregister_extra_format(klass, format):
@@ -2408,6 +2404,24 @@ class BranchReferenceFormat(BranchFormat):
         return result
 
 
+class BranchFormatRegistry(registry.FormatRegistry):
+    """Branch format registry."""
+
+    def __init__(self, other_registry=None):
+        super(BranchFormatRegistry, self).__init__(other_registry)
+        self._extra_formats = []
+
+    def register(self, format):
+        """Register a new branch format."""
+        super(BranchFormatRegistry, self).register(
+            format.get_format_string(), format)
+
+    def remove(self, format):
+        """Remove a registered branch format."""
+        super(BranchFormatRegistry, self).remove(
+            format.get_format_string())
+
+
 network_format_registry = registry.FormatRegistry()
 """Registry of formats indexed by their network name.
 
@@ -2415,6 +2429,8 @@ The network name for a branch format is an identifier that can be used when
 referring to formats with smart server operations. See
 BranchFormat.network_name() for more detail.
 """
+
+format_registry = BranchFormatRegistry(network_format_registry)
 
 
 # formats which have no format string are not discoverable
