@@ -1592,10 +1592,7 @@ class BranchFormat(object):
         try:
             transport = a_bzrdir.get_branch_transport(None, name=name)
             format_string = transport.get_bytes("format")
-            format = format_registry.get(format_string)
-            if isinstance(format, MetaDirBranchFormatFactory):
-                return format()
-            return format
+            return format_registry.get(format_string)
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
         except KeyError:
@@ -1784,6 +1781,7 @@ class BranchFormat(object):
         return False
 
     @classmethod
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def unregister_format(klass, format):
         format_registry.remove(format)
 
@@ -1804,7 +1802,6 @@ class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
     bzrlib.plugins.loom.formats).
     """
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
     def __init__(self, format_string, module_name, member_name):
         """Create a MetaDirBranchFormatFactory.
 
@@ -2387,14 +2384,8 @@ class BranchFormatRegistry(registry.FormatRegistry):
 
     def register(self, format):
         """Register a new branch format."""
-        # Metadir formats have a network name of their format string, and get
-        # registered as factories.
-        if isinstance(format, MetaDirBranchFormatFactory):
-            super(BranchFormatRegistry, self).register(
-                format.get_format_string(), format.__class__)
-        else:
-            super(BranchFormatRegistry, self).register(
-                format.get_format_string(), format)
+        super(BranchFormatRegistry, self).register(
+            format.get_format_string(), format)
 
     def remove(self, format):
         """Remove a registered branch format."""
@@ -2407,21 +2398,32 @@ class BranchFormatRegistry(registry.FormatRegistry):
         This is mainly useful to allow custom branch formats, such as
         older Bazaar formats and foreign formats, to be tested
         """
-        self._extra_formats.append(format)
+        self._extra_formats.append(registry._ObjectGetter(format))
         network_format_registry.register(
             format.network_name(), format.__class__)
 
+    def register_extra_lazy(self, module_name, member_name):
+        """Register a branch format lazily.
+        """
+        self._extra_formats.append(
+            registry._LazyObjectGetter(module_name, member_name))
+
     @classmethod
     def unregister_extra(self, format):
-        self._extra_formats.remove(format)
+        self._extra_formats.remove(registry._ObjectGetter(format))
 
     def _get_all(self):
         result = []
         for name, fmt in self.iteritems():
-            if isinstance(fmt, MetaDirBranchFormatFactory):
+            if callable(fmt):
                 fmt = fmt()
             result.append(fmt)
-        return result + self._extra_formats
+        for objgetter in self._extra_formats:
+            fmt = objgetter.get_obj()
+            if callable(fmt):
+                fmt = fmt()
+            result.append(fmt)
+        return result
 
     def set_default(self, format):
         self._default_format = format
@@ -3642,6 +3644,8 @@ class GenericInterBranch(InterBranch):
         :param _hook_master: Private parameter - set the branch to
             be supplied as the master to pull hooks.
         :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
         :param _override_hook_target: Private parameter - set the branch to be
