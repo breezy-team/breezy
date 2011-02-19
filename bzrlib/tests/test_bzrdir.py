@@ -88,7 +88,6 @@ class DeprecatedBzrDirFormat(bzrdir.BzrDirFormat):
     """A deprecated bzr dir format."""
 
 
-
 class TestFormatRegistry(TestCase):
 
     def make_format_registry(self):
@@ -254,14 +253,14 @@ class SampleBzrDirFormat(bzrdir.BzrDirFormat):
         return "opened branch."
 
 
-class BzrDirFormat1(bzrdir.BzrDirMetaFormat1):
+class BzrDirFormatTest1(bzrdir.BzrDirMetaFormat1):
 
     @staticmethod
     def get_format_string():
         return "Test format 1"
 
 
-class BzrDirFormat2(bzrdir.BzrDirMetaFormat1):
+class BzrDirFormatTest2(bzrdir.BzrDirMetaFormat1):
 
     @staticmethod
     def get_format_string():
@@ -274,10 +273,10 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_find_format(self):
         # is the right format object found for a branch?
         # create a branch with a few known format objects.
-        bzrdir.BzrDirFormat.register_format(BzrDirFormat1())
-        self.addCleanup(bzrdir.BzrDirFormat.unregister_format, BzrDirFormat1())
-        bzrdir.BzrDirFormat.register_format(BzrDirFormat2())
-        self.addCleanup(bzrdir.BzrDirFormat.unregister_format, BzrDirFormat2())
+        bzrdir.BzrDirFormat.register_format(BzrDirFormatTest1())
+        self.addCleanup(bzrdir.BzrDirFormat.unregister_format, BzrDirFormatTest1())
+        bzrdir.BzrDirFormat.register_format(BzrDirFormatTest2())
+        self.addCleanup(bzrdir.BzrDirFormat.unregister_format, BzrDirFormatTest2())
         t = self.get_transport()
         self.build_tree(["foo/", "bar/"], transport=t)
         def check_format(format, url):
@@ -285,8 +284,8 @@ class TestBzrDirFormat(TestCaseWithTransport):
             t = _mod_transport.get_transport(url)
             found_format = bzrdir.BzrDirFormat.find_format(t)
             self.failUnless(isinstance(found_format, format.__class__))
-        check_format(BzrDirFormat1(), "foo")
-        check_format(BzrDirFormat2(), "bar")
+        check_format(BzrDirFormatTest1(), "foo")
+        check_format(BzrDirFormatTest2(), "bar")
 
     def test_find_format_nothing_there(self):
         self.assertRaises(NotBranchError,
@@ -955,9 +954,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
                          dir.get_branch_transport(bzrlib.branch.BzrBranchFormat5()).base)
         repository_base = t.clone('repository').base
         self.assertEqual(repository_base, dir.get_repository_transport(None).base)
-        # Pick a random format to use.
-        format_name = repository.format_registry.keys()[0]
-        repository_format = repository.format_registry.get(format_name)
+        repository_format = repository.format_registry.get_default()
         self.assertEqual(repository_base,
                          dir.get_repository_transport(repository_format).base)
         checkout_base = t.clone('checkout').base
