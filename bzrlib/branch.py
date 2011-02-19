@@ -2377,51 +2377,21 @@ class BranchReferenceFormat(BranchFormat):
         return result
 
 
-class BranchFormatRegistry(registry.FormatRegistry):
+class BranchFormatRegistry(bzrdir.BzrDirMetaComponentFormatRegistry):
     """Branch format registry."""
 
     def __init__(self, other_registry=None):
         super(BranchFormatRegistry, self).__init__(other_registry)
         self._default_format = None
-        self._extra_formats = []
 
     def register(self, format):
         """Register a new branch format."""
         # Metadir formats have a network name of their format string, and get
         # registered as factories.
         if isinstance(format, MetaDirBranchFormatFactory):
-            super(BranchFormatRegistry, self).register(
-                format.get_format_string(), format.__class__)
+            super(BranchFormatRegistry, self).register(format.__class__)
         else:
-            super(BranchFormatRegistry, self).register(
-                format.get_format_string(), format)
-
-    def remove(self, format):
-        """Remove a registered branch format."""
-        super(BranchFormatRegistry, self).remove(
-            format.get_format_string())
-
-    def register_extra(self, format):
-        """Register a branch format that can not be part of a metadir.
-
-        This is mainly useful to allow custom branch formats, such as
-        older Bazaar formats and foreign formats, to be tested
-        """
-        self._extra_formats.append(format)
-        network_format_registry.register(
-            format.network_name(), format.__class__)
-
-    @classmethod
-    def unregister_extra(self, format):
-        self._extra_formats.remove(format)
-
-    def _get_all(self):
-        result = []
-        for name, fmt in self.iteritems():
-            if isinstance(fmt, MetaDirBranchFormatFactory):
-                fmt = fmt()
-            result.append(fmt)
-        return result + self._extra_formats
+            super(BranchFormatRegistry, self).register(format)
 
     def set_default(self, format):
         self._default_format = format
