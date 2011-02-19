@@ -383,7 +383,7 @@ class TestTreeScenarios(tests.TestCase):
         wt4_format = workingtree.WorkingTreeFormat4()
         wt5_format = workingtree.WorkingTreeFormat5()
         expected_scenarios = [
-            ('WorkingTreeFormat2',
+            ('WorkingTreeFormat4',
              {'bzrdir_format': formats[0]._matchingbzrdir,
               'transport_readonly_server': 'b',
               'transport_server': 'a',
@@ -555,7 +555,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
     def test_make_branch_and_memory_tree_with_format(self):
         """make_branch_and_memory_tree should accept a format option."""
         format = bzrdir.BzrDirMetaFormat1()
-        format.repository_format = repository.RepositoryFormat.get_default_format()
+        format.repository_format = repository.format_registry.get_default()
         tree = self.make_branch_and_memory_tree('dir', format=format)
         # Guard against regression into MemoryTransport leaking
         # files to disk instead of keeping them in memory.
@@ -575,7 +575,7 @@ class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
         # Use a repo layout that doesn't conform to a 'named' layout, to ensure
         # that the format objects are used.
         format = bzrdir.BzrDirMetaFormat1()
-        repo_format = repository.RepositoryFormat.get_default_format()
+        repo_format = repository.format_registry.get_default()
         format.repository_format = repo_format
         builder = self.make_branch_builder('dir', format=format)
         the_branch = builder.get_branch()
@@ -1975,12 +1975,8 @@ class TestConvenienceMakers(tests.TestCaseWithTransport):
     def test_make_branch_and_tree_with_format(self):
         # we should be able to supply a format to make_branch_and_tree
         self.make_branch_and_tree('a', format=bzrlib.bzrdir.BzrDirMetaFormat1())
-        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat6
-        self.make_branch_and_tree('b', format=BzrDirFormat6())
         self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('a')._format,
                               bzrlib.bzrdir.BzrDirMetaFormat1)
-        self.assertIsInstance(bzrlib.bzrdir.BzrDir.open('b')._format,
-                              BzrDirFormat6)
 
     def test_make_branch_and_memory_tree(self):
         # we should be able to get a new branch and a mutable tree from

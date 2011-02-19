@@ -428,15 +428,34 @@ class TestInterRepository(TestCaseWithTransport):
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 
 
+
+class TestRepositoryFormat1(knitrepo.RepositoryFormatKnit1):
+
+    def get_format_string(self):
+        return "Test Format 1"
+
+
+class TestRepositoryFormat2(knitrepo.RepositoryFormatKnit1):
+
+    def get_format_string(self):
+        return "Test Format 2"
+
+
 class TestRepositoryConverter(TestCaseWithTransport):
 
     def test_convert_empty(self):
-        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
-        t = transport.get_transport(".")
+        source_format = TestRepositoryFormat1()
+        target_format = TestRepositoryFormat2()
+        repository.format_registry.register(source_format)
+        self.addCleanup(repository.format_registry.remove,
+            source_format)
+        repository.format_registry.register(target_format)
+        self.addCleanup(repository.format_registry.remove,
+            target_format)
+        t = self.get_transport()
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
-        repo = RepositoryFormat7().initialize(repo_dir)
-        target_format = knitrepo.RepositoryFormatKnit1()
+        repo = TestRepositoryFormat1().initialize(repo_dir)
         converter = repository.CopyConverter(target_format)
         pb = bzrlib.ui.ui_factory.nested_progress_bar()
         try:
