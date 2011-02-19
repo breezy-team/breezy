@@ -152,6 +152,26 @@ class ConfigObj(configobj.ConfigObj):
         return self[section][name]
 
 
+# FIXME: Until we can guarantee that each config file is loaded once and and
+# only once for a given bzrlib session, we don't want to re-read the file every
+# time we query for an option so we cache the value (bad ! watch out for tests
+# needing to restore the proper value).This shouldn't be part of 2.4.0 final,
+# yell at mgz^W vila and the RM if this is still present at that time
+# -- vila 20110219
+_expand_default_value = None
+def _get_expand_default_value():
+    if _expand_default_value is not None:
+        return _expand_default_value
+    conf = GlobalConfig()
+    # Note that we must not use None for the expand value below or we'll run
+    # into infinite recursion. Using False really would be quite silly ;)
+    expand = conf.get_user_option_as_bool('bzr.config.expand', expand=True)
+    if expand is None:
+        # This is an opt-in feature, you *really* need to clearly say you want
+        # to activate it !
+        expand = False
+    return expand
+
 
 class Config(object):
     """A configuration policy - what username, editor, gpg needs etc."""
@@ -332,6 +352,8 @@ class Config(object):
 
         :returns: The value of the option.
         """
+        if expand is None:
+            expand = _get_expand_default_value()
         value = self._get_user_option(option_name)
         if expand:
             if isinstance(value, list):
@@ -344,13 +366,13 @@ class Config(object):
                 value = self._expand_options_in_string(value)
         return value
 
-    def get_user_option_as_bool(self, option_name):
+    def get_user_option_as_bool(self, option_name, expand=None):
         """Get a generic option as a boolean - no special process, no default.
 
         :return None if the option doesn't exist or its value can't be
             interpreted as a boolean. Returns True or False otherwise.
         """
-        s = self.get_user_option(option_name)
+        s = self.get_user_option(option_name, expand=expand)
         if s is None:
             # The option doesn't exist
             return None
@@ -361,13 +383,13 @@ class Config(object):
                           s, option_name)
         return val
 
-    def get_user_option_as_list(self, option_name):
+    def get_user_option_as_list(self, option_name, expand=None):
         """Get a generic option as a list - no special process, no default.
 
         :return None if the option doesn't exist. Returns the value as a list
             otherwise.
         """
-        l = self.get_user_option(option_name)
+        l = self.get_user_option(option_name, expand=expand)
         if isinstance(l, (str, unicode)):
             # A single value, most probably the user forgot (or didn't care to
             # add) the final ','
