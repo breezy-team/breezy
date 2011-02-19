@@ -1971,8 +1971,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def get_branch_format(self):
         if self._branch_format is None:
-            from bzrlib.branch import BranchFormat
-            self._branch_format = BranchFormat.get_default_format()
+            from bzrlib.branch import format_registry as branch_format_registry
+            self._branch_format = branch_format_registry.get_default()
         return self._branch_format
 
     def set_branch_format(self, format):
