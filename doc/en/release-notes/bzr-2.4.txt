@@ -137,6 +137,10 @@ API Changes
   ``InterRepository.search_missing_revision_ids`` is deprecated.  It is
   replaced by the ``revision_ids`` parameter.  (Andrew Bennetts)
 
+* Working tree formats should now be registered on the format registry
+  (``bzrlib.working_tree.format_registry``) rather than using the class
+  methods on ``WorkingTreeFormat``. (Jelmer Vernooij, #714730)
+
 Internals
 *********
 

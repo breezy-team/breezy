@@ -2989,7 +2989,7 @@ class WorkingTreeFormat(object):
     @symbol_versioning.deprecated_method(
         symbol_versioning.deprecated_in((2, 4, 0)))
     def unregister_format(klass, format):
-        format_registry.unregister(format)
+        format_registry.remove(format)
 
 
 class WorkingTreeFormat2(WorkingTreeFormat):
