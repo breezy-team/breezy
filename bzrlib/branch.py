@@ -1592,10 +1592,7 @@ class BranchFormat(object):
         try:
             transport = a_bzrdir.get_branch_transport(None, name=name)
             format_string = transport.get_bytes("format")
-            format = format_registry.get(format_string)
-            if isinstance(format, MetaDirBranchFormatFactory):
-                return format()
-            return format
+            return format_registry.get(format_string)
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
         except KeyError:
@@ -1784,6 +1781,7 @@ class BranchFormat(object):
         return False
 
     @classmethod
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def unregister_format(klass, format):
         format_registry.remove(format)
 
@@ -1804,7 +1802,6 @@ class MetaDirBranchFormatFactory(registry._LazyObjectGetter):
     bzrlib.plugins.loom.formats).
     """
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
     def __init__(self, format_string, module_name, member_name):
         """Create a MetaDirBranchFormatFactory.
 
@@ -3603,6 +3600,8 @@ class GenericInterBranch(InterBranch):
         :param _hook_master: Private parameter - set the branch to
             be supplied as the master to pull hooks.
         :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
         :param _override_hook_target: Private parameter - set the branch to be

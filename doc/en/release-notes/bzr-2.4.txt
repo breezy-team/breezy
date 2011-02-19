@@ -117,6 +117,10 @@ API Changes
 * Added ``bzrlib.mergetools`` module with helper functions for working with
   the list of external merge tools. (Gordon Tyler, #489915)
 
+* Branch formats should now be registered on the format registry
+  (``bzrlib.branch.format_registry``) rather than using the class
+  methods on ``BranchFormat``. (Jelmer Vernooij, #714729)
+
 * ``Branch.fetch`` implementations must now accept an optional
   ``fetch_spec`` keyword argument. (Andrew Bennetts)
 

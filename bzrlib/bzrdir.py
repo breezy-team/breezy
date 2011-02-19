@@ -1511,7 +1511,13 @@ class BzrDirMetaComponentFormatRegistry(registry.FormatRegistry):
     def _get_all(self):
         """Return all formats, even those not usable in metadirs.
         """
-        return [self.get(k) for k in self.keys()] + self._get_extra()
+        result = []
+        for name in self.keys():
+            fmt = self.get(name)
+            if callable(fmt):
+                fmt = fmt()
+            result.append(fmt)
+        return result + self._get_extra()
 
 
 class BzrProber(controldir.Prober):
