@@ -669,6 +669,8 @@ class ControlDirFormat(object):
     """
 
     supports_workingtrees = True
+    """Whether working trees can exist in control directories of this format.
+    """
 
     def get_format_description(self):
         """Return the short description for this format."""
