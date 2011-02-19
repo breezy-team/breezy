@@ -2384,15 +2384,6 @@ class BranchFormatRegistry(bzrdir.BzrDirMetaComponentFormatRegistry):
         super(BranchFormatRegistry, self).__init__(other_registry)
         self._default_format = None
 
-    def register(self, format):
-        """Register a new branch format."""
-        # Metadir formats have a network name of their format string, and get
-        # registered as factories.
-        if isinstance(format, MetaDirBranchFormatFactory):
-            super(BranchFormatRegistry, self).register(format.__class__)
-        else:
-            super(BranchFormatRegistry, self).register(format)
-
     def set_default(self, format):
         self._default_format = format
 
