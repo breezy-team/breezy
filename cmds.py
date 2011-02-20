@@ -708,6 +708,7 @@ class cmd_merge_upstream(Command):
                     package, current_version)
             if version is None:
                 raise BzrCommandError("You must specify the version number using --version.")
+            assert isinstance(version, str)
             note("Using version string %s." % (version))
             # Look up the revision id from the version string
             if upstream_revision is None and upstream_branch_source is not None:

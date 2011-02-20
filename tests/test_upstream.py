@@ -387,7 +387,7 @@ class TestUpstreamBranchVersion(TestCase):
       """Last revision is tagged - use as upstream version."""
       self.revhistory = ["somerevid"]
       self.assertEquals(Version("1.3"),
-          _upstream_branch_version(self.revhistory, {"somerevid": ["1.3"]}, "bla", "1.2", self.get_suffix))
+          _upstream_branch_version(self.revhistory, {"somerevid": [u"1.3"]}, "bla", "1.2", self.get_suffix))
 
     def test_refresh_snapshot_pre(self):
       self.revhistory = ["oldrevid", "somerevid"]
@@ -403,25 +403,28 @@ class TestUpstreamBranchVersion(TestCase):
       self.revhistory = ["oldrevid", "somerevid", "newrevid"]
       self.assertEquals(Version("1.3+bzr3"),
             _upstream_branch_version(self.revhistory,
-                {"somerevid": ["1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
+                {"somerevid": [u"1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
 
 
 class TestUpstreamTagToVersion(TestCase):
 
     def test_prefix(self):
-        self.assertEquals(Version("5.0"), upstream_tag_to_version("release-5.0"))
+        self.assertEquals(Version("5.0"), upstream_tag_to_version(u"release-5.0"))
 
     def test_gibberish(self):
-        self.assertIs(None, upstream_tag_to_version("blabla"))
+        self.assertIs(None, upstream_tag_to_version(u"blabla"))
 
     def test_vprefix(self):
-        self.assertEquals(Version("2.0"), upstream_tag_to_version("v2.0"))
+        self.assertEquals("2.0", upstream_tag_to_version(u"v2.0"))
 
     def test_plain(self):
-        self.assertEquals(Version("2.0"), upstream_tag_to_version("2.0"))
+        self.assertEquals("2.0", upstream_tag_to_version(u"2.0"))
 
     def test_package_prefix(self):
-        self.assertEquals(Version("42.0"), upstream_tag_to_version("bla-42.0", "bla"))
+        self.assertEquals("42.0", upstream_tag_to_version(u"bla-42.0", "bla"))
+
+    def test_unicode(self):
+        self.assertEquals("42.0\xc2\xa9", upstream_tag_to_version("bla-42.0\xc2\xa9".decode("utf-8"), "bla"))
 
 
 class TestUpstreamVersionAddRevision(TestCaseWithTransport):

@@ -33,16 +33,17 @@ from bzrlib.plugins.builddeb.util import (
 
 def upstream_tag_to_version(tag_name, package=None):
     """Take a tag name and return the upstream version, or None."""
+    assert isinstance(tag_name, unicode)
     if (package is not None and (
           tag_name.startswith("%s-" % package) or
           tag_name.startswith("%s_" % package))):
-        return tag_name[len(package)+1:]
+        return tag_name[len(package)+1:].encode("utf-8")
     if tag_name.startswith("release-"):
-        return tag_name[len("release-"):]
+        return tag_name[len("release-"):].encode("utf-8")
     if tag_name[0] == "v" and tag_name[1].isdigit():
-        return tag_name[1:]
+        return tag_name[1:].encode("utf-8")
     if all([c.isdigit() or c in (".", "~") for c in tag_name]):
-        return tag_name
+        return tag_name.encode("utf-8")
     return None
 
 
@@ -227,6 +228,7 @@ class UpstreamBranchSource(UpstreamSource):
             self.upstream_revision_map = upstream_revision_map
 
     def version_as_revision(self, package, version):
+        assert isinstance(version, str)
         if version in self.upstream_revision_map:
              return self.upstream_revision_map[version]
         revspec = get_export_upstream_revision(self.config,
