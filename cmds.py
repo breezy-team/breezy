@@ -398,7 +398,7 @@ class cmd_builddeb(Command):
                             upstream_branch,
                             {changelog.version.upstream_version:
                             upstream_revision}))
-            elif not native and config.upstream_branch:
+            elif not native and config.upstream_branch is not None:
                 upstream_branch = Branch.open(config.upstream_branch)
                 upstream_sources.append(UpstreamBranchSource(upstream_branch))
             upstream_sources.extend([
@@ -648,7 +648,7 @@ class cmd_merge_upstream(Command):
                     upstream_branch = Branch.open(location)
                 except NotBranchError:
                     upstream_branch = None
-            elif upstream_branch is None:
+            elif upstream_branch is None and config.upstream_branch is not None:
                 upstream_branch = Branch.open(config.upstream_branch)
             else:
                 upstream_branch = None
