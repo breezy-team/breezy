@@ -1795,9 +1795,9 @@ class ConfigObj(Section):
         if (value.find('"""') != -1) and (value.find("'''") != -1):
             raise ConfigObjError('Value "%s" cannot be safely quoted.' % value)
         if value.find('"""') == -1:
-            quot = tdquot
-        else:
             quot = tsquot
+        else:
+            quot = tdquot
         return quot
 
 

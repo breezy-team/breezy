@@ -314,6 +314,27 @@ class TestConfigObj(tests.TestCase):
         co2 = config.ConfigObj(lines)
         self.assertEqual(co2['test'], 'foo#bar')
 
+    def test_triple_quotes(self):
+        # Bug #710410: if the value string has triple quotes
+        # then ConfigObj versions up to 4.7.2 will quote them wrong
+        # and won't able to read them back
+        triple_quotes_value = '''spam
+""" that's my spam """
+eggs'''
+        co = config.ConfigObj()
+        co['test'] = triple_quotes_value
+        # another bug in ConfigObj:
+        # method co.write() without arguments produces list of lines
+        # one option per line, and multiline values are not split
+        # across multiple lines,
+        # and that breaks the parsing these lines back by ConfigObj
+        outfile = StringIO()
+        co.write(outfile=outfile)
+        lines = outfile.getvalue().splitlines()
+        # now we're trying to read it back
+        co2 = config.ConfigObj(lines)
+        self.assertEquals(triple_quotes_value, co2['test'])
+
 
 erroneous_config = """[section] # line 1
 good=good # line 2
