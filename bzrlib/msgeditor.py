@@ -31,7 +31,7 @@ from bzrlib import (
     ui,
     )
 from bzrlib.errors import BzrError, BadCommitMessageEncoding
-from bzrlib.hooks import HookPoint, Hooks
+from bzrlib.hooks import Hooks
 
 
 def _get_editor():
@@ -297,13 +297,13 @@ class MessageEditorHooks(Hooks):
     generate a commit message template
     """
 
-    def __init__(self):
+    def __init__(self, module_name, member_name):
         """Create the default hooks.
 
         These are all empty initially.
         """
-        Hooks.__init__(self)
-        self.create_hook(HookPoint('commit_message_template',
+        Hooks.__init__(self, module_name, member_name)
+        self.add_hook('commit_message_template',
             "Called when a commit message is being generated. "
             "commit_message_template is called with the bzrlib.commit.Commit "
             "object and the message that is known so far. "
@@ -311,10 +311,10 @@ class MessageEditorHooks(Hooks):
             "could be the same as it was given. When there are multiple "
             "hooks registered for commit_message_template, they are chained "
             "with the result from the first passed into the second, and so "
-            "on.", (1, 10), None))
+            "on.", (1, 10))
 
 
-hooks = MessageEditorHooks()
+hooks = MessageEditorHooks("bzrlib.msgeditor", "hooks")
 
 
 def generate_commit_message_template(commit, start_message=None):

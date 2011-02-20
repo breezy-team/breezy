@@ -480,13 +480,12 @@ def describe_format(control, repository, branch, tree):
 class InfoHooks(_mod_hooks.Hooks):
     """Hooks for the info command."""
 
-    def __init__(self):
-        super(InfoHooks, self).__init__()
-        self.create_hook(_mod_hooks.HookPoint('repository',
+    def __init__(self, module_name, member_name):
+        super(InfoHooks, self).__init__(module_name, member_name)
+        self.add_hook('repository',
             "Invoked when displaying the statistics for a repository. "
             "repository is called with a statistics dictionary as returned "
-            "by the repository and a file-like object to write to.", (1, 15), 
-            None))
+            "by the repository and a file-like object to write to.", (1, 15))
 
 
-hooks = InfoHooks()
+hooks = InfoHooks("bzrlib.info", "hooks")

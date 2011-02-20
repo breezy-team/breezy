@@ -46,8 +46,8 @@ from bzrlib.transport import (
 class TransportHooks(bzrlib.hooks.Hooks):
     """Dict-mapping hook name to a list of callables for transport hooks"""
 
-    def __init__(self):
-        super(TransportHooks, self).__init__()
+    def __init__(self, module_name, member_name):
+        super(TransportHooks, self).__init__(module_name, member_name)
         # Invoked when the transport has just created a new connection.
         # The api signature is (transport, connection, credentials)
         self['_set_connection'] = []
@@ -64,7 +64,7 @@ def _change_scheme_in(url, actual, desired):
 class InstrumentedTransport(_backing_transport_class):
     """Instrumented transport class to test commands behavior"""
 
-    hooks = TransportHooks()
+    hooks = TransportHooks("bzrlib.tests.transport_util", "InstrumentedTransport.hooks")
 
     def __init__(self, base, _from_transport=None):
         if not base.startswith(_hooked_scheme + '://'):
@@ -125,7 +125,8 @@ class TestCaseWithConnectionHookedTransport(_backing_test_class):
         return url
 
     def start_logging_connections(self):
-        self.overrideAttr(InstrumentedTransport, 'hooks', TransportHooks())
+        self.overrideAttr(InstrumentedTransport, 'hooks', TransportHooks(
+            "bzrlib.tests.transport_util", "InstrumentedTransport.hooks"))
         # We preserved the hooks class attribute. Now we install our hook.
         ConnectionHookedTransport.hooks.install_named_hook(
             '_set_connection', self._collect_connection, None)

@@ -45,22 +45,22 @@ from bzrlib import (
     osutils,
     trace,
     )
-from bzrlib.hooks import HookPoint, Hooks
+from bzrlib.hooks import Hooks
 
 
 class LockHooks(Hooks):
 
-    def __init__(self):
-        Hooks.__init__(self)
-        self.create_hook(HookPoint('lock_acquired',
+    def __init__(self, module_name, member_name):
+        Hooks.__init__(self, module_name, member_name)
+        self.add_hook('lock_acquired',
             "Called with a bzrlib.lock.LockResult when a physical lock is "
-            "acquired.", (1, 8), None))
-        self.create_hook(HookPoint('lock_released',
+            "acquired.", (1, 8))
+        self.add_hook('lock_released',
             "Called with a bzrlib.lock.LockResult when a physical lock is "
-            "released.", (1, 8), None))
-        self.create_hook(HookPoint('lock_broken',
+            "released.", (1, 8))
+        self.add_hook('lock_broken',
             "Called with a bzrlib.lock.LockResult when a physical lock is "
-            "broken.", (1, 15), None))
+            "broken.", (1, 15))
 
 
 class Lock(object):
@@ -69,7 +69,7 @@ class Lock(object):
     :cvar hooks: Hook dictionary for operations on locks.
     """
 
-    hooks = LockHooks()
+    hooks = LockHooks("bzrlib.lock", "Lock.hooks")
 
 
 class LockResult(object):

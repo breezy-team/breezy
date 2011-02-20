@@ -934,20 +934,20 @@ class BzrDir(controldir.ControlDir):
 class BzrDirHooks(hooks.Hooks):
     """Hooks for BzrDir operations."""
 
-    def __init__(self):
+    def __init__(self, module_name, member_name):
         """Create the default hooks."""
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('pre_open',
+        hooks.Hooks.__init__(self, module_name, member_name)
+        self.add_hook('pre_open',
             "Invoked before attempting to open a BzrDir with the transport "
-            "that the open will use.", (1, 14), None))
-        self.create_hook(hooks.HookPoint('post_repo_init',
+            "that the open will use.", (1, 14))
+        self.add_hook('post_repo_init',
             "Invoked after a repository has been initialized. "
             "post_repo_init is called with a "
             "bzrlib.bzrdir.RepoInitHookParams.",
-            (2, 2), None))
+            (2, 2))
 
 # install the default hooks
-BzrDir.hooks = BzrDirHooks()
+BzrDir.hooks = BzrDirHooks("bzrlib.bzrdir", "BzrDir.hooks")
 
 
 class RepoInitHookParams(object):

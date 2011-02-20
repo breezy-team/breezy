@@ -636,25 +636,25 @@ class MutableTreeHooks(hooks.Hooks):
     hooks.
     """
 
-    def __init__(self):
+    def __init__(self, module_name, member_name):
         """Create the default hooks.
 
         """
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('start_commit',
+        hooks.Hooks.__init__(self, module_name, member_name)
+        self.add_hook('start_commit',
             "Called before a commit is performed on a tree. The start commit "
             "hook is able to change the tree before the commit takes place. "
             "start_commit is called with the bzrlib.mutabletree.MutableTree "
-            "that the commit is being performed on.", (1, 4), None))
-        self.create_hook(hooks.HookPoint('post_commit',
+            "that the commit is being performed on.", (1, 4))
+        self.add_hook('post_commit',
             "Called after a commit is performed on a tree. The hook is "
             "called with a bzrlib.mutabletree.PostCommitHookParams object. "
             "The mutable tree the commit was performed on is available via "
-            "the mutable_tree attribute of that object.", (2, 0), None))
+            "the mutable_tree attribute of that object.", (2, 0))
 
 
 # install the default hooks into the MutableTree class.
-MutableTree.hooks = MutableTreeHooks()
+MutableTree.hooks = MutableTreeHooks("bzrlib.mutabletree", "MutableTree.hooks")
 
 
 class PostCommitHookParams(object):

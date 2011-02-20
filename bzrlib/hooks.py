@@ -115,7 +115,7 @@ class Hooks(dict):
     FOO hook is triggered.
     """
 
-    def __init__(self, module=None, member_name=None):
+    def __init__(self, module, member_name):
         """Create a new hooks dictionary.
 
         :param module: The module from which this hooks dictionary should be loaded
@@ -145,10 +145,10 @@ class Hooks(dict):
         else:
             callbacks = None
         hookpoint = HookPoint(name=name, doc=doc, introduced=introduced,
-                              deprecated=deprecated,
-                              callbacks=callbacks)
+                              deprecated=deprecated, callbacks=callbacks)
         self[name] = hookpoint
 
+    @symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 4)))
     def create_hook(self, hook):
         """Create a hook which can have callbacks registered for it.
 

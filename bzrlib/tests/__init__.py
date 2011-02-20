@@ -999,7 +999,7 @@ class TestCase(testtools.TestCase):
         self.addCleanup(self._restoreHooks)
         for key, (parent, name) in known_hooks.iter_parent_objects():
             factory = known_hooks.get(key)
-            setattr(parent, name, factory())
+            setattr(parent, name, factory(key[0], key[1]))
         # this hook should always be installed
         request._install_hook()
 
