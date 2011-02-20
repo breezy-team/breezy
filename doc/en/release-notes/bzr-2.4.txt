@@ -30,7 +30,9 @@ New Features
   file by enclosing them with curly brackets (``{other_opt}``). This makes it
   possible to use, for example,
   ``push_location=lp:~vila/bzr/config-{nickname}`` in ``branch.conf`` when
-  using a loom.  (Vincent Ladeuil)
+  using a loom. During the beta period, the default behaviour is to disable
+  this feature. It can be activated by declaring ``bzr.config.expand = True``
+  in ``bazaar.conf``. (Vincent Ladeuil)
 
 Improvements
 ************
