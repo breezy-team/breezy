@@ -117,6 +117,9 @@ API Changes
 * Added ``bzrlib.mergetools`` module with helper functions for working with
   the list of external merge tools. (Gordon Tyler, #489915)
 
+* All methods and arguments that were deprecated before 2.0
+  have been removed. (Jelmer Vernooij)
+
 * ``Branch.fetch`` implementations must now accept an optional
   ``fetch_spec`` keyword argument. (Andrew Bennetts)
 
