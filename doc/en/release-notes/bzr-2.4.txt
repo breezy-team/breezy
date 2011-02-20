@@ -124,6 +124,11 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
+* ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
+  Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and
+  ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_lazy_revspec``
+  instead.  (Jelmer Vernooij, #721971)
+
 * Repository formats should now be registered on the format registry
   (``bzrlib.repository.format_registry``) rather than using the class
   methods on ``RepositoryFormat``. (Jelmer Vernooij)
