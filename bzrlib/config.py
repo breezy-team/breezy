@@ -160,6 +160,7 @@ class ConfigObj(configobj.ConfigObj):
 # -- vila 20110219
 _expand_default_value = None
 def _get_expand_default_value():
+    global _expand_default_value
     if _expand_default_value is not None:
         return _expand_default_value
     conf = GlobalConfig()
@@ -170,6 +171,7 @@ def _get_expand_default_value():
         # This is an opt-in feature, you *really* need to clearly say you want
         # to activate it !
         expand = False
+    _expand_default_value = expand
     return expand
 
 

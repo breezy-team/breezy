@@ -954,6 +954,10 @@ class TestCase(testtools.TestCase):
         # between tests.  We should get rid of this altogether: bug 656694. --
         # mbp 20101008
         self.overrideAttr(bzrlib.trace, '_verbosity_level', 0)
+        # Isolate config option expansion until its default value for bzrlib is
+        # settled on or a the FIXME associated with _get_expand_default_value
+        # is addressed -- vila 20110219
+        self.overrideAttr(config, '_expand_default_value', None)
 
     def debug(self):
         # debug a frame up.

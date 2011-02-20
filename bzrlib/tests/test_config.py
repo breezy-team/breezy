@@ -528,6 +528,63 @@ class TestIniConfigSaving(tests.TestCaseInTempDir):
         self.assertFileEqual(content, 'test.conf')
 
 
+class TestIniConfigOptionExpansionDefaultValue(tests.TestCaseInTempDir):
+    """What is the default value of expand for config options.
+
+    This is an opt-in beta feature used to evaluate whether or not option
+    references can appear in dangerous place raising exceptions, disapearing
+    (and as such corrupting data) or if it's safe to activate the option by
+    default.
+
+    Note that these tests relies on config._expand_default_value being already
+    overwritten in the parent class setUp.
+    """
+
+    def setUp(self):
+        super(TestIniConfigOptionExpansionDefaultValue, self).setUp()
+        self.config = None
+        self.warnings = []
+        def warning(*args):
+            self.warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+
+    def get_config(self, expand):
+        c = config.GlobalConfig.from_string('bzr.config.expand=%s' % (expand,),
+                                            save=True)
+        return c
+
+    def assertExpandIs(self, expected):
+        actual = config._get_expand_default_value()
+        #self.config.get_user_option_as_bool('bzr.config.expand')
+        self.assertEquals(expected, actual)
+
+    def test_default_is_None(self):
+        self.assertEquals(None, config._expand_default_value)
+
+    def test_default_is_False_even_if_None(self):
+        self.config = self.get_config(None)
+        self.assertExpandIs(False)
+
+    def test_default_is_False_even_if_invalid(self):
+        self.config = self.get_config('<your choice>')
+        self.assertExpandIs(False)
+        # ...
+        # Huh ? My choice is False ? Thanks, always happy to hear that :D
+        # Wait, you've been warned !
+        self.assertLength(1, self.warnings)
+        self.assertEquals(
+            'Value "<your choice>" is not a boolean for "bzr.config.expand"',
+            self.warnings[0])
+
+    def test_default_is_True(self):
+        self.config = self.get_config(True)
+        self.assertExpandIs(True)
+        
+    def test_default_is_False(self):
+        self.config = self.get_config(False)
+        self.assertExpandIs(False)
+        
+
 class TestIniConfigOptionExpansion(tests.TestCase):
     """Test option expansion from the IniConfig level.
 
