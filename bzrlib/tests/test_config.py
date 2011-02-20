@@ -249,6 +249,7 @@ class TestConfigObj(tests.TestCase):
     def test_triple_quotes(self):
         # Bug #710410: if the value string has triple quotes
         # then ConfigObj versions up to 4.7.2 will quote them wrong
+        # and won't able to read them back
         triple_quotes_value = '''spam
 """ that's my spam """
 eggs'''
