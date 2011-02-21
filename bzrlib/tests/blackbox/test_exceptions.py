@@ -20,11 +20,13 @@ import sys
 
 from bzrlib import (
     config,
+    controldir,
     errors,
     osutils,
     repository,
     tests,
     )
+from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 
 from bzrlib.tests import TestCase
 
@@ -55,6 +57,16 @@ class TestOptParseBugHandling(TestCase):
         out = self.run_bzr_error([error_re], ['st',u'-\xe4'])
 
 
+class TestObsoleteRepoFormat(RepositoryFormat2a):
+
+    @classmethod
+    def get_format_string(cls):
+        return "Test Obsolete Repository Format"
+
+    def is_deprecated(self):
+        return True
+
+
 class TestDeprecationWarning(tests.TestCaseWithTransport):
     """The deprecation warning is controlled via a global variable:
     repository._deprecation_warning_done. As such, it can be emitted only once
@@ -66,6 +78,16 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestDeprecationWarning, self).setUp()
+        self.addCleanup(repository.format_registry.remove,
+            TestObsoleteRepoFormat)
+        repository.format_registry.register(TestObsoleteRepoFormat)
+        self.addCleanup(controldir.format_registry.remove, "testobsolete")
+        bzrdir.register_metadir(controldir.format_registry, "testobsolete",
+            "bzrlib.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
+            branch_format='bzrlib.branch.BzrBranchFormat7',
+            tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+            deprecated=True,
+            help='Same as 2a, but with an obsolete repo format.')
         self.disable_deprecation_warning()
 
     def enable_deprecation_warning(self, repo=None):
@@ -78,8 +100,8 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
 
     def make_obsolete_repo(self, path):
         # We don't want the deprecation raising during the repo creation
-        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5
-        tree = self.make_branch_and_tree(path, format=BzrDirFormat5())
+        format = controldir.format_registry.make_bzrdir("testobsolete")
+        tree = self.make_branch_and_tree(path, format=format)
         return tree
 
     def check_warning(self, present):

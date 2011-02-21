@@ -330,6 +330,9 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         result.chk_bytes = None
         return result
 
+    def is_deprecated(self):
+        return True
+
 
 class RepositoryFormat4(PreSplitOutRepositoryFormat):
     """Bzr repository format 4.
@@ -573,6 +576,9 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         result.chk_bytes = None
         result._transport = repo_transport
         return result
+
+    def is_deprecated(self):
+        return True
 
 
 class TextVersionedFiles(VersionedFiles):

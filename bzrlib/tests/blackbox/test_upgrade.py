@@ -21,7 +21,6 @@ import stat
 from bzrlib import (
     bzrdir,
     controldir,
-    transport,
     )
 from bzrlib.tests import (
     features,
