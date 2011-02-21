@@ -391,17 +391,19 @@ class FetchSpecFactory(object):
                 return graph.EverythingNotInOther(
                     self.target_repo, self.source_repo).execute()
         heads_to_fetch = set(self._explicit_rev_ids)
-        tags_to_fetch = set()
         if self.source_branch is not None:
-            try:
-                tags_to_fetch.update(
-                    self.source_branch.tags.get_reverse_tag_dict())
-            except errors.TagsNotSupported:
-                pass
+            must_fetch, tags_to_fetch = self.source_branch.heads_to_fetch()
             if self.source_branch_stop_revision_id is not None:
-                heads_to_fetch.add(self.source_branch_stop_revision_id)
-            else:
-                heads_to_fetch.add(self.source_branch.last_revision())
+                # Replace the tip rev from must_fetch with the stop revision
+                # XXX: this might be wrong if the tip rev is also in the
+                # must_fetch set for other reasons (e.g. it's the tip of
+                # multiple loom threads?), but then it's pretty unclear what it
+                # should mean to specify a stop_revision in that case anyway.
+                must_fetch.discard(self.source_branch.last_revision())
+                must_fetch.add(self.source_branch_stop_revision_id)
+            heads_to_fetch.update(must_fetch)
+        else:
+            tags_to_fetch = set()
         if self.target_repo_kind == TargetRepoKinds.EMPTY:
             # PendingAncestryResult does not raise errors if a requested head
             # is absent.  Ideally it would support the

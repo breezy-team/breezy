@@ -1531,6 +1531,26 @@ class Branch(controldir.ControlComponent):
         else:
             raise AssertionError("invalid heads: %r" % (heads,))
 
+    def heads_to_fetch(self):
+        """Return the heads that must and that should be fetched to copy this
+        branch into another repo.
+
+        :returns: a 2-tuple of (must_fetch, if_present_fetch).  must_fetch is a
+            set of heads that must be fetched.  if_present_fetch is a set of
+            heads that must be fetched if present, but no error is necessary if
+            they are not present.
+        """
+        # For bzr native formats must_fetch is just the tip, and if_present_fetch
+        # are the tags.
+        must_fetch = set([self.last_revision()])
+        try:
+            if_present_fetch = set(self.tags.get_reverse_tag_dict())
+        except errors.TagsNotSupported:
+            if_present_fetch = set()
+        must_fetch.discard(_mod_revision.NULL_REVISION)
+        if_present_fetch.discard(_mod_revision.NULL_REVISION)
+        return must_fetch, if_present_fetch
+
 
 class BranchFormat(object):
     """An encapsulation of the initialization and open routines for a format.
