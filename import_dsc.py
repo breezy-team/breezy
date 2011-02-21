@@ -1385,8 +1385,8 @@ class DistributionBranch(object):
             upstream_tip = self.pristine_tar_source.version_as_revision(
                     package, previous_version)
             self.extract_upstream_tree(upstream_tip, tempdir)
-        elif upstream_branch is not None:
-            upstream_tip = self.upstream_branch_source.version_as_revision(package, previous_version)
+        elif self.upstream_source is not None:
+            upstream_tip = self.upstream_source.version_as_revision(package, previous_version)
             self.extract_upstream_tree(upstream_tip, tempdir)
         else:
             raise BzrCommandError("Unable to find the tag for the "
