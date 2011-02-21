@@ -1737,6 +1737,8 @@ class BzrDirFormat4(BzrDirFormat):
 
     _lock_class = lockable_files.TransportLock
 
+    flexible_components = False
+
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
@@ -1779,6 +1781,8 @@ class BzrDirFormat4(BzrDirFormat):
 
 class BzrDirFormatAllInOne(BzrDirFormat):
     """Common class for formats before meta-dirs."""
+
+    flexible_components = False
 
     def initialize_on_transport_ex(self, transport, use_existing_dir=False,
         create_prefix=False, force_new_repo=False, stacked_on=None,
