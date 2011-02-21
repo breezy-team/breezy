@@ -368,7 +368,7 @@ class TestUpstreamBranchVersion(TestCase):
     """
 
     def get_suffix(self, version_string, revid):
-        revno = self.revhistory.index(revid)+1
+        revno = len(self.revhistory) - self.revhistory.index(revid)
         if "bzr" in version_string:
             return "%sbzr%d" % (version_string.split("bzr")[0], revno)
         return "%s+bzr%d" % (version_string, revno)
@@ -390,18 +390,20 @@ class TestUpstreamBranchVersion(TestCase):
           _upstream_branch_version(self.revhistory, {"somerevid": [u"1.3"]}, "bla", "1.2", self.get_suffix))
 
     def test_refresh_snapshot_pre(self):
-      self.revhistory = ["oldrevid", "somerevid"]
-      self.assertEquals(Version("1.3~bzr2"),
-          _upstream_branch_version(self.revhistory, {}, "bla", "1.3~bzr1", self.get_suffix))
+      self.revhistory = ["somerevid", "oldrevid"]
+      self.assertEquals("1.3~bzr2",
+          _upstream_branch_version(self.revhistory, {}, "bla", "1.3~bzr1",
+              self.get_suffix))
 
     def test_refresh_snapshot_post(self):
-      self.revhistory = ["oldrevid", "somerevid"]
-      self.assertEquals(Version("1.3+bzr2"),
-          _upstream_branch_version(self.revhistory, {}, "bla", "1.3+bzr1", self.get_suffix))
+      self.revhistory = ["somerevid", "oldrevid"]
+      self.assertEquals("1.3+bzr2",
+          _upstream_branch_version(self.revhistory, {}, "bla", "1.3+bzr1",
+              self.get_suffix))
 
     def test_new_tag_refresh_snapshot(self):
-      self.revhistory = ["oldrevid", "somerevid", "newrevid"]
-      self.assertEquals(Version("1.3+bzr3"),
+      self.revhistory = ["newrevid", "somerevid", "oldrevid"]
+      self.assertEquals("1.3+bzr3",
             _upstream_branch_version(self.revhistory,
                 {"somerevid": [u"1.3"]}, "bla", "1.2+bzr1", self.get_suffix))
 
