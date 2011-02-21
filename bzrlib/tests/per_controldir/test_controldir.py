@@ -1117,9 +1117,7 @@ class TestControlDir(TestCaseWithControlDir):
             # set, so we skip a number of tests for RemoteBzrDirFormat's.
             self.assertIsInstance(control, RemoteBzrDir)
         else:
-            from bzrlib.plugins.weave_fmt.bzrdir import BzrDirFormat5, BzrDirFormat6
-            if need_meta and isinstance(expected_format, (BzrDirFormat5,
-                BzrDirFormat6)):
+            if need_meta and not expected_format.flexible_components:
                 # Pre-metadir formats change when we are making something that
                 # needs a metaformat, because clone is used for push.
                 expected_format = bzrdir.BzrDirMetaFormat1()

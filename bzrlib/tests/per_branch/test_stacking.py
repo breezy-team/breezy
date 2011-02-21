@@ -329,8 +329,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_sprout_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
-        if isinstance(self.branch_format, BzrBranchFormat4):
+        if not self.bzrdir_format.flexible_components:
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
@@ -347,8 +346,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
-        if isinstance(self.branch_format, BzrBranchFormat4):
+        if not self.bzrdir_format.flexible_components:
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)

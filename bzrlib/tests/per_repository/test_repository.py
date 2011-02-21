@@ -944,8 +944,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo = self.make_repository('repo', shared=True)
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable('Cannot make a shared repository')
-        from bzrlib.plugins.weave_fmt.bzrdir import BzrDirPreSplitOut
-        if isinstance(repo.bzrdir, BzrDirPreSplitOut):
+        if not repo.bzrdir._format.flexible_components:
             raise tests.KnownFailure(
                 "pre metadir branches do not upgrade on push "
                 "with stacking policy")
@@ -1355,11 +1354,9 @@ class TestEscaping(tests.TestCaseWithTransport):
             'rev1', _mod_revision.NULL_REVISION, fileobj)
 
 
-
-
 class TestRepositoryControlComponent(per_repository.TestCaseWithRepository):
     """Repository implementations adequately implement ControlComponent."""
-    
+
     def test_urls(self):
         repo = self.make_repository('repo')
         self.assertIsInstance(repo.user_url, str)

@@ -209,8 +209,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
-        if isinstance(self.branch_format, BzrBranchFormat4):
+        if not self.bzrdir_format.flexible_components:
             raise tests.TestNotApplicable('Not a metadir format.')
         if isinstance(self.branch_format, branch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but

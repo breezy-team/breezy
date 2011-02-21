@@ -47,6 +47,8 @@ from bzrlib.plugins.weave_fmt import xml4
 class BzrDirFormatAllInOne(BzrDirFormat):
     """Common class for formats before meta-dirs."""
 
+    flexible_components = False
+
     def initialize_on_transport_ex(self, transport, use_existing_dir=False,
         create_prefix=False, force_new_repo=False, stacked_on=None,
         stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
