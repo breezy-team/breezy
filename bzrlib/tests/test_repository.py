@@ -668,13 +668,6 @@ class TestRepositoryConverter(TestCaseWithTransport):
         self.assertTrue(isinstance(target_format, repo._format.__class__))
 
 
-class TestMisc(TestCase):
-
-    def test_unescape_xml(self):
-        """We get some kind of error when malformed entities are passed"""
-        self.assertRaises(KeyError, repository._unescape_xml, 'foo&bar;')
-
-
 class TestRepositoryFormatKnit3(TestCaseWithTransport):
 
     def test_attribute__fetch_order(self):
