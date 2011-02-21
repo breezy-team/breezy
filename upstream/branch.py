@@ -58,7 +58,7 @@ def _upstream_branch_version(revhistory, reverse_tag_dict, package,
     version is used and combined with the bzr revision number
     (usually <version>+bzr<revno>).
 
-    :param revhistory: Branch revision history.
+    :param revhistory: Reverse branch revision history.
     :param reverse_tag_dict: Reverse tag dictionary (revid -> list of tags)
     :param package: Name of package.
     :param previous_version: Previous upstream version in debian changelog.
@@ -68,7 +68,7 @@ def _upstream_branch_version(revhistory, reverse_tag_dict, package,
     if revhistory == []:
         # No new version to merge
         return previous_version
-    for r in reversed(revhistory):
+    for r in revhistory:
         if r in reverse_tag_dict:
             # If there is a newer version tagged in branch,
             # convert to upstream version
@@ -77,11 +77,11 @@ def _upstream_branch_version(revhistory, reverse_tag_dict, package,
                 upstream_version = upstream_tag_to_version(tag,
                                                    package=package)
                 if upstream_version is not None:
-                    if r != revhistory[-1]:
+                    if r != revhistory[0]:
                         upstream_version = add_rev(
-                          upstream_version, revhistory[-1])
+                          str(upstream_version), revhistory[0])
                     return upstream_version
-    return add_rev(previous_version, revhistory[-1])
+    return add_rev(str(previous_version), revhistory[0])
 
 
 def extract_svn_revno(rev):
@@ -170,22 +170,19 @@ def upstream_branch_version(upstream_branch, upstream_revision, package,
     :param previous_version: The previous upstream version string
     :return: Upstream version string for `upstream_revision`.
     """
-    dotted_revno = upstream_branch.revision_id_to_dotted_revno(upstream_revision)
-    if len(dotted_revno) > 1:
-        revno = -2
-    else:
-        revno = dotted_revno[0]
-    revhistory = upstream_branch.revision_history()
+    graph = upstream_branch.repository.get_graph()
     previous_revision = get_snapshot_revision(previous_version)
     if previous_revision is not None:
         previous_revspec = RevisionSpec.from_string(previous_revision)
-        previous_revno, _ = previous_revspec.in_history(upstream_branch)
+        previous_revno, previous_revid = previous_revspec.in_history(upstream_branch)
         # Trim revision history - we don't care about any revisions
         # before the revision of the previous version
+        stop_revids = [previous_revid]
     else:
         previous_revno = 0
-    revhistory = revhistory[previous_revno:revno+1]
-    return _upstream_branch_version(revhistory,
+        stop_revids = None
+    revhistory = graph.iter_lefthand_ancestry(upstream_revision, stop_revids)
+    return _upstream_branch_version(list(revhistory),
             upstream_branch.tags.get_reverse_tag_dict(), package,
             previous_version,
             lambda version, revision: upstream_version_add_revision(upstream_branch, version, revision))
@@ -241,8 +238,12 @@ class UpstreamBranchSource(UpstreamSource):
             self.upstream_branch.last_revision())
 
     def get_version(self, package, current_version, revision):
-        return upstream_branch_version(self.upstream_branch,
-            revision, package, current_version)
+        self.upstream_branch.lock_read()
+        try:
+            return upstream_branch_version(self.upstream_branch,
+                revision, package, current_version)
+        finally:
+            self.upstream_branch.unlock()
 
     def fetch_tarball(self, package, version, target_dir):
         self.upstream_branch.lock_read()

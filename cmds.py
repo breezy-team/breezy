@@ -323,7 +323,7 @@ class cmd_builddeb(Command):
                         upstream_revision = upstream_branch.last_revision()
                     else:
                         upstream_revision = upstream_source.version_as_revision(
-                            version)
+                            None, str(version))
                 finally:
                     upstream_branch.unlock()
         return (upstream_branch, upstream_revision)
