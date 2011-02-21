@@ -21,6 +21,10 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import bisect
 import datetime
+
+from bzrlib import (
+    workingtree,
+    )
 """)
 
 from bzrlib import (
