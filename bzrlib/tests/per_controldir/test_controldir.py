@@ -972,8 +972,7 @@ class TestControlDir(TestCaseWithControlDir):
         if control is None:
             # uninitialisable format
             return
-        if not isinstance(control._format, (bzrdir.BzrDirFormat5,
-            bzrdir.BzrDirFormat6,)):
+        if control._format.flexible_components:
             self.assertEqual(repo.bzrdir.root_transport.base,
                 made_repo.bzrdir.root_transport.base)
 
@@ -1041,8 +1040,7 @@ class TestControlDir(TestCaseWithControlDir):
         if control is None:
             # uninitialisable format
             return
-        if isinstance(self.bzrdir_format, (bzrdir.BzrDirFormat5,
-            bzrdir.BzrDirFormat6)):
+        if not self.bzrdir_format.flexible_components:
             # must stay with the all-in-one-format.
             repo_name = self.bzrdir_format.network_name()
         self.assertEqual(repo_name, repo._format.network_name())
