@@ -566,6 +566,15 @@ class PristineTarSourceTests(TestCaseWithTransport):
         rev.properties["deb-pristine-delta"] = standard_b64encode("bla")
         self.assertEquals("bla", self.source.pristine_tar_delta(rev))
 
+    def test_version_as_revision_missing(self):
+        self.assertRaises(PackageVersionNotPresent,
+            self.source.version_as_revision, None, "1.2")
+
+    def test_version_as_revision(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("upstream-2.1", revid1)
+        self.assertEquals(revid1, self.source.version_as_revision(None, "2.1"))
+
 
 class TarfileSourceTests(TestCaseWithTransport):
     """Tests for TarfileSource."""
