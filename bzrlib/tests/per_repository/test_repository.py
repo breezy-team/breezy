@@ -864,14 +864,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_sprout_branch_from_hpss_preserves_repo_format(self):
         """branch.sprout from a smart server preserves the repository format.
         """
-        from bzrlib.plugins.weave_fmt.repository import (
-            RepositoryFormat5, RepositoryFormat6, RepositoryFormat7)
-        weave_formats = [RepositoryFormat5(),
-                         RepositoryFormat6(),
-                         RepositoryFormat7()]
-        if self.repository_format in weave_formats:
+        if not self.repository_format.supports_leaving_lock:
             raise tests.TestNotApplicable(
-                "Cannot fetch weaves over smart protocol.")
+                "Format can not be used over HPSS")
         remote_repo = self.make_remote_repository('remote')
         remote_branch = remote_repo.bzrdir.create_branch()
         try:
@@ -888,14 +883,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         """branch.sprout from a smart server preserves the repository format of
         a branch from a shared repository.
         """
-        from bzrlib.plugins.weave_fmt.repository import (
-            RepositoryFormat5, RepositoryFormat6, RepositoryFormat7)
-        weave_formats = [RepositoryFormat5(),
-                         RepositoryFormat6(),
-                         RepositoryFormat7()]
-        if self.repository_format in weave_formats:
+        if not self.repository_format.supports_leaving_lock:
             raise tests.TestNotApplicable(
-                "Cannot fetch weaves over smart protocol.")
+                "Format can not be used over HPSS")
         # Make a shared repo
         remote_repo = self.make_remote_repository('remote', shared=True)
         remote_backing_repo = bzrdir.BzrDir.open(
@@ -919,13 +909,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual(remote_backing_repo._format, local_repo._format)
 
     def test_clone_to_hpss(self):
-        from bzrlib.plugins.weave_fmt.repository import (
-            RepositoryFormat5,
-            RepositoryFormat6,
-            )
-        pre_metadir_formats = [RepositoryFormat5(),
-                               RepositoryFormat6()]
-        if self.repository_format in pre_metadir_formats:
+        if not self.repository_format.supports_leaving_lock:
             raise tests.TestNotApplicable(
                 "Cannot lock pre_metadir_formats remotely.")
         remote_transport = self.make_smart_server('remote')

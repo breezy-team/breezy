@@ -1765,6 +1765,10 @@ class BranchFormat(object):
         """True if this format records a stacked-on branch."""
         return False
 
+    def supports_leaving_lock(self):
+        """True if this format supports leaving locks in place."""
+        return False # by default
+
     @classmethod
     def unregister_format(klass, format):
         del klass._formats[format.get_format_string()]
@@ -2060,6 +2064,9 @@ class BranchFormatMetadir(BranchFormat):
         self._matchingbzrdir.set_branch_format(self)
 
     def supports_tags(self):
+        return True
+
+    def supports_leaving_lock(self):
         return True
 
 

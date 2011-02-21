@@ -278,6 +278,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     _fetch_order = 'topological'
     _fetch_reconcile = True
     fast_deltas = False
+    supports_leaving_lock = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""

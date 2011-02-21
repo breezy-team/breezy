@@ -122,3 +122,6 @@ class BzrBranchFormat4(BranchFormat):
 
     def __str__(self):
         return "Bazaar-NG branch format 4"
+
+    def supports_leaving_lock(self):
+        return False
