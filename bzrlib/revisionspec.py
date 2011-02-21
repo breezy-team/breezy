@@ -21,6 +21,10 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import bisect
 import datetime
+
+from bzrlib import (
+    workingtree,
+    )
 """)
 
 from bzrlib import (
@@ -168,11 +172,6 @@ class RevisionSpec(object):
                          spectype.__name__, spec)
             return spectype(spec, _internal=True)
         else:
-            for spectype in SPEC_TYPES:
-                if spec.startswith(spectype.prefix):
-                    trace.mutter('Returning RevisionSpec %s for %s',
-                                 spectype.__name__, spec)
-                    return spectype(spec, _internal=True)
             # Otherwise treat it as a DWIM, build the RevisionSpec object and
             # wait for _match_on to be called.
             return RevisionSpec_dwim(spec, _internal=True)
@@ -994,8 +993,3 @@ _register_revspec(RevisionSpec_branch)
 _register_revspec(RevisionSpec_submit)
 _register_revspec(RevisionSpec_annotate)
 _register_revspec(RevisionSpec_mainline)
-
-# classes in this list should have a "prefix" attribute, against which
-# string specs are matched
-SPEC_TYPES = symbol_versioning.deprecated_list(
-    symbol_versioning.deprecated_in((1, 12, 0)), "SPEC_TYPES", [])

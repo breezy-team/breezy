@@ -1114,13 +1114,8 @@ class BzrDirMeta1(BzrDir):
             return False
         return True
 
-    def needs_format_conversion(self, format=None):
+    def needs_format_conversion(self, format):
         """See BzrDir.needs_format_conversion()."""
-        if format is None:
-            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
-                % 'needs_format_conversion(format=None)')
-        if format is None:
-            format = BzrDirFormat.get_default_format()
         if not isinstance(self._format, format.__class__):
             # it is not a meta dir format, conversion is needed.
             return True

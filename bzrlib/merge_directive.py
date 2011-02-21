@@ -18,6 +18,8 @@
 from StringIO import StringIO
 import re
 
+from bzrlib import lazy_import
+lazy_import.lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
     diff,
@@ -35,6 +37,7 @@ from bzrlib.bundle import (
     serializer as bundle_serializer,
     )
 from bzrlib.email_message import EmailMessage
+""")
 
 
 class MergeRequestBodyParams(object):
