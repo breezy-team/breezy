@@ -492,6 +492,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._custom_format = None
         self._network_name = None
         self._creating_bzrdir = None
+        self._is_deprecated = None
         self._supports_chks = None
         self._supports_external_lookups = None
         self._supports_tree_reference = None
@@ -535,6 +536,12 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
             self._supports_tree_reference = \
                 self._custom_format.supports_tree_reference
         return self._supports_tree_reference
+
+    def is_deprecated(self):
+        if self._is_deprecated is None:
+            self._ensure_real()
+            self._is_deprecated = self._custom_format.is_deprecated()
+        return self._is_deprecated
 
     def _vfs_initialize(self, a_bzrdir, shared):
         """Helper for common code in initialize."""
@@ -997,11 +1004,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     def is_write_locked(self):
         return self._lock_mode == 'w'
-
-    def _warn_if_deprecated(self, branch=None):
-        # If we have a real repository, the check will be done there, if we
-        # don't the check will be done remotely.
-        pass
 
     def lock_read(self):
         """Lock the repository for read operations.
