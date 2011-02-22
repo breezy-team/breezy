@@ -1,4 +1,4 @@
-bzr (2.3.0-3) UNRELEASED; urgency=low
+bzr (2.3.0-3) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Bump debhelper dependency to debhelper 7.4.16, required for our use
