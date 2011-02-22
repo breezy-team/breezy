@@ -2243,8 +2243,11 @@ else:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
 
-
-if sys.platform == 'linux2':
+if sys.version_info >= (2, 6):
+    def _local_concurrency():
+        import multiprocessing
+        return multiprocessing.cpu_count()
+elif sys.platform == 'linux2':
     def _local_concurrency():
         concurrency = None
         prefix = 'processor'
