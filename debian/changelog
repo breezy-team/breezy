@@ -9,7 +9,11 @@ bzr (2.3.0-3) UNRELEASED; urgency=low
   * Run testsuite on all architectures, not just when doing an
     architecture-independent build.
 
- -- Max Bowsher <maxb@f2s.com>  Fri, 18 Feb 2011 23:43:25 +0000
+  [ Jelmer Vernooij ]
+  * Disable launchpad plugin tests as they currently require access to
+    Launchpad production. Closes: #614544
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 22 Feb 2011 15:47:00 +0100
 
 bzr (2.3.0-2) unstable; urgency=low
 
