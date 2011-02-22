@@ -350,9 +350,9 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable(
                 'Does not apply when remote backing branch is also '
                 'a smart branch')
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        if not self.branch_format.supports_leaving_lock():
             raise tests.TestNotApplicable(
-                'Branch format 4 is not usable via HPSS.')
+                'Branch format is not usable via HPSS.')
         super(EmptyPushSmartEffortTests, self).setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.
