@@ -241,7 +241,9 @@ class TestConfigObj(tests.TestCase):
         """
         co = config.ConfigObj()
         co['test'] = 'foo#bar'
-        lines = co.write()
+        outfile = StringIO()
+        co.write(outfile=outfile)
+        lines = outfile.getvalue().splitlines()
         self.assertEqual(lines, ['test = "foo#bar"'])
         co2 = config.ConfigObj(lines)
         self.assertEqual(co2['test'], 'foo#bar')
@@ -255,16 +257,19 @@ class TestConfigObj(tests.TestCase):
 eggs'''
         co = config.ConfigObj()
         co['test'] = triple_quotes_value
-        # another bug in ConfigObj:
+        # While writing this test another bug in ConfigObj has been found:
         # method co.write() without arguments produces list of lines
         # one option per line, and multiline values are not split
         # across multiple lines,
-        # and that breaks the parsing these lines back by ConfigObj
+        # and that breaks the parsing these lines back by ConfigObj.
+        # This issue only affects test, but it's better to avoid
+        # `co.write()` construct at all.
+        # [bialix 20110222] bug report sent to ConfigObj's author
         outfile = StringIO()
         co.write(outfile=outfile)
-        lines = outfile.getvalue().splitlines()
+        output = outfile.getvalue()
         # now we're trying to read it back
-        co2 = config.ConfigObj(lines)
+        co2 = config.ConfigObj(StringIO(output))
         self.assertEquals(triple_quotes_value, co2['test'])
 
 
