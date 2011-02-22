@@ -36,6 +36,10 @@ API Changes
 Internals
 *********
 
+* Fixed bug in the bundled copy of ConfigObj with quoting of triple quotes
+  in the value string. Fix suggested by ConfigObj's author Michael Foord.
+  (Alexander Belchenko, #710410)
+
 Testing
 *******
 
