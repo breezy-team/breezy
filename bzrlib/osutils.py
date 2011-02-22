@@ -2243,11 +2243,7 @@ else:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
 
-if sys.version_info >= (2, 6):
-    def _local_concurrency():
-        import multiprocessing
-        return multiprocessing.cpu_count()
-elif sys.platform == 'linux2':
+if sys.platform == 'linux2':
     def _local_concurrency():
         try:
             return os.sysconf('SC_NPROCESSORS_ONLN')
@@ -2291,9 +2287,15 @@ def local_concurrency(use_cache=True):
     concurrency = os.environ.get('BZR_CONCURRENCY', None)
     if concurrency is None:
         try:
-            concurrency = _local_concurrency()
-        except (OSError, IOError):
-            pass
+            import multiprocessing
+        except ImportError:
+            # multiprocessing is only available on Python >= 2.6
+            try:
+                concurrency = _local_concurrency()
+            except (OSError, IOError):
+                pass
+        else:
+            concurrency = multiprocessing.cpu_count()
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):
