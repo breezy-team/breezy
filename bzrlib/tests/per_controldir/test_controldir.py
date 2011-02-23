@@ -26,6 +26,7 @@ from bzrlib import (
     errors,
     gpg,
     osutils,
+    repository,
     transport,
     ui,
     urlutils,
@@ -47,7 +48,48 @@ from bzrlib.remote import (
     RemoteBzrDir,
     RemoteRepository,
     )
-from bzrlib.repofmt import weaverepo
+
+
+class AnonymousTestBranchFormat(bzrlib.branch.BranchFormat):
+    """An anonymous branch format (does not have a format string)"""
+
+    def get_format_string(self):
+        raise NotImplementedError(self.get_format_string)
+
+
+class IdentifiableTestBranchFormat(bzrlib.branch.BranchFormat):
+    """An identifable branch format (has a format string)"""
+
+    def get_format_string(self):
+        return "I have an identity"
+
+
+class AnonymousTestRepositoryFormat(repository.RepositoryFormat):
+    """An anonymous branch format (does not have a format string)"""
+
+    def get_format_string(self):
+        raise NotImplementedError(self.get_format_string)
+
+
+class IdentifiableTestRepositoryFormat(repository.RepositoryFormat):
+    """An identifable branch format (has a format string)"""
+
+    def get_format_string(self):
+        return "I have an identity"
+
+
+class AnonymousTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
+    """An anonymous branch format (does not have a format string)"""
+
+    def get_format_string(self):
+        raise NotImplementedError(self.get_format_string)
+
+
+class IdentifiableTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
+    """An identifable branch format (has a format string)"""
+
+    def get_format_string(self):
+        return "I have an identity"
 
 
 class TestControlDir(TestCaseWithControlDir):
@@ -1284,9 +1326,9 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertTrue(isinstance(dir.get_branch_transport(None),
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
-        # branches, or it supports anonymous  branch formats, but not both.
-        anonymous_format = bzrlib.branch.BzrBranchFormat4()
-        identifiable_format = bzrlib.branch.BzrBranchFormat5()
+        # branches, or it supports anonymous branch formats, but not both.
+        anonymous_format = AnonymousTestBranchFormat()
+        identifiable_format = IdentifiableTestBranchFormat()
         try:
             found_transport = dir.get_branch_transport(anonymous_format)
             self.assertRaises(errors.IncompatibleFormat,
@@ -1306,8 +1348,8 @@ class TestControlDir(TestCaseWithControlDir):
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
         # repositories, or it supports anonymous repository formats, but not both.
-        anonymous_format = weaverepo.RepositoryFormat6()
-        identifiable_format = weaverepo.RepositoryFormat7()
+        anonymous_format = AnonymousTestRepositoryFormat()
+        identifiable_format = IdentifiableTestRepositoryFormat()
         try:
             found_transport = dir.get_repository_transport(anonymous_format)
             self.assertRaises(errors.IncompatibleFormat,
@@ -1327,8 +1369,8 @@ class TestControlDir(TestCaseWithControlDir):
                                    transport.Transport))
         # with a given format, either the bzr dir supports identifiable
         # trees, or it supports anonymous tree formats, but not both.
-        anonymous_format = workingtree.WorkingTreeFormat2()
-        identifiable_format = workingtree.WorkingTreeFormat3()
+        anonymous_format = AnonymousTestWorkingTreeFormat()
+        identifiable_format = IdentifiableTestWorkingTreeFormat()
         try:
             found_transport = dir.get_workingtree_transport(anonymous_format)
             self.assertRaises(errors.IncompatibleFormat,
