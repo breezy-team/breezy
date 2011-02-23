@@ -662,13 +662,12 @@ class Branch(controldir.ControlComponent):
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     @needs_write_lock
-    def fetch(self, from_branch, last_revision=None, pb=None, fetch_spec=None):
+    def fetch(self, from_branch, last_revision=None, fetch_spec=None):
         """Copy revisions from from_branch into this branch.
 
         :param from_branch: Where to copy from.
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
-        :param pb: An optional progress bar to use.
         :param fetch_spec: If specified, a SearchResult or
             PendingAncestryResult that describes which revisions to copy.  This
             allows copying multiple heads at once.  Mutually exclusive with
@@ -680,10 +679,6 @@ class Branch(controldir.ControlComponent):
                 "fetch_spec and last_revision are mutually exclusive.")
         if self.base == from_branch.base:
             return (0, [])
-        if pb is not None:
-            symbol_versioning.warn(
-                symbol_versioning.deprecated_in((1, 14, 0))
-                % "pb parameter to fetch()")
         from_branch.lock_read()
         try:
             if last_revision is None and fetch_spec is None:
@@ -691,7 +686,7 @@ class Branch(controldir.ControlComponent):
                 last_revision = _mod_revision.ensure_null(last_revision)
             return self.repository.fetch(from_branch.repository,
                                          revision_id=last_revision,
-                                         pb=pb, fetch_spec=fetch_spec)
+                                         fetch_spec=fetch_spec)
         finally:
             from_branch.unlock()
 
@@ -1005,29 +1000,6 @@ class Branch(controldir.ControlComponent):
             return (revno, rh[-1])
         else:
             return (0, _mod_revision.NULL_REVISION)
-
-    @deprecated_method(deprecated_in((1, 6, 0)))
-    def missing_revisions(self, other, stop_revision=None):
-        """Return a list of new revisions that would perfectly fit.
-
-        If self and other have not diverged, return a list of the revisions
-        present in other, but missing from self.
-        """
-        self_history = self.revision_history()
-        self_len = len(self_history)
-        other_history = other.revision_history()
-        other_len = len(other_history)
-        common_index = min(self_len, other_len) -1
-        if common_index >= 0 and \
-            self_history[common_index] != other_history[common_index]:
-            raise errors.DivergedBranches(self, other)
-
-        if stop_revision is None:
-            stop_revision = other_len
-        else:
-            if stop_revision > other_len:
-                raise errors.NoSuchRevision(self, stop_revision)
-        return other_history[self_len:stop_revision]
 
     def update_revisions(self, other, stop_revision=None, overwrite=False,
                          graph=None, fetch_tags=True):
@@ -1780,6 +1752,10 @@ class BranchFormat(object):
         """True if this format records a stacked-on branch."""
         return False
 
+    def supports_leaving_lock(self):
+        """True if this format supports leaving locks in place."""
+        return False # by default
+
     @classmethod
     @deprecated_method(deprecated_in((2, 4, 0)))
     def unregister_format(klass, format):
@@ -2077,6 +2053,9 @@ class BzrBranchFormat4(BranchFormat):
     def __str__(self):
         return "Bazaar-NG branch format 4"
 
+    def supports_leaving_lock(self):
+        return False
+
 
 class BranchFormatMetadir(BranchFormat):
     """Common logic for meta-dir based branch formats."""
@@ -2121,6 +2100,9 @@ class BranchFormatMetadir(BranchFormat):
         self._matchingbzrdir.set_branch_format(self)
 
     def supports_tags(self):
+        return True
+
+    def supports_leaving_lock(self):
         return True
 
 

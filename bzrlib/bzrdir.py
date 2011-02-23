@@ -190,6 +190,7 @@ class BzrDir(controldir.ControlDir):
         :param create_prefix: Create any missing directories leading up to
             to_transport.
         :param use_existing_dir: Use an existing directory if one exists.
+        :param no_tree: If set to true prevents creation of a working tree.
         """
         # Overview: put together a broad description of what we want to end up
         # with; then make as few api calls as possible to do it.
@@ -1130,14 +1131,8 @@ class BzrDirPreSplitOut(BzrDir):
             return self.transport
         raise errors.IncompatibleFormat(workingtree_format, self._format)
 
-    def needs_format_conversion(self, format=None):
+    def needs_format_conversion(self, format):
         """See BzrDir.needs_format_conversion()."""
-        # if the format is not the same as the system default,
-        # an upgrade is needed.
-        if format is None:
-            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
-                % 'needs_format_conversion(format=None)')
-            format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
     def open_branch(self, name=None, unsupported=False,
@@ -1194,11 +1189,8 @@ class BzrDir4(BzrDirPreSplitOut):
         """See BzrDir.create_repository."""
         return self._format.repository_format.initialize(self, shared)
 
-    def needs_format_conversion(self, format=None):
+    def needs_format_conversion(self, format):
         """Format 4 dirs are always in need of conversion."""
-        if format is None:
-            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
-                % 'needs_format_conversion(format=None)')
         return True
 
     def open_repository(self):
@@ -1391,13 +1383,8 @@ class BzrDirMeta1(BzrDir):
             return False
         return True
 
-    def needs_format_conversion(self, format=None):
+    def needs_format_conversion(self, format):
         """See BzrDir.needs_format_conversion()."""
-        if format is None:
-            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
-                % 'needs_format_conversion(format=None)')
-        if format is None:
-            format = BzrDirFormat.get_default_format()
         if not isinstance(self._format, format.__class__):
             # it is not a meta dir format, conversion is needed.
             return True

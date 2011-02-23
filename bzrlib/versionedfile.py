@@ -1,7 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
-#
-# Authors:
-#   Johan Rydberg <jrydberg@gnu.org>
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -930,6 +927,10 @@ class VersionedFiles(object):
 
     The use of tuples allows a single code base to support several different
     uses with only the mapping logic changing from instance to instance.
+
+    :ivar _immediate_fallback_vfs: For subclasses that support stacking,
+        this is a list of other VersionedFiles immediately underneath this
+        one.  They may in turn each have further fallbacks.
     """
 
     def add_lines(self, key, parents, lines, parent_texts=None,
@@ -1201,7 +1202,7 @@ class VersionedFiles(object):
         at open time because they may change after the objects are opened.
         """
         all_fallbacks = []
-        for a_vfs in self._fallback_vfs:
+        for a_vfs in self._immediate_fallback_vfs:
             all_fallbacks.append(a_vfs)
             all_fallbacks.extend(a_vfs._transitive_fallbacks())
         return all_fallbacks

@@ -54,13 +54,14 @@ in the deltas to provide line annotation
 
 from cStringIO import StringIO
 from itertools import izip
-import gzip
 import operator
 import os
 import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import gzip
+
 from bzrlib import (
     annotate,
     debug,
@@ -83,19 +84,15 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.errors import (
-    FileExists,
     NoSuchFile,
-    KnitError,
     InvalidRevisionId,
     KnitCorrupt,
     KnitHeaderError,
     RevisionNotPresent,
-    RevisionAlreadyPresent,
     SHA1KnitCorrupt,
     )
 from bzrlib.osutils import (
     contains_whitespace,
-    contains_linebreaks,
     sha_string,
     sha_strings,
     split_lines,
@@ -105,9 +102,7 @@ from bzrlib.versionedfile import (
     adapter_registry,
     ConstantMapper,
     ContentFactory,
-    ChunkedContentFactory,
     sort_groupcompress,
-    VersionedFile,
     VersionedFiles,
     )
 
@@ -883,7 +878,7 @@ class KnitVersionedFiles(VersionedFiles):
             self._factory = KnitAnnotateFactory()
         else:
             self._factory = KnitPlainFactory()
-        self._fallback_vfs = []
+        self._immediate_fallback_vfs = []
         self._reload_func = reload_func
 
     def __repr__(self):
@@ -897,7 +892,7 @@ class KnitVersionedFiles(VersionedFiles):
 
         :param a_versioned_files: A VersionedFiles object.
         """
-        self._fallback_vfs.append(a_versioned_files)
+        self._immediate_fallback_vfs.append(a_versioned_files)
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
@@ -1070,7 +1065,7 @@ class KnitVersionedFiles(VersionedFiles):
                     raise errors.KnitCorrupt(self,
                         "Missing basis parent %s for %s" % (
                         compression_parent, key))
-        for fallback_vfs in self._fallback_vfs:
+        for fallback_vfs in self._immediate_fallback_vfs:
             fallback_vfs.check()
 
     def _check_add(self, key, lines, random_id, check_content):
@@ -1226,7 +1221,7 @@ class KnitVersionedFiles(VersionedFiles):
             and so on.
         """
         result = {}
-        sources = [self._index] + self._fallback_vfs
+        sources = [self._index] + self._immediate_fallback_vfs
         source_results = []
         missing = set(keys)
         for source in sources:
@@ -1526,7 +1521,7 @@ class KnitVersionedFiles(VersionedFiles):
                         yield KnitContentFactory(key, global_map[key],
                             record_details, None, raw_data, self._factory.annotated, None)
                 else:
-                    vf = self._fallback_vfs[parent_maps.index(source) - 1]
+                    vf = self._immediate_fallback_vfs[parent_maps.index(source) - 1]
                     for record in vf.get_record_stream(keys, ordering,
                         include_delta_closure):
                         yield record
@@ -1542,7 +1537,7 @@ class KnitVersionedFiles(VersionedFiles):
             # record entry 2 is the 'digest'.
             result[key] = details[2]
         missing.difference_update(set(result))
-        for source in self._fallback_vfs:
+        for source in self._immediate_fallback_vfs:
             if not missing:
                 break
             new_result = source.get_sha1s(missing)
@@ -1619,7 +1614,7 @@ class KnitVersionedFiles(VersionedFiles):
                 raise RevisionNotPresent([record.key], self)
             elif ((record.storage_kind in knit_types)
                   and (compression_parent is None
-                       or not self._fallback_vfs
+                       or not self._immediate_fallback_vfs
                        or self._index.has_key(compression_parent)
                        or not self.has_key(compression_parent))):
                 # we can insert the knit record literally if either it has no
@@ -1797,11 +1792,11 @@ class KnitVersionedFiles(VersionedFiles):
         # vfs, and hope to find them there.  Note that if the keys are found
         # but had no changes or no content, the fallback may not return
         # anything.
-        if keys and not self._fallback_vfs:
+        if keys and not self._immediate_fallback_vfs:
             # XXX: strictly the second parameter is meant to be the file id
             # but it's not easily accessible here.
             raise RevisionNotPresent(keys, repr(self))
-        for source in self._fallback_vfs:
+        for source in self._immediate_fallback_vfs:
             if not keys:
                 break
             source_keys = set()
@@ -2016,7 +2011,7 @@ class KnitVersionedFiles(VersionedFiles):
         """See VersionedFiles.keys."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(2, "keys scales with size of history")
-        sources = [self._index] + self._fallback_vfs
+        sources = [self._index] + self._immediate_fallback_vfs
         result = set()
         for source in sources:
             result.update(source.keys())
@@ -2062,7 +2057,7 @@ class _ContentMapGenerator(object):
 
         missing_keys = set(nonlocal_keys)
         # Read from remote versioned file instances and provide to our caller.
-        for source in self.vf._fallback_vfs:
+        for source in self.vf._immediate_fallback_vfs:
             if not missing_keys:
                 break
             # Loop over fallback repositories asking them for texts - ignore
@@ -3521,8 +3516,8 @@ class _KnitAnnotator(annotate.Annotator):
         return records, ann_keys
 
     def _get_needed_texts(self, key, pb=None):
-        # if True or len(self._vf._fallback_vfs) > 0:
-        if len(self._vf._fallback_vfs) > 0:
+        # if True or len(self._vf._immediate_fallback_vfs) > 0:
+        if len(self._vf._immediate_fallback_vfs) > 0:
             # If we have fallbacks, go to the generic path
             for v in annotate.Annotator._get_needed_texts(self, key, pb=pb):
                 yield v

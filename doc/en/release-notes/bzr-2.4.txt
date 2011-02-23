@@ -50,6 +50,9 @@ Bug Fixes
 * ``bzr annotate -r-1 file`` will now properly annotate a deleted file.
   (Andrew King, #537442)
 
+* ``bzr export`` to zip files will now set a mode on directories.
+  (Jelmer Vernooij, #207253)
+
 * ``bzr push --overwrite`` with an older revision specified will now correctly
   roll back the target branch. (Jelmer Vernooij, #386576)
 
@@ -90,6 +93,10 @@ Bug Fixes
   ``bzr plugins`` and in crash reports.
   (#704195, Martin Pool)
 
+* The "pretty" version of ``needs_read_lock`` and ``needs_write_lock`` now
+  preserves the identity of default parameter values.
+  (Andrew Bennetts, #718569)
+
 * ``bzr dump-btree --raw`` no longer tracebacks on a B-Tree file
   containing no rows. (Eric Siegerman, #715508)
 
@@ -110,9 +117,16 @@ API Changes
 * Added ``bzrlib.mergetools`` module with helper functions for working with
   the list of external merge tools. (Gordon Tyler, #489915)
 
+* All methods and arguments that were deprecated before 2.0
+  have been removed. (Jelmer Vernooij)
+
 * Branch formats should now be registered on the format registry
   (``bzrlib.branch.format_registry``) rather than using the class
   methods on ``BranchFormat``. (Jelmer Vernooij, #714729)
+
+* ``BranchFormat.supports_leaving_lock()`` and
+  ``RepositoryFormat.supports_leaving_lock`` flags have been added.
+  (Jelmer Vernooij)
 
 * ``Branch.fetch`` implementations must now accept an optional
   ``fetch_spec`` keyword argument. (Andrew Bennetts)
@@ -141,6 +155,9 @@ Internals
   outside of tests. This class makes it easier to track exceptions in threads
   by cacthing them so they can be re-raised in the controlling thread. It's
   available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
+
+* ``HookPoint.lazy_hook`` and ``Hooks.install_named_lazy_hook`` can install 
+  hooks for which the callable is loaded lazily.  (Jelmer Vernooij)
 
 Testing
 *******
