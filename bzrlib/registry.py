@@ -239,6 +239,14 @@ class FormatRegistry(Registry):
         Registry.__init__(self)
         self._other_registry = other_registry
 
+    def register(self, key, obj, help=None, info=None,
+                 override_existing=False):
+        Registry.register(self, key, obj, help=help, info=info,
+            override_existing=override_existing)
+        if self._other_registry is not None:
+            self._other_registry.register(key, obj, help=help,
+                info=info, override_existing=override_existing)
+
     def register_lazy(self, key, module_name, member_name,
                       help=None, info=None,
                       override_existing=False):
@@ -255,5 +263,3 @@ class FormatRegistry(Registry):
         if callable(r):
             r = r()
         return r
-
-
