@@ -24,6 +24,7 @@ from bzrlib import (
     bzrdir,
     controldir,
     repository,
+    serializer,
     workingtree,
     )
 
@@ -91,11 +92,11 @@ bzrdir.BzrDirFormat.register_format(BzrDirFormat6())
 from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
 branch.BranchFormat.register_extra_format(BzrBranchFormat4())
 
-from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
-workingtree.WorkingTreeFormat.register_extra_format(WorkingTreeFormat2())
+workingtree.format_registry.register_extra_lazy(
+    'bzrlib.plugins.weave_fmt.workingtree',
+    'WorkingTreeFormat2')
 
-from bzrlib.serializer import format_registry as serializer_format_registry
-serializer_format_registry.register_lazy('4', 'bzrlib.plugins.weave_fmt.xml4',
+serializer.format_registry.register_lazy('4', 'bzrlib.plugins.weave_fmt.xml4',
     'serializer_v4')
 
 def load_tests(basic_tests, module, loader):

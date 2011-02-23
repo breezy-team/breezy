@@ -1647,8 +1647,10 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     def __get_workingtree_format(self):
         if self._workingtree_format is None:
-            from bzrlib.workingtree import WorkingTreeFormat
-            self._workingtree_format = WorkingTreeFormat.get_default_format()
+            from bzrlib.workingtree import (
+                format_registry as wt_format_registry,
+                )
+            self._workingtree_format = wt_format_registry.get_default()
         return self._workingtree_format
 
     def __set_workingtree_format(self, wt_format):
