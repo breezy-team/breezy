@@ -124,6 +124,10 @@ API Changes
   (``bzrlib.branch.format_registry``) rather than using the class
   methods on ``BranchFormat``. (Jelmer Vernooij, #714729)
 
+* ``BranchFormat.supports_leaving_lock()`` and
+  ``RepositoryFormat.supports_leaving_lock`` flags have been added.
+  (Jelmer Vernooij)
+
 * ``Branch.fetch`` implementations must now accept an optional
   ``fetch_spec`` keyword argument. (Andrew Bennetts)
 
