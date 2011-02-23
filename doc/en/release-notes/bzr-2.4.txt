@@ -104,7 +104,7 @@ Bug Fixes
   without an explicit public location. (Max Bowsher)
 
 * On Python 2.6 and higher, use multiprocessing.cpu_count() to retrieve the
-  number of available processors. (Jelmer Vernooij)
+  number of available processors. (Jelmer Vernooij, #693140)
 
 Documentation
 *************
