@@ -1550,15 +1550,6 @@ class BranchFormat(object):
     object will be created every time regardless.
     """
 
-    _default_format = None
-    """The default format used for new branches."""
-
-    _formats = {}
-    """The known formats."""
-
-    _extra_formats = []
-    """Extra formats that can not be part of a metadir."""
-
     can_set_append_revisions_only = True
 
     def __eq__(self, other):
@@ -1573,33 +1564,27 @@ class BranchFormat(object):
         try:
             transport = a_bzrdir.get_branch_transport(None, name=name)
             format_string = transport.get_bytes("format")
-            format = klass._formats[format_string]
-            if isinstance(format, MetaDirBranchFormatFactory):
-                return format()
-            return format
+            return format_registry.get(format_string)
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base, bzrdir=a_bzrdir)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='branch')
 
     @classmethod
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def get_default_format(klass):
         """Return the current default format."""
-        return klass._default_format
+        return format_registry.get_default()
 
     @classmethod
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def get_formats(klass):
         """Get all the known formats.
 
         Warning: This triggers a load of all lazy registered formats: do not
         use except when that is desireed.
         """
-        result = []
-        for fmt in klass._formats.values():
-            if isinstance(fmt, MetaDirBranchFormatFactory):
-                fmt = fmt()
-            result.append(fmt)
-        return result + klass._extra_formats
+        return format_registry._get_all()
 
     def get_reference(self, a_bzrdir, name=None):
         """Get the target reference of the branch in a_bzrdir.
@@ -1727,35 +1712,19 @@ class BranchFormat(object):
         raise NotImplementedError(self.open)
 
     @classmethod
-    def register_extra_format(klass, format):
-        """Register a branch format that can not be part of a metadir.
-
-        This is mainly useful to allow custom branch formats, such as
-        older Bazaar formats and foreign formats, to be tested
-        """
-        klass._extra_formats.append(format)
-        network_format_registry.register(
-            format.network_name(), format.__class__)
-
-    @classmethod
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def register_format(klass, format):
         """Register a metadir format.
-        
+
         See MetaDirBranchFormatFactory for the ability to register a format
         without loading the code the format needs until it is actually used.
         """
-        klass._formats[format.get_format_string()] = format
-        # Metadir formats have a network name of their format string, and get
-        # registered as factories.
-        if isinstance(format, MetaDirBranchFormatFactory):
-            network_format_registry.register(format.get_format_string(), format)
-        else:
-            network_format_registry.register(format.get_format_string(),
-                format.__class__)
+        format_registry.register(format)
 
     @classmethod
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def set_default_format(klass, format):
-        klass._default_format = format
+        format_registry.set_default(format)
 
     def supports_set_append_revisions_only(self):
         """True if this format supports set_append_revisions_only."""
@@ -1770,12 +1739,9 @@ class BranchFormat(object):
         return False # by default
 
     @classmethod
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def unregister_format(klass, format):
-        del klass._formats[format.get_format_string()]
-
-    @classmethod
-    def unregister_extra_format(klass, format):
-        klass._extra_formats.remove(format)
+        format_registry.remove(format)
 
     def __str__(self):
         return self.get_format_description().rstrip()
@@ -2320,6 +2286,64 @@ class BranchReferenceFormat(BranchFormat):
         return result
 
 
+class BranchFormatRegistry(registry.FormatRegistry):
+    """Branch format registry."""
+
+    def __init__(self, other_registry=None):
+        super(BranchFormatRegistry, self).__init__(other_registry)
+        self._default_format = None
+        self._extra_formats = []
+
+    def register(self, format):
+        """Register a new branch format."""
+        super(BranchFormatRegistry, self).register(
+            format.get_format_string(), format)
+
+    def remove(self, format):
+        """Remove a registered branch format."""
+        super(BranchFormatRegistry, self).remove(
+            format.get_format_string())
+
+    def register_extra(self, format):
+        """Register a branch format that can not be part of a metadir.
+
+        This is mainly useful to allow custom branch formats, such as
+        older Bazaar formats and foreign formats, to be tested
+        """
+        self._extra_formats.append(registry._ObjectGetter(format))
+        network_format_registry.register(
+            format.network_name(), format.__class__)
+
+    def register_extra_lazy(self, module_name, member_name):
+        """Register a branch format lazily.
+        """
+        self._extra_formats.append(
+            registry._LazyObjectGetter(module_name, member_name))
+
+    @classmethod
+    def unregister_extra(self, format):
+        self._extra_formats.remove(registry._ObjectGetter(format))
+
+    def _get_all(self):
+        result = []
+        for name, fmt in self.iteritems():
+            if callable(fmt):
+                fmt = fmt()
+            result.append(fmt)
+        for objgetter in self._extra_formats:
+            fmt = objgetter.get_obj()
+            if callable(fmt):
+                fmt = fmt()
+            result.append(fmt)
+        return result
+
+    def set_default(self, format):
+        self._default_format = format
+
+    def get_default(self):
+        return self._default_format
+
+
 network_format_registry = registry.FormatRegistry()
 """Registry of formats indexed by their network name.
 
@@ -2328,6 +2352,8 @@ referring to formats with smart server operations. See
 BranchFormat.network_name() for more detail.
 """
 
+format_registry = BranchFormatRegistry(network_format_registry)
+
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
@@ -2335,12 +2361,12 @@ __format5 = BzrBranchFormat5()
 __format6 = BzrBranchFormat6()
 __format7 = BzrBranchFormat7()
 __format8 = BzrBranchFormat8()
-BranchFormat.register_format(__format5)
-BranchFormat.register_format(BranchReferenceFormat())
-BranchFormat.register_format(__format6)
-BranchFormat.register_format(__format7)
-BranchFormat.register_format(__format8)
-BranchFormat.set_default_format(__format7)
+format_registry.register(__format5)
+format_registry.register(BranchReferenceFormat())
+format_registry.register(__format6)
+format_registry.register(__format7)
+format_registry.register(__format8)
+format_registry.set_default(__format7)
 
 
 class BranchWriteLockResult(LogicalLockResult):
@@ -3339,7 +3365,7 @@ class GenericInterBranch(InterBranch):
 
     @classmethod
     def _get_branch_formats_to_test(klass):
-        return [(BranchFormat._default_format, BranchFormat._default_format)]
+        return [(format_registry.get_default(), format_registry.get_default())]
 
     @classmethod
     def unwrap_format(klass, format):
@@ -3529,6 +3555,8 @@ class GenericInterBranch(InterBranch):
         :param _hook_master: Private parameter - set the branch to
             be supplied as the master to pull hooks.
         :param run_hooks: Private parameter - if false, this branch
+            is being called because it's the master of the primary branch,
+            so it should not run its hooks.
             is being called because it's the master of the primary branch,
             so it should not run its hooks.
         :param _override_hook_target: Private parameter - set the branch to be

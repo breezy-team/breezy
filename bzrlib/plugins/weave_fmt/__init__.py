@@ -89,9 +89,8 @@ bzrdir.BzrDirFormat.register_format(BzrDirFormat4())
 bzrdir.BzrDirFormat.register_format(BzrDirFormat5())
 bzrdir.BzrDirFormat.register_format(BzrDirFormat6())
 
-from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
-branch.BranchFormat.register_extra_format(BzrBranchFormat4())
-
+branch.format_registry.register_extra_lazy(
+    'bzrlib.plugins.weave_fmt.branch', 'BzrBranchFormat4')
 workingtree.format_registry.register_extra_lazy(
     'bzrlib.plugins.weave_fmt.workingtree',
     'WorkingTreeFormat2')

@@ -120,6 +120,10 @@ API Changes
 * All methods and arguments that were deprecated before 2.0
   have been removed. (Jelmer Vernooij)
 
+* Branch formats should now be registered on the format registry
+  (``bzrlib.branch.format_registry``) rather than using the class
+  methods on ``BranchFormat``. (Jelmer Vernooij, #714729)
+
 * ``Branch.fetch`` implementations must now accept an optional
   ``fetch_spec`` keyword argument. (Andrew Bennetts)
 
