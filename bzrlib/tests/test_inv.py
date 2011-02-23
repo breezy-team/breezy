@@ -24,6 +24,7 @@ from bzrlib import (
     repository,
     revision,
     tests,
+    workingtree,
     )
 from bzrlib.inventory import (
     CHKInventory,
@@ -39,7 +40,6 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     )
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
-from bzrlib.workingtree import WorkingTreeFormat
 
 
 load_tests = load_tests_apply_scenarios
@@ -59,7 +59,7 @@ def delta_application_scenarios():
         scenarios.append((str(format.__name__), {
             'apply_delta':apply_inventory_Repository_add_inventory_by_delta,
             'format':format}))
-    for format in WorkingTreeFormat.get_formats():
+    for format in workingtree.format_registry._get_all():
         scenarios.append(
             (str(format.__class__.__name__) + ".update_basis_by_delta", {
             'apply_delta':apply_inventory_WT_basis,
