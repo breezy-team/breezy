@@ -380,7 +380,7 @@ class TestTreeScenarios(tests.TestCase):
                    workingtree.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual(7, len(scenarios))
-        default_wt_format = workingtree.WorkingTreeFormat4._default_format
+        default_wt_format = workingtree.format_registry.get_default()
         wt4_format = workingtree.WorkingTreeFormat4()
         wt5_format = workingtree.WorkingTreeFormat5()
         expected_scenarios = [
