@@ -221,6 +221,11 @@ class DictTagDict(tag.BasicTags):
 
 class GitBranchFormat(branch.BranchFormat):
 
+    @property
+    def _matchingbzrdir(self):
+        from bzrlib.plugins.git.dir import LocalGitControlDirFormat
+        return LocalGitControlDirFormat
+
     def get_format_description(self):
         return 'Git Branch'
 

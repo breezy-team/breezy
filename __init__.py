@@ -370,6 +370,18 @@ else:
         'GitRepositoryFormat')
 
 try:
+    from bzrlib.branch import (
+        format_registry as branch_format_registry,
+        )
+except ImportError:
+    pass
+else:
+    branch_format_registry.register_extra_lazy(
+        'bzrlib.plugins.git.branch',
+        'GitBranchFormat',
+        )
+
+try:
     from bzrlib.controldir import (
         network_format_registry as controldir_network_format_registry,
         )
