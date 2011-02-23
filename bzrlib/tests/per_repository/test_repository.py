@@ -937,7 +937,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo = self.make_repository('repo', shared=True)
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable('Cannot make a shared repository')
-        if not repo.bzrdir._format.flexible_components:
+        if repo.bzrdir._format.fixed_components:
             raise tests.KnownFailure(
                 "pre metadir branches do not upgrade on push "
                 "with stacking policy")

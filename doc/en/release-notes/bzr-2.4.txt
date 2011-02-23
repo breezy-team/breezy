@@ -127,6 +127,10 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
+* ``BzrDirFormat`` has a new attribute ``fixed_components`` that
+  indicates whether the components of the bzrdir can be upgraded
+  independent of the ``BzrDir``. (Jelmer Vernooij)
+
 * Repository formats should now be registered on the format registry
   (``bzrlib.repository.format_registry``) rather than using the class
   methods on ``RepositoryFormat``. (Jelmer Vernooij)

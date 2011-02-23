@@ -329,7 +329,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_sprout_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        if not self.bzrdir_format.flexible_components:
+        if self.bzrdir_format.fixed_components:
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
@@ -346,7 +346,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        if not self.bzrdir_format.flexible_components:
+        if self.bzrdir_format.fixed_components:
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)

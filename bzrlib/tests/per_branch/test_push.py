@@ -209,7 +209,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        if not self.bzrdir_format.flexible_components:
+        if self.bzrdir_format.fixed_components:
             raise tests.TestNotApplicable('Not a metadir format.')
         if isinstance(self.branch_format, branch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
