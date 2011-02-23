@@ -514,7 +514,11 @@ class InterGitNonGitRepository(InterGitRepository):
         if revision_id is not None:
             interesting_heads = [revision_id]
         elif fetch_spec is not None:
-            interesting_heads = fetch_spec.heads
+            recipe = fetch_spec.get_recipe()
+            if recipe[0] in ("search", "proxy-search"):
+                interesting_heads = recipe[1]
+            else:
+                raise AssertionError("Unsupported search result type %s" % recipe[0])
         else:
             interesting_heads = None
         def determine_wants(refs):
@@ -681,7 +685,12 @@ class InterGitGitRepository(InterGitRepository):
         if revision_id is not None:
             args = [mapping.revision_id_bzr_to_foreign(revision_id)[0]]
         elif fetch_spec is not None:
-            args = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in fetch_spec.heads]
+            recipe = fetch_spec.get_recipe()
+            if recipe[0] in ("search", "proxy-search"):
+                heads = recipe[1]
+            else:
+                raise AssertionError("Unsupported search result type %s" % recipe[0])
+            args = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in heads]
         if branches is not None:
             determine_wants = lambda x: [x[y] for y in branches if not x[y] in r.object_store]
         elif fetch_spec is None and revision_id is None:
