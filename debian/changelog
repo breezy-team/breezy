@@ -1,3 +1,69 @@
+bzr-builddeb (2.7) UNRELEASED; urgency=low
+
+  [ James Westby ]
+
+  * Accept None as a valid previous_version value in merge_upstream(). LP: #680945
+
+  [ Jelmer Vernooij ]
+
+  * Support 'bzr tags --sort=debversion'. Closes #701244.
+  * When adding a changelog entry, support git and svn snapshots.
+  * Automatically use debian/source/format if package is native. Closes:
+    #586617
+  * Fix "bzr builddeb" if last upload was not to a Ubuntu release pocket.
+    LP: #709263
+  * If possible use uscan to find the latest upstream version string.
+    LP: #295274
+  * Add --snapshot option to merge-upstream.
+  * 'bzr merge-upstream' now also works in merge mode, and will simply
+    add a new entry for new upstream versions.
+  * merge-upstream will now keep epochs around. LP: #622678
+  * 'bzr builddeb' now searches for directories relative to the working
+    tree rather than relative to the branch. Closes: #676456
+  * Use enums for build types, and a priority scheme to figure out the
+    build type. LP: #655277
+  * Fix finding upstream tarball when get-orig-source is not available.
+    Closes: #552893
+  * merge-upstream now looks at the package source format to see what
+    kind of compression is supported on tarballs. LP: #627718
+  * Support upstream version strings containing dashes. Patch by Stefano
+    Rivera. LP: #711826
+  * Run test suite unless nocheck is set (consistent with policy).
+  * Fix build dependencies for test suite.
+  * Support unversioned debian/ symlink in working tree when finding
+    changelog and larstiq mode. LP: #619295
+  * The deb: directory service has been renamed to apt: to avoid
+    confusion.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 06 Feb 2011 14:25:32 +0100
+
+bzr-builddeb (2.6) unstable; urgency=low
+
+  [ James Westby ]
+
+  * Don't fail if asked to use a .bz2 tarball that is already in the desired
+    location. LP: #616786
+  * Don't crash if we are asked to merge-upstream with an unrelated branch.
+    LP: #619614.
+  * Don't strip -n from the version we get in merge-upstream, as some
+    upstreams have this in there, and trying to support both means supporting
+    both badly. If you are used to doing "bzr merge-upstream --version
+    <package version>" then it will no longer work for you, use the
+    upstream version instead.
+  * Don't crash when doing merge-upstream with a branch that does a rename
+    and then ships another file with the old path in the tarball that isn't
+    in the branch.
+
+  [ Jelmer Vernooij ]
+
+  * Fix the auto-detection of merge mode.
+  * Don't crash on merge mode packages where there is no export-upstream
+    if we can't find the tarball.
+  * Determine Bazaar home directory using bzrlib to prevent test
+    isolation issues. LP: #614125
+
+ -- James Westby <james.westby@ubuntu.com>  Wed, 18 Aug 2010 20:12:20 -0400
+
 bzr-builddeb (2.5.1) unstable; urgency=low
 
   [ James Westby ]
