@@ -21,7 +21,6 @@ import stat
 from bzrlib import (
     bzrdir,
     controldir,
-    transport,
     )
 from bzrlib.tests import (
     features,
@@ -51,9 +50,6 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         path = 'format_5_branch'
         self.make_branch_and_tree(path, format=bzrdir.BzrDirFormat5())
         return path
-
-    def make_metadir_weave_branch(self):
-        self.make_branch_and_tree('metadir_weave_branch', format='metaweave')
 
     def test_readonly_url_error(self):
         path = self.make_format_5_branch()
@@ -133,7 +129,7 @@ finished
     def test_upgrade_explicit_knit(self):
         # users can force an upgrade to knit format from a metadir weave
         # branch
-        self.make_metadir_weave_branch()
+        self.make_branch_and_tree('metadir_weave_branch', format='metaweave')
         url = self.get_transport('metadir_weave_branch').base
         # check --format takes effect
         controldir.ControlDirFormat._set_default_format(bzrdir.BzrDirFormat5())
