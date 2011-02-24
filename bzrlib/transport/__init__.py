@@ -27,7 +27,6 @@ it.
 """
 
 from cStringIO import StringIO
-import re
 import sys
 
 from bzrlib.lazy_import import lazy_import
