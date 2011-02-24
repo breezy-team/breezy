@@ -1466,6 +1466,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     _lock_class = lockdir.LockDir
 
+    fixed_components = False
+
     def __init__(self):
         self._workingtree_format = None
         self._branch_format = None

@@ -26,6 +26,14 @@ New Features
 * External merge tools can now be configured in bazaar.conf. See
   ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
 
+* Configuration options can now use references to other options in the same
+  file by enclosing them with curly brackets (``{other_opt}``). This makes it
+  possible to use, for example,
+  ``push_location=lp:~vila/bzr/config-{nickname}`` in ``branch.conf`` when
+  using a loom. During the beta period, the default behaviour is to disable
+  this feature. It can be activated by declaring ``bzr.config.expand = True``
+  in ``bazaar.conf``. (Vincent Ladeuil)
+
 Improvements
 ************
 
@@ -103,6 +111,9 @@ Bug Fixes
 * Fix ``bzr lp-mirror`` to work on command line branch URLs and branches
   without an explicit public location. (Max Bowsher)
 
+* On Python 2.6 and higher, use multiprocessing.cpu_count() to retrieve the
+  number of available processors. (Jelmer Vernooij, #693140)
+
 Documentation
 *************
 
@@ -134,6 +145,10 @@ API Changes
 * ``Branch.import_last_revision_info`` is deprecated.  Use the
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
+
+* ``BzrDirFormat`` has a new attribute ``fixed_components`` that
+  indicates whether the components of the bzrdir can be upgraded
+  independent of the ``BzrDir``. (Jelmer Vernooij)
 
 * Repository formats should now be registered on the format registry
   (``bzrlib.repository.format_registry``) rather than using the class

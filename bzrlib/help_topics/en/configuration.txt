@@ -258,6 +258,13 @@ variable name, an equals sign and a value.  For example::
     email            = John Doe <jdoe@isp.com>
     check_signatures = require
 
+A variable can reference other variables **in the same configuration file** by
+enclosing them in curly brackets::
+
+    my_branch_name = feature_x
+    my_server      = bzr+ssh://example.com
+    push_location   = {my_server}/project/{my_branch_name}
+
 
 Variable policies
 ^^^^^^^^^^^^^^^^^
