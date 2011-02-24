@@ -865,12 +865,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_sprout_branch_from_hpss_preserves_repo_format(self):
         """branch.sprout from a smart server preserves the repository format.
         """
-        weave_formats = [weaverepo.RepositoryFormat5(),
-                         weaverepo.RepositoryFormat6(),
-                         weaverepo.RepositoryFormat7()]
-        if self.repository_format in weave_formats:
+        if not self.repository_format.supports_leaving_lock:
             raise tests.TestNotApplicable(
-                "Cannot fetch weaves over smart protocol.")
+                "Format can not be used over HPSS")
         remote_repo = self.make_remote_repository('remote')
         remote_branch = remote_repo.bzrdir.create_branch()
         try:
@@ -887,12 +884,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         """branch.sprout from a smart server preserves the repository format of
         a branch from a shared repository.
         """
-        weave_formats = [weaverepo.RepositoryFormat5(),
-                         weaverepo.RepositoryFormat6(),
-                         weaverepo.RepositoryFormat7()]
-        if self.repository_format in weave_formats:
+        if not self.repository_format.supports_leaving_lock:
             raise tests.TestNotApplicable(
-                "Cannot fetch weaves over smart protocol.")
+                "Format can not be used over HPSS")
         # Make a shared repo
         remote_repo = self.make_remote_repository('remote', shared=True)
         remote_backing_repo = bzrdir.BzrDir.open(
@@ -916,9 +910,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual(remote_backing_repo._format, local_repo._format)
 
     def test_clone_to_hpss(self):
-        pre_metadir_formats = [weaverepo.RepositoryFormat5(),
-                               weaverepo.RepositoryFormat6()]
-        if self.repository_format in pre_metadir_formats:
+        if not self.repository_format.supports_leaving_lock:
             raise tests.TestNotApplicable(
                 "Cannot lock pre_metadir_formats remotely.")
         remote_transport = self.make_smart_server('remote')
@@ -937,7 +929,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo = self.make_repository('repo', shared=True)
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable('Cannot make a shared repository')
-        if isinstance(repo.bzrdir, bzrdir.BzrDirPreSplitOut):
+        if repo.bzrdir._format.fixed_components:
             raise tests.KnownFailure(
                 "pre metadir branches do not upgrade on push "
                 "with stacking policy")
@@ -1347,11 +1339,9 @@ class TestEscaping(tests.TestCaseWithTransport):
             'rev1', _mod_revision.NULL_REVISION, fileobj)
 
 
-
-
 class TestRepositoryControlComponent(per_repository.TestCaseWithRepository):
     """Repository implementations adequately implement ControlComponent."""
-    
+
     def test_urls(self):
         repo = self.make_repository('repo')
         self.assertIsInstance(repo.user_url, str)

@@ -3221,3 +3221,22 @@ class RecursiveBind(BzrError):
     def __init__(self, branch_url):
         self.branch_url = branch_url
 
+
+# FIXME: I would prefer to define the config related exception classes in
+# config.py but the lazy import mechanism proscribes this -- vila 20101222
+class OptionExpansionLoop(BzrError):
+
+    _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
+
+    def __init__(self, string, refs):
+        self.string = string
+        self.refs = '->'.join(refs)
+
+
+class ExpandingUnknownOption(BzrError):
+
+    _fmt = 'Option %(name)s is not defined while expanding "%(string)s".'
+
+    def __init__(self, name, string):
+        self.name = name
+        self.string = string

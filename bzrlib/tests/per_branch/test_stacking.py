@@ -329,7 +329,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_sprout_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        if self.bzrdir_format.fixed_components:
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
@@ -346,7 +346,7 @@ class TestStacking(TestCaseWithBranch):
 
     def test_clone_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        if self.bzrdir_format.fixed_components:
             raise TestNotApplicable('Branch format 4 does not autoupgrade.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
@@ -363,8 +363,8 @@ class TestStacking(TestCaseWithBranch):
 
     def test_sprout_to_smart_server_stacking_policy_handling(self):
         """Obey policy where possible, ignore otherwise."""
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
-            raise TestNotApplicable('Branch format 4 is not usable via HPSS.')
+        if not self.branch_format.supports_leaving_lock():
+            raise TestNotApplicable('Branch format is not usable via HPSS.')
         source = self.make_branch('source')
         stack_on = self.make_stacked_on_matching(source)
         parent_bzrdir = self.make_bzrdir('.', format='default')
