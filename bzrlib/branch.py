@@ -2356,7 +2356,7 @@ class BranchReferenceFormat(BranchFormat):
         return result
 
 
-class BranchFormatRegistry(bzrdir.BzrDirMetaComponentFormatRegistry):
+class BranchFormatRegistry(controldir.ControlDirComponentFormatRegistry):
     """Branch format registry."""
 
     def __init__(self, other_registry=None):

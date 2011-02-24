@@ -2857,7 +2857,7 @@ def get_conflicted_stem(path):
             return path[:-len(suffix)]
 
 
-class WorkingTreeFormatRegistry(bzrdir.BzrDirMetaComponentFormatRegistry):
+class WorkingTreeFormatRegistry(controldir.ControlDirComponentFormatRegistry):
     """Registry for working tree formats."""
 
     def __init__(self, other_registry=None):
