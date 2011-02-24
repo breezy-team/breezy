@@ -486,6 +486,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
     """
 
     _matchingbzrdir = RemoteBzrDirFormat()
+    supports_full_versioned_files = True
 
     def __init__(self):
         repository.RepositoryFormat.__init__(self)

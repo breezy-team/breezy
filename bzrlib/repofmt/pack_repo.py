@@ -2563,6 +2563,8 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     index_class = None
     _fetch_uses_deltas = True
     fast_deltas = False
+    supports_full_versioned_files = True
+    supports_funky_characters = True
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a pack based repository.

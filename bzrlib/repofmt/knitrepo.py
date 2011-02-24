@@ -304,6 +304,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     _fetch_order = 'topological'
     _fetch_uses_deltas = True
     fast_deltas = False
+    supports_funky_characters = True
+    supports_full_versioned_files = True
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)

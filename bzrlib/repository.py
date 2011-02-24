@@ -3062,9 +3062,11 @@ class RepositoryFormat(object):
     experimental = False
     # Does this repository format escape funky characters, or does it create files with
     # similar names as the versioned files in its contents on disk ?
-    supports_funky_characters = True
+    supports_funky_characters = None
     # Does this repository format support leaving locks?
-    supports_leaving_lock = True
+    supports_leaving_lock = None
+    # Does this format support the full VersionedFiles interface?
+    supports_full_versioned_files = None
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
