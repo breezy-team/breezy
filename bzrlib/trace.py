@@ -488,6 +488,21 @@ def _dump_memory_usage(err_file):
         elif fd is not None:
             os.close(fd)
 
+
+def _qualified_exception_name(eclass, unqualified_bzrlib_errors=False):
+    """Give name of error class including module for non-builtin exceptions
+
+    If `unqualified_bzrlib_errors` is True, errors specific to bzrlib will
+    also omit the module prefix.
+    """
+    class_name = eclass.__name__
+    module_name = eclass.__module__
+    if module_name == "exceptions" or (
+            unqualified_bzrlib_errors and module_name == "bzrlib.errors"):
+        return class_name
+    return "%s.%s" % (module_name, class_name)
+
+
 def report_exception(exc_info, err_file):
     """Report an exception to err_file (typically stderr) and to .bzr.log.
 
