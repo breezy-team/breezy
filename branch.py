@@ -237,6 +237,9 @@ class GitBranchFormat(branch.BranchFormat):
     def supports_tags(self):
         return True
 
+    def supports_leaving_lock(self):
+        return False
+
     @property
     def _matchingbzrdir(self):
         from bzrlib.plugins.git import LocalGitControlDirFormat
