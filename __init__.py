@@ -131,12 +131,16 @@ revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec",
     "RevisionSpec_git")
 
 try:
-    from bzrlib.revisionspec import dwim_revspecs
-except ImportError:
+    from bzrlib.revisionspec import dwim_revspecs, RevisionSpec_dwim
+except ImportError: # bzr < 2.1
     pass
 else:
-    from bzrlib.plugins.git.revspec import RevisionSpec_git
-    dwim_revspecs.append(RevisionSpec_git)
+    if getattr(RevisionSpec_dwim, "append_possible_lazy_revspec", None):
+        RevisionSpec_dwim.append_possible_lazy_revspec(
+            "bzrlib.plugins.git.revspec", "RevisionSpec_git")
+    else: # bzr < 2.4
+        from bzrlib.plugins.git.revspec import RevisionSpec_git
+        dwim_revspecs.append(RevisionSpec_git)
 
 
 class GitControlDirFormat(ControlDirFormat):
