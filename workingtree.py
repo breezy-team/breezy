@@ -22,6 +22,9 @@ from cStringIO import (
     StringIO,
     )
 import errno
+from dulwich.index import (
+    Index,
+    )
 from dulwich.objects import (
     Blob,
     )
@@ -46,6 +49,9 @@ from bzrlib.decorators import (
     )
 
 
+from bzrlib.plugins.git.dir import (
+    LocalGitDir,
+    )
 from bzrlib.plugins.git.inventory import (
     GitIndexInventory,
     )
@@ -220,6 +226,16 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
     def get_format_description(self):
         return "Git Working Tree"
+
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None, hardlink=False):
+        """See WorkingTreeFormat.initialize()."""
+        if not isinstance(a_bzrdir, LocalGitDir):
+            raise errors.IncompatibleFormat(self, a_bzrdir)
+        index = Index(a_bzrdir.root_transport.local_abspath(".git/index"))
+        index.write()
+        return GitWorkingTree(a_bzrdir, a_bzrdir.open_repository(),
+            a_bzrdir.open_branch(), index)
 
 
 class InterIndexGitTree(tree.InterTree):
