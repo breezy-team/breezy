@@ -230,6 +230,12 @@ class LocalGitControlDirFormat(GitControlDirFormat):
             Repo.init(path)
         return self.open(transport)
 
+    def initialize_on_transport_ex(self, transport, use_existing_dir=False,
+        create_prefix=False, force_new_repo=False, stacked_on=None,
+        stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
+        shared_repo=False, vfs_only=False):
+        return self.initialize_on_transport(transport)
+
     def is_supported(self):
         return True
 
