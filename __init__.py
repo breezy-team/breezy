@@ -382,6 +382,18 @@ else:
         )
 
 try:
+    from bzrlib.workingtree import (
+        format_registry as workingtree_format_registry,
+        )
+except ImportError:
+    pass
+else:
+    workingtree_format_registry.register_extra_lazy(
+        'bzrlib.plugins.git.workingtree',
+        'GitWorkingTreeFormat',
+        )
+
+try:
     from bzrlib.controldir import (
         network_format_registry as controldir_network_format_registry,
         )
