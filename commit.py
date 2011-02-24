@@ -21,7 +21,6 @@
 from dulwich.index import (
     commit_tree,
     )
-import os
 import stat
 
 from bzrlib.repository import (
