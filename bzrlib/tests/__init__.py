@@ -3750,6 +3750,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_commit_merge',
         'bzrlib.tests.test_config',
         'bzrlib.tests.test_conflicts',
+        'bzrlib.tests.test_controldir',
         'bzrlib.tests.test_counted_lock',
         'bzrlib.tests.test_crash',
         'bzrlib.tests.test_decorators',

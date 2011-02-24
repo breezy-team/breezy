@@ -146,13 +146,14 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
-* Repository formats can now override
-  ``_get_extra_interrepo_test_combinations`` to provide extra test
-  combinations for ``bzrlib.tests.per_repository``. (Jelmer Vernooij)
-
 * ``BzrDirFormat`` has a new attribute ``fixed_components`` that
   indicates whether the components of the bzrdir can be upgraded
   independent of the ``BzrDir``. (Jelmer Vernooij)
+
+* Repository formats can now provide
+  ``_get_extra_interrepo_test_combinations`` in the same module 
+  to provide extra test combinations for ``bzrlib.tests.per_repository``.
+  (Jelmer Vernooij)
 
 * Repository formats should now be registered on the format registry
   (``bzrlib.repository.format_registry``) rather than using the class

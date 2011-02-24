@@ -1532,7 +1532,7 @@ class Branch(controldir.ControlComponent):
             raise AssertionError("invalid heads: %r" % (heads,))
 
 
-class BranchFormat(object):
+class BranchFormat(controldir.ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:
@@ -2356,56 +2356,12 @@ class BranchReferenceFormat(BranchFormat):
         return result
 
 
-class BranchFormatRegistry(registry.FormatRegistry):
+class BranchFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Branch format registry."""
 
     def __init__(self, other_registry=None):
         super(BranchFormatRegistry, self).__init__(other_registry)
         self._default_format = None
-        self._extra_formats = []
-
-    def register(self, format):
-        """Register a new branch format."""
-        super(BranchFormatRegistry, self).register(
-            format.get_format_string(), format)
-
-    def remove(self, format):
-        """Remove a registered branch format."""
-        super(BranchFormatRegistry, self).remove(
-            format.get_format_string())
-
-    def register_extra(self, format):
-        """Register a branch format that can not be part of a metadir.
-
-        This is mainly useful to allow custom branch formats, such as
-        older Bazaar formats and foreign formats, to be tested
-        """
-        self._extra_formats.append(registry._ObjectGetter(format))
-        network_format_registry.register(
-            format.network_name(), format.__class__)
-
-    def register_extra_lazy(self, module_name, member_name):
-        """Register a branch format lazily.
-        """
-        self._extra_formats.append(
-            registry._LazyObjectGetter(module_name, member_name))
-
-    @classmethod
-    def unregister_extra(self, format):
-        self._extra_formats.remove(registry._ObjectGetter(format))
-
-    def _get_all(self):
-        result = []
-        for name, fmt in self.iteritems():
-            if callable(fmt):
-                fmt = fmt()
-            result.append(fmt)
-        for objgetter in self._extra_formats:
-            fmt = objgetter.get_obj()
-            if callable(fmt):
-                fmt = fmt()
-            result.append(fmt)
-        return result
 
     def set_default(self, format):
         self._default_format = format
