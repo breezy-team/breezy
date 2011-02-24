@@ -1859,7 +1859,7 @@ class TestBranchFormat(tests.TestCase):
 
     def test_get_format_description(self):
         remote_format = RemoteBranchFormat()
-        real_format = branch.BranchFormat.get_default_format()
+        real_format = branch.format_registry.get_default()
         remote_format._network_name = real_format.network_name()
         self.assertEqual(remoted_description(real_format),
             remote_format.get_format_description())

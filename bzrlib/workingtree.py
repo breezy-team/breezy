@@ -58,6 +58,7 @@ from bzrlib import (
     ignores,
     inventory,
     merge,
+    registry,
     revision as _mod_revision,
     revisiontree,
     trace,
@@ -2858,6 +2859,67 @@ def get_conflicted_stem(path):
             return path[:-len(suffix)]
 
 
+class WorkingTreeFormatRegistry(registry.FormatRegistry):
+    """Registry for working tree formats."""
+
+    def __init__(self, other_registry=None):
+        super(WorkingTreeFormatRegistry, self).__init__(other_registry)
+        self._extra_formats = []
+        self._default_format = None
+
+    def register(self, format):
+        """Register a new repository format."""
+        super(WorkingTreeFormatRegistry, self).register(
+            format.get_format_string(), format)
+
+    def remove(self, format):
+        """Remove a registered repository format."""
+        super(WorkingTreeFormatRegistry, self).remove(format.get_format_string())
+
+    def register_extra(self, format):
+        """Register a repository format that can not be used in a metadir.
+
+        This is mainly useful to allow custom repository formats, such as older
+        Bazaar formats and foreign formats, to be tested.
+        """
+        self._extra_formats.append(registry._ObjectGetter(format))
+
+    def remove_extra(self, format):
+        """Remove an extra repository format.
+        """
+        self._extra_formats.remove(registry._ObjectGetter(format))
+
+    def register_extra_lazy(self, module_name, member_name):
+        """Register a repository format lazily.
+        """
+        self._extra_formats.append(
+            registry._LazyObjectGetter(module_name, member_name))
+
+    def get_default(self):
+        """Return the current default format."""
+        return self._default_format
+
+    def set_default(self, format):
+        self._default_format = format
+
+    def _get_extra(self):
+        result = []
+        for getter in self._extra_formats:
+            f = getter.get_obj()
+            if callable(f):
+                f = f()
+            result.append(f)
+        return result
+
+    def _get_all(self):
+        """Return all repository formats, even those not usable in metadirs.
+        """
+        return [self.get(k) for k in self.keys()] + self._get_extra()
+
+
+format_registry = WorkingTreeFormatRegistry()
+
+
 class WorkingTreeFormat(object):
     """An encapsulation of the initialization and open routines for a format.
 
@@ -2876,15 +2938,6 @@ class WorkingTreeFormat(object):
     object will be created every time regardless.
     """
 
-    _default_format = None
-    """The default format used for new trees."""
-
-    _formats = {}
-    """The known formats."""
-
-    _extra_formats = []
-    """Extra formats that can not be used in a metadir."""
-
     requires_rich_root = False
 
     upgrade_recommended = False
@@ -2902,7 +2955,7 @@ class WorkingTreeFormat(object):
         try:
             transport = a_bzrdir.get_workingtree_transport(None)
             format_string = transport.get_bytes("format")
-            return klass._formats[format_string]
+            return format_registry.get(format_string)
         except errors.NoSuchFile:
             raise errors.NoWorkingTree(base=transport.base)
         except KeyError:
@@ -2916,9 +2969,11 @@ class WorkingTreeFormat(object):
         return not (self == other)
 
     @classmethod
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def get_default_format(klass):
         """Return the current default format."""
-        return klass._default_format
+        return format_registry.get_default()
 
     def get_format_string(self):
         """Return the ASCII format string that identifies this format."""
@@ -2946,28 +3001,40 @@ class WorkingTreeFormat(object):
         return False
 
     @classmethod
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def register_format(klass, format):
-        klass._formats[format.get_format_string()] = format
+        format_registry.register(format)
 
     @classmethod
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def register_extra_format(klass, format):
-        klass._extra_formats.append(format)
+        format_registry.register_extra(format)
 
     @classmethod
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def unregister_extra_format(klass, format):
-        klass._extra_formats.remove(format)
+        format_registry.unregister_extra(format)
 
     @classmethod
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def get_formats(klass):
-        return klass._formats.values() + klass._extra_formats
+        return format_registry._get_all()
 
     @classmethod
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def set_default_format(klass, format):
-        klass._default_format = format
+        format_registry.set_default(format)
 
     @classmethod
+    @symbol_versioning.deprecated_method(
+        symbol_versioning.deprecated_in((2, 4, 0)))
     def unregister_format(klass, format):
-        del klass._formats[format.get_format_string()]
+        format_registry.remove(format)
 
 
 class WorkingTreeFormat2(WorkingTreeFormat):
@@ -3194,12 +3261,15 @@ class WorkingTreeFormat3(WorkingTreeFormat):
 
 
 __default_format = WorkingTreeFormat6()
-WorkingTreeFormat.register_format(__default_format)
-WorkingTreeFormat.register_format(WorkingTreeFormat5())
-WorkingTreeFormat.register_format(WorkingTreeFormat4())
-WorkingTreeFormat.register_format(WorkingTreeFormat3())
-WorkingTreeFormat.set_default_format(__default_format)
+format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
+    "bzrlib.workingtree_4", "WorkingTreeFormat4")
+format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
+    "bzrlib.workingtree_4", "WorkingTreeFormat5")
+format_registry.register_lazy("Bazaar Working Tree Format 6 (bzr 1.14)\n",
+    "bzrlib.workingtree_4", "WorkingTreeFormat6")
+format_registry.register(WorkingTreeFormat3())
+format_registry.set_default(__default_format)
 # Register extra formats which have no format string are not discoverable
 # and not independently creatable. They are implicitly created as part of
 # e.g. older Bazaar formats or foreign formats.
-WorkingTreeFormat.register_extra_format(WorkingTreeFormat2())
+format_registry.register_extra(WorkingTreeFormat2())

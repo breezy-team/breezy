@@ -3063,6 +3063,8 @@ class RepositoryFormat(object):
     # Does this repository format escape funky characters, or does it create files with
     # similar names as the versioned files in its contents on disk ?
     supports_funky_characters = True
+    # Does this repository format support leaving locks?
+    supports_leaving_lock = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -3214,6 +3216,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     rich_root_data = False
     supports_tree_reference = False
     supports_external_lookups = False
+    supports_leaving_lock = True
 
     @property
     def _matchingbzrdir(self):
