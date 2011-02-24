@@ -27,13 +27,13 @@ from bzrlib.tests import (
     )
 
 
-class SampleComponentFormat(controldir.MetaComponentFormat):
+class SampleComponentFormat(controldir.ControlComponentFormat):
 
     def get_format_string(self):
         return "Example component format."
 
 
-class SampleExtraComponentFormat(controldir.MetaComponentFormat):
+class SampleExtraComponentFormat(controldir.ControlComponentFormat):
     """Extra format, no format string."""
 
 

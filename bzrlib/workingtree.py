@@ -2875,7 +2875,7 @@ class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
 format_registry = WorkingTreeFormatRegistry()
 
 
-class WorkingTreeFormat(object):
+class WorkingTreeFormat(controldir.ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:

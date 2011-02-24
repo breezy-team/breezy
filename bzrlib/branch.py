@@ -1532,7 +1532,7 @@ class Branch(controldir.ControlComponent):
             raise AssertionError("invalid heads: %r" % (heads,))
 
 
-class BranchFormat(object):
+class BranchFormat(controldir.ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:

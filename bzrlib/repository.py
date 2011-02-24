@@ -2946,7 +2946,7 @@ can be called to obtain one.
 #####################################################################
 # Repository Formats
 
-class RepositoryFormat(object):
+class RepositoryFormat(controldir.ControlComponentFormat):
     """A repository format.
 
     Formats provide four things:
