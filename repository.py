@@ -136,9 +136,12 @@ class LocalGitRepository(GitRepository):
                 commit = self._git[hexsha]
             except KeyError:
                 continue
-            parent_map[revision_id] = [
+            parents = [
                 self.lookup_foreign_revision_id(p, mapping)
                 for p in commit.parents]
+            if parents == []:
+                parents = [revision.NULL_REVISION]
+            parent_map[revision_id] = tuple(parents)
         return parent_map
 
     def get_ancestry(self, revision_id, topo_sorted=True):
