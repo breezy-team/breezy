@@ -1420,3 +1420,4 @@ class TestGenerateBackupName(TestCaseWithMemoryTransport):
     def test_exiting(self):
         self._transport.put_bytes("a.~1~", "some content")
         self.assertEqual("a.~2~", self._bzrdir._available_backup_name("a"))
+
