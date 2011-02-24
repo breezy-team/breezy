@@ -190,6 +190,11 @@ class LocalGitControlDirFormat(GitControlDirFormat):
     def _known_formats(self):
         return set([LocalGitControlDirFormat()])
 
+    @property
+    def repository_format(self):
+        from bzrlib.plugins.git.repository import GitRepositoryFormat
+        return GitRepositoryFormat()
+
     def open(self, transport, _found=None):
         """Open this directory.
 
