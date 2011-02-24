@@ -2383,6 +2383,7 @@ format_registry = BranchFormatRegistry(network_format_registry)
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
+__format4 = BzrBranchFormat4()
 __format5 = BzrBranchFormat5()
 __format6 = BzrBranchFormat6()
 __format7 = BzrBranchFormat7()
@@ -2393,7 +2394,8 @@ format_registry.register(__format6)
 format_registry.register(__format7)
 format_registry.register(__format8)
 format_registry.set_default(__format7)
-format_registry.register_extra(BzrBranchFormat4())
+format_registry.register_extra(__format4)
+network_format_registry.register(__format4.network_name(), __format4)
 
 
 class BranchWriteLockResult(LogicalLockResult):
