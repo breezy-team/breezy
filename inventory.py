@@ -241,7 +241,6 @@ class GitInventory(inventory.Inventory):
         path = self.fileid_map.lookup_path(file_id)
         try:
             ie = self._get_ie(path)
-            assert ie.path == path
         except KeyError:
             raise errors.NoSuchId(None, file_id)
 
