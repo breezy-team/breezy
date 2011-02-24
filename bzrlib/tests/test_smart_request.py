@@ -172,6 +172,9 @@ class TestRequestHanderErrorTranslation(TestCase):
             ('TokenMismatch', 'some-token', 'actual-token'),
             errors.TokenMismatch('some-token', 'actual-token'))
 
+    def test_MemoryError(self):
+        self.assertTranslationEqual(("MemoryError",), MemoryError())
+
 
 class TestRequestJail(TestCaseWithMemoryTransport):
 
