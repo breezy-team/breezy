@@ -282,6 +282,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_tree_reference = False
     rich_root_data = True
     supports_leaving_lock = False
+    fast_deltas = True
 
     @property
     def _matchingbzrdir(self):
