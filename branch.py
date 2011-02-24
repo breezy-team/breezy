@@ -322,8 +322,11 @@ class GitBranch(ForeignBranch):
             self.ref or "HEAD")
 
     def generate_revision_history(self, revid, old_revid=None):
-        # FIXME: Check that old_revid is in the ancestry of revid
-        newhead, self.mapping = self.mapping.revision_id_bzr_to_foreign(revid)
+        if revid == NULL_REVISION:
+            newhead = ZERO_SHA
+        else:
+            # FIXME: Check that old_revid is in the ancestry of revid
+            newhead, self.mapping = self.mapping.revision_id_bzr_to_foreign(revid)
         self._set_head(newhead)
 
     def lock_write(self):
