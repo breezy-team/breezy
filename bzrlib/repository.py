@@ -3155,13 +3155,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         for hook in hooks:
             hook(params)
 
-    def _get_extra_interrepo_test_combinations(self):
-        """Return a list of extra InterRepo combinations to test.
-
-        :return: List of tuples with (label, from_format, to_format)
-        """
-        return []
-
 
 class MetaDirRepositoryFormat(RepositoryFormat):
     """Common base class for the new repositories using the metadir layout."""

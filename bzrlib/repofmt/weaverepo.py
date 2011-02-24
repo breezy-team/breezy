@@ -428,11 +428,6 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         return versionedfile.ThunkedVersionedFiles(base_transport,
             weave.WeaveFile, mapper, repo.is_locked)
 
-    def _get_extra_interrepo_test_combinations(self):
-        from bzrlib.repofmt import knitrepo
-        return [(InterRepository, RepositoryFormat5(),
-            knitrepo.RepositoryFormatKnit3())]
-
 
 class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """Bzr control format 6.
@@ -866,3 +861,9 @@ class InterWeaveRepo(InterSameDataRepository):
 
 
 InterRepository.register_optimiser(InterWeaveRepo)
+
+
+def get_extra_interrepo_test_combinations():
+    from bzrlib.repofmt import knitrepo
+    return [(InterRepository, RepositoryFormat5(),
+        knitrepo.RepositoryFormatKnit3())]

@@ -26,7 +26,10 @@ rather than in tests/per_interrepository/*.py.
 """
 
 
-from bzrlib import transport
+from bzrlib import (
+    pyutils,
+    transport,
+    )
 from bzrlib.errors import (
     FileExists,
     UninitializableFormat,
@@ -101,9 +104,11 @@ def default_test_list():
     # Gather extra scenarios from the repository implementations,
     # as InterRepositories can be used by Repository implementations
     # they aren't aware of.
-    for module in format_registry._get_all_modules():
+    for module_name in format_registry._get_all_modules():
+        module = pyutils.get_named_object(module_name)
         try:
-            get_extra_interrepo_test_combinations = getattr(module,
+            get_extra_interrepo_test_combinations = getattr(
+                module,
                 "get_extra_interrepo_test_combinations")
         except AttributeError:
             continue
