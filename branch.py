@@ -29,7 +29,7 @@ from bzrlib import (
     bzrdir,
     config,
     errors,
-    repository,
+    repository as _mod_repository,
     revision,
     tag,
     transport,
@@ -53,6 +53,7 @@ from bzrlib.plugins.git.errors import (
     NoSuchRef,
     )
 from bzrlib.plugins.git.refs import (
+    branch_name_to_ref,
     extract_tags,
     is_tag,
     ref_to_branch_name,
@@ -250,6 +251,16 @@ class GitBranchFormat(branch.BranchFormat):
             return RemoteGitTagDict(branch)
         else:
             return LocalGitTagDict(branch)
+
+    def initialize(self, a_bzrdir, name=None, repository=None):
+        from bzrlib.plugins.git.dir import LocalGitDir
+        from dulwich.protocol import ZERO_SHA
+        if not isinstance(a_bzrdir, LocalGitDir):
+            raise errors.IncompatibleFormat(self, a_bzrdir._format)
+        if repository is None:
+            repository = a_bzrdir.open_repository()
+        repository._git[branch_name_to_ref(name, "HEAD")] = ZERO_SHA
+        return LocalGitBranch(a_bzrdir, repository, name, a_bzrdir._lockfiles)
 
 
 class GitReadLock(object):
@@ -538,8 +549,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     @classmethod
     def _get_interrepo(self, source, target):
-        return repository.InterRepository.get(source.repository,
-            target.repository)
+        return _mod_repository.InterRepository.get(source.repository, target.repository)
 
     @classmethod
     def is_compatible(cls, source, target):
@@ -719,7 +729,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
         return result
 
     def update_refs(self, stop_revision=None):
-        interrepo = repository.InterRepository.get(self.source.repository,
+        interrepo = _mod_repository.InterRepository.get(self.source.repository,
             self.target.repository)
         if stop_revision is None:
             refs = interrepo.fetch(branches=["HEAD"])
@@ -750,7 +760,7 @@ class InterToGitBranch(branch.GenericInterBranch):
 
     def __init__(self, source, target):
         super(InterToGitBranch, self).__init__(source, target)
-        self.interrepo = repository.InterRepository.get(source.repository,
+        self.interrepo = _mod_repository.InterRepository.get(source.repository,
                                            target.repository)
 
     @staticmethod
