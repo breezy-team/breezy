@@ -33,7 +33,7 @@ from bzrlib.errors import (
     )
 
 from bzrlib.repository import (
-    format_registry,
+    _get_repository_modules,
     InterDifferingSerializer,
     InterRepository,
     )
@@ -101,9 +101,14 @@ def default_test_list():
     # Gather extra scenarios from the repository implementations,
     # as InterRepositories can be used by Repository implementations
     # they aren't aware of.
-    for repo_format in format_registry._get_all():
+    for module in _get_repository_modules():
+        try:
+            get_extra_interrepo_test_combinations = getattr(module,
+                "get_extra_interrepo_test_combinations")
+        except AttributeError:
+            continue
         for (interrepo_cls, from_format, to_format) in (
-            repo_format._get_extra_interrepo_test_combinations()):
+            get_extra_interrepo_test_combinations()):
             add_combo(interrepo_cls, from_format, to_format)
     add_combo(InterRepository,
               knitrepo.RepositoryFormatKnit1(),

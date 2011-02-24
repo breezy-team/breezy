@@ -4591,3 +4591,11 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
         # No more history
         return
 
+
+def _get_repository_modules():
+    """Return a list of the modules providing repositories."""
+    modules = set()
+    for objgetter in format_registry._get_all():
+        modules.add(objgetter.__module__)
+    return modules
+
