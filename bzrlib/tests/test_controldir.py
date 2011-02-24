@@ -21,9 +21,7 @@ For interface contract tests, see tests/per_control_dir.
 
 from bzrlib import (
     controldir,
-    )
-from bzrlib.tests import (
-    TestCase,
+    tests,
     )
 
 
@@ -37,7 +35,7 @@ class SampleExtraComponentFormat(controldir.ControlComponentFormat):
     """Extra format, no format string."""
 
 
-class TestMetaComponentFormatRegistry(TestCase):
+class TestMetaComponentFormatRegistry(tests.TestCase):
 
     def setUp(self):
         super(TestMetaComponentFormatRegistry, self).setUp()
