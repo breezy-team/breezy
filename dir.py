@@ -322,4 +322,3 @@ class LocalGitDir(GitDir):
             self._find_creation_modes()
         return self._dir_mode
 
-

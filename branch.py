@@ -545,7 +545,13 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
-        return []
+        try:
+            default_format = branch.format_registry.get_default()
+        except AttributeError:
+            default_format = branch.BranchFormat._default_format
+        return [
+            (GitBranchFormat(), GitBranchFormat()),
+            (GitBranchFormat(), default_format)]
 
     @classmethod
     def _get_interrepo(self, source, target):
@@ -675,6 +681,7 @@ class InterGitLocalRemoteBranch(InterGitBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
+        # FIXME
         return []
 
     @classmethod
@@ -708,6 +715,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
+        # FIXME
         return []
 
     @classmethod
@@ -765,7 +773,11 @@ class InterToGitBranch(branch.GenericInterBranch):
 
     @staticmethod
     def _get_branch_formats_to_test():
-        return []
+        try:
+            default_format = branch.format_registry.get_default()
+        except AttributeError:
+            default_format = branch.BranchFormat._default_format
+        return [(default_format, GitBranchFormat())]
 
     @classmethod
     def is_compatible(self, source, target):
