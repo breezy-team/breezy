@@ -41,7 +41,7 @@ class TestMetaComponentFormatRegistry(TestCase):
 
     def setUp(self):
         super(TestMetaComponentFormatRegistry, self).setUp()
-        self.registry = controldir.ControlDirComponentFormatRegistry()
+        self.registry = controldir.ControlComponentFormatRegistry()
 
     def test_register_unregister_format(self):
         format = SampleComponentFormat()

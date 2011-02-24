@@ -622,29 +622,33 @@ class ControlDir(ControlComponent):
         raise NotImplementedError(self.clone_on_transport)
 
 
-class MetaComponentFormat(object):
+class ControlComponentFormat(object):
     """A component that can live inside of a .bzr meta directory."""
 
     def get_format_string(self):
-        """The format string to be used."""
+        """Return the format of this format, if usable in meta directories."""
         raise NotImplementedError(self.get_format_string)
 
+    def get_format_description(self):
+        """Return the short description for this format."""
+        raise NotImplementedError(self.get_format_description)
 
-class ControlDirComponentFormatRegistry(registry.FormatRegistry):
-    """A registry for BzrDirMeta components."""
+
+class ControlComponentFormatRegistry(registry.FormatRegistry):
+    """A registry for control components (branch, workingtree, repository)."""
 
     def __init__(self, other_registry=None):
-        super(ControlDirComponentFormatRegistry, self).__init__(other_registry)
+        super(ControlComponentFormatRegistry, self).__init__(other_registry)
         self._extra_formats = []
 
     def register(self, format):
         """Register a new format."""
-        super(ControlDirComponentFormatRegistry, self).register(
+        super(ControlComponentFormatRegistry, self).register(
             format.get_format_string(), format)
 
     def remove(self, format):
         """Remove a registered format."""
-        super(ControlDirComponentFormatRegistry, self).remove(
+        super(ControlComponentFormatRegistry, self).remove(
             format.get_format_string())
 
     def register_extra(self, format):

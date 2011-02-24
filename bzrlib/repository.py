@@ -2917,7 +2917,7 @@ class MetaDirVersionedFileRepository(MetaDirRepository):
             control_files)
 
 
-class RepositoryFormatRegistry(controldir.ControlDirComponentFormatRegistry):
+class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Repository format registry."""
 
     def get_default(self):
