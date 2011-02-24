@@ -540,6 +540,7 @@ class TestIniConfigBuilding(TestIniConfig):
             ' Use IniBasedConfig(_content=xxx) instead.'],
             conf._get_parser, file=config_file)
 
+
 class TestIniConfigSaving(tests.TestCaseInTempDir):
 
     def test_cant_save_without_a_file_name(self):
@@ -551,6 +552,198 @@ class TestIniConfigSaving(tests.TestCaseInTempDir):
         conf = config.IniBasedConfig.from_string(
             content, file_name='./test.conf', save=True)
         self.assertFileEqual(content, 'test.conf')
+
+
+class TestIniConfigOptionExpansionDefaultValue(tests.TestCaseInTempDir):
+    """What is the default value of expand for config options.
+
+    This is an opt-in beta feature used to evaluate whether or not option
+    references can appear in dangerous place raising exceptions, disapearing
+    (and as such corrupting data) or if it's safe to activate the option by
+    default.
+
+    Note that these tests relies on config._expand_default_value being already
+    overwritten in the parent class setUp.
+    """
+
+    def setUp(self):
+        super(TestIniConfigOptionExpansionDefaultValue, self).setUp()
+        self.config = None
+        self.warnings = []
+        def warning(*args):
+            self.warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+
+    def get_config(self, expand):
+        c = config.GlobalConfig.from_string('bzr.config.expand=%s' % (expand,),
+                                            save=True)
+        return c
+
+    def assertExpandIs(self, expected):
+        actual = config._get_expand_default_value()
+        #self.config.get_user_option_as_bool('bzr.config.expand')
+        self.assertEquals(expected, actual)
+
+    def test_default_is_None(self):
+        self.assertEquals(None, config._expand_default_value)
+
+    def test_default_is_False_even_if_None(self):
+        self.config = self.get_config(None)
+        self.assertExpandIs(False)
+
+    def test_default_is_False_even_if_invalid(self):
+        self.config = self.get_config('<your choice>')
+        self.assertExpandIs(False)
+        # ...
+        # Huh ? My choice is False ? Thanks, always happy to hear that :D
+        # Wait, you've been warned !
+        self.assertLength(1, self.warnings)
+        self.assertEquals(
+            'Value "<your choice>" is not a boolean for "bzr.config.expand"',
+            self.warnings[0])
+
+    def test_default_is_True(self):
+        self.config = self.get_config(True)
+        self.assertExpandIs(True)
+        
+    def test_default_is_False(self):
+        self.config = self.get_config(False)
+        self.assertExpandIs(False)
+        
+
+class TestIniConfigOptionExpansion(tests.TestCase):
+    """Test option expansion from the IniConfig level.
+
+    What we really want here is to test the Config level, but the class being
+    abstract as far as storing values is concerned, this can't be done
+    properly (yet).
+    """
+    # FIXME: This should be rewritten when all configs share a storage
+    # implementation -- vila 2011-02-18
+
+    def get_config(self, string=None):
+        if string is None:
+            string = ''
+        c = config.IniBasedConfig.from_string(string)
+        return c
+
+    def assertExpansion(self, expected, conf, string, env=None):
+        self.assertEquals(expected, conf.expand_options(string, env))
+
+    def test_no_expansion(self):
+        c = self.get_config('')
+        self.assertExpansion('foo', c, 'foo')
+
+    def test_env_adding_options(self):
+        c = self.get_config('')
+        self.assertExpansion('bar', c, '{foo}', {'foo': 'bar'})
+
+    def test_env_overriding_options(self):
+        c = self.get_config('foo=baz')
+        self.assertExpansion('bar', c, '{foo}', {'foo': 'bar'})
+
+    def test_simple_ref(self):
+        c = self.get_config('foo=xxx')
+        self.assertExpansion('xxx', c, '{foo}')
+
+    def test_unknown_ref(self):
+        c = self.get_config('')
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          c.expand_options, '{foo}')
+
+    def test_indirect_ref(self):
+        c = self.get_config('''
+foo=xxx
+bar={foo}
+''')
+        self.assertExpansion('xxx', c, '{bar}')
+
+    def test_embedded_ref(self):
+        c = self.get_config('''
+foo=xxx
+bar=foo
+''')
+        self.assertExpansion('xxx', c, '{{bar}}')
+
+    def test_simple_loop(self):
+        c = self.get_config('foo={foo}')
+        self.assertRaises(errors.OptionExpansionLoop, c.expand_options, '{foo}')
+
+    def test_indirect_loop(self):
+        c = self.get_config('''
+foo={bar}
+bar={baz}
+baz={foo}''')
+        e = self.assertRaises(errors.OptionExpansionLoop,
+                              c.expand_options, '{foo}')
+        self.assertEquals('foo->bar->baz', e.refs)
+        self.assertEquals('{foo}', e.string)
+
+    def test_list(self):
+        conf = self.get_config('''
+foo=start
+bar=middle
+baz=end
+list={foo},{bar},{baz}
+''')
+        self.assertEquals(['start', 'middle', 'end'],
+                           conf.get_user_option('list', expand=True))
+
+    def test_cascading_list(self):
+        conf = self.get_config('''
+foo=start,{bar}
+bar=middle,{baz}
+baz=end
+list={foo}
+''')
+        self.assertEquals(['start', 'middle', 'end'],
+                           conf.get_user_option('list', expand=True))
+
+    def test_pathological_hidden_list(self):
+        conf = self.get_config('''
+foo=bin
+bar=go
+start={foo
+middle=},{
+end=bar}
+hidden={start}{middle}{end}
+''')
+        # Nope, it's either a string or a list, and the list wins as soon as a
+        # ',' appears, so the string concatenation never occur.
+        self.assertEquals(['{foo', '}', '{', 'bar}'],
+                          conf.get_user_option('hidden', expand=True))
+
+class TestLocationConfigOptionExpansion(tests.TestCaseInTempDir):
+
+    def get_config(self, location, string=None):
+        if string is None:
+            string = ''
+        # Since we don't save the config we won't strictly require to inherit
+        # from TestCaseInTempDir, but an error occurs so quickly...
+        c = config.LocationConfig.from_string(string, location)
+        return c
+
+    def test_dont_cross_unrelated_section(self):
+        c = self.get_config('/another/branch/path','''
+[/one/branch/path]
+foo = hello
+bar = {foo}/2
+
+[/another/branch/path]
+bar = {foo}/2
+''')
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          c.get_user_option, 'bar', expand=True)
+
+    def test_cross_related_sections(self):
+        c = self.get_config('/project/branch/path','''
+[/project]
+foo = qu
+
+[/project/branch/path]
+bar = {foo}ux
+''')
+        self.assertEquals('quux', c.get_user_option('bar', expand=True))
 
 
 class TestIniBaseConfigOnDisk(tests.TestCaseInTempDir):
@@ -1011,7 +1204,7 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         conf = self._get_empty_config()
         cmdline = conf.find_merge_tool('kdiff3')
         self.assertEquals('kdiff3 {base} {this} {other} -o {result}', cmdline)
-        
+
     def test_find_merge_tool_override_known(self):
         conf = self._get_empty_config()
         conf.set_user_option('bzr.mergetool.kdiff3', 'kdiff3 blah')
