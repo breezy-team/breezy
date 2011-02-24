@@ -669,6 +669,12 @@ class ControlDirFormat(object):
     """
 
     supports_workingtrees = True
+    """Whether working trees can exist in control directories of this format.
+    """
+
+    fixed_components = False
+    """Whether components can not change format independent of the control dir.
+    """
 
     def get_format_description(self):
         """Return the short description for this format."""

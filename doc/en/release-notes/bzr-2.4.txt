@@ -103,6 +103,9 @@ Bug Fixes
 * Fix ``bzr lp-mirror`` to work on command line branch URLs and branches
   without an explicit public location. (Max Bowsher)
 
+* On Python 2.6 and higher, use multiprocessing.cpu_count() to retrieve the
+  number of available processors. (Jelmer Vernooij, #693140)
+
 Documentation
 *************
 
@@ -117,9 +120,16 @@ API Changes
 * Added ``bzrlib.mergetools`` module with helper functions for working with
   the list of external merge tools. (Gordon Tyler, #489915)
 
+* All methods and arguments that were deprecated before 2.0
+  have been removed. (Jelmer Vernooij)
+
 * Branch formats should now be registered on the format registry
   (``bzrlib.branch.format_registry``) rather than using the class
   methods on ``BranchFormat``. (Jelmer Vernooij, #714729)
+
+* ``BranchFormat.supports_leaving_lock()`` and
+  ``RepositoryFormat.supports_leaving_lock`` flags have been added.
+  (Jelmer Vernooij)
 
 * ``Branch.fetch`` implementations must now accept an optional
   ``fetch_spec`` keyword argument. (Andrew Bennetts)
@@ -127,6 +137,10 @@ API Changes
 * ``Branch.import_last_revision_info`` is deprecated.  Use the
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
+
+* ``BzrDirFormat`` has a new attribute ``fixed_components`` that
+  indicates whether the components of the bzrdir can be upgraded
+  independent of the ``BzrDir``. (Jelmer Vernooij)
 
 * Repository formats should now be registered on the format registry
   (``bzrlib.repository.format_registry``) rather than using the class

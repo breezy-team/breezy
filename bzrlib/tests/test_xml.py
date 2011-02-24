@@ -579,3 +579,10 @@ class TestEncodeAndEscape(TestCase):
         uni_str = u'\xb5\xe5&\u062c'
         self.assertEqual('&#181;&#229;&amp;&#1580;"',
                          bzrlib.xml8._encode_and_escape(uni_str))
+
+
+class TestMisc(TestCase):
+
+    def test_unescape_xml(self):
+        """We get some kind of error when malformed entities are passed"""
+        self.assertRaises(KeyError, bzrlib.xml8._unescape_xml, 'foo&bar;')

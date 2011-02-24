@@ -451,11 +451,8 @@ class RemoteBzrDir(BzrDir, _RpcHelper):
         """Upgrading of remote bzrdirs is not supported yet."""
         return False
 
-    def needs_format_conversion(self, format=None):
+    def needs_format_conversion(self, format):
         """Upgrading of remote bzrdirs is not supported yet."""
-        if format is None:
-            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
-                % 'needs_format_conversion(format=None)')
         return False
 
     def clone(self, url, revision_id=None, force_new_repo=False,
@@ -1372,7 +1369,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             find_ghosts=find_ghosts, revision_ids=revision_ids,
             if_present_ids=if_present_ids)
 
-    def fetch(self, source, revision_id=None, pb=None, find_ghosts=False,
+    def fetch(self, source, revision_id=None, find_ghosts=False,
             fetch_spec=None):
         # No base implementation to use as RemoteRepository is not a subclass
         # of Repository; so this is a copy of Repository.fetch().
@@ -1396,7 +1393,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         # the InterRepository base class, which raises an
         # IncompatibleRepositories when asked to fetch.
         inter = repository.InterRepository.get(source, self)
-        return inter.fetch(revision_id=revision_id, pb=pb,
+        return inter.fetch(revision_id=revision_id,
             find_ghosts=find_ghosts, fetch_spec=fetch_spec)
 
     def create_bundle(self, target, base, fileobj, format=None):

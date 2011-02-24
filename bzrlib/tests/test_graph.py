@@ -699,20 +699,6 @@ class TestGraph(TestCaseWithMemoryTransport):
         self.assertEqual({'rev2': ['rev1']},
                          stacked.get_parent_map(['rev2']))
 
-    def test__stacked_parents_provider_deprecated(self):
-        parents1 = _mod_graph.DictParentsProvider({'rev2': ['rev3']})
-        parents2 = _mod_graph.DictParentsProvider({'rev1': ['rev4']})
-        stacked = self.applyDeprecated(deprecated_in((1, 16, 0)),
-                    _mod_graph._StackedParentsProvider, [parents1, parents2])
-        self.assertEqual({'rev1':['rev4'], 'rev2':['rev3']},
-                         stacked.get_parent_map(['rev1', 'rev2']))
-        self.assertEqual({'rev2':['rev3'], 'rev1':['rev4']},
-                         stacked.get_parent_map(['rev2', 'rev1']))
-        self.assertEqual({'rev2':['rev3']},
-                         stacked.get_parent_map(['rev2', 'rev2']))
-        self.assertEqual({'rev1':['rev4']},
-                         stacked.get_parent_map(['rev1', 'rev1']))
-
     def test_iter_topo_order(self):
         graph = self.make_graph(ancestry_1)
         args = ['rev2a', 'rev3', 'rev1']

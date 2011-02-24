@@ -1131,14 +1131,8 @@ class BzrDirPreSplitOut(BzrDir):
             return self.transport
         raise errors.IncompatibleFormat(workingtree_format, self._format)
 
-    def needs_format_conversion(self, format=None):
+    def needs_format_conversion(self, format):
         """See BzrDir.needs_format_conversion()."""
-        # if the format is not the same as the system default,
-        # an upgrade is needed.
-        if format is None:
-            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
-                % 'needs_format_conversion(format=None)')
-            format = BzrDirFormat.get_default_format()
         return not isinstance(self._format, format.__class__)
 
     def open_branch(self, name=None, unsupported=False,
@@ -1195,11 +1189,8 @@ class BzrDir4(BzrDirPreSplitOut):
         """See BzrDir.create_repository."""
         return self._format.repository_format.initialize(self, shared)
 
-    def needs_format_conversion(self, format=None):
+    def needs_format_conversion(self, format):
         """Format 4 dirs are always in need of conversion."""
-        if format is None:
-            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
-                % 'needs_format_conversion(format=None)')
         return True
 
     def open_repository(self):
@@ -1392,13 +1383,8 @@ class BzrDirMeta1(BzrDir):
             return False
         return True
 
-    def needs_format_conversion(self, format=None):
+    def needs_format_conversion(self, format):
         """See BzrDir.needs_format_conversion()."""
-        if format is None:
-            symbol_versioning.warn(symbol_versioning.deprecated_in((1, 13, 0))
-                % 'needs_format_conversion(format=None)')
-        if format is None:
-            format = BzrDirFormat.get_default_format()
         if not isinstance(self._format, format.__class__):
             # it is not a meta dir format, conversion is needed.
             return True
@@ -1817,6 +1803,8 @@ class BzrDirFormat4(BzrDirFormat):
 
     _lock_class = lockable_files.TransportLock
 
+    fixed_components = True
+
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
@@ -1859,6 +1847,8 @@ class BzrDirFormat4(BzrDirFormat):
 
 class BzrDirFormatAllInOne(BzrDirFormat):
     """Common class for formats before meta-dirs."""
+
+    fixed_components = True
 
     def initialize_on_transport_ex(self, transport, use_existing_dir=False,
         create_prefix=False, force_new_repo=False, stacked_on=None,
@@ -2017,6 +2007,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
     """
 
     _lock_class = lockdir.LockDir
+
+    fixed_components = False
 
     def __init__(self):
         self._workingtree_format = None
