@@ -83,10 +83,7 @@ def _get_transport_modules():
     modules = set()
     for prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
-            if hasattr(factory, "_module_name"):
-                modules.add(factory._module_name)
-            else:
-                modules.add(factory._obj.__module__)
+            modules.add(factory.get_module())
     # Add chroot and pathfilter directly, because there is no handler
     # registered for it.
     modules.add('bzrlib.transport.chroot')

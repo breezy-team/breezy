@@ -33,7 +33,7 @@ from bzrlib.errors import (
     )
 
 from bzrlib.repository import (
-    _get_repository_modules,
+    format_registry,
     InterDifferingSerializer,
     InterRepository,
     )
@@ -101,7 +101,7 @@ def default_test_list():
     # Gather extra scenarios from the repository implementations,
     # as InterRepositories can be used by Repository implementations
     # they aren't aware of.
-    for module in _get_repository_modules():
+    for module in format_registry._get_all_modules():
         try:
             get_extra_interrepo_test_combinations = getattr(module,
                 "get_extra_interrepo_test_combinations")
