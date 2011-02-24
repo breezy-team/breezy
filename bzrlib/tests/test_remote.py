@@ -2775,6 +2775,16 @@ class TestRemotePackRepositoryAutoPack(TestRemoteRepository):
              ('pack collection autopack',)],
             client._calls)
 
+    def test_oom_error_reporting(self):
+        """An out-of-memory condition on the server is reported clearly"""
+        transport_path = 'quack'
+        repo, client = self.setup_fake_client_and_repository(transport_path)
+        client.add_expected_call(
+            'PackRepository.autopack', ('quack/',),
+            'error', ('MemoryError',))
+        err = self.assertRaises(errors.BzrError, repo.autopack)
+        self.assertContainsRe(str(err), "^remote server out of mem")
+
 
 class TestErrorTranslationBase(tests.TestCaseWithMemoryTransport):
     """Base class for unit tests for bzrlib.remote._translate_error."""

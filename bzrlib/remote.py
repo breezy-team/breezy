@@ -3044,4 +3044,6 @@ def _translate_error(err, **context):
             raise UnicodeEncodeError(encoding, val, start, end, reason)
     elif err.error_verb == 'ReadOnlyError':
         raise errors.TransportNotPossible('readonly transport')
+    elif err.error_verb == 'MemoryError':
+        raise errors.BzrError("remote server out of memory")
     raise errors.UnknownErrorFromSmartServer(err)
