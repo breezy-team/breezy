@@ -23,6 +23,7 @@ from dulwich.objects import (
     Commit,
     Tag,
     )
+from dulwich.protocol import ZERO_SHA
 
 from bzrlib import (
     branch,
@@ -254,13 +255,13 @@ class GitBranchFormat(branch.BranchFormat):
 
     def initialize(self, a_bzrdir, name=None, repository=None):
         from bzrlib.plugins.git.dir import LocalGitDir
-        from dulwich.protocol import ZERO_SHA
         if not isinstance(a_bzrdir, LocalGitDir):
             raise errors.IncompatibleFormat(self, a_bzrdir._format)
         if repository is None:
             repository = a_bzrdir.open_repository()
-        repository._git[branch_name_to_ref(name, "HEAD")] = ZERO_SHA
-        return LocalGitBranch(a_bzrdir, repository, name, a_bzrdir._lockfiles)
+        ref = branch_name_to_ref(name, "HEAD")
+        repository._git[ref] = ZERO_SHA
+        return LocalGitBranch(a_bzrdir, repository, ref, a_bzrdir._lockfiles)
 
 
 class GitReadLock(object):
@@ -378,11 +379,11 @@ class GitBranch(ForeignBranch):
 class LocalGitBranch(GitBranch):
     """A local Git branch."""
 
-    def __init__(self, bzrdir, repository, name, lockfiles, tagsdict=None):
-        super(LocalGitBranch, self).__init__(bzrdir, repository, name,
+    def __init__(self, bzrdir, repository, ref, lockfiles, tagsdict=None):
+        super(LocalGitBranch, self).__init__(bzrdir, repository, ref,
               lockfiles, tagsdict)
         refs = repository._git.get_refs()
-        if not (name in refs.keys() or "HEAD" in refs.keys()):
+        if not (ref in refs.keys() or "HEAD" in refs.keys()):
             raise errors.NotBranchError(self.base)
 
     def create_checkout(self, to_location, revision_id=None, lightweight=False,
@@ -691,7 +692,6 @@ class InterGitLocalRemoteBranch(InterGitBranch):
                 isinstance(target, RemoteGitBranch))
 
     def _basic_push(self, overwrite=False, stop_revision=None):
-        from dulwich.protocol import ZERO_SHA
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -800,7 +800,6 @@ class InterToGitBranch(branch.GenericInterBranch):
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
              possible_transports=None):
-        from dulwich.protocol import ZERO_SHA
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -819,7 +818,6 @@ class InterToGitBranch(branch.GenericInterBranch):
 
     def push(self, overwrite=False, stop_revision=None,
              _override_hook_source_branch=None):
-        from dulwich.protocol import ZERO_SHA
         result = GitBranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
