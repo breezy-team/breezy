@@ -451,7 +451,7 @@ def _translate_error(err):
         return ('MemoryError',)
     # Unserialisable error.  Log it, and return a generic error
     trace.log_exception_quietly()
-    return ('error', str(err))
+    return (trace._qualified_exception_name(err.__class__, True), str(err))
 
 
 class HelloRequest(SmartServerRequest):
