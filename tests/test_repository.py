@@ -197,7 +197,7 @@ class TestGitRepository(tests.TestCaseWithTransport):
                 self.git_repo.all_revision_ids())
 
     def test_get_ancestry_null(self):
-        self.assertEquals([None, revision.NULL_REVISION], self.git_repo.get_ancestry(revision.NULL_REVISION))
+        self.assertEquals([None], self.git_repo.get_ancestry(revision.NULL_REVISION))
 
     def assertIsNullInventory(self, inv):
         self.assertEqual(inv.root, None)

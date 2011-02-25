@@ -154,6 +154,8 @@ class LocalGitRepository(GitRepository):
         graph = self.get_graph()
         for rev, parents in graph.iter_ancestry([revision_id]):
             ancestry.append(rev)
+        if revision.NULL_REVISION in ancestry:
+            ancestry.remove(revision.NULL_REVISION)
         ancestry.reverse()
         return [None] + ancestry
 
