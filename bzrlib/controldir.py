@@ -141,6 +141,14 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.needs_format_conversion)
 
+    def create_repository(self, shared=False):
+        """Create a new repository in this control directory.
+
+        :param shared: If a shared repository should be created
+        :return: The newly created repository
+        """
+        raise NotImplementedError(self.create_repository)
+
     def destroy_repository(self):
         """Destroy the repository in this ControlDir."""
         raise NotImplementedError(self.destroy_repository)
