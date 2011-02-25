@@ -345,20 +345,22 @@ class RevisionSpec_dwim(RevisionSpec):
         # really relevant.
         raise errors.InvalidRevisionSpec(self.spec, branch)
 
-    def append_possible_revspec(self, revspec):
+    @classmethod
+    def append_possible_revspec(cls, revspec):
         """Append a possible DWIM revspec.
 
         :param revspec: Revision spec to try.
         """
-        self._possible_revspecs.append(registry._ObjectGetter(revspec))
+        cls._possible_revspecs.append(registry._ObjectGetter(revspec))
 
-    def append_possible_lazy_revspec(self, module_name, member_name):
+    @classmethod
+    def append_possible_lazy_revspec(cls, module_name, member_name):
         """Append a possible lazily loaded DWIM revspec.
 
         :param module_name: Name of the module with the revspec
         :param member_name: Name of the revspec within the module
         """
-        self._possible_revspecs.append(
+        cls._possible_revspecs.append(
             registry._LazyObjectGetter(module_name, member_name))
 
 

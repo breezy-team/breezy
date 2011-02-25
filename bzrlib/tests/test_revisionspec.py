@@ -211,7 +211,7 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         def reset_dwim_revspecs():
             RevisionSpec_dwim._possible_revspecs = original_dwim_revspecs
         self.addCleanup(reset_dwim_revspecs)
-        RevisionSpec_dwim.append_possible_revspec(
+        RevisionSpec_dwim.append_possible_lazy_revspec(
             "bzrlib.tests.test_revisionspec", "RevisionSpec_bork")
         self.assertAsRevisionId('r1', 'bork')
 
