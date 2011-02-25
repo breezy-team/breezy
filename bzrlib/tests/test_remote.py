@@ -1143,6 +1143,48 @@ class TestBranchSetTagsBytes(RemoteBranchTestCase):
             [('set_tags_bytes', 'tags bytes')] * 2, real_branch.calls)
 
 
+class TestBranchHeadsToFetch(RemoteBranchTestCase):
+
+    def test_uses_last_revision_info_and_tags_by_default(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info', ('quack/',),
+            'success', ('ok', '1', 'rev-tip'))
+        # XXX: this will break if the default format's serialization of tags
+        # changes, or if the RPC for fetching tags changes from get_tags_bytes.
+        client.add_expected_call(
+            'Branch.get_tags_bytes', ('quack/',),
+            'success', ('d5:tag-17:rev-foo5:tag-27:rev-bare',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.heads_to_fetch()
+        self.assertFinished(client)
+        self.assertEqual(
+            (set(['rev-tip']), set(['rev-foo', 'rev-bar'])), result)
+
+    def test_uses_rpc_for_formats_with_non_default_heads_to_fetch(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.heads_to_fetch', ('quack/',),
+            'success', (['tip'], ['tag-1', 'tag-2']))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        branch._format._native_heads_to_fetch = lambda: False
+        result = branch.heads_to_fetch()
+        self.assertFinished(client)
+        self.assertEqual((set(['tip']), set(['tag-1', 'tag-2'])), result)
+
+
 class TestBranchLastRevisionInfo(RemoteBranchTestCase):
 
     def test_empty_branch(self):

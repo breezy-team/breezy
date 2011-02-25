@@ -36,6 +36,10 @@ Improvements
   the dirstate file to be rebuilt, rather than using a ``bzr checkout``
   workaround. (John Arbash Meinel)
 
+* Added a ``Branch.heads_to_fetch`` RPC to the smart server protocol.
+  This allows formats from plugins (such as looms) to efficiently tell the
+  client which revisions need to be fetched.  (Andrew Bennetts)
+
 * Branching, merging and pulling a branch now copies revisions named in
   tags, not just the tag metadata.  (Andrew Bennetts, #309682)
   
