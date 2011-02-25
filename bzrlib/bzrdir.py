@@ -59,12 +59,6 @@ from bzrlib import (
     xml4,
     xml5,
     )
-from bzrlib.osutils import (
-    sha_string,
-    )
-from bzrlib.push import (
-    PushResult,
-    )
 from bzrlib.repofmt import pack_repo
 from bzrlib.smart.client import _SmartClient
 from bzrlib.store.versioned import VersionedFileStore
@@ -87,8 +81,6 @@ from bzrlib.trace import (
 
 from bzrlib import (
     hooks,
-    registry,
-    symbol_versioning,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -2341,7 +2333,7 @@ class ConvertBzrDir4To5(Converter):
 
     def _store_new_inv(self, rev, inv, present_parents):
         new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
-        new_inv_sha1 = sha_string(new_inv_xml)
+        new_inv_sha1 = osutils.sha_string(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,
                                  new_inv_xml.splitlines(True))
