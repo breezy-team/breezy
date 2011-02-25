@@ -2819,6 +2819,23 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
             raise errors.UnknownFormatError(format=format_string,
                                             kind="working tree")
 
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None, hardlink=False):
+        """Initialize a new working tree in a_bzrdir.
+
+        :param a_bzrdir: BzrDir to initialize the working tree in.
+        :param revision_id: allows creating a working tree at a different
+            revision than the branch is at.
+        :param from_branch: Branch to checkout
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
+        """
+        raise NotImplementedError(self.initialize)
+
     def __eq__(self, other):
         return self.__class__ is other.__class__
 
