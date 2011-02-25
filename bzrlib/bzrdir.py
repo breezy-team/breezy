@@ -55,12 +55,6 @@ from bzrlib import (
     workingtree,
     workingtree_4,
     )
-from bzrlib.osutils import (
-    sha_string,
-    )
-from bzrlib.push import (
-    PushResult,
-    )
 from bzrlib.repofmt import pack_repo
 from bzrlib.smart.client import _SmartClient
 from bzrlib.store.versioned import VersionedFileStore
@@ -81,7 +75,6 @@ from bzrlib.trace import (
 
 from bzrlib import (
     hooks,
-    symbol_versioning,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
