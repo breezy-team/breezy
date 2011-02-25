@@ -56,6 +56,14 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         self.registry.register(format)
         self.assertEquals([format], self.registry._get_all())
 
+    def test_get_all_modules(self):
+        format = SampleComponentFormat()
+        self.assertEquals(set(), self.registry._get_all_modules())
+        self.registry.register(format)
+        self.assertEquals(
+            set(["bzrlib.tests.test_controldir"]),
+            self.registry._get_all_modules())
+
     def test_register_extra(self):
         format = SampleExtraComponentFormat()
         self.assertEquals([], self.registry._get_all())

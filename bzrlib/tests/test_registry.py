@@ -338,3 +338,17 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         finally:
             sys.path.remove(plugin_path)
 
+    def test_lazy_import_get_module(self):
+        a_registry = registry.Registry()
+        a_registry.register_lazy('obj', "bzrlib.tests.test_registry",
+            'object1')
+        self.assertEquals("bzrlib.tests.test_registry",
+            a_registry._get_module("obj"))
+
+    def test_normal_get_module(self):
+        class AThing(object):
+            """Something"""
+        a_registry = registry.Registry()
+        a_registry.register("obj", AThing())
+        self.assertEquals("bzrlib.tests.test_registry",
+            a_registry._get_module("obj"))

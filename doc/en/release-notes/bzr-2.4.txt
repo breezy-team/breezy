@@ -155,6 +155,11 @@ API Changes
   indicates whether the components of the bzrdir can be upgraded
   independent of the ``BzrDir``. (Jelmer Vernooij)
 
+* Repository formats can now provide
+  ``_get_extra_interrepo_test_combinations`` in the same module 
+  to provide extra test combinations for ``bzrlib.tests.per_repository``.
+  (Jelmer Vernooij)
+
 * Repository formats should now be registered on the format registry
   (``bzrlib.repository.format_registry``) rather than using the class
   methods on ``RepositoryFormat``. (Jelmer Vernooij)

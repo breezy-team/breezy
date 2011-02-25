@@ -691,6 +691,15 @@ class ControlComponentFormatRegistry(registry.FormatRegistry):
             result.append(fmt)
         return result + self._get_extra()
 
+    def _get_all_modules(self):
+        """Return a set of the modules providing objects."""
+        modules = set()
+        for name in self.keys():
+            modules.add(self._get_module(name))
+        for getter in self._extra_formats:
+            modules.add(getter.get_module())
+        return modules
+
 
 class ControlDirFormat(object):
     """An encapsulation of the initialization and open routines for a format.
