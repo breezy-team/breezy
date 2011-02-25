@@ -501,6 +501,9 @@ request_handlers.register_lazy(
     'Branch.set_tags_bytes', 'bzrlib.smart.branch',
     'SmartServerBranchSetTagsBytes')
 request_handlers.register_lazy(
+    'Branch.heads_to_fetch', 'bzrlib.smart.branch',
+    'SmartServerBranchHeadsToFetch')
+request_handlers.register_lazy(
     'Branch.get_stacked_on_url', 'bzrlib.smart.branch', 'SmartServerBranchRequestGetStackedOnURL')
 request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
