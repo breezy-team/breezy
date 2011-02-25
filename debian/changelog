@@ -1,3 +1,10 @@
+bzr (2.3.0-5) unstable; urgency=low
+
+  * Add 05_kfreebsd_tests: Enable FreeBSD kernel specific workarounds
+    for Debian/kFreeBSD. Fixes FTBFS on kfreebsd-{i386,amd64}.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 25 Feb 2011 16:30:02 +0100
+
 bzr (2.3.0-4) unstable; urgency=low
 
   * Use multiprocessing.cpu_count to retrieve number of CPUs if
