@@ -19,9 +19,9 @@ import os
 import stat
 
 from bzrlib import (
-    branch,
     bzrdir,
     controldir,
+    lockable_files,
     )
 from bzrlib.tests import (
     features,
