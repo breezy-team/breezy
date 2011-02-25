@@ -90,11 +90,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
 
     def test_format_is_deprecated(self):
         repo = self.make_repository('repo')
-        self.assertSubset(repo._format.is_deprecated(), (True, False))
+        self.assertSubset([repo._format.is_deprecated()], (True, False))
 
     def test_format_is_supported(self):
         repo = self.make_repository('repo')
-        self.assertSubset(repo._format.is_supported(), (True, False))
+        self.assertSubset([repo._format.is_supported()], (True, False))
 
     def test_attribute_inventories_store(self):
         """Test the existence of the inventories attribute."""
