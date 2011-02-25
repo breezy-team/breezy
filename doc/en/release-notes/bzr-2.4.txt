@@ -114,6 +114,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Added ``Branch.heads_to_fetch`` method.  Implementions of the Branch API
+  must now inherit or implement this method.  (Andrew Bennetts, #721328)
+  
 * Added ``bzrlib.mergetools`` module with helper functions for working with
   the list of external merge tools. (Gordon Tyler, #489915)
 
