@@ -1175,14 +1175,37 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
             'error', ('NotStacked',))
         client.add_expected_call(
             'Branch.heads_to_fetch', ('quack/',),
-            'success', (['tip'], ['tag-1', 'tag-2']))
+            'success', (['tip'], ['tagged-1', 'tagged-2']))
         transport.mkdir('quack')
         transport = transport.clone('quack')
         branch = self.make_remote_branch(transport, client)
         branch._format._native_heads_to_fetch = lambda: False
         result = branch.heads_to_fetch()
         self.assertFinished(client)
-        self.assertEqual((set(['tip']), set(['tag-1', 'tag-2'])), result)
+        self.assertEqual((set(['tip']), set(['tagged-1', 'tagged-2'])), result)
+
+    def test_backwards_compatible(self):
+        self.setup_smart_server_with_call_log()
+        # Make a branch with a single revision.
+        builder = self.make_branch_builder('foo')
+        builder.start_series()
+        builder.build_snapshot('tip', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        # Add two tags to that branch
+        branch.tags.set_tag('tag-1', 'rev-1')
+        branch.tags.set_tag('tag-2', 'rev-2')
+        self.addCleanup(branch.lock_read().unlock)
+        # Disable the heads_to_fetch verb
+        verb = 'Branch.heads_to_fetch'
+        self.disable_verb(verb)
+        self.reset_smart_call_log()
+        result = branch.heads_to_fetch()
+        self.assertEqual((set(['tip']), set(['rev-1', 'rev-2'])), result)
+        self.assertEqual(
+            ['Branch.last_revision_info', 'Branch.get_tags_bytes'],
+            [call.call.method for call in self.hpss_calls])
 
 
 class TestBranchLastRevisionInfo(RemoteBranchTestCase):
