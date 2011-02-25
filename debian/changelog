@@ -2,8 +2,10 @@ bzr (2.3.0-5) unstable; urgency=low
 
   * Add 05_kfreebsd_tests: Enable FreeBSD kernel specific workarounds
     for Debian/kFreeBSD. Fixes FTBFS on kfreebsd-{i386,amd64}.
+  * Set BZR_HOME during test run for hosts that don't have a home
+    directory set.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 25 Feb 2011 16:30:02 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 25 Feb 2011 16:32:22 +0100
 
 bzr (2.3.0-4) unstable; urgency=low
 

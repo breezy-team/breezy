@@ -1,6 +1,6 @@
 === modified file 'bzrlib/tests/per_branch/test_permissions.py'
---- bzrlib/tests/per_branch/test_permissions.py	2010-06-20 11:18:38 +0000
-+++ bzrlib/tests/per_branch/test_permissions.py	2011-02-25 15:24:22 +0000
+--- old/bzrlib/tests/per_branch/test_permissions.py	2010-06-20 11:18:38 +0000
++++ new/bzrlib/tests/per_branch/test_permissions.py	2011-02-25 15:24:22 +0000
 @@ -90,10 +90,10 @@
                                            ' permission logic')
          if sys.platform == 'win32':
@@ -18,8 +18,8 @@
          t = self.make_branch_and_tree('.')
 
 === modified file 'bzrlib/tests/test_permissions.py'
---- bzrlib/tests/test_permissions.py	2011-01-27 14:27:18 +0000
-+++ bzrlib/tests/test_permissions.py	2011-02-25 15:24:22 +0000
+--- old/bzrlib/tests/test_permissions.py	2011-01-27 14:27:18 +0000
++++ new/bzrlib/tests/test_permissions.py	2011-02-25 15:24:22 +0000
 @@ -138,10 +138,10 @@
      def test_new_files_group_sticky_bit(self):
          if sys.platform == 'win32':
