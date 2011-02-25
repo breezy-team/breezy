@@ -70,6 +70,8 @@ from bzrlib import (
     xml7,
     )
 from bzrlib.workingtree_4 import (
+    WorkingTreeFormat4,
+    WorkingTreeFormat5,
     WorkingTreeFormat6,
     )
 """)
