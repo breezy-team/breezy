@@ -375,18 +375,18 @@ class TestUpstreamBranchVersion(TestCase):
 
     def test_snapshot_none_existing(self):
       self.revhistory = ["somerevid"]
-      self.assertEquals(Version("1.2+bzr1"),
+      self.assertEquals("1.2+bzr1",
           _upstream_branch_version(self.revhistory, {}, "bla", "1.2", self.get_suffix))
 
     def test_snapshot_nothing_new(self):
       self.revhistory = []
-      self.assertEquals(Version("1.2"),
+      self.assertEquals("1.2",
           _upstream_branch_version(self.revhistory, {}, "bla", "1.2", self.get_suffix))
 
     def test_new_tagged_release(self):
       """Last revision is tagged - use as upstream version."""
       self.revhistory = ["somerevid"]
-      self.assertEquals(Version("1.3"),
+      self.assertEquals("1.3",
           _upstream_branch_version(self.revhistory, {"somerevid": [u"1.3"]}, "bla", "1.2", self.get_suffix))
 
     def test_refresh_snapshot_pre(self):
@@ -411,7 +411,7 @@ class TestUpstreamBranchVersion(TestCase):
 class TestUpstreamTagToVersion(TestCase):
 
     def test_prefix(self):
-        self.assertEquals(Version("5.0"), upstream_tag_to_version(u"release-5.0"))
+        self.assertEquals("5.0", upstream_tag_to_version(u"release-5.0"))
 
     def test_gibberish(self):
         self.assertIs(None, upstream_tag_to_version(u"blabla"))
