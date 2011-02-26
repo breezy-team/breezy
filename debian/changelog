@@ -1,4 +1,4 @@
-bzr-builddeb (2.7) UNRELEASED; urgency=low
+bzr-builddeb (2.7) unstable; urgency=low
 
   [ James Westby ]
 
@@ -34,8 +34,9 @@ bzr-builddeb (2.7) UNRELEASED; urgency=low
     changelog and larstiq mode. LP: #619295
   * The deb: directory service has been renamed to apt: to avoid
     confusion.
+  * Support running the test suite in parallel during package build.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sun, 06 Feb 2011 14:25:32 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 26 Feb 2011 15:45:12 +0100
 
 bzr-builddeb (2.6) unstable; urgency=low
 
