@@ -1,3 +1,13 @@
+bzr (2.3.0-6) unstable; urgency=low
+
+  * Support running the test suite in parallel.
+  * Run selftest with -v so there is some indication of progress. This should
+    prevent builds from being killed on buildds due to a lack of output.
+  * Cherry-pick fix to use correct format character for unsigned int
+    gc_chk_sha1_record members. Fixes FTBFS on alpha.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 26 Feb 2011 04:07:18 +0100
+
 bzr (2.3.0-5) unstable; urgency=low
 
   * Add 05_kfreebsd_tests: Enable FreeBSD kernel specific workarounds
