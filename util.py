@@ -668,7 +668,7 @@ def guess_build_type(tree, version, contains_upstream_source):
 
     # If the package doesn't have a debian revision then it must be native.
     if version is not None:
-        version_native = (not version.debian_revision)
+        version_native = (not version.debian_version)
     else:
         version_native = None
 
