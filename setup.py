@@ -1,10 +1,6 @@
-#!/usr/bin/env python2.4
+#!/usr/bin/env python
 
-bzr_plugin_name = 'stats'
-
-bzr_plugin_version = (0, 0, 1, 'dev', 0)
-
-bzr_commands = ['credits', 'committer-statistics', 'ancestor-growth']
+from info import *
 
 if __name__ == '__main__':
     from distutils.core import setup

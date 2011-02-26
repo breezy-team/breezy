@@ -17,7 +17,10 @@
 
 from bzrlib import _format_version_tuple
 
-version_info = (0, 1, 0, 'dev', 0)
+from info import (
+    bzr_plugin_version  as version_info,
+    )
+
 __version__ = _format_version_tuple(version_info)
 
 
