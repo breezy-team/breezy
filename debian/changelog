@@ -35,7 +35,11 @@ bzr-builddeb (2.7) UNRELEASED; urgency=low
   * The deb: directory service has been renamed to apt: to avoid
     confusion.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sun, 06 Feb 2011 14:25:32 +0100
+  [ Max Bowsher ]
+
+  * Add devscripts to Build-Depends-Indep, the test suite runs dch.
+
+ -- Max Bowsher <maxb@f2s.com>  Sat, 26 Feb 2011 18:41:00 +0000
 
 bzr-builddeb (2.6) unstable; urgency=low
 
