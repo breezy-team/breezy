@@ -219,7 +219,7 @@ class ExtendedTestResult(testtools.TextTestResult):
     different types of display.
 
     When a test finishes, in whatever way, it calls one of the addSuccess,
-    addFailure or addError classes.  These in turn may redirect to a more
+    addFailure or addError methods.  These in turn may redirect to a more
     specific case for the special test results supported by our extended
     tests.
 
