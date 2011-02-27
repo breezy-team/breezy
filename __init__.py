@@ -31,8 +31,7 @@ Keyword templates are specified using the following patterns:
 
 When expanding, the existing text is retained if an unknown keyword is
 found. If the keyword is already expanded but known, the value is replaced.
-When compressing, values are always removed, whether the keyword is known
-or not.
+When compressing, the values of known keywords are removed.
 
 Keyword filtering needs to be enabled for selected branches and files via
 rules. See ``bzr help rules`` for general information on defining rules.
@@ -262,10 +261,13 @@ def extract_email_item(seq, n):
         return ""
 
 
-def compress_keywords(s):
+def compress_keywords(s, keyword_dicts):
     """Replace cooked style keywords with raw style in a string.
     
+    Note: If the keyword is not known, the text is not modified.
+    
     :param s: the string
+    :param keyword_dicts: an iterable of keyword dictionaries.
     :return: the string with keywords compressed
     """
     _raw_style = _keyword_style_registry.get('raw')
@@ -277,7 +279,12 @@ def compress_keywords(s):
             break
         result += rest[:match.start()]
         keyword = match.group(1)
-        result += _raw_style % {'name': keyword}
+        expansion = _get_from_dicts(keyword_dicts, keyword)
+        if expansion is None:
+            # Unknown expansion - leave as is
+            result += match.group(0)
+        else:
+            result += _raw_style % {'name': keyword}
         rest = rest[match.end():]
     return result + rest
 
@@ -351,7 +358,7 @@ def _xml_escape(s):
 def _kw_compressor(chunks, context=None):
     """Filter that replaces keywords with their compressed form."""
     text = ''.join(chunks)
-    return [compress_keywords(text)]
+    return [compress_keywords(text, [keyword_registry])]
 
 
 def _kw_expander(chunks, context, encoder=None):
