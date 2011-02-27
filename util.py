@@ -596,8 +596,7 @@ def _find_previous_upload(cl):
     :return: Version object for the previous upload
     :raise NoPreviousUpload: Raised when there is no previous upload
     """
-    blocks = cl._blocks
-    current_target = blocks[0].distributions.split(" ")[0]
+    current_target = find_last_distribution(cl)
     all_debian = [r + t for r in DEBIAN_RELEASES for t in DEBIAN_POCKETS]
     all_ubuntu = [r + t for r in UBUNTU_RELEASES for t in UBUNTU_POCKETS]
     if current_target in all_debian:
@@ -610,7 +609,7 @@ def _find_previous_upload(cl):
     else:
         raise UnknownDistribution(current_target)
     previous_version = None
-    for block in blocks[1:]:
+    for block in cl._blocks[1:]:
         if block.distributions.split(" ")[0] in match_targets:
             return block.version
     raise NoPreviousUpload(current_target)
