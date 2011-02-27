@@ -740,7 +740,7 @@ class FindPreviousUploadTests(TestCase):
 
     def test_find_previous_upload_unknown(self):
         cl = self.make_changelog([("0.1-1", "lucid"),
-                ("0.1-2", "UNRELEASED")])
+                ("0.1-2", "dunno")])
         self.assertRaises(UnknownDistribution, _find_previous_upload, cl)
 
     def test_find_previous_upload_missing(self):
@@ -749,6 +749,11 @@ class FindPreviousUploadTests(TestCase):
         self.assertRaises(NoPreviousUpload, _find_previous_upload, cl)
         cl = self.make_changelog([("0.1-1", "unstable")])
         self.assertRaises(NoPreviousUpload, _find_previous_upload, cl)
+
+    def test_find_previous_upload_unreleased(self):
+        cl = self.make_changelog([("0.1-1", "unstable"),
+                ("0.1-2", "UNRELEASED")])
+        self.assertEqual(Version("0.1-1"), _find_previous_upload(cl))
 
 
 class SourceFormatTests(TestCaseWithTransport):
