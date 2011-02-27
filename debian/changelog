@@ -36,8 +36,9 @@ bzr-builddeb (2.7) UNRELEASED; urgency=low
     confusion.
   * When building with distribution set to UNRELEASED, it is now assumed
     the build is targetted at the same distribution as the build before.
+  * A hook for 'bzr merge-upstream' has been added. LP: #657501
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sun, 27 Feb 2011 03:08:09 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 27 Feb 2011 17:14:07 +0100
 
 bzr-builddeb (2.6) unstable; urgency=low
 

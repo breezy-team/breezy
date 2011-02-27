@@ -732,6 +732,7 @@ class cmd_merge_upstream(Command):
                     "Upstream version %s has already been merged." % version)
             self._add_changelog_entry(tree, package, version,
                 distribution_name, changelog)
+            run_hook(tree, 'merge-upstream', config)
         finally:
             tree.unlock()
         if not need_upstream_tarball:
