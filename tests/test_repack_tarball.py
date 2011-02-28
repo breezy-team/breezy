@@ -94,7 +94,9 @@ class TestRepackTarball(TestCaseInTempDir):
         repack_tarball(self.old_tarball, self.new_tarball)
         tar = tarfile.open(self.new_tarball, 'r:gz')
         try:
-            members = tar.getnames()
+            # The tarfile module returns member names of directories with a
+            # trailing slash, in Python 2.5 *only*.
+            members = [x.rstrip("/") for x in tar.getnames()]
         finally:
             tar.close()
         self.assertEqual(members,
