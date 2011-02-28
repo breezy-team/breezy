@@ -17,6 +17,11 @@ The following are the pre-defined hooks that are available when building the
 package. More hook points could be added if you have a specific need, contact
 me to discuss it if that is the case.
 
+  * ``merge-upstream`` - This is run after a new upstream version has
+     been merged into the current tree using ``bzr merge-upstream``.
+     This allows you to update the debian/ metadata based on the new upstream
+     release that has been merged in.
+
   * ``pre-export`` - This is run before the branch is exported to create
      the build directory. This allows you to modify the branch or the working
      tree. Note however that the tree to export is grabbed before the hook is

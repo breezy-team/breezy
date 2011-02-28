@@ -164,4 +164,22 @@ class TestMergeUpstream(BuilddebTestCase):
             os.path.abspath(rel2.tarball), changed_upstream.tree.basedir],
             working_dir=package.tree.basedir)
 
+    def test_hooks(self):
+        upstream = self.make_upstream()
+        rel1 = self.release_upstream(upstream)
+        package = self.import_upstream(rel1, upstream)
+        package_path = package.tree.basedir
+        os.mkdir(os.path.join(package_path, '.bzr-builddeb/'))
+        f = open(os.path.join(package_path, '.bzr-builddeb/local.conf'), 'wb')
+        try:
+          f.write('[HOOKS]\nmerge-upstream = touch muhook\n')
+        finally:
+          f.close()
+        changed_upstream = self.file_moved_replaced_upstream(upstream)
+        rel2 = self.release_upstream(changed_upstream)
+        self.run_bzr(['merge-upstream', '--version', str(rel2.version),
+            os.path.abspath(rel2.tarball), changed_upstream.tree.basedir],
+            working_dir=package.tree.basedir)
+        self.failUnlessExists(os.path.join(package.tree.basedir, 'muhook'))
+
 # vim: ts=4 sts=4 sw=4
