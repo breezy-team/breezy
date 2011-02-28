@@ -312,7 +312,7 @@ class GitIndexInventory(inventory.Inventory):
     def path2id(self, path):
         if type(path) in (list, tuple):
             path = "/".join(path)
-        if path in self.index:
+        if path.encode("utf-8") in self.index:
             file_id = self.fileid_map.lookup_file_id(path)
         else:
             self._read_contents()
@@ -356,7 +356,7 @@ class GitIndexInventory(inventory.Inventory):
                     self.add_parents(path)
                     self.add(old_ie)
                 else:
-                    ie = self.add_path(path, kind, file_id,
+                    ie = self.add_path(path.decode("utf-8"), kind, file_id,
                         self.add_parents(path))
                     data = self.store[sha].data
                     if kind == "symlink":
@@ -369,6 +369,7 @@ class GitIndexInventory(inventory.Inventory):
             pb.finished()
 
     def add_parents(self, path):
+        assert isinstance(path, str)
         dirname, _ = osutils.split(path)
         file_id = super(GitIndexInventory, self).path2id(dirname)
         if file_id is None:
@@ -376,7 +377,7 @@ class GitIndexInventory(inventory.Inventory):
                 parent_fid = None
             else:
                 parent_fid = self.add_parents(dirname)
-            ie = self.add_path(dirname, 'directory',
+            ie = self.add_path(dirname.decode("utf-8"), 'directory',
                     self.fileid_map.lookup_file_id(dirname), parent_fid)
             if self.basis_inv is not None and ie.file_id in self.basis_inv:
                 ie.revision = self.basis_inv[ie.file_id].revision
