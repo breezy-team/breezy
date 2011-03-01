@@ -171,12 +171,15 @@ class TestDo(ExternalBase):
     tree = self.make_unpacked_source()
     self.make_merge_mode_config(tree)
     self.make_upstream_tarball()
-    old_shell = os.environ['SHELL']
+    old_shell = os.environ.get('SHELL')
     os.environ['SHELL'] = "touch debian/shell"
     try:
       self.run_bzr('bd-do')
     finally:
-      os.environ['SHELL'] = old_shell
+      if old_shell is not None:
+        os.environ['SHELL'] = old_shell
+      else:
+        del os.environ['SHELL']
     self.failUnlessExists('debian/shell')
 
 # vim: ts=2 sts=2 sw=2
