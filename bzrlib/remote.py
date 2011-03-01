@@ -2194,7 +2194,7 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._ensure_real()
         return self._custom_format.supports_set_append_revisions_only()
 
-    def _native_heads_to_fetch(self):
+    def _use_default_local_heads_to_fetch(self):
         # If the branch format is a metadir format *and* its heads_to_fetch
         # implementation is not overridden vs the base class, we can use the
         # base class logic rather than use the heads_to_fetch RPC.  This is
@@ -2795,7 +2795,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         return self._real_branch.set_push_location(location)
 
     def heads_to_fetch(self):
-        if self._format._native_heads_to_fetch():
+        if self._format._use_default_local_heads_to_fetch():
             # We recognise this format, and its heads-to-fetch implementation
             # is the default one (tip + tags).  In this case it's cheaper to
             # just use the default implementation rather than a special RPC as

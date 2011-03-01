@@ -1179,7 +1179,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
         transport.mkdir('quack')
         transport = transport.clone('quack')
         branch = self.make_remote_branch(transport, client)
-        branch._format._native_heads_to_fetch = lambda: False
+        branch._format._use_default_local_heads_to_fetch = lambda: False
         result = branch.heads_to_fetch()
         self.assertFinished(client)
         self.assertEqual((set(['tip']), set(['tagged-1', 'tagged-2'])), result)
