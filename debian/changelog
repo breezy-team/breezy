@@ -37,6 +37,7 @@ bzr-builddeb (2.7) UNRELEASED; urgency=low
   * When building with distribution set to UNRELEASED, it is now assumed
     the build is targetted at the same distribution as the build before.
   * A hook for 'bzr merge-upstream' has been added. LP: #657501
+  * Support running the test suite in parallel during package build.
 
   [ Max Bowsher ]
 
