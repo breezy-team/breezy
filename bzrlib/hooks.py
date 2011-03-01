@@ -392,6 +392,8 @@ def hooks_help_text(topic):
     return '\n'.join(segments)
 
 
+# Lazily registered hooks. Maps (module, name, hook_name) tuples
+# to lists of tuples with objectgetters and names
 _lazy_hooks = {}
 
 
