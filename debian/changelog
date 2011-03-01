@@ -2,11 +2,12 @@ bzr-builddeb (2.7) UNRELEASED; urgency=low
 
   [ James Westby ]
 
-  * Accept None as a valid previous_version value in merge_upstream(). LP: #680945
+  * Accept None as a valid previous_version value in merge_upstream().
+    LP: #680945
 
   [ Jelmer Vernooij ]
 
-  * Support 'bzr tags --sort=debversion'. Closes #701244.
+  * Support 'bzr tags --sort=debversion'. Closes: #701244.
   * When adding a changelog entry, support git and svn snapshots.
   * Automatically use debian/source/format if package is native. Closes:
     #586617
