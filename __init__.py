@@ -31,8 +31,7 @@ Keyword templates are specified using the following patterns:
 
 When expanding, the existing text is retained if an unknown keyword is
 found. If the keyword is already expanded but known, the value is replaced.
-When compressing, values are always removed, whether the keyword is known
-or not.
+When compressing, the values of known keywords are removed.
 
 Keyword filtering needs to be enabled for selected branches and files via
 rules. See ``bzr help rules`` for general information on defining rules.
