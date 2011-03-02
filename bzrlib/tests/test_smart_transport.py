@@ -2412,7 +2412,7 @@ class TestConventionalResponseHandlerBodyStream(tests.TestCase):
         self.assertEqual('aaa', stream.next())
         self.assertEqual('bbb', stream.next())
         exc = self.assertRaises(errors.ErrorFromSmartServer, stream.next)
-        self.assertEqual(('Exception', 'Boom!'), exc.error_tuple)
+        self.assertEqual(('error', 'Exception', 'Boom!'), exc.error_tuple)
 
     def test_interrupted_by_connection_lost(self):
         interrupted_body_stream = (
@@ -2815,7 +2815,8 @@ interrupted_body_stream = (
     'b\x00\x00\x00\x03aaa' # body part ('aaa')
     'b\x00\x00\x00\x03bbb' # body part ('bbb')
     'oE' # status flag (error)
-    's\x00\x00\x00\x14l9:Exception5:Boom!e' # err struct ('Exception', 'Boom!')
+    # err struct ('error', 'Exception', 'Boom!')
+    's\x00\x00\x00\x1bl5:error9:Exception5:Boom!e'
     'e' # EOM
     )
 
