@@ -86,6 +86,10 @@ Bug Fixes
 * ``bzr serve`` no longer crashes when a server_started hook is installed and
   IPv6 support is available on the system. (Jelmer Vernooij, #293697)
 
+* ``bzr tags`` will no longer choke on branches with ghost revisions in
+  their mainline and tags on revisions not in the branch ancestry. 
+  (Jelmer Vernooij, #397556)
+
 * ``bzr whoami`` will now display an error if both a new identity and
   ``--email`` were specified. (Jelmer Vernooij, #680449)
 
