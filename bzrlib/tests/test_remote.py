@@ -2863,6 +2863,13 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
             detail='extra detail')
         self.assertEqual(expected_error, translated_error)
 
+    def test_norepository(self):
+        bzrdir = self.make_bzrdir('')
+        translated_error = self.translateTuple(('norepository',),
+            bzrdir=bzrdir)
+        expected_error = errors.NoRepositoryPresent(bzrdir)
+        self.assertEqual(expected_error, translated_error)
+
     def test_LockContention(self):
         translated_error = self.translateTuple(('LockContention',))
         expected_error = errors.LockContention('(remote lock)')
@@ -2896,6 +2903,12 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         expected_error = errors.DivergedBranches(branch, other_branch)
         self.assertEqual(expected_error, translated_error)
 
+    def test_NotStacked(self):
+        branch = self.make_branch('')
+        translated_error = self.translateTuple(('NotStacked',), branch=branch)
+        expected_error = errors.NotStacked(branch)
+        self.assertEqual(expected_error, translated_error)
+
     def test_ReadError_no_args(self):
         path = 'a path'
         translated_error = self.translateTuple(('ReadError',), path=path)
@@ -2917,7 +2930,8 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
 
     def test_PermissionDenied_no_args(self):
         path = 'a path'
-        translated_error = self.translateTuple(('PermissionDenied',), path=path)
+        translated_error = self.translateTuple(('PermissionDenied',),
+            path=path)
         expected_error = errors.PermissionDenied(path)
         self.assertEqual(expected_error, translated_error)
 
@@ -2945,6 +2959,39 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
             ('PermissionDenied', path, extra))
         expected_error = errors.PermissionDenied(path, extra)
         self.assertEqual(expected_error, translated_error)
+
+    # GZ 2011-03-02: TODO test for PermissionDenied with non-ascii 'extra'
+
+    def test_NoSuchFile_context_path(self):
+        local_path = "local path"
+        translated_error = self.translateTuple(('ReadError', "remote path"),
+            path=local_path)
+        expected_error = errors.ReadError(local_path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_NoSuchFile_without_context(self):
+        remote_path = "remote path"
+        translated_error = self.translateTuple(('ReadError', remote_path))
+        expected_error = errors.ReadError(remote_path)
+        self.assertEqual(expected_error, translated_error)
+
+    def test_ReadOnlyError(self):
+        translated_error = self.translateTuple(('ReadOnlyError',))
+        expected_error = errors.TransportNotPossible("readonly transport")
+        self.assertEqual(expected_error, translated_error)
+
+    def test_MemoryError(self):
+        translated_error = self.translateTuple(('MemoryError',))
+        expected_error = errors.BzrError("remote server out of memory")
+        self.assertEqual(expected_error, translated_error)
+
+    def test_generic_IndexError(self):
+        err = errors.ErrorFromSmartServer(('error', "list index out of range"))
+        translated_error = self.translateErrorFromSmartServer(err)
+        expected_error = errors.UnknownErrorFromSmartServer(err)
+        self.assertEqual(expected_error, translated_error)
+
+    # GZ 2011-03-02: TODO test generic non-ascii error string
 
 
 class TestErrorTranslationRobustness(TestErrorTranslationBase):
