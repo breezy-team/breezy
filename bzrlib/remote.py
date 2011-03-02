@@ -3050,5 +3050,6 @@ def _translate_error_without_context(err):
     elif err.error_verb == 'ReadOnlyError':
         raise errors.TransportNotPossible('readonly transport')
     elif err.error_verb == 'MemoryError':
-        raise errors.BzrError("remote server out of memory")
+        raise errors.BzrError("remote server out of memory\n"
+            "Retry non-remotely, or contact the server admin for details.")
     raise errors.UnknownErrorFromSmartServer(err)

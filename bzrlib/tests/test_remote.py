@@ -2982,8 +2982,8 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
 
     def test_MemoryError(self):
         translated_error = self.translateTuple(('MemoryError',))
-        expected_error = errors.BzrError("remote server out of memory")
-        self.assertEqual(expected_error, translated_error)
+        self.assertStartsWith(str(translated_error),
+            "remote server out of memory")
 
     def test_generic_IndexError_no_classname(self):
         err = errors.ErrorFromSmartServer(('error', "list index out of range"))
