@@ -21,6 +21,10 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import bisect
 import datetime
+
+from bzrlib import (
+    workingtree,
+    )
 """)
 
 from bzrlib import (
@@ -299,6 +303,9 @@ class RevisionSpec_dwim(RevisionSpec):
     # each revspec we try.
     wants_revision_history = False
 
+    # The revspecs to try
+    _possible_revspecs = []
+
     def _try_spectype(self, rstype, branch):
         rs = rstype(self.spec, _internal=True)
         # Hit in_history to find out if it exists, or we need to try the
@@ -319,6 +326,14 @@ class RevisionSpec_dwim(RevisionSpec):
                 pass
 
         # Next see what has been registered
+        for objgetter in self._possible_revspecs:
+            rs_class = objgetter.get_obj()
+            try:
+                return self._try_spectype(rs_class, branch)
+            except rs_class.dwim_catchable_exceptions:
+                pass
+
+        # Try the old (deprecated) dwim list:
         for rs_class in dwim_revspecs:
             try:
                 return self._try_spectype(rs_class, branch)
@@ -329,6 +344,24 @@ class RevisionSpec_dwim(RevisionSpec):
         # first of last exception raised during the DWIM tries as none seems
         # really relevant.
         raise errors.InvalidRevisionSpec(self.spec, branch)
+
+    @classmethod
+    def append_possible_revspec(cls, revspec):
+        """Append a possible DWIM revspec.
+
+        :param revspec: Revision spec to try.
+        """
+        cls._possible_revspecs.append(registry._ObjectGetter(revspec))
+
+    @classmethod
+    def append_possible_lazy_revspec(cls, module_name, member_name):
+        """Append a possible lazily loaded DWIM revspec.
+
+        :param module_name: Name of the module with the revspec
+        :param member_name: Name of the revspec within the module
+        """
+        cls._possible_revspecs.append(
+            registry._LazyObjectGetter(module_name, member_name))
 
 
 class RevisionSpec_revno(RevisionSpec):
@@ -966,13 +999,13 @@ class RevisionSpec_mainline(RevisionIDSpec):
 # The order in which we want to DWIM a revision spec without any prefix.
 # revno is always tried first and isn't listed here, this is used by
 # RevisionSpec_dwim._match_on
-dwim_revspecs = [
-    RevisionSpec_tag, # Let's try for a tag
-    RevisionSpec_revid, # Maybe it's a revid?
-    RevisionSpec_date, # Perhaps a date?
-    RevisionSpec_branch, # OK, last try, maybe it's a branch
-    ]
+dwim_revspecs = symbol_versioning.deprecated_list(
+    symbol_versioning.deprecated_in((2, 4, 0)), "dwim_revspecs", [])
 
+RevisionSpec_dwim.append_possible_revspec(RevisionSpec_tag)
+RevisionSpec_dwim.append_possible_revspec(RevisionSpec_revid)
+RevisionSpec_dwim.append_possible_revspec(RevisionSpec_date)
+RevisionSpec_dwim.append_possible_revspec(RevisionSpec_branch)
 
 revspec_registry = registry.Registry()
 def _register_revspec(revspec):

@@ -277,6 +277,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     _fetch_order = 'topological'
     _fetch_reconcile = True
     fast_deltas = False
+    supports_leaving_lock = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -860,3 +861,9 @@ class InterWeaveRepo(InterSameDataRepository):
 
 
 InterRepository.register_optimiser(InterWeaveRepo)
+
+
+def get_extra_interrepo_test_combinations():
+    from bzrlib.repofmt import knitrepo
+    return [(InterRepository, RepositoryFormat5(),
+        knitrepo.RepositoryFormatKnit3())]

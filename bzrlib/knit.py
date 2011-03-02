@@ -54,13 +54,14 @@ in the deltas to provide line annotation
 
 from cStringIO import StringIO
 from itertools import izip
-import gzip
 import operator
 import os
 import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import gzip
+
 from bzrlib import (
     annotate,
     debug,
@@ -83,19 +84,15 @@ from bzrlib import (
     osutils,
     )
 from bzrlib.errors import (
-    FileExists,
     NoSuchFile,
-    KnitError,
     InvalidRevisionId,
     KnitCorrupt,
     KnitHeaderError,
     RevisionNotPresent,
-    RevisionAlreadyPresent,
     SHA1KnitCorrupt,
     )
 from bzrlib.osutils import (
     contains_whitespace,
-    contains_linebreaks,
     sha_string,
     sha_strings,
     split_lines,
@@ -105,9 +102,7 @@ from bzrlib.versionedfile import (
     adapter_registry,
     ConstantMapper,
     ContentFactory,
-    ChunkedContentFactory,
     sort_groupcompress,
-    VersionedFile,
     VersionedFiles,
     )
 

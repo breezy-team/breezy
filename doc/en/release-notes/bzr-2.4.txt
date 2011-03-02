@@ -26,6 +26,14 @@ New Features
 * External merge tools can now be configured in bazaar.conf. See
   ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
 
+* Configuration options can now use references to other options in the same
+  file by enclosing them with curly brackets (``{other_opt}``). This makes it
+  possible to use, for example,
+  ``push_location=lp:~vila/bzr/config-{nickname}`` in ``branch.conf`` when
+  using a loom. During the beta period, the default behaviour is to disable
+  this feature. It can be activated by declaring ``bzr.config.expand = True``
+  in ``bazaar.conf``. (Vincent Ladeuil)
+
 Improvements
 ************
 
@@ -103,6 +111,9 @@ Bug Fixes
 * Fix ``bzr lp-mirror`` to work on command line branch URLs and branches
   without an explicit public location. (Max Bowsher)
 
+* On Python 2.6 and higher, use multiprocessing.cpu_count() to retrieve the
+  number of available processors. (Jelmer Vernooij, #693140)
+
 Documentation
 *************
 
@@ -120,12 +131,34 @@ API Changes
 * All methods and arguments that were deprecated before 2.0
   have been removed. (Jelmer Vernooij)
 
+* Branch formats should now be registered on the format registry
+  (``bzrlib.branch.format_registry``) rather than using the class
+  methods on ``BranchFormat``. (Jelmer Vernooij, #714729)
+
+* ``BranchFormat.supports_leaving_lock()`` and
+  ``RepositoryFormat.supports_leaving_lock`` flags have been added.
+  (Jelmer Vernooij)
+
 * ``Branch.fetch`` implementations must now accept an optional
   ``fetch_spec`` keyword argument. (Andrew Bennetts)
 
 * ``Branch.import_last_revision_info`` is deprecated.  Use the
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
+
+* ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
+  Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and
+  ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_lazy_revspec``
+  instead.  (Jelmer Vernooij, #721971)
+
+* ``BzrDirFormat`` has a new attribute ``fixed_components`` that
+  indicates whether the components of the bzrdir can be upgraded
+  independent of the ``BzrDir``. (Jelmer Vernooij)
+
+* Repository formats can now provide
+  ``_get_extra_interrepo_test_combinations`` in the same module 
+  to provide extra test combinations for ``bzrlib.tests.per_repository``.
+  (Jelmer Vernooij)
 
 * Repository formats should now be registered on the format registry
   (``bzrlib.repository.format_registry``) rather than using the class
@@ -135,6 +168,10 @@ API Changes
   ``Repository.search_missing_revision_ids`` and
   ``InterRepository.search_missing_revision_ids`` is deprecated.  It is
   replaced by the ``revision_ids`` parameter.  (Andrew Bennetts)
+
+* Working tree formats should now be registered on the format registry
+  (``bzrlib.working_tree.format_registry``) rather than using the class
+  methods on ``WorkingTreeFormat``. (Jelmer Vernooij, #714730)
 
 Internals
 *********

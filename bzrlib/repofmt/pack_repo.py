@@ -1222,8 +1222,7 @@ class ReconcilePacker(Packer):
     def _process_inventory_lines(self, inv_lines):
         """Generate a text key reference map rather for reconciling with."""
         repo = self._pack_collection.repo
-        refs = repo._find_text_key_references_from_xml_inventory_lines(
-            inv_lines)
+        refs = repo._serializer._find_text_key_references(inv_lines)
         self._text_refs = refs
         # during reconcile we:
         #  - convert unreferenced texts to full texts
@@ -2476,7 +2475,7 @@ class KnitPackStreamSource(StreamSource):
         from_repo = self.from_repository
         parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
         parent_keys = [(p,) for p in parent_ids]
-        find_text_keys = from_repo._find_text_key_references_from_xml_inventory_lines
+        find_text_keys = from_repo._serializer._find_text_key_references
         parent_text_keys = set(find_text_keys(
             from_repo._inventory_xml_lines_for_keys(parent_keys)))
         content_text_keys = set()
