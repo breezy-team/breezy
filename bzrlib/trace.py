@@ -497,7 +497,7 @@ def _qualified_exception_name(eclass, unqualified_bzrlib_errors=False):
     """
     class_name = eclass.__name__
     module_name = eclass.__module__
-    if module_name == "exceptions" or (
+    if module_name in ("exceptions", "__main__") or (
             unqualified_bzrlib_errors and module_name == "bzrlib.errors"):
         return class_name
     return "%s.%s" % (module_name, class_name)
