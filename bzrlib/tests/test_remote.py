@@ -2985,13 +2985,19 @@ class TestErrorTranslationSuccess(TestErrorTranslationBase):
         expected_error = errors.BzrError("remote server out of memory")
         self.assertEqual(expected_error, translated_error)
 
-    def test_generic_IndexError(self):
+    def test_generic_IndexError_no_classname(self):
         err = errors.ErrorFromSmartServer(('error', "list index out of range"))
         translated_error = self.translateErrorFromSmartServer(err)
         expected_error = errors.UnknownErrorFromSmartServer(err)
         self.assertEqual(expected_error, translated_error)
 
     # GZ 2011-03-02: TODO test generic non-ascii error string
+
+    def test_generic_KeyError(self):
+        err = errors.ErrorFromSmartServer(('error', 'KeyError', "1"))
+        translated_error = self.translateErrorFromSmartServer(err)
+        expected_error = errors.UnknownErrorFromSmartServer(err)
+        self.assertEqual(expected_error, translated_error)
 
 
 class TestErrorTranslationRobustness(TestErrorTranslationBase):
