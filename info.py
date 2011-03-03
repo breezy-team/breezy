@@ -9,7 +9,7 @@ bzr_plugin_version = (0, 5, 5, 'dev', 0)
 
 bzr_commands = ["git-import", "git-object", "git-refs", "git-apply"]
 
-bzr_compatible_versions = [(2, x, 0) for x in [2, 3, 4]]
+bzr_compatible_versions = [(2, x, 0) for x in [3, 4]]
 
 bzr_minimum_version = bzr_compatible_versions[0]
 
