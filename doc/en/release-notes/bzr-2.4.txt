@@ -55,6 +55,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* A MemoryError thrown on the server during a remote operation will now be
+  usefully reported, and other unexpected errors will include the class name.
+  (Martin [gz], #722416)
+
 * ``bzr annotate -r-1 file`` will now properly annotate a deleted file.
   (Andrew King, #537442)
 

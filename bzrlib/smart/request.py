@@ -446,9 +446,13 @@ def _translate_error(err):
         return ('TokenMismatch', err.given_token, err.lock_token)
     elif isinstance(err, errors.LockContention):
         return ('LockContention',)
+    elif isinstance(err, MemoryError):
+        # GZ 2011-02-24: Copy bzrlib.trace -Dmem_dump functionality here?
+        return ('MemoryError',)
     # Unserialisable error.  Log it, and return a generic error
     trace.log_exception_quietly()
-    return ('error', str(err))
+    return ('error', trace._qualified_exception_name(err.__class__, True),
+        str(err))
 
 
 class HelloRequest(SmartServerRequest):

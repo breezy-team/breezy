@@ -2973,10 +2973,7 @@ def _translate_error(err, **context):
                     'Missing key %r in context %r', key_err.args[0], context)
                 raise err
 
-    if err.error_verb == 'IncompatibleRepositories':
-        raise errors.IncompatibleRepositories(err.error_args[0],
-            err.error_args[1], err.error_args[2])
-    elif err.error_verb == 'NoSuchRevision':
+    if err.error_verb == 'NoSuchRevision':
         raise NoSuchRevision(find('branch'), err.error_args[0])
     elif err.error_verb == 'nosuchrevision':
         raise NoSuchRevision(find('repository'), err.error_args[0])
@@ -2989,22 +2986,12 @@ def _translate_error(err, **context):
             detail=extra)
     elif err.error_verb == 'norepository':
         raise errors.NoRepositoryPresent(find('bzrdir'))
-    elif err.error_verb == 'LockContention':
-        raise errors.LockContention('(remote lock)')
     elif err.error_verb == 'UnlockableTransport':
         raise errors.UnlockableTransport(find('bzrdir').root_transport)
-    elif err.error_verb == 'LockFailed':
-        raise errors.LockFailed(err.error_args[0], err.error_args[1])
     elif err.error_verb == 'TokenMismatch':
         raise errors.TokenMismatch(find('token'), '(remote token)')
     elif err.error_verb == 'Diverged':
         raise errors.DivergedBranches(find('branch'), find('other_branch'))
-    elif err.error_verb == 'TipChangeRejected':
-        raise errors.TipChangeRejected(err.error_args[0].decode('utf8'))
-    elif err.error_verb == 'UnstackableBranchFormat':
-        raise errors.UnstackableBranchFormat(*err.error_args)
-    elif err.error_verb == 'UnstackableRepositoryFormat':
-        raise errors.UnstackableRepositoryFormat(*err.error_args)
     elif err.error_verb == 'NotStacked':
         raise errors.NotStacked(branch=find('branch'))
     elif err.error_verb == 'PermissionDenied':
@@ -3020,6 +3007,24 @@ def _translate_error(err, **context):
     elif err.error_verb == 'NoSuchFile':
         path = get_path()
         raise errors.NoSuchFile(path)
+    _translate_error_without_context(err)
+
+
+def _translate_error_without_context(err):
+    """Translate any ErrorFromSmartServer values that don't require context"""
+    if err.error_verb == 'IncompatibleRepositories':
+        raise errors.IncompatibleRepositories(err.error_args[0],
+            err.error_args[1], err.error_args[2])
+    elif err.error_verb == 'LockContention':
+        raise errors.LockContention('(remote lock)')
+    elif err.error_verb == 'LockFailed':
+        raise errors.LockFailed(err.error_args[0], err.error_args[1])
+    elif err.error_verb == 'TipChangeRejected':
+        raise errors.TipChangeRejected(err.error_args[0].decode('utf8'))
+    elif err.error_verb == 'UnstackableBranchFormat':
+        raise errors.UnstackableBranchFormat(*err.error_args)
+    elif err.error_verb == 'UnstackableRepositoryFormat':
+        raise errors.UnstackableRepositoryFormat(*err.error_args)
     elif err.error_verb == 'FileExists':
         raise errors.FileExists(err.error_args[0])
     elif err.error_verb == 'DirectoryNotEmpty':
@@ -3044,4 +3049,7 @@ def _translate_error(err, **context):
             raise UnicodeEncodeError(encoding, val, start, end, reason)
     elif err.error_verb == 'ReadOnlyError':
         raise errors.TransportNotPossible('readonly transport')
+    elif err.error_verb == 'MemoryError':
+        raise errors.BzrError("remote server out of memory\n"
+            "Retry non-remotely, or contact the server admin for details.")
     raise errors.UnknownErrorFromSmartServer(err)
