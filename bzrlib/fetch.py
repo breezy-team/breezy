@@ -350,7 +350,8 @@ class FetchSpecFactory(object):
 
     Factors that go into determining the sort of fetch to perform:
      * did the caller specify any revision IDs?
-     * did the caller specify a source branch (need to fetch the tip + tags)
+     * did the caller specify a source branch (need to fetch its
+       heads_to_fetch(), usually the tip + tags)
      * is there an existing target repo (don't need to refetch revs it
        already has)
      * target is stacked?  (similar to pre-existing target repo: even if
@@ -391,27 +392,29 @@ class FetchSpecFactory(object):
                 return graph.EverythingNotInOther(
                     self.target_repo, self.source_repo).execute()
         heads_to_fetch = set(self._explicit_rev_ids)
-        tags_to_fetch = set()
         if self.source_branch is not None:
-            try:
-                tags_to_fetch.update(
-                    self.source_branch.tags.get_reverse_tag_dict())
-            except errors.TagsNotSupported:
-                pass
+            must_fetch, if_present_fetch = self.source_branch.heads_to_fetch()
             if self.source_branch_stop_revision_id is not None:
-                heads_to_fetch.add(self.source_branch_stop_revision_id)
-            else:
-                heads_to_fetch.add(self.source_branch.last_revision())
+                # Replace the tip rev from must_fetch with the stop revision
+                # XXX: this might be wrong if the tip rev is also in the
+                # must_fetch set for other reasons (e.g. it's the tip of
+                # multiple loom threads?), but then it's pretty unclear what it
+                # should mean to specify a stop_revision in that case anyway.
+                must_fetch.discard(self.source_branch.last_revision())
+                must_fetch.add(self.source_branch_stop_revision_id)
+            heads_to_fetch.update(must_fetch)
+        else:
+            if_present_fetch = set()
         if self.target_repo_kind == TargetRepoKinds.EMPTY:
             # PendingAncestryResult does not raise errors if a requested head
             # is absent.  Ideally it would support the
             # required_ids/if_present_ids distinction, but in practice
             # heads_to_fetch will almost certainly be present so this doesn't
             # matter much.
-            all_heads = heads_to_fetch.union(tags_to_fetch)
+            all_heads = heads_to_fetch.union(if_present_fetch)
             return graph.PendingAncestryResult(all_heads, self.source_repo)
         return graph.NotInOtherForRevs(self.target_repo, self.source_repo,
-            required_ids=heads_to_fetch, if_present_ids=tags_to_fetch
+            required_ids=heads_to_fetch, if_present_ids=if_present_fetch
             ).execute()
 
 

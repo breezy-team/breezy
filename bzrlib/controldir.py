@@ -141,6 +141,14 @@ class ControlDir(ControlComponent):
         """
         raise NotImplementedError(self.needs_format_conversion)
 
+    def create_repository(self, shared=False):
+        """Create a new repository in this control directory.
+
+        :param shared: If a shared repository should be created
+        :return: The newly created repository
+        """
+        raise NotImplementedError(self.create_repository)
+
     def destroy_repository(self):
         """Destroy the repository in this ControlDir."""
         raise NotImplementedError(self.destroy_repository)
@@ -699,6 +707,22 @@ class ControlComponentFormatRegistry(registry.FormatRegistry):
         for getter in self._extra_formats:
             modules.add(getter.get_module())
         return modules
+
+
+class Converter(object):
+    """Converts a disk format object from one format to another."""
+
+    def convert(self, to_convert, pb):
+        """Perform the conversion of to_convert, giving feedback via pb.
+
+        :param to_convert: The disk object to convert.
+        :param pb: a progress bar to use for progress information.
+        """
+
+    def step(self, message):
+        """Update the pb by a step."""
+        self.count +=1
+        self.pb.update(message, self.count, self.total)
 
 
 class ControlDirFormat(object):
