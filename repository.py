@@ -76,7 +76,7 @@ class GitRepository(ForeignRepository):
     def supports_rich_root(self):
         return True
 
-    def _warn_if_deprecated(self, branch=None):
+    def _warn_if_deprecated(self, branch=None): # for bzr < 2.4
         # This class isn't deprecated
         pass
 

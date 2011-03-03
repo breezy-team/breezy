@@ -27,21 +27,13 @@ from bzrlib import (
 LockWarner = getattr(lockable_files, "_LockWarner", None)
 
 from bzrlib.plugins.git import (
-    BareLocalGitControlDirFormat,
     LocalGitControlDirFormat,
     )
-try:
-    from bzrlib.controldir import (
-        ControlDir,
-        format_registry,
-        )
-except ImportError:
-    # bzr < 2.3
-    from bzrlib.bzrdir import (
-        BzrDir,
-        format_registry,
-        )
-    ControlDir = BzrDir
+
+from bzrlib.controldir import (
+    ControlDir,
+    format_registry,
+    )
 
 
 class GitLock(object):

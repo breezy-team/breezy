@@ -46,26 +46,13 @@ from bzrlib import (
     errors as bzr_errors,
     osutils,
     )
-try:
-    from bzrlib.controldir import (
-        ControlDirFormat,
-        ControlDir,
-        Prober,
-        format_registry,
-        )
-except ImportError:
-    # bzr < 2.3
-    from bzrlib.bzrdir import (
-        BzrDirFormat,
-        BzrDir,
-        format_registry,
-        )
-    ControlDir = BzrDir
-    ControlDirFormat = BzrDirFormat
-    Prober = object
-    has_controldir = False
-else:
-    has_controldir = True
+
+from bzrlib.controldir import (
+    ControlDirFormat,
+    ControlDir,
+    Prober,
+    format_registry,
+    )
 
 from bzrlib.foreign import (
     foreign_vcs_registry,
@@ -116,12 +103,12 @@ def lazy_check_versions():
     _versions_checked = True
 
 format_registry.register_lazy('git',
-    "bzrlib.plugins.git.dir", "LocalGitControlDirFormat",
+    "bzrlib.plugins.git", "LocalGitControlDirFormat",
     help='GIT repository.', native=False, experimental=False,
     )
 
 format_registry.register_lazy('git-bare',
-    "bzrlib.plugins.git.dir", "BareLocalGitControlDirFormat",
+    "bzrlib.plugins.git", "BareLocalGitControlDirFormat",
     help='Bare GIT repository (no working tree).', native=False,
     experimental=False,
     )
@@ -130,17 +117,13 @@ from bzrlib.revisionspec import revspec_registry
 revspec_registry.register_lazy("git:", "bzrlib.plugins.git.revspec",
     "RevisionSpec_git")
 
-try:
-    from bzrlib.revisionspec import dwim_revspecs, RevisionSpec_dwim
-except ImportError: # bzr < 2.1
-    pass
-else:
-    if getattr(RevisionSpec_dwim, "append_possible_lazy_revspec", None):
-        RevisionSpec_dwim.append_possible_lazy_revspec(
-            "bzrlib.plugins.git.revspec", "RevisionSpec_git")
-    else: # bzr < 2.4
-        from bzrlib.plugins.git.revspec import RevisionSpec_git
-        dwim_revspecs.append(RevisionSpec_git)
+from bzrlib.revisionspec import dwim_revspecs, RevisionSpec_dwim
+if getattr(RevisionSpec_dwim, "append_possible_lazy_revspec", None):
+    RevisionSpec_dwim.append_possible_lazy_revspec(
+        "bzrlib.plugins.git.revspec", "RevisionSpec_git")
+else: # bzr < 2.4
+    from bzrlib.plugins.git.revspec import RevisionSpec_git
+    dwim_revspecs.append(RevisionSpec_git)
 
 
 class GitControlDirFormat(ControlDirFormat):
@@ -316,16 +299,11 @@ class RemoteGitControlDirFormat(GitControlDirFormat):
         raise bzr_errors.UninitializableFormat(self)
 
 
-if has_controldir:
-    ControlDirFormat.register_format(LocalGitControlDirFormat())
-    ControlDirFormat.register_format(BareLocalGitControlDirFormat())
-    ControlDirFormat.register_format(RemoteGitControlDirFormat())
-    ControlDirFormat.register_prober(LocalGitProber)
-    ControlDirFormat.register_prober(RemoteGitProber)
-else:
-    ControlDirFormat.register_control_format(LocalGitControlDirFormat)
-    ControlDirFormat.register_control_format(BareLocalGitControlDirFormat)
-    ControlDirFormat.register_control_format(RemoteGitControlDirFormat)
+ControlDirFormat.register_format(LocalGitControlDirFormat())
+ControlDirFormat.register_format(BareLocalGitControlDirFormat())
+ControlDirFormat.register_format(RemoteGitControlDirFormat())
+ControlDirFormat.register_prober(LocalGitProber)
+ControlDirFormat.register_prober(RemoteGitProber)
 
 register_transport_proto('git://',
         help="Access using the Git smart server protocol.")
@@ -382,7 +360,7 @@ repository_network_format_registry.register_lazy('git',
 try:
     register_extra_lazy_repository_format = getattr(repository_format_registry,
         "register_extra_lazy")
-except AttributeError:
+except AttributeError: # bzr < 2.4
     pass
 else:
     register_extra_lazy_repository_format('bzrlib.plugins.git.repository',
@@ -392,7 +370,7 @@ try:
     from bzrlib.branch import (
         format_registry as branch_format_registry,
         )
-except ImportError:
+except ImportError: # bzr < 2.4
     pass
 else:
     branch_format_registry.register_extra_lazy(
@@ -404,7 +382,7 @@ try:
     from bzrlib.workingtree import (
         format_registry as workingtree_format_registry,
         )
-except ImportError:
+except ImportError: # bzr < 2.4
     pass
 else:
     workingtree_format_registry.register_extra_lazy(
@@ -412,14 +390,9 @@ else:
         'GitWorkingTreeFormat',
         )
 
-try:
-    from bzrlib.controldir import (
-        network_format_registry as controldir_network_format_registry,
-        )
-except ImportError:
-    from bzrlib.bzrdir import (
-        network_format_registry as controldir_network_format_registry,
-        )
+from bzrlib.controldir import (
+    network_format_registry as controldir_network_format_registry,
+    )
 controldir_network_format_registry.register('git', GitControlDirFormat)
 
 send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
@@ -429,13 +402,9 @@ topic_registry.register_lazy('git',
                              'bzrlib.plugins.git.help',
                              'help_git', 'Using Bazaar with Git')
 
-try:
-    from bzrlib.diff import format_registry as diff_format_registry
-except ImportError:
-    pass
-else:
-    diff_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
-        'GitDiffTree', 'Git am-style diff format')
+from bzrlib.diff import format_registry as diff_format_registry
+diff_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
+    'GitDiffTree', 'Git am-style diff format')
 
 def test_suite():
     from bzrlib.plugins.git import tests

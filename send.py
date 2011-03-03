@@ -30,12 +30,7 @@ from bzrlib import (
     revision as _mod_revision,
     )
 
-try:
-    from bzrlib.merge_directive import BaseMergeDirective
-except ImportError:
-    from bzrlib.merge_directive import (
-        _BaseMergeDirective as BaseMergeDirective,
-        )
+from bzrlib.merge_directive import BaseMergeDirective
 
 from bzrlib.plugins.git import (
     version_info as bzr_git_version_info,
