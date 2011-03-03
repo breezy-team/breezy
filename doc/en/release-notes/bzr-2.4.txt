@@ -159,6 +159,9 @@ API Changes
   indicates whether the components of the bzrdir can be upgraded
   independent of the ``BzrDir``. (Jelmer Vernooij)
 
+* ``Converter`` has been moved from ``bzrlib.bzrdir`` to
+  ``bzrlib.controldir``. (Jelmer Vernooij)
+
 * Repository formats can now provide
   ``_get_extra_interrepo_test_combinations`` in the same module 
   to provide extra test combinations for ``bzrlib.tests.per_repository``.
