@@ -132,6 +132,7 @@ class GitTags(tag.BasicTags):
 
     def merge_to(self, to_tags, overwrite=False, ignore_master=False,
                  source_refs=None):
+        """See Tags.merge_to."""
         if source_refs is None:
             source_refs = self.get_refs()
         if self == to_tags:
@@ -147,7 +148,7 @@ class GitTags(tag.BasicTags):
             conflicts = self._merge_to_non_git(to_tags, source_refs,
                                               overwrite=overwrite)
             if master is not None:
-                conflicts += self.merge_to(to_tags, overwrite=overwrite,
+                conflicts += self.merge_to(master.tags, overwrite=overwrite,
                                            source_refs=source_refs,
                                            ignore_master=ignore_master)
             return conflicts
