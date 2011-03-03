@@ -2733,6 +2733,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         return result
 
     def _warn_if_deprecated(self, branch=None):
+        if not self._format.is_deprecated():
+            return
         global _deprecation_warning_done
         if _deprecation_warning_done:
             return
@@ -3117,6 +3119,14 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         some other features depending on the reason for not being supported.
         """
         return True
+
+    def is_deprecated(self):
+        """Is this format deprecated?
+
+        Deprecated formats may trigger a user-visible warning recommending
+        the user to upgrade. They are still fully supported.
+        """
+        return False
 
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.

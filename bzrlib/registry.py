@@ -275,6 +275,11 @@ class FormatRegistry(Registry):
             self._other_registry.register_lazy(key, module_name, member_name,
                 help=help, info=info, override_existing=override_existing)
 
+    def remove(self, key):
+        Registry.remove(self, key)
+        if self._other_registry is not None:
+            self._other_registry.remove(key)
+
     def get(self, format_string):
         r = Registry.get(self, format_string)
         if callable(r):

@@ -37,7 +37,6 @@ from stat import S_ISDIR
 
 import bzrlib
 from bzrlib import (
-    branch,
     config,
     controldir,
     errors,
@@ -2050,7 +2049,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
             if target_branch is None:
                 if do_upgrade:
                     # TODO: bad monkey, hard-coded formats...
-                    new_branch_format = branch.BzrBranchFormat7()
+                    from bzrlib.branch import BzrBranchFormat7
+                    new_branch_format = BzrBranchFormat7()
             else:
                 new_branch_format = target_branch._format
                 if not new_branch_format.supports_stacking():

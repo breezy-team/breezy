@@ -168,6 +168,10 @@ API Changes
   (``bzrlib.repository.format_registry``) rather than using the class
   methods on ``RepositoryFormat``. (Jelmer Vernooij)
 
+* Repository formats have a new method ``is_deprecated`` that
+  implementations can override to return True to trigger a deprecation
+  warning. (Jelmer Vernooij)
+
 * The ``revision_id`` parameter of
   ``Repository.search_missing_revision_ids`` and
   ``InterRepository.search_missing_revision_ids`` is deprecated.  It is
