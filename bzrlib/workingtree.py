@@ -2761,41 +2761,12 @@ class WorkingTree3(WorkingTree):
             self.branch.unlock()
 
 
-class WorkingTreeFormatRegistry(registry.FormatRegistry):
+class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Registry for working tree formats."""
 
     def __init__(self, other_registry=None):
         super(WorkingTreeFormatRegistry, self).__init__(other_registry)
-        self._extra_formats = []
         self._default_format = None
-
-    def register(self, format):
-        """Register a new repository format."""
-        super(WorkingTreeFormatRegistry, self).register(
-            format.get_format_string(), format)
-
-    def remove(self, format):
-        """Remove a registered repository format."""
-        super(WorkingTreeFormatRegistry, self).remove(format.get_format_string())
-
-    def register_extra(self, format):
-        """Register a repository format that can not be used in a metadir.
-
-        This is mainly useful to allow custom repository formats, such as older
-        Bazaar formats and foreign formats, to be tested.
-        """
-        self._extra_formats.append(registry._ObjectGetter(format))
-
-    def remove_extra(self, format):
-        """Remove an extra repository format.
-        """
-        self._extra_formats.remove(registry._ObjectGetter(format))
-
-    def register_extra_lazy(self, module_name, member_name):
-        """Register a repository format lazily.
-        """
-        self._extra_formats.append(
-            registry._LazyObjectGetter(module_name, member_name))
 
     def get_default(self):
         """Return the current default format."""
@@ -2804,25 +2775,11 @@ class WorkingTreeFormatRegistry(registry.FormatRegistry):
     def set_default(self, format):
         self._default_format = format
 
-    def _get_extra(self):
-        result = []
-        for getter in self._extra_formats:
-            f = getter.get_obj()
-            if callable(f):
-                f = f()
-            result.append(f)
-        return result
-
-    def _get_all(self):
-        """Return all repository formats, even those not usable in metadirs.
-        """
-        return [self.get(k) for k in self.keys()] + self._get_extra()
-
 
 format_registry = WorkingTreeFormatRegistry()
 
 
-class WorkingTreeFormat(object):
+class WorkingTreeFormat(controldir.ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:
@@ -2863,6 +2820,23 @@ class WorkingTreeFormat(object):
         except KeyError:
             raise errors.UnknownFormatError(format=format_string,
                                             kind="working tree")
+
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None, hardlink=False):
+        """Initialize a new working tree in a_bzrdir.
+
+        :param a_bzrdir: BzrDir to initialize the working tree in.
+        :param revision_id: allows creating a working tree at a different
+            revision than the branch is at.
+        :param from_branch: Branch to checkout
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
+        """
+        raise NotImplementedError(self.initialize)
 
     def __eq__(self, other):
         return self.__class__ is other.__class__

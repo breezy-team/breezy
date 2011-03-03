@@ -26,6 +26,14 @@ New Features
 * External merge tools can now be configured in bazaar.conf. See
   ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
 
+* Configuration options can now use references to other options in the same
+  file by enclosing them with curly brackets (``{other_opt}``). This makes it
+  possible to use, for example,
+  ``push_location=lp:~vila/bzr/config-{nickname}`` in ``branch.conf`` when
+  using a loom. During the beta period, the default behaviour is to disable
+  this feature. It can be activated by declaring ``bzr.config.expand = True``
+  in ``bazaar.conf``. (Vincent Ladeuil)
+
 Improvements
 ************
 
@@ -103,6 +111,9 @@ Bug Fixes
 * Fix ``bzr lp-mirror`` to work on command line branch URLs and branches
   without an explicit public location. (Max Bowsher)
 
+* On Python 2.6 and higher, use multiprocessing.cpu_count() to retrieve the
+  number of available processors. (Jelmer Vernooij, #693140)
+
 Documentation
 *************
 
@@ -135,13 +146,27 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
-* Repository formats can now override
-  ``_get_extra_interrepo_test_combinations`` to provide extra test
-  combinations for ``bzrlib.tests.per_repository``. (Jelmer Vernooij)
+* ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
+  Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and
+  ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_lazy_revspec``
+  instead.  (Jelmer Vernooij, #721971)
+
+* ``BzrDirFormat`` has a new attribute ``fixed_components`` that
+  indicates whether the components of the bzrdir can be upgraded
+  independent of the ``BzrDir``. (Jelmer Vernooij)
+
+* Repository formats can now provide
+  ``_get_extra_interrepo_test_combinations`` in the same module 
+  to provide extra test combinations for ``bzrlib.tests.per_repository``.
+  (Jelmer Vernooij)
 
 * Repository formats should now be registered on the format registry
   (``bzrlib.repository.format_registry``) rather than using the class
   methods on ``RepositoryFormat``. (Jelmer Vernooij)
+
+* Repository formats have a new method ``is_deprecated`` that
+  implementations can override to return True to trigger a deprecation
+  warning. (Jelmer Vernooij)
 
 * The ``revision_id`` parameter of
   ``Repository.search_missing_revision_ids`` and

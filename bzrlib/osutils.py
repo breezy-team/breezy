@@ -2243,20 +2243,17 @@ else:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
 
-
 if sys.platform == 'linux2':
     def _local_concurrency():
-        concurrency = None
-        prefix = 'processor'
-        for line in file('/proc/cpuinfo', 'rb'):
-            if line.startswith(prefix):
-                concurrency = int(line[line.find(':')+1:]) + 1
-        return concurrency
+        try:
+            return os.sysconf('SC_NPROCESSORS_ONLN')
+        except (ValueError, OSError, AttributeError):
+            return None
 elif sys.platform == 'darwin':
     def _local_concurrency():
         return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
                                 stdout=subprocess.PIPE).communicate()[0]
-elif sys.platform[0:7] == 'freebsd':
+elif "bsd" in sys.platform:
     def _local_concurrency():
         return subprocess.Popen(['sysctl', '-n', 'hw.ncpu'],
                                 stdout=subprocess.PIPE).communicate()[0]
@@ -2290,9 +2287,15 @@ def local_concurrency(use_cache=True):
     concurrency = os.environ.get('BZR_CONCURRENCY', None)
     if concurrency is None:
         try:
-            concurrency = _local_concurrency()
-        except (OSError, IOError):
-            pass
+            import multiprocessing
+        except ImportError:
+            # multiprocessing is only available on Python >= 2.6
+            try:
+                concurrency = _local_concurrency()
+            except (OSError, IOError):
+                pass
+        else:
+            concurrency = multiprocessing.cpu_count()
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):

@@ -129,25 +129,50 @@ STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
 STORE_BRANCH = 3
 STORE_GLOBAL = 4
 
-_ConfigObj = None
-def ConfigObj(*args, **kwargs):
-    global _ConfigObj
-    if _ConfigObj is None:
-        class ConfigObj(configobj.ConfigObj):
 
-            def get_bool(self, section, key):
-                return self[section].as_bool(key)
+class ConfigObj(configobj.ConfigObj):
 
-            def get_value(self, section, name):
-                # Try [] for the old DEFAULT section.
-                if section == "DEFAULT":
-                    try:
-                        return self[name]
-                    except KeyError:
-                        pass
-                return self[section][name]
-        _ConfigObj = ConfigObj
-    return _ConfigObj(*args, **kwargs)
+    def __init__(self, infile=None, **kwargs):
+        # We define our own interpolation mechanism calling it option expansion
+        super(ConfigObj, self).__init__(infile=infile,
+                                        interpolation=False,
+                                        **kwargs)
+
+
+    def get_bool(self, section, key):
+        return self[section].as_bool(key)
+
+    def get_value(self, section, name):
+        # Try [] for the old DEFAULT section.
+        if section == "DEFAULT":
+            try:
+                return self[name]
+            except KeyError:
+                pass
+        return self[section][name]
+
+
+# FIXME: Until we can guarantee that each config file is loaded once and and
+# only once for a given bzrlib session, we don't want to re-read the file every
+# time we query for an option so we cache the value (bad ! watch out for tests
+# needing to restore the proper value).This shouldn't be part of 2.4.0 final,
+# yell at mgz^W vila and the RM if this is still present at that time
+# -- vila 20110219
+_expand_default_value = None
+def _get_expand_default_value():
+    global _expand_default_value
+    if _expand_default_value is not None:
+        return _expand_default_value
+    conf = GlobalConfig()
+    # Note that we must not use None for the expand value below or we'll run
+    # into infinite recursion. Using False really would be quite silly ;)
+    expand = conf.get_user_option_as_bool('bzr.config.expand', expand=True)
+    if expand is None:
+        # This is an opt-in feature, you *really* need to clearly say you want
+        # to activate it !
+        expand = False
+    _expand_default_value = expand
+    return expand
 
 
 class Config(object):
@@ -189,21 +214,167 @@ class Config(object):
     def _get_signing_policy(self):
         """Template method to override signature creation policy."""
 
+    option_ref_re = None
+
+    def expand_options(self, string, env=None):
+        """Expand option references in the string in the configuration context.
+
+        :param string: The string containing option to expand.
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :returns: The expanded string.
+        """
+        return self._expand_options_in_string(string, env)
+
+    def _expand_options_in_list(self, slist, env=None, _ref_stack=None):
+        """Expand options in  a list of strings in the configuration context.
+
+        :param slist: A list of strings.
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :param _ref_stack: Private list containing the options being
+            expanded to detect loops.
+
+        :returns: The flatten list of expanded strings.
+        """
+        # expand options in each value separately flattening lists
+        result = []
+        for s in slist:
+            value = self._expand_options_in_string(s, env, _ref_stack)
+            if isinstance(value, list):
+                result.extend(value)
+            else:
+                result.append(value)
+        return result
+
+    def _expand_options_in_string(self, string, env=None, _ref_stack=None):
+        """Expand options in the string in the configuration context.
+
+        :param string: The string to be expanded.
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :param _ref_stack: Private list containing the options being
+            expanded to detect loops.
+
+        :returns: The expanded string.
+        """
+        if string is None:
+            # Not much to expand there
+            return None
+        if _ref_stack is None:
+            # What references are currently resolved (to detect loops)
+            _ref_stack = []
+        if self.option_ref_re is None:
+            # We want to match the most embedded reference first (i.e. for
+            # '{{foo}}' we will get '{foo}',
+            # for '{bar{baz}}' we will get '{baz}'
+            self.option_ref_re = re.compile('({[^{}]+})')
+        result = string
+        # We need to iterate until no more refs appear ({{foo}} will need two
+        # iterations for example).
+        while True:
+            try:
+                raw_chunks = self.option_ref_re.split(result)
+            except TypeError:
+                import pdb; pdb.set_trace()
+            if len(raw_chunks) == 1:
+                # Shorcut the trivial case: no refs
+                return result
+            chunks = []
+            list_value = False
+            # Split will isolate refs so that every other chunk is a ref
+            chunk_is_ref = False
+            for chunk in raw_chunks:
+                if not chunk_is_ref:
+                    if chunk:
+                        # Keep only non-empty strings (or we get bogus empty
+                        # slots when a list value is involved).
+                        chunks.append(chunk)
+                    chunk_is_ref = True
+                else:
+                    name = chunk[1:-1]
+                    if name in _ref_stack:
+                        raise errors.OptionExpansionLoop(string, _ref_stack)
+                    _ref_stack.append(name)
+                    value = self._expand_option(name, env, _ref_stack)
+                    if value is None:
+                        raise errors.ExpandingUnknownOption(name, string)
+                    if isinstance(value, list):
+                        list_value = True
+                        chunks.extend(value)
+                    else:
+                        chunks.append(value)
+                    _ref_stack.pop()
+                    chunk_is_ref = False
+            if list_value:
+                # Once a list appears as the result of an expansion, all
+                # callers will get a list result. This allows a consistent
+                # behavior even when some options in the expansion chain
+                # defined as strings (no comma in their value) but their
+                # expanded value is a list.
+                return self._expand_options_in_list(chunks, env, _ref_stack)
+            else:
+                result = ''.join(chunks)
+        return result
+
+    def _expand_option(self, name, env, _ref_stack):
+        if env is not None and name in env:
+            # Special case, values provided in env takes precedence over
+            # anything else
+            value = env[name]
+        else:
+            # FIXME: This is a limited implementation, what we really need is a
+            # way to query the bzr config for the value of an option,
+            # respecting the scope rules (That is, once we implement fallback
+            # configs, getting the option value should restart from the top
+            # config, not the current one) -- vila 20101222
+            value = self.get_user_option(name, expand=False)
+            if isinstance(value, list):
+                value = self._expand_options_in_list(value, env, _ref_stack)
+            else:
+                value = self._expand_options_in_string(value, env, _ref_stack)
+        return value
+
     def _get_user_option(self, option_name):
         """Template method to provide a user option."""
         return None
 
-    def get_user_option(self, option_name):
-        """Get a generic option - no special process, no default."""
-        return self._get_user_option(option_name)
+    def get_user_option(self, option_name, expand=None):
+        """Get a generic option - no special process, no default.
 
-    def get_user_option_as_bool(self, option_name):
+        :param option_name: The queried option.
+
+        :param expand: Whether options references should be expanded.
+
+        :returns: The value of the option.
+        """
+        if expand is None:
+            expand = _get_expand_default_value()
+        value = self._get_user_option(option_name)
+        if expand:
+            if isinstance(value, list):
+                value = self._expand_options_in_list(value)
+            elif isinstance(value, dict):
+                trace.warning('Cannot expand "%s":'
+                              ' Dicts do not support option expansion'
+                              % (option_name,))
+            else:
+                value = self._expand_options_in_string(value)
+        return value
+
+    def get_user_option_as_bool(self, option_name, expand=None):
         """Get a generic option as a boolean - no special process, no default.
 
         :return None if the option doesn't exist or its value can't be
             interpreted as a boolean. Returns True or False otherwise.
         """
-        s = self._get_user_option(option_name)
+        s = self.get_user_option(option_name, expand=expand)
         if s is None:
             # The option doesn't exist
             return None
@@ -214,15 +385,16 @@ class Config(object):
                           s, option_name)
         return val
 
-    def get_user_option_as_list(self, option_name):
+    def get_user_option_as_list(self, option_name, expand=None):
         """Get a generic option as a list - no special process, no default.
 
         :return None if the option doesn't exist. Returns the value as a list
             otherwise.
         """
-        l = self._get_user_option(option_name)
+        l = self.get_user_option(option_name, expand=expand)
         if isinstance(l, (str, unicode)):
-            # A single value, most probably the user forgot the final ','
+            # A single value, most probably the user forgot (or didn't care to
+            # add) the final ','
             l = [l]
         return l
 
@@ -372,8 +544,9 @@ class Config(object):
         # be found in the known_merge_tools if it's not found in the config.
         # This should be done through the proposed config defaults mechanism
         # when it becomes available in the future.
-        command_line = (self.get_user_option('bzr.mergetool.%s' % name) or
-                        mergetools.known_merge_tools.get(name, None))
+        command_line = (self.get_user_option('bzr.mergetool.%s' % name,
+                                             expand=False)
+                        or mergetools.known_merge_tools.get(name, None))
         return command_line
 
 
@@ -672,6 +845,11 @@ class LockableConfig(IniBasedConfig):
     def __init__(self, file_name):
         super(LockableConfig, self).__init__(file_name=file_name)
         self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
+        # FIXME: It doesn't matter that we don't provide possible_transports
+        # below since this is currently used only for local config files ;
+        # local transports are not shared. But if/when we start using
+        # LockableConfig for other kind of transports, we will need to reuse
+        # whatever connection is already established -- vila 20100929
         self.transport = transport.get_transport(self.dir)
         self._lock = lockdir.LockDir(self.transport, 'lock')
 

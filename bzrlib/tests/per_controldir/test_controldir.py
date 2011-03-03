@@ -1014,7 +1014,7 @@ class TestControlDir(TestCaseWithControlDir):
         if control is None:
             # uninitialisable format
             return
-        if control._format.flexible_components:
+        if not control._format.fixed_components:
             self.assertEqual(repo.bzrdir.root_transport.base,
                 made_repo.bzrdir.root_transport.base)
 
@@ -1082,7 +1082,7 @@ class TestControlDir(TestCaseWithControlDir):
         if control is None:
             # uninitialisable format
             return
-        if not self.bzrdir_format.flexible_components:
+        if self.bzrdir_format.fixed_components:
             # must stay with the all-in-one-format.
             repo_name = self.bzrdir_format.network_name()
         self.assertEqual(repo_name, repo._format.network_name())
@@ -1115,7 +1115,7 @@ class TestControlDir(TestCaseWithControlDir):
             # set, so we skip a number of tests for RemoteBzrDirFormat's.
             self.assertIsInstance(control, RemoteBzrDir)
         else:
-            if need_meta and not expected_format.flexible_components:
+            if need_meta and expected_format.fixed_components:
                 # Pre-metadir formats change when we are making something that
                 # needs a metaformat, because clone is used for push.
                 expected_format = bzrdir.BzrDirMetaFormat1()

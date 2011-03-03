@@ -32,6 +32,14 @@ copied new tags visible in ``bzr tags``, but not copied the revisions.  Now
 revisions from tags will always be present, so that operations like ``bzr
 log -r tag:foo`` will always work.
 
+Configuration files
+*******************
+
+Option values can now refer to other options in the same configuration file by
+enclosing them in curly brackets (``{option}``). This is an opt-in feature
+during the beta period controlled by the ``bzr.config.expand`` option that
+should be declared in ``bazaar.conf`` and no other file.
+
 Further information
 *******************
 

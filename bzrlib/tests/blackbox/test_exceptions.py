@@ -19,6 +19,7 @@
 import sys
 
 from bzrlib import (
+    bzrdir,
     config,
     controldir,
     errors,
