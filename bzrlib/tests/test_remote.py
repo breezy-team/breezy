@@ -1143,6 +1143,71 @@ class TestBranchSetTagsBytes(RemoteBranchTestCase):
             [('set_tags_bytes', 'tags bytes')] * 2, real_branch.calls)
 
 
+class TestBranchHeadsToFetch(RemoteBranchTestCase):
+
+    def test_uses_last_revision_info_and_tags_by_default(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.last_revision_info', ('quack/',),
+            'success', ('ok', '1', 'rev-tip'))
+        # XXX: this will break if the default format's serialization of tags
+        # changes, or if the RPC for fetching tags changes from get_tags_bytes.
+        client.add_expected_call(
+            'Branch.get_tags_bytes', ('quack/',),
+            'success', ('d5:tag-17:rev-foo5:tag-27:rev-bare',))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        result = branch.heads_to_fetch()
+        self.assertFinished(client)
+        self.assertEqual(
+            (set(['rev-tip']), set(['rev-foo', 'rev-bar'])), result)
+
+    def test_uses_rpc_for_formats_with_non_default_heads_to_fetch(self):
+        transport = MemoryTransport()
+        client = FakeClient(transport.base)
+        client.add_expected_call(
+            'Branch.get_stacked_on_url', ('quack/',),
+            'error', ('NotStacked',))
+        client.add_expected_call(
+            'Branch.heads_to_fetch', ('quack/',),
+            'success', (['tip'], ['tagged-1', 'tagged-2']))
+        transport.mkdir('quack')
+        transport = transport.clone('quack')
+        branch = self.make_remote_branch(transport, client)
+        branch._format._use_default_local_heads_to_fetch = lambda: False
+        result = branch.heads_to_fetch()
+        self.assertFinished(client)
+        self.assertEqual((set(['tip']), set(['tagged-1', 'tagged-2'])), result)
+
+    def test_backwards_compatible(self):
+        self.setup_smart_server_with_call_log()
+        # Make a branch with a single revision.
+        builder = self.make_branch_builder('foo')
+        builder.start_series()
+        builder.build_snapshot('tip', None, [
+            ('add', ('', 'root-id', 'directory', ''))])
+        builder.finish_series()
+        branch = builder.get_branch()
+        # Add two tags to that branch
+        branch.tags.set_tag('tag-1', 'rev-1')
+        branch.tags.set_tag('tag-2', 'rev-2')
+        self.addCleanup(branch.lock_read().unlock)
+        # Disable the heads_to_fetch verb
+        verb = 'Branch.heads_to_fetch'
+        self.disable_verb(verb)
+        self.reset_smart_call_log()
+        result = branch.heads_to_fetch()
+        self.assertEqual((set(['tip']), set(['rev-1', 'rev-2'])), result)
+        self.assertEqual(
+            ['Branch.last_revision_info', 'Branch.get_tags_bytes'],
+            [call.call.method for call in self.hpss_calls])
+
+
 class TestBranchLastRevisionInfo(RemoteBranchTestCase):
 
     def test_empty_branch(self):

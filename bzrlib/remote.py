@@ -2194,6 +2194,19 @@ class RemoteBranchFormat(branch.BranchFormat):
         self._ensure_real()
         return self._custom_format.supports_set_append_revisions_only()
 
+    def _use_default_local_heads_to_fetch(self):
+        # If the branch format is a metadir format *and* its heads_to_fetch
+        # implementation is not overridden vs the base class, we can use the
+        # base class logic rather than use the heads_to_fetch RPC.  This is
+        # usually cheaper in terms of net round trips, as the last-revision and
+        # tags info fetched is cached and would be fetched anyway.
+        self._ensure_real()
+        if isinstance(self._custom_format, branch.BranchFormatMetadir):
+            branch_class = self._custom_format._branch_class()
+            heads_to_fetch_impl = branch_class.heads_to_fetch.im_func
+            if heads_to_fetch_impl is branch.Branch.heads_to_fetch.im_func:
+                return True
+        return False
 
 class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     """Branch stored on a server accessed by HPSS RPC.
@@ -2780,6 +2793,33 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
     def set_push_location(self, location):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
+
+    def heads_to_fetch(self):
+        if self._format._use_default_local_heads_to_fetch():
+            # We recognise this format, and its heads-to-fetch implementation
+            # is the default one (tip + tags).  In this case it's cheaper to
+            # just use the default implementation rather than a special RPC as
+            # the tip and tags data is cached.
+            return branch.Branch.heads_to_fetch(self)
+        medium = self._client._medium
+        if medium._is_remote_before((2, 4)):
+            return self._vfs_heads_to_fetch()
+        try:
+            return self._rpc_heads_to_fetch()
+        except errors.UnknownSmartMethod:
+            medium._remember_remote_is_before((2, 4))
+            return self._vfs_heads_to_fetch()
+
+    def _rpc_heads_to_fetch(self):
+        response = self._call('Branch.heads_to_fetch', self._remote_path())
+        if len(response) != 2:
+            raise errors.UnexpectedSmartServerResponse(response)
+        must_fetch, if_present_fetch = response
+        return set(must_fetch), set(if_present_fetch)
+
+    def _vfs_heads_to_fetch(self):
+        self._ensure_real()
+        return self._real_branch.heads_to_fetch()
 
 
 class RemoteConfig(object):

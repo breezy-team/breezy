@@ -44,6 +44,10 @@ Improvements
   the dirstate file to be rebuilt, rather than using a ``bzr checkout``
   workaround. (John Arbash Meinel)
 
+* Added a ``Branch.heads_to_fetch`` RPC to the smart server protocol.
+  This allows formats from plugins (such as looms) to efficiently tell the
+  client which revisions need to be fetched.  (Andrew Bennetts)
+
 * Branching, merging and pulling a branch now copies revisions named in
   tags, not just the tag metadata.  (Andrew Bennetts, #309682)
   
@@ -133,6 +137,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Added ``Branch.heads_to_fetch`` method.  Implementions of the Branch API
+  must now inherit or implement this method.  (Andrew Bennetts, #721328)
+  
 * Added ``bzrlib.mergetools`` module with helper functions for working with
   the list of external merge tools. (Gordon Tyler, #489915)
 
