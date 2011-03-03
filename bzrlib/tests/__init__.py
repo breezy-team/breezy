@@ -3887,6 +3887,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_whitebox',
         'bzrlib.tests.test_win32utils',
         'bzrlib.tests.test_workingtree',
+        'bzrlib.tests.test_workingtree_2',
         'bzrlib.tests.test_workingtree_4',
         'bzrlib.tests.test_wsgi',
         'bzrlib.tests.test_xml',

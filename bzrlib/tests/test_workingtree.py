@@ -15,8 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
-
 from bzrlib import (
     bzrdir,
     conflicts,
@@ -297,36 +295,6 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         tree = workingtree.WorkingTreeFormat3().initialize(control)
         tree._transport.delete("pending-merges")
         self.assertEqual([], tree.get_parent_ids())
-
-
-class TestFormat2WorkingTree(TestCaseWithTransport):
-    """Tests that are specific to format 2 trees."""
-
-    def create_format2_tree(self, url):
-        return self.make_branch_and_tree(
-            url, format=bzrdir.BzrDirFormat6())
-
-    def test_conflicts(self):
-        # test backwards compatability
-        tree = self.create_format2_tree('.')
-        self.assertRaises(errors.UnsupportedOperation, tree.set_conflicts,
-                          None)
-        file('lala.BASE', 'wb').write('labase')
-        expected = conflicts.ContentsConflict('lala')
-        self.assertEqual(list(tree.conflicts()), [expected])
-        file('lala', 'wb').write('la')
-        tree.add('lala', 'lala-id')
-        expected = conflicts.ContentsConflict('lala', file_id='lala-id')
-        self.assertEqual(list(tree.conflicts()), [expected])
-        file('lala.THIS', 'wb').write('lathis')
-        file('lala.OTHER', 'wb').write('laother')
-        # When "text conflict"s happen, stem, THIS and OTHER are text
-        expected = conflicts.TextConflict('lala', file_id='lala-id')
-        self.assertEqual(list(tree.conflicts()), [expected])
-        os.unlink('lala.OTHER')
-        os.mkdir('lala.OTHER')
-        expected = conflicts.ContentsConflict('lala', file_id='lala-id')
-        self.assertEqual(list(tree.conflicts()), [expected])
 
 
 class InstrumentedTree(object):

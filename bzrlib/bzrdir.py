@@ -1080,7 +1080,7 @@ class BzrDirPreSplitOut(BzrDir):
         return result
 
     def _init_workingtree(self):
-        from bzrlib.workingtree import WorkingTreeFormat2
+        from bzrlib.workingtree_2 import WorkingTreeFormat2
         try:
             return WorkingTreeFormat2().initialize(self)
         except errors.NotLocalUrl:
@@ -1159,7 +1159,7 @@ class BzrDirPreSplitOut(BzrDir):
         if not create_tree_if_local:
             raise errors.MustHaveWorkingTree(
                 self._format, self.root_transport.base)
-        from bzrlib.workingtree import WorkingTreeFormat2
+        from bzrlib.workingtree_2 import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
         try:
@@ -1216,7 +1216,7 @@ class BzrDir5(BzrDirPreSplitOut):
     def open_workingtree(self, _unsupported=False,
             recommend_upgrade=True):
         """See BzrDir.create_workingtree."""
-        from bzrlib.workingtree import WorkingTreeFormat2
+        from bzrlib.workingtree_2 import WorkingTreeFormat2
         wt_format = WorkingTreeFormat2()
         # we don't warn here about upgrades; that ought to be handled for the
         # bzrdir as a whole
@@ -1243,7 +1243,7 @@ class BzrDir6(BzrDirPreSplitOut):
         """See BzrDir.create_workingtree."""
         # we don't warn here about upgrades; that ought to be handled for the
         # bzrdir as a whole
-        from bzrlib.workingtree import WorkingTreeFormat2
+        from bzrlib.workingtree_2 import WorkingTreeFormat2
         return WorkingTreeFormat2().open(self, _found=True)
 
 
