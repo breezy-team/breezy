@@ -44,6 +44,10 @@ Improvements
   the dirstate file to be rebuilt, rather than using a ``bzr checkout``
   workaround. (John Arbash Meinel)
 
+* Added a ``Branch.heads_to_fetch`` RPC to the smart server protocol.
+  This allows formats from plugins (such as looms) to efficiently tell the
+  client which revisions need to be fetched.  (Andrew Bennetts)
+
 * Branching, merging and pulling a branch now copies revisions named in
   tags, not just the tag metadata.  (Andrew Bennetts, #309682)
   
@@ -54,6 +58,10 @@ Bug Fixes
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* A MemoryError thrown on the server during a remote operation will now be
+  usefully reported, and other unexpected errors will include the class name.
+  (Martin [gz], #722416)
 
 * ``bzr annotate -r-1 file`` will now properly annotate a deleted file.
   (Andrew King, #537442)
@@ -85,6 +93,10 @@ Bug Fixes
 
 * ``bzr serve`` no longer crashes when a server_started hook is installed and
   IPv6 support is available on the system. (Jelmer Vernooij, #293697)
+
+* ``bzr tags`` will no longer choke on branches with ghost revisions in
+  their mainline and tags on revisions not in the branch ancestry. 
+  (Jelmer Vernooij, #397556)
 
 * ``bzr whoami`` will now display an error if both a new identity and
   ``--email`` were specified. (Jelmer Vernooij, #680449)
@@ -125,6 +137,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Added ``Branch.heads_to_fetch`` method.  Implementions of the Branch API
+  must now inherit or implement this method.  (Andrew Bennetts, #721328)
+  
 * Added ``bzrlib.mergetools`` module with helper functions for working with
   the list of external merge tools. (Gordon Tyler, #489915)
 
@@ -146,13 +161,30 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
+* ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
+  Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and
+  ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_lazy_revspec``
+  instead.  (Jelmer Vernooij, #721971)
+
 * ``BzrDirFormat`` has a new attribute ``fixed_components`` that
   indicates whether the components of the bzrdir can be upgraded
   independent of the ``BzrDir``. (Jelmer Vernooij)
 
+* ``Converter`` has been moved from ``bzrlib.bzrdir`` to
+  ``bzrlib.controldir``. (Jelmer Vernooij)
+
+* Repository formats can now provide
+  ``_get_extra_interrepo_test_combinations`` in the same module 
+  to provide extra test combinations for ``bzrlib.tests.per_repository``.
+  (Jelmer Vernooij)
+
 * Repository formats should now be registered on the format registry
   (``bzrlib.repository.format_registry``) rather than using the class
   methods on ``RepositoryFormat``. (Jelmer Vernooij)
+
+* Repository formats have a new method ``is_deprecated`` that
+  implementations can override to return True to trigger a deprecation
+  warning. (Jelmer Vernooij)
 
 * The ``revision_id`` parameter of
   ``Repository.search_missing_revision_ids`` and

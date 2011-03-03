@@ -1531,8 +1531,28 @@ class Branch(controldir.ControlComponent):
         else:
             raise AssertionError("invalid heads: %r" % (heads,))
 
+    def heads_to_fetch(self):
+        """Return the heads that must and that should be fetched to copy this
+        branch into another repo.
 
-class BranchFormat(object):
+        :returns: a 2-tuple of (must_fetch, if_present_fetch).  must_fetch is a
+            set of heads that must be fetched.  if_present_fetch is a set of
+            heads that must be fetched if present, but no error is necessary if
+            they are not present.
+        """
+        # For bzr native formats must_fetch is just the tip, and if_present_fetch
+        # are the tags.
+        must_fetch = set([self.last_revision()])
+        try:
+            if_present_fetch = set(self.tags.get_reverse_tag_dict())
+        except errors.TagsNotSupported:
+            if_present_fetch = set()
+        must_fetch.discard(_mod_revision.NULL_REVISION)
+        if_present_fetch.discard(_mod_revision.NULL_REVISION)
+        return must_fetch, if_present_fetch
+
+
+class BranchFormat(controldir.ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:
@@ -2356,56 +2376,12 @@ class BranchReferenceFormat(BranchFormat):
         return result
 
 
-class BranchFormatRegistry(registry.FormatRegistry):
+class BranchFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Branch format registry."""
 
     def __init__(self, other_registry=None):
         super(BranchFormatRegistry, self).__init__(other_registry)
         self._default_format = None
-        self._extra_formats = []
-
-    def register(self, format):
-        """Register a new branch format."""
-        super(BranchFormatRegistry, self).register(
-            format.get_format_string(), format)
-
-    def remove(self, format):
-        """Remove a registered branch format."""
-        super(BranchFormatRegistry, self).remove(
-            format.get_format_string())
-
-    def register_extra(self, format):
-        """Register a branch format that can not be part of a metadir.
-
-        This is mainly useful to allow custom branch formats, such as
-        older Bazaar formats and foreign formats, to be tested
-        """
-        self._extra_formats.append(registry._ObjectGetter(format))
-        network_format_registry.register(
-            format.network_name(), format.__class__)
-
-    def register_extra_lazy(self, module_name, member_name):
-        """Register a branch format lazily.
-        """
-        self._extra_formats.append(
-            registry._LazyObjectGetter(module_name, member_name))
-
-    @classmethod
-    def unregister_extra(self, format):
-        self._extra_formats.remove(registry._ObjectGetter(format))
-
-    def _get_all(self):
-        result = []
-        for name, fmt in self.iteritems():
-            if callable(fmt):
-                fmt = fmt()
-            result.append(fmt)
-        for objgetter in self._extra_formats:
-            fmt = objgetter.get_obj()
-            if callable(fmt):
-                fmt = fmt()
-            result.append(fmt)
-        return result
 
     def set_default(self, format):
         self._default_format = format
@@ -2427,6 +2403,7 @@ format_registry = BranchFormatRegistry(network_format_registry)
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
+__format4 = BzrBranchFormat4()
 __format5 = BzrBranchFormat5()
 __format6 = BzrBranchFormat6()
 __format7 = BzrBranchFormat7()
@@ -2437,7 +2414,8 @@ format_registry.register(__format6)
 format_registry.register(__format7)
 format_registry.register(__format8)
 format_registry.set_default(__format7)
-format_registry.register_extra(BzrBranchFormat4())
+format_registry.register_extra(__format4)
+network_format_registry.register(__format4.network_name(), __format4)
 
 
 class BranchWriteLockResult(LogicalLockResult):
@@ -3139,7 +3117,10 @@ class BzrBranch8(BzrBranch5):
         try:
             index = self._partial_revision_history_cache.index(revision_id)
         except ValueError:
-            self._extend_partial_history(stop_revision=revision_id)
+            try:
+                self._extend_partial_history(stop_revision=revision_id)
+            except errors.RevisionNotPresent, e:
+                raise errors.GhostRevisionsHaveNoRevno(revision_id, e.revision_id)
             index = len(self._partial_revision_history_cache) - 1
             if self._partial_revision_history_cache[index] != revision_id:
                 raise errors.NoSuchRevision(self, revision_id)

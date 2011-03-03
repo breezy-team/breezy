@@ -2733,6 +2733,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         return result
 
     def _warn_if_deprecated(self, branch=None):
+        if not self._format.is_deprecated():
+            return
         global _deprecation_warning_done
         if _deprecation_warning_done:
             return
@@ -2917,60 +2919,13 @@ class MetaDirVersionedFileRepository(MetaDirRepository):
             control_files)
 
 
-class RepositoryFormatRegistry(registry.FormatRegistry):
+class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Repository format registry."""
-
-    def __init__(self, other_registry=None):
-        super(RepositoryFormatRegistry, self).__init__(other_registry)
-        self._extra_formats = []
-
-    def register(self, format):
-        """Register a new repository format."""
-        super(RepositoryFormatRegistry, self).register(
-            format.get_format_string(), format)
-
-    def remove(self, format):
-        """Remove a registered repository format."""
-        super(RepositoryFormatRegistry, self).remove(
-            format.get_format_string())
-
-    def register_extra(self, format):
-        """Register a repository format that can not be used in a metadir.
-
-        This is mainly useful to allow custom repository formats, such as older
-        Bazaar formats and foreign formats, to be tested.
-        """
-        self._extra_formats.append(registry._ObjectGetter(format))
-
-    def remove_extra(self, format):
-        """Remove an extra repository format.
-        """
-        self._extra_formats.remove(registry._ObjectGetter(format))
-
-    def register_extra_lazy(self, module_name, member_name):
-        """Register a repository format lazily.
-        """
-        self._extra_formats.append(
-            registry._LazyObjectGetter(module_name, member_name))
 
     def get_default(self):
         """Return the current default format."""
         from bzrlib import bzrdir
         return bzrdir.format_registry.make_bzrdir('default').repository_format
-
-    def _get_extra(self):
-        result = []
-        for getter in self._extra_formats:
-            f = getter.get_obj()
-            if callable(f):
-                f = f()
-            result.append(f)
-        return result
-
-    def _get_all(self):
-        """Return all repository formats, even those not usable in metadirs.
-        """
-        return [self.get(k) for k in self.keys()] + self._get_extra()
 
 
 network_format_registry = registry.FormatRegistry()
@@ -2993,7 +2948,7 @@ can be called to obtain one.
 #####################################################################
 # Repository Formats
 
-class RepositoryFormat(object):
+class RepositoryFormat(controldir.ControlComponentFormat):
     """A repository format.
 
     Formats provide four things:
@@ -3164,6 +3119,14 @@ class RepositoryFormat(object):
         some other features depending on the reason for not being supported.
         """
         return True
+
+    def is_deprecated(self):
+        """Is this format deprecated?
+
+        Deprecated formats may trigger a user-visible warning recommending
+        the user to upgrade. They are still fully supported.
+        """
+        return False
 
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.
@@ -4586,4 +4549,6 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
     except StopIteration:
         # No more history
         return
+
+
 

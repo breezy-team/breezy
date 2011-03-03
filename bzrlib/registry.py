@@ -35,6 +35,10 @@ class _ObjectGetter(object):
     def __init__(self, obj):
         self._obj = obj
 
+    def get_module(self):
+        """Get the module the object was loaded from."""
+        return self._obj.__module__
+
     def get_obj(self):
         """Get the object that was saved at creation time"""
         return self._obj
@@ -53,6 +57,11 @@ class _LazyObjectGetter(_ObjectGetter):
         self._member_name = member_name
         self._imported = False
         super(_LazyObjectGetter, self).__init__(None)
+
+    def get_module(self):
+        """Get the module the referenced object will be loaded from.
+        """
+        return self._module_name
 
     def get_obj(self):
         """Get the referenced object.
@@ -163,6 +172,14 @@ class Registry(object):
         """
         return self._dict[self._get_key_or_default(key)].get_obj()
 
+    def _get_module(self, key):
+        """Return the module the object will be or was loaded from.
+
+        :param key: The key to obtain the module for.
+        :return: The name of the module
+        """
+        return self._dict[key].get_module()
+
     def get_prefix(self, fullname):
         """Return an object whose key is a prefix of the supplied value.
 
@@ -257,6 +274,11 @@ class FormatRegistry(Registry):
         if self._other_registry is not None:
             self._other_registry.register_lazy(key, module_name, member_name,
                 help=help, info=info, override_existing=override_existing)
+
+    def remove(self, key):
+        Registry.remove(self, key)
+        if self._other_registry is not None:
+            self._other_registry.remove(key)
 
     def get(self, format_string):
         r = Registry.get(self, format_string)
