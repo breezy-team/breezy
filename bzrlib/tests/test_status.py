@@ -140,7 +140,7 @@ class TestHooks(TestCaseWithTransport):
     def test_constructor(self):
         """Check that creating a StatusHooks instance has the right defaults.
         """
-        hooks = _mod_status.StatusHooks()
+        hooks = _mod_status.StatusHooks("bzrlib.tests.test_status", "TestHooks.hooks")
         self.assertTrue("post_status" in hooks, "post_status not in %s" % hooks)
         self.assertTrue("pre_status" in hooks, "pre_status not in %s" % hooks)
 

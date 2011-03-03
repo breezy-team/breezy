@@ -39,7 +39,7 @@ from bzrlib.symbol_versioning import (
 class TestHooks(tests.TestCase):
 
     def test_create_hook_first(self):
-        hooks = Hooks()
+        hooks = Hooks("bzrlib.tests.test_hooks", "some_hooks")
         doc = ("Invoked after changing the tip of a branch object. Called with"
             "a bzrlib.branch.PostChangeBranchTipParams object")
         hook = HookPoint("post_tip_change", doc, (0, 15), None)
@@ -47,7 +47,7 @@ class TestHooks(tests.TestCase):
         self.assertEqual(hook, hooks['post_tip_change'])
 
     def test_create_hook_name_collision_errors(self):
-        hooks = Hooks()
+        hooks = Hooks("bzrlib.tests.test_hooks", "some_hooks")
         doc = ("Invoked after changing the tip of a branch object. Called with"
             "a bzrlib.branch.PostChangeBranchTipParams object")
         hook = HookPoint("post_tip_change", doc, (0, 15), None)
@@ -60,7 +60,7 @@ class TestHooks(tests.TestCase):
         """docs() should return something reasonable about the Hooks."""
         class MyHooks(Hooks):
             pass
-        hooks = MyHooks()
+        hooks = MyHooks("bzrlib.tests.test_hooks", "some_hooks")
         hooks['legacy'] = []
         hook1 = HookPoint('post_tip_change',
             "Invoked after the tip of a branch changes. Called with "
@@ -99,18 +99,18 @@ class TestHooks(tests.TestCase):
             "signal that a tip change is not permitted.\n", hooks.docs())
 
     def test_install_named_hook_raises_unknown_hook(self):
-        hooks = Hooks()
+        hooks = Hooks("bzrlib.tests.test_hooks", "some_hooks")
         self.assertRaises(errors.UnknownHook, hooks.install_named_hook, 'silly',
                           None, "")
 
     def test_install_named_hook_appends_known_hook(self):
-        hooks = Hooks()
+        hooks = Hooks("bzrlib.tests.test_hooks", "some_hooks")
         hooks['set_rh'] = []
         hooks.install_named_hook('set_rh', None, "demo")
         self.assertEqual(hooks['set_rh'], [None])
 
     def test_install_named_hook_and_retrieve_name(self):
-        hooks = Hooks()
+        hooks = Hooks("bzrlib.tests.test_hooks", "somehooks")
         hooks['set_rh'] = []
         hooks.install_named_hook('set_rh', None, "demo")
         self.assertEqual("demo", hooks.get_hook_name(None))
@@ -134,7 +134,7 @@ class TestHooks(tests.TestCase):
     set_rh = lambda: None
 
     def test_install_named_hook_lazy(self):
-        hooks = Hooks()
+        hooks = Hooks("bzrlib.tests.hooks", "some_hooks")
         hooks['set_rh'] = HookPoint("set_rh", "doc", (0, 15), None)
         hooks.install_named_hook_lazy('set_rh', 'bzrlib.tests.test_hooks',
             'TestHooks.set_rh', "demo")
@@ -143,7 +143,7 @@ class TestHooks(tests.TestCase):
     def test_install_named_hook_lazy_old(self):
         # An exception is raised if a lazy hook is raised for
         # an old style hook point.
-        hooks = Hooks()
+        hooks = Hooks("bzrlib.tests.hooks", "some_hooks")
         hooks['set_rh'] = []
         self.assertRaises(errors.UnsupportedOperation,
             hooks.install_named_hook_lazy,
@@ -228,7 +228,7 @@ class TestHookRegistry(tests.TestCase):
                 "The factory(%r) for %r is not callable" % (factory, key))
             obj = known_hooks_key_to_object(key)
             self.assertIsInstance(obj, Hooks)
-            new_hooks = factory()
+            new_hooks = factory(key[0], key[1])
             self.assertIsInstance(obj, Hooks)
             self.assertEqual(type(obj), type(new_hooks))
             self.assertEqual("No hook name", new_hooks.get_hook_name(None))

@@ -30,7 +30,8 @@ class TestHooks(tests.TestCase):
     def test_constructor(self):
         """Check that creating a MutableTreeHooks instance has the right
         defaults."""
-        hooks = mutabletree.MutableTreeHooks()
+        hooks = mutabletree.MutableTreeHooks(
+            "bzrlib.tests.mutable_tree", "MutableTree.hooks")
         self.assertTrue("start_commit" in hooks,
                         "start_commit not in %s" % hooks)
         self.assertTrue("post_commit" in hooks,
