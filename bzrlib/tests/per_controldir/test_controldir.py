@@ -1504,7 +1504,7 @@ class TestControlDir(TestCaseWithControlDir):
             # (we force the latest known format as downgrades may not be
             # available
             self.assertTrue(isinstance(dir._format.get_converter(
-                format=dir._format), bzrdir.Converter))
+                format=dir._format), controldir.Converter))
         dir.needs_format_conversion(
             controldir.ControlDirFormat.get_default_format())
 

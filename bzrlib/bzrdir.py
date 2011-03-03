@@ -2147,23 +2147,7 @@ BzrDirFormat.register_format(__default_format)
 controldir.ControlDirFormat._default_format = __default_format
 
 
-class Converter(object):
-    """Converts a disk format object from one format to another."""
-
-    def convert(self, to_convert, pb):
-        """Perform the conversion of to_convert, giving feedback via pb.
-
-        :param to_convert: The disk object to convert.
-        :param pb: a progress bar to use for progress information.
-        """
-
-    def step(self, message):
-        """Update the pb by a step."""
-        self.count +=1
-        self.pb.update(message, self.count, self.total)
-
-
-class ConvertBzrDir4To5(Converter):
+class ConvertBzrDir4To5(controldir.Converter):
     """Converts format 4 bzr dirs to format 5."""
 
     def __init__(self):
@@ -2435,7 +2419,7 @@ class ConvertBzrDir4To5(Converter):
         return order
 
 
-class ConvertBzrDir5To6(Converter):
+class ConvertBzrDir5To6(controldir.Converter):
     """Converts format 5 bzr dirs to format 6."""
 
     def convert(self, to_convert, pb):
@@ -2478,7 +2462,7 @@ class ConvertBzrDir5To6(Converter):
             mode=self.bzrdir._get_file_mode())
 
 
-class ConvertBzrDir6ToMeta(Converter):
+class ConvertBzrDir6ToMeta(controldir.Converter):
     """Converts format 6 bzr dirs to metadirs."""
 
     def convert(self, to_convert, pb):
@@ -2601,7 +2585,7 @@ class ConvertBzrDir6ToMeta(Converter):
             self.file_mode)
 
 
-class ConvertMetaToMeta(Converter):
+class ConvertMetaToMeta(controldir.Converter):
     """Converts the components of metadirs."""
 
     def __init__(self, target_format):
