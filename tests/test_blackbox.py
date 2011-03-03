@@ -76,7 +76,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(output, "a\n")
 
     def test_init(self):
-        self.run_bzr("init-repo --git repo") 
+        self.run_bzr("init --git repo") 
 
     def test_info_verbose(self):
         self.simple_commit()
@@ -133,7 +133,7 @@ class TestGitBlackBox(ExternalBase):
         self.assertEquals(error + output, 'Created tag bar.\n')
 
     def test_init_repo(self):
-        output, error = self.run_bzr(["init-repo", "--git", "bla.git"])
+        output, error = self.run_bzr(["init", "--git", "bla.git"])
         self.assertEquals(error, '')
-        self.assertEquals(output, 'Unshared repository with trees (format: git)\nLocation:\n  repository: bla.git\n')
+        self.assertEquals(output, 'Created a standalone tree (format: git)\n')
 

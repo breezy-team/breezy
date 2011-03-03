@@ -207,7 +207,7 @@ class LocalGitDir(GitDir):
                 ret.append(self.open_branch(name=name))
         return ret
 
-    def open_repository(self, shared=False):
+    def open_repository(self):
         """'open' a repository for this dir."""
         return self._gitrepository_class(self, self._lockfiles)
 
@@ -231,6 +231,9 @@ class LocalGitDir(GitDir):
         raise bzr_errors.NoWorkingTree(loc)
 
     def create_repository(self, shared=False):
+        from bzrlib.plugins.git.repository import GitRepositoryFormat
+        if shared:
+            raise bzr_errors.IncompatibleFormat(GitRepositoryFormat(), self._format)
         return self.open_repository()
 
     def create_branch(self, name=None):
@@ -269,6 +272,9 @@ class LocalGitDir(GitDir):
         repository.
         """
         return self.open_repository()
+
+    def _find_or_create_repository(self, force_new_repo=None):
+        return self.create_repository(shared=False)
 
     def _find_creation_modes(self):
         """Determine the appropriate modes for files and directories.
