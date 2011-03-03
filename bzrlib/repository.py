@@ -2919,60 +2919,13 @@ class MetaDirVersionedFileRepository(MetaDirRepository):
             control_files)
 
 
-class RepositoryFormatRegistry(registry.FormatRegistry):
+class RepositoryFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Repository format registry."""
-
-    def __init__(self, other_registry=None):
-        super(RepositoryFormatRegistry, self).__init__(other_registry)
-        self._extra_formats = []
-
-    def register(self, format):
-        """Register a new repository format."""
-        super(RepositoryFormatRegistry, self).register(
-            format.get_format_string(), format)
-
-    def remove(self, format):
-        """Remove a registered repository format."""
-        super(RepositoryFormatRegistry, self).remove(
-            format.get_format_string())
-
-    def register_extra(self, format):
-        """Register a repository format that can not be used in a metadir.
-
-        This is mainly useful to allow custom repository formats, such as older
-        Bazaar formats and foreign formats, to be tested.
-        """
-        self._extra_formats.append(registry._ObjectGetter(format))
-
-    def remove_extra(self, format):
-        """Remove an extra repository format.
-        """
-        self._extra_formats.remove(registry._ObjectGetter(format))
-
-    def register_extra_lazy(self, module_name, member_name):
-        """Register a repository format lazily.
-        """
-        self._extra_formats.append(
-            registry._LazyObjectGetter(module_name, member_name))
 
     def get_default(self):
         """Return the current default format."""
         from bzrlib import bzrdir
         return bzrdir.format_registry.make_bzrdir('default').repository_format
-
-    def _get_extra(self):
-        result = []
-        for getter in self._extra_formats:
-            f = getter.get_obj()
-            if callable(f):
-                f = f()
-            result.append(f)
-        return result
-
-    def _get_all(self):
-        """Return all repository formats, even those not usable in metadirs.
-        """
-        return [self.get(k) for k in self.keys()] + self._get_extra()
 
 
 network_format_registry = registry.FormatRegistry()
@@ -2995,7 +2948,7 @@ can be called to obtain one.
 #####################################################################
 # Repository Formats
 
-class RepositoryFormat(object):
+class RepositoryFormat(controldir.ControlComponentFormat):
     """A repository format.
 
     Formats provide four things:
@@ -3065,6 +3018,8 @@ class RepositoryFormat(object):
     # Does this repository format escape funky characters, or does it create files with
     # similar names as the versioned files in its contents on disk ?
     supports_funky_characters = True
+    # Does this repository format support leaving locks?
+    supports_leaving_lock = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -3217,6 +3172,7 @@ class MetaDirRepositoryFormat(RepositoryFormat):
     rich_root_data = False
     supports_tree_reference = False
     supports_external_lookups = False
+    supports_leaving_lock = True
 
     @property
     def _matchingbzrdir(self):
@@ -4593,4 +4549,6 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
     except StopIteration:
         # No more history
         return
+
+
 

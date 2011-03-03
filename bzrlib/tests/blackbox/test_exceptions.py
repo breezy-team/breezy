@@ -81,8 +81,8 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         super(TestDeprecationWarning, self).setUp()
         self.addCleanup(repository.format_registry.remove,
             TestObsoleteRepoFormat)
-        self.addCleanup(controldir.format_registry.remove, "testobsolete")
         repository.format_registry.register(TestObsoleteRepoFormat)
+        self.addCleanup(controldir.format_registry.remove, "testobsolete")
         bzrdir.register_metadir(controldir.format_registry, "testobsolete",
             "bzrlib.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
             branch_format='bzrlib.branch.BzrBranchFormat7',

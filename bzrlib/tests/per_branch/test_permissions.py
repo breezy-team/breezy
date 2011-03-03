@@ -90,10 +90,10 @@ class TestPermissions(tests.TestCaseWithTransport):
                                           ' permission logic')
         if sys.platform == 'win32':
             raise tests.TestNotApplicable('chmod has no effect on win32')
-        elif sys.platform == 'darwin' or sys.platform.startswith('freebsd'):
-            # OS X (and FreeBSD) create temp dirs with the 'wheel' group, which
-            # users are not likely to be in, and this prevents us from setting
-            # the sgid bit
+        elif sys.platform == 'darwin' or 'freebsd' in sys.platform:
+            # FreeBSD-based platforms create temp dirs with the 'wheel' group,
+            # which users are not likely to be in, and this prevents us
+            # from setting the sgid bit
             os.chown(self.test_dir, os.getuid(), os.getgid())
         # also, these are BzrBranch format specific things..
         t = self.make_branch_and_tree('.')

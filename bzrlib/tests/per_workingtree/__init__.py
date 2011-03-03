@@ -120,7 +120,7 @@ def load_tests(standard_tests, module, loader):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        workingtree.WorkingTreeFormat.get_formats()
+        workingtree.format_registry._get_all()
         )
 
     # add the tests for the sub modules
