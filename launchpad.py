@@ -21,7 +21,10 @@
 import os
 
 from bzrlib.config import config_dir
-from bzrlib.trace import mutter
+from bzrlib.trace import (
+    mutter,
+    note,
+    )
 
 try:
     from launchpadlib.launchpad import Launchpad
@@ -83,3 +86,33 @@ def debian_bugs_for_ubuntu_bug(bug_id):
         mutter(str(e))
         return []
     return []
+
+
+def get_ubuntu_upstream_branch_url(package, distroseries):
+    """Return the upstream branch URL based on a package in Ubuntu.
+
+    :param package: Source package name
+    :param distroseries: Distroseries name
+    """
+    if not HAVE_LPLIB:
+        return None
+    lp = _get_launchpad()
+    if lp is None:
+        return None
+    ubuntu = lp.distributions["ubuntu"]
+    distroseries = ubuntu.getSeries(name_or_version=distroseries)
+    sourcepackage = distroseries.getSourcePackage(name=package)
+    if sourcepackage is None:
+        note("Ubuntu: Source package %s not found in %s" % (package, sourcepackage))
+        return None
+    productseries = sourcepackage.productseries
+    if productseries is None:
+        note("Ubuntu: Source package %s in %s not linked to a product series" % (
+            package, sourcepackage))
+        return None
+    branch = productseries.branch
+    if branch is None:
+        note(("Ubuntu: upstream product series %s for source package %s does not have "
+             "a branch") % (distroseries, package))
+        return None
+    return branch.bzr_identity
