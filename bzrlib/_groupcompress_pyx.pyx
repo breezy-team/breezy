@@ -377,8 +377,8 @@ cdef object _apply_delta(char *source, Py_ssize_t source_size,
                 # Copy instruction
                 data = _decode_copy_instruction(data, cmd, &cp_off, &cp_size)
                 if (cp_off + cp_size < cp_size or
-                    cp_off + cp_size > source_size or
-                    cp_size > size):
+                    cp_off + cp_size > <unsigned int>source_size or
+                    cp_size > <unsigned int>size):
                     failed = 1
                     break
                 memcpy(out, source + cp_off, cp_size)
