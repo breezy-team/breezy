@@ -228,8 +228,7 @@ class UpstreamBranchSource(UpstreamSource):
         assert isinstance(version, str)
         if version in self.upstream_revision_map:
              return self.upstream_revision_map[version]
-        revspec = get_export_upstream_revision(self.config,
-            version=version)
+        revspec = get_export_upstream_revision(self.config, version=version)
         if revspec is not None:
             return RevisionSpec.from_string(
                 revspec).as_revision_id(self.upstream_branch)

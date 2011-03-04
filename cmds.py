@@ -47,6 +47,7 @@ from bzrlib.errors import (
     NoWorkingTree,
     )
 from bzrlib.option import Option
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib.tag import _merge_tags_if_possible
 from bzrlib.trace import note, warning
 from bzrlib.workingtree import WorkingTree
@@ -63,7 +64,6 @@ from bzrlib.plugins.builddeb.builder import (
 from bzrlib.plugins.builddeb.config import (
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
-    BUILD_TYPE_NORMAL,
     BUILD_TYPE_SPLIT,
     )
 from bzrlib.plugins.builddeb.errors import (
@@ -306,21 +306,19 @@ class cmd_builddeb(Command):
             source = True
         return branch, build_options, source
 
-    def _get_upstream_branch(self, build_type, export_upstream,
-            export_upstream_revision, config, version):
+    def _get_upstream_branch(self, export_upstream, export_upstream_revision,
+            config, version):
         upstream_branch = Branch.open(export_upstream)
         upstream_branch.lock_read()
         try:
-            upstream_source = UpstreamBranchSource(upstream_branch,
-                config=config)
-            if version is None:
-                upstream_revision = upstream_branch.last_revision()
-            else:
-                upstream_revision = upstream_source.version_as_revision(
-                    None, version.upstream_version.encode("utf-8"))
+            upstream_source = UpstreamBranchSource(upstream_branch, config=config)
+            if export_upstream_revision:
+                revspec = RevisionSpec.from_string(export_upstream_revision)
+                revid = revspec.as_revision_id(upstream_branch)
+                upstream_source.upstream_revision_map[version.encode("utf-8")] = revid
         finally:
             upstream_branch.unlock()
-        return (upstream_branch, upstream_revision)
+        return upstream_source
 
     def run(self, branch_or_build_options_list=None, verbose=False,
             working_tree=False,
@@ -384,16 +382,17 @@ class cmd_builddeb(Command):
                 AptSource(),
                 ]
             if build_type == BUILD_TYPE_MERGE:
-                if export_upstream is None:
+                if export_upstream is None and config.export_upstream:
                     export_upstream = config.export_upstream
+                    warning("The 'export-upstream' configuration option is deprecated. "
+                            "Use 'upstream-branch' instead.")
+                if export_upstream is None and config.upstream_branch:
+                    export_upstream = config.upstream_branch
                 if export_upstream:
-                    upstream_branch, upstream_revision = self._get_upstream_branch(
-                        build_type, export_upstream, export_upstream_revision, config,
-                        changelog.version)
-                    upstream_sources.append(UpstreamBranchSource(
-                            upstream_branch,
-                            {changelog.version.upstream_version:
-                            upstream_revision}))
+                    upstream_branch_source = self._get_upstream_branch(
+                        export_upstream, export_upstream_revision, config,
+                        changelog.version.upstream_version)
+                    upstream_sources.append(upstream_branch_source)
             elif not native and config.upstream_branch is not None:
                 upstream_branch = Branch.open(config.upstream_branch)
                 upstream_sources.append(UpstreamBranchSource(upstream_branch))

@@ -95,10 +95,10 @@ Interaction with an upstream branch
 
 When the upstream source is in ``bazaar`` it is possible to have the
 ``.orig.tar.gz`` created by exporting the upstream branch. To do this set
-the ``export-upstream`` option. This only works only for merge mode. For
+the ``upstream-branch`` option. This only works only for merge mode. For
 normal mode use the ``merge-upstream`` command.
 
-  * ``export-upstream = path``
+  * ``upstream-branch = path``
 
     This option takes a path (remote or local) to a bzr branch that contains
     the upstream code. If this is set then the plugin will export the code
@@ -110,7 +110,7 @@ normal mode use the ``merge-upstream`` command.
     This sets the revision that the upstream code will be branched at. It takes
     the same revision spec as the normal --revision parameter. Use it to
     associate an upstream version number with a particular revision of the
-    upstream code. This has no effect if ``export-upstream`` is not set.
+    upstream code. This has no effect if ``upstream-branch`` is not set.
 
 
 Builders
