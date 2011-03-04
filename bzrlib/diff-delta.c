@@ -690,6 +690,7 @@ create_delta_index_from_delta(const struct source_info *src,
     struct delta_index *new_index;
     struct index_entry *entry, *entries;
 
+    assert(old_index != NULL);
     if (!src->buf || !src->size)
         return NULL;
     buffer = src->buf;
@@ -773,17 +774,18 @@ create_delta_index_from_delta(const struct source_info *src,
             break;
         }
     }
+    /* GZ 2011-03-04: What is 'something' exactly? If this an unrecoverable
+                      error perhaps it should be an assert? */
     if (data != top) {
         /* Something was wrong with this delta */
         free(entries);
-        return NULL;
+        return old_index;
     }
     if (num_entries == 0) {
         /** Nothing to index **/
         free(entries);
-        return NULL;
+        return old_index;
     }
-    assert(old_index != NULL);
     old_index->last_src = src;
     /* See if we can fill in these values into the holes in the array */
     entry = entries;
@@ -841,7 +843,7 @@ create_delta_index_from_delta(const struct source_info *src,
         new_index = create_index_from_old_and_new_entries(old_index,
             entry, num_entries);
     } else {
-        new_index = NULL;
+        new_index = old_index;
         // fprintf(stderr, "inserted %d without resizing\n", num_inserted);
     }
     free(entries);

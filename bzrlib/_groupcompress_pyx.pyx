@@ -164,10 +164,13 @@ cdef class DeltaIndex:
         src.buf = c_delta
         src.size = c_delta_size
         src.agg_offset = self._source_offset + unadded_bytes
+        assert src.buf and src.size and self._index
         with nogil:
             index = create_delta_index_from_delta(src, self._index)
+        if index == NULL:
+            raise MemoryError
         self._source_offset = src.agg_offset + src.size
-        if index != NULL:
+        if index != self._index:
             free_delta_index(self._index)
             self._index = index
 
