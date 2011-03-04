@@ -103,6 +103,9 @@ def get_ubuntu_upstream_branch_url(package, distroseries):
         return None
     ubuntu = lp.distributions["ubuntu"]
     distroseries = ubuntu.getSeries(name_or_version=distroseries)
+    if distroseries is None:
+        note("Ubuntu: No such distroseries %s" % distroseries)
+        return None
     sourcepackage = distroseries.getSourcePackage(name=package)
     if sourcepackage is None:
         note("Ubuntu: Source package %s not found in %s" % (package, sourcepackage))

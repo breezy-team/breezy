@@ -652,11 +652,6 @@ class cmd_merge_upstream(Command):
                 upstream_branch = Branch.open(config.upstream_branch)
             else:
                 upstream_branch = None
-            if upstream_branch is not None:
-                upstream_branch_source = UpstreamBranchSource(
-                    upstream_branch, config=config)
-            else:
-                upstream_branch_source = None
 
             (current_version, package, distribution, distribution_name,
              changelog, larstiq) = self._get_changelog_info(tree, last_version,
@@ -670,6 +665,19 @@ class cmd_merge_upstream(Command):
             if build_type == BUILD_TYPE_NATIVE:
                 raise BzrCommandError("Merge upstream in native mode is not "
                         "supported.")
+
+            if upstream_branch is None and distribution_name == "ubuntu":
+                from bzrlib.plugins.builddeb.launchpad import (
+                    get_ubuntu_upstream_branch_url,
+                    )
+                upstream_branch = get_ubuntu_upstream_branch_url(package, distribution)
+                note("Using upstream branch %s" % upstream_branch)
+
+            if upstream_branch is not None:
+                upstream_branch_source = UpstreamBranchSource(
+                    upstream_branch, config=config)
+            else:
+                upstream_branch_source = None
 
             if location is not None:
                 try:
@@ -694,8 +702,7 @@ class cmd_merge_upstream(Command):
                     raise BzrCommandError("merge-upstream takes only a "
                         "single --revision")
                 upstream_revspec = revision[0]
-                upstream_revision = upstream_revspec.as_revision_id(
-                    upstream_branch)
+                upstream_revision = upstream_revspec.as_revision_id(upstream_branch)
             else:
                 upstream_revision = None
 
