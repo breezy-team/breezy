@@ -360,3 +360,21 @@ class TestTagging(TestCaseWithTransport):
         self.assertEqual('', out)
         self.assertEqual('', err)
 
+    def test_tags_with_mainline_ghosts(self):
+        tree = self.make_branch_and_tree('tree1')
+        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.add('')
+        tree.commit('msg1', rev_id='rev1')
+        tree.commit('msg2', rev_id='rev2')
+        tree.branch.tags.set_tag('unknown', 'out-of-mainline')
+        tree.branch.tags.set_tag('ghost', 'spooky')
+        tree.branch.tags.set_tag('tag1', 'rev1')
+        tree.branch.tags.set_tag('tag2', 'rev2')
+
+        out, err = self.run_bzr('tags -d tree1', encoding='utf-8')
+        self.assertEqual(out,
+            'ghost                ?\n'
+            'tag1                 1\n'
+            'tag2                 2\n'
+            'unknown              ?\n')
+        self.assertEqual('', err)

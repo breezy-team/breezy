@@ -513,12 +513,12 @@ cdef _format_record(gc_chk_sha1_record *record):
         # %llu is what we really want, but unfortunately it was only added
         # in python 2.7... :(
         block_offset_str = str(record.block_offset)
-        value = PyString_FromFormat('%s %lu %lu %lu',
+        value = PyString_FromFormat('%s %u %u %u',
                                 PyString_AS_STRING(block_offset_str),
                                 record.block_length,
                                 record.record_start, record.record_end)
     else:
-        value = PyString_FromFormat('%lu %lu %lu %lu',
+        value = PyString_FromFormat('%lu %u %u %u',
                                     <unsigned long>record.block_offset,
                                     record.block_length,
                                     record.record_start, record.record_end)

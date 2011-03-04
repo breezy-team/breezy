@@ -19,12 +19,10 @@ import os
 import stat
 
 from bzrlib import (
-    branch,
     bzrdir,
     controldir,
     lockable_files,
     ui,
-    workingtree,
     )
 from bzrlib.tests import (
     features,
