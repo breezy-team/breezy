@@ -2,7 +2,7 @@
 #    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org> 
 #                  2006, 2007 James Westby <jw+debian@jameswestby.net>
 #                  2007 Reinhard Tartler <siretart@tauware.de>
-#                  2008 Canonical Ltd.
+#                  2008-2011 Canonical Ltd.
 #
 #    This file is part of bzr-builddeb.
 #
@@ -308,24 +308,18 @@ class cmd_builddeb(Command):
 
     def _get_upstream_branch(self, build_type, export_upstream,
             export_upstream_revision, config, version):
-        upstream_branch = None
-        upstream_revision = None
-        if build_type == BUILD_TYPE_MERGE:
-            if export_upstream is None:
-                export_upstream = config.export_upstream
-            if export_upstream:
-                upstream_branch = Branch.open(export_upstream)
-                upstream_branch.lock_read()
-                try:
-                    upstream_source = UpstreamBranchSource(upstream_branch,
-                        config=config)
-                    if version is None:
-                        upstream_revision = upstream_branch.last_revision()
-                    else:
-                        upstream_revision = upstream_source.version_as_revision(
-                            None, version.upstream_version.encode("utf-8"))
-                finally:
-                    upstream_branch.unlock()
+        upstream_branch = Branch.open(export_upstream)
+        upstream_branch.lock_read()
+        try:
+            upstream_source = UpstreamBranchSource(upstream_branch,
+                config=config)
+            if version is None:
+                upstream_revision = upstream_branch.last_revision()
+            else:
+                upstream_revision = upstream_source.version_as_revision(
+                    None, version.upstream_version.encode("utf-8"))
+        finally:
+            upstream_branch.unlock()
         return (upstream_branch, upstream_revision)
 
     def run(self, branch_or_build_options_list=None, verbose=False,
@@ -390,10 +384,12 @@ class cmd_builddeb(Command):
                 AptSource(),
                 ]
             if build_type == BUILD_TYPE_MERGE:
-                upstream_branch, upstream_revision = self._get_upstream_branch(
-                    build_type, export_upstream, export_upstream_revision, config,
-                    changelog.version)
-                if upstream_branch is not None:
+                if export_upstream is None:
+                    export_upstream = config.export_upstream
+                if export_upstream:
+                    upstream_branch, upstream_revision = self._get_upstream_branch(
+                        build_type, export_upstream, export_upstream_revision, config,
+                        changelog.version)
                     upstream_sources.append(UpstreamBranchSource(
                             upstream_branch,
                             {changelog.version.upstream_version:
