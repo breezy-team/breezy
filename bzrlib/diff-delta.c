@@ -280,8 +280,11 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
         if (fit_in_old) {
             // fprintf(stderr, "Fit all %d entries into old index\n",
             //                 copied_count);
-            /* No need to allocate a new buffer */
-            return NULL;
+            /*
+             * No need to allocate a new buffer, but return old_index ptr so
+             * callers can distinguish this from an OOM failure.
+             */
+            return old_index;
         } else {
             // fprintf(stderr, "Fit only %d entries into old index,"
             //                 " reallocating\n", copied_count);
@@ -450,9 +453,6 @@ create_delta_index(const struct source_info *src,
     total_num_entries = limit_hash_buckets(hash, hash_count, hsize,
                                            total_num_entries);
     free(hash_count);
-    if (old) {
-        old->last_src = src;
-    }
     index = pack_delta_index(hash, hsize, total_num_entries, old);
     free(hash);
     if (!index) {

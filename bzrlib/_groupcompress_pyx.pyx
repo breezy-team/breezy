@@ -205,9 +205,12 @@ cdef class DeltaIndex:
         self._source_offset = src.agg_offset + src.size
         # We delay creating the index on the first insert
         if source_location != 0:
+            assert src.size and src.buf
             with nogil:
                 index = create_delta_index(src, self._index)
-            if index != NULL:
+            if index == NULL:
+                raise MemoryError
+            if index != self._index:
                 free_delta_index(self._index)
                 self._index = index
 
@@ -218,10 +221,12 @@ cdef class DeltaIndex:
                 ' called when we have a single source and no index yet')
 
         # We know that self._index is already NULL, so whatever
-        # create_delta_index returns is fine
+        # create_delta_index returns is fine unless there's a malloc failure
+        assert self._source_infos[0].size and self._source_infos[0].buf
         with nogil:
             self._index = create_delta_index(&self._source_infos[0], NULL)
-        assert self._index != NULL
+        if self._index == NULL:
+            raise MemoryError
 
     cdef _expand_sources(self):
         raise RuntimeError('if we move self._source_infos, then we need to'
