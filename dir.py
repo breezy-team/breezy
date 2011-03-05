@@ -27,6 +27,7 @@ from bzrlib import (
 LockWarner = getattr(lockable_files, "_LockWarner", None)
 
 from bzrlib.plugins.git import (
+    BareLocalGitControlDirFormat,
     LocalGitControlDirFormat,
     )
 
@@ -112,6 +113,34 @@ class GitDir(ControlDir):
 
     def get_config(self):
         return GitDirConfig()
+
+    def clone_on_transport(self, transport, revision_id=None,
+        force_new_repo=False, preserve_stacking=False, stacked_on=None,
+        create_prefix=False, use_existing_dir=True, no_tree=False):
+        """See ControlDir.clone_on_transport."""
+        from bzrlib.plugins.git.transportgit import TransportRepo
+        # force_new_repo is ignored, a new repository is always created
+        # preserve_stacking and stacked_on are ignored, as stacking is not supported
+        # no_tree is interpreted as meaning bare
+        if not use_existing_dir:
+            transport.mkdir(".")
+        target_git_repo = TransportRepo.init(transport, bare=no_tree)
+        source_repo = self.open_repository()
+        source_git_repo = source_repo._git
+        if revision_id is not None:
+            git_sha, mapping = source_repo.lookup_bzr_revision_id(revision_id)
+            determine_wants = lambda heads: [git_sha]
+        else:
+            determine_wants = target_git_repo.object_store.determine_wants_all
+        refs = source_git_repo.fetch(target_git_repo, determine_wants)
+        for name, val in refs.iteritems():
+            target_git_repo.refs[name] = val
+        lockfiles = GitLockableFiles(transport, GitLock())
+        if no_tree:
+            format = BareLocalGitControlDirFormat()
+        else:
+            format = LocalGitControlDirFormat()
+        return self.__class__(transport, lockfiles, target_git_repo, format)
 
 
 class LocalGitDir(GitDir):

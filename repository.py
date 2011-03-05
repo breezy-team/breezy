@@ -198,8 +198,7 @@ class LocalGitRepository(GitRepository):
             if mapping is None:
                 mapping = self.get_mapping()
             try:
-                return (self._git.refs[mapping.revid_as_refname(bzr_revid)],
-                        mapping)
+                return (self._git.refs[mapping.revid_as_refname(bzr_revid)], mapping)
             except KeyError:
                 # Update refs from Git commit objects
                 # FIXME: Hitting this a lot will be very inefficient...
