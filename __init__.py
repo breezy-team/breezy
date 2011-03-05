@@ -206,26 +206,36 @@ class LocalGitControlDirFormat(GitControlDirFormat):
         return "Local Git Repository"
 
     def initialize_on_transport(self, transport):
-        from bzrlib.transport.local import LocalTransport
-
-        if not isinstance(transport, LocalTransport):
-            raise NotImplementedError(self.initialize,
-                "Can't create Git Repositories/branches on "
-                "non-local transports")
         lazy_check_versions()
-        from dulwich.repo import Repo
-        path = transport.local_abspath(".").encode(osutils._fs_enc)
-        if self.bare:
-            Repo.init_bare(path)
-        else:
-            Repo.init(path)
+        from bzrlib.plugins.git.transportgit import TransportRepo
+        TransportRepo.init(transport, bare=self.bare)
         return self.open(transport)
 
     def initialize_on_transport_ex(self, transport, use_existing_dir=False,
         create_prefix=False, force_new_repo=False, stacked_on=None,
         stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
         shared_repo=False, vfs_only=False):
-        return self.initialize_on_transport(transport)
+        from bzrlib import trace
+        from bzrlib.bzrdir import CreateRepository
+        from bzrlib.transport import do_catching_redirections
+        def make_directory(transport):
+            transport.mkdir('.')
+            return transport
+        def redirected(transport, e, redirection_notice):
+            trace.note(redirection_notice)
+            return transport._redirected_to(e.source, e.target)
+        try:
+            transport = do_catching_redirections(make_directory, transport,
+                redirected)
+        except bzr_errors.FileExists:
+            if not use_existing_dir:
+                raise
+        except bzr_errors.NoSuchFile:
+            if not create_prefix:
+                raise
+            transport.create_prefix()
+        controldir = self.initialize_on_transport(transport)
+        return (controldir.open_repository(), controldir, False, CreateRepository(controldir))
 
     def is_supported(self):
         return True

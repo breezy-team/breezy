@@ -42,6 +42,7 @@ from dulwich.pack import (
 from dulwich.repo import (
     BaseRepo,
     RefsContainer,
+    BASE_DIRECTORIES,
     INDEX_FILENAME,
     OBJECTDIR,
     REFSDIR,
@@ -312,6 +313,9 @@ class TransportRepo(BaseRepo):
         except NoSuchFile:
             return None
 
+    def _put_named_file(self, relpath, contents):
+        self._controltransport.put_bytes(relpath, contents)
+
     def index_path(self):
         """Return the path to the index file."""
         return self._controltransport.local_abspath(INDEX_FILENAME)
@@ -331,6 +335,22 @@ class TransportRepo(BaseRepo):
 
     def __repr__(self):
         return "<%s for %r>" % (self.__class__.__name__, self.transport)
+
+    @classmethod
+    def init(cls, transport, bare=False):
+        if not bare:
+            transport.mkdir(".git")
+            control_transport = transport.clone(".git")
+        else:
+            control_transport = transport
+        for d in BASE_DIRECTORIES:
+            control_transport.mkdir("/".join(d))
+        control_transport.mkdir(OBJECTDIR)
+        TransportObjectStore.init(control_transport.clone(OBJECTDIR))
+        ret = cls(transport)
+        ret.refs.set_symbolic_ref("HEAD", "refs/heads/master")
+        ret._init_files(bare)
+        return ret
 
 
 class TransportObjectStore(PackBasedObjectStore):

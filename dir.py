@@ -118,13 +118,12 @@ class GitDir(ControlDir):
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
         create_prefix=False, use_existing_dir=True, no_tree=False):
         """See ControlDir.clone_on_transport."""
-        from bzrlib.plugins.git.transportgit import TransportRepo
-        # force_new_repo is ignored, a new repository is always created
-        # preserve_stacking and stacked_on are ignored, as stacking is not supported
-        # no_tree is interpreted as meaning bare
-        if not use_existing_dir:
-            transport.mkdir(".")
-        target_git_repo = TransportRepo.init(transport, bare=no_tree)
+        if no_tree:
+            format = BareLocalGitControlDirFormat()
+        else:
+            format = LocalGitControlDirFormat()
+        (target_repo, target_controldir, stacking, repo_policy) = format.initialize_on_transport_ex(transport, use_existing_dir=use_existing_dir, create_prefix=create_prefix, force_new_repo=force_new_repo)
+        target_git_repo = target_repo._git
         source_repo = self.open_repository()
         source_git_repo = source_repo._git
         if revision_id is not None:
@@ -136,10 +135,6 @@ class GitDir(ControlDir):
         for name, val in refs.iteritems():
             target_git_repo.refs[name] = val
         lockfiles = GitLockableFiles(transport, GitLock())
-        if no_tree:
-            format = BareLocalGitControlDirFormat()
-        else:
-            format = LocalGitControlDirFormat()
         return self.__class__(transport, lockfiles, target_git_repo, format)
 
 

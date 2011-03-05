@@ -228,6 +228,7 @@ class LocalGitRepository(GitRepository):
         return revision
 
     def has_revision(self, revision_id):
+        """See Repository.has_revision."""
         try:
             git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         except errors.NoSuchRevision:
@@ -235,16 +236,20 @@ class LocalGitRepository(GitRepository):
         return (git_commit_id in self._git)
 
     def has_revisions(self, revision_ids):
+        """See Repository.has_revisions."""
         return set(filter(self.has_revision, revision_ids))
 
     def get_revisions(self, revids):
+        """See Repository.get_revisions."""
         return [self.get_revision(r) for r in revids]
 
     def revision_trees(self, revids):
+        """See Repository.revision_trees."""
         for revid in revids:
             yield self.revision_tree(revid)
 
     def revision_tree(self, revision_id):
+        """See Repository.revision_tree."""
         revision_id = revision.ensure_null(revision_id)
         if revision_id == revision.NULL_REVISION:
             inv = inventory.Inventory(root_id=None)
@@ -263,8 +268,7 @@ class LocalGitRepository(GitRepository):
         progress=None):
         return self._git.fetch_objects(determine_wants, graph_walker, progress)
 
-    def _get_versioned_file_checker(self, text_key_references=None,
-                        ancestors=None):
+    def _get_versioned_file_checker(self, text_key_references=None, ancestors=None):
         return GitVersionedFileChecker(self,
             text_key_references=text_key_references, ancestors=ancestors)
 
