@@ -289,7 +289,7 @@ class LocalGitDir(GitDir):
         self._mode_check_done = True
         try:
             st = self.transport.stat('.')
-        except TransportNotPossible:
+        except bzr_errors.TransportNotPossible:
             self._dir_mode = None
             self._file_mode = None
         else:
