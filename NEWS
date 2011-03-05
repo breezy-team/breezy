@@ -4,6 +4,10 @@
 
   * Fix encoding handling in Git working trees. (Jelmer Vernooij, #393038)
 
+ API COMPLETENESS
+
+  * Implement LocalGitControlDir.clone_on_transport. (Jelmer Vernooij, #721899)
+
  COMPATIBILITY
 
   * Drop support for Bazaar < 2.3. (Jelmer Vernooij)
