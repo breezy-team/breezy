@@ -312,8 +312,9 @@ class GitIndexInventory(inventory.Inventory):
     def path2id(self, path):
         if type(path) in (list, tuple):
             path = "/".join(path)
-        if path.encode("utf-8") in self.index:
-            file_id = self.fileid_map.lookup_file_id(path)
+        encoded_path = path.encode("utf-8")
+        if encoded_path in self.index:
+            file_id = self.fileid_map.lookup_file_id(encoded_path)
         else:
             self._read_contents()
             file_id = super(GitIndexInventory, self).path2id(path)
