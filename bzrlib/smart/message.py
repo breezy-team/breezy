@@ -303,7 +303,7 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
             mutter('   result:   %r', self.args)
         if self.status == 'E':
             self._wait_for_response_end()
-            _translate_error(self.args)
+            _raise_smart_server_error(self.args)
         return tuple(self.args)
 
     def read_body_bytes(self, count=-1):
@@ -335,27 +335,17 @@ class ConventionalResponseHandler(MessageHandler, ResponseHandler):
                 yield bytes_part
             self._read_more()
         if self._body_stream_status == 'E':
-            _translate_error(self._body_error_args)
+            _raise_smart_server_error(self._body_error_args)
 
     def cancel_read_body(self):
         self._wait_for_response_end()
 
 
-def _translate_error(error_tuple):
-    # Many exceptions need some state from the requestor to be properly
-    # translated (e.g. they need a branch object).  So this only translates a
-    # few errors, and the rest are turned into a generic ErrorFromSmartServer.
-    error_name = error_tuple[0]
-    error_args = error_tuple[1:]
-    if error_name == 'UnknownMethod':
-        raise errors.UnknownSmartMethod(error_args[0])
-    if error_name == 'LockContention':
-        raise errors.LockContention('(remote lock)')
-    elif error_name == 'LockFailed':
-        raise errors.LockFailed(*error_args[:2])
-    elif error_name == 'FileExists':
-        raise errors.FileExists(error_args[0])
-    elif error_name == 'NoSuchFile':
-        raise errors.NoSuchFile(error_args[0])
-    else:
-        raise errors.ErrorFromSmartServer(error_tuple)
+def _raise_smart_server_error(error_tuple):
+    """Raise exception based on tuple received from smart server
+
+    Specific error translation is handled by bzrlib.remote._translate_error
+    """
+    if error_tuple[0] == 'UnknownMethod':
+        raise errors.UnknownSmartMethod(error_tuple[1])
+    raise errors.ErrorFromSmartServer(error_tuple)

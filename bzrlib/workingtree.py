@@ -1653,17 +1653,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             # - RBC 20060907
             self._write_inventory(self._inventory)
 
-    def _iter_conflicts(self):
-        conflicted = set()
-        for info in self.list_files():
-            path = info[0]
-            stem = get_conflicted_stem(path)
-            if stem is None:
-                continue
-            if stem not in conflicted:
-                conflicted.add(stem)
-                yield stem
-
     @needs_write_lock
     def pull(self, source, overwrite=False, stop_revision=None,
              change_reporter=None, possible_transports=None, local=False,
@@ -2428,31 +2417,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def add_conflicts(self, arg):
         raise errors.UnsupportedOperation(self.add_conflicts, self)
 
-    @needs_read_lock
     def conflicts(self):
-        conflicts = _mod_conflicts.ConflictList()
-        for conflicted in self._iter_conflicts():
-            text = True
-            try:
-                if file_kind(self.abspath(conflicted)) != "file":
-                    text = False
-            except errors.NoSuchFile:
-                text = False
-            if text is True:
-                for suffix in ('.THIS', '.OTHER'):
-                    try:
-                        kind = file_kind(self.abspath(conflicted+suffix))
-                        if kind != "file":
-                            text = False
-                    except errors.NoSuchFile:
-                        text = False
-                    if text == False:
-                        break
-            ctype = {True: 'text conflict', False: 'contents conflict'}[text]
-            conflicts.append(_mod_conflicts.Conflict.factory(ctype,
-                             path=conflicted,
-                             file_id=self.path2id(conflicted)))
-        return conflicts
+        raise NotImplementedError(self.conflicts)
 
     def walkdirs(self, prefix=""):
         """Walk the directories of this tree.
@@ -2717,64 +2683,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         return ShelfManager(self, self._transport)
 
 
-class WorkingTree2(WorkingTree):
-    """This is the Format 2 working tree.
-
-    This was the first weave based working tree.
-     - uses os locks for locking.
-     - uses the branch last-revision.
-    """
-
-    def __init__(self, *args, **kwargs):
-        super(WorkingTree2, self).__init__(*args, **kwargs)
-        # WorkingTree2 has more of a constraint that self._inventory must
-        # exist. Because this is an older format, we don't mind the overhead
-        # caused by the extra computation here.
-
-        # Newer WorkingTree's should only have self._inventory set when they
-        # have a read lock.
-        if self._inventory is None:
-            self.read_working_inventory()
-
-    def _get_check_refs(self):
-        """Return the references needed to perform a check of this tree."""
-        return [('trees', self.last_revision())]
-
-    def lock_tree_write(self):
-        """See WorkingTree.lock_tree_write().
-
-        In Format2 WorkingTrees we have a single lock for the branch and tree
-        so lock_tree_write() degrades to lock_write().
-
-        :return: An object with an unlock method which will release the lock
-            obtained.
-        """
-        self.branch.lock_write()
-        try:
-            self._control_files.lock_write()
-            return self
-        except:
-            self.branch.unlock()
-            raise
-
-    def unlock(self):
-        # do non-implementation specific cleanup
-        self._cleanup()
-
-        # we share control files:
-        if self._control_files._lock_count == 3:
-            # _inventory_is_modified is always False during a read lock.
-            if self._inventory_is_modified:
-                self.flush()
-            self._write_hashcache_if_dirty()
-
-        # reverse order of locking.
-        try:
-            return self._control_files.unlock()
-        finally:
-            self.branch.unlock()
-
-
 class WorkingTree3(WorkingTree):
     """This is the Format 3 working tree.
 
@@ -2853,47 +2761,12 @@ class WorkingTree3(WorkingTree):
             self.branch.unlock()
 
 
-def get_conflicted_stem(path):
-    for suffix in _mod_conflicts.CONFLICT_SUFFIXES:
-        if path.endswith(suffix):
-            return path[:-len(suffix)]
-
-
-class WorkingTreeFormatRegistry(registry.FormatRegistry):
+class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
     """Registry for working tree formats."""
 
     def __init__(self, other_registry=None):
         super(WorkingTreeFormatRegistry, self).__init__(other_registry)
-        self._extra_formats = []
         self._default_format = None
-
-    def register(self, format):
-        """Register a new repository format."""
-        super(WorkingTreeFormatRegistry, self).register(
-            format.get_format_string(), format)
-
-    def remove(self, format):
-        """Remove a registered repository format."""
-        super(WorkingTreeFormatRegistry, self).remove(format.get_format_string())
-
-    def register_extra(self, format):
-        """Register a repository format that can not be used in a metadir.
-
-        This is mainly useful to allow custom repository formats, such as older
-        Bazaar formats and foreign formats, to be tested.
-        """
-        self._extra_formats.append(registry._ObjectGetter(format))
-
-    def remove_extra(self, format):
-        """Remove an extra repository format.
-        """
-        self._extra_formats.remove(registry._ObjectGetter(format))
-
-    def register_extra_lazy(self, module_name, member_name):
-        """Register a repository format lazily.
-        """
-        self._extra_formats.append(
-            registry._LazyObjectGetter(module_name, member_name))
 
     def get_default(self):
         """Return the current default format."""
@@ -2902,25 +2775,11 @@ class WorkingTreeFormatRegistry(registry.FormatRegistry):
     def set_default(self, format):
         self._default_format = format
 
-    def _get_extra(self):
-        result = []
-        for getter in self._extra_formats:
-            f = getter.get_obj()
-            if callable(f):
-                f = f()
-            result.append(f)
-        return result
-
-    def _get_all(self):
-        """Return all repository formats, even those not usable in metadirs.
-        """
-        return [self.get(k) for k in self.keys()] + self._get_extra()
-
 
 format_registry = WorkingTreeFormatRegistry()
 
 
-class WorkingTreeFormat(object):
+class WorkingTreeFormat(controldir.ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
 
     Formats provide three things:
@@ -2961,6 +2820,23 @@ class WorkingTreeFormat(object):
         except KeyError:
             raise errors.UnknownFormatError(format=format_string,
                                             kind="working tree")
+
+    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
+                   accelerator_tree=None, hardlink=False):
+        """Initialize a new working tree in a_bzrdir.
+
+        :param a_bzrdir: BzrDir to initialize the working tree in.
+        :param revision_id: allows creating a working tree at a different
+            revision than the branch is at.
+        :param from_branch: Branch to checkout
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
+        """
+        raise NotImplementedError(self.initialize)
 
     def __eq__(self, other):
         return self.__class__ is other.__class__
@@ -3036,96 +2912,6 @@ class WorkingTreeFormat(object):
     def unregister_format(klass, format):
         format_registry.remove(format)
 
-
-class WorkingTreeFormat2(WorkingTreeFormat):
-    """The second working tree format.
-
-    This format modified the hash cache from the format 1 hash cache.
-    """
-
-    upgrade_recommended = True
-
-    requires_normalized_unicode_filenames = True
-
-    case_sensitive_filename = "Branch-FoRMaT"
-
-    missing_parent_conflicts = False
-
-    def get_format_description(self):
-        """See WorkingTreeFormat.get_format_description()."""
-        return "Working tree format 2"
-
-    def _stub_initialize_on_transport(self, transport, file_mode):
-        """Workaround: create control files for a remote working tree.
-
-        This ensures that it can later be updated and dealt with locally,
-        since BzrDirFormat6 and BzrDirFormat5 cannot represent dirs with
-        no working tree.  (See bug #43064).
-        """
-        sio = StringIO()
-        inv = inventory.Inventory()
-        xml5.serializer_v5.write_inventory(inv, sio, working=True)
-        sio.seek(0)
-        transport.put_file('inventory', sio, file_mode)
-        transport.put_bytes('pending-merges', '', file_mode)
-
-    def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
-                   accelerator_tree=None, hardlink=False):
-        """See WorkingTreeFormat.initialize()."""
-        if not isinstance(a_bzrdir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        if from_branch is not None:
-            branch = from_branch
-        else:
-            branch = a_bzrdir.open_branch()
-        if revision_id is None:
-            revision_id = _mod_revision.ensure_null(branch.last_revision())
-        branch.lock_write()
-        try:
-            branch.generate_revision_history(revision_id)
-        finally:
-            branch.unlock()
-        inv = inventory.Inventory()
-        wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
-                         branch,
-                         inv,
-                         _internal=True,
-                         _format=self,
-                         _bzrdir=a_bzrdir,
-                         _control_files=branch.control_files)
-        basis_tree = branch.repository.revision_tree(revision_id)
-        if basis_tree.inventory.root is not None:
-            wt.set_root_id(basis_tree.get_root_id())
-        # set the parent list and cache the basis tree.
-        if _mod_revision.is_null(revision_id):
-            parent_trees = []
-        else:
-            parent_trees = [(revision_id, basis_tree)]
-        wt.set_parent_trees(parent_trees)
-        transform.build_tree(basis_tree, wt)
-        return wt
-
-    def __init__(self):
-        super(WorkingTreeFormat2, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat6()
-
-    def open(self, a_bzrdir, _found=False):
-        """Return the WorkingTree object for a_bzrdir
-
-        _found is a private parameter, do not use it. It is used to indicate
-               if format probing has already been done.
-        """
-        if not _found:
-            # we are being called directly and must probe.
-            raise NotImplementedError
-        if not isinstance(a_bzrdir.transport, LocalTransport):
-            raise errors.NotLocalUrl(a_bzrdir.transport.base)
-        wt = WorkingTree2(a_bzrdir.root_transport.local_abspath('.'),
-                           _internal=True,
-                           _format=self,
-                           _bzrdir=a_bzrdir,
-                           _control_files=a_bzrdir.open_branch().control_files)
-        return wt
 
 class WorkingTreeFormat3(WorkingTreeFormat):
     """The second working tree format updated to record a format marker.
@@ -3272,4 +3058,5 @@ format_registry.set_default(__default_format)
 # Register extra formats which have no format string are not discoverable
 # and not independently creatable. They are implicitly created as part of
 # e.g. older Bazaar formats or foreign formats.
-format_registry.register_extra(WorkingTreeFormat2())
+format_registry.register_extra_lazy("bzrlib.workingtree_2",
+    "WorkingTreeFormat2")

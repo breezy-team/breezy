@@ -37,7 +37,6 @@ from stat import S_ISDIR
 
 import bzrlib
 from bzrlib import (
-    branch,
     config,
     controldir,
     errors,
@@ -1081,7 +1080,7 @@ class BzrDirPreSplitOut(BzrDir):
         return result
 
     def _init_workingtree(self):
-        from bzrlib.workingtree import WorkingTreeFormat2
+        from bzrlib.workingtree_2 import WorkingTreeFormat2
         try:
             return WorkingTreeFormat2().initialize(self)
         except errors.NotLocalUrl:
@@ -1160,7 +1159,7 @@ class BzrDirPreSplitOut(BzrDir):
         if not create_tree_if_local:
             raise errors.MustHaveWorkingTree(
                 self._format, self.root_transport.base)
-        from bzrlib.workingtree import WorkingTreeFormat2
+        from bzrlib.workingtree_2 import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
         try:
@@ -1217,7 +1216,7 @@ class BzrDir5(BzrDirPreSplitOut):
     def open_workingtree(self, _unsupported=False,
             recommend_upgrade=True):
         """See BzrDir.create_workingtree."""
-        from bzrlib.workingtree import WorkingTreeFormat2
+        from bzrlib.workingtree_2 import WorkingTreeFormat2
         wt_format = WorkingTreeFormat2()
         # we don't warn here about upgrades; that ought to be handled for the
         # bzrdir as a whole
@@ -1244,7 +1243,7 @@ class BzrDir6(BzrDirPreSplitOut):
         """See BzrDir.create_workingtree."""
         # we don't warn here about upgrades; that ought to be handled for the
         # bzrdir as a whole
-        from bzrlib.workingtree import WorkingTreeFormat2
+        from bzrlib.workingtree_2 import WorkingTreeFormat2
         return WorkingTreeFormat2().open(self, _found=True)
 
 
@@ -2050,7 +2049,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
             if target_branch is None:
                 if do_upgrade:
                     # TODO: bad monkey, hard-coded formats...
-                    new_branch_format = branch.BzrBranchFormat7()
+                    from bzrlib.branch import BzrBranchFormat7
+                    new_branch_format = BzrBranchFormat7()
             else:
                 new_branch_format = target_branch._format
                 if not new_branch_format.supports_stacking():
@@ -2147,23 +2147,7 @@ BzrDirFormat.register_format(__default_format)
 controldir.ControlDirFormat._default_format = __default_format
 
 
-class Converter(object):
-    """Converts a disk format object from one format to another."""
-
-    def convert(self, to_convert, pb):
-        """Perform the conversion of to_convert, giving feedback via pb.
-
-        :param to_convert: The disk object to convert.
-        :param pb: a progress bar to use for progress information.
-        """
-
-    def step(self, message):
-        """Update the pb by a step."""
-        self.count +=1
-        self.pb.update(message, self.count, self.total)
-
-
-class ConvertBzrDir4To5(Converter):
+class ConvertBzrDir4To5(controldir.Converter):
     """Converts format 4 bzr dirs to format 5."""
 
     def __init__(self):
@@ -2435,7 +2419,7 @@ class ConvertBzrDir4To5(Converter):
         return order
 
 
-class ConvertBzrDir5To6(Converter):
+class ConvertBzrDir5To6(controldir.Converter):
     """Converts format 5 bzr dirs to format 6."""
 
     def convert(self, to_convert, pb):
@@ -2478,7 +2462,7 @@ class ConvertBzrDir5To6(Converter):
             mode=self.bzrdir._get_file_mode())
 
 
-class ConvertBzrDir6ToMeta(Converter):
+class ConvertBzrDir6ToMeta(controldir.Converter):
     """Converts format 6 bzr dirs to metadirs."""
 
     def convert(self, to_convert, pb):
@@ -2601,7 +2585,7 @@ class ConvertBzrDir6ToMeta(Converter):
             self.file_mode)
 
 
-class ConvertMetaToMeta(Converter):
+class ConvertMetaToMeta(controldir.Converter):
     """Converts the components of metadirs."""
 
     def __init__(self, target_format):
