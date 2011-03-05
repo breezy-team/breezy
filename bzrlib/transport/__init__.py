@@ -1772,9 +1772,6 @@ register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',
                         'MemoryTransport')
 
-# chroots cannot be implicitly accessed, they must be explicitly created:
-register_transport_proto('chroot+')
-
 register_transport_proto('readonly+',
 #              help="This modifier converts any transport to be readonly."
             )
