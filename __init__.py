@@ -55,5 +55,5 @@ class MonotoneProber(controldir.Prober):
         raise errors.NotBranchError(path=transport.base)
 
 
-controldir.ControlDirFormat.register_format(MonotoneDirFormat)
+controldir.ControlDirFormat.register_format(MonotoneDirFormat())
 controldir.ControlDirFormat.register_prober(MonotoneProber)
