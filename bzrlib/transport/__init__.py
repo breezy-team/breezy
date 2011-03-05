@@ -1806,12 +1806,6 @@ register_transport_proto('nosmart+')
 register_lazy_transport('nosmart+', 'bzrlib.transport.nosmart',
                         'NoSmartTransportDecorator')
 
-# These two schemes were registered, but don't seem to have an actual transport
-# protocol registered
-for scheme in ['ssh']:
-    register_urlparse_netloc_protocol(scheme)
-del scheme
-
 register_transport_proto('bzr://',
             help="Fast access using the Bazaar smart server.",
                          register_netloc=True)
