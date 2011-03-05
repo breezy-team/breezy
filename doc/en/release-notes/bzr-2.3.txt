@@ -35,6 +35,10 @@ Bug Fixes
 * Correctly resolve text conflicts for files in subdirs.
   (Vincent Ladeuil, #715058)
 
+* Fix "AssertionError: repository.user_url ... does not match URL from
+  server response" when reusing a smart transport.
+  (Andrew Bennetts, #726584)
+
 * Restore proper logging of bytes transferred. We accidentally reset the
   counter when commands finished before we logged the total transferred.
   (John Arbash Meinel, #713258)

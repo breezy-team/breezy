@@ -1531,6 +1531,26 @@ class Branch(controldir.ControlComponent):
         else:
             raise AssertionError("invalid heads: %r" % (heads,))
 
+    def heads_to_fetch(self):
+        """Return the heads that must and that should be fetched to copy this
+        branch into another repo.
+
+        :returns: a 2-tuple of (must_fetch, if_present_fetch).  must_fetch is a
+            set of heads that must be fetched.  if_present_fetch is a set of
+            heads that must be fetched if present, but no error is necessary if
+            they are not present.
+        """
+        # For bzr native formats must_fetch is just the tip, and if_present_fetch
+        # are the tags.
+        must_fetch = set([self.last_revision()])
+        try:
+            if_present_fetch = set(self.tags.get_reverse_tag_dict())
+        except errors.TagsNotSupported:
+            if_present_fetch = set()
+        must_fetch.discard(_mod_revision.NULL_REVISION)
+        if_present_fetch.discard(_mod_revision.NULL_REVISION)
+        return must_fetch, if_present_fetch
+
 
 class BranchFormat(controldir.ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
@@ -2313,6 +2333,7 @@ format_registry = BranchFormatRegistry(network_format_registry)
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
+__format4 = BzrBranchFormat4()
 __format5 = BzrBranchFormat5()
 __format6 = BzrBranchFormat6()
 __format7 = BzrBranchFormat7()
@@ -3024,7 +3045,10 @@ class BzrBranch8(BzrBranch5):
         try:
             index = self._partial_revision_history_cache.index(revision_id)
         except ValueError:
-            self._extend_partial_history(stop_revision=revision_id)
+            try:
+                self._extend_partial_history(stop_revision=revision_id)
+            except errors.RevisionNotPresent, e:
+                raise errors.GhostRevisionsHaveNoRevno(revision_id, e.revision_id)
             index = len(self._partial_revision_history_cache) - 1
             if self._partial_revision_history_cache[index] != revision_id:
                 raise errors.NoSuchRevision(self, revision_id)

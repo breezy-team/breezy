@@ -1661,23 +1661,7 @@ BzrDirFormat.register_format(__default_format)
 controldir.ControlDirFormat._default_format = __default_format
 
 
-class Converter(object):
-    """Converts a disk format object from one format to another."""
-
-    def convert(self, to_convert, pb):
-        """Perform the conversion of to_convert, giving feedback via pb.
-
-        :param to_convert: The disk object to convert.
-        :param pb: a progress bar to use for progress information.
-        """
-
-    def step(self, message):
-        """Update the pb by a step."""
-        self.count +=1
-        self.pb.update(message, self.count, self.total)
-
-
-class ConvertMetaToMeta(Converter):
+class ConvertMetaToMeta(controldir.Converter):
     """Converts the components of metadirs."""
 
     def __init__(self, target_format):
