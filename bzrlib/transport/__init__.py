@@ -1808,7 +1808,7 @@ register_lazy_transport('nosmart+', 'bzrlib.transport.nosmart',
 
 # These two schemes were registered, but don't seem to have an actual transport
 # protocol registered
-for scheme in ['ssh', 'bzr+loopback']:
+for scheme in ['ssh']:
     register_urlparse_netloc_protocol(scheme)
 del scheme
 
