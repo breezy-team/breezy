@@ -183,7 +183,7 @@ class LocalGitDir(GitDir):
         return ref
 
     def is_control_filename(self, filename):
-        return filename == '.git' or filename.startswith('.git/')
+        return (filename == '.git' or filename.startswith('.git/'))
 
     def get_branch_transport(self, branch_format, name=None):
         if branch_format is None:
