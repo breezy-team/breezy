@@ -37,6 +37,9 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
     def initialize_on_transport(self, transport):
         raise NotImplementedError(self.get_converter)
 
+    def is_supported(self):
+        return False
+
     def open(self, transport, _found=False):
         """Open this directory."""
         raise errors.BzrCommandError(
