@@ -44,12 +44,10 @@ bzrlib.api.require_any_api(bzrlib, bzr_compatible_versions)
 
 from bzrlib import (
     errors as bzr_errors,
-    osutils,
     )
 
 from bzrlib.controldir import (
     ControlDirFormat,
-    ControlDir,
     Prober,
     format_registry,
     )
@@ -131,6 +129,7 @@ class GitControlDirFormat(ControlDirFormat):
     _lock_class = TransportLock
 
     colocated_branches = True
+    fixed_components = True
 
     def __eq__(self, other):
         return type(self) == type(other)
@@ -235,7 +234,9 @@ class LocalGitControlDirFormat(GitControlDirFormat):
                 raise
             transport.create_prefix()
         controldir = self.initialize_on_transport(transport)
-        return (controldir.open_repository(), controldir, False, CreateRepository(controldir))
+        repository = controldir.open_repository()
+        repository.lock_write()
+        return (repository, controldir, False, CreateRepository(controldir))
 
     def is_supported(self):
         return True
