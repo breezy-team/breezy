@@ -142,7 +142,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                     # old index
                     from posix import stat_result
                     stat_val = stat_result((stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-                blob.set_raw_string(entry.symlink_target)
+                blob.set_raw_string(self.get_symlink_target(entry.file_id).encode("utf-8"))
             else:
                 raise AssertionError("unknown kind '%s'" % entry.kind)
             # Add object to the repository if it didn't exist yet
