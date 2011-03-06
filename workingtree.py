@@ -114,9 +114,6 @@ class GitWorkingTree(workingtree.WorkingTree):
         finally:
             self.branch.unlock()
 
-    def is_control_filename(self, path):
-        return os.path.basename(path) == ".git"
-
     def _rewrite_index(self):
         self.index.clear()
         for path, entry in self._inventory.iter_entries():
