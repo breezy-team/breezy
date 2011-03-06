@@ -377,6 +377,12 @@ else:
     register_extra_lazy_repository_format('bzrlib.plugins.git.repository',
         'GitRepositoryFormat')
 
+from bzrlib.branch import (
+    network_format_registry as branch_network_format_registry,
+    )
+branch_network_format_registry.register_lazy('git',
+    'bzrlib.plugins.git.branch', 'GitBranchFormat')
+
 try:
     from bzrlib.branch import (
         format_registry as branch_format_registry,
