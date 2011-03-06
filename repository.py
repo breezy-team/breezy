@@ -228,6 +228,8 @@ class LocalGitRepository(GitRepository):
 
     def has_revision(self, revision_id):
         """See Repository.has_revision."""
+        if revision_id == revision.NULL_REVISION:
+            return True
         try:
             git_commit_id, mapping = self.lookup_bzr_revision_id(revision_id)
         except errors.NoSuchRevision:
