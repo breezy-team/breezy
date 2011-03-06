@@ -117,6 +117,7 @@ class GitDir(ControlDir):
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
         create_prefix=False, use_existing_dir=True, no_tree=False):
+        from dulwich.protocol import ZERO_SHA
         """See ControlDir.clone_on_transport."""
         if no_tree:
             format = BareLocalGitControlDirFormat()
@@ -128,7 +129,11 @@ class GitDir(ControlDir):
         source_git_repo = source_repo._git
         if revision_id is not None:
             git_sha, mapping = source_repo.lookup_bzr_revision_id(revision_id)
-            determine_wants = lambda heads: [git_sha]
+            if git_sha == ZERO_SHA:
+                wants = []
+            else:
+                wants = [git_sha]
+            determine_wants = lambda heads: wants
         else:
             determine_wants = target_git_repo.object_store.determine_wants_all
         refs = source_git_repo.fetch(target_git_repo, determine_wants)
