@@ -157,18 +157,6 @@ class Tree(object):
         """
         return self.inventory.id2path(file_id)
 
-    def is_control_filename(self, filename):
-        """True if filename is the name of a control file in this tree.
-
-        :param filename: A filename within the tree. This is a relative path
-        from the root of this tree.
-
-        This is true IF and ONLY IF the filename is part of the meta data
-        that bzr controls in this tree. I.E. a random .bzr directory placed
-        on disk will not be a control file for this tree.
-        """
-        return self.bzrdir.is_control_filename(filename)
-
     @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         """Walk the tree in 'by_dir' order.

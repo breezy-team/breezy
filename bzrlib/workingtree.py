@@ -254,6 +254,18 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def control_transport(self):
         return self._transport
 
+    def is_control_filename(self, filename):
+        """True if filename is the name of a control file in this tree.
+
+        :param filename: A filename within the tree. This is a relative path
+        from the root of this tree.
+
+        This is true IF and ONLY IF the filename is part of the meta data
+        that bzr controls in this tree. I.E. a random .bzr directory placed
+        on disk will not be a control file for this tree.
+        """
+        return self.bzrdir.is_control_filename(filename)
+
     def _detect_case_handling(self):
         wt_trans = self.bzrdir.get_workingtree_transport(None)
         try:
