@@ -25,7 +25,6 @@ from bzrlib import (
         bzrdir,
         cache_utf8,
         config as _mod_config,
-        controldir,
         debug,
         errors,
         fetch,
@@ -50,7 +49,14 @@ from bzrlib.tag import (
     )
 """)
 
-from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
+from bzrlib import (
+    controldir,
+    )
+from bzrlib.decorators import (
+    needs_read_lock,
+    needs_write_lock,
+    only_raises,
+    )
 from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.inter import InterObject
 from bzrlib.lock import _RelockDebugMixin, LogicalLockResult
@@ -805,7 +811,7 @@ class Branch(controldir.ControlComponent):
 
     def _unstack(self):
         """Change a branch to be unstacked, copying data as needed.
-        
+
         Don't call this directly, use set_stacked_on_url(None).
         """
         pb = ui.ui_factory.nested_progress_bar()
@@ -2651,19 +2657,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         else:
             self._transport.put_bytes('parent', url + '\n',
                 mode=self.bzrdir._get_file_mode())
-
-
-class BzrBranchPreSplitOut(BzrBranch):
-
-    def _get_checkout_format(self):
-        """Return the most suitable metadir for a checkout of this branch.
-        Weaves are used if this branch's repository uses weaves.
-        """
-        from bzrlib.repofmt.weaverepo import RepositoryFormat7
-        from bzrlib.bzrdir import BzrDirMetaFormat1
-        format = BzrDirMetaFormat1()
-        format.repository_format = RepositoryFormat7()
-        return format
 
 
 class BzrBranch5(BzrBranch):

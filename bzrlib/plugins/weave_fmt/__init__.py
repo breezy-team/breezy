@@ -95,6 +95,7 @@ branch.network_format_registry.register_lazy(
     "Bazaar-NG branch, format 6\n",
     'bzrlib.plugins.weave_fmt.branch', "BzrBranchFormat4")
 
+
 workingtree.format_registry.register_extra_lazy(
     'bzrlib.plugins.weave_fmt.workingtree',
     'WorkingTreeFormat2')
