@@ -35,7 +35,7 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
         return "Monotone control directory"
 
     def initialize_on_transport(self, transport):
-        raise NotImplementedError(self.get_converter)
+        raise errors.UninitializableFormat(self)
 
     def is_supported(self):
         return False
