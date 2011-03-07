@@ -1,6 +1,5 @@
 #!/usr/bin/make -f
 
-DEB_PYTHON_SYSTEM = pysupport
 DEB_PYTHON_MODULE_PACKAGES = bzr python-bzrlib
 
 include /usr/share/cdbs/1/rules/debhelper.mk
