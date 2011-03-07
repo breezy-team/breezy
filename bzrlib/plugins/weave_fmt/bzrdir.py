@@ -28,16 +28,24 @@ from bzrlib.controldir import (
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import os
+import warnings
 
 from bzrlib import (
     errors,
+    graph,
     lockable_files,
     lockdir,
     osutils,
     revision as _mod_revision,
+    trace,
     ui,
     urlutils,
+    versionedfile,
+    weave,
+    xml5,
     )
+from bzrlib.store.versioned import VersionedFileStore
+from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import (
     get_transport,
     local,
@@ -230,7 +238,7 @@ class ConvertBzrDir4To5(Converter):
         except errors.NoSuchFile:
             self.bzrdir.transport.mkdir('weaves')
         # deliberately not a WeaveFile as we want to build it up slowly.
-        self.inv_weave = Weave('inventory')
+        self.inv_weave = weave.Weave('inventory')
         # holds in-memory weaves for all files
         self.text_weaves = {}
         self.bzrdir.transport.delete('branch-format')
@@ -283,9 +291,11 @@ class ConvertBzrDir4To5(Converter):
             mode=self.bzrdir._get_file_mode())
 
     def _write_all_weaves(self):
-        controlweaves = WeaveStore(self.bzrdir.transport, prefixed=False)
+        controlweaves = VersionedFileStore(self.bzrdir.transport, prefixed=False,
+            versionedfile_class=weave.WeaveFile)
         weave_transport = self.bzrdir.transport.clone('weaves')
-        weaves = WeaveStore(weave_transport, prefixed=False)
+        weaves = VersionedFileStore(weave_transport, prefixed=False,
+                versionedfile_class=weave.WeaveFile)
         transaction = WriteTransaction()
 
         try:
@@ -370,7 +380,7 @@ class ConvertBzrDir4To5(Converter):
 
     def _store_new_inv(self, rev, inv, present_parents):
         new_inv_xml = xml5.serializer_v5.write_inventory_to_string(inv)
-        new_inv_sha1 = sha_string(new_inv_xml)
+        new_inv_sha1 = osutils.sha_string(new_inv_xml)
         self.inv_weave.add_lines(rev.revision_id,
                                  present_parents,
                                  new_inv_xml.splitlines(True))
@@ -381,8 +391,7 @@ class ConvertBzrDir4To5(Converter):
 
         Also upgrade the inventory to refer to the text revision ids."""
         rev_id = rev.revision_id
-        mutter('converting texts of revision {%s}',
-               rev_id)
+        trace.mutter('converting texts of revision {%s}', rev_id)
         parent_invs = map(self._load_updated_inventory, present_parents)
         entries = inv.iter_entries()
         entries.next()
@@ -399,7 +408,7 @@ class ConvertBzrDir4To5(Converter):
         rev_id = rev.revision_id
         w = self.text_weaves.get(file_id)
         if w is None:
-            w = Weave(file_id)
+            w = weave.Weave(file_id)
             self.text_weaves[file_id] = w
         text_changed = False
         parent_candiate_entries = ie.parent_candidates(parent_invs)
