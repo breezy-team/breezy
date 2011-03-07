@@ -19,11 +19,26 @@
 Currently limited to telling you you want to run CVS commands.
 """
 
-import bzrlib.bzrdir
+try:
+    from bzrlib.controldir import (
+        ControlDirFormat,
+        ControlDir,
+        Prober,
+        )
+    has_controldir = True
+except ImportError:
+    from bzrlib.bzrdir import (
+        BzrDirFormat,
+        BzrDirFormat as ControlDirFormat,
+        BzrDir as ControlDir,
+        )
+    Prober = object
+    has_controldir = False
+
 import bzrlib.errors
 
 
-class CVSDirFormat(bzrlib.bzrdir.BzrDirFormat):
+class CVSDirFormat(ControlDirFormat):
     """The CVS directory control format."""
 
     def get_converter(self):
@@ -44,17 +59,29 @@ class CVSDirFormat(bzrlib.bzrdir.BzrDirFormat):
         raise bzrlib.errors.BzrCommandError(
             "CVS working trees are not supported. To convert CVS projects to "
             "bzr, please see http://bazaar-vcs.org/BzrMigration and/or "
-            "https://edge.launchpad.net/launchpad-bazaar/+faq/26.")
+            "https://launchpad.net/launchpad-bazaar/+faq/26.")
 
     @classmethod
     def probe_transport(klass, transport):
         """Our format is present if the transport ends in 'CVS/'."""
+        return CVSProber().probe_transport(transport)
+
+
+class CVSProber(Prober):
+
+    @classmethod
+    def probe_transport(klass, transport):
         # little ugly, but works
-        format = klass()
         # try a manual probe first, its a little faster perhaps ?
-        if transport.has('CVS'):
-            return format
-        raise bzrlib.errors.NotBranchError(path=transport.base)
+        if not transport.has('CVS'):
+            raise bzrlib.errors.NotBranchError(path=transport.base)
+        if not transport.has('CVS/Repository'):
+            raise bzrlib.errors.NotBranchError(path=transport.base)
+        return CVSDirFormat()
 
 
-bzrlib.bzrdir.BzrDirFormat.register_control_format(CVSDirFormat)
+if has_controldir:
+    ControlDirFormat.register_prober(CVSProber)
+    ControlDirFormat.register_format(CVSDirFormat())
+else:
+    BzrDirFormat.register_control_format(CVSDirFormat)
