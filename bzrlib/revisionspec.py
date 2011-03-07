@@ -15,27 +15,25 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import re
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import bisect
 import datetime
 
 from bzrlib import (
+    branch as _mod_branch,
+    osutils,
+    revision,
+    symbol_versioning,
     workingtree,
     )
 """)
 
 from bzrlib import (
-    branch as _mod_branch,
     errors,
-    osutils,
+    lazy_regex,
     registry,
-    revision,
-    symbol_versioning,
     trace,
-    workingtree,
     )
 
 
@@ -117,9 +115,6 @@ class RevisionInfo(object):
         except ValueError:
             revno = None
         return RevisionInfo(branch, revno, revision_id)
-
-
-_revno_regex = None
 
 
 class RevisionSpec(object):
@@ -303,6 +298,8 @@ class RevisionSpec_dwim(RevisionSpec):
     # each revspec we try.
     wants_revision_history = False
 
+    _revno_regex = lazy_regex.lazy_compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
+
     # The revspecs to try
     _possible_revspecs = []
 
@@ -316,10 +313,7 @@ class RevisionSpec_dwim(RevisionSpec):
         """Run the lookup and see what we can get."""
 
         # First, see if it's a revno
-        global _revno_regex
-        if _revno_regex is None:
-            _revno_regex = re.compile(r'^(?:(\d+(\.\d+)*)|-\d+)(:.*)?$')
-        if _revno_regex.match(self.spec) is not None:
+        if self._revno_regex.match(self.spec) is not None:
             try:
                 return self._try_spectype(RevisionSpec_revno, branch)
             except RevisionSpec_revno.dwim_catchable_exceptions:
@@ -691,7 +685,7 @@ class RevisionSpec_date(RevisionSpec):
                                    August 14th, 2006 at 5:10pm.
     """
     prefix = 'date:'
-    _date_re = re.compile(
+    _date_regex = lazy_regex.lazy_compile(
             r'(?P<date>(?P<year>\d\d\d\d)-(?P<month>\d\d)-(?P<day>\d\d))?'
             r'(,|T)?\s*'
             r'(?P<time>(?P<hour>\d\d):(?P<minute>\d\d)(:(?P<second>\d\d))?)?'
@@ -715,7 +709,7 @@ class RevisionSpec_date(RevisionSpec):
         elif self.spec.lower() == 'tomorrow':
             dt = today + datetime.timedelta(days=1)
         else:
-            m = self._date_re.match(self.spec)
+            m = self._date_regex.match(self.spec)
             if not m or (not m.group('date') and not m.group('time')):
                 raise errors.InvalidRevisionSpec(self.user_spec,
                                                  branch, 'invalid date')
