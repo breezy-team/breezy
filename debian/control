@@ -3,11 +3,11 @@ Section: vcs
 Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
 Uploaders: Reinhard Tartler <siretart@tauware.de>, James Westby <james.westby@ubuntu.com>, Jelmer Vernooij <jelmer@debian.org>
-Build-Depends: debhelper (>= 5.0.37.2), python-all (>= 2.3.5-11)
-Build-Depends-Indep: bzr (>= 2.1~), python-central (>= 0.5.8), python-docutils, python-debian (>= 0.1.11), python-apt, patchutils, python-testtools (>= 0.9.2), pristine-tar, devscripts, python-subunit
+Build-Depends: debhelper (>= 5.0.37.2), python-all (>= 2.6.6-3)
+Build-Depends-Indep: bzr (>= 2.1~), python-docutils, python-debian (>= 0.1.11), python-apt, patchutils, python-testtools (>= 0.9.2), pristine-tar, devscripts, python-subunit
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr-builddeb/unstable
 Vcs-Browser: http://bzr.debian.org/loggerhead/pkg-bazaar/bzr-builddeb/unstable
-XS-Python-Version: >= 2.4
+X-Python-Version: >= 2.4
 Standards-Version: 3.9.1
 
 Package: bzr-builddeb
@@ -16,7 +16,6 @@ Depends: bzr (>= 2.1~), python-debian (>= 0.1.11), python-apt, ${python:Depends}
 Recommends: python-launchpadlib
 Suggests: bzr-svn (>= 0.4.10)
 Provides: bzr-buildpackage
-XB-Python-Version: ${python:Versions}
 Description: bzr plugin for Debian package management
  bzr-builddeb is a plugin for the bzr version control system that helps to
  automate the task of maintaining Debian packages using bzr. It is similar

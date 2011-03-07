@@ -44,7 +44,10 @@ bzr-builddeb (2.7) UNRELEASED; urgency=low
 
   * Add devscripts to Build-Depends-Indep, the test suite runs dch.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Sun, 27 Feb 2011 03:08:09 +0100
+  [ Jelmer Vernooij ]
+  * Switch to dh_python2. Closes: #616752
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 07 Mar 2011 12:28:08 +0100
 
 bzr-builddeb (2.6) unstable; urgency=low
 
