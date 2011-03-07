@@ -93,7 +93,7 @@ class TestImportTariffs(TestCaseWithTransport):
             ['bzrlib.tree'])
 
     def test_simple_local(self):
-        # 'st' in a working tree shouldn't need many modules
+        # 'st' in a default format working tree shouldn't need many modules
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'], [
             'bzrlib.bugtracker',
@@ -112,6 +112,7 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.smart',
             'bzrlib.transform',
             'bzrlib.version_info_formats.format_rio',
+            'bzrlib.workingtree_2',
             'bzrlib.xml4',
             'bzrlib.xml5',
             'bzrlib.xml6',
