@@ -1,53 +1,50 @@
 #!/usr/bin/make -f
 
-DEB_PYTHON_MODULE_PACKAGES = bzr python-bzrlib
-
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/class/python-distutils.mk
-
-DEB_PYTHON_INSTALL_ARGS_ALL += --install-data=/usr/share
-DEB_DH_INSTALL_ARGS += --list-missing --fail-missing
-DEB_PYTHON_BUILD_ARGS += --executable "/usr/bin/python"
-DEB_COMPRESS_EXCLUDE += .svg .pdf
-
-build/bzr:: debian/stamp-doc
-
-debian/stamp-doc:
-	$(MAKE) docs
-	touch $@
+%:
+	dh --with python2 --buildsystem=python_distutils $*
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 CONCURRENCY = BZR_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 endif
 
-ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-build/bzr:: debian/stamp-selftest
+PYTHON_CURRENT_VERSION = $(shell pyversions -vd)
 
-debian/stamp-selftest:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+override_dh_auto_test:
 	[ -d debian/bzrhome ] || mkdir debian/bzrhome
 	$(CONCURRENCY) \
 	BZR_HOME=debian/bzrhome \
 	BZR_PLUGIN_PATH=-site:-user \
 	BZR_DISABLE_PLUGINS=launchpad \
-	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(cdbs_python_current_version)) \
-	$(CURDIR)/build/scripts-$(cdbs_python_current_version)/bzr selftest -v --parallel=fork
-	touch $@
+	PYTHONPATH=$(wildcard $(CURDIR)/build/lib.*-$(PYTHON_CURRENT_VERSION)) \
+	$(CURDIR)/build/scripts-$(PYTHON_CURRENT_VERSION)/bzr selftest -v --parallel=fork
 endif
 
-clean::
+override_dh_auto_clean:
+	dh_auto_clean
 	$(MAKE) clean-docs
-	rm -f debian/stamp-*
 	rm -rf debian/bzrhome
 
-install/bzr-doc::
-# Install the documentation; since html and txt and intermixed
-# under doc/, this is handier than trying to do it from bzr-doc.install. 
+override_dh_auto_install:
+	dh_auto_install --buildsystem=python_distutils -- --install-data=/usr/share
+
+override_dh_install:
+	dh_install --list-missing --fail-missing
+	# Install the documentation; since html and txt and intermixed
+	# under doc/, this is handier than trying to do it from bzr-doc.install. 
 	for ext in txt html; do \
 	    ( cd doc && find -name "*.$$ext" -print0 ) | \
 	    	xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
 	    	"debian/bzr-doc/usr/share/doc/bzr/$$ext/{}"; \
 	done
-# Install images as well
+	# Install images as well
 	( cd doc && find -name "*.png" -print0 ) | \
 	    xargs -r0 -i'{}' -n1 install -D -m 644 'doc/{}' \
 	    "debian/bzr-doc/usr/share/doc/bzr/html/{}"
+
+override_dh_auto_build:
+	dh_auto_build --buildsystem=python_distutils
+	$(MAKE) docs
+
+override_dh_compress:
+	dh_compress -X.xvg -X.pdf
