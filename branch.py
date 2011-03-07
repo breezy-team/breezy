@@ -102,9 +102,9 @@ class GitTags(tag.BasicTags):
         for k, v in refs.iteritems():
             if not is_tag(k):
                 continue
-            if overwrite or not k in self.target.repository.refs:
-                target_repo.refs[k] = v
-            elif target_repo.repository.refs[k] == v:
+            if overwrite or not k in target_repo._git.refs:
+                target_repo._git.refs[k] = v
+            elif target_repo._git.refs[k] == v:
                 pass
             else:
                 conflicts.append((ref_to_tag_name(k), v, target_repo.refs[k]))
@@ -223,11 +223,6 @@ class DictTagDict(tag.BasicTags):
 
 
 class GitBranchFormat(branch.BranchFormat):
-
-    @property
-    def _matchingbzrdir(self):
-        from bzrlib.plugins.git.dir import LocalGitControlDirFormat
-        return LocalGitControlDirFormat
 
     def get_format_description(self):
         return 'Git Branch'
