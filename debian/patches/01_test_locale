@@ -1,3 +1,7 @@
+Description: Fix test of "bzr log" in "C" locale
+Author: Jelmer Vernooij <jelmer@samba.org>
+Origin: upstream, commit:5629
+
 --- bzr-2.3.0.orig/bzrlib/tests/blackbox/test_locale.py
 +++ bzr-2.3.0/bzrlib/tests/blackbox/test_locale.py
 @@ -16,7 +16,6 @@

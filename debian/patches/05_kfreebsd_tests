@@ -1,3 +1,7 @@
+Description: Fix permission tests on Debian GNU/kFreeBSD
+Author: Jelmer Vernooij <jelmer@samba.org>
+Origin: upstream, commit:5690
+
 === modified file 'bzrlib/tests/per_branch/test_permissions.py'
 --- old/bzrlib/tests/per_branch/test_permissions.py	2010-06-20 11:18:38 +0000
 +++ new/bzrlib/tests/per_branch/test_permissions.py	2011-02-25 15:24:22 +0000

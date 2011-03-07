@@ -1,3 +1,7 @@
+Description: Remove included copy of python-configobj
+Author: Jelmer Vernooij <jelmer@debian.org>
+Bug-Debian: http://bugs.debian.org/555336
+
 --- bzr-2.3.0.orig/bzrlib/config.py
 +++ bzr-2.3.0/bzrlib/config.py
 @@ -91,7 +91,7 @@ from bzrlib import (

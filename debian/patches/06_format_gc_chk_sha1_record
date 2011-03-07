@@ -1,3 +1,7 @@
+Description: Fix btree serialization on alpha
+Author: Martin [gz]
+Origin: upstream, commit:5691
+
 === modified file 'bzrlib/_btree_serializer_pyx.pyx'
 --- old/bzrlib/_btree_serializer_pyx.pyx	2010-08-24 19:21:32 +0000
 +++ new/bzrlib/_btree_serializer_pyx.pyx	2011-02-25 18:52:53 +0000

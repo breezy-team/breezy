@@ -1,3 +1,7 @@
+Description: Fix concurrency function on Debian GNU/kFreeBSD
+Author: Jelmer Vernooij <jelmer@debian.org>
+Origin: upstream, commit:5683
+
 === modified file 'bzrlib/osutils.py'
 --- old/bzrlib/osutils.py	2011-01-16 01:12:01 +0000
 +++ new/bzrlib/osutils.py	2011-02-22 22:35:08 +0000

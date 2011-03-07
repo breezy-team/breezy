@@ -1,3 +1,7 @@
+Description: Remove included copy of python-elementtree
+Author: Jelmer Vernooij <jelmer@debian.org>
+Bug-Debian: http://bugs.debian.org/555343
+
 --- bzr-2.3.0.orig/bzrlib/xml_serializer.py
 +++ bzr-2.3.0/bzrlib/xml_serializer.py
 @@ -44,10 +44,10 @@ except ImportError:
