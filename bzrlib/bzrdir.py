@@ -930,7 +930,7 @@ class BzrDir(controldir.ControlDir):
         return format.initialize_on_transport(t)
 
     def get_branch_transport(self, branch_format, name=None):
-        """Get the transport for use by branch format in this ControlDir.
+        """Get the transport for use by branch format in this BzrDir.
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the branch format they are given has
@@ -943,7 +943,7 @@ class BzrDir(controldir.ControlDir):
         raise NotImplementedError(self.get_branch_transport)
 
     def get_repository_transport(self, repository_format):
-        """Get the transport for use by repository format in this ControlDir.
+        """Get the transport for use by repository format in this BzrDir.
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the repository format they are given has
@@ -956,7 +956,7 @@ class BzrDir(controldir.ControlDir):
         raise NotImplementedError(self.get_repository_transport)
 
     def get_workingtree_transport(self, tree_format):
-        """Get the transport for use by workingtree format in this ControlDir.
+        """Get the transport for use by workingtree format in this BzrDir.
 
         Note that bzr dirs that do not support format strings will raise
         IncompatibleFormat if the workingtree format they are given has a
