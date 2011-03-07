@@ -1,4 +1,4 @@
-bzr (2.3.0-7) UNRELEASED; urgency=low
+bzr (2.3.0-7) unstable; urgency=low
 
   * Switch to dh_python2.
   * Switch to debhelper 7, drop cdbs.

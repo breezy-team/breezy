@@ -15,7 +15,7 @@ Architecture: all
 Depends: ${python:Depends}, python-bzrlib (>= ${source:Version}), ${misc:Depends}
 Recommends: bzrtools
 Suggests: bzr-gtk, bzr-svn, bzr-doc, python-testtools (>= 0.9.5~)
-Breaks: ${python:Breaks}
+Provides: ${python:Provides}
 Description: easy to use distributed version control system
  Bazaar is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
