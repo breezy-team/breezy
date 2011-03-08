@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -421,9 +421,18 @@ class GCCHKPacker(Packer):
         inventory_keys = source_vf.keys()
         missing_inventories = set(self.revision_keys).difference(inventory_keys)
         if missing_inventories:
-            missing_inventories = sorted(missing_inventories)
-            raise ValueError('We are missing inventories for revisions: %s'
-                % (missing_inventories,))
+            # Go back to the original repo, to see if these are really missing
+            # https://bugs.launchpad.net/bzr/+bug/437003
+            # If we are packing a subset of the repo, it is fine to just have
+            # the data in another Pack file, which is not included in this pack
+            # operation.
+            inv_index = self._pack_collection.repo.inventories._index
+            pmap = inv_index.get_parent_map(missing_inventories)
+            really_missing = missing_inventories.difference(pmap)
+            if really_missing:
+                missing_inventories = sorted(really_missing)
+                raise ValueError('We are missing inventories for revisions: %s'
+                    % (missing_inventories,))
         self._copy_stream(source_vf, target_vf, inventory_keys,
                           'inventories', self._get_filtered_inv_stream, 2)
 
