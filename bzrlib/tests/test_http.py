@@ -265,7 +265,7 @@ class TestHTTPRangeParsing(tests.TestCase):
             def handle(self): pass
             def finish(self): pass
 
-        self.req_handler =  RequestHandler(None, None, None)
+        self.req_handler = RequestHandler(None, None, None)
 
     def assertRanges(self, ranges, header, file_size):
         self.assertEquals(ranges,
@@ -286,6 +286,7 @@ class TestHTTPRangeParsing(tests.TestCase):
     def test_invalid_ranges(self):
         self.assertRanges(None, 'bytes=12-22', 12)
         self.assertRanges(None, 'bytes=1-3,12-22', 12)
+        self.assertRanges(None, 'bytes=-', 12)
 
 
 class TestHTTPServer(tests.TestCase):
