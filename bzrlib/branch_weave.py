@@ -59,6 +59,9 @@ class BzrBranchFormat4(BranchFormat):
         if repository is not None:
             raise NotImplementedError(
                 "initialize(repository=<not None>) on %r" % (self,))
+        if not [isinstance(a_bzrdir._format, format) for format in
+                self._compatible_bzrdirs]:
+            raise errors.IncompatibleFormat(self, a_bzrdir._format)
         utf8_files = [('revision-history', ''),
                       ('branch-name', ''),
                       ]
@@ -88,8 +91,10 @@ class BzrBranchFormat4(BranchFormat):
 
     def __init__(self):
         super(BzrBranchFormat4, self).__init__()
-        from bzrlib.bzrdir import BzrDirFormat6
+        from bzrlib.bzrdir import BzrDirFormat4, BzrDirFormat5, BzrDirFormat6
         self._matchingbzrdir = BzrDirFormat6()
+        self._compatible_bzrdirs = [BzrDirFormat4, BzrDirFormat5,
+            BzrDirFormat6]
 
     def network_name(self):
         """The network name for this format is the control dirs disk label."""
