@@ -221,5 +221,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* The Range parsing for HTTP requests will correctly parse incomplete ranges.
+  (Vincent Ladeuil, #731240)
+
 ..
    vim: tw=74 ft=rst ff=unix
