@@ -101,7 +101,7 @@ class BzrBranchFormat4(BranchFormat):
         return self._matchingbzrdir.get_format_string()
 
     def get_format_description(self):
-        return "Branch Format 4"
+        return "Branch format 4"
 
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None):
