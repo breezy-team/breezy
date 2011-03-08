@@ -49,19 +49,19 @@ class BzrBranchFormat4(BranchFormat):
      - a branch-lock lock file [ to be shared with the bzrdir ]
     """
 
-    def get_format_description(self):
-        """See BranchFormat.get_format_description()."""
-        return "Branch format 4"
-
-    def _initialize_helper(self, a_bzrdir, utf8_files, name=None):
-        """Initialize a branch in a bzrdir, with specified files
+    def initialize(self, a_bzrdir, name=None, repository=None):
+        """Create a branch of this format in a_bzrdir.
 
         :param a_bzrdir: The bzrdir to initialize the branch in
-        :param utf8_files: The files to create as a list of
-            (filename, content) tuples
         :param name: Name of colocated branch to create, if any
-        :return: a branch in this format
+        :param repository: Repository for this branch (unused)
         """
+        if repository is not None:
+            raise NotImplementedError(
+                "initialize(repository=<not None>) on %r" % (self,))
+        utf8_files = [('revision-history', ''),
+                      ('branch-name', ''),
+                      ]
         mutter('creating branch %r in %s', self, a_bzrdir.user_url)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
         control_files = lockable_files.LockableFiles(branch_transport,
@@ -85,16 +85,6 @@ class BzrBranchFormat4(BranchFormat):
                 found_repository=None)
         self._run_post_branch_init_hooks(a_bzrdir, name, branch)
         return branch
-
-    def initialize(self, a_bzrdir, name=None, repository=None):
-        """Create a branch of this format in a_bzrdir."""
-        if repository is not None:
-            raise NotImplementedError(
-                "initialize(repository=<not None>) on %r" % (self,))
-        utf8_files = [('revision-history', ''),
-                      ('branch-name', ''),
-                      ]
-        return self._initialize_helper(a_bzrdir, utf8_files, name=name)
 
     def __init__(self):
         super(BzrBranchFormat4, self).__init__()
