@@ -100,6 +100,9 @@ class BzrBranchFormat4(BranchFormat):
         """The network name for this format is the control dirs disk label."""
         return self._matchingbzrdir.get_format_string()
 
+    def get_format_description(self):
+        return "Branch Format 4"
+
     def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
             found_repository=None):
         """See BranchFormat.open()."""
