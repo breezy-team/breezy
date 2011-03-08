@@ -805,7 +805,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         return refs, main_ref, (stop_revno, stop_revision)
 
     def pull(self, overwrite=False, stop_revision=None, local=False,
-             possible_transports=None):
+             possible_transports=None, run_hooks=True):
         result = GitBranchPullResult()
         result.source_branch = self.source
         result.target_branch = self.target
