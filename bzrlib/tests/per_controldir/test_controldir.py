@@ -1107,7 +1107,7 @@ class TestControlDir(TestCaseWithControlDir):
             # Repositories are open write-locked
             self.assertTrue(repo.is_write_locked())
             self.addCleanup(repo.unlock)
-        self.assertIsInstance(control, bzrdir.BzrDir)
+        self.assertIsInstance(control, controldir.ControlDir)
         opened = bzrdir.BzrDir.open(t.base)
         expected_format = self.bzrdir_format
         if isinstance(expected_format, bzrdir.RemoteBzrDirFormat):

@@ -1176,7 +1176,7 @@ class BzrDirPreSplitOut(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
-        from bzrlib.branch import BzrBranchFormat4
+        from bzrlib.branch_weave import BzrBranchFormat4
         format = BzrBranchFormat4()
         self._check_supported(format, unsupported)
         return format.open(self, name, _found=True)
@@ -1862,8 +1862,8 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
         return "Bazaar-NG branch, format 5\n"
 
     def get_branch_format(self):
-        from bzrlib import branch
-        return branch.BzrBranchFormat4()
+        from bzrlib import branch_weave
+        return branch_weave.BzrBranchFormat4()
 
     def get_format_description(self):
         """See BzrDirFormat.get_format_description()."""
@@ -1883,7 +1883,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
 
         Except when they are being cloned.
         """
-        from bzrlib.branch import BzrBranchFormat4
+        from bzrlib.branch_weave import BzrBranchFormat4
         from bzrlib.repofmt.weaverepo import RepositoryFormat5
         result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
@@ -1927,8 +1927,8 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
         return "All-in-one format 6"
 
     def get_branch_format(self):
-        from bzrlib import branch
-        return branch.BzrBranchFormat4()
+        from bzrlib import branch_weave
+        return branch_weave.BzrBranchFormat4()
 
     def get_converter(self, format=None):
         """See BzrDirFormat.get_converter()."""
@@ -1944,7 +1944,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
 
         Except when they are being cloned.
         """
-        from bzrlib.branch import BzrBranchFormat4
+        from bzrlib.branch_weave import BzrBranchFormat4
         from bzrlib.repofmt.weaverepo import RepositoryFormat6
         result = super(BzrDirFormat6, self).initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
