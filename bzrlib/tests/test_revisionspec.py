@@ -23,7 +23,9 @@ from bzrlib import (
     )
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.revisionspec import (
+    RevisionInfo,
     RevisionSpec,
+    RevisionSpec_dwim,
     RevisionSpec_tag,
     )
 
@@ -142,6 +144,17 @@ class TestOddRevisionSpec(TestRevisionSpec):
         self.assertRaises(TypeError, RevisionSpec.from_string, object())
 
 
+class RevisionSpec_bork(RevisionSpec):
+
+    prefix = 'irrelevant:'
+
+    def _match_on(self, branch, revs):
+        if self.spec == "bork":
+            return RevisionInfo.from_revision_id(branch, "r1", revs)
+        else:
+            raise errors.InvalidRevisionSpec(self.spec, branch)
+
+
 class TestRevisionSpec_dwim(TestRevisionSpec):
 
     # Don't need to test revno's explicitly since TRS_revno already
@@ -184,6 +197,23 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.assertInvalid('1..1', invalid_as_revision_id=False)
         self.assertInvalid('1.2..1', invalid_as_revision_id=False)
         self.assertInvalid('1.', invalid_as_revision_id=False)
+
+    def test_append_dwim_revspec(self):
+        original_dwim_revspecs = list(RevisionSpec_dwim._possible_revspecs)
+        def reset_dwim_revspecs():
+            RevisionSpec_dwim._possible_revspecs = original_dwim_revspecs
+        self.addCleanup(reset_dwim_revspecs)
+        RevisionSpec_dwim.append_possible_revspec(RevisionSpec_bork)
+        self.assertAsRevisionId('r1', 'bork')
+
+    def test_append_lazy_dwim_revspec(self):
+        original_dwim_revspecs = list(RevisionSpec_dwim._possible_revspecs)
+        def reset_dwim_revspecs():
+            RevisionSpec_dwim._possible_revspecs = original_dwim_revspecs
+        self.addCleanup(reset_dwim_revspecs)
+        RevisionSpec_dwim.append_possible_lazy_revspec(
+            "bzrlib.tests.test_revisionspec", "RevisionSpec_bork")
+        self.assertAsRevisionId('r1', 'bork')
 
 
 class TestRevisionSpec_revno(TestRevisionSpec):

@@ -2303,11 +2303,6 @@ class KnitPackRepository(KnitRepository):
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
 
-    def _warn_if_deprecated(self, branch=None):
-        # This class isn't deprecated, but one sub-format is
-        if isinstance(self._format, RepositoryFormatKnitPack5RichRootBroken):
-            super(KnitPackRepository, self)._warn_if_deprecated(branch)
-
     def _abort_write_group(self):
         self.revisions._index._key_dependencies.clear()
         self._pack_collection._abort_write_group()
@@ -2839,6 +2834,9 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
     def get_format_description(self):
         return ("Packs 5 rich-root (adds stacking support, requires bzr 1.6)"
                 " (deprecated)")
+
+    def is_deprecated(self):
+        return True
 
 
 class RepositoryFormatKnitPack6(RepositoryFormatPack):

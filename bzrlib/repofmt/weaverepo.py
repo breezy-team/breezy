@@ -330,6 +330,9 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         result.chk_bytes = None
         return result
 
+    def is_deprecated(self):
+        return True
+
 
 class RepositoryFormat4(PreSplitOutRepositoryFormat):
     """Bzr repository format 4.
@@ -574,6 +577,9 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         result.chk_bytes = None
         result._transport = repo_transport
         return result
+
+    def is_deprecated(self):
+        return True
 
 
 class TextVersionedFiles(VersionedFiles):
@@ -863,3 +869,9 @@ class InterWeaveRepo(InterSameDataRepository):
 
 
 InterRepository.register_optimiser(InterWeaveRepo)
+
+
+def get_extra_interrepo_test_combinations():
+    from bzrlib.repofmt import knitrepo
+    return [(InterRepository, RepositoryFormat5(),
+        knitrepo.RepositoryFormatKnit3())]

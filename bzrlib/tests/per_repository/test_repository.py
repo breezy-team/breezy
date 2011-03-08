@@ -100,6 +100,14 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertFormatAttribute('supports_leaving_lock',
             (True, False))
 
+    def test_format_is_deprecated(self):
+        repo = self.make_repository('repo')
+        self.assertSubset([repo._format.is_deprecated()], (True, False))
+
+    def test_format_is_supported(self):
+        repo = self.make_repository('repo')
+        self.assertSubset([repo._format.is_supported()], (True, False))
+
     def test_attribute_text_store_basics(self):
         """Test the basic behaviour of the text store."""
         tree = self.make_branch_and_tree('tree')
