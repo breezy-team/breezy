@@ -1,15 +1,10 @@
 #!/usr/bin/env python
 from distutils.core import setup
-
-bzr_plugin_name = 'fastimport'
-
-bzr_plugin_version = (0, 10, 0, 'dev', 0)
-bzr_minimum_version = (1, 1, 0)
-bzr_maximum_version = None
-
-version = "0.9.0dev0"
+from info import *
 
 if __name__ == '__main__':
+    from bzrlib import _format_version_tuple
+    version = _format_version_tuple(bzr_plugin_version)
     setup(name="bzr-fastimport",
           version=version,
           description="stream-based import into and export from Bazaar.",

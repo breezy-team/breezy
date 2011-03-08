@@ -79,7 +79,9 @@ To report bugs or publish enhancements, visit the bzr-fastimport project
 page on Launchpad, https://launchpad.net/bzr-fastimport.
 """
 
-version_info = (0, 10, 0, 'dev', 0)
+from info import (
+    bzr_plugin_version as version_info,
+    )
 
 from bzrlib.commands import plugin_cmds
 
