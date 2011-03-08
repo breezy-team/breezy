@@ -170,6 +170,10 @@ API Changes
   indicates whether the components of the bzrdir can be upgraded
   independent of the ``BzrDir``. (Jelmer Vernooij)
 
+* ``ControlDir`` implementations no longer have to provide the ``get_branch_transport``,
+  ``get_workingtree_transport`` and ``get_repository_transport`` methods.
+  (Jelmer Vernooij, #730325)
+
 * ``Converter`` has been moved from ``bzrlib.bzrdir`` to
   ``bzrlib.controldir``. (Jelmer Vernooij)
 

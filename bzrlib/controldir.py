@@ -215,45 +215,6 @@ class ControlDir(ControlComponent):
             raise errors.NoColocatedBranchSupport(self)
         return None
 
-    def get_branch_transport(self, branch_format, name=None):
-        """Get the transport for use by branch format in this ControlDir.
-
-        Note that bzr dirs that do not support format strings will raise
-        IncompatibleFormat if the branch format they are given has
-        a format string, and vice versa.
-
-        If branch_format is None, the transport is returned with no
-        checking. If it is not None, then the returned transport is
-        guaranteed to point to an existing directory ready for use.
-        """
-        raise NotImplementedError(self.get_branch_transport)
-
-    def get_repository_transport(self, repository_format):
-        """Get the transport for use by repository format in this ControlDir.
-
-        Note that bzr dirs that do not support format strings will raise
-        IncompatibleFormat if the repository format they are given has
-        a format string, and vice versa.
-
-        If repository_format is None, the transport is returned with no
-        checking. If it is not None, then the returned transport is
-        guaranteed to point to an existing directory ready for use.
-        """
-        raise NotImplementedError(self.get_repository_transport)
-
-    def get_workingtree_transport(self, tree_format):
-        """Get the transport for use by workingtree format in this ControlDir.
-
-        Note that bzr dirs that do not support format strings will raise
-        IncompatibleFormat if the workingtree format they are given has a
-        format string, and vice versa.
-
-        If workingtree_format is None, the transport is returned with no
-        checking. If it is not None, then the returned transport is
-        guaranteed to point to an existing directory ready for use.
-        """
-        raise NotImplementedError(self.get_workingtree_transport)
-
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """Open the branch object at this ControlDir if one is present.
