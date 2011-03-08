@@ -263,7 +263,7 @@ class LocalGitRepository(GitRepository):
         return self.revision_tree(revision_id).inventory
 
     def set_make_working_trees(self, trees):
-        pass
+        raise NotImplementedError(self.set_make_working_trees)
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
         progress=None):
