@@ -20,10 +20,19 @@ from bzrlib import (
     versionedfile,
     )
 
-from bzrlib.tests.per_repository_vf import TestCaseWithRepository
+from bzrlib.tests.per_repository_vf import (
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+    )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
+
+
+load_tests = load_tests_apply_scenarios
 
 
 class TestRepository(TestCaseWithRepository):
+
+    scenarios = all_repository_vf_format_scenarios()
 
     def test_attribute_inventories_store(self):
         """Test the existence of the inventories attribute."""

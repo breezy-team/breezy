@@ -20,23 +20,16 @@
 For more generic per-repository tests, see bzrlib.tests.per_repository.
 """
 
-from bzrlib.tests import (
-    multiply_tests,
-    )
 from bzrlib.tests.per_repository import (
     all_repository_format_scenarios,
     TestCaseWithRepository,
     )
 
 
-def load_tests(standard_tests, module, loader):
+def all_repository_vf_format_scenarios():
     scenarios = []
     for test_name, scenario_info in all_repository_format_scenarios():
         format = scenario_info['repository_format']
         if format.supports_full_versioned_files:
             scenarios.append((test_name, scenario_info))
-    result = loader.suiteClass()
-    tests = loader.loadTestsFromModuleNames([
-        'bzrlib.tests.per_repository_vf.test_repository'])
-    multiply_tests(tests, scenarios, result)
-    return result
+    return scenarios
