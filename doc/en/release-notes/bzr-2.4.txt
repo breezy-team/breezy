@@ -186,6 +186,12 @@ API Changes
   (``bzrlib.repository.format_registry``) rather than using the class
   methods on ``RepositoryFormat``. (Jelmer Vernooij)
 
+* Repository formats can now indicate they do not support the full
+  VersionedFiles API by setting the ``supports_full_versioned_files``
+  attribute to False. A subset of the VersionedFiles API
+  (signatures and text graphs) still needs to be supported.
+  (Jelmer Vernooij)
+
 * Repository formats have a new method ``is_deprecated`` that
   implementations can override to return True to trigger a deprecation
   warning. (Jelmer Vernooij)
