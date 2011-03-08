@@ -487,6 +487,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
 
     _matchingbzrdir = RemoteBzrDirFormat()
     supports_full_versioned_files = True
+    supports_leaving_lock = True
 
     def __init__(self):
         repository.RepositoryFormat.__init__(self)
@@ -496,6 +497,7 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
         self._supports_chks = None
         self._supports_external_lookups = None
         self._supports_tree_reference = None
+        self._supports_funky_characters = None
         self._rich_root_data = None
 
     def __repr__(self):
@@ -528,6 +530,14 @@ class RemoteRepositoryFormat(repository.RepositoryFormat):
             self._supports_external_lookups = \
                 self._custom_format.supports_external_lookups
         return self._supports_external_lookups
+
+    @property
+    def supports_funky_characters(self):
+        if self._supports_funky_characters is None:
+            self._ensure_real()
+            self._supports_funky_characters = \
+                self._custom_format.supports_funky_characters
+        return self._supports_funky_characters
 
     @property
     def supports_tree_reference(self):
