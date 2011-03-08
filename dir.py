@@ -40,6 +40,9 @@ from bzrlib.controldir import (
 class GitLock(object):
     """A lock that thunks through to Git."""
 
+    def __init__(self):
+        self.lock_name = "git lock"
+
     def lock_write(self, token=None):
         pass
 
