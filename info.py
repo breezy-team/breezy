@@ -16,6 +16,6 @@ bzr_commands = [
     "fast-export-from-svn",
     ]
 
-bzr_plugin_version = (0, 10, 0, 'dev', 0)
+bzr_plugin_version = (0, 10, 0, 'final', 0)
 bzr_minimum_version = (2, 0, 0)
 bzr_maximum_version = None
