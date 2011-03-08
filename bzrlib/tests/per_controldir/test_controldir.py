@@ -50,48 +50,6 @@ from bzrlib.remote import (
     )
 
 
-class AnonymousTestBranchFormat(bzrlib.branch.BranchFormat):
-    """An anonymous branch format (does not have a format string)"""
-
-    def get_format_string(self):
-        raise NotImplementedError(self.get_format_string)
-
-
-class IdentifiableTestBranchFormat(bzrlib.branch.BranchFormat):
-    """An identifable branch format (has a format string)"""
-
-    def get_format_string(self):
-        return "I have an identity"
-
-
-class AnonymousTestRepositoryFormat(repository.RepositoryFormat):
-    """An anonymous branch format (does not have a format string)"""
-
-    def get_format_string(self):
-        raise NotImplementedError(self.get_format_string)
-
-
-class IdentifiableTestRepositoryFormat(repository.RepositoryFormat):
-    """An identifable branch format (has a format string)"""
-
-    def get_format_string(self):
-        return "I have an identity"
-
-
-class AnonymousTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
-    """An anonymous branch format (does not have a format string)"""
-
-    def get_format_string(self):
-        raise NotImplementedError(self.get_format_string)
-
-
-class IdentifiableTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
-    """An identifable branch format (has a format string)"""
-
-    def get_format_string(self):
-        return "I have an identity"
-
-
 class TestControlDir(TestCaseWithControlDir):
 
     def skipIfNoWorkingTree(self, a_bzrdir):
