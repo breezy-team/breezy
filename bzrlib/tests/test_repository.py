@@ -1660,8 +1660,8 @@ class TestGCCHKPacker(TestCaseWithTransport):
             repo._pack_collection.all_packs(), '.test-pack')
         e = self.assertRaises(ValueError, packer.pack)
         packer.new_pack.abort()
-        self.assertEqual("We are missing inventories for revisions: [('A',)]",
-                         str(e))
+        self.assertContainsRe(str(e),
+            r"We are missing inventories for revisions: .*'A'")
 
 
 class TestCrossFormatPacks(TestCaseWithTransport):
