@@ -278,6 +278,10 @@ class GitWriteLock(object):
 class GitBranch(ForeignBranch):
     """An adapter to git repositories for bzr Branch objects."""
 
+    @property
+    def control_transport(self):
+        return self.bzrdir.control_transport
+
     def __init__(self, bzrdir, repository, ref, lockfiles, tagsdict=None):
         self.repository = repository
         self._format = GitBranchFormat()
