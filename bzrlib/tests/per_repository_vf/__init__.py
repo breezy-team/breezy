@@ -33,3 +33,12 @@ def all_repository_vf_format_scenarios():
         if format.supports_full_versioned_files:
             scenarios.append((test_name, scenario_info))
     return scenarios
+
+
+def load_tests(basic_tests, module, loader):
+    testmod_names = [
+        'test_repository',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests
