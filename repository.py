@@ -290,6 +290,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_leaving_lock = False
     fast_deltas = True
     supports_funky_characters = True
+    supports_external_lookups = False
 
     @property
     def _matchingbzrdir(self):
