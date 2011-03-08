@@ -255,6 +255,39 @@ class TestAuthHeader(tests.TestCase):
         self.assertEqual('realm="Thou should not pass"', remainder)
 
 
+class TestHTTPRangeParsing(tests.TestCase):
+
+    def setUp(self):
+        super(TestHTTPRangeParsing, self).setUp()
+        # We focus on range  parsing here and ignore everything else
+        class RequestHandler(http_server.TestingHTTPRequestHandler):
+            def setup(self): pass
+            def handle(self): pass
+            def finish(self): pass
+
+        self.req_handler =  RequestHandler(None, None, None)
+
+    def assertRanges(self, ranges, header, file_size):
+        self.assertEquals(ranges,
+                          self.req_handler._parse_ranges(header, file_size))
+
+    def test_simple_range(self):
+        self.assertRanges([(0,2)], 'bytes=0-2', 12)
+
+    def test_tail(self):
+        self.assertRanges([(8, 11)], 'bytes=-4', 12)
+
+    def test_tail_bigger_than_file(self):
+        self.assertRanges([(0, 11)], 'bytes=-99', 12)
+
+    def test_range_without_end(self):
+        self.assertRanges([(4, 11)], 'bytes=4-', 12)
+
+    def test_invalid_ranges(self):
+        self.assertRanges(None, 'bytes=12-22', 12)
+        self.assertRanges(None, 'bytes=1-3,12-22', 12)
+
+
 class TestHTTPServer(tests.TestCase):
     """Test the HTTP servers implementations."""
 
@@ -428,7 +461,7 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
     """Test the http connections."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -493,7 +526,7 @@ class TestHttpTransportRegistration(tests.TestCase):
 class TestPost(tests.TestCase):
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -552,7 +585,7 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
     """
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1030,7 +1063,7 @@ class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
     """Tests readv requests against a server erroring out on too much ranges."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1076,7 +1109,7 @@ class TestHttpProxyWhiteBox(tests.TestCase):
 
     def _proxied_request(self):
         handler = _urllib2_wrappers.ProxyHandler()
-        request = _urllib2_wrappers.Request('GET','http://baz/buzzle')
+        request = _urllib2_wrappers.Request('GET', 'http://baz/buzzle')
         handler.set_proxy(request, 'http')
         return request
 
@@ -1087,6 +1120,12 @@ class TestHttpProxyWhiteBox(tests.TestCase):
 
     def test_empty_user(self):
         self.overrideEnv('http_proxy', 'http://bar.com')
+        request = self._proxied_request()
+        self.assertFalse(request.headers.has_key('Proxy-authorization'))
+
+    def test_user_with_at(self):
+        self.overrideEnv('http_proxy',
+                         'http://username@domain:password@proxy_host:1234')
         request = self._proxied_request()
         self.assertFalse(request.headers.has_key('Proxy-authorization'))
 
@@ -1126,7 +1165,7 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
     """
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1223,7 +1262,7 @@ class TestRanges(http_utils.TestCaseWithWebserver):
     """Test the Range header in GET methods."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1273,7 +1312,7 @@ class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test redirection between http servers."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1346,7 +1385,7 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1401,7 +1440,7 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test transport.do_catching_redirections."""
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
@@ -1756,7 +1795,7 @@ class SampleSocket(object):
 class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
 
     scenarios = multiply_scenarios(
-        vary_by_http_client_implementation(), 
+        vary_by_http_client_implementation(),
         vary_by_http_protocol_version(),
         )
 
