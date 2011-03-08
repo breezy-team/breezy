@@ -268,7 +268,7 @@ class LocalGitDir(GitDir):
             raise bzr_errors.IncompatibleFormat(GitRepositoryFormat(), self._format)
         return self.open_repository()
 
-    def create_branch(self, name=None):
+    def create_branch(self, name=None, repository=None):
         refname = self._branch_name_to_ref(name)
         from dulwich.protocol import ZERO_SHA
         self._git.refs[refname or "HEAD"] = ZERO_SHA
