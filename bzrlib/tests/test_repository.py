@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1631,6 +1631,106 @@ class TestOptimisingPacker(TestCaseWithTransport):
         self.assertTrue(new_pack.inventory_index._optimize_for_size)
         self.assertTrue(new_pack.text_index._optimize_for_size)
         self.assertTrue(new_pack.signature_index._optimize_for_size)
+
+
+class TestGCCHKPacker(TestCaseWithTransport):
+
+    def make_abc_branch(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        builder.build_snapshot('A', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\n')),
+            ])
+        builder.build_snapshot('B', ['A'], [
+            ('add', ('dir', 'dir-id', 'directory', None))])
+        builder.build_snapshot('C', ['B'], [
+            ('modify', ('file-id', 'new content\n'))])
+        builder.finish_series()
+        return builder.get_branch()
+
+    def make_branch_with_disjoint_inventory_and_revision(self):
+        """a repo with separate packs for a revisions Revision and Inventory.
+
+        There will be one pack file that holds the Revision content, and one
+        for the Inventory content.
+
+        :return: (repository,
+                  pack_name_with_rev_A_Revision,
+                  pack_name_with_rev_A_Inventory,
+                  pack_name_with_rev_C_content)
+        """
+        b_source = self.make_abc_branch()
+        b_base = b_source.bzrdir.sprout('base', revision_id='A').open_branch()
+        b_stacked = b_base.bzrdir.sprout('stacked', stacked=True).open_branch()
+        b_stacked.lock_write()
+        self.addCleanup(b_stacked.unlock)
+        b_stacked.fetch(b_source, 'B')
+        # Now re-open the stacked repo directly (no fallbacks) so that we can
+        # fill in the A rev.
+        repo_not_stacked = b_stacked.bzrdir.open_repository()
+        repo_not_stacked.lock_write()
+        self.addCleanup(repo_not_stacked.unlock)
+        # Now we should have a pack file with A's inventory, but not its
+        # Revision
+        self.assertEqual([('A',), ('B',)],
+                         sorted(repo_not_stacked.inventories.keys()))
+        self.assertEqual([('B',)],
+                         sorted(repo_not_stacked.revisions.keys()))
+        stacked_pack_names = repo_not_stacked._pack_collection.names()
+        # We have a couple names here, figure out which has A's inventory
+        for name in stacked_pack_names:
+            pack = repo_not_stacked._pack_collection.get_pack_by_name(name)
+            keys = [n[1] for n in pack.inventory_index.iter_all_entries()]
+            if ('A',) in keys:
+                inv_a_pack_name = name
+                break
+        else:
+            self.fail('Could not find pack containing A\'s inventory')
+        repo_not_stacked.fetch(b_source.repository, 'A')
+        self.assertEqual([('A',), ('B',)],
+                         sorted(repo_not_stacked.revisions.keys()))
+        new_pack_names = set(repo_not_stacked._pack_collection.names())
+        rev_a_pack_names = new_pack_names.difference(stacked_pack_names)
+        self.assertEqual(1, len(rev_a_pack_names))
+        rev_a_pack_name = list(rev_a_pack_names)[0]
+        # Now fetch 'C', so we have a couple pack files to join
+        repo_not_stacked.fetch(b_source.repository, 'C')
+        rev_c_pack_names = set(repo_not_stacked._pack_collection.names())
+        rev_c_pack_names = rev_c_pack_names.difference(new_pack_names)
+        self.assertEqual(1, len(rev_c_pack_names))
+        rev_c_pack_name = list(rev_c_pack_names)[0]
+        return (repo_not_stacked, rev_a_pack_name, inv_a_pack_name,
+                rev_c_pack_name)
+
+    def test_pack_with_distant_inventories(self):
+        # See https://bugs.launchpad.net/bzr/+bug/437003
+        # When repacking, it is possible to have an inventory in a different
+        # pack file than the associated revision. An autopack can then come
+        # along, and miss that inventory, and complain.
+        (repo, rev_a_pack_name, inv_a_pack_name, rev_c_pack_name
+         ) = self.make_branch_with_disjoint_inventory_and_revision()
+        a_pack = repo._pack_collection.get_pack_by_name(rev_a_pack_name)
+        c_pack = repo._pack_collection.get_pack_by_name(rev_c_pack_name)
+        packer = groupcompress_repo.GCCHKPacker(repo._pack_collection,
+                    [a_pack, c_pack], '.test-pack')
+        # This would raise ValueError in bug #437003, but should not raise an
+        # error once fixed.
+        packer.pack()
+
+    def test_pack_with_missing_inventory(self):
+        # Similar to test_pack_with_missing_inventory, but this time, we force
+        # the A inventory to actually be gone from the repository.
+        (repo, rev_a_pack_name, inv_a_pack_name, rev_c_pack_name
+         ) = self.make_branch_with_disjoint_inventory_and_revision()
+        inv_a_pack = repo._pack_collection.get_pack_by_name(inv_a_pack_name)
+        repo._pack_collection._remove_pack_from_memory(inv_a_pack)
+        packer = groupcompress_repo.GCCHKPacker(repo._pack_collection,
+            repo._pack_collection.all_packs(), '.test-pack')
+        e = self.assertRaises(ValueError, packer.pack)
+        packer.new_pack.abort()
+        self.assertContainsRe(str(e),
+            r"We are missing inventories for revisions: .*'A'")
 
 
 class TestCrossFormatPacks(TestCaseWithTransport):
