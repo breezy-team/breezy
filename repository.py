@@ -291,6 +291,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     fast_deltas = True
     supports_funky_characters = True
     supports_external_lookups = False
+    supports_full_versioned_files = False
 
     @property
     def _matchingbzrdir(self):
