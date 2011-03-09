@@ -170,6 +170,10 @@ API Changes
   indicates whether the components of the bzrdir can be upgraded
   independent of the ``BzrDir``. (Jelmer Vernooij)
 
+* ``ControlDir`` implementations no longer have to provide the ``get_branch_transport``,
+  ``get_workingtree_transport`` and ``get_repository_transport`` methods.
+  (Jelmer Vernooij, #730325)
+
 * ``Converter`` has been moved from ``bzrlib.bzrdir`` to
   ``bzrlib.controldir``. (Jelmer Vernooij)
 
@@ -216,6 +220,9 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* The Range parsing for HTTP requests will correctly parse incomplete ranges.
+  (Vincent Ladeuil, #731240)
 
 ..
    vim: tw=74 ft=rst ff=unix
