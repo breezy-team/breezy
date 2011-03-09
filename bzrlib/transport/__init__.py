@@ -1772,9 +1772,6 @@ register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',
                         'MemoryTransport')
 
-# chroots cannot be implicitly accessed, they must be explicitly created:
-register_transport_proto('chroot+')
-
 register_transport_proto('readonly+',
 #              help="This modifier converts any transport to be readonly."
             )
@@ -1808,12 +1805,6 @@ register_lazy_transport('vfat+',
 register_transport_proto('nosmart+')
 register_lazy_transport('nosmart+', 'bzrlib.transport.nosmart',
                         'NoSmartTransportDecorator')
-
-# These two schemes were registered, but don't seem to have an actual transport
-# protocol registered
-for scheme in ['ssh', 'bzr+loopback']:
-    register_urlparse_netloc_protocol(scheme)
-del scheme
 
 register_transport_proto('bzr://',
             help="Fast access using the Bazaar smart server.",
