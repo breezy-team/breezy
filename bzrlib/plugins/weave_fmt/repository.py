@@ -279,6 +279,7 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     _fetch_reconcile = True
     fast_deltas = False
     supports_leaving_lock = False
+    supports_full_versioned_files = True
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -500,6 +501,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     supports_ghosts = False
     supports_chks = False
     supports_funky_characters = False
+    supports_full_versioned_files = True
 
     _fetch_order = 'topological'
     _fetch_reconcile = True

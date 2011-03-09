@@ -87,6 +87,18 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_attribute_format_pack_compresses(self):
         self.assertFormatAttribute('pack_compresses', (True, False))
 
+    def test_attribute_format_supports_full_versioned_files(self):
+        self.assertFormatAttribute('supports_full_versioned_files',
+            (True, False))
+
+    def test_attribute_format_supports_funky_characters(self):
+        self.assertFormatAttribute('supports_funky_characters',
+            (True, False))
+
+    def test_attribute_format_supports_leaving_lock(self):
+        self.assertFormatAttribute('supports_leaving_lock',
+            (True, False))
+
     def test_format_is_deprecated(self):
         repo = self.make_repository('repo')
         self.assertSubset([repo._format.is_deprecated()], (True, False))
@@ -94,62 +106,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_format_is_supported(self):
         repo = self.make_repository('repo')
         self.assertSubset([repo._format.is_supported()], (True, False))
-
-    def test_attribute_inventories_store(self):
-        """Test the existence of the inventories attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertIsInstance(repo.inventories, versionedfile.VersionedFiles)
-
-    def test_attribute_inventories_basics(self):
-        """Test basic aspects of the inventories attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        rev_id = (tree.commit('a'),)
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        self.assertEqual(set([rev_id]), set(repo.inventories.keys()))
-
-    def test_attribute_revision_store(self):
-        """Test the existence of the revisions attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertIsInstance(repo.revisions,
-            versionedfile.VersionedFiles)
-
-    def test_attribute_revision_store_basics(self):
-        """Test the basic behaviour of the revisions attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        repo.lock_write()
-        try:
-            self.assertEqual(set(), set(repo.revisions.keys()))
-            revid = (tree.commit("foo"),)
-            self.assertEqual(set([revid]), set(repo.revisions.keys()))
-            self.assertEqual({revid:()},
-                repo.revisions.get_parent_map([revid]))
-        finally:
-            repo.unlock()
-        tree2 = self.make_branch_and_tree('tree2')
-        tree2.pull(tree.branch)
-        left_id = (tree2.commit('left'),)
-        right_id = (tree.commit('right'),)
-        tree.merge_from_branch(tree2.branch)
-        merge_id = (tree.commit('merged'),)
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
-        self.assertEqual(set([revid, left_id, right_id, merge_id]),
-            set(repo.revisions.keys()))
-        self.assertEqual({revid:(), left_id:(revid,), right_id:(revid,),
-             merge_id:(right_id, left_id)},
-            repo.revisions.get_parent_map(repo.revisions.keys()))
-
-    def test_attribute_signature_store(self):
-        """Test the existence of the signatures attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertIsInstance(repo.signatures,
-            versionedfile.VersionedFiles)
 
     def test_attribute_text_store_basics(self):
         """Test the basic behaviour of the text store."""
