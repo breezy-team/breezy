@@ -47,8 +47,9 @@ bzr-builddeb (2.7) UNRELEASED; urgency=low
   [ Jelmer Vernooij ]
   * The 'export-upstream' configuration option is now deprecated in
     favour of 'upstream-branch'. LP: #730293
+  * Switch to dh_python2. Closes: #616752
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 04 Mar 2011 19:30:01 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 07 Mar 2011 12:28:08 +0100
 
 bzr-builddeb (2.6) unstable; urgency=low
 
