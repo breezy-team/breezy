@@ -33,17 +33,20 @@ except ImportError:
 
 
 def _get_launchpad():
-    creds_path = os.path.join(config_dir(), "builddeb.lp_creds.txt")
-    if not os.path.exists(creds_path):
-        return None
-    creds = Credentials("bzr-builddeb")
-    f = open(creds_path)
     try:
-        creds.load(f)
-    finally:
-        f.close()
-    lp = Launchpad(creds, service_root=LPNET_SERVICE_ROOT)
-    return lp
+        return Launchpad.login_anonymously("bzr-builddeb",
+            service_root=LPNET_SERVICE_ROOT)
+    except AttributeError: # older version of launchpadlib
+        creds_path = os.path.join(config_dir(), "builddeb.lp_creds.txt")
+        if not os.path.exists(creds_path):
+            return None
+        creds = Credentials("bzr-builddeb")
+        f = open(creds_path)
+        try:
+            creds.load(f)
+        finally:
+            f.close()
+        return Launchpad(creds, service_root=LPNET_SERVICE_ROOT)
 
 
 def ubuntu_bugs_for_debian_bug(bug_id):
