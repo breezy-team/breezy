@@ -98,7 +98,8 @@ class GitCommitBuilder(CommitBuilder):
             yield file_id, path[1], (file_sha1, st)
         # Fill in entries that were not changed
         basis_tree = workingtree.basis_tree()
-        assert basis_tree.get_revision_id() == basis_revid
+        assert basis_tree.get_revision_id() == basis_revid, "expected %r == %r" % (
+            basis_tree.get_revision_id(), basis_revid)
         for path, entry in basis_tree.iter_entries_by_dir():
             if entry.kind not in ("file", "symlink"):
                 continue
