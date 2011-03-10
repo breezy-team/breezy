@@ -47,6 +47,7 @@ from bzrlib.tests import (
     )
 from bzrlib import (
     bzrdir,
+    bzrdir_weave,
     errors,
     inventory,
     osutils,
@@ -213,24 +214,24 @@ class TestFormat6(TestCaseWithTransport):
 
     def test_attribute__fetch_order(self):
         """Weaves need topological data insertion."""
-        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        control = bzrdir_weave.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
         self.assertEqual('topological', repo._format._fetch_order)
 
     def test_attribute__fetch_uses_deltas(self):
         """Weaves do not reuse deltas."""
-        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        control = bzrdir_weave.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
         self.assertEqual(False, repo._format._fetch_uses_deltas)
 
     def test_attribute__fetch_reconcile(self):
         """Weave repositories need a reconcile after fetch."""
-        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        control = bzrdir_weave.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
         self.assertEqual(True, repo._format._fetch_reconcile)
 
     def test_no_ancestry_weave(self):
-        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        control = bzrdir_weave.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
         # We no longer need to create the ancestry.weave file
         # since it is *never* used.
@@ -239,7 +240,7 @@ class TestFormat6(TestCaseWithTransport):
                           'ancestry.weave')
 
     def test_supports_external_lookups(self):
-        control = bzrdir.BzrDirFormat6().initialize(self.get_url())
+        control = bzrdir_weave.BzrDirFormat6().initialize(self.get_url())
         repo = weaverepo.RepositoryFormat6().initialize(control)
         self.assertFalse(repo._format.supports_external_lookups)
 
