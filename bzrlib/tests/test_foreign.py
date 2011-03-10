@@ -262,9 +262,9 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
 
 def register_dummy_foreign_for_test(testcase):
-    controldir.ControlDirFormat.register_format(DummyForeignVcsDirFormat)
+    controldir.ControlDirFormat.register_format('dummyforeign', DummyForeignVcsDirFormat)
     testcase.addCleanup(controldir.ControlDirFormat.unregister_format,
-                        DummyForeignVcsDirFormat)
+                        'dummyforeign')
     controldir.ControlDirFormat.register_prober(DummyForeignProber)
     testcase.addCleanup(controldir.ControlDirFormat.unregister_prober,
         DummyForeignProber)

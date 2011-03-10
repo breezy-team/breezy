@@ -327,7 +327,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
             BzrDirFormatTest1)
         self.assertTrue(BzrDirFormatTest1 in
             controldir.ControlDirFormat.known_formats())
-        bzrdir.BzrDirFormat.unregister_format("Test format 1")
+        bzrdir.BzrDirFormat.unregister_format(BzrDirFormatTest1())
         self.assertFalse(BzrDirFormatTest1 in
             controldir.ControlDirFormat.known_formats())
         self.assertRaises(KeyError, bzrdir.BzrProber.formats.get,
