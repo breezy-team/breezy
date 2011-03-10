@@ -91,7 +91,8 @@ class BzrBranchFormat4(BranchFormat):
 
     def __init__(self):
         super(BzrBranchFormat4, self).__init__()
-        from bzrlib.bzrdir import BzrDirFormat4, BzrDirFormat5, BzrDirFormat6
+        from bzrlib.bzrdir_weave import (
+            BzrDirFormat4, BzrDirFormat5, BzrDirFormat6)
         self._matchingbzrdir = BzrDirFormat6()
         self._compatible_bzrdirs = [BzrDirFormat4, BzrDirFormat5,
             BzrDirFormat6]

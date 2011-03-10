@@ -28,13 +28,13 @@ import urllib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    bzrdir_weave,
     xml5,
     graph as _mod_graph,
     ui,
     )
 """)
 from bzrlib import (
-    bzrdir,
     debug,
     errors,
     lockable_files,
@@ -348,7 +348,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
 
     supports_funky_characters = False
 
-    _matchingbzrdir = bzrdir.BzrDirFormat4()
+    _matchingbzrdir = bzrdir_weave.BzrDirFormat4()
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -396,7 +396,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = bzrdir.BzrDirFormat5()
+    _matchingbzrdir = bzrdir_weave.BzrDirFormat5()
     supports_funky_characters = False
 
     @property
@@ -443,7 +443,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = bzrdir.BzrDirFormat6()
+    _matchingbzrdir = bzrdir_weave.BzrDirFormat6()
     supports_funky_characters = False
     @property
     def _serializer(self):

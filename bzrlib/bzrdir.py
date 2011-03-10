@@ -2254,7 +2254,8 @@ def register_metadir(registry, key,
 # The pre-0.8 formats have their repository format network name registered in
 # repository.py. MetaDir formats have their repository format network name
 # inferred from their disk format string.
-controldir.format_registry.register('weave', BzrDirFormat6,
+controldir.format_registry.register_lazy('weave', 
+    'bzrlib.bzrdir_weave', 'BzrDirFormat6',
     'Pre-0.8 format.  Slower than knit and does not'
     ' support checkouts or shared repositories.',
     hidden=True,
