@@ -115,6 +115,7 @@ class TestControlDirFormat(tests.TestCaseWithTransport):
 
 
 class TestProber(tests.TestCaseWithTransport):
+    """Per-prober tests."""
 
     scenarios = [
         (prober_cls.__name__, {'prober_cls': prober_cls})

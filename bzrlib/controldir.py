@@ -710,14 +710,6 @@ class ControlDirFormat(object):
     _default_format = None
     """The default format used for new control directories."""
 
-    _formats = registry.FormatRegistry()
-    """Registry with registered control formats - .bzr, ....
-
-    The keys are just used as a way to allow unregistering formats,
-    they are not used elsewhere at the moment. The values should be
-    ControlDirFormat objects.
-    """
-
     _server_probers = []
     """The registered server format probers, e.g. RemoteBzrProber.
 
@@ -774,20 +766,6 @@ class ControlDirFormat(object):
             target_format.rich_root_data)
 
     @classmethod
-    def register_format(klass, identifier, format):
-        """Register a control dir format.
-
-        """
-        klass._formats.register(identifier, format)
-
-    @classmethod
-    def register_lazy_format(klass, identifier, module_name, member_name):
-        """Lazily register a control dir format.
-
-        """
-        klass._formats.register_lazy(identifier, module_name, member_name)
-
-    @classmethod
     def register_prober(klass, prober):
         """Register a prober that can look for a control dir.
 
@@ -817,14 +795,13 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
-    def unregister_format(klass, identifier):
-        klass._formats.remove(identifier)
-
-    @classmethod
     def known_formats(klass):
         """Return all the known formats.
         """
-        return set([v for k, v in klass._formats.iteritems()])
+        result = set()
+        for prober in klass._probers + klass._server_probers:
+            result.update(prober.known_formats())
+        return result
 
     @classmethod
     def find_format(klass, transport, _server_formats=True):
