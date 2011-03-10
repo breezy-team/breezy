@@ -21,6 +21,7 @@ import tempfile
 import gzip
 
 from bzrlib import tests
+from bzrlib.tests.blackbox import ExternalBase
 
 from bzrlib.plugins.fastimport.cmds import (
     _get_source_stream,
@@ -56,3 +57,23 @@ class TestSourceStream(tests.TestCase):
         f.close()
         stream = _get_source_stream(filename)
         self.assertIsNot("bla", stream.read())
+
+
+class TestFastExport(ExternalBase):
+
+    def test_empty(self):
+        self.make_branch_and_tree("br")
+        self.assertEquals("", self.run_bzr("fast-export br")[0])
+
+    def test_pointless(self):
+        tree = self.make_branch_and_tree("br")
+        tree.commit("pointless")
+        data = self.run_bzr("fast-export br")[0]
+        self.assertTrue(data.startswith('commit refs/heads/master\nmark :1\ncommitter'))
+
+    def test_file(self):
+        tree = self.make_branch_and_tree("br")
+        tree.commit("pointless")
+        data = self.run_bzr("fast-export br br.fi")[0]
+        self.assertEquals("", data)
+        self.failUnlessExists("br.fi")
