@@ -96,7 +96,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
     supports_workingtrees = False
 
     def __init__(self):
-        super(RemoteBzrDirFormat, self).__init__()
+        _mod_bzrdir.BzrDirMetaFormat1.__init__(self)
         # XXX: It's a bit ugly that the network name is here, because we'd
         # like to believe that format objects are stateless or at least
         # immutable,  However, we do at least avoid mutating the name after
@@ -275,7 +275,7 @@ class RemoteBzrDirFormat(_mod_bzrdir.BzrDirMetaFormat1):
                     remote_repo.dont_leave_lock_in_place()
             else:
                 remote_repo.lock_write()
-            policy = UseExistingRepository(remote_repo, final_stack,
+            policy = _mod_bzrdir.UseExistingRepository(remote_repo, final_stack,
                 final_stack_pwd, require_stacking)
             policy.acquire_repository()
         else:
@@ -725,7 +725,7 @@ class RemoteRepositoryFormat(_mod_repository.RepositoryFormat):
     supports_leaving_lock = True
 
     def __init__(self):
-        super(RemoteRepositoryFormat, self).__init__()
+        _mod_repository.RepositoryFormat.__init__(self)
         self._custom_format = None
         self._network_name = None
         self._creating_bzrdir = None
