@@ -77,3 +77,30 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         formats = self.registry._get_all()
         self.assertEquals(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraComponentFormat)
+
+
+class ControlDirFormatTest1(controldir.ControlDirFormat):
+    """A test control dir format."""
+
+
+class TestControlDirFormat(tests.TestCaseWithTransport):
+    """Tests for the ControlDirFormat facility."""
+
+    def test_register_unregister_format(self):
+        format = ControlDirFormatTest1()
+        controldir.ControlDirFormat.register_format(format)
+        self.assertTrue(format in controldir.ControlDirFormat.known_formats())
+        controldir.ControlDirFormat.unregister_format(format)
+        self.assertFalse(format in controldir.ControlDirFormat.known_formats())
+
+    def test_register_unregister_format_lazy(self):
+        controldir.ControlDirFormat.register_lazy_format(
+            "bzrlib.tests.test_controldir", "ControlDirFormatTest1")
+        self.assertTrue(
+            ControlDirFormatTest1 in
+            controldir.ControlDirFormat.known_formats())
+        controldir.ControlDirFormat.unregister_lazy_format(
+            "bzrlib.tests.test_controldir", "ControlDirFormatTest1")
+        self.assertFalse(
+            ControlDirFormatTest1 in
+            controldir.ControlDirFormat.known_formats())

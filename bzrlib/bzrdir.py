@@ -72,6 +72,7 @@ from bzrlib.trace import (
 
 from bzrlib import (
     hooks,
+    registry,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -1203,16 +1204,18 @@ class BzrDirMeta1(BzrDir):
 class BzrProber(controldir.Prober):
     """Prober for formats that use a .bzr/ control directory."""
 
-    _formats = {}
+    formats = registry.FormatRegistry(controldir.network_format_registry)
     """The known .bzr formats."""
 
     @classmethod
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def register_bzrdir_format(klass, format):
-        klass._formats[format.get_format_string()] = format
+        klass.formats.register(format.get_format_string(), format)
 
     @classmethod
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def unregister_bzrdir_format(klass, format):
-        del klass._formats[format.get_format_string()]
+        klass.formats.remove(format.get_format_string())
 
     @classmethod
     def probe_transport(klass, transport):
@@ -1222,7 +1225,7 @@ class BzrProber(controldir.Prober):
         except errors.NoSuchFile:
             raise errors.NotBranchError(path=transport.base)
         try:
-            return klass._formats[format_string]
+            return klass.formats.get(format_string)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
 
@@ -1458,10 +1461,23 @@ class BzrDirFormat(controldir.ControlDirFormat):
 
     @classmethod
     def register_format(klass, format):
-        BzrProber.register_bzrdir_format(format)
-        # bzr native formats have a network name of their format string.
-        controldir.network_format_registry.register(format.get_format_string(), format.__class__)
+        """Register a new BzrDir format.
+        """
+        BzrProber.formats.register(format.get_format_string(), format)
         controldir.ControlDirFormat.register_format(format)
+
+    @classmethod
+    def register_lazy_format(klass, format_string, module_name, member_name):
+        """Lazily register a new BzrDir format.
+
+        :param format_string: Format string
+        :param module_name: Name of module with the BzrDirFormat subclass
+        :param member_name: Class name of the BzrDirFormat
+        """
+        BzrProber.formats.register_lazy(format_string, module_name,
+            member_name)
+        controldir.ControlDirFormat.register_lazy_format(
+            module_name, member_name)
 
     def _supply_sub_formats_to(self, other_format):
         """Give other_format the same values for sub formats as this has.
@@ -1477,9 +1493,14 @@ class BzrDirFormat(controldir.ControlDirFormat):
 
     @classmethod
     def unregister_format(klass, format):
-        BzrProber.unregister_bzrdir_format(format)
+        BzrProber.formats.remove(format.get_format_string())
         controldir.ControlDirFormat.unregister_format(format)
-        controldir.network_format_registry.remove(format.get_format_string())
+
+    @classmethod
+    def unregister_lazy_format(klass, format_string, module_name, member_name):
+        BzrProber.formats.remove(format_string)
+        controldir.ControlDirFormat.unregister_lazy_format(
+            module_name, member_name)
 
 
 class BzrDirMetaFormat1(BzrDirFormat):

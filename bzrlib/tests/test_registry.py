@@ -352,3 +352,36 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         a_registry.register("obj", AThing())
         self.assertEquals("bzrlib.tests.test_registry",
             a_registry._get_module("obj"))
+
+
+class TestObjectGetter(tests.TestCase):
+
+    def test_eq(self):
+        obj = object()
+        objgetter1 = registry._ObjectGetter(obj)
+        objgetter2 = registry._ObjectGetter(obj)
+        self.assertEquals(objgetter1, objgetter1)
+        self.assertEquals(objgetter1, objgetter2)
+        self.assertNotEquals(objgetter1, registry._ObjectGetter(1))
+        self.assertNotEquals(objgetter1, 1)
+        self.assertEquals(objgetter1, obj)
+
+
+class TestLazyObjectGetter(tests.TestCase):
+
+    def test_eq_lazy(self):
+        # Use nonexisting objects to make sure all evaluation is lazy
+        objgetter1 = registry._LazyObjectGetter("nonexisting", "object")
+        objgetter2 = registry._LazyObjectGetter("nonexisting", "object")
+        objgetter3 = registry._LazyObjectGetter("nonexisting", "different")
+        self.assertEquals(objgetter1, objgetter1)
+        self.assertEquals(objgetter1, objgetter2)
+        self.assertNotEquals(objgetter1, objgetter3)
+
+    def test_eq(self):
+        objgetter1 = registry._LazyObjectGetter("bzrlib.tests.test_registry", "TestLazyObjectGetter")
+        objgetter2 = registry._LazyObjectGetter("bzrlib.tests.test_registry", "TestLazyObjectGetter")
+        self.assertEquals(objgetter1, objgetter2)
+        self.assertNotEquals(objgetter1, registry._ObjectGetter(1))
+        self.assertNotEquals(objgetter1, 1)
+        self.assertEquals(objgetter1, TestLazyObjectGetter)

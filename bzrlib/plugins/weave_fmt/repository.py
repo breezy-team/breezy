@@ -28,6 +28,7 @@ import urllib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    bzrdir_weave,
     xml5,
     graph as _mod_graph,
     ui,

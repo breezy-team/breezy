@@ -713,7 +713,7 @@ class ControlDirFormat(object):
     _formats = []
     """The registered control formats - .bzr, ....
 
-    This is a list of ControlDirFormat objects.
+    This is a list of _ObjectGetters of ControlDirFormat objects.
     """
 
     _server_probers = []
@@ -773,10 +773,18 @@ class ControlDirFormat(object):
 
     @classmethod
     def register_format(klass, format):
-        """Register a format that does not use '.bzr' for its control dir.
+        """Register a control dir format.
 
         """
-        klass._formats.append(format)
+        klass._formats.append(registry._ObjectGetter(format))
+
+    @classmethod
+    def register_lazy_format(klass, module_name, member_name):
+        """Lazily register a control dir format.
+
+        """
+        klass._formats.append(registry._LazyObjectGetter(
+            module_name, member_name))
 
     @classmethod
     def register_prober(klass, prober):
@@ -809,13 +817,18 @@ class ControlDirFormat(object):
 
     @classmethod
     def unregister_format(klass, format):
-        klass._formats.remove(format)
+        klass._formats.remove(registry._ObjectGetter(format))
+
+    @classmethod
+    def unregister_lazy_format(klass, module_name, member_name):
+        klass._formats.remove(registry._LazyObjectGetter(
+            module_name, member_name))
 
     @classmethod
     def known_formats(klass):
         """Return all the known formats.
         """
-        return set(klass._formats)
+        return set([objgetter.get_obj() for objgetter in klass._formats])
 
     @classmethod
     def find_format(klass, transport, _server_formats=True):

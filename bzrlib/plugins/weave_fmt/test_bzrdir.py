@@ -36,7 +36,7 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     )
 
-from bzrlib.plugins.weave_fmt.bzrdir import (
+from bzrlib.bzrdir_weave import (
     BzrDirFormat5,
     BzrDirFormat6,
     )
