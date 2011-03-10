@@ -19,16 +19,20 @@
 For interface contract tests, see tests/per_bzr_dir.
 """
 
+import os
 import sys
 
 from bzrlib import (
     branch,
     bzrdir,
+    errors,
     repository,
     upgrade,
+    urlutils,
     workingtree,
     )
 from bzrlib.osutils import (
+    getcwd,
     lexists,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
@@ -36,7 +40,10 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     )
 
-from bzrlib.bzrdir_weave import (
+from bzrlib.plugins.weave_fmt.branch import (
+    BzrBranchFormat4,
+    )
+from bzrlib.plugins.weave_fmt.bzrdir import (
     BzrDirFormat5,
     BzrDirFormat6,
     )
@@ -510,3 +517,58 @@ Repository:
         tree.unlock()
 
 
+class TestBranchFormat4(TestCaseWithTransport):
+    """Tests specific to branch format 4"""
+
+    def test_no_metadir_support(self):
+        url = self.get_url()
+        bdir = bzrdir.BzrDirMetaFormat1().initialize(url)
+        bdir.create_repository()
+        self.assertRaises(errors.IncompatibleFormat,
+            BzrBranchFormat4().initialize, bdir)
+
+    def test_supports_bzrdir_6(self):
+        url = self.get_url()
+        bdir = bzrdir.BzrDirFormat6().initialize(url)
+        bdir.create_repository()
+        BzrBranchFormat4().initialize(bdir)
+
+
+class TestBoundBranch(TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestBoundBranch, self).setUp()
+        self.build_tree(['master/', 'child/'])
+        self.make_branch_and_tree('master')
+        self.make_branch_and_tree('child',
+                        format=bzrdir.format_registry.make_bzrdir('weave'))
+        os.chdir('child')
+
+    def test_bind_format_6_bzrdir(self):
+        # bind on a format 6 bzrdir should error
+        out,err = self.run_bzr('bind ../master', retcode=3)
+        self.assertEqual('', out)
+        # TODO: jam 20060427 Probably something like this really should
+        #       print out the actual path, rather than the URL
+        cwd = urlutils.local_path_to_url(getcwd())
+        self.assertEqual('bzr: ERROR: To use this feature you must '
+                         'upgrade your branch at %s/.\n' % cwd, err)
+
+    def test_unbind_format_6_bzrdir(self):
+        # bind on a format 6 bzrdir should error
+        out,err = self.run_bzr('unbind', retcode=3)
+        self.assertEqual('', out)
+        cwd = urlutils.local_path_to_url(getcwd())
+        self.assertEqual('bzr: ERROR: To use this feature you must '
+                         'upgrade your branch at %s/.\n' % cwd, err)
+
+
+class TestInit(TestCaseWithTransport):
+
+    def test_init_weave(self):
+        # --format=weave should be accepted to allow interoperation with
+        # old releases when desired.
+        out, err = self.run_bzr('init --format=weave')
+        self.assertEqual("""Created a standalone tree (format: weave)\n""",
+            out)
+        self.assertEqual('', err)
