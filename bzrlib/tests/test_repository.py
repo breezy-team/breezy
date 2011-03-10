@@ -428,19 +428,6 @@ class TestInterRepository(TestCaseWithTransport):
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 
 
-
-class TestRepositoryFormat1(knitrepo.RepositoryFormatKnit1):
-
-    def get_format_string(self):
-        return "Test Format 1"
-
-
-class TestRepositoryFormat2(knitrepo.RepositoryFormatKnit1):
-
-    def get_format_string(self):
-        return "Test Format 2"
-
-
 class TestRepositoryFormat1(knitrepo.RepositoryFormatKnit1):
 
     def get_format_string(self):
