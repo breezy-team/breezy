@@ -1499,6 +1499,12 @@ class BzrProber(controldir.Prober):
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
 
+    def known_formats(self):
+        result = set()
+        for name, format in self.formats.iteritems():
+            result.add(format)
+        return result
+
 
 controldir.ControlDirFormat.register_prober(BzrProber)
 
@@ -1528,7 +1534,12 @@ class RemoteBzrProber(controldir.Prober):
                     raise errors.NotBranchError(path=transport.base)
                 if server_version != '2':
                     raise errors.NotBranchError(path=transport.base)
+            from bzrlib.remote import RemoteBzrDirFormat
             return RemoteBzrDirFormat()
+
+    def known_formats(self):
+        from bzrlib.remote import RemoteBzrDirFormat
+        return set([RemoteBzrDirFormat()])
 
 
 class BzrDirFormat(controldir.ControlDirFormat):
@@ -1566,6 +1577,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
             # metadir1
             if type(self) != BzrDirMetaFormat1:
                 return self._initialize_on_transport_vfs(transport)
+            from bzrlib.remote import RemoteBzrDirFormat
             remote_format = RemoteBzrDirFormat()
             self._supply_sub_formats_to(remote_format)
             return remote_format.initialize_on_transport(transport)
@@ -2709,246 +2721,6 @@ class ConvertMetaToMeta(controldir.Converter):
                 workingtree_4.Converter4or5to6().convert(tree)
         self.pb.finished()
         return to_convert
-
-
-# This is not in remote.py because it's relatively small, and needs to be
-# registered. Putting it in remote.py creates a circular import problem.
-# we can make it a lazy object if the control formats is turned into something
-# like a registry.
-class RemoteBzrDirFormat(BzrDirMetaFormat1):
-    """Format representing bzrdirs accessed via a smart server"""
-
-    supports_workingtrees = False
-
-    def __init__(self):
-        BzrDirMetaFormat1.__init__(self)
-        # XXX: It's a bit ugly that the network name is here, because we'd
-        # like to believe that format objects are stateless or at least
-        # immutable,  However, we do at least avoid mutating the name after
-        # it's returned.  See <https://bugs.launchpad.net/bzr/+bug/504102>
-        self._network_name = None
-
-    def __repr__(self):
-        return "%s(_network_name=%r)" % (self.__class__.__name__,
-            self._network_name)
-
-    def get_format_description(self):
-        if self._network_name:
-            real_format = controldir.network_format_registry.get(self._network_name)
-            return 'Remote: ' + real_format.get_format_description()
-        return 'bzr remote bzrdir'
-
-    def get_format_string(self):
-        raise NotImplementedError(self.get_format_string)
-
-    def network_name(self):
-        if self._network_name:
-            return self._network_name
-        else:
-            raise AssertionError("No network name set.")
-
-    def initialize_on_transport(self, transport):
-        try:
-            # hand off the request to the smart server
-            client_medium = transport.get_smart_medium()
-        except errors.NoSmartMedium:
-            # TODO: lookup the local format from a server hint.
-            local_dir_format = BzrDirMetaFormat1()
-            return local_dir_format.initialize_on_transport(transport)
-        client = _SmartClient(client_medium)
-        path = client.remote_path_from_transport(transport)
-        try:
-            response = client.call('BzrDirFormat.initialize', path)
-        except errors.ErrorFromSmartServer, err:
-            remote._translate_error(err, path=path)
-        if response[0] != 'ok':
-            raise errors.SmartProtocolError('unexpected response code %s' % (response,))
-        format = RemoteBzrDirFormat()
-        self._supply_sub_formats_to(format)
-        return remote.RemoteBzrDir(transport, format)
-
-    def parse_NoneTrueFalse(self, arg):
-        if not arg:
-            return None
-        if arg == 'False':
-            return False
-        if arg == 'True':
-            return True
-        raise AssertionError("invalid arg %r" % arg)
-
-    def _serialize_NoneTrueFalse(self, arg):
-        if arg is False:
-            return 'False'
-        if arg:
-            return 'True'
-        return ''
-
-    def _serialize_NoneString(self, arg):
-        return arg or ''
-
-    def initialize_on_transport_ex(self, transport, use_existing_dir=False,
-        create_prefix=False, force_new_repo=False, stacked_on=None,
-        stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
-        shared_repo=False):
-        try:
-            # hand off the request to the smart server
-            client_medium = transport.get_smart_medium()
-        except errors.NoSmartMedium:
-            do_vfs = True
-        else:
-            # Decline to open it if the server doesn't support our required
-            # version (3) so that the VFS-based transport will do it.
-            if client_medium.should_probe():
-                try:
-                    server_version = client_medium.protocol_version()
-                    if server_version != '2':
-                        do_vfs = True
-                    else:
-                        do_vfs = False
-                except errors.SmartProtocolError:
-                    # Apparently there's no usable smart server there, even though
-                    # the medium supports the smart protocol.
-                    do_vfs = True
-            else:
-                do_vfs = False
-        if not do_vfs:
-            client = _SmartClient(client_medium)
-            path = client.remote_path_from_transport(transport)
-            if client_medium._is_remote_before((1, 16)):
-                do_vfs = True
-        if do_vfs:
-            # TODO: lookup the local format from a server hint.
-            local_dir_format = BzrDirMetaFormat1()
-            self._supply_sub_formats_to(local_dir_format)
-            return local_dir_format.initialize_on_transport_ex(transport,
-                use_existing_dir=use_existing_dir, create_prefix=create_prefix,
-                force_new_repo=force_new_repo, stacked_on=stacked_on,
-                stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
-                make_working_trees=make_working_trees, shared_repo=shared_repo,
-                vfs_only=True)
-        return self._initialize_on_transport_ex_rpc(client, path, transport,
-            use_existing_dir, create_prefix, force_new_repo, stacked_on,
-            stack_on_pwd, repo_format_name, make_working_trees, shared_repo)
-
-    def _initialize_on_transport_ex_rpc(self, client, path, transport,
-        use_existing_dir, create_prefix, force_new_repo, stacked_on,
-        stack_on_pwd, repo_format_name, make_working_trees, shared_repo):
-        args = []
-        args.append(self._serialize_NoneTrueFalse(use_existing_dir))
-        args.append(self._serialize_NoneTrueFalse(create_prefix))
-        args.append(self._serialize_NoneTrueFalse(force_new_repo))
-        args.append(self._serialize_NoneString(stacked_on))
-        # stack_on_pwd is often/usually our transport
-        if stack_on_pwd:
-            try:
-                stack_on_pwd = transport.relpath(stack_on_pwd)
-                if not stack_on_pwd:
-                    stack_on_pwd = '.'
-            except errors.PathNotChild:
-                pass
-        args.append(self._serialize_NoneString(stack_on_pwd))
-        args.append(self._serialize_NoneString(repo_format_name))
-        args.append(self._serialize_NoneTrueFalse(make_working_trees))
-        args.append(self._serialize_NoneTrueFalse(shared_repo))
-        request_network_name = self._network_name or \
-            BzrDirFormat.get_default_format().network_name()
-        try:
-            response = client.call('BzrDirFormat.initialize_ex_1.16',
-                request_network_name, path, *args)
-        except errors.UnknownSmartMethod:
-            client._medium._remember_remote_is_before((1,16))
-            local_dir_format = BzrDirMetaFormat1()
-            self._supply_sub_formats_to(local_dir_format)
-            return local_dir_format.initialize_on_transport_ex(transport,
-                use_existing_dir=use_existing_dir, create_prefix=create_prefix,
-                force_new_repo=force_new_repo, stacked_on=stacked_on,
-                stack_on_pwd=stack_on_pwd, repo_format_name=repo_format_name,
-                make_working_trees=make_working_trees, shared_repo=shared_repo,
-                vfs_only=True)
-        except errors.ErrorFromSmartServer, err:
-            remote._translate_error(err, path=path)
-        repo_path = response[0]
-        bzrdir_name = response[6]
-        require_stacking = response[7]
-        require_stacking = self.parse_NoneTrueFalse(require_stacking)
-        format = RemoteBzrDirFormat()
-        format._network_name = bzrdir_name
-        self._supply_sub_formats_to(format)
-        bzrdir = remote.RemoteBzrDir(transport, format, _client=client)
-        if repo_path:
-            repo_format = remote.response_tuple_to_repo_format(response[1:])
-            if repo_path == '.':
-                repo_path = ''
-            if repo_path:
-                repo_bzrdir_format = RemoteBzrDirFormat()
-                repo_bzrdir_format._network_name = response[5]
-                repo_bzr = remote.RemoteBzrDir(transport.clone(repo_path),
-                    repo_bzrdir_format)
-            else:
-                repo_bzr = bzrdir
-            final_stack = response[8] or None
-            final_stack_pwd = response[9] or None
-            if final_stack_pwd:
-                final_stack_pwd = urlutils.join(
-                    transport.base, final_stack_pwd)
-            remote_repo = remote.RemoteRepository(repo_bzr, repo_format)
-            if len(response) > 10:
-                # Updated server verb that locks remotely.
-                repo_lock_token = response[10] or None
-                remote_repo.lock_write(repo_lock_token, _skip_rpc=True)
-                if repo_lock_token:
-                    remote_repo.dont_leave_lock_in_place()
-            else:
-                remote_repo.lock_write()
-            policy = UseExistingRepository(remote_repo, final_stack,
-                final_stack_pwd, require_stacking)
-            policy.acquire_repository()
-        else:
-            remote_repo = None
-            policy = None
-        bzrdir._format.set_branch_format(self.get_branch_format())
-        if require_stacking:
-            # The repo has already been created, but we need to make sure that
-            # we'll make a stackable branch.
-            bzrdir._format.require_stacking(_skip_repo=True)
-        return remote_repo, bzrdir, require_stacking, policy
-
-    def _open(self, transport):
-        return remote.RemoteBzrDir(transport, self)
-
-    def __eq__(self, other):
-        if not isinstance(other, RemoteBzrDirFormat):
-            return False
-        return self.get_format_description() == other.get_format_description()
-
-    def __return_repository_format(self):
-        # Always return a RemoteRepositoryFormat object, but if a specific bzr
-        # repository format has been asked for, tell the RemoteRepositoryFormat
-        # that it should use that for init() etc.
-        result = remote.RemoteRepositoryFormat()
-        custom_format = getattr(self, '_repository_format', None)
-        if custom_format:
-            if isinstance(custom_format, remote.RemoteRepositoryFormat):
-                return custom_format
-            else:
-                # We will use the custom format to create repositories over the
-                # wire; expose its details like rich_root_data for code to
-                # query
-                result._custom_format = custom_format
-        return result
-
-    def get_branch_format(self):
-        result = BzrDirMetaFormat1.get_branch_format(self)
-        if not isinstance(result, remote.RemoteBranchFormat):
-            new_result = remote.RemoteBranchFormat()
-            new_result._custom_format = result
-            # cache the result
-            self.set_branch_format(new_result)
-            result = new_result
-        return result
-
-    repository_format = property(__return_repository_format,
-        BzrDirMetaFormat1._set_repository_format) #.im_func)
 
 
 controldir.ControlDirFormat.register_server_prober(RemoteBzrProber)

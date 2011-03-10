@@ -21,8 +21,13 @@ For interface contract tests, see tests/per_control_dir.
 
 from bzrlib import (
     controldir,
+    errors,
     tests,
     )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
+
+
+load_tests = load_tests_apply_scenarios
 
 
 class SampleComponentFormat(controldir.ControlComponentFormat):
@@ -107,3 +112,26 @@ class TestControlDirFormat(tests.TestCaseWithTransport):
             controldir.ControlDirFormat.known_formats())
         self.assertRaises(KeyError,
             controldir.ControlDirFormat.unregister_format, "myformat")
+
+
+class TestProber(tests.TestCaseWithTransport):
+
+    scenarios = [
+        (prober_cls.__name__, {'prober_cls': prober_cls})
+        for prober_cls in controldir.ControlDirFormat._probers]
+
+    def setUp(self):
+        super(TestProber, self).setUp()
+        self.prober = self.prober_cls()
+
+    def test_probe_transport_empty(self):
+        transport = self.get_transport(".")
+        self.assertRaises(errors.NotBranchError,
+            self.prober.probe_transport, transport)
+
+    def test_known_formats(self):
+        known_formats = self.prober.known_formats()
+        self.assertIsInstance(known_formats, set)
+        for format in known_formats:
+            self.assertIsInstance(format, controldir.ControlDirFormat,
+                repr(format))

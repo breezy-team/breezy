@@ -938,6 +938,13 @@ class Prober(object):
         """
         raise NotImplementedError(self.probe_transport)
 
+    def known_formats(self):
+        """Return the control dir formats known by this prober.
+
+        :return: A set of known formats.
+        """
+        raise NotImplementedError(self.known_formats)
+
 
 class ControlDirFormatInfo(object):
 
