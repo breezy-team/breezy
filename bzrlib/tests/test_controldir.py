@@ -131,7 +131,7 @@ class TestProber(tests.TestCaseWithTransport):
             self.prober.probe_transport, transport)
 
     def test_known_formats(self):
-        known_formats = self.prober.known_formats()
+        known_formats = self.prober_cls.known_formats()
         self.assertIsInstance(known_formats, set)
         for format in known_formats:
             self.assertIsInstance(format, controldir.ControlDirFormat,

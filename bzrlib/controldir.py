@@ -799,8 +799,8 @@ class ControlDirFormat(object):
         """Return all the known formats.
         """
         result = set()
-        for prober in klass._probers + klass._server_probers:
-            result.update(prober.known_formats())
+        for prober_kls in klass._probers + klass._server_probers:
+            result.update(prober_kls.known_formats())
         return result
 
     @classmethod
@@ -915,12 +915,13 @@ class Prober(object):
         """
         raise NotImplementedError(self.probe_transport)
 
-    def known_formats(self):
+    @classmethod
+    def known_formats(cls):
         """Return the control dir formats known by this prober.
 
         :return: A set of known formats.
         """
-        raise NotImplementedError(self.known_formats)
+        raise NotImplementedError(cls.known_formats)
 
 
 class ControlDirFormatInfo(object):

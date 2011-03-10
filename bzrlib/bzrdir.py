@@ -59,7 +59,6 @@ from bzrlib import (
     xml5,
     )
 from bzrlib.repofmt import pack_repo
-from bzrlib.smart.client import _SmartClient
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.transactions import WriteTransaction
 from bzrlib.transport import (
@@ -1499,9 +1498,10 @@ class BzrProber(controldir.Prober):
         except KeyError:
             raise errors.UnknownFormatError(format=format_string, kind='bzrdir')
 
-    def known_formats(self):
+    @classmethod
+    def known_formats(cls):
         result = set()
-        for name, format in self.formats.iteritems():
+        for name, format in cls.formats.iteritems():
             result.add(format)
         return result
 
@@ -1537,7 +1537,8 @@ class RemoteBzrProber(controldir.Prober):
             from bzrlib.remote import RemoteBzrDirFormat
             return RemoteBzrDirFormat()
 
-    def known_formats(self):
+    @classmethod
+    def known_formats(cls):
         from bzrlib.remote import RemoteBzrDirFormat
         return set([RemoteBzrDirFormat()])
 
@@ -1559,7 +1560,8 @@ class BzrDirFormat(controldir.ControlDirFormat):
     # _lock_class must be set in subclasses to the lock type, typ.
     # TransportLock or LockDir
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """Return the ASCII format string that identifies this format."""
         raise NotImplementedError(self.get_format_string)
 
@@ -1621,6 +1623,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
             except errors.NoSmartMedium:
                 pass
             else:
+                from bzrlib.remote import RemoteBzrDirFormat
                 # TODO: lookup the local format from a server hint.
                 remote_dir_format = RemoteBzrDirFormat()
                 remote_dir_format._network_name = self.network_name()
@@ -1741,12 +1744,6 @@ class BzrDirFormat(controldir.ControlDirFormat):
         """
         raise NotImplementedError(self._open)
 
-    @classmethod
-    def register_format(klass, format):
-        """Register a new BzrDir format.
-        """
-        BzrProber.formats.register(format.get_format_string(), format)
-
     def _supply_sub_formats_to(self, other_format):
         """Give other_format the same values for sub formats as this has.
 
@@ -1758,10 +1755,6 @@ class BzrDirFormat(controldir.ControlDirFormat):
             compatible with whatever sub formats are supported by self.
         :return: None.
         """
-
-    @classmethod
-    def unregister_format(klass, format):
-        BzrProber.formats.remove(format.get_format_string())
 
 
 class BzrDirFormat4(BzrDirFormat):
@@ -1781,7 +1774,8 @@ class BzrDirFormat4(BzrDirFormat):
 
     fixed_components = True
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 0.0.4\n"
 
@@ -1861,7 +1855,8 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
 
     _lock_class = lockable_files.TransportLock
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
 
@@ -1922,7 +1917,8 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
 
     _lock_class = lockable_files.TransportLock
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 6\n"
 
@@ -2114,7 +2110,8 @@ class BzrDirMetaFormat1(BzrDirFormat):
             raise NotImplementedError(self.get_converter)
         return ConvertMetaToMeta(format)
 
-    def get_format_string(self):
+    @classmethod
+    def get_format_string(cls):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG meta directory, format 1\n"
 
@@ -2182,11 +2179,11 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
 
 # Register bzr formats
-BzrDirFormat.register_format(BzrDirFormat4())
-BzrDirFormat.register_format(BzrDirFormat5())
-BzrDirFormat.register_format(BzrDirFormat6())
+BzrProber.formats.register(BzrDirFormat4.get_format_string(), BzrDirFormat4())
+BzrProber.formats.register(BzrDirFormat5.get_format_string(), BzrDirFormat5())
+BzrProber.formats.register(BzrDirFormat6.get_format_string(), BzrDirFormat6())
 __default_format = BzrDirMetaFormat1()
-BzrDirFormat.register_format(__default_format)
+BzrProber.formats.register(__default_format.get_format_string(), __default_format)
 controldir.ControlDirFormat._default_format = __default_format
 
 

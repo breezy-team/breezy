@@ -26,7 +26,6 @@ from bzrlib import (
     errors,
     gpg,
     osutils,
-    repository,
     transport,
     ui,
     urlutils,
@@ -46,6 +45,7 @@ from bzrlib.ui import (
     )
 from bzrlib.remote import (
     RemoteBzrDir,
+    RemoteBzrDirFormat,
     RemoteRepository,
     )
 
@@ -1068,7 +1068,7 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertIsInstance(control, controldir.ControlDir)
         opened = bzrdir.BzrDir.open(t.base)
         expected_format = self.bzrdir_format
-        if isinstance(expected_format, bzrdir.RemoteBzrDirFormat):
+        if isinstance(expected_format, RemoteBzrDirFormat):
             # Current RemoteBzrDirFormat's do not reliably get network_name
             # set, so we skip a number of tests for RemoteBzrDirFormat's.
             self.assertIsInstance(control, RemoteBzrDir)
@@ -1093,7 +1093,7 @@ class TestControlDir(TestCaseWithControlDir):
         # key in the registry gives back the same format. For remote obects
         # we check that the network_name of the RemoteBzrDirFormat we have
         # locally matches the actual format present on disk.
-        if isinstance(format, bzrdir.RemoteBzrDirFormat):
+        if isinstance(format, RemoteBzrDirFormat):
             dir._ensure_real()
             real_dir = dir._real_bzrdir
             network_name = format.network_name()

@@ -41,6 +41,7 @@ from bzrlib.errors import (
     )
 from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
+from bzrlib.smart.client import _SmartClient
 from bzrlib.revision import NULL_REVISION
 from bzrlib.repository import RepositoryWriteLockResult
 from bzrlib.trace import mutter, note, warning
