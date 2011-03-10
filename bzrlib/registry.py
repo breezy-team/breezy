@@ -81,6 +81,12 @@ class _LazyObjectGetter(_ObjectGetter):
             self._imported = True
         return super(_LazyObjectGetter, self).get_obj()
 
+    def __eq__(self, other):
+        if isinstance(other, self.__class__):
+            return (self._member_name == other._member_name and
+                    self._module_name == other._module_name)
+        return super(_LazyObjectGetter, self).__eq__(other)
+
     def __repr__(self):
         return "<%s.%s object at %x, module=%r attribute=%r imported=%r>" % (
             self.__class__.__module__, self.__class__.__name__, id(self),
