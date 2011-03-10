@@ -48,6 +48,16 @@ def entries_to_lines(entries):
             yield line
 
 
+#def analyse_changes(from_entries, to_entries):
+#    # Added to top == new entry
+#    # Replace non-top entry == edit old entry
+#    #   (apply degree of fuzzy matching?)
+#    # Delete non-top entry == delete old
+#    # Delete top entry == delete old?
+
+
+
+
 class ChangeLogMerger(merge.ConfigurableFileMerger):
     """Merge GNU-format ChangeLog files."""
 
@@ -91,12 +101,63 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
         this_entries = changelog_entries(params.this_lines)
         other_entries = changelog_entries(params.other_lines)
         base_entries = changelog_entries(params.base_lines)
-        # Determine which entries have been added by base
-        base_entries = frozenset(base_entries)
-        new_in_other = [
-            entry for entry in other_entries if entry not in base_entries]
-        # Prepend them to the entries in this
-        result_entries = new_in_other + this_entries
+        result_entries = merge_entries(
+            base_entries, this_entries, other_entries)
         # Transform the merged elements back into real blocks of lines.
         return 'success', entries_to_lines(result_entries)
 
+
+def merge_entries_old(base_entries, this_entries, other_entries):
+    # Determine which entries have been added by other (compared to base)
+    base_entries = frozenset(base_entries)
+    new_in_other = [
+        entry for entry in other_entries if entry not in base_entries]
+    # Prepend them to the entries in this
+    result_entries = new_in_other + this_entries
+    return result_entries
+
+
+def merge_entries_new(base_entries, this_entries, other_entries):
+    # PROPOSAL:
+    #  - Find changes in other vs. base
+    #  - Categorise other-vs-base changes as 'new entry' (if added to top)
+    #    or 'edit entry' (everything else)
+    #  - Merge 
+
+    from bzrlib.merge3 import Merge3
+    m3 = Merge3(base_entries, this_entries, other_entries,
+        allow_objects=True)
+    result_entries = []
+    at_top = True
+    for group in m3.merge_groups():
+        from bzrlib.trace import mutter
+        mutter('merge group:\n%r', group)
+#           'unchanged', lines
+#                Lines unchanged from base
+#           'a', lines
+#                Lines taken from a
+#           'same', lines
+#                Lines taken from a (and equal to b)
+#           'b', lines
+#                Lines taken from b
+#           'conflict', base_lines, a_lines, b_lines
+#                Lines from base were changed to either a or b and conflict.
+        group_kind = group[0]
+        if group_kind == 'conflict':
+            _, base, this, other = group
+            new_in_other = [
+                entry for entry in other if entry not in base]
+            new_in_this = [
+                entry for entry in this if entry not in base]
+            result_entries.extend(new_in_other)
+            result_entries.extend(new_in_this)
+            # XXX: if at_top then put new_in_other at front result_entries?
+            # i.e. need test for case in merge_text docstring.
+        else: # unchanged, same, a, or b.
+            lines = group[1]
+            result_entries.extend(lines)
+        at_top = False
+    return result_entries
+
+
+merge_entries = merge_entries_new
