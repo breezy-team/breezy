@@ -318,6 +318,22 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # now open_downlevel should fail too.
         self.assertRaises(UnknownFormatError, bzrdir.BzrDir.open_unsupported, url)
 
+    def test_register_unregister_format_lazy(self):
+        # register a format for it.
+        bzrdir.BzrDirFormat.register_lazy_format("Test format 1",
+            "bzrlib.tests.test_bzrdir", "BzrDirFormatTest1")
+        # It should be registered with the prober:
+        self.assertIsInstance(bzrdir.BzrProber.formats.get("Test format 1"),
+            BzrDirFormatTest1)
+        self.assertTrue(BzrDirFormatTest1 in
+            controldir.ControlDirFormat.known_formats())
+        bzrdir.BzrDirFormat.unregister_lazy_format("Test format 1",
+            "bzrlib.tests.test_bzrdir", "BzrDirFormatTest1")
+        self.assertFalse(BzrDirFormatTest1 in
+            controldir.ControlDirFormat.known_formats())
+        self.assertRaises(KeyError, bzrdir.BzrProber.formats.get,
+            "Test format 1")
+
     def test_create_branch_and_repo_uses_default(self):
         format = SampleBzrDirFormat()
         branch = bzrdir.BzrDir.create_branch_and_repo(self.get_url(),
