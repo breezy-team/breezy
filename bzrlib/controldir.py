@@ -817,7 +817,12 @@ class ControlDirFormat(object):
 
     @classmethod
     def unregister_format(klass, format):
-        klass._formats.remove(format)
+        klass._formats.remove(registry._ObjectGetter(format))
+
+    @classmethod
+    def unregister_lazy_format(klass, module_name, member_name):
+        klass._formats.remove(registry._LazyObjectGetter(
+            module_name, member_name))
 
     @classmethod
     def known_formats(klass):

@@ -96,11 +96,11 @@ class TestControlDirFormat(tests.TestCaseWithTransport):
     def test_register_unregister_format_lazy(self):
         controldir.ControlDirFormat.register_lazy_format(
             "bzrlib.tests.test_controldir", "ControlDirFormatTest1")
-        self.assertTrue(bool([
-            format.__class__ is ControlDirFormatTest1 for format in
-            controldir.ControlDirFormat.known_formats()]))
+        self.assertTrue(
+            ControlDirFormatTest1 in
+            controldir.ControlDirFormat.known_formats())
         controldir.ControlDirFormat.unregister_lazy_format(
             "bzrlib.tests.test_controldir", "ControlDirFormatTest1")
-        self.assertFalse(bool([
-            format.__class__ is ControlDirFormatTest1 for format in
-            controldir.ControlDirFormat.known_formats()]))
+        self.assertFalse(
+            ControlDirFormatTest1 in
+            controldir.ControlDirFormat.known_formats())
