@@ -1763,9 +1763,9 @@ class BzrDirFormat(controldir.ControlDirFormat):
         """
 
     @classmethod
-    def unregister_format(klass, format_string):
-        BzrProber.formats.remove(format_string)
-        controldir.ControlDirFormat.unregister_format(format_string)
+    def unregister_format(klass, format):
+        BzrProber.formats.remove(format.get_format_string())
+        controldir.ControlDirFormat.unregister_format(format.get_format_string())
 
 
 class BzrDirFormat4(BzrDirFormat):
