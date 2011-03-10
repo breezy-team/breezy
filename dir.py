@@ -20,19 +20,18 @@
 from bzrlib import (
     errors as bzr_errors,
     lockable_files,
+    trace,
     urlutils,
     version_info as bzrlib_version,
     )
+from bzrlib.bzrdir import CreateRepository
+from bzrlib.transport import do_catching_redirections
 
 LockWarner = getattr(lockable_files, "_LockWarner", None)
 
-from bzrlib.plugins.git import (
-    BareLocalGitControlDirFormat,
-    LocalGitControlDirFormat,
-    )
-
 from bzrlib.controldir import (
     ControlDir,
+    ControlDirFormat,
     format_registry,
     )
 
@@ -84,6 +83,23 @@ class GitDirConfig(object):
 
     def set_default_stack_on(self, value):
         raise bzr_errors.BzrError("Cannot set configuration")
+
+
+class GitControlDirFormat(ControlDirFormat):
+
+    _lock_class = lockable_files.TransportLock
+
+    colocated_branches = True
+    fixed_components = True
+
+    def __eq__(self, other):
+        return type(self) == type(other)
+
+    def is_supported(self):
+        return True
+
+    def network_name(self):
+        return "git"
 
 
 class GitDir(ControlDir):
@@ -144,6 +160,79 @@ class GitDir(ControlDir):
             target_git_repo.refs[name] = val
         lockfiles = GitLockableFiles(transport, GitLock())
         return self.__class__(transport, lockfiles, target_git_repo, format)
+
+
+class LocalGitControlDirFormat(GitControlDirFormat):
+    """The .git directory control format."""
+
+    bare = False
+
+    @classmethod
+    def _known_formats(self):
+        return set([LocalGitControlDirFormat()])
+
+    @property
+    def repository_format(self):
+        from bzrlib.plugins.git.repository import GitRepositoryFormat
+        return GitRepositoryFormat()
+
+    def get_branch_format(self):
+        from bzrlib.plugins.git.branch import GitBranchFormat
+        return GitBranchFormat()
+
+    def open(self, transport, _found=None):
+        """Open this directory.
+
+        """
+        from bzrlib.plugins.git.transportgit import TransportRepo
+        gitrepo = TransportRepo(transport)
+        lockfiles = GitLockableFiles(transport, GitLock())
+        return LocalGitDir(transport, lockfiles, gitrepo, self)
+
+    def get_format_description(self):
+        return "Local Git Repository"
+
+    def initialize_on_transport(self, transport):
+        from bzrlib.plugins.git.transportgit import TransportRepo
+        TransportRepo.init(transport, bare=self.bare)
+        return self.open(transport)
+
+    def initialize_on_transport_ex(self, transport, use_existing_dir=False,
+        create_prefix=False, force_new_repo=False, stacked_on=None,
+        stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
+        shared_repo=False, vfs_only=False):
+        def make_directory(transport):
+            transport.mkdir('.')
+            return transport
+        def redirected(transport, e, redirection_notice):
+            trace.note(redirection_notice)
+            return transport._redirected_to(e.source, e.target)
+        try:
+            transport = do_catching_redirections(make_directory, transport,
+                redirected)
+        except bzr_errors.FileExists:
+            if not use_existing_dir:
+                raise
+        except bzr_errors.NoSuchFile:
+            if not create_prefix:
+                raise
+            transport.create_prefix()
+        controldir = self.initialize_on_transport(transport)
+        repository = controldir.open_repository()
+        repository.lock_write()
+        return (repository, controldir, False, CreateRepository(controldir))
+
+    def is_supported(self):
+        return True
+
+
+class BareLocalGitControlDirFormat(LocalGitControlDirFormat):
+
+    bare = True
+    supports_workingtrees = False
+
+    def get_format_description(self):
+        return "Local Git Repository (bare)"
 
 
 class LocalGitDir(GitDir):

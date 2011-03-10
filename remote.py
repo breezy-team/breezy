@@ -26,7 +26,9 @@ from bzrlib.errors import (
     InvalidRevisionId,
     NoSuchFile,
     NoSuchRevision,
+    NotBranchError,
     NotLocalUrl,
+    UninitializableFormat,
     )
 from bzrlib.transport import (
     Transport,
@@ -41,12 +43,15 @@ from bzrlib.plugins.git.branch import (
     GitBranch,
     GitTags,
     )
+from bzrlib.plugins.git.dir import (
+    GitControlDirFormat,
+    GitDir,
+    GitLockableFiles,
+    GitLock,
+    )
 from bzrlib.plugins.git.errors import (
     GitSmartRemoteNotSupported,
     NoSuchRef,
-    )
-from bzrlib.plugins.git.dir import (
-    GitDir,
     )
 from bzrlib.plugins.git.mapping import (
     mapping_registry,
@@ -264,6 +269,37 @@ class TemporaryPackIterator(Pack):
         if self._data is not None:
             self._data.close()
             os.remove(self._data_path)
+
+
+class RemoteGitControlDirFormat(GitControlDirFormat):
+    """The .git directory control format."""
+
+    supports_workingtrees = False
+
+    @classmethod
+    def _known_formats(self):
+        return set([RemoteGitControlDirFormat()])
+
+    def open(self, transport, _found=None):
+        """Open this directory.
+
+        """
+        # we dont grok readonly - git isn't integrated with transport.
+        url = transport.base
+        if url.startswith('readonly+'):
+            url = url[len('readonly+'):]
+        if (not url.startswith("git://") and not url.startswith("git+")):
+            raise NotBranchError(transport.base)
+        if not isinstance(transport, GitSmartTransport):
+            raise NotBranchError(transport.base)
+        lockfiles = GitLockableFiles(transport, GitLock())
+        return RemoteGitDir(transport, lockfiles, self)
+
+    def get_format_description(self):
+        return "Remote Git Repository"
+
+    def initialize_on_transport(self, transport):
+        raise UninitializableFormat(self)
 
 
 class RemoteGitRepository(GitRepository):

@@ -50,6 +50,7 @@ from bzrlib.controldir import (
     ControlDirFormat,
     Prober,
     format_registry,
+    network_format_registry as controldir_network_format_registry,
     )
 
 from bzrlib.foreign import (
@@ -57,9 +58,6 @@ from bzrlib.foreign import (
     )
 from bzrlib.help_topics import (
     topic_registry,
-    )
-from bzrlib.lockable_files import (
-    TransportLock,
     )
 from bzrlib.transport import (
     register_lazy_transport,
@@ -124,23 +122,6 @@ else: # bzr < 2.4
     dwim_revspecs.append(RevisionSpec_git)
 
 
-class GitControlDirFormat(ControlDirFormat):
-
-    _lock_class = TransportLock
-
-    colocated_branches = True
-    fixed_components = True
-
-    def __eq__(self, other):
-        return type(self) == type(other)
-
-    def is_supported(self):
-        return True
-
-    def network_name(self):
-        return "git"
-
-
 class LocalGitProber(Prober):
 
     def probe_transport(self, transport):
@@ -161,98 +142,21 @@ class LocalGitProber(Prober):
         except dulwich.errors.NotGitRepository, e:
             raise bzr_errors.NotBranchError(path=transport.base)
         else:
+            from bzrlib.plugins.git.dir import (
+                BareLocalGitControlDirFormat,
+                LocalGitControlDirFormat,
+                )
             if gitrepo.bare:
                 return BareLocalGitControlDirFormat()
             else:
                 return LocalGitControlDirFormat()
 
-
-class LocalGitControlDirFormat(GitControlDirFormat):
-    """The .git directory control format."""
-
-    bare = False
-
-    @classmethod
-    def _known_formats(self):
-        return set([LocalGitControlDirFormat()])
-
-    @property
-    def repository_format(self):
-        from bzrlib.plugins.git.repository import GitRepositoryFormat
-        return GitRepositoryFormat()
-
-    def get_branch_format(self):
-        from bzrlib.plugins.git.branch import GitBranchFormat
-        return GitBranchFormat()
-
-    def open(self, transport, _found=None):
-        """Open this directory.
-
-        """
-        lazy_check_versions()
-        from bzrlib.plugins.git.transportgit import TransportRepo
-        gitrepo = TransportRepo(transport)
-        from bzrlib.plugins.git.dir import LocalGitDir, GitLockableFiles, GitLock
-        lockfiles = GitLockableFiles(transport, GitLock())
-        return LocalGitDir(transport, lockfiles, gitrepo, self)
-
-    @classmethod
-    def probe_transport(klass, transport):
-        prober = LocalGitProber()
-        return prober.probe_transport(transport)
-
-    def get_format_description(self):
-        return "Local Git Repository"
-
-    def initialize_on_transport(self, transport):
-        lazy_check_versions()
-        from bzrlib.plugins.git.transportgit import TransportRepo
-        TransportRepo.init(transport, bare=self.bare)
-        return self.open(transport)
-
-    def initialize_on_transport_ex(self, transport, use_existing_dir=False,
-        create_prefix=False, force_new_repo=False, stacked_on=None,
-        stack_on_pwd=None, repo_format_name=None, make_working_trees=None,
-        shared_repo=False, vfs_only=False):
-        from bzrlib import trace
-        from bzrlib.bzrdir import CreateRepository
-        from bzrlib.transport import do_catching_redirections
-        def make_directory(transport):
-            transport.mkdir('.')
-            return transport
-        def redirected(transport, e, redirection_notice):
-            trace.note(redirection_notice)
-            return transport._redirected_to(e.source, e.target)
-        try:
-            transport = do_catching_redirections(make_directory, transport,
-                redirected)
-        except bzr_errors.FileExists:
-            if not use_existing_dir:
-                raise
-        except bzr_errors.NoSuchFile:
-            if not create_prefix:
-                raise
-            transport.create_prefix()
-        controldir = self.initialize_on_transport(transport)
-        repository = controldir.open_repository()
-        repository.lock_write()
-        return (repository, controldir, False, CreateRepository(controldir))
-
-    def is_supported(self):
-        return True
-
-
-class BareLocalGitControlDirFormat(LocalGitControlDirFormat):
-
-    bare = True
-    supports_workingtrees = False
-
-    @classmethod
-    def _known_formats(self):
-        return set([RemoteGitControlDirFormat()])
-
-    def get_format_description(self):
-        return "Local Git Repository (bare)"
+    def known_formats(self):
+        from bzrlib.plugins.git.dir import (
+            BareLocalGitControlDirFormat,
+            LocalGitControlDirFormat,
+            )
+        return set([BareLocalGitControlDirFormat(), LocalGitControlDirFormat()])
 
 
 class RemoteGitProber(Prober):
@@ -264,55 +168,32 @@ class RemoteGitProber(Prober):
         if (not url.startswith("git://") and not url.startswith("git+")):
             raise bzr_errors.NotBranchError(transport.base)
         # little ugly, but works
-        from bzrlib.plugins.git.remote import GitSmartTransport
+        from bzrlib.plugins.git.remote import (
+            GitSmartTransport,
+            RemoteGitControlDirFormat,
+            )
         if not isinstance(transport, GitSmartTransport):
             raise bzr_errors.NotBranchError(transport.base)
         return RemoteGitControlDirFormat()
 
-
-
-class RemoteGitControlDirFormat(GitControlDirFormat):
-    """The .git directory control format."""
-
-    supports_workingtrees = False
-
     @classmethod
     def _known_formats(self):
+        from bzrlib.plugins.git.remote import RemoteGitControlDirFormat
         return set([RemoteGitControlDirFormat()])
 
-    def open(self, transport, _found=None):
-        """Open this directory.
 
-        """
-        # we dont grok readonly - git isn't integrated with transport.
-        url = transport.base
-        if url.startswith('readonly+'):
-            url = url[len('readonly+'):]
-        if (not url.startswith("git://") and not url.startswith("git+")):
-            raise bzr_errors.NotBranchError(transport.base)
-        from bzrlib.plugins.git.remote import RemoteGitDir, GitSmartTransport
-        if not isinstance(transport, GitSmartTransport):
-            raise bzr_errors.NotBranchError(transport.base)
-        from bzrlib.plugins.git.dir import GitLockableFiles, GitLock
-        lockfiles = GitLockableFiles(transport, GitLock())
-        return RemoteGitDir(transport, lockfiles, self)
-
-    @classmethod
-    def probe_transport(klass, transport):
-        """Our format is present if the transport ends in '.not/'."""
-        prober = RemoteGitProber()
-        return prober.probe_transport(transport)
-
-    def get_format_description(self):
-        return "Remote Git Repository"
-
-    def initialize_on_transport(self, transport):
-        raise bzr_errors.UninitializableFormat(self)
-
-
-ControlDirFormat.register_format(LocalGitControlDirFormat())
-ControlDirFormat.register_format(BareLocalGitControlDirFormat())
-ControlDirFormat.register_format(RemoteGitControlDirFormat())
+try:
+    register_controldir_format = getattr(ControlDirFormat, "register_format")
+except ImportError: # bzr >= 2.4
+    pass
+else:
+    from bzrlib.plugins.git.dir import (
+        LocalGitControlDirFormat, BareLocalGitControlDirFormat,
+        )
+    from bzrlib.plugins.git.remote import RemoteGitControlDirFormat
+    ControlDirFormat.register_format(LocalGitControlDirFormat())
+    ControlDirFormat.register_format(BareLocalGitControlDirFormat())
+    ControlDirFormat.register_format(RemoteGitControlDirFormat())
 ControlDirFormat.register_prober(LocalGitProber)
 ControlDirFormat.register_prober(RemoteGitProber)
 
@@ -346,7 +227,7 @@ except ImportError: # Compatibility with bzr < 2.4
     from bzrlib.version_info_formats.format_rio import (
         RioVersionInfoBuilder,
         )
-    RioVersionInfoBuilder.hooks.install_named_hook('revision', update_stanza, 
+    RioVersionInfoBuilder.hooks.install_named_hook('revision', update_stanza,
         "git commits")
 else:
     install_lazy_named_hook("bzrlib.version_info_formats.format_rio",
@@ -407,17 +288,14 @@ else:
         'GitWorkingTreeFormat',
         )
 
-from bzrlib.controldir import (
-    network_format_registry as controldir_network_format_registry,
-    )
-controldir_network_format_registry.register('git', GitControlDirFormat)
+controldir_network_format_registry.register_lazy('git',
+    "bzrlib.plugins.git.dir", "GitControlDirFormat")
 
 send_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
                                    'send_git', 'Git am-style diff format')
 
-topic_registry.register_lazy('git',
-                             'bzrlib.plugins.git.help',
-                             'help_git', 'Using Bazaar with Git')
+topic_registry.register_lazy('git', 'bzrlib.plugins.git.help', 'help_git',
+    'Using Bazaar with Git')
 
 from bzrlib.diff import format_registry as diff_format_registry
 diff_format_registry.register_lazy('git', 'bzrlib.plugins.git.send',
