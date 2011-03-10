@@ -710,10 +710,12 @@ class ControlDirFormat(object):
     _default_format = None
     """The default format used for new control directories."""
 
-    _formats = []
-    """The registered control formats - .bzr, ....
+    _formats = registry.FormatRegistry()
+    """Registry with registered control formats - .bzr, ....
 
-    This is a list of _ObjectGetters of ControlDirFormat objects.
+    The keys are just used as a way to allow unregistering formats,
+    they are not used elsewhere at the moment. The values should be
+    ControlDirFormat objects.
     """
 
     _server_probers = []
@@ -772,19 +774,18 @@ class ControlDirFormat(object):
             target_format.rich_root_data)
 
     @classmethod
-    def register_format(klass, format):
+    def register_format(klass, identifier, format):
         """Register a control dir format.
 
         """
-        klass._formats.append(registry._ObjectGetter(format))
+        klass._formats.register(identifier, format)
 
     @classmethod
-    def register_lazy_format(klass, module_name, member_name):
+    def register_lazy_format(klass, identifier, module_name, member_name):
         """Lazily register a control dir format.
 
         """
-        klass._formats.append(registry._LazyObjectGetter(
-            module_name, member_name))
+        klass._formats.register_lazy(identifier, module_name, member_name)
 
     @classmethod
     def register_prober(klass, prober):
@@ -816,19 +817,14 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
-    def unregister_format(klass, format):
-        klass._formats.remove(registry._ObjectGetter(format))
-
-    @classmethod
-    def unregister_lazy_format(klass, module_name, member_name):
-        klass._formats.remove(registry._LazyObjectGetter(
-            module_name, member_name))
+    def unregister_format(klass, identifier):
+        klass._formats.remove(identifier)
 
     @classmethod
     def known_formats(klass):
         """Return all the known formats.
         """
-        return set([objgetter.get_obj() for objgetter in klass._formats])
+        return set([v for k, v in klass._formats.iteritems()])
 
     @classmethod
     def find_format(klass, transport, _server_formats=True):

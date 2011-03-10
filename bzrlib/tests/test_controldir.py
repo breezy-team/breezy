@@ -88,19 +88,22 @@ class TestControlDirFormat(tests.TestCaseWithTransport):
 
     def test_register_unregister_format(self):
         format = ControlDirFormatTest1()
-        controldir.ControlDirFormat.register_format(format)
+        controldir.ControlDirFormat.register_format("myformat", format)
         self.assertTrue(format in controldir.ControlDirFormat.known_formats())
-        controldir.ControlDirFormat.unregister_format(format)
+        controldir.ControlDirFormat.unregister_format("myformat")
         self.assertFalse(format in controldir.ControlDirFormat.known_formats())
+        self.assertRaises(KeyError,
+            controldir.ControlDirFormat.unregister_format, "myformat")
 
     def test_register_unregister_format_lazy(self):
         controldir.ControlDirFormat.register_lazy_format(
-            "bzrlib.tests.test_controldir", "ControlDirFormatTest1")
+            "lui", "bzrlib.tests.test_controldir", "ControlDirFormatTest1")
         self.assertTrue(
             ControlDirFormatTest1 in
             controldir.ControlDirFormat.known_formats())
-        controldir.ControlDirFormat.unregister_lazy_format(
-            "bzrlib.tests.test_controldir", "ControlDirFormatTest1")
+        controldir.ControlDirFormat.unregister_format("lui")
         self.assertFalse(
             ControlDirFormatTest1 in
             controldir.ControlDirFormat.known_formats())
+        self.assertRaises(KeyError,
+            controldir.ControlDirFormat.unregister_format, "myformat")
