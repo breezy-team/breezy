@@ -8,23 +8,10 @@ Bazaar Release Notes
 bzr 2.3.1
 #########
 
-:2.3.1: NOT RELEASED YET
+:2.3.1: 2011-03-10
 
-External Compatibility Breaks
-*****************************
-
-.. These may require users to change the way they use Bazaar.
-
-New Features
-************
-
-.. New commands, options, etc that users may wish to try out.
-
-Improvements
-************
-
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.3 releases.
 
 Bug Fixes
 *********
@@ -42,31 +29,6 @@ Bug Fixes
 * Restore proper logging of bytes transferred. We accidentally reset the
   counter when commands finished before we logged the total transferred.
   (John Arbash Meinel, #713258)
-
-Documentation
-*************
-
-.. Improved or updated documentation.
-
-API Changes
-***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
-
-Internals
-*********
-
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
-
-Testing
-*******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
-
 
 bzr 2.3.0
 #########
