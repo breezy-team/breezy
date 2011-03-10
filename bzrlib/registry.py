@@ -43,6 +43,13 @@ class _ObjectGetter(object):
         """Get the object that was saved at creation time"""
         return self._obj
 
+    def __eq__(self, other):
+        if other == self.get_obj():
+            return True
+        if isinstance(other, self.__class__):
+            return (self.get_obj() == other.get_obj())
+        return False
+
 
 class _LazyObjectGetter(_ObjectGetter):
     """Keep a record of a possible object.

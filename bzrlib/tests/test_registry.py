@@ -352,3 +352,15 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         a_registry.register("obj", AThing())
         self.assertEquals("bzrlib.tests.test_registry",
             a_registry._get_module("obj"))
+
+
+class TestObjectGetter(tests.TestCase):
+
+    def test_eq(self):
+        obj = object()
+        objgetter1 = registry._ObjectGetter(obj)
+        objgetter2 = registry._ObjectGetter(obj)
+        self.assertEquals(objgetter1, objgetter2)
+        self.assertNotEquals(objgetter1, registry._ObjectGetter(1))
+        self.assertNotEquals(objgetter1, 1)
+        self.assertEquals(objgetter1, obj)
