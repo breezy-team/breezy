@@ -1734,7 +1734,8 @@ class BzrDirFormat(controldir.ControlDirFormat):
         """Register a new BzrDir format.
         """
         BzrProber.formats.register(format.get_format_string(), format)
-        controldir.ControlDirFormat.register_format(format)
+        controldir.ControlDirFormat.register_format(
+            format.get_format_string(), format)
 
     @classmethod
     def register_lazy_format(klass, format_string, module_name, member_name):
@@ -1746,7 +1747,7 @@ class BzrDirFormat(controldir.ControlDirFormat):
         """
         BzrProber.formats.register_lazy(format_string, module_name,
             member_name)
-        controldir.ControlDirFormat.register_lazy_format(
+        controldir.ControlDirFormat.register_lazy_format(format_string,
             module_name, member_name)
 
     def _supply_sub_formats_to(self, other_format):
@@ -1762,15 +1763,9 @@ class BzrDirFormat(controldir.ControlDirFormat):
         """
 
     @classmethod
-    def unregister_format(klass, format):
-        BzrProber.formats.remove(format.get_format_string())
-        controldir.ControlDirFormat.unregister_format(format)
-
-    @classmethod
-    def unregister_lazy_format(klass, format_string, module_name, member_name):
+    def unregister_format(klass, format_string):
         BzrProber.formats.remove(format_string)
-        controldir.ControlDirFormat.unregister_lazy_format(
-            module_name, member_name)
+        controldir.ControlDirFormat.unregister_format(format_string)
 
 
 class BzrDirFormat4(BzrDirFormat):
