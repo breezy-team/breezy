@@ -23,22 +23,19 @@ from bzrlib.option import Option, ListOption, RegistryOption
 from bzrlib.plugins.fastimport import load_fastimport
 
 
-def _run(source, processor_factory, control, params, verbose,
-    user_map=None):
+def _run(source, processor_factory, verbose=False, user_map=None, **kwargs):
     """Create and run a processor.
 
     :param source: a filename or '-' for standard input. If the
       filename ends in .gz, it will be opened as a gzip file and
       the stream will be implicitly uncompressed
     :param processor_factory: a callable for creating a processor
-    :param control: the BzrDir of the destination or None if no
-      destination is expected
     :param user_map: if not None, the file containing the user map.
     """
     from fastimport import parser
     stream = _get_source_stream(source)
     user_mapper = _get_user_mapper(user_map)
-    proc = processor_factory(control, params=params, verbose=verbose)
+    proc = processor_factory(verbose=verbose, **kwargs)
     p = parser.ImportParser(stream, verbose=verbose, user_mapper=user_mapper)
     return proc.process(p.iter_commands)
 
@@ -312,8 +309,8 @@ class cmd_fast_import(Command):
             'import-marks': import_marks,
             'export-marks': export_marks,
             }
-        return _run(source, generic_processor.GenericProcessor, control,
-                params, verbose, user_map=user_map)
+        return _run(source, generic_processor.GenericProcessor, control=control,
+                params=params, verbose=verbose, user_map=user_map)
 
     def _generate_info(self, source):
         from cStringIO import StringIO
@@ -466,7 +463,7 @@ class cmd_fast_import_info(Command):
     def run(self, source, verbose=False):
         load_fastimport()
         from fastimport.processors import info_processor
-        return _run(source, info_processor.InfoProcessor, {}, verbose)
+        return _run(source, info_processor.InfoProcessor, verbose=verbose)
 
 
 class cmd_fast_import_query(Command):
@@ -525,8 +522,8 @@ class cmd_fast_import_query(Command):
         params = helpers.defines_to_dict(commands) or {}
         if commit_mark:
             params['commit-mark'] = commit_mark
-        return _run(source, query_processor.QueryProcessor, params,
-            verbose)
+        return _run(source, query_processor.QueryProcessor, params=params,
+            verbose=verbose)
 
 
 class cmd_fast_export(Command):

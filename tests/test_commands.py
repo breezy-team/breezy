@@ -77,3 +77,44 @@ class TestFastExport(ExternalBase):
         data = self.run_bzr("fast-export br br.fi")[0]
         self.assertEquals("", data)
         self.failUnlessExists("br.fi")
+
+
+simple_fast_import_stream = """commit refs/heads/master
+mark :1
+committer Jelmer Vernooij <jelmer@samba.org> 1299718135 +0100
+data 7
+initial
+
+"""
+
+class TestFastImportInfo(ExternalBase):
+
+    def test_simple(self):
+        self.build_tree_contents([('simple.fi', simple_fast_import_stream)])
+        output = self.run_bzr("fast-import-info simple.fi")[0]
+        self.assertEquals(output, """Command counts:
+\t0\tblob
+\t0\tcheckpoint
+\t1\tcommit
+\t0\tfeature
+\t0\tprogress
+\t0\treset
+\t0\ttag
+File command counts:
+\t0\tfilemodify
+\t0\tfiledelete
+\t0\tfilecopy
+\t0\tfilerename
+\t0\tfiledeleteall
+Parent counts:
+\t1\tparents-0
+\t0\ttotal revisions merged
+Commit analysis:
+\tno\texecutables
+\tno\tseparate authors found
+\tno\tsymlinks
+\tno\tblobs referenced by SHA
+Head analysis:
+\t[':1']\trefs/heads/master
+Merges:
+""")

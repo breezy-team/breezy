@@ -6,6 +6,11 @@ bzr-fastimport Release Notes
 
 0.11 UNRELEASED
 
+Bug fixes
+---------
+
+* Fix internal error in 'bzr fast-import-info'. (Jelmer Vernooij, #730833)
+
 0.10 08-Mar-2011
 
 Changes
