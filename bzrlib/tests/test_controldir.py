@@ -84,21 +84,12 @@ class TestMetaComponentFormatRegistry(tests.TestCase):
         self.assertIsInstance(formats[0], SampleExtraComponentFormat)
 
 
-class ControlDirFormatTest1(controldir.ControlDirFormat):
-    """A test control dir format."""
+class TestControlDirFormatDeprecated(tests.TestCaseWithTransport):
+    """Tests for removed registration method in the ControlDirFormat facility."""
 
-
-class TestControlDirFormat(tests.TestCaseWithTransport):
-    """Tests for the ControlDirFormat facility."""
-
-    def test_register_unregister_format(self):
-        format = ControlDirFormatTest1()
-        controldir.ControlDirFormat.register_format("myformat", format)
-        self.assertTrue(format in controldir.ControlDirFormat.known_formats())
-        controldir.ControlDirFormat.unregister_format("myformat")
-        self.assertFalse(format in controldir.ControlDirFormat.known_formats())
-        self.assertRaises(KeyError,
-            controldir.ControlDirFormat.unregister_format, "myformat")
+    def test_register_format(self):
+        self.assertRaises(errors.BzrError,
+            controldir.ControlDirFormat.register_format, object())
 
 
 class TestProber(tests.TestCaseWithTransport):
