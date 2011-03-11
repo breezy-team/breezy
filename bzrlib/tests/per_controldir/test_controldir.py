@@ -26,7 +26,6 @@ from bzrlib import (
     errors,
     gpg,
     osutils,
-    repository,
     transport,
     ui,
     urlutils,
@@ -46,6 +45,7 @@ from bzrlib.ui import (
     )
 from bzrlib.remote import (
     RemoteBzrDir,
+    RemoteBzrDirFormat,
     RemoteRepository,
     )
 
@@ -906,6 +906,8 @@ class TestControlDir(TestCaseWithControlDir):
         readonly_t = self.get_readonly_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         self.failUnless(isinstance(made_control, controldir.ControlDir))
+        if isinstance(self.bzrdir_format, RemoteBzrDirFormat):
+            return
         self.assertEqual(self.bzrdir_format,
                          controldir.ControlDirFormat.find_format(readonly_t))
         direct_opened_dir = self.bzrdir_format.open(readonly_t)
@@ -1068,15 +1070,11 @@ class TestControlDir(TestCaseWithControlDir):
         self.assertIsInstance(control, controldir.ControlDir)
         opened = bzrdir.BzrDir.open(t.base)
         expected_format = self.bzrdir_format
-        if isinstance(expected_format, bzrdir.RemoteBzrDirFormat):
-            # Current RemoteBzrDirFormat's do not reliably get network_name
-            # set, so we skip a number of tests for RemoteBzrDirFormat's.
-            self.assertIsInstance(control, RemoteBzrDir)
-        else:
-            if need_meta and expected_format.fixed_components:
-                # Pre-metadir formats change when we are making something that
-                # needs a metaformat, because clone is used for push.
-                expected_format = bzrdir.BzrDirMetaFormat1()
+        if need_meta and expected_format.fixed_components:
+            # Pre-metadir formats change when we are making something that
+            # needs a metaformat, because clone is used for push.
+            expected_format = bzrdir.BzrDirMetaFormat1()
+        if not isinstance(expected_format, RemoteBzrDirFormat):
             self.assertEqual(control._format.network_name(),
                 expected_format.network_name())
             self.assertEqual(control._format.network_name(),
@@ -1093,7 +1091,7 @@ class TestControlDir(TestCaseWithControlDir):
         # key in the registry gives back the same format. For remote obects
         # we check that the network_name of the RemoteBzrDirFormat we have
         # locally matches the actual format present on disk.
-        if isinstance(format, bzrdir.RemoteBzrDirFormat):
+        if isinstance(format, RemoteBzrDirFormat):
             dir._ensure_real()
             real_dir = dir._real_bzrdir
             network_name = format.network_name()

@@ -710,12 +710,6 @@ class ControlDirFormat(object):
     _default_format = None
     """The default format used for new control directories."""
 
-    _formats = []
-    """The registered control formats - .bzr, ....
-
-    This is a list of ControlDirFormat objects.
-    """
-
     _server_probers = []
     """The registered server format probers, e.g. RemoteBzrProber.
 
@@ -776,7 +770,8 @@ class ControlDirFormat(object):
         """Register a format that does not use '.bzr' for its control dir.
 
         """
-        klass._formats.append(format)
+        raise errors.BzrError("ControlDirFormat.register_format() has been "
+            "removed in Bazaar 2.4. Please upgrade your plugins.")
 
     @classmethod
     def register_prober(klass, prober):
@@ -808,14 +803,13 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
-    def unregister_format(klass, format):
-        klass._formats.remove(format)
-
-    @classmethod
     def known_formats(klass):
         """Return all the known formats.
         """
-        return set(klass._formats)
+        result = set()
+        for prober_kls in klass._probers + klass._server_probers:
+            result.update(prober_kls.known_formats())
+        return result
 
     @classmethod
     def find_format(klass, transport, _server_formats=True):
@@ -911,12 +905,19 @@ class ControlDirFormat(object):
 
 
 class Prober(object):
-    """Abstract class that can be used to detect a particular kind of 
+    """Abstract class that can be used to detect a particular kind of
     control directory.
 
-    At the moment this just contains a single method to probe a particular 
-    transport, but it may be extended in the future to e.g. avoid 
+    At the moment this just contains a single method to probe a particular
+    transport, but it may be extended in the future to e.g. avoid
     multiple levels of probing for Subversion repositories.
+
+    See BzrProber and RemoteBzrProber in bzrlib.bzrdir for the
+    probers that detect .bzr/ directories and Bazaar smart servers,
+    respectively.
+
+    Probers should be registered using the register_server_prober or
+    register_prober methods on ControlDirFormat.
     """
 
     def probe_transport(self, transport):
@@ -928,6 +929,17 @@ class Prober(object):
         :return: A ControlDirFormat instance.
         """
         raise NotImplementedError(self.probe_transport)
+
+    @classmethod
+    def known_formats(cls):
+        """Return the control dir formats known by this prober.
+
+        Multiple probers can return the same formats, so this should
+        return a set.
+
+        :return: A set of known formats.
+        """
+        raise NotImplementedError(cls.known_formats)
 
 
 class ControlDirFormatInfo(object):

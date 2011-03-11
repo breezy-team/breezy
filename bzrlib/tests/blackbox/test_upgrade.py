@@ -129,8 +129,10 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def test_upgrade_control_dir(self):
         old_format = OldBzrDirFormat()
-        self.addCleanup(bzrdir.BzrDirFormat.unregister_format, old_format)
-        bzrdir.BzrDirFormat.register_format(old_format)
+        self.addCleanup(bzrdir.BzrProber.formats.remove,
+            old_format.get_format_string())
+        bzrdir.BzrProber.formats.register(old_format.get_format_string(),
+            old_format)
         self.addCleanup(controldir.ControlDirFormat._set_default_format,
                         controldir.ControlDirFormat.get_default_format())
 

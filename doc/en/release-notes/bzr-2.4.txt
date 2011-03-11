@@ -161,6 +161,10 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
+* ``ControlDirFormat.register_format`` has been removed. Instead,
+  ``Prober`` implementations should now implement a ``known_formats``
+  method. (Jelmer Vernooij)
+
 * ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
   Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and
   ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_lazy_revspec``
@@ -169,6 +173,10 @@ API Changes
 * ``BzrDirFormat`` has a new attribute ``fixed_components`` that
   indicates whether the components of the bzrdir can be upgraded
   independent of the ``BzrDir``. (Jelmer Vernooij)
+
+* ``BzrProber.register_format`` and ``BzrProber.unregister_format`` are
+  now deprecated in favour of the ``BzrProber.formats`` format registry.
+  (Jelmer Vernooij)
 
 * ``ControlDir`` implementations no longer have to provide the ``get_branch_transport``,
   ``get_workingtree_transport`` and ``get_repository_transport`` methods.

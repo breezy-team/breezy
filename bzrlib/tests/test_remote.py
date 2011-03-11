@@ -52,6 +52,7 @@ from bzrlib.remote import (
     RemoteBranch,
     RemoteBranchFormat,
     RemoteBzrDir,
+    RemoteBzrDirFormat,
     RemoteRepository,
     RemoteRepositoryFormat,
     )
@@ -95,12 +96,12 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         self.addCleanup(self.transport.disconnect)
 
     def test_create_remote_bzrdir(self):
-        b = remote.RemoteBzrDir(self.transport, remote.RemoteBzrDirFormat())
+        b = remote.RemoteBzrDir(self.transport, RemoteBzrDirFormat())
         self.assertIsInstance(b, BzrDir)
 
     def test_open_remote_branch(self):
         # open a standalone branch in the working directory
-        b = remote.RemoteBzrDir(self.transport, remote.RemoteBzrDirFormat())
+        b = remote.RemoteBzrDir(self.transport, RemoteBzrDirFormat())
         branch = b.open_branch()
         self.assertIsInstance(branch, Branch)
 
@@ -124,7 +125,7 @@ class BasicRemoteObjectTests(tests.TestCaseWithTransport):
         fmt = BzrDirFormat.find_format(self.transport)
         self.assertTrue(bzrdir.RemoteBzrProber
                         in controldir.ControlDirFormat._server_probers)
-        self.assertIsInstance(fmt, remote.RemoteBzrDirFormat)
+        self.assertIsInstance(fmt, RemoteBzrDirFormat)
 
     def test_open_detected_smart_format(self):
         fmt = BzrDirFormat.find_format(self.transport)
@@ -450,7 +451,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
         client.add_expected_call(
             'BzrDir.open_branchV3', ('quack/',),
             'success', ('ref', self.get_url('referenced'))),
-        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_bzrdir.cloning_metadir()
         # We should have got a control dir matching the referenced branch.
@@ -469,7 +470,7 @@ class TestBzrDirCloningMetaDir(TestRemote):
         client.add_expected_call(
             'BzrDir.cloning_metadir', ('quack/', 'False'),
             'success', (control_name, '', ('branch', ''))),
-        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = a_bzrdir.cloning_metadir()
         # We should have got a reference control dir with default branch and
@@ -495,14 +496,14 @@ class TestBzrDirOpen(TestRemote):
         client.add_expected_call(
             'BzrDir.open_2.1', ('quack/',), 'success', ('no',))
         self.assertRaises(errors.NotBranchError, RemoteBzrDir, transport,
-                remote.RemoteBzrDirFormat(), _client=client, _force_probe=True)
+                RemoteBzrDirFormat(), _client=client, _force_probe=True)
         self.assertFinished(client)
 
     def test_present_without_workingtree(self):
         client, transport = self.make_fake_client_and_transport()
         client.add_expected_call(
             'BzrDir.open_2.1', ('quack/',), 'success', ('yes', 'no'))
-        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bd = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client, _force_probe=True)
         self.assertIsInstance(bd, RemoteBzrDir)
         self.assertFalse(bd.has_workingtree())
@@ -513,7 +514,7 @@ class TestBzrDirOpen(TestRemote):
         client, transport = self.make_fake_client_and_transport()
         client.add_expected_call(
             'BzrDir.open_2.1', ('quack/',), 'success', ('yes', 'yes'))
-        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bd = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client, _force_probe=True)
         self.assertIsInstance(bd, RemoteBzrDir)
         self.assertTrue(bd.has_workingtree())
@@ -526,7 +527,7 @@ class TestBzrDirOpen(TestRemote):
             'BzrDir.open_2.1', ('quack/',), 'unknown', ('BzrDir.open_2.1',))
         client.add_expected_call(
             'BzrDir.open', ('quack/',), 'success', ('yes',))
-        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bd = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client, _force_probe=True)
         self.assertIsInstance(bd, RemoteBzrDir)
         self.assertFinished(client)
@@ -548,7 +549,7 @@ class TestBzrDirOpen(TestRemote):
             'BzrDir.open_2.1', ('quack/',), 'unknown', ('BzrDir.open_2.1',))
         client.add_expected_call(
             'BzrDir.open', ('quack/',), 'success', ('yes',))
-        bd = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bd = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client, _force_probe=True)
         self.assertIsInstance(bd, RemoteBzrDir)
         self.assertFinished(client)
@@ -585,7 +586,7 @@ class TestBzrDirOpenBranch(TestRemote):
         client.add_expected_call(
             'Branch.get_stacked_on_url', ('quack/',),
             'error', ('NotStacked',))
-        bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = bzrdir.open_branch()
         self.assertIsInstance(result, RemoteBranch)
@@ -598,7 +599,7 @@ class TestBzrDirOpenBranch(TestRemote):
         transport = transport.clone('quack')
         client = FakeClient(transport.base)
         client.add_error_response('nobranch')
-        bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch)
         self.assertEqual(
@@ -615,7 +616,7 @@ class TestBzrDirOpenBranch(TestRemote):
         transport = MemoryTransport()
         # no requests on the network - catches other api calls being made.
         client = FakeClient(transport.base)
-        bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         # patch the open_branch call to record that it was called.
         bzrdir.open_branch = open_branch
@@ -640,7 +641,7 @@ class TestBzrDirOpenBranch(TestRemote):
         client.add_expected_call(
             'Branch.get_stacked_on_url', ('~hello/',),
             'error', ('NotStacked',))
-        bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = bzrdir.open_branch()
         self.assertFinished(client)
@@ -663,7 +664,7 @@ class TestBzrDirOpenBranch(TestRemote):
         client.add_success_response(
             'ok', '', rich_response, subtree_response, external_lookup,
             network_name)
-        bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         result = bzrdir.open_repository()
         self.assertEqual(
@@ -715,7 +716,7 @@ class TestBzrDirCreateBranch(TestRemote):
             'BzrDir.create_branch', ('quack/', network_name),
             'success', ('ok', network_name, '', 'no', 'no', 'yes',
             reference_repo_name))
-        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         branch = a_bzrdir.create_branch()
         # We should have got a remote branch
@@ -743,7 +744,7 @@ class TestBzrDirCreateBranch(TestRemote):
             'BzrDir.create_branch', ('extra/quack/', network_name),
             'success', ('ok', network_name, '', 'no', 'no', 'yes',
             reference_repo_name))
-        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         branch = a_bzrdir.create_branch(repository=repo)
         # We should have got a remote branch
@@ -778,7 +779,7 @@ class TestBzrDirCreateRepository(TestRemote):
                 'Bazaar repository format 2a (needs bzr 1.16 or later)\n',
                 'False'),
             'success', ('ok', 'yes', 'yes', 'yes', network_name))
-        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        a_bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         repo = a_bzrdir.create_repository()
         # We should have got a remote repository
@@ -813,7 +814,7 @@ class TestBzrDirOpenRepository(TestRemote):
         client.add_success_response('stat', '0', '65535')
         remote_transport = RemoteTransport(server_url + 'quack/', medium=False,
             _client=client)
-        bzrdir = RemoteBzrDir(remote_transport, remote.RemoteBzrDirFormat(),
+        bzrdir = RemoteBzrDir(remote_transport, RemoteBzrDirFormat(),
             _client=client)
         repo = bzrdir.open_repository()
         self.assertEqual(
@@ -846,7 +847,7 @@ class TestBzrDirOpenRepository(TestRemote):
         client.add_success_response('stat', '0', '65535')
         remote_transport = RemoteTransport(server_url + 'quack/', medium=False,
             _client=client)
-        bzrdir = RemoteBzrDir(remote_transport, remote.RemoteBzrDirFormat(),
+        bzrdir = RemoteBzrDir(remote_transport, RemoteBzrDirFormat(),
             _client=client)
         repo = bzrdir.open_repository()
         self.assertEqual(
@@ -867,7 +868,7 @@ class TestBzrDirOpenRepository(TestRemote):
         transport = transport.clone('quack')
         client = FakeClient(transport.base)
         client.add_success_response('ok', '', 'no', 'no', 'no', network_name)
-        bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         repo = bzrdir.open_repository()
         self.assertEqual(
@@ -880,7 +881,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
 
     def test_success(self):
         """Simple test for typical successful call."""
-        fmt = bzrdir.RemoteBzrDirFormat()
+        fmt = RemoteBzrDirFormat()
         default_format_name = BzrDirFormat.get_default_format().network_name()
         transport = self.get_transport()
         client = FakeClient(transport.base)
@@ -902,7 +903,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         """Error responses are translated, e.g. 'PermissionDenied' raises the
         corresponding error from the client.
         """
-        fmt = bzrdir.RemoteBzrDirFormat()
+        fmt = RemoteBzrDirFormat()
         default_format_name = BzrDirFormat.get_default_format().network_name()
         transport = self.get_transport()
         client = FakeClient(transport.base)
@@ -926,7 +927,7 @@ class TestBzrDirFormatInitializeEx(TestRemote):
         """Integration test for error translation."""
         transport = self.make_smart_server('foo')
         transport = transport.clone('no-such-path')
-        fmt = bzrdir.RemoteBzrDirFormat()
+        fmt = RemoteBzrDirFormat()
         err = self.assertRaises(errors.NoSuchFile,
             fmt.initialize_on_transport_ex, transport, create_prefix=False)
 
@@ -963,7 +964,7 @@ class RemoteBzrDirTestCase(TestRemote):
 
     def make_remote_bzrdir(self, transport, client):
         """Make a RemotebzrDir using 'client' as the _client."""
-        return RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        return RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
 
 
@@ -1296,7 +1297,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
         client.add_expected_call(
             'Branch.get_stacked_on_url', ('stacked/',),
             'success', ('ok', vfs_url))
-        bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=client)
         repo_fmt = remote.RemoteRepositoryFormat()
         repo_fmt._custom_format = stacked_branch.repository._format
@@ -1329,7 +1330,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
         # this will also do vfs access, but that goes direct to the transport
         # and isn't seen by the FakeClient.
         bzrdir = RemoteBzrDir(self.get_transport('stacked'),
-            remote.RemoteBzrDirFormat(), _client=client)
+            RemoteBzrDirFormat(), _client=client)
         branch = bzrdir.open_branch()
         result = branch.get_stacked_on_url()
         self.assertEqual('../base', result)
@@ -1362,7 +1363,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
             'Branch.get_stacked_on_url', ('stacked/',),
             'success', ('ok', '../base'))
         bzrdir = RemoteBzrDir(self.get_transport('stacked'),
-            remote.RemoteBzrDirFormat(), _client=client)
+            RemoteBzrDirFormat(), _client=client)
         branch = bzrdir.open_branch()
         result = branch.get_stacked_on_url()
         self.assertEqual('../base', result)
@@ -1938,7 +1939,7 @@ class TestRemoteRepository(TestRemote):
         client = FakeClient(transport.base)
         transport = transport.clone(transport_path)
         # we do not want bzrdir to make any remote calls
-        bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+        bzrdir = RemoteBzrDir(transport, RemoteBzrDirFormat(),
             _client=False)
         repo = RemoteRepository(bzrdir, None, _client=client)
         return repo, client
