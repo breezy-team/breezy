@@ -262,9 +262,6 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
 
 
 def register_dummy_foreign_for_test(testcase):
-    controldir.ControlDirFormat.register_format('dummyforeign', DummyForeignVcsDirFormat)
-    testcase.addCleanup(controldir.ControlDirFormat.unregister_format,
-                        'dummyforeign')
     controldir.ControlDirFormat.register_prober(DummyForeignProber)
     testcase.addCleanup(controldir.ControlDirFormat.unregister_prober,
         DummyForeignProber)
@@ -283,6 +280,10 @@ class DummyForeignProber(controldir.Prober):
         if not transport.has('.dummy'):
             raise errors.NotBranchError(path=transport.base)
         return DummyForeignVcsDirFormat()
+
+    @classmethod
+    def known_formats(cls):
+        return set([DummyForeignVcsDirFormat()])
 
 
 class ForeignVcsRegistryTests(tests.TestCase):

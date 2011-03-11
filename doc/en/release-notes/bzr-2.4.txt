@@ -161,12 +161,9 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
-* ``ControlDirFormat.register_format`` now takes an identifier argument
-  which can be used to unregister the format later. Control dir formats
-  can now be registered lazily using
-  ``ControlDirFormat.register_lazy_format``.
-  ``ControlDirFormat.unregister_format`` now takes a string rather than a
-  ``ControlDirFormat`` as its argument. (Jelmer Vernooij)
+* ``ControlDirFormat.register_format`` has been removed. Instead,
+  ``Prober`` implementations should now implement a ``known_formats``
+  method. (Jelmer Vernooij)
 
 * ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
   Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and

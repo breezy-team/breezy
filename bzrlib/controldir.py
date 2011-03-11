@@ -710,14 +710,6 @@ class ControlDirFormat(object):
     _default_format = None
     """The default format used for new control directories."""
 
-    _formats = registry.FormatRegistry()
-    """Registry with registered control formats - .bzr, ....
-
-    The keys are just used as a way to allow unregistering formats,
-    they are not used elsewhere at the moment. The values should be
-    ControlDirFormat objects.
-    """
-
     _server_probers = []
     """The registered server format probers, e.g. RemoteBzrProber.
 
@@ -774,18 +766,12 @@ class ControlDirFormat(object):
             target_format.rich_root_data)
 
     @classmethod
-    def register_format(klass, identifier, format):
-        """Register a control dir format.
+    def register_format(klass, format):
+        """Register a format that does not use '.bzr' for its control dir.
 
         """
-        klass._formats.register(identifier, format)
-
-    @classmethod
-    def register_lazy_format(klass, identifier, module_name, member_name):
-        """Lazily register a control dir format.
-
-        """
-        klass._formats.register_lazy(identifier, module_name, member_name)
+        raise errors.BzrError("ControlDirFormat.register_format() has been "
+            "removed in Bazaar 2.4. Please upgrade your plugins.")
 
     @classmethod
     def register_prober(klass, prober):
@@ -817,18 +803,12 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
-    def unregister_format(klass, identifier):
-        klass._formats.remove(identifier)
-
-    @classmethod
     def known_formats(klass):
         """Return all the known formats.
         """
         result = set()
-        for name, fmt in klass._formats.iteritems():
-            if callable(fmt):
-                fmt = fmt()
-            result.add(fmt)
+        for prober_kls in klass._probers + klass._server_probers:
+            result.update(prober_kls.known_formats())
         return result
 
     @classmethod
@@ -942,6 +922,17 @@ class Prober(object):
         :return: A ControlDirFormat instance.
         """
         raise NotImplementedError(self.probe_transport)
+
+    @classmethod
+    def known_formats(cls):
+        """Return the control dir formats known by this prober.
+
+        Multiple probers can return the same formats, so this should
+        return a set.
+
+        :return: A set of known formats.
+        """
+        raise NotImplementedError(cls.known_formats)
 
 
 class ControlDirFormatInfo(object):

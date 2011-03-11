@@ -110,6 +110,7 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.remote',
             'bzrlib.sign_my_commits',
             'bzrlib.smart',
+            'bzrlib.smart.client',
             'bzrlib.transform',
             'bzrlib.version_info_formats.format_rio',
             'bzrlib.workingtree_2',
