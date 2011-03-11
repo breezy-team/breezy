@@ -123,6 +123,17 @@ this is currently worked on.
     def depart_topic(self, node):
         pass
 
+    def visit_compound(self, node):
+        # compound is new in sphinx >= 1.0 and just add a optional layer so we
+        # relay the text to the parent when it occurs. This may requires a
+        # cleaner approach once we settle on which sphinx versions we want to
+        # support.
+        set_item_list_collector(node, 'text')
+
+    def depart_compound(self, node):
+        text = ''.join(node['text'])
+        node.parent.collect_text(text)
+
     def visit_paragraph(self, node):
         set_item_list_collector(node, 'text')
 
