@@ -530,7 +530,7 @@ class TestBranchFormat4(TestCaseWithTransport):
 
     def test_supports_bzrdir_6(self):
         url = self.get_url()
-        bdir = bzrdir.BzrDirFormat6().initialize(url)
+        bdir = BzrDirFormat6().initialize(url)
         bdir.create_repository()
         BzrBranchFormat4().initialize(bdir)
 
