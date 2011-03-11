@@ -1,3 +1,10 @@
+bzr-builddeb (2.7.1) unstable; urgency=low
+
+  * Add Ubuntu oneiric and Debian wheezy to the list of supported
+    distributions.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 11 Mar 2011 11:18:52 +0100
+
 bzr-builddeb (2.7) unstable; urgency=low
 
   [ James Westby ]

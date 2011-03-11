@@ -76,12 +76,12 @@ from bzrlib.plugins.builddeb.errors import (
     )
 
 
-DEBIAN_RELEASES = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'stable',
-        'testing', 'unstable', 'experimental', 'frozen', 'sid')
+DEBIAN_RELEASES = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'wheezy',
+        'stable', 'testing', 'unstable', 'experimental', 'frozen', 'sid')
 DEBIAN_POCKETS = ('', '-security', '-proposed-updates', '-backports')
 UBUNTU_RELEASES = ('warty', 'hoary', 'breezy', 'dapper', 'edgy',
         'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty', 'karmic',
-        'lucid', 'maverick', 'natty')
+        'lucid', 'maverick', 'natty', "oneiric")
 UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
 
 
