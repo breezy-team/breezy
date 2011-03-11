@@ -1232,6 +1232,8 @@ class BzrProber(controldir.Prober):
     def known_formats(cls):
         result = set()
         for name, format in cls.formats.iteritems():
+            if callable(format):
+                format = format()
             result.add(format)
         return result
 
@@ -1699,7 +1701,7 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
 
 # Register bzr formats
-BzrProber.register_lazy(
+BzrProber.formats.register_lazy(
     "Bazaar-NG branch, format 0.0.4\n", "bzrlib.bzrdir_weave",
     "BzrDirFormat4")
 BzrProber.formats.register_lazy(
