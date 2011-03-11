@@ -218,7 +218,7 @@ class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
     @property
     def _matchingbzrdir(self):
-        from bzrlib.plugins.git import LocalGitControlDirFormat
+        from bzrlib.plugins.git.dir import LocalGitControlDirFormat
         return LocalGitControlDirFormat()
 
     def get_format_description(self):

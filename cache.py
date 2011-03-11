@@ -513,6 +513,7 @@ class TdbCacheUpdater(CacheUpdater):
 
 TdbBzrGitCache = lambda p: BzrGitCache(TdbGitShaMap(p), None, TdbCacheUpdater)
 
+
 class TdbGitCacheFormat(BzrGitCacheFormat):
     """Cache format for tdb-based caches."""
 

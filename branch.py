@@ -238,7 +238,7 @@ class GitBranchFormat(branch.BranchFormat):
 
     @property
     def _matchingbzrdir(self):
-        from bzrlib.plugins.git import LocalGitControlDirFormat
+        from bzrlib.plugins.git.dir import LocalGitControlDirFormat
         return LocalGitControlDirFormat()
 
     def get_foreign_tests_branch_factory(self):

@@ -45,9 +45,11 @@ from bzrlib.repository import (
     )
 
 from bzrlib.plugins.git import (
-    LocalGitControlDirFormat,
     branch,
     tests,
+    )
+from bzrlib.plugins.git.dir import (
+    LocalGitControlDirFormat,
     )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
