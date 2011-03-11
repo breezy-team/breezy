@@ -189,20 +189,6 @@ class SFTPNonServerTest(TestCase):
 class SFTPBranchTest(TestCaseWithSFTPServer):
     """Test some stuff when accessing a bzr Branch over sftp"""
 
-    def test_lock_file(self):
-        # old format branches use a special lock file on sftp.
-        b = self.make_branch('', format=bzrdir.BzrDirFormat6())
-        b = bzrlib.branch.Branch.open(self.get_url())
-        self.failUnlessExists('.bzr/')
-        self.failUnlessExists('.bzr/branch-format')
-        self.failUnlessExists('.bzr/branch-lock')
-
-        self.failIf(lexists('.bzr/branch-lock.write-lock'))
-        b.lock_write()
-        self.failUnlessExists('.bzr/branch-lock.write-lock')
-        b.unlock()
-        self.failIf(lexists('.bzr/branch-lock.write-lock'))
-
     def test_push_support(self):
         self.build_tree(['a/', 'a/foo'])
         t = bzrdir.BzrDir.create_standalone_workingtree('a')

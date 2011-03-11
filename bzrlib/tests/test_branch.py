@@ -27,6 +27,7 @@ from cStringIO import StringIO
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
+    bzrdir_weave,
     config,
     errors,
     symbol_versioning,
@@ -83,7 +84,7 @@ class TestBranchFormat4(tests.TestCaseWithTransport):
 
     def test_supports_bzrdir_6(self):
         url = self.get_url()
-        bdir = bzrdir.BzrDirFormat6().initialize(url)
+        bdir = bzrdir_weave.BzrDirFormat6().initialize(url)
         bdir.create_repository()
         BzrBranchFormat4().initialize(bdir)
 

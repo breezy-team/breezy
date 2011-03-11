@@ -28,7 +28,7 @@ from bzrlib.tests import (
     TestCaseWithTransport,
     )
 
-from bzrlib.bzrdir import BzrDirFormat6
+from bzrlib.bzrdir_weave import BzrDirFormat6
 
 
 class TestFormat2WorkingTree(TestCaseWithTransport):

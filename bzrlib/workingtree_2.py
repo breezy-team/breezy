@@ -111,7 +111,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
 
     def __init__(self):
         super(WorkingTreeFormat2, self).__init__()
-        from bzrlib.bzrdir import BzrDirFormat6
+        from bzrlib.bzrdir_weave import BzrDirFormat6
         self._matchingbzrdir = BzrDirFormat6()
 
     def open(self, a_bzrdir, _found=False):

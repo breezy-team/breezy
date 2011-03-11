@@ -3738,6 +3738,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_bugtracker',
         'bzrlib.tests.test_bundle',
         'bzrlib.tests.test_bzrdir',
+        'bzrlib.tests.test_bzrdir_weave',
         'bzrlib.tests.test__chunks_to_lines',
         'bzrlib.tests.test_cache_utf8',
         'bzrlib.tests.test_chk_map',
