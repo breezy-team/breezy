@@ -182,11 +182,7 @@ class RemoteGitProber(Prober):
         return set([RemoteGitControlDirFormat()])
 
 
-try:
-    register_controldir_format = getattr(ControlDirFormat, "register_format")
-except ImportError: # bzr >= 2.4
-    pass
-else:
+if not getattr(Prober, "known_formats", None): # bzr < 2.4
     from bzrlib.plugins.git.dir import (
         LocalGitControlDirFormat, BareLocalGitControlDirFormat,
         )
