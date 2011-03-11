@@ -272,10 +272,14 @@ class TestBzrDirFormat(TestCaseWithTransport):
     def test_find_format(self):
         # is the right format object found for a branch?
         # create a branch with a few known format objects.
-        bzrdir.BzrDirFormat.register_format(BzrDirFormatTest1())
-        self.addCleanup(bzrdir.BzrDirFormat.unregister_format, BzrDirFormatTest1())
-        bzrdir.BzrDirFormat.register_format(BzrDirFormatTest2())
-        self.addCleanup(bzrdir.BzrDirFormat.unregister_format, BzrDirFormatTest2())
+        bzrdir.BzrProber.formats.register(BzrDirFormatTest1.get_format_string(),
+            BzrDirFormatTest1())
+        self.addCleanup(bzrdir.BzrProber.formats.remove,
+            BzrDirFormatTest1.get_format_string())
+        bzrdir.BzrProber.formats.register(BzrDirFormatTest2.get_format_string(),
+            BzrDirFormatTest2())
+        self.addCleanup(bzrdir.BzrProber.formats.remove,
+            BzrDirFormatTest2.get_format_string())
         t = self.get_transport()
         self.build_tree(["foo/", "bar/"], transport=t)
         def check_format(format, url):
@@ -305,7 +309,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
         # make a bzrdir
         format.initialize(url)
         # register a format for it.
-        bzrdir.BzrDirFormat.register_format(format)
+        bzrdir.BzrProber.formats.register(format.get_format_string(), format)
         # which bzrdir.Open will refuse (not supported)
         self.assertRaises(UnsupportedFormatError, bzrdir.BzrDir.open, url)
         # which bzrdir.open_containing will refuse (not supported)
@@ -314,24 +318,9 @@ class TestBzrDirFormat(TestCaseWithTransport):
         t = _mod_transport.get_transport(url)
         self.assertEqual(format.open(t), bzrdir.BzrDir.open_unsupported(url))
         # unregister the format
-        bzrdir.BzrDirFormat.unregister_format(format)
+        bzrdir.BzrProber.formats.remove(format.get_format_string())
         # now open_downlevel should fail too.
         self.assertRaises(UnknownFormatError, bzrdir.BzrDir.open_unsupported, url)
-
-    def test_register_unregister_format_lazy(self):
-        # register a format for it.
-        bzrdir.BzrDirFormat.register_lazy_format("Test format 1",
-            "bzrlib.tests.test_bzrdir", "BzrDirFormatTest1")
-        # It should be registered with the prober:
-        self.assertIsInstance(bzrdir.BzrProber.formats.get("Test format 1"),
-            BzrDirFormatTest1)
-        self.assertTrue(BzrDirFormatTest1 in
-            controldir.ControlDirFormat.known_formats())
-        bzrdir.BzrDirFormat.unregister_format(BzrDirFormatTest1())
-        self.assertFalse(BzrDirFormatTest1 in
-            controldir.ControlDirFormat.known_formats())
-        self.assertRaises(KeyError, bzrdir.BzrProber.formats.get,
-            "Test format 1")
 
     def test_create_branch_and_repo_uses_default(self):
         format = SampleBzrDirFormat()
@@ -1084,73 +1073,6 @@ class TestFormat6(TestCaseWithTransport):
         dir = bzrdir.BzrDirFormat6().initialize(self.get_url())
         self.assertTrue(dir.needs_format_conversion(
             bzrdir.BzrDirFormat.get_default_format()))
-
-
-class NotBzrDir(bzrlib.bzrdir.BzrDir):
-    """A non .bzr based control directory."""
-
-    def __init__(self, transport, format):
-        self._format = format
-        self.root_transport = transport
-        self.transport = transport.clone('.not')
-
-
-class NotBzrDirFormat(bzrlib.bzrdir.BzrDirFormat):
-    """A test class representing any non-.bzr based disk format."""
-
-    def initialize_on_transport(self, transport):
-        """Initialize a new .not dir in the base directory of a Transport."""
-        transport.mkdir('.not')
-        return self.open(transport)
-
-    def open(self, transport):
-        """Open this directory."""
-        return NotBzrDir(transport, self)
-
-    @classmethod
-    def _known_formats(self):
-        return set([NotBzrDirFormat()])
-
-
-class NotBzrDirProber(controldir.Prober):
-
-    def probe_transport(self, transport):
-        """Our format is present if the transport ends in '.not/'."""
-        if transport.has('.not'):
-            return NotBzrDirFormat()
-
-
-class TestNotBzrDir(TestCaseWithTransport):
-    """Tests for using the bzrdir api with a non .bzr based disk format.
-
-    If/when one of these is in the core, we can let the implementation tests
-    verify this works.
-    """
-
-    def test_create_and_find_format(self):
-        # create a .notbzr dir
-        format = NotBzrDirFormat()
-        dir = format.initialize(self.get_url())
-        self.assertIsInstance(dir, NotBzrDir)
-        # now probe for it.
-        controldir.ControlDirFormat.register_prober(NotBzrDirProber)
-        try:
-            found = bzrlib.bzrdir.BzrDirFormat.find_format(self.get_transport())
-            self.assertIsInstance(found, NotBzrDirFormat)
-        finally:
-            controldir.ControlDirFormat.unregister_prober(NotBzrDirProber)
-
-    def test_included_in_known_formats(self):
-        not_format = NotBzrDirFormat()
-        bzrlib.controldir.ControlDirFormat.register_format(not_format)
-        try:
-            formats = bzrlib.bzrdir.BzrDirFormat.known_formats()
-            for format in formats:
-                if isinstance(format, NotBzrDirFormat):
-                    return
-            self.fail("No NotBzrDirFormat in %s" % formats)
-        finally:
-            bzrlib.controldir.ControlDirFormat.unregister_format(not_format)
 
 
 class NonLocalTests(TestCaseWithTransport):
