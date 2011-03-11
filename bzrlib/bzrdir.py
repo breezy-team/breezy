@@ -1502,6 +1502,8 @@ class BzrProber(controldir.Prober):
     def known_formats(cls):
         result = set()
         for name, format in cls.formats.iteritems():
+            if callable(format):
+                format = format()
             result.add(format)
         return result
 
@@ -2182,9 +2184,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
 BzrProber.formats.register(BzrDirFormat4.get_format_string(), BzrDirFormat4())
 BzrProber.formats.register(BzrDirFormat5.get_format_string(), BzrDirFormat5())
 BzrProber.formats.register(BzrDirFormat6.get_format_string(), BzrDirFormat6())
-__default_format = BzrDirMetaFormat1()
-BzrProber.formats.register(__default_format.get_format_string(), __default_format)
-controldir.ControlDirFormat._default_format = __default_format
+BzrProber.formats.register(BzrDirMetaFormat1.get_format_string(),
+    BzrDirMetaFormat1)
+controldir.ControlDirFormat._default_format = BzrDirMetaFormat1()
 
 
 class ConvertBzrDir4To5(controldir.Converter):
