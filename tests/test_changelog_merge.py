@@ -61,7 +61,7 @@ sample2_this_entries = [
 sample2_other_entries = [
     'Other entry O1',
     #'Base entry B1',
-    'Base entry B1 edit',
+    'Base entry B1 edit',  # > 80% similar according to difflib
     'Base entry B2',
     ]
 

@@ -116,7 +116,7 @@ def default_guess_edits(new_entries, deleted_entries, entry_as_str=''.join):
     result_deleted = list(deleted_entries)
     result_edits = []
     sm = difflib.SequenceMatcher()
-    CUTOFF = 0.6
+    CUTOFF = 0.8
     while True:
         best = None
         best_score = None
