@@ -94,6 +94,9 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
 
     _lock_class = lockable_files.TransportLock
 
+    def __eq__(self, other):
+        return type(self) == type(other)
+
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
         return "Bazaar-NG branch, format 5\n"
@@ -153,6 +156,9 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
     """
 
     _lock_class = lockable_files.TransportLock
+
+    def __eq__(self, other):
+        return type(self) == type(other)
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
@@ -473,8 +479,6 @@ class ConvertBzrDir4To5(Converter):
         return order
 
 
-
-
 class ConvertBzrDir5To6(Converter):
     """Converts format 5 bzr dirs to format 6."""
 
@@ -655,6 +659,9 @@ class BzrDirFormat4(BzrDirFormat):
     """
 
     _lock_class = lockable_files.TransportLock
+
+    def __eq__(self, other):
+        return type(self) == type(other)
 
     def get_format_string(self):
         """See BzrDirFormat.get_format_string()."""
@@ -916,8 +923,6 @@ class BzrDir4(BzrDirPreSplitOut):
         """See BzrDir.open_repository."""
         from bzrlib.repofmt.weaverepo import RepositoryFormat4
         return RepositoryFormat4().open(self, _found=True)
-
-
 
 
 class BzrDir5(BzrDirPreSplitOut):

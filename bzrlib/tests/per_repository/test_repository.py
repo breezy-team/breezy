@@ -561,7 +561,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual('rev_id', rev_tree.inventory.root.revision)
 
     def test_upgrade_from_format4(self):
-        from bzrlib.tests.test_upgrade import _upgrade_dir_template
+        from bzrlib.tests.test_bzrdir_weave import _upgrade_dir_template
         if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
             return # local conversion to/from RemoteObjects is irrelevant.
         if self.repository_format.get_format_description() \

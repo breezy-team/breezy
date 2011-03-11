@@ -824,7 +824,12 @@ class ControlDirFormat(object):
     def known_formats(klass):
         """Return all the known formats.
         """
-        return set([v for k, v in klass._formats.iteritems()])
+        result = set()
+        for name, fmt in klass._formats.iteritems():
+            if callable(fmt):
+                fmt = fmt()
+            result.add(fmt)
+        return result
 
     @classmethod
     def find_format(klass, transport, _server_formats=True):
