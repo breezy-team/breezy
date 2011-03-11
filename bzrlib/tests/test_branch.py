@@ -27,7 +27,6 @@ from cStringIO import StringIO
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
-    bzrdir_weave,
     config,
     errors,
     symbol_versioning,
