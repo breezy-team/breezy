@@ -143,9 +143,10 @@ this is currently worked on.
         # FIXME: Using a different visitor specific to toctree may be a better
         # design and makes code clearer. -- vila 20100708
         if node.has_key('toctree'):
-            node.parent.collect_text('@menu\n')
-            node.parent.collect_text(''.join(node['text']))
-            node.parent.collect_text('@end menu\n')
+            if node['text']:
+                node.parent.collect_text('@menu\n')
+                node.parent.collect_text(''.join(node['text']))
+                node.parent.collect_text('@end menu\n')
             self.in_toctree = False
         elif self.in_toctree:
             # * FIRST-ENTRY-NAME:(FILENAME)NODENAME.     DESCRIPTION

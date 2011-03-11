@@ -2,8 +2,8 @@
 Bazaar Release Notes
 ####################
 
-.. contents:: List of Releases
-   :depth: 1
+.. toctree::
+   :maxdepth: 1
 
 bzr 2.2.5
 #########
