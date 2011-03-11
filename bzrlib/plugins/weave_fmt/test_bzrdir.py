@@ -35,6 +35,7 @@ from bzrlib.osutils import (
     getcwd,
     lexists,
     )
+from bzrlib.tests.test_bundle import V4BundleTester
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests import (
     TestCaseWithTransport,
@@ -572,3 +573,9 @@ class TestInit(TestCaseWithTransport):
         self.assertEqual("""Created a standalone tree (format: weave)\n""",
             out)
         self.assertEqual('', err)
+
+
+class V4WeaveBundleTester(V4BundleTester):
+
+    def bzrdir_format(self):
+        return 'metaweave'
