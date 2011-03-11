@@ -61,12 +61,39 @@ sample2_this_entries = [
 sample2_other_entries = [
     'Other entry O1',
     #'Base entry B1',
-    'Base entry B1 updated',
+    'Base entry B1 edit',
     'Base entry B2',
     ]
 
 
 class TestMergeCoreLogic(tests.TestCase):
+
+    def test_new_in_other_floats_to_top(self):
+        """Changes at the top of 'other' float to the top.
+
+        Given a changelog in THIS containing::
+
+          NEW-1
+          OLD-1
+
+        and a changelog in OTHER containing::
+
+          NEW-2
+          OLD-1
+
+        it will merge as::
+
+          NEW-2
+          NEW-1
+          OLD-1
+        """
+        base_entries = ['OLD-1']
+        this_entries = ['NEW-1', 'OLD-1']
+        other_entries = ['NEW-2', 'OLD-1']
+        result_entries = changelog_merge.merge_entries(
+            base_entries, this_entries, other_entries)
+        self.assertEqual(
+            ['NEW-2', 'NEW-1', 'OLD-1'], result_entries)
 
     def test_acceptance_bug_723968(self):
         """Merging a branch that:
@@ -95,13 +122,18 @@ class TestMergeCoreLogic(tests.TestCase):
         """Like test_acceptance_bug_723968, but with a more difficult conflict:
         the new entry and the edited entry are adjacent.
         """
+        def guess_edits(new, deleted):
+            #import pdb; pdb.set_trace()
+            return changelog_merge.default_guess_edits(new, deleted,
+                    entry_as_str=lambda x: x)
         result_entries = changelog_merge.merge_entries(
-            sample2_base_entries, sample2_this_entries, sample2_other_entries)
+            sample2_base_entries, sample2_this_entries, sample2_other_entries,
+            guess_edits=guess_edits)
         self.assertEqual([
             'Other entry O1',
             'This entry T1',
             'This entry T2',
-            'Base entry B1 updated',
+            'Base entry B1 edit',
             'Base entry B2',
             ],
             list(result_entries))
