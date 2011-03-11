@@ -43,13 +43,6 @@ class _ObjectGetter(object):
         """Get the object that was saved at creation time"""
         return self._obj
 
-    def __eq__(self, other):
-        if other == self.get_obj():
-            return True
-        if isinstance(other, self.__class__):
-            return (self.get_obj() == other.get_obj())
-        return False
-
 
 class _LazyObjectGetter(_ObjectGetter):
     """Keep a record of a possible object.
@@ -80,12 +73,6 @@ class _LazyObjectGetter(_ObjectGetter):
             self._obj = get_named_object(self._module_name, self._member_name)
             self._imported = True
         return super(_LazyObjectGetter, self).get_obj()
-
-    def __eq__(self, other):
-        if isinstance(other, self.__class__):
-            return (self._member_name == other._member_name and
-                    self._module_name == other._module_name)
-        return super(_LazyObjectGetter, self).__eq__(other)
 
     def __repr__(self):
         return "<%s.%s object at %x, module=%r attribute=%r imported=%r>" % (

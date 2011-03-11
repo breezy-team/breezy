@@ -161,6 +161,10 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
+* ``ControlDirFormat.register_format`` has been removed. Instead,
+  ``Prober`` implementations should now implement a ``known_formats``
+  method. (Jelmer Vernooij)
+
 * ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
   Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and
   ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_lazy_revspec``

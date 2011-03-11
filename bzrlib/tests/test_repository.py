@@ -45,6 +45,7 @@ from bzrlib.tests import (
     )
 from bzrlib import (
     bzrdir,
+    bzrdir_weave,
     errors,
     inventory,
     osutils,

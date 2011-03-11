@@ -84,13 +84,13 @@ bzrdir.register_metadir(controldir.format_registry, 'metaweave',
     deprecated=True)
 
 
-bzrdir.BzrDirFormat.register_lazy_format(
+bzrdir.BzrProber.formats.register_lazy(
     "Bazaar-NG branch, format 0.0.4\n", "bzrlib.plugins.weave_fmt.bzrdir",
     "BzrDirFormat4")
-bzrdir.BzrDirFormat.register_lazy_format(
+bzrdir.BzrProber.formats.register_lazy(
     "Bazaar-NG branch, format 5\n", "bzrlib.plugins.weave_fmt.bzrdir",
     "BzrDirFormat5")
-bzrdir.BzrDirFormat.register_lazy_format(
+bzrdir.BzrProber.formats.register_lazy(
     "Bazaar-NG branch, format 6\n", "bzrlib.plugins.weave_fmt.bzrdir",
     "BzrDirFormat6")
 
