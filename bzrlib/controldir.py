@@ -927,6 +927,9 @@ class Prober(object):
     def known_formats(cls):
         """Return the control dir formats known by this prober.
 
+        Multiple probers can return the same formats, so this should
+        return a set.
+
         :return: A set of known formats.
         """
         raise NotImplementedError(cls.known_formats)
