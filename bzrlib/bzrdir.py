@@ -1710,9 +1710,9 @@ BzrProber.formats.register_lazy(
 BzrProber.formats.register_lazy(
     "Bazaar-NG branch, format 6\n", "bzrlib.bzrdir_weave",
     "BzrDirFormat6")
-__default_format = BzrDirMetaFormat1()
-BzrProber.formats.register(__default_format.get_format_string(), __default_format)
-controldir.ControlDirFormat._default_format = __default_format
+BzrProber.formats.register(BzrDirMetaFormat1.get_format_string(),
+    BzrDirMetaFormat1)
+controldir.ControlDirFormat._default_format = BzrDirMetaFormat1()
 
 
 class ConvertMetaToMeta(controldir.Converter):
