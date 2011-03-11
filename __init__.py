@@ -151,7 +151,8 @@ class LocalGitProber(Prober):
             else:
                 return LocalGitControlDirFormat()
 
-    def known_formats(self):
+    @classmethod
+    def known_formats(cls):
         from bzrlib.plugins.git.dir import (
             BareLocalGitControlDirFormat,
             LocalGitControlDirFormat,
@@ -177,7 +178,7 @@ class RemoteGitProber(Prober):
         return RemoteGitControlDirFormat()
 
     @classmethod
-    def _known_formats(self):
+    def known_formats(cls):
         from bzrlib.plugins.git.remote import RemoteGitControlDirFormat
         return set([RemoteGitControlDirFormat()])
 
