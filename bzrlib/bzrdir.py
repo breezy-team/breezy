@@ -1701,9 +1701,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
 
 # Register bzr formats
-__default_format = BzrDirMetaFormat1()
-BzrProber.formats.register(__default_format.get_format_string(), __default_format)
-controldir.ControlDirFormat._default_format = __default_format
+BzrProber.formats.register(BzrDirMetaFormat1.get_format_string(),
+    BzrDirMetaFormat1)
+controldir.ControlDirFormat._default_format = BzrDirMetaFormat1()
 
 
 class ConvertMetaToMeta(controldir.Converter):
