@@ -1232,6 +1232,8 @@ class BzrProber(controldir.Prober):
     def known_formats(cls):
         result = set()
         for name, format in cls.formats.iteritems():
+            if callable(format):
+                format = format()
             result.add(format)
         return result
 

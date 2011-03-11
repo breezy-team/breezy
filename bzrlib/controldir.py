@@ -905,12 +905,19 @@ class ControlDirFormat(object):
 
 
 class Prober(object):
-    """Abstract class that can be used to detect a particular kind of 
+    """Abstract class that can be used to detect a particular kind of
     control directory.
 
-    At the moment this just contains a single method to probe a particular 
-    transport, but it may be extended in the future to e.g. avoid 
+    At the moment this just contains a single method to probe a particular
+    transport, but it may be extended in the future to e.g. avoid
     multiple levels of probing for Subversion repositories.
+
+    See BzrProber and RemoteBzrProber in bzrlib.bzrdir for the
+    probers that detect .bzr/ directories and Bazaar smart servers,
+    respectively.
+
+    Probers should be registered using the register_server_prober or
+    register_prober methods on ControlDirFormat.
     """
 
     def probe_transport(self, transport):
