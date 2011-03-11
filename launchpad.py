@@ -90,34 +90,39 @@ def debian_bugs_for_ubuntu_bug(bug_id):
     return []
 
 
-def get_ubuntu_upstream_branch_url(package, distroseries):
-    """Return the upstream branch URL based on a package in Ubuntu.
+def get_upstream_branch_url(package, distribution_name, distroseries_name):
+    """Return the upstream branch URL based on a package in a distribution.
 
+    :param distribution_name: Distribution name
     :param package: Source package name
-    :param distroseries: Distroseries name
+    :param distroseries_name: Distroseries name
     """
     if not HAVE_LPLIB:
         return None
     lp = _get_launchpad()
     if lp is None:
         return None
-    ubuntu = lp.distributions["ubuntu"]
-    distroseries = ubuntu.getSeries(name_or_version=distroseries)
+    distribution = lp.distributions[distribution_name]
+    if distribution is None:
+        note("Launchpad: No such distribution %s" % distribution)
+        return None
+    distroseries = distribution.getSeries(name_or_version=distroseries_name)
     if distroseries is None:
-        note("Ubuntu: No such distroseries %s" % distroseries)
+        note("%s: No such distroseries %s" % (distribution_name, distroseries_name))
         return None
     sourcepackage = distroseries.getSourcePackage(name=package)
     if sourcepackage is None:
-        note("Ubuntu: Source package %s not found in %s" % (package, sourcepackage))
+        note("%s: Source package %s not found in %s" % (distribution_name, package,
+            sourcepackage))
         return None
     productseries = sourcepackage.productseries
     if productseries is None:
-        note("Ubuntu: Source package %s in %s not linked to a product series" % (
-            package, sourcepackage))
+        note("%s: Source package %s in %s not linked to a product series" % (
+            distribution_name, package, sourcepackage))
         return None
     branch = productseries.branch
     if branch is None:
-        note(("Ubuntu: upstream product series %s for source package %s does not have "
-             "a branch") % (distroseries, package))
+        note(("%s: upstream product series %s for source package %s does not have "
+             "a branch") % (distribution_name, distroseries, package))
         return None
     return branch.bzr_identity

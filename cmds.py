@@ -668,9 +668,10 @@ class cmd_merge_upstream(Command):
 
             if upstream_branch is None and distribution_name == "ubuntu":
                 from bzrlib.plugins.builddeb.launchpad import (
-                    get_ubuntu_upstream_branch_url,
+                    get_upstream_branch_url as lp_get_upstream_branch_url,
                     )
-                upstream_branch = get_ubuntu_upstream_branch_url(package, distribution)
+                upstream_branch = lp_get_upstream_branch_url(package,
+                    distribution_name, distribution)
                 note("Using upstream branch %s" % upstream_branch)
 
             if upstream_branch is not None:
