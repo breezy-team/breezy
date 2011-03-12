@@ -22,6 +22,7 @@ from bzrlib import (
 
 from bzrlib.tests.per_controldir import TestCaseWithControlDir
 
+
 class TestControlDir(TestCaseWithControlDir):
 
     def test_get_format_description(self):
