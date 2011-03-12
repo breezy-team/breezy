@@ -25,6 +25,17 @@ from bzrlib import (
     )
 
 
+class MonotoneUnsupportedError(errors.UnsupportedFormatError):
+
+    _fmt = ('Monotone branches are not yet supported. '
+            'To convert monotone branches to Bazaar branches or vice versa, '
+            'use bzr-fastimport. See http://bazaar-vcs.org/BzrMigration.')
+
+    def __init__(self, format):
+        errors.BzrError.__init__(self)
+        self.format = format
+
+
 class MonotoneDirFormat(controldir.ControlDirFormat):
     """Monotone directory format."""
 
@@ -40,12 +51,9 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
     def is_supported(self):
         return False
 
-    def open(self, transport, _found=False):
-        """Open this directory."""
-        raise errors.BzrCommandError(
-            'Monotone branches are not yet supported. '
-            'To convert monotone branches to Bazaar branches or vice versa, '
-            'use bzr-fastimport. See http://bazaar-vcs.org/BzrMigration.')
+    def check_status(self, allow_unsupported, recommend_upgrade=True,
+           basedir=None):
+        raise MonotoneUnsupportedError(self)
 
 
 class MonotoneProber(controldir.Prober):
