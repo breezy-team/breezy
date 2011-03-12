@@ -34,11 +34,10 @@ class TestControlDir(TestCaseWithControlDir):
     def test_upgrade_recommended(self):
         self.assertIsInstance(self.bzrdir_format.upgrade_recommended, bool)
 
-    def test_check_supported(self):
+    def test_check_status(self):
         if not self.bzrdir_format.is_supported():
             self.assertRaises(errors.UnsupportedFormatError,
-                self.bzrdir_format.check_unsupported, False)
-            self.bzrdir_format.check_unsupported(True)
+                self.bzrdir_format.check_status, False)
         else:
-            self.bzrdir_format.check_unsupported(True)
-            self.bzrdir_format.check_unsupported(False)
+            self.bzrdir_format.check_status(True)
+            self.bzrdir_format.check_status(False)

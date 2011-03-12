@@ -615,7 +615,7 @@ class ControlComponentFormat(object):
         """
         raise True
 
-    def check_supported(self, allow_unsupported, recommend_upgrade=True,
+    def check_status(self, allow_unsupported, recommend_upgrade=True,
         basedir=None):
         """Give an error or warning on old formats.
 
@@ -796,7 +796,7 @@ class ControlDirFormat(object):
         """
         return True
 
-    def check_supported(self, allow_unsupported, recommend_upgrade=True,
+    def check_status(self, allow_unsupported, recommend_upgrade=True,
         basedir=None):
         """Give an error or warning on old formats.
 

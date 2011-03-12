@@ -165,9 +165,9 @@ API Changes
   ``Prober`` implementations should now implement a ``known_formats``
   method. (Jelmer Vernooij)
 
-* ControlDirFormats can now provide a ``check_supported`` method and
-  raise a custom exception when an unsupported format is being opened.
-  (Jelmer Vernooij, #731311)
+* ControlDirFormats can now provide a ``check_status`` method and
+  raise a custom exception or warning when an unsupported or deprecated
+  format is being opened.  (Jelmer Vernooij, #731311)
 
 * ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
   Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and
