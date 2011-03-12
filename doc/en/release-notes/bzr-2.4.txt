@@ -165,6 +165,10 @@ API Changes
   ``Prober`` implementations should now implement a ``known_formats``
   method. (Jelmer Vernooij)
 
+* ``bzrlib.deprecated_graph`` has been removed. ``bzrlib.graph``
+  scales better tree and should be used instead.
+  (Jelmer Vernooij, #733612)
+
 * ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
   Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and
   ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_lazy_revspec``
