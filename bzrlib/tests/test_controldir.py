@@ -23,6 +23,7 @@ from bzrlib import (
     controldir,
     errors,
     tests,
+    ui,
     )
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
@@ -188,6 +189,14 @@ class UnsupportedControlComponentFormat(controldir.ControlComponentFormat):
         return False
 
 
+class OldControlComponentFormat(controldir.ControlComponentFormat):
+
+    def get_format_description(self):
+        return "An old format that is slow"
+
+    upgrade_recommended = True
+
+
 class DefaultControlComponentFormatTests(tests.TestCase):
     """Tests for default ControlComponentFormat implementation."""
 
@@ -203,3 +212,24 @@ class DefaultControlComponentFormatTests(tests.TestCase):
             allow_unsupported=False)
         controldir.ControlComponentFormat().check_status(
             allow_unsupported=True)
+
+    def test_recommend_upgrade_current_format(self):
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stderr=stderr)
+        format = controldir.ControlComponentFormat()
+        format.check_status(allow_unsupported=False, recommend_upgrade=True)
+        self.assertEquals("", stderr.getvalue())
+
+    def test_recommend_upgrade_old_format(self):
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stderr=stderr)
+        format = OldControlComponentFormat()
+        format.check_status(allow_unsupported=False, recommend_upgrade=False)
+        self.assertEquals("", stderr.getvalue())
+        format.check_status(allow_unsupported=False, recommend_upgrade=True,
+            basedir='apath')
+        self.assertEquals(
+            'An old format that is slow is deprecated and a better format '
+            'is available.\nIt is recommended that you upgrade by running '
+            'the command\n  bzr upgrade apath\n',
+            stderr.getvalue())
