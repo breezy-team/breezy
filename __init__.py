@@ -57,6 +57,11 @@ class MonotoneProber(controldir.Prober):
             return MonotoneDirFormat()
         raise errors.NotBranchError(path=transport.base)
 
+    @classmethod
+    def known_formats(cls):
+        return set([MonotoneDirFormat()])
 
-controldir.ControlDirFormat.register_format(MonotoneDirFormat())
+
+if not getattr(controldir.Prober, "known_formats", False):
+    controldir.ControlDirFormat.register_format(MonotoneDirFormat())
 controldir.ControlDirFormat.register_prober(MonotoneProber)
