@@ -41,6 +41,7 @@ class cmd_git_import(Command):
         import os
         from bzrlib import (
             controldir,
+            trace,
             ui,
             )
         from bzrlib.bzrdir import (
@@ -124,6 +125,9 @@ class cmd_git_import(Command):
                 source_branch.tags.merge_to(head_branch.tags)
         finally:
             pb.finished()
+        trace.note("Use 'bzr checkout' to create a working tree in "
+                   "the newly created branches.")
+
 
 
 class cmd_git_object(Command):
