@@ -40,8 +40,8 @@ class cmd_git_import(Command):
         from collections import defaultdict
         import os
         from bzrlib import (
+            controldir,
             ui,
-            urlutils,
             )
         from bzrlib.bzrdir import (
             BzrDir,
@@ -55,6 +55,7 @@ class cmd_git_import(Command):
             InterRepository,
             Repository,
             )
+        from bzrlib.transport import get_transport
         from bzrlib.plugins.git.branch import (
             GitBranch,
             extract_tags,
@@ -62,16 +63,21 @@ class cmd_git_import(Command):
         from bzrlib.plugins.git.refs import ref_to_branch_name
         from bzrlib.plugins.git.repository import GitRepository
 
+        dest_format = controldir.ControlDirFormat.get_default_format()
+
         if dest_location is None:
             dest_location = os.path.basename(src_location.rstrip("/\\"))
+
+        dest_transport = get_transport(dest_location)
 
         source_repo = Repository.open(src_location)
         if not isinstance(source_repo, GitRepository):
             raise BzrCommandError("%r is not a git repository" % src_location)
         try:
-            target_bzrdir = BzrDir.open(dest_location)
+            target_bzrdir = BzrDir.open_from_transport(dest_transport)
         except NotBranchError:
-            target_bzrdir = BzrDir.create(dest_location)
+            target_bzrdir = dest_format.initialize_on_transport_ex(
+                dest_transport)
         try:
             target_repo = target_bzrdir.find_repository()
         except NoRepositoryPresent:
@@ -99,14 +105,13 @@ class cmd_git_import(Command):
                     # Not a branch, ignore
                     continue
                 pb.update("creating branches", i, len(refs))
-                head_loc = os.path.join(dest_location, name)
+                head_transport = dest_transport.clone(name)
                 try:
-                    head_bzrdir = BzrDir.open(head_loc)
+                    head_bzrdir = BzrDir.open_from_transport(head_transport)
                 except NotBranchError:
-                    parent_path = urlutils.dirname(head_loc)
-                    if not os.path.isdir(parent_path):
-                        os.makedirs(parent_path)
-                    head_bzrdir = BzrDir.create(head_loc)
+                    head_transport.create_prefix()
+                    head_bzrdir = dest_format.initialize_on_transport_ex(
+                        head_transport, create_prefix=True)
                 try:
                     head_branch = head_bzrdir.open_branch()
                 except NotBranchError:

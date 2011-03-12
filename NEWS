@@ -4,6 +4,9 @@
 
   * Fix encoding handling in Git working trees. (Jelmer Vernooij, #393038)
 
+  * Use transports internally in "bzr git-import".
+    (Jelmer Vernooij, #733919)
+
  API COMPLETENESS
 
   * Implement LocalGitControlDir.clone_on_transport. (Jelmer Vernooij, #721899)

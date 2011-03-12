@@ -99,12 +99,12 @@ def lazy_check_versions():
     _versions_checked = True
 
 format_registry.register_lazy('git',
-    "bzrlib.plugins.git", "LocalGitControlDirFormat",
+    "bzrlib.plugins.git.dir", "LocalGitControlDirFormat",
     help='GIT repository.', native=False, experimental=False,
     )
 
 format_registry.register_lazy('git-bare',
-    "bzrlib.plugins.git", "BareLocalGitControlDirFormat",
+    "bzrlib.plugins.git.dir", "BareLocalGitControlDirFormat",
     help='Bare GIT repository (no working tree).', native=False,
     experimental=False,
     )
