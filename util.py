@@ -626,7 +626,7 @@ def tree_contains_upstream_source(tree):
     if root is None:
         return False # Empty tree
     present_files = set(root.children.keys())
-    packaging_files = frozenset(["debian", ".bzr-builddeb"])
+    packaging_files = frozenset(["debian", ".bzr-builddeb", ".bzrignore"])
     return (len(present_files - packaging_files) > 0)
 
 
