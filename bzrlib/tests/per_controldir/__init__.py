@@ -77,6 +77,7 @@ class TestCaseWithControlDir(TestCaseWithTransport):
 def load_tests(standard_tests, module, loader):
     test_per_controldir = [
         'bzrlib.tests.per_controldir.test_controldir',
+        'bzrlib.tests.per_controldir.test_format',
         'bzrlib.tests.per_controldir.test_push',
         ]
     submod_tests = loader.loadTestsFromModuleNames(test_per_controldir)
