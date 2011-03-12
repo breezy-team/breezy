@@ -180,3 +180,26 @@ class TestNotBzrDir(tests.TestCaseWithTransport):
                 break
         else:
             self.fail("No NotBzrDirFormat in %s" % formats)
+
+
+class UnsupportedControlComponentFormat(controldir.ControlComponentFormat):
+
+    def is_supported(self):
+        return False
+
+
+class DefaultControlComponentFormatTests(tests.TestCase):
+    """Tests for default ControlComponentFormat implementation."""
+
+    def test_check_status_unsupported(self):
+        self.assertRaises(errors.UnsupportedFormatError,
+            UnsupportedControlComponentFormat().check_status,
+            allow_unsupported=False)
+        UnsupportedControlComponentFormat().check_status(
+            allow_unsupported=True)
+
+    def test_check_status_supported(self):
+        controldir.ControlComponentFormat().check_status(
+            allow_unsupported=False)
+        controldir.ControlComponentFormat().check_status(
+            allow_unsupported=True)

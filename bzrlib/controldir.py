@@ -613,7 +613,7 @@ class ControlComponentFormat(object):
         Unsupported formats may not support initialization or committing or
         some other features depending on the reason for not being supported.
         """
-        raise True
+        return True
 
     def check_status(self, allow_unsupported, recommend_upgrade=True,
         basedir=None):
