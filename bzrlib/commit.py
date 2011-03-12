@@ -326,7 +326,7 @@ class Commit(object):
                 minimum_path_selection(specific_files))
         else:
             self.specific_files = None
-            
+
         self.allow_pointless = allow_pointless
         self.message_callback = message_callback
         self.timestamp = timestamp
@@ -404,6 +404,10 @@ class Commit(object):
             self.config, timestamp, timezone, committer, self.revprops, rev_id)
 
         try:
+            if (not self.builder.supports_record_entry_contents and
+                not self.use_record_iter_changes):
+                raise errors.ExcludesUnsupported(self.branch.repository)
+
             self.builder.will_record_deletes()
             # find the location being committed to
             if self.bound_branch:
