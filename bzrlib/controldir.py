@@ -30,7 +30,6 @@ from bzrlib import (
     cleanup,
     errors,
     fetch,
-    graph,
     revision as _mod_revision,
     transport as _mod_transport,
     urlutils,
