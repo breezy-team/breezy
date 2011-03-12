@@ -38,6 +38,13 @@ except ImportError:
 import bzrlib.errors
 
 
+class CVSUnsupportedError(bzrlib.errors.UnsupportedFormatError):
+
+    _fmt = ("CVS working trees are not supported. To convert CVS projects to "
+            "bzr, please see http://bazaar-vcs.org/BzrMigration and/or "
+            "https://launchpad.net/launchpad-bazaar/+faq/26.")
+
+
 class CVSDirFormat(ControlDirFormat):
     """The CVS directory control format."""
 
@@ -56,10 +63,7 @@ class CVSDirFormat(ControlDirFormat):
 
     def open(self, transport, _found=False):
         """Open this directory."""
-        raise bzrlib.errors.BzrCommandError(
-            "CVS working trees are not supported. To convert CVS projects to "
-            "bzr, please see http://bazaar-vcs.org/BzrMigration and/or "
-            "https://launchpad.net/launchpad-bazaar/+faq/26.")
+        raise CVSUnsupportedError(self)
 
     @classmethod
     def probe_transport(klass, transport):
@@ -79,9 +83,14 @@ class CVSProber(Prober):
             raise bzrlib.errors.NotBranchError(path=transport.base)
         return CVSDirFormat()
 
+    @classmethod
+    def known_formats(cls):
+        return set([CVSDirFormat()])
+
 
 if has_controldir:
     ControlDirFormat.register_prober(CVSProber)
-    ControlDirFormat.register_format(CVSDirFormat())
+    if not getattr(Prober, "known_formats", False):
+        ControlDirFormat.register_format(CVSDirFormat())
 else:
     BzrDirFormat.register_control_format(CVSDirFormat)
