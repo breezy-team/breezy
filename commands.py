@@ -77,7 +77,7 @@ class cmd_git_import(Command):
             target_bzrdir = BzrDir.open_from_transport(dest_transport)
         except NotBranchError:
             target_bzrdir = dest_format.initialize_on_transport_ex(
-                dest_transport)
+                dest_transport, shared_repo=True)[1]
         try:
             target_repo = target_bzrdir.find_repository()
         except NoRepositoryPresent:
@@ -109,9 +109,8 @@ class cmd_git_import(Command):
                 try:
                     head_bzrdir = BzrDir.open_from_transport(head_transport)
                 except NotBranchError:
-                    head_transport.create_prefix()
                     head_bzrdir = dest_format.initialize_on_transport_ex(
-                        head_transport, create_prefix=True)
+                        head_transport, create_prefix=True)[1]
                 try:
                     head_branch = head_bzrdir.open_branch()
                 except NotBranchError:
