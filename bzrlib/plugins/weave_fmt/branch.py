@@ -34,7 +34,7 @@ class PreSplitOutBzrBranch(BzrBranch):
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
         """
-        from bzrlib.repofmt.weaverepo import RepositoryFormat7
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
         from bzrlib.bzrdir import BzrDirMetaFormat1
         format = BzrDirMetaFormat1()
         format.repository_format = RepositoryFormat7()
@@ -91,8 +91,9 @@ class BzrBranchFormat4(BranchFormat):
 
     def __init__(self):
         super(BzrBranchFormat4, self).__init__()
-        from bzrlib.bzrdir_weave import (
-            BzrDirFormat4, BzrDirFormat5, BzrDirFormat6)
+        from bzrlib.plugins.weave_fmt.bzrdir import (
+            BzrDirFormat4, BzrDirFormat5, BzrDirFormat6,
+            )
         self._matchingbzrdir = BzrDirFormat6()
         self._compatible_bzrdirs = [BzrDirFormat4, BzrDirFormat5,
             BzrDirFormat6]

@@ -3067,8 +3067,3 @@ format_registry.register_lazy("Bazaar Working Tree Format 6 (bzr 1.14)\n",
     "bzrlib.workingtree_4", "WorkingTreeFormat6")
 format_registry.register(WorkingTreeFormat3())
 format_registry.set_default(__default_format)
-# Register extra formats which have no format string are not discoverable
-# and not independently creatable. They are implicitly created as part of
-# e.g. older Bazaar formats or foreign formats.
-format_registry.register_extra_lazy("bzrlib.workingtree_2",
-    "WorkingTreeFormat2")

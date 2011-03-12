@@ -23,11 +23,9 @@ also see this file.
 """
 
 from stat import S_ISDIR
-import sys
 
 import bzrlib
 from bzrlib.errors import (
-    NoSuchFile,
     UnknownFormatError,
     UnsupportedFormatError,
     )
@@ -47,7 +45,6 @@ from bzrlib.tests import (
     )
 from bzrlib import (
     bzrdir,
-    bzrdir_weave,
     errors,
     inventory,
     osutils,
@@ -61,7 +58,6 @@ from bzrlib.repofmt import (
     groupcompress_repo,
     knitrepo,
     pack_repo,
-    weaverepo,
     )
 
 
@@ -208,194 +204,6 @@ class TestRepositoryFormatRegistry(TestCase):
         formats = self.registry._get_all()
         self.assertEquals(1, len(formats))
         self.assertIsInstance(formats[0], SampleExtraRepositoryFormat)
-
-
-class TestFormat6(TestCaseWithTransport):
-
-    def test_attribute__fetch_order(self):
-        """Weaves need topological data insertion."""
-        control = bzrdir_weave.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual('topological', repo._format._fetch_order)
-
-    def test_attribute__fetch_uses_deltas(self):
-        """Weaves do not reuse deltas."""
-        control = bzrdir_weave.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual(False, repo._format._fetch_uses_deltas)
-
-    def test_attribute__fetch_reconcile(self):
-        """Weave repositories need a reconcile after fetch."""
-        control = bzrdir_weave.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertEqual(True, repo._format._fetch_reconcile)
-
-    def test_no_ancestry_weave(self):
-        control = bzrdir_weave.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
-        # We no longer need to create the ancestry.weave file
-        # since it is *never* used.
-        self.assertRaises(NoSuchFile,
-                          control.transport.get,
-                          'ancestry.weave')
-
-    def test_supports_external_lookups(self):
-        control = bzrdir_weave.BzrDirFormat6().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat6().initialize(control)
-        self.assertFalse(repo._format.supports_external_lookups)
-
-
-class TestFormat7(TestCaseWithTransport):
-
-    def test_attribute__fetch_order(self):
-        """Weaves need topological data insertion."""
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual('topological', repo._format._fetch_order)
-
-    def test_attribute__fetch_uses_deltas(self):
-        """Weaves do not reuse deltas."""
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual(False, repo._format._fetch_uses_deltas)
-
-    def test_attribute__fetch_reconcile(self):
-        """Weave repositories need a reconcile after fetch."""
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertEqual(True, repo._format._fetch_reconcile)
-
-    def test_disk_layout(self):
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
-        # in case of side effects of locking.
-        repo.lock_write()
-        repo.unlock()
-        # we want:
-        # format 'Bazaar-NG Repository format 7'
-        # lock ''
-        # inventory.weave == empty_weave
-        # empty revision-store directory
-        # empty weaves directory
-        t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
-                             t.get('format').read())
-        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
-        self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('inventory.weave').read())
-        # Creating a file with id Foo:Bar results in a non-escaped file name on
-        # disk.
-        control.create_branch()
-        tree = control.create_workingtree()
-        tree.add(['foo'], ['Foo:Bar'], ['file'])
-        tree.put_file_bytes_non_atomic('Foo:Bar', 'content\n')
-        try:
-            tree.commit('first post', rev_id='first')
-        except errors.IllegalPath:
-            if sys.platform != 'win32':
-                raise
-            self.knownFailure('Foo:Bar cannot be used as a file-id on windows'
-                              ' in repo format 7')
-            return
-        self.assertEqualDiff(
-            '# bzr weave file v5\n'
-            'i\n'
-            '1 7fe70820e08a1aac0ef224d9c66ab66831cc4ab1\n'
-            'n first\n'
-            '\n'
-            'w\n'
-            '{ 0\n'
-            '. content\n'
-            '}\n'
-            'W\n',
-            t.get('weaves/74/Foo%3ABar.weave').read())
-
-    def test_shared_disk_layout(self):
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
-        # we want:
-        # format 'Bazaar-NG Repository format 7'
-        # inventory.weave == empty_weave
-        # empty revision-store directory
-        # empty weaves directory
-        # a 'shared-storage' marker file.
-        # lock is not present when unlocked
-        t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
-                             t.get('format').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
-        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
-        self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('inventory.weave').read())
-        self.assertFalse(t.has('branch-lock'))
-
-    def test_creates_lockdir(self):
-        """Make sure it appears to be controlled by a LockDir existence"""
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
-        t = control.get_repository_transport(None)
-        # TODO: Should check there is a 'lock' toplevel directory,
-        # regardless of contents
-        self.assertFalse(t.has('lock/held/info'))
-        repo.lock_write()
-        try:
-            self.assertTrue(t.has('lock/held/info'))
-        finally:
-            # unlock so we don't get a warning about failing to do so
-            repo.unlock()
-
-    def test_uses_lockdir(self):
-        """repo format 7 actually locks on lockdir"""
-        base_url = self.get_url()
-        control = bzrdir.BzrDirMetaFormat1().initialize(base_url)
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
-        t = control.get_repository_transport(None)
-        repo.lock_write()
-        repo.unlock()
-        del repo
-        # make sure the same lock is created by opening it
-        repo = repository.Repository.open(base_url)
-        repo.lock_write()
-        self.assertTrue(t.has('lock/held/info'))
-        repo.unlock()
-        self.assertFalse(t.has('lock/held/info'))
-
-    def test_shared_no_tree_disk_layout(self):
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control, shared=True)
-        repo.set_make_working_trees(False)
-        # we want:
-        # format 'Bazaar-NG Repository format 7'
-        # lock ''
-        # inventory.weave == empty_weave
-        # empty revision-store directory
-        # empty weaves directory
-        # a 'shared-storage' marker file.
-        t = control.get_repository_transport(None)
-        self.assertEqualDiff('Bazaar-NG Repository format 7',
-                             t.get('format').read())
-        ## self.assertEqualDiff('', t.get('lock').read())
-        self.assertEqualDiff('', t.get('shared-storage').read())
-        self.assertEqualDiff('', t.get('no-working-trees').read())
-        repo.set_make_working_trees(True)
-        self.assertFalse(t.has('no-working-trees'))
-        self.assertTrue(S_ISDIR(t.stat('revision-store').st_mode))
-        self.assertTrue(S_ISDIR(t.stat('weaves').st_mode))
-        self.assertEqualDiff('# bzr weave file v5\n'
-                             'w\n'
-                             'W\n',
-                             t.get('inventory.weave').read())
-
-    def test_supports_external_lookups(self):
-        control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
-        repo = weaverepo.RepositoryFormat7().initialize(control)
-        self.assertFalse(repo._format.supports_external_lookups)
 
 
 class TestFormatKnit1(TestCaseWithTransport):
@@ -618,37 +426,6 @@ class TestInterRepository(TestCaseWithTransport):
             repository.InterRepository.unregister_optimiser(InterDummy)
         # now we should get the default InterRepository object again.
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
-
-
-class TestInterWeaveRepo(TestCaseWithTransport):
-
-    def test_is_compatible_and_registered(self):
-        # InterWeaveRepo is compatible when either side
-        # is a format 5/6/7 branch
-        from bzrlib.repofmt import knitrepo, weaverepo
-        formats = [weaverepo.RepositoryFormat5(),
-                   weaverepo.RepositoryFormat6(),
-                   weaverepo.RepositoryFormat7()]
-        incompatible_formats = [weaverepo.RepositoryFormat4(),
-                                knitrepo.RepositoryFormatKnit1(),
-                                ]
-        repo_a = self.make_repository('a')
-        repo_b = self.make_repository('b')
-        is_compatible = weaverepo.InterWeaveRepo.is_compatible
-        for source in incompatible_formats:
-            # force incompatible left then right
-            repo_a._format = source
-            repo_b._format = formats[0]
-            self.assertFalse(is_compatible(repo_a, repo_b))
-            self.assertFalse(is_compatible(repo_b, repo_a))
-        for source in formats:
-            repo_a._format = source
-            for target in formats:
-                repo_b._format = target
-                self.assertTrue(is_compatible(repo_a, repo_b))
-        self.assertEqual(weaverepo.InterWeaveRepo,
-                         repository.InterRepository.get(repo_a,
-                                                        repo_b).__class__)
 
 
 class TestRepositoryFormat1(knitrepo.RepositoryFormatKnit1):

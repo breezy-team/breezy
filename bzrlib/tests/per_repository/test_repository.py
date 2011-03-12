@@ -38,7 +38,6 @@ from bzrlib import (
     )
 from bzrlib.repofmt import (
     pack_repo,
-    weaverepo,
     )
 from bzrlib.tests import (
     per_repository,
@@ -559,23 +558,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
         self.assertEqual('rev_id', rev_tree.inventory.root.revision)
-
-    def test_upgrade_from_format4(self):
-        from bzrlib.tests.test_bzrdir_weave import _upgrade_dir_template
-        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
-            return # local conversion to/from RemoteObjects is irrelevant.
-        if self.repository_format.get_format_description() \
-            == "Repository format 4":
-            raise tests.TestSkipped('Cannot convert format-4 to itself')
-        self.build_tree_contents(_upgrade_dir_template)
-        old_repodir = bzrdir.BzrDir.open_unsupported('.')
-        old_repo_format = old_repodir.open_repository()._format
-        format = self.repository_format._matchingbzrdir
-        try:
-            format.repository_format = self.repository_format
-        except AttributeError:
-            pass
-        upgrade.upgrade('.', format)
 
     def test_pointless_commit(self):
         tree = self.make_branch_and_tree('.')
