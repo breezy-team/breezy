@@ -125,7 +125,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             list(builder.record_iter_changes(tree, tree.last_revision(),
                 tree.iter_changes(tree.basis_tree())))
             builder.finish_inventory()
-            builder.finish_inventory()
             rev_id = builder.commit('foo bar blah')
         finally:
             tree.unlock()
