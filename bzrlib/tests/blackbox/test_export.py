@@ -347,3 +347,16 @@ class TestExport(TestCaseWithTransport):
         self.run_bzr(['export', '--directory=branch', 'latest'])
         self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('latest')))
         self.check_file_contents('latest/goodbye', 'baz')
+
+    def test_zip_export_per_file_timestamps(self):
+        tree = self.example_branch()
+        self.build_tree_contents([('branch/har', 'foo')])
+        tree.add('har')
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        tree.commit('setup', timestamp=315532800)
+        self.run_bzr('export --per-file-timestamps test.zip branch')
+        zfile = zipfile.ZipFile('test.zip')
+        # Make sure the zipfile contains 'a', but does not contain
+        # '.bzrignore'.
+        info = zfile.getinfo("test/har")
+        self.assertEquals((1980, 1, 1, 1, 0, 0), info.date_time)
