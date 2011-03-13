@@ -55,11 +55,19 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             builder.record_entry_contents(ie, parent_invs, '', tree,
                 tree.path_content_summary(''))
 
+    def record_unchanged_tree(self, builder, tree):
+        list(builder.record_iter_changes(tree, tree.last_revision(),
+            tree.iter_changes(tree.basis_tree())))
+        builder.finish_inventory()
+
     def test_finish_inventory_with_record_root(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:
             builder = tree.branch.get_commit_builder([])
+            if not builder.supports_record_entry_contents:
+                raise tests.TestNotApplicable("CommitBuilder doesn't support "
+                    "record_entry_contents")
             repo = tree.branch.repository
             self.record_root(builder, tree)
             builder.finish_inventory()
@@ -84,11 +92,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         finally:
             tree.unlock()
 
-    def test_abort(self):
+    def test_abort_record_entry_contents(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:
             builder = tree.branch.get_commit_builder([])
+            if not builder.supports_record_entry_contents:
+                raise tests.TestNotApplicable("CommitBuilder doesn't support "
+                    "record_entry_contents")
             self.record_root(builder, tree)
             builder.finish_inventory()
             builder.abort()
@@ -116,7 +127,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree.lock_write()
         try:
             builder = tree.branch.get_commit_builder([])
-            self.record_root(builder, tree)
+            self.record_unchanged_tree(builder, tree)
             builder.finish_inventory()
             rev_id = builder.commit('foo bar blah')
         finally:
@@ -124,7 +135,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev = tree.branch.repository.get_revision(rev_id)
         self.assertEqual('foo bar blah', rev.message)
 
-    def test_commit_with_revision_id(self):
+    def test_commit_with_revision_id_record_entry_contents(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:
@@ -142,6 +153,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             except errors.CannotSetRevisionId:
                 # This format doesn't support supplied revision ids
                 return
+            if not builder.supports_record_entry_contents:
+                raise tests.TestNotApplicable("CommitBuilder doesn't support "
+                    "record_entry_contents")
             self.assertFalse(builder.random_revid)
             self.record_root(builder, tree)
             builder.finish_inventory()
@@ -218,6 +232,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             tree.add('foo', 'foo-id')
             entry = tree.inventory['foo-id']
             builder = tree.branch.get_commit_builder([])
+            if not builder.supports_record_entry_contents:
+                raise tests.TestNotApplicable("CommitBuilder doesn't support "
+                    "record_entry_contents")
             self.assertRaises(errors.RootMissing,
                 builder.record_entry_contents, entry, [], 'foo', tree,
                     tree.path_content_summary('foo'))
@@ -225,7 +242,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         finally:
             tree.unlock()
 
-    def test_commit_unchanged_root(self):
+    def test_commit_unchanged_root_record_entry_contents(self):
         tree = self.make_branch_and_tree(".")
         old_revision_id = tree.commit('')
         tree.lock_write()
@@ -234,6 +251,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         self.addCleanup(parent_tree.unlock)
         builder = tree.branch.get_commit_builder([old_revision_id])
         try:
+            if not builder.supports_record_entry_contents:
+                raise tests.TestNotApplicable("CommitBuilder doesn't support "
+                    "record_entry_contents")
             ie = inventory.make_entry('directory', '', None,
                     tree.get_root_id())
             delta, version_recorded, fs_hash = builder.record_entry_contents(
@@ -285,11 +305,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             builder.abort()
             tree.unlock()
 
-    def test_commit(self):
+    def test_commit_record_entry_contents(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:
             builder = tree.branch.get_commit_builder([])
+            if not builder.supports_record_entry_contents:
+                raise tests.TestNotApplicable("CommitBuilder doesn't "
+                    "support record_entry_contents")
             self.record_root(builder, tree)
             builder.finish_inventory()
             rev_id = builder.commit('foo bar')
@@ -317,6 +340,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             builder = tree.branch.get_commit_builder([old_revision_id])
             total_delta = []
             try:
+                if not builder.supports_record_entry_contents:
+                    raise tests.TestNotApplicable("CommitBuilder doesn't "
+                        "support record_entry_contents")
                 parent_invs = [basis.inventory]
                 builder.will_record_deletes()
                 if builder.record_root_entry:
@@ -372,6 +398,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             basis = tree.branch.repository.revision_tree(rev_id)
             builder = tree.branch.get_commit_builder([rev_id])
             try:
+                if not builder.supports_record_entry_contents:
+                    raise tests.TestNotApplicable("CommitBuilder doesn't "
+                        "support record_entry_contents")
                 builder.will_record_deletes()
                 if builder.record_root_entry is True:
                     parent_invs = [basis.inventory]
@@ -432,6 +461,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         try:
             builder = tree.branch.get_commit_builder([rev_id])
             try:
+                if not builder.supports_record_entry_contents:
+                    raise tests.TestNotApplicable("CommitBuilder doesn't "
+                        "support record_entry_contents")
                 self.record_root(builder, tree)
                 self.assertRaises(AssertionError,
                     builder.record_delete, "foo", "foo-id")
@@ -440,11 +472,14 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         finally:
             tree.unlock()
 
-    def test_revision_tree(self):
+    def test_revision_tree_record_entry_contents(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:
             builder = tree.branch.get_commit_builder([])
+            if not builder.supports_record_entry_contents:
+                raise tests.TestNotApplicable("CommitBuilder doesn't "
+                    "support record_entry_contents")
             self.record_root(builder, tree)
             builder.finish_inventory()
             rev_id = builder.commit('foo bar')
@@ -794,6 +829,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             parent_ids = tree.get_parent_ids()
             builder = tree.branch.get_commit_builder(parent_ids)
             try:
+                if not builder.supports_record_entry_contents:
+                    raise tests.TestNotApplicable("CommitBuilder doesn't "
+                        "support record_entry_contents")
                 parent_tree = tree.basis_tree()
                 parent_tree.lock_read()
                 self.addCleanup(parent_tree.unlock)
