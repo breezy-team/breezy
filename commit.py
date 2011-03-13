@@ -23,6 +23,9 @@ from dulwich.index import (
     )
 import stat
 
+from bzrlib.errors import (
+    RootMissing,
+    )
 from bzrlib.repository import (
     CommitBuilder,
     )
@@ -40,6 +43,9 @@ from bzrlib.plugins.git.mapping import (
 
 
 class GitCommitBuilder(CommitBuilder):
+    """Commit builder for Git repositories."""
+
+    supports_record_entry_contents = False
 
     def __init__(self, *args, **kwargs):
         super(GitCommitBuilder, self).__init__(*args, **kwargs)
@@ -69,11 +75,14 @@ class GitCommitBuilder(CommitBuilder):
                 blob = Blob()
                 blob.data = workingtree.get_file_text(file_id, path)
                 return blob.id
+        seen_root = False
         for (file_id, path, changed_content, versioned, parent, name, kind,
              executable) in iter_changes:
             if kind[1] in ("directory",):
                 if kind[0] in ("file", "symlink"):
                     self.record_delete(path[0], file_id)
+                if path[1] == "":
+                    seen_root = True
                 continue
             if path[1] is None:
                 self.record_delete(path[0], file_id)
@@ -86,7 +95,7 @@ class GitCommitBuilder(CommitBuilder):
                 sha = link_sha1(path[1], file_id)
             elif kind[1] == "tree-reference":
                 mode = S_IFGITLINK
-                sha = "FIXME"
+                sha = "FIXME" # FIXME
             else:
                 raise AssertionError("Unknown kind %r" % kind[1])
             if executable[1]:
@@ -96,6 +105,8 @@ class GitCommitBuilder(CommitBuilder):
             file_sha1 = workingtree.get_file_sha1(file_id, path[1])
             _, st = workingtree.get_file_with_stat(file_id, path[1])
             yield file_id, path[1], (file_sha1, st)
+        if not seen_root and len(self.parents) == 0:
+            raise RootMissing()
         # Fill in entries that were not changed
         basis_tree = workingtree.basis_tree()
         assert basis_tree.get_revision_id() == basis_revid, "expected %r == %r" % (
@@ -133,6 +144,7 @@ class GitCommitBuilder(CommitBuilder):
         c.encoding = 'utf-8'
         c.message = message.encode("utf-8")
         self.store.add_object(c)
+        assert len(c.id) == 40
         self._new_revision_id = self.repository.get_mapping().revision_id_foreign_to_bzr(c.id)
         self.repository.commit_write_group()
         return self._new_revision_id
