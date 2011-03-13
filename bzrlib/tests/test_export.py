@@ -24,7 +24,7 @@ from bzrlib import (
     )
 
 
-class TestExport(tests.TestCaseWithTransport):
+class TestDirExport(tests.TestCaseWithTransport):
 
     def test_dir_export_missing_file(self):
         self.build_tree(['a/', 'a/b', 'a/c'])

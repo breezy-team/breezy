@@ -92,11 +92,11 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     already exists, it will be clobbered, like with "tar -c".
     """
     import gzip
-    if force_mtime is not None:
-        root_mtime = force_mtime
-    else:
+    if force_mtime is None and tree.root.id:
         # FIXME: Use tree.get_revision_id()'s timestamp ?
-        root_mtime = tree.get_file_mtime(tree.root.id, "")
+        root_mtime = tree.get_file_mtime(tree.root.id)
+    else:
+        root_mtime = force_mtime
     if dest == '-':
         # XXX: If no root is given, the output tarball will contain files
         # named '-/foo'; perhaps this is the most reasonable thing.

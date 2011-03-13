@@ -117,6 +117,16 @@ class TestExport(TestCaseWithTransport):
         # '.bzrignore'.
         self.assertEqual(['test/a'], sorted(zfile.namelist()))
 
+    def test_zip_export_stdout(self):
+        tree = self.make_branch_and_tree('zip')
+        self.build_tree(['zip/a'])
+        tree.add('a')
+        tree.commit('1')
+        os.chdir('zip')
+        contents = self.run_bzr('export --format=zip -')[0]
+        zfile = zipfile.ZipFile(StringIO(contents))
+        self.assertEqual(['-/a'], sorted(zfile.namelist()))
+
     def test_zip_export_unicode(self):
         self.requireFeature(tests.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('zip')
