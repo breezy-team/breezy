@@ -151,11 +151,12 @@ def get_root_name(dest):
     return dest
 
 
-def _export_iter_entries(tree, subdir):
+def _export_iter_entries(tree, subdir, skip_special=True):
     """Iter the entries for tree suitable for exporting.
 
     :param tree: A tree object.
     :param subdir: None or the path of an entry to start exporting from.
+    :param skip_special: Whether to skip .bzr files.
     """
     inv = tree.inventory
     if subdir is None:
@@ -177,7 +178,7 @@ def _export_iter_entries(tree, subdir):
     for entry in entries:
         # The .bzr* namespace is reserved for "magic" files like
         # .bzrignore and .bzrrules - do not export these
-        if entry[0].startswith(".bzr"):
+        if skip_special and entry[0].startswith(".bzr"):
             continue
         if subdir is None:
             if not tree.has_filename(entry[0]):

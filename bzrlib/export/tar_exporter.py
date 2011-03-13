@@ -23,7 +23,6 @@ import tarfile
 
 from bzrlib import (
     errors,
-    export,
     osutils,
     )
 from bzrlib.export import _export_iter_entries
@@ -104,8 +103,6 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         stream = gzip.GzipFile(None, mode='w', mtime=root_mtime,
             fileobj=sys.stdout)
     else:
-        if root is None:
-            root = export.get_root_name(dest)
         stream = gzip.GzipFile(dest.encode(osutils._fs_enc), 'w',
             mtime=root_mtime)
     ball = tarfile.open(None, 'w:', fileobj=stream)
@@ -125,9 +122,6 @@ def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         # named '-/foo'; perhaps this is the most reasonable thing.
         ball = tarfile.open(None, 'w|bz2', sys.stdout)
     else:
-        if root is None:
-            root = export.get_root_name(dest)
-
         # tarfile.open goes on to do 'os.getcwd() + dest' for opening
         # the tar file. With dest being unicode, this throws UnicodeDecodeError
         # unless we encode dest before passing it on. This works around
@@ -151,9 +145,6 @@ def plain_tar_exporter(tree, dest, root, subdir, compression=None,
         # named '-/foo'; perhaps this is the most reasonable thing.
         ball = tarfile.open(None, 'w|', sys.stdout)
     else:
-        if root is None:
-            root = export.get_root_name(dest)
-
         # tarfile.open goes on to do 'os.getcwd() + dest' for opening
         # the tar file. With dest being unicode, this throws UnicodeDecodeError
         # unless we encode dest before passing it on. This works around
