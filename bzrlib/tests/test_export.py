@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
+import tarfile
 import time
 
 from bzrlib import (
@@ -26,7 +27,7 @@ from bzrlib import (
 
 class TestDirExport(tests.TestCaseWithTransport):
 
-    def test_dir_export_missing_file(self):
+    def test_missing_file(self):
         self.build_tree(['a/', 'a/b', 'a/c'])
         wt = self.make_branch_and_tree('.')
         wt.add(['a', 'a/b', 'a/c'])
@@ -35,7 +36,12 @@ class TestDirExport(tests.TestCaseWithTransport):
         self.failUnlessExists('target/a/b')
         self.failIfExists('target/a/c')
 
-    def test_dir_export_symlink(self):
+    def test_empty(self):
+        wt = self.make_branch_and_tree('.')
+        export.export(wt, 'target', format="dir")
+        self.assertEquals([], os.listdir("target"))
+
+    def test_symlink(self):
         self.requireFeature(tests.SymlinkFeature)
         wt = self.make_branch_and_tree('.')
         os.symlink('source', 'link')
@@ -43,7 +49,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         export.export(wt, 'target', format="dir")
         self.failUnlessExists('target/link')
 
-    def test_dir_export_to_existing_empty_dir_success(self):
+    def test_to_existing_empty_dir_success(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         wt = self.make_branch_and_tree('source')
         wt.add(['a', 'b', 'b/c'])
@@ -54,7 +60,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         self.failUnlessExists('target/b')
         self.failUnlessExists('target/b/c')
 
-    def test_dir_export_to_existing_nonempty_dir_fail(self):
+    def test_to_existing_nonempty_dir_fail(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         wt = self.make_branch_and_tree('source')
         wt.add(['a', 'b', 'b/c'])
@@ -62,7 +68,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         self.build_tree(['target/', 'target/foo'])
         self.assertRaises(errors.BzrError, export.export, wt, 'target', format="dir")
 
-    def test_dir_export_existing_single_file(self):
+    def test_existing_single_file(self):
         self.build_tree(['dir1/', 'dir1/dir2/', 'dir1/first', 'dir1/dir2/second'])
         wtree = self.make_branch_and_tree('dir1')
         wtree.add(['dir2', 'first', 'dir2/second'])
@@ -72,7 +78,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         export.export(wtree, 'target2', format='dir', subdir='dir2/second')
         self.failUnlessExists('target2/second')
 
-    def test_dir_export_files_same_timestamp(self):
+    def test_files_same_timestamp(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
         builder.build_snapshot(None, None, [
@@ -99,7 +105,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         # All files must be given the same mtime.
         self.assertEqual(st_a.st_mtime, st_b.st_mtime)
 
-    def test_dir_export_files_per_file_timestamps(self):
+    def test_files_per_file_timestamps(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
@@ -121,3 +127,12 @@ class TestDirExport(tests.TestCaseWithTransport):
         t = self.get_transport('target')
         self.assertEqual(a_time, t.stat('a').st_mtime)
         self.assertEqual(b_time, t.stat('b').st_mtime)
+
+
+class TarExporterTests(tests.TestCaseWithTransport):
+
+    def test_empty(self):
+        wt = self.make_branch_and_tree('.')
+        export.export(wt, 'target.tar', format="tar")
+        tf = tarfile.open('target.tar')
+        self.assertEquals([], tf.getnames())

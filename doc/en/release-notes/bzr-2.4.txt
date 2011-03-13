@@ -62,6 +62,10 @@ Improvements
 * ``bzr export --format=zip`` can now export to standard output,
   like the other exporters can. (Jelmer Vernooij, #513752)
 
+* ``bzr export`` can now create ``.tar.xz`` files.
+  (Jelmer Vernooij, #551714)
+
+
 Bug Fixes
 *********
 

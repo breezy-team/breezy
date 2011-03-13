@@ -105,7 +105,7 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     else:
         stream = gzip.GzipFile(dest.encode(osutils._fs_enc), 'w',
             mtime=root_mtime)
-    ball = tarfile.open(None, 'w:', fileobj=stream)
+    ball = tarfile.open(None, 'w|', fileobj=stream)
     export_tarball(tree, ball, root, subdir, filtered=filtered,
                    force_mtime=force_mtime)
     ball.close()
@@ -154,3 +154,26 @@ def plain_tar_exporter(tree, dest, root, subdir, compression=None,
     export_tarball(tree, ball, root, subdir, filtered=filtered,
                    force_mtime=force_mtime)
     ball.close()
+
+
+def txz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
+    """Export this tree to a new .tar.xz file.
+
+    `dest` will be created holding the contents of this tree; if it
+    already exists, it will be clobbered, like with "tar -c".
+    """
+    try:
+        import lzma
+    except ImportError, e:
+        raise errors.DependencyNotPresent('lzma', e)
+    if dest == '-':
+        raise errors.BzrError("Writing to stdout not supported for .tar.xz")
+
+    stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w')
+    ball = tarfile.open(None, 'w|', fileobj=stream)
+    export_tarball(tree, ball, root, subdir, filtered=filtered,
+                   force_mtime=force_mtime)
+    ball.close()
+
+
+
