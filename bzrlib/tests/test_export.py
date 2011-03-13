@@ -20,6 +20,7 @@ from cStringIO import StringIO
 import os
 import tarfile
 import time
+import zipfile
 
 from bzrlib import (
     errors,
@@ -191,3 +192,18 @@ class TarExporterTests(tests.TestCaseWithTransport):
             wt.unlock()
         self.assertEquals(["bar/a"], ball.getnames())
         ball.close()
+
+
+class ZipExporterTests(tests.TestCaseWithTransport):
+
+    def test_per_file_timestamps(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('har', 'foo')])
+        tree.add('har')
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        tree.commit('setup', timestamp=315532800)
+        export.export(tree.basis_tree(), 'test.zip', format='zip',
+            per_file_timestamps=True)
+        zfile = zipfile.ZipFile('test.zip')
+        info = zfile.getinfo("test/har")
+        self.assertEquals((1980, 1, 1, 1, 0, 0), info.date_time)

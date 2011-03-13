@@ -27,7 +27,7 @@ from bzrlib.filters import (
     )
 
 
-def dir_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
+def dir_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None):
     """Export this tree to a new directory.
 
     `dest` should either not exist or should be empty. If it does not exist it

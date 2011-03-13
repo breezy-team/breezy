@@ -356,7 +356,5 @@ class TestExport(TestCaseWithTransport):
         tree.commit('setup', timestamp=315532800)
         self.run_bzr('export --per-file-timestamps test.zip branch')
         zfile = zipfile.ZipFile('test.zip')
-        # Make sure the zipfile contains 'a', but does not contain
-        # '.bzrignore'.
         info = zfile.getinfo("test/har")
         self.assertEquals((1980, 1, 1, 1, 0, 0), info.date_time)

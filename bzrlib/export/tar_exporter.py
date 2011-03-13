@@ -32,7 +32,7 @@ from bzrlib.filters import (
     )
 
 
-def export_tarball(tree, ball, root, subdir, filtered=False,
+def export_tarball(tree, ball, root, subdir=None, filtered=False,
                    force_mtime=None):
     """Export tree contents to a tarball.
 
