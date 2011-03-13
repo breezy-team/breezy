@@ -57,7 +57,22 @@ def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
         # upstream python bug http://bugs.python.org/issue8396
         # (fixed in Python 2.6.5 and 2.7b1)
         ball = tarfile.open(dest.encode(osutils._fs_enc), 'w:' + compression)
+    export_tarball(tree, ball, root, subdir, filtered=filtered,
+                   force_mtime=force_mtime)
+    ball.close()
 
+
+def export_tarball(tree, ball, root, subdir, filtered=False,
+                   force_mtime=None):
+    """Export tree contents to a tarball.
+
+    :param tree: Tree to export
+    :param ball: Tarball to export to
+    :param filtered: Whether to apply filters
+    :param subdir: Sub directory to export
+    :param force_mtime: Option mtime to force, instead of using
+        tree timestamps.
+    """
     for dp, ie in _export_iter_entries(tree, subdir):
         filename = osutils.pathjoin(root, dp).encode('utf8')
         item = tarfile.TarInfo(filename)
@@ -98,7 +113,6 @@ def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
             raise errors.BzrError("don't know how to export {%s} of kind %r" %
                            (ie.file_id, ie.kind))
         ball.addfile(item, fileobj)
-    ball.close()
 
 
 def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
@@ -108,4 +122,9 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
 
 def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     tar_exporter(tree, dest, root, subdir, compression='bz2',
+                 filtered=filtered, force_mtime=force_mtime)
+
+def plain_tar_exporter(tree, dest, root, subdir, compression=None,
+                       filtered=False, force_mtime=None):
+    tar_exporter(tree, dest, root, subdir, compression='',
                  filtered=filtered, force_mtime=force_mtime)
