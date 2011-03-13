@@ -14,6 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for bzrlib.export."""
+
+from cStringIO import StringIO
 import os
 import tarfile
 import time
@@ -23,6 +26,7 @@ from bzrlib import (
     export,
     tests,
     )
+from bzrlib.export.tar_exporter import export_tarball
 
 
 class TestDirExport(tests.TestCaseWithTransport):
@@ -172,3 +176,18 @@ class TarExporterTests(tests.TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         self.assertRaises(errors.BzrError, export.export, wt, '-',
             format="txz")
+
+    def test_export_tarball(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1", timestamp=42)
+        target = StringIO()
+        ball = tarfile.open(None, "w|", target)
+        wt.lock_read()
+        try:
+            export_tarball(wt, ball, "bar", subdir=None)
+        finally:
+            wt.unlock()
+        self.assertEquals(["bar/a"], ball.getnames())
+        ball.close()
