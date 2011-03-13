@@ -19,6 +19,7 @@
 
 import os
 import stat
+import sys
 import time
 import zipfile
 
@@ -51,6 +52,8 @@ def zip_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     """
 
     compression = zipfile.ZIP_DEFLATED
+    if dest == "-":
+        dest = sys.stdout
     zipf = zipfile.ZipFile(dest, "w", compression)
 
     try:

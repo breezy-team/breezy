@@ -71,7 +71,7 @@ class TestExport(tests.TestCaseWithTransport):
         self.failUnlessExists('target1/first')
         export.export(wtree, 'target2', format='dir', subdir='dir2/second')
         self.failUnlessExists('target2/second')
-        
+
     def test_dir_export_files_same_timestamp(self):
         builder = self.make_branch_builder('source')
         builder.start_series()

@@ -59,6 +59,9 @@ Improvements
   output of ``bzr export --per-file-timestamps`` for a particular tree
   deterministic.  (Jelmer Vernooij, #711226)
 
+* ``bzr export --format=zip`` can now export to standard output,
+  like the other exporters can. (Jelmer Vernooij, #513752)
+
 Bug Fixes
 *********
 
