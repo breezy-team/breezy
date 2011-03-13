@@ -402,8 +402,7 @@ class Commit(object):
         self._set_progress_stage("Collecting changes", counter=True)
         self.builder = self.branch.get_commit_builder(self.parents,
             self.config, timestamp, timezone, committer, self.revprops, rev_id)
-        if (not self.builder.supports_record_entry_contents and
-            not self.exclude):
+        if not self.builder.supports_record_entry_contents and self.exclude:
             self.builder.abort()
             raise errors.ExcludesUnsupported(self.branch.repository)
 
