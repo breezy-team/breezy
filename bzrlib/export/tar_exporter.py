@@ -17,6 +17,7 @@
 """Export a Tree to a non-versioned directory.
 """
 
+import os
 import StringIO
 import sys
 import tarfile
@@ -92,9 +93,9 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     already exists, it will be clobbered, like with "tar -c".
     """
     import gzip
-    if force_mtime is None and tree.root.id:
+    if force_mtime is None and tree.get_root_id():
         # FIXME: Use tree.get_revision_id()'s timestamp ?
-        root_mtime = tree.get_file_mtime(tree.root.id)
+        root_mtime = tree.get_file_mtime(tree.get_root_id())
     else:
         root_mtime = force_mtime
     if dest == '-':
@@ -103,9 +104,13 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         stream = gzip.GzipFile(None, mode='w', mtime=root_mtime,
             fileobj=sys.stdout)
     else:
-        stream = gzip.GzipFile(dest.encode(osutils._fs_enc), 'w',
-            mtime=root_mtime)
-    ball = tarfile.open(root, 'w|', fileobj=stream)
+        stream = open(dest.encode(osutils._fs_enc), 'w')
+        # gzip file is used with an explicit fileobj so that
+        # the basename can be stored in the gzip file rather than
+        # dest. (bug 102234)
+        stream = gzip.GzipFile(os.path.basename(dest), 'w',
+            mtime=root_mtime, fileobj=stream)
+    ball = tarfile.open(None, 'w|', fileobj=stream)
     export_tarball(tree, ball, root, subdir, filtered=filtered,
                    force_mtime=force_mtime)
     ball.close()
@@ -118,8 +123,6 @@ def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     already exists, it will be clobbered, like with "tar -c".
     """
     if dest == '-':
-        # XXX: If no root is given, the output tarball will contain files
-        # named '-/foo'; perhaps this is the most reasonable thing.
         ball = tarfile.open(None, 'w|bz2', sys.stdout)
     else:
         # tarfile.open goes on to do 'os.getcwd() + dest' for opening
@@ -141,16 +144,10 @@ def plain_tar_exporter(tree, dest, root, subdir, compression=None,
     already exists, it will be clobbered, like with "tar -c".
     """
     if dest == '-':
-        # XXX: If no root is given, the output tarball will contain files
-        # named '-/foo'; perhaps this is the most reasonable thing.
-        ball = tarfile.open(None, 'w|', sys.stdout)
+        stream = sys.stdout
     else:
-        # tarfile.open goes on to do 'os.getcwd() + dest' for opening
-        # the tar file. With dest being unicode, this throws UnicodeDecodeError
-        # unless we encode dest before passing it on. This works around
-        # upstream python bug http://bugs.python.org/issue8396
-        # (fixed in Python 2.6.5 and 2.7b1)
-        ball = tarfile.open(dest.encode(osutils._fs_enc), 'w:')
+        stream = open(dest.encode(osutils._fs_enc), 'w')
+    ball = tarfile.open(None, 'w|', stream)
     export_tarball(tree, ball, root, subdir, filtered=filtered,
                    force_mtime=force_mtime)
     ball.close()
@@ -171,7 +168,7 @@ def txz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         raise errors.DependencyNotPresent('lzma', e)
 
     stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w')
-    ball = tarfile.open(root, 'w:', fileobj=stream)
+    ball = tarfile.open(None, 'w:', fileobj=stream)
     export_tarball(tree, ball, root, subdir, filtered=filtered,
                    force_mtime=force_mtime)
     ball.close()

@@ -164,6 +164,32 @@ class TarExporterTests(tests.TestCaseWithTransport):
         tf = tarfile.open('target.tar.gz')
         self.assertEquals(["target/a"], tf.getnames())
 
+    def test_tgz_ignores_dest_path(self):
+        # The target path should not be a part of the target file.
+        # (bug #102234)
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1")
+        os.mkdir("testdir1")
+        os.mkdir("testdir2")
+        export.export(wt, 'testdir1/target.tar.gz', format="tgz",
+            per_file_timestamps=True)
+        export.export(wt, 'testdir2/target.tar.gz', format="tgz",
+            per_file_timestamps=True)
+        file1 = open('testdir1/target.tar.gz', 'r')
+        self.addCleanup(file1.close)
+        file2 = open('testdir1/target.tar.gz', 'r')
+        self.addCleanup(file2.close)
+        content1 = file1.read()
+        content2 = file2.read()
+        self.assertEqualDiff(content1, content2)
+        # the gzip module doesn't have a way to read back to the original
+        # filename, but it's stored as-is in the tarfile.
+        self.assertFalse("testdir1" in content1)
+        self.assertFalse("target.tar.gz" in content1)
+        self.assertTrue("target.tar" in content1)
+
     def test_tbz2(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['a'])

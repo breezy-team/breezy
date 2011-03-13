@@ -82,6 +82,9 @@ Bug Fixes
 * ``bzr export`` to zip files will now set a mode on directories.
   (Jelmer Vernooij, #207253)
 
+* ``bzr export`` to tgz files will only write out the basename of the
+  tarfile to the gzip file. (Jelmer Vernooij, #102234)
+
 * ``bzr push --overwrite`` with an older revision specified will now correctly
   roll back the target branch. (Jelmer Vernooij, #386576)
 
