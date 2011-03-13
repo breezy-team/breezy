@@ -55,11 +55,6 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             builder.record_entry_contents(ie, parent_invs, '', tree,
                 tree.path_content_summary(''))
 
-    def record_unchanged_tree(self, builder, tree):
-        list(builder.record_iter_changes(tree, tree.last_revision(),
-            tree.iter_changes(tree.basis_tree())))
-        builder.finish_inventory()
-
     def test_finish_inventory_with_record_root(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
@@ -127,7 +122,9 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree.lock_write()
         try:
             builder = tree.branch.get_commit_builder([])
-            self.record_unchanged_tree(builder, tree)
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
             builder.finish_inventory()
             rev_id = builder.commit('foo bar blah')
         finally:
