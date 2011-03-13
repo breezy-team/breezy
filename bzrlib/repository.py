@@ -46,6 +46,7 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.bundle import serializer
+from bzrlib.recordcounter import RecordCounter
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
@@ -65,7 +66,6 @@ from bzrlib.inventory import (
     ROOT_ID,
     entry_factory,
     )
-from bzrlib.recordcounter import RecordCounter
 from bzrlib.lock import _RelockDebugMixin, LogicalLockResult
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
@@ -3995,14 +3995,6 @@ class _VersionedFileChecker(object):
         return wrong_parents, unused_keys
 
 
-def _old_get_graph(repository, revision_id):
-    """DO NOT USE. That is all. I'm serious."""
-    graph = repository.get_graph()
-    revision_graph = dict(((key, value) for key, value in
-        graph.iter_ancestry([revision_id]) if value is not None))
-    return _strip_NULL_ghosts(revision_graph)
-
-
 def _strip_NULL_ghosts(revision_graph):
     """Also don't use this. more compatibility code for unmigrated clients."""
     # Filter ghosts, and null:
@@ -4522,6 +4514,3 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
     except StopIteration:
         # No more history
         return
-
-
-
