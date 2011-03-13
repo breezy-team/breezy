@@ -402,13 +402,15 @@ class Commit(object):
         self._set_progress_stage("Collecting changes", counter=True)
         self.builder = self.branch.get_commit_builder(self.parents,
             self.config, timestamp, timezone, committer, self.revprops, rev_id)
+        if (not self.builder.supports_record_entry_contents and
+            not self.exclude):
+            self.builder.abort()
+            raise errors.ExcludesUnsupported(self.branch.repository)
 
         try:
-            if (not self.builder.supports_record_entry_contents and
-                not self.use_record_iter_changes):
-                raise errors.ExcludesUnsupported(self.branch.repository)
 
-            self.builder.will_record_deletes()
+            if not self.use_record_iter_changes:
+                self.builder.will_record_deletes()
             # find the location being committed to
             if self.bound_branch:
                 master_location = self.master_branch.base
