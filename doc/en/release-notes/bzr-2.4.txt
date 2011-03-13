@@ -150,6 +150,9 @@ API Changes
   (``bzrlib.branch.format_registry``) rather than using the class
   methods on ``BranchFormat``. (Jelmer Vernooij, #714729)
 
+* ``Branch.set_revision_history`` is now deprecated.
+  (Jelmer Vernooij)
+
 * ``BranchFormat.supports_leaving_lock()`` and
   ``RepositoryFormat.supports_leaving_lock`` flags have been added.
   (Jelmer Vernooij)
