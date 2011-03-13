@@ -127,6 +127,26 @@ class TestExport(TestCaseWithTransport):
         zfile = zipfile.ZipFile(StringIO(contents))
         self.assertEqual(['-/a'], sorted(zfile.namelist()))
 
+    def test_tgz_export_stdout(self):
+        tree = self.make_branch_and_tree('z')
+        self.build_tree(['z/a'])
+        tree.add('a')
+        tree.commit('1')
+        os.chdir('z')
+        contents = self.run_bzr('export --format=tgz -')[0]
+        ball = tarfile.open(mode='r|gz', fileobj=StringIO(contents))
+        self.assertEqual(['-/a'], ball.getnames())
+
+    def test_tbz2_export_stdout(self):
+        tree = self.make_branch_and_tree('z')
+        self.build_tree(['z/a'])
+        tree.add('a')
+        tree.commit('1')
+        os.chdir('z')
+        contents = self.run_bzr('export --format=tbz2 -')[0]
+        ball = tarfile.open(mode='r|bz2', fileobj=StringIO(contents))
+        self.assertEqual(['-/a'], ball.getnames())
+
     def test_zip_export_unicode(self):
         self.requireFeature(tests.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('zip')

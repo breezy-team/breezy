@@ -136,3 +136,39 @@ class TarExporterTests(tests.TestCaseWithTransport):
         export.export(wt, 'target.tar', format="tar")
         tf = tarfile.open('target.tar')
         self.assertEquals([], tf.getnames())
+
+    def test_xz(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1")
+        try:
+            export.export(wt, 'target.tar.xz', format="txz")
+        except errors.DependencyNotPresent:
+            raise tests.TestSkipped("lzma module not available")
+        import lzma
+        tf = tarfile.open(fileobj=lzma.LZMAFile('target.tar.xz'))
+        self.assertEquals(["target/a"], tf.getnames())
+
+    def test_tgz(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1")
+        export.export(wt, 'target.tar.gz', format="tgz")
+        tf = tarfile.open('target.tar.gz')
+        self.assertEquals(["target/a"], tf.getnames())
+
+    def test_tbz2(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1")
+        export.export(wt, 'target.tar.bz2', format="tbz2")
+        tf = tarfile.open('target.tar.bz2')
+        self.assertEquals(["target/a"], tf.getnames())
+
+    def test_xz_stdout(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertRaises(errors.BzrError, export.export, wt, '-',
+            format="txz")

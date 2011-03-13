@@ -65,7 +65,7 @@ def export_tarball(tree, ball, root, subdir, filtered=False,
                 item.size = len(content)
                 fileobj = StringIO.StringIO(content)
             else:
-                item.size = ie.text_size
+                item.size = tree.get_file_size(ie.file_id)
                 fileobj = tree.get_file(ie.file_id)
         elif ie.kind == "directory":
             item.type = tarfile.DIRTYPE
@@ -77,7 +77,7 @@ def export_tarball(tree, ball, root, subdir, filtered=False,
             item.type = tarfile.SYMTYPE
             item.size = 0
             item.mode = 0755
-            item.linkname = ie.symlink_target
+            item.linkname = tree.get_symlink_target(ie.file_id)
             fileobj = None
         else:
             raise errors.BzrError("don't know how to export {%s} of kind %r" %
@@ -105,7 +105,7 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     else:
         stream = gzip.GzipFile(dest.encode(osutils._fs_enc), 'w',
             mtime=root_mtime)
-    ball = tarfile.open(None, 'w|', fileobj=stream)
+    ball = tarfile.open(root, 'w|', fileobj=stream)
     export_tarball(tree, ball, root, subdir, filtered=filtered,
                    force_mtime=force_mtime)
     ball.close()
@@ -162,18 +162,17 @@ def txz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
+    if dest == '-':
+        raise errors.BzrError("Writing to stdout not supported for .tar.xz")
+
     try:
         import lzma
     except ImportError, e:
         raise errors.DependencyNotPresent('lzma', e)
-    if dest == '-':
-        raise errors.BzrError("Writing to stdout not supported for .tar.xz")
 
     stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w')
-    ball = tarfile.open(None, 'w|', fileobj=stream)
+    ball = tarfile.open(root, 'w:', fileobj=stream)
     export_tarball(tree, ball, root, subdir, filtered=filtered,
                    force_mtime=force_mtime)
     ball.close()
-
-
 
