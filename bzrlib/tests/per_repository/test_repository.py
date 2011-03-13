@@ -38,7 +38,6 @@ from bzrlib import (
     )
 from bzrlib.repofmt import (
     pack_repo,
-    weaverepo,
     )
 from bzrlib.tests import (
     per_repository,
@@ -88,61 +87,25 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_attribute_format_pack_compresses(self):
         self.assertFormatAttribute('pack_compresses', (True, False))
 
-    def test_attribute_inventories_store(self):
-        """Test the existence of the inventories attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertIsInstance(repo.inventories, versionedfile.VersionedFiles)
+    def test_attribute_format_supports_full_versioned_files(self):
+        self.assertFormatAttribute('supports_full_versioned_files',
+            (True, False))
 
-    def test_attribute_inventories_basics(self):
-        """Test basic aspects of the inventories attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        rev_id = (tree.commit('a'),)
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        self.assertEqual(set([rev_id]), set(repo.inventories.keys()))
+    def test_attribute_format_supports_funky_characters(self):
+        self.assertFormatAttribute('supports_funky_characters',
+            (True, False))
 
-    def test_attribute_revision_store(self):
-        """Test the existence of the revisions attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertIsInstance(repo.revisions,
-            versionedfile.VersionedFiles)
+    def test_attribute_format_supports_leaving_lock(self):
+        self.assertFormatAttribute('supports_leaving_lock',
+            (True, False))
 
-    def test_attribute_revision_store_basics(self):
-        """Test the basic behaviour of the revisions attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        repo.lock_write()
-        try:
-            self.assertEqual(set(), set(repo.revisions.keys()))
-            revid = (tree.commit("foo"),)
-            self.assertEqual(set([revid]), set(repo.revisions.keys()))
-            self.assertEqual({revid:()},
-                repo.revisions.get_parent_map([revid]))
-        finally:
-            repo.unlock()
-        tree2 = self.make_branch_and_tree('tree2')
-        tree2.pull(tree.branch)
-        left_id = (tree2.commit('left'),)
-        right_id = (tree.commit('right'),)
-        tree.merge_from_branch(tree2.branch)
-        merge_id = (tree.commit('merged'),)
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
-        self.assertEqual(set([revid, left_id, right_id, merge_id]),
-            set(repo.revisions.keys()))
-        self.assertEqual({revid:(), left_id:(revid,), right_id:(revid,),
-             merge_id:(right_id, left_id)},
-            repo.revisions.get_parent_map(repo.revisions.keys()))
+    def test_format_is_deprecated(self):
+        repo = self.make_repository('repo')
+        self.assertSubset([repo._format.is_deprecated()], (True, False))
 
-    def test_attribute_signature_store(self):
-        """Test the existence of the signatures attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertIsInstance(repo.signatures,
-            versionedfile.VersionedFiles)
+    def test_format_is_supported(self):
+        repo = self.make_repository('repo')
+        self.assertSubset([repo._format.is_supported()], (True, False))
 
     def test_attribute_text_store_basics(self):
         """Test the basic behaviour of the text store."""
@@ -596,23 +559,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.addCleanup(rev_tree.unlock)
         self.assertEqual('rev_id', rev_tree.inventory.root.revision)
 
-    def test_upgrade_from_format4(self):
-        from bzrlib.tests.test_upgrade import _upgrade_dir_template
-        if isinstance(self.repository_format, remote.RemoteRepositoryFormat):
-            return # local conversion to/from RemoteObjects is irrelevant.
-        if self.repository_format.get_format_description() \
-            == "Repository format 4":
-            raise tests.TestSkipped('Cannot convert format-4 to itself')
-        self.build_tree_contents(_upgrade_dir_template)
-        old_repodir = bzrdir.BzrDir.open_unsupported('.')
-        old_repo_format = old_repodir.open_repository()._format
-        format = self.repository_format._matchingbzrdir
-        try:
-            format.repository_format = self.repository_format
-        except AttributeError:
-            pass
-        upgrade.upgrade('.', format)
-
     def test_pointless_commit(self):
         tree = self.make_branch_and_tree('.')
         self.assertRaises(errors.PointlessCommit, tree.commit, 'pointless',
@@ -865,12 +811,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_sprout_branch_from_hpss_preserves_repo_format(self):
         """branch.sprout from a smart server preserves the repository format.
         """
-        weave_formats = [weaverepo.RepositoryFormat5(),
-                         weaverepo.RepositoryFormat6(),
-                         weaverepo.RepositoryFormat7()]
-        if self.repository_format in weave_formats:
+        if not self.repository_format.supports_leaving_lock:
             raise tests.TestNotApplicable(
-                "Cannot fetch weaves over smart protocol.")
+                "Format can not be used over HPSS")
         remote_repo = self.make_remote_repository('remote')
         remote_branch = remote_repo.bzrdir.create_branch()
         try:
@@ -887,12 +830,9 @@ class TestRepository(per_repository.TestCaseWithRepository):
         """branch.sprout from a smart server preserves the repository format of
         a branch from a shared repository.
         """
-        weave_formats = [weaverepo.RepositoryFormat5(),
-                         weaverepo.RepositoryFormat6(),
-                         weaverepo.RepositoryFormat7()]
-        if self.repository_format in weave_formats:
+        if not self.repository_format.supports_leaving_lock:
             raise tests.TestNotApplicable(
-                "Cannot fetch weaves over smart protocol.")
+                "Format can not be used over HPSS")
         # Make a shared repo
         remote_repo = self.make_remote_repository('remote', shared=True)
         remote_backing_repo = bzrdir.BzrDir.open(
@@ -916,9 +856,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual(remote_backing_repo._format, local_repo._format)
 
     def test_clone_to_hpss(self):
-        pre_metadir_formats = [weaverepo.RepositoryFormat5(),
-                               weaverepo.RepositoryFormat6()]
-        if self.repository_format in pre_metadir_formats:
+        if not self.repository_format.supports_leaving_lock:
             raise tests.TestNotApplicable(
                 "Cannot lock pre_metadir_formats remotely.")
         remote_transport = self.make_smart_server('remote')
@@ -937,7 +875,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
             repo = self.make_repository('repo', shared=True)
         except errors.IncompatibleFormat:
             raise tests.TestNotApplicable('Cannot make a shared repository')
-        if isinstance(repo.bzrdir, bzrdir.BzrDirPreSplitOut):
+        if repo.bzrdir._format.fixed_components:
             raise tests.KnownFailure(
                 "pre metadir branches do not upgrade on push "
                 "with stacking policy")
@@ -1347,11 +1285,9 @@ class TestEscaping(tests.TestCaseWithTransport):
             'rev1', _mod_revision.NULL_REVISION, fileobj)
 
 
-
-
 class TestRepositoryControlComponent(per_repository.TestCaseWithRepository):
     """Repository implementations adequately implement ControlComponent."""
-    
+
     def test_urls(self):
         repo = self.make_repository('repo')
         self.assertIsInstance(repo.user_url, str)

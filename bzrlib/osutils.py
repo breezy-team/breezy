@@ -2243,20 +2243,17 @@ else:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
 
-
 if sys.platform == 'linux2':
     def _local_concurrency():
-        concurrency = None
-        prefix = 'processor'
-        for line in file('/proc/cpuinfo', 'rb'):
-            if line.startswith(prefix):
-                concurrency = int(line[line.find(':')+1:]) + 1
-        return concurrency
+        try:
+            return os.sysconf('SC_NPROCESSORS_ONLN')
+        except (ValueError, OSError, AttributeError):
+            return None
 elif sys.platform == 'darwin':
     def _local_concurrency():
         return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
                                 stdout=subprocess.PIPE).communicate()[0]
-elif sys.platform[0:7] == 'freebsd':
+elif "bsd" in sys.platform:
     def _local_concurrency():
         return subprocess.Popen(['sysctl', '-n', 'hw.ncpu'],
                                 stdout=subprocess.PIPE).communicate()[0]
@@ -2290,9 +2287,15 @@ def local_concurrency(use_cache=True):
     concurrency = os.environ.get('BZR_CONCURRENCY', None)
     if concurrency is None:
         try:
-            concurrency = _local_concurrency()
-        except (OSError, IOError):
-            pass
+            import multiprocessing
+        except ImportError:
+            # multiprocessing is only available on Python >= 2.6
+            try:
+                concurrency = _local_concurrency()
+            except (OSError, IOError):
+                pass
+        else:
+            concurrency = multiprocessing.cpu_count()
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):
@@ -2403,3 +2406,36 @@ def set_fd_cloexec(fd):
     except (ImportError, AttributeError):
         # Either the fcntl module or specific constants are not present
         pass
+
+
+def find_executable_on_path(name):
+    """Finds an executable on the PATH.
+    
+    On Windows, this will try to append each extension in the PATHEXT
+    environment variable to the name, if it cannot be found with the name
+    as given.
+    
+    :param name: The base name of the executable.
+    :return: The path to the executable found or None.
+    """
+    path = os.environ.get('PATH')
+    if path is None:
+        return None
+    path = path.split(os.pathsep)
+    if sys.platform == 'win32':
+        exts = os.environ.get('PATHEXT', '').split(os.pathsep)
+        exts = [ext.lower() for ext in exts]
+        base, ext = os.path.splitext(name)
+        if ext != '':
+            if ext.lower() not in exts:
+                return None
+            name = base
+            exts = [ext]
+    else:
+        exts = ['']
+    for ext in exts:
+        for d in path:
+            f = os.path.join(d, name) + ext
+            if os.access(f, os.X_OK):
+                return f
+    return None

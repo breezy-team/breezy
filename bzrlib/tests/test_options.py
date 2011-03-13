@@ -396,6 +396,14 @@ class TestOptionDefinitions(TestCase):
         self.assertTrue(format.is_hidden('hidden'))
         self.assertFalse(format.is_hidden('visible'))
 
+    def test_short_name(self):
+        registry = controldir.ControlDirFormatRegistry()
+        opt = option.RegistryOption('format', help='', registry=registry)
+        self.assertEquals(None, opt.short_name())
+        opt = option.RegistryOption('format', short_name='F', help='',
+            registry=registry)
+        self.assertEquals('F', opt.short_name())
+
     def test_option_custom_help(self):
         the_opt = option.Option.OPTIONS['help']
         orig_help = the_opt.help[:]

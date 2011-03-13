@@ -793,61 +793,65 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # record_entry_contents.
             parent_ids = tree.get_parent_ids()
             builder = tree.branch.get_commit_builder(parent_ids)
-            parent_tree = tree.basis_tree()
-            parent_tree.lock_read()
-            self.addCleanup(parent_tree.unlock)
-            parent_invs = [parent_tree.inventory]
-            for parent_id in parent_ids[1:]:
-                parent_invs.append(tree.branch.repository.revision_tree(
-                    parent_id).inventory)
-            # root
-            builder.record_entry_contents(
-                inventory.make_entry('directory', '', None,
-                    tree.get_root_id()), parent_invs, '', tree,
-                    tree.path_content_summary(''))
-            def commit_id(file_id):
-                old_ie = tree.inventory[file_id]
-                path = tree.id2path(file_id)
-                ie = inventory.make_entry(tree.kind(file_id), old_ie.name,
-                    old_ie.parent_id, file_id)
-                content_summary = tree.path_content_summary(path)
-                if content_summary[0] == 'tree-reference':
-                    content_summary = content_summary[:3] + (
-                        tree.get_reference_revision(file_id),)
-                return builder.record_entry_contents(ie, parent_invs, path,
-                    tree, content_summary)
+            try:
+                parent_tree = tree.basis_tree()
+                parent_tree.lock_read()
+                self.addCleanup(parent_tree.unlock)
+                parent_invs = [parent_tree.inventory]
+                for parent_id in parent_ids[1:]:
+                    parent_invs.append(tree.branch.repository.revision_tree(
+                        parent_id).inventory)
+                # root
+                builder.record_entry_contents(
+                    inventory.make_entry('directory', '', None,
+                        tree.get_root_id()), parent_invs, '', tree,
+                        tree.path_content_summary(''))
+                def commit_id(file_id):
+                    old_ie = tree.inventory[file_id]
+                    path = tree.id2path(file_id)
+                    ie = inventory.make_entry(tree.kind(file_id), old_ie.name,
+                        old_ie.parent_id, file_id)
+                    content_summary = tree.path_content_summary(path)
+                    if content_summary[0] == 'tree-reference':
+                        content_summary = content_summary[:3] + (
+                            tree.get_reference_revision(file_id),)
+                    return builder.record_entry_contents(ie, parent_invs, path,
+                        tree, content_summary)
 
-            file_id = tree.path2id(new_name)
-            parent_id = tree.inventory[file_id].parent_id
-            if parent_id != tree.get_root_id():
-                commit_id(parent_id)
-            # because a change of some sort is meant to have occurred,
-            # recording the entry must return True.
-            delta, version_recorded, fs_hash = commit_id(file_id)
-            if records_version:
-                self.assertTrue(version_recorded)
+                file_id = tree.path2id(new_name)
+                parent_id = tree.inventory[file_id].parent_id
+                if parent_id != tree.get_root_id():
+                    commit_id(parent_id)
+                # because a change of some sort is meant to have occurred,
+                # recording the entry must return True.
+                delta, version_recorded, fs_hash = commit_id(file_id)
+                if records_version:
+                    self.assertTrue(version_recorded)
+                else:
+                    self.assertFalse(version_recorded)
+                if expect_fs_hash:
+                    tree_file_stat = tree.get_file_with_stat(file_id)
+                    tree_file_stat[0].close()
+                    self.assertEqual(2, len(fs_hash))
+                    self.assertEqual(tree.get_file_sha1(file_id), fs_hash[0])
+                    self.assertEqualStat(tree_file_stat[1], fs_hash[1])
+                else:
+                    self.assertEqual(None, fs_hash)
+                new_entry = builder.new_inventory[file_id]
+                if delta_against_basis:
+                    expected_delta = (name, new_name, file_id, new_entry)
+                    # The delta should be recorded
+                    self.assertEqual(expected_delta, builder._basis_delta[-1])
+                else:
+                    expected_delta = None
+                self.assertEqual(expected_delta, delta)
+                builder.finish_inventory()
+            except:
+                builder.abort()
+                raise
             else:
-                self.assertFalse(version_recorded)
-            if expect_fs_hash:
-                tree_file_stat = tree.get_file_with_stat(file_id)
-                tree_file_stat[0].close()
-                self.assertEqual(2, len(fs_hash))
-                self.assertEqual(tree.get_file_sha1(file_id), fs_hash[0])
-                self.assertEqualStat(tree_file_stat[1], fs_hash[1])
-            else:
-                self.assertEqual(None, fs_hash)
-            new_entry = builder.new_inventory[file_id]
-            if delta_against_basis:
-                expected_delta = (name, new_name, file_id, new_entry)
-                # The delta should be recorded
-                self.assertEqual(expected_delta, builder._basis_delta[-1])
-            else:
-                expected_delta = None
-            self.assertEqual(expected_delta, delta)
-            builder.finish_inventory()
-            rev2 = builder.commit('')
+                rev2 = builder.commit('')
         except:
-            builder.abort()
             tree.unlock()
             raise
         try:

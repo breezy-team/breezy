@@ -28,18 +28,19 @@ import urllib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    bzrdir_weave,
     xml5,
     graph as _mod_graph,
     ui,
     )
 """)
 from bzrlib import (
-    bzrdir,
     debug,
     errors,
     lockable_files,
     lockdir,
     osutils,
+    symbol_versioning,
     trace,
     tuned_gzip,
     urlutils,
@@ -63,6 +64,8 @@ from bzrlib.versionedfile import (
     FulltextContentFactory,
     VersionedFiles,
     )
+
+from bzrlib.plugins.weave_fmt import bzrdir as weave_bzrdir
 
 
 class AllInOneRepository(Repository):
@@ -276,6 +279,8 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     _fetch_order = 'topological'
     _fetch_reconcile = True
     fast_deltas = False
+    supports_leaving_lock = False
+    supports_full_versioned_files = True
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -327,6 +332,9 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
         result.chk_bytes = None
         return result
 
+    def is_deprecated(self):
+        return True
+
 
 class RepositoryFormat4(PreSplitOutRepositoryFormat):
     """Bzr repository format 4.
@@ -342,7 +350,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
 
     supports_funky_characters = False
 
-    _matchingbzrdir = bzrdir.BzrDirFormat4()
+    _matchingbzrdir = weave_bzrdir.BzrDirFormat4()
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -366,7 +374,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         return None
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml4 import serializer_v4
+        from bzrlib.plugins.weave_fmt.xml4 import serializer_v4
         return RevisionTextStore(repo_transport.clone('revision-store'),
             serializer_v4, True, versionedfile.PrefixMapper(),
             repo.is_locked, repo.is_write_locked)
@@ -390,7 +398,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = bzrdir.BzrDirFormat5()
+    _matchingbzrdir = weave_bzrdir.BzrDirFormat5()
     supports_funky_characters = False
 
     @property
@@ -426,6 +434,11 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         return versionedfile.ThunkedVersionedFiles(base_transport,
             weave.WeaveFile, mapper, repo.is_locked)
 
+    def _get_extra_interrepo_test_combinations(self):
+        from bzrlib.repofmt import knitrepo
+        return [(InterRepository, RepositoryFormat5(),
+            knitrepo.RepositoryFormatKnit3())]
+
 
 class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """Bzr control format 6.
@@ -437,7 +450,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = bzrdir.BzrDirFormat6()
+    _matchingbzrdir = weave_bzrdir.BzrDirFormat6()
     supports_funky_characters = False
     @property
     def _serializer(self):
@@ -488,6 +501,8 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     _versionedfile_class = weave.WeaveFile
     supports_ghosts = False
     supports_chks = False
+    supports_funky_characters = False
+    supports_full_versioned_files = True
 
     _fetch_order = 'topological'
     _fetch_reconcile = True
@@ -569,6 +584,9 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
         result.chk_bytes = None
         result._transport = repo_transport
         return result
+
+    def is_deprecated(self):
+        return True
 
 
 class TextVersionedFiles(VersionedFiles):
@@ -806,8 +824,10 @@ class InterWeaveRepo(InterSameDataRepository):
             self.target.fetch(self.source, revision_id=revision_id)
 
     @needs_read_lock
-    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
-        """See InterRepository.missing_revision_ids()."""
+    def search_missing_revision_ids(self,
+            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
+        """See InterRepository.search_missing_revision_ids()."""
         # we want all revisions to satisfy revision_id in source.
         # but we don't want to stat every file here and there.
         # we want then, all revisions other needs to satisfy revision_id
@@ -819,14 +839,19 @@ class InterWeaveRepo(InterSameDataRepository):
         # disk format scales terribly for push anyway due to rewriting
         # inventory.weave, this is considered acceptable.
         # - RBC 20060209
-        if revision_id is not None:
-            source_ids = self.source.get_ancestry(revision_id)
-            if source_ids[0] is not None:
-                raise AssertionError()
-            source_ids.pop(0)
-        else:
-            source_ids = self.source._all_possible_ids()
-        source_ids_set = set(source_ids)
+        if symbol_versioning.deprecated_passed(revision_id):
+            symbol_versioning.warn(
+                'search_missing_revision_ids(revision_id=...) was '
+                'deprecated in 2.4.  Use revision_ids=[...] instead.',
+                DeprecationWarning, stacklevel=2)
+            if revision_ids is not None:
+                raise AssertionError(
+                    'revision_ids is mutually exclusive with revision_id')
+            if revision_id is not None:
+                revision_ids = [revision_id]
+        del revision_id
+        source_ids_set = self._present_source_revisions_for(
+            revision_ids, if_present_ids)
         # source_ids is the worst possible case we may need to pull.
         # now we want to filter source_ids against what we actually
         # have in target, but don't try to check for existence where we know
@@ -836,7 +861,7 @@ class InterWeaveRepo(InterSameDataRepository):
         actually_present_revisions = set(
             self.target._eliminate_revisions_not_present(possibly_present_revisions))
         required_revisions = source_ids_set.difference(actually_present_revisions)
-        if revision_id is not None:
+        if revision_ids is not None:
             # we used get_ancestry to determine source_ids then we are assured all
             # revisions referenced are present as they are installed in topological order.
             # and the tip revision was validated by get_ancestry.
@@ -850,9 +875,10 @@ class InterWeaveRepo(InterSameDataRepository):
         return self.source.revision_ids_to_search_result(result_set)
 
 
-_legacy_formats = [RepositoryFormat4(),
-                   RepositoryFormat5(),
-                   RepositoryFormat6()]
-
-
 InterRepository.register_optimiser(InterWeaveRepo)
+
+
+def get_extra_interrepo_test_combinations():
+    from bzrlib.repofmt import knitrepo
+    return [(InterRepository, RepositoryFormat5(),
+        knitrepo.RepositoryFormatKnit3())]

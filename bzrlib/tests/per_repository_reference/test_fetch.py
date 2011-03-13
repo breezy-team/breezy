@@ -18,6 +18,7 @@
 from bzrlib import (
     branch,
     errors,
+    graph,
     )
 from bzrlib.smart import (
     server,
@@ -25,7 +26,7 @@ from bzrlib.smart import (
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
-class TestFetch(TestCaseWithRepository):
+class TestFetchBase(TestCaseWithRepository):
 
     def make_source_branch(self):
         # It would be nice if there was a way to force this to be memory-only
@@ -50,6 +51,9 @@ class TestFetch(TestCaseWithRepository):
         source_b.lock_read()
         self.addCleanup(source_b.unlock)
         return content, source_b
+
+
+class TestFetch(TestFetchBase):
 
     def test_sprout_from_stacked_with_short_history(self):
         content, source_b = self.make_source_branch()
@@ -149,3 +153,38 @@ class TestFetch(TestCaseWithRepository):
         source_b.lock_read()
         self.addCleanup(source_b.unlock)
         stacked.pull(source_b, stop_revision='B-id')
+
+
+class TestFetchFromRepoWithUnconfiguredFallbacks(TestFetchBase):
+
+    def make_stacked_source_repo(self):
+        _, source_b = self.make_source_branch()
+        # Use 'make_branch' which gives us a bzr:// branch when appropriate,
+        # rather than creating a branch-on-disk
+        stack_b = self.make_branch('stack-on')
+        stack_b.pull(source_b, stop_revision='B-id')
+        stacked_b = self.make_branch('stacked')
+        stacked_b.set_stacked_on_url('../stack-on')
+        stacked_b.pull(source_b, stop_revision='C-id')
+        return stacked_b.repository
+
+    def test_fetch_everything_includes_parent_invs(self):
+        stacked = self.make_stacked_source_repo()
+        repo_missing_fallbacks = stacked.bzrdir.open_repository()
+        self.addCleanup(repo_missing_fallbacks.lock_read().unlock)
+        target = self.make_repository('target')
+        self.addCleanup(target.lock_write().unlock)
+        target.fetch(
+            repo_missing_fallbacks,
+            fetch_spec=graph.EverythingResult(repo_missing_fallbacks))
+        self.assertEqual(repo_missing_fallbacks.revisions.keys(),
+            target.revisions.keys())
+        self.assertEqual(repo_missing_fallbacks.inventories.keys(),
+            target.inventories.keys())
+        self.assertEqual(['C-id'],
+            sorted(k[-1] for k in target.revisions.keys()))
+        self.assertEqual(['B-id', 'C-id'],
+            sorted(k[-1] for k in target.inventories.keys()))
+
+
+

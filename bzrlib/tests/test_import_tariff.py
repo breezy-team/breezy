@@ -93,18 +93,34 @@ class TestImportTariffs(TestCaseWithTransport):
             ['bzrlib.tree'])
 
     def test_simple_local(self):
-        # 'st' in a working tree shouldn't need many modules
+        # 'st' in a default format working tree shouldn't need many modules
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'], [
+            'bzrlib.bugtracker',
             'bzrlib.bundle.commands',
             'bzrlib.cmd_version_info',
+            'bzrlib.externalcommand',
             'bzrlib.foreign',
+            'bzrlib.gpg',
+            'bzrlib.info',
             'bzrlib.merge3',
+            'bzrlib.merge_directive',
+            'bzrlib.msgeditor',
             'bzrlib.patiencediff',
             'bzrlib.remote',
             'bzrlib.sign_my_commits',
             'bzrlib.smart',
+            'bzrlib.smart.client',
             'bzrlib.transform',
+            'bzrlib.version_info_formats.format_rio',
+            'bzrlib.plugins.weave_fmt.branch',
+            'bzrlib.plugins.weave_fmt.bzrdir',
+            'bzrlib.plugins.weave_fmt.repository',
+            'bzrlib.plugins.weave_fmt.workingtree',
+            'bzrlib.xml4',
+            'bzrlib.xml5',
+            'bzrlib.xml6',
+            'bzrlib.xml7',
             'kerberos',
             'smtplib',
             'tarfile',

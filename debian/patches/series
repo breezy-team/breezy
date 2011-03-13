@@ -1,6 +1,2 @@
-01_test_locale
 02_external_configobj
 03_external_elementtree
-04_cpu_count
-05_kfreebsd_tests
-06_format_gc_chk_sha1_record

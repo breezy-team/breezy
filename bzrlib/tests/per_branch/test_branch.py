@@ -310,36 +310,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
 
-    def test_missing_revisions(self):
-        t1 = self.make_branch_and_tree('b1')
-        rev1 = t1.commit('one')
-        t2 = t1.bzrdir.sprout('b2').open_workingtree()
-        rev2 = t1.commit('two')
-        rev3 = t1.commit('three')
-
-        self.assertEqual([rev2, rev3],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch))
-
-        self.assertEqual([],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=1))
-        self.assertEqual([rev2],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=2))
-        self.assertEqual([rev2, rev3],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=3))
-
-        self.assertRaises(errors.NoSuchRevision,
-            self.applyDeprecated, deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=4)
-
-        rev4 = t2.commit('four')
-        self.assertRaises(errors.DivergedBranches,
-            self.applyDeprecated, deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch)
-
     def test_nicks(self):
         """Test explicit and implicit branch nicknames.
 
@@ -496,6 +466,26 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEquals(br.revision_history(), ["rev1"])
         br.set_revision_history([])
         self.assertEquals(br.revision_history(), [])
+
+    def test_heads_to_fetch(self):
+        # heads_to_fetch is a method that returns a collection of revids that
+        # need to be fetched to copy this branch into another repo.  At a
+        # minimum this will include the tip.
+        # (In native formats, this is the tip + tags, but other formats may
+        # have other revs needed)
+        tree = self.make_branch_and_tree('a')
+        tree.commit('first commit', rev_id='rev1')
+        tree.commit('second commit', rev_id='rev2')
+        must_fetch, should_fetch = tree.branch.heads_to_fetch()
+        self.assertTrue('rev2' in must_fetch)
+
+    def test_heads_to_fetch_not_null_revision(self):
+        # NULL_REVISION does not appear in the result of heads_to_fetch, even
+        # for an empty branch.
+        tree = self.make_branch_and_tree('a')
+        must_fetch, should_fetch = tree.branch.heads_to_fetch()
+        self.assertFalse(revision.NULL_REVISION in must_fetch)
+        self.assertFalse(revision.NULL_REVISION in should_fetch)
 
 
 class TestBranchFormat(per_branch.TestCaseWithBranch):

@@ -26,12 +26,12 @@ As of January 2011, there are the following PPAs:
     A preserved copy of the final version of packages from ~bzr/ppa for
     obsolete Ubuntu series.
 
-<https://launchpad.net/~bzr-beta-ppa/+archive/ppa>
+<https://launchpad.net/~bzr/+archive/beta>
     Beta releases.
 
-<https://launchpad.net/~bzr-beta-ppa/+archive/obsolete>
+<https://launchpad.net/~bzr/+archive/beta-obsolete>
     A preserved copy of the final version of packages from
-    ~bzr-beta-ppa/ppa for obsolete Ubuntu series.
+    ~bzr/beta for obsolete Ubuntu series.
 
 <https://launchpad.net/~bzr/+archive/daily>
     Automatic nightly builds from trunk.
@@ -44,8 +44,17 @@ Dapper uses the ``python-support`` framework and later distributions use
 ``python-central``.  This has little effect on everyday packaging but does
 mean that some of the control files are quite different.
 
-Every package is first uploaded into the beta ppa.  For final release
-versions it is also copied to the main PPA.
+Beta releases of bzr and plugins are uploaded into the beta PPA.
+
+Final release versions are first uploaded into the proposed PPA, which
+serves as a staging area to allow for new packages to be tested, and also
+so that a complete set of Bazaar core and plugin updated versions can be
+prepared together, when negotiating an API version transition.
+
+Once ready, packages can be copied from the proposed PPA to the main PPA
+using the lp-promote-ppa script found within the hydrazine project.  This
+procedure reduces the risk of broken packages or dependencies between
+packages in the main PPA from which many people get bzr updates.
 
 The packaging information is kept in branches of bzr on Launchpad, named
 like
@@ -54,9 +63,9 @@ or
 <lp:~bzr/ubuntu/hardy/bzr/bzr-ppa>.  These branches are intended to be used
 with the ``bzr-builddeb`` plugin.
 
-**You should almost always upload to the proposed or beta ppa first** and
-then copy the packages into the release ppa.  That reduces the 
-risk of breaking the main archive from which people get bzr updates.
+The page <http://wiki.bazaar.canonical.com/PpaPackagingBranches> is a
+reference to where the PPA packaging branches for each of the source
+packages in the ``~bzr`` PPAs may be found.
 
 
 Supported releases
@@ -82,8 +91,8 @@ of which bzr releases are current in each Ubuntu release.
 Preconditions
 -------------
 
-* You must have a Launchpad account and be a member of the teams
-  that own these PPAs (``~bzr``, ``~bzr-beta-ppa``).
+* You must have a Launchpad account and be a member of the team
+  that owns these PPAs (``~bzr``).
 
 * You must have a GPG key registered to your Launchpad account.
 
@@ -100,13 +109,6 @@ give a somewhat unclear error::
     [DEFAULT]
     default_host_main = notspecified
 
-* Configure ``bzr-builddeb`` to sign the package, which is required for
-  Launchpad to build it.  Put this in ``~/.bazaar/builddeb.conf`` ::
-
-      [BUILDDEB]
-      builder = dpkg-buildpackage -rfakeroot
-      source-builder= dpkg-buildpackage -rfakeroot -S -sa
-
 * You need a Ubuntu (or probably Debian) machine, and ::
 
     sudo apt-get install build-essential devscripts dput quilt patch libcrypt-ssleay-perl debhelper cdbs python-docutils
@@ -114,11 +116,9 @@ give a somewhat unclear error::
   Please update this document if you encounter unmet dependencies or find a
   shorter way to express them.
 
-* You will also want to have the `bzr-builddeb`_ plugin installed, which
-  depends on `bzrtools`_.
+* You will also want to have the `bzr-builddeb`_ plugin installed.
 
 .. _`bzr-builddeb`: http://launchpad.net/bzr-builddeb
-.. _`bzrtools`: http://launchpad.net/bzrtools
 
 
 Packaging Bazaar
@@ -133,7 +133,7 @@ Overview of packaging with builddeb
   that into the ppa.  
   
   (``-S`` says to make a source-only upload, which is
-  required for Launchpad's builders.  ``--sa`` says to include the
+  required for Launchpad's builders.  ``-sa`` says to include the
   ``.orig.tgz`` even if this doesn't seem to be the first upload for an
   upstream release: this is often needed when rebuilding something that's
   previously been uploaded to Debian or Ubuntu or into a different PPA.)
@@ -299,8 +299,8 @@ Long Form
 
 #. You should soon get an "upload accepted" mail from Launchpad, which
    means that your package is waiting to be built.  You can then track its
-   progress in <https://launchpad.net/~bzr-beta-ppa/+archive> and
-   <https://launchpad.net/~bzr-beta-ppa/+archive/+builds>.
+   progress in <https://launchpad.net/~bzr/+archive/proposed> and
+   <https://launchpad.net/~bzr/+archive/proposed/+builds>.
 
 
 Packaging bzr-svn
@@ -327,7 +327,7 @@ To build bzr-svn:
    bzr-builddeb will automatically check out the appropriate tag from the
    main branch of bzr-svn, build, and package it.
 
-#. ``dput bzr-beta-ppa ../bzr-svn_0.4.15-1~bazaar1~hardy1_source.changes``
+#. ``dput ppa:bzr/proposed ../bzr-svn_0.4.15-1~bazaar1~hardy1_source.changes``
 
 
 Monitoring the contents of PPAs
@@ -360,6 +360,7 @@ Some of our updates to bzr in previous releases require backports of our
 dependencies.  Specific branches holding these backports:
 
  * ``lp:~bzr/ubuntu/dapper/configobj/dapper-backport``
+ * ``lp:~bzr/ubuntu/hardy/python-central-debhelper-sequence-addon/bzr-ppa``
 
 
 ..

@@ -330,39 +330,6 @@ class Check(object):
             self.text_key_references[key] = True
 
 
-@deprecated_function(deprecated_in((1,6,0)))
-def check(branch, verbose):
-    """Run consistency checks on a branch.
-
-    Results are reported through logging.
-
-    Deprecated in 1.6.  Please use check_dwim instead.
-
-    :raise BzrCheckError: if there's a consistency error.
-    """
-    check_branch(branch, verbose)
-
-
-@deprecated_function(deprecated_in((1,16,0)))
-def check_branch(branch, verbose):
-    """Run consistency checks on a branch.
-
-    Results are reported through logging.
-
-    :raise BzrCheckError: if there's a consistency error.
-    """
-    branch.lock_read()
-    try:
-        needed_refs = {}
-        for ref in branch._get_check_refs():
-            needed_refs.setdefault(ref, []).append(branch)
-        result = branch.repository.check([branch.last_revision()], needed_refs)
-        branch_result = result.other_results[0]
-    finally:
-        branch.unlock()
-    branch_result.report_results(verbose)
-
-
 def scan_branch(branch, needed_refs, to_unlock):
     """Scan a branch for refs.
 

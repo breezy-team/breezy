@@ -43,6 +43,7 @@ from bzrlib.repository import (
     RepositoryFormat,
     RootCommitBuilder,
     )
+from bzrlib import symbol_versioning
 
 
 class _KnitParentsProvider(object):
@@ -303,6 +304,8 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     _fetch_order = 'topological'
     _fetch_uses_deltas = True
     fast_deltas = False
+    supports_funky_characters = True
+    supports_full_versioned_files = True
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -534,16 +537,23 @@ class InterKnitRepo(InterSameDataRepository):
         return are_knits and InterRepository._same_model(source, target)
 
     @needs_read_lock
-    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
-        """See InterRepository.missing_revision_ids()."""
-        if revision_id is not None:
-            source_ids = self.source.get_ancestry(revision_id)
-            if source_ids[0] is not None:
-                raise AssertionError()
-            source_ids.pop(0)
-        else:
-            source_ids = self.source.all_revision_ids()
-        source_ids_set = set(source_ids)
+    def search_missing_revision_ids(self,
+            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
+        """See InterRepository.search_missing_revision_ids()."""
+        if symbol_versioning.deprecated_passed(revision_id):
+            symbol_versioning.warn(
+                'search_missing_revision_ids(revision_id=...) was '
+                'deprecated in 2.4.  Use revision_ids=[...] instead.',
+                DeprecationWarning, stacklevel=2)
+            if revision_ids is not None:
+                raise AssertionError(
+                    'revision_ids is mutually exclusive with revision_id')
+            if revision_id is not None:
+                revision_ids = [revision_id]
+        del revision_id
+        source_ids_set = self._present_source_revisions_for(
+            revision_ids, if_present_ids)
         # source_ids is the worst possible case we may need to pull.
         # now we want to filter source_ids against what we actually
         # have in target, but don't try to check for existence where we know
@@ -553,7 +563,7 @@ class InterKnitRepo(InterSameDataRepository):
         actually_present_revisions = set(
             self.target._eliminate_revisions_not_present(possibly_present_revisions))
         required_revisions = source_ids_set.difference(actually_present_revisions)
-        if revision_id is not None:
+        if revision_ids is not None:
             # we used get_ancestry to determine source_ids then we are assured all
             # revisions referenced are present as they are installed in topological order.
             # and the tip revision was validated by get_ancestry.

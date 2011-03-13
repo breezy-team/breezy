@@ -39,3 +39,17 @@ class TestRevisionIdToRevno(TestCaseWithBranch):
         self.assertRaises(errors.NoSuchRevision,
                           the_branch.revision_id_to_revno, 'rev-1.1.1')
 
+    def test_mainline_ghost(self):
+        tree = self.make_branch_and_tree('tree1')
+        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.add('')
+        tree.commit('msg1', rev_id='rev1')
+        tree.commit('msg2', rev_id='rev2')
+        # Some older branch formats store the full known revision history
+        # and thus can't distinguish between not being able to find a revno because of
+        # a ghost and the revision not being on the mainline. As such,
+        # allow both NoSuchRevision and GhostRevisionsHaveNoRevno here.
+        self.assertRaises((errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno),
+            tree.branch.revision_id_to_revno, "unknown")
+        self.assertEquals(1, tree.branch.revision_id_to_revno("rev1"))
+        self.assertEquals(2, tree.branch.revision_id_to_revno("rev2"))

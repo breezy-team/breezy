@@ -19,14 +19,17 @@
 from bzrlib import (
     branch,
     errors,
+    pyutils,
     tests,
     )
 from bzrlib.hooks import (
     HookPoint,
     Hooks,
+    install_lazy_named_hook,
     known_hooks,
     known_hooks_key_to_object,
     known_hooks_key_to_parent_and_attribute,
+    _lazy_hooks,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -112,6 +115,52 @@ class TestHooks(tests.TestCase):
         hooks.install_named_hook('set_rh', None, "demo")
         self.assertEqual("demo", hooks.get_hook_name(None))
 
+    hooks = Hooks("bzrlib.tests.test_hooks", "TestHooks.hooks")
+
+    def test_install_lazy_named_hook(self):
+        # When the hook points are not yet registered the hook is
+        # added to the _lazy_hooks dictionary in bzrlib.hooks.
+        self.hooks.add_hook('set_rh', "doc", (0, 15))
+        set_rh = lambda: None
+        install_lazy_named_hook('bzrlib.tests.test_hooks',
+            'TestHooks.hooks', 'set_rh', set_rh, "demo")
+        set_rh_lazy_hooks = _lazy_hooks[
+            ('bzrlib.tests.test_hooks', 'TestHooks.hooks', 'set_rh')]
+        self.assertEquals(1, len(set_rh_lazy_hooks))
+        self.assertEquals(set_rh, set_rh_lazy_hooks[0][0].get_obj())
+        self.assertEquals("demo", set_rh_lazy_hooks[0][1])
+        self.assertEqual(list(TestHooks.hooks['set_rh']), [set_rh])
+
+    set_rh = lambda: None
+
+    def test_install_named_hook_lazy(self):
+        hooks = Hooks()
+        hooks['set_rh'] = HookPoint("set_rh", "doc", (0, 15), None)
+        hooks.install_named_hook_lazy('set_rh', 'bzrlib.tests.test_hooks',
+            'TestHooks.set_rh', "demo")
+        self.assertEqual(list(hooks['set_rh']), [TestHooks.set_rh])
+
+    def test_install_named_hook_lazy_old(self):
+        # An exception is raised if a lazy hook is raised for
+        # an old style hook point.
+        hooks = Hooks()
+        hooks['set_rh'] = []
+        self.assertRaises(errors.UnsupportedOperation,
+            hooks.install_named_hook_lazy,
+            'set_rh', 'bzrlib.tests.test_hooks', 'TestHooks.set_rh',
+            "demo")
+
+    def test_valid_lazy_hooks(self):
+        # Make sure that all the registered lazy hooks are referring to existing
+        # hook points which allow lazy registration.
+        for key, callbacks in _lazy_hooks.iteritems():
+            (module_name, member_name, hook_name) = key
+            obj = pyutils.get_named_object(module_name, member_name)
+            self.assertEquals(obj._module, module_name)
+            self.assertEquals(obj._member_name, member_name)
+            self.assertTrue(hook_name in obj)
+            self.assertIs(callbacks, obj[hook_name]._callbacks)
+
 
 class TestHook(tests.TestCase):
 
@@ -143,6 +192,16 @@ class TestHook(tests.TestCase):
             pass
         hook.hook(callback, "my callback")
         self.assertEqual([callback], list(hook))
+
+    def lazy_callback():
+        pass
+
+    def test_lazy_hook(self):
+        hook = HookPoint("foo", "no docs", None, None)
+        hook.hook_lazy(
+            "bzrlib.tests.test_hooks", "TestHook.lazy_callback",
+            "my callback")
+        self.assertEqual([TestHook.lazy_callback], list(hook))
 
     def test___repr(self):
         # The repr should list all the callbacks, with names.
