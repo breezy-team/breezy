@@ -20,6 +20,7 @@ Such as non-controlled directories, tarfiles, zipfiles, etc.
 """
 
 import os
+import time
 from bzrlib import (
     errors,
     pyutils,
@@ -57,10 +58,10 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
 
     When requesting a specific type of export, load the respective path.
     """
-    def _loader(tree, dest, root, subdir, filtered, per_file_timestamps):
+    def _loader(tree, dest, root, subdir, filtered, force_mtime):
         func = pyutils.get_named_object(module, funcname)
         return func(tree, dest, root, subdir, filtered=filtered,
-                    per_file_timestamps=per_file_timestamps)
+                    force_mtime=force_mtime)
     register_exporter(scheme, extensions, _loader)
 
 
@@ -103,10 +104,16 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
 
     if format not in _exporters:
         raise errors.NoSuchExportFormat(format)
+
+    if not per_file_timestamps:
+        force_mtime = time.time()
+    else:
+        force_mtime = None
+
     tree.lock_read()
     try:
         return _exporters[format](tree, dest, root, subdir, filtered=filtered,
-                                  per_file_timestamps=per_file_timestamps)
+                                  force_mtime=force_mtime)
     finally:
         tree.unlock()
 

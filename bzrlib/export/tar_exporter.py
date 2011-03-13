@@ -20,9 +20,12 @@
 import StringIO
 import sys
 import tarfile
-import time
 
-from bzrlib import export, osutils
+from bzrlib import (
+    errors,
+    export,
+    osutils,
+    )
 from bzrlib.export import _export_iter_entries
 from bzrlib.filters import (
     ContentFilterContext,
@@ -32,14 +35,13 @@ from bzrlib.trace import mutter
 
 
 def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
-                 per_file_timestamps=False):
+                 force_mtime=None):
     """Export this tree to a new tar file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
     mutter('export version %r', tree)
-    now = time.time()
     compression = str(compression or '')
     if dest == '-':
         # XXX: If no root is given, the output tarball will contain files
@@ -59,10 +61,10 @@ def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
     for dp, ie in _export_iter_entries(tree, subdir):
         filename = osutils.pathjoin(root, dp).encode('utf8')
         item = tarfile.TarInfo(filename)
-        if per_file_timestamps:
-            item.mtime = tree.get_file_mtime(ie.file_id, dp)
+        if force_mtime is not None:
+            item.mtime = force_mtime
         else:
-            item.mtime = now
+            item.mtime = tree.get_file_mtime(ie.file_id, dp)
         if ie.kind == "file":
             item.type = tarfile.REGTYPE
             if tree.is_executable(ie.file_id):
@@ -93,19 +95,17 @@ def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
             item.linkname = ie.symlink_target
             fileobj = None
         else:
-            raise BzrError("don't know how to export {%s} of kind %r" %
+            raise errors.BzrError("don't know how to export {%s} of kind %r" %
                            (ie.file_id, ie.kind))
         ball.addfile(item, fileobj)
     ball.close()
 
 
-def tgz_exporter(tree, dest, root, subdir, filtered=False,
-                 per_file_timestamps=False):
+def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     tar_exporter(tree, dest, root, subdir, compression='gz',
-                 filtered=filtered, per_file_timestamps=per_file_timestamps)
+                 filtered=filtered, force_mtime=force_mtime)
 
 
-def tbz_exporter(tree, dest, root, subdir, filtered=False,
-                 per_file_timestamps=False):
+def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     tar_exporter(tree, dest, root, subdir, compression='bz2',
-                 filtered=filtered, per_file_timestamps=per_file_timestamps)
+                 filtered=filtered, force_mtime=force_mtime)
