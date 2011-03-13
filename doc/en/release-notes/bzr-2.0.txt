@@ -25,6 +25,10 @@ New Features
 Bug Fixes
 *********
 
+* Avoid spurious ValueErrors when autopacking a subset of the repository,
+  and seeing a revision without its related inventory
+  (John Arbash Meinel, #437003)
+
 * Avoid UnicodeDecodeError in ``bzr add`` with multiple files under a non-ascii
   path on windows from symlink support addition. (Martin [gz], #686611)
 

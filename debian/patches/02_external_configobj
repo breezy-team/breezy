@@ -40,7 +40,7 @@ Bug-Debian: http://bugs.debian.org/555336
 === removed file 'bzrlib/util/configobj/configobj.py'
 --- old/bzrlib/util/configobj/configobj.py	2011-02-03 18:34:23 +0000
 +++ new/bzrlib/util/configobj/configobj.py	1970-01-01 00:00:00 +0000
-@@ -1,2459 +0,0 @@
+@@ -1,2461 +0,0 @@
 -# configobj.py
 -# A config file reader/writer that supports nested sections in config files.
 -# Copyright (C) 2005-2009 Michael Foord, Nicola Larosa
@@ -1837,10 +1837,12 @@ Bug-Debian: http://bugs.debian.org/555336
 -    def _get_triple_quote(self, value):
 -        if (value.find('"""') != -1) and (value.find("'''") != -1):
 -            raise ConfigObjError('Value "%s" cannot be safely quoted.' % value)
+-        # upstream version (up to version 4.7.2) has the bug with incorrect quoting;
+-        # fixed in our copy based on the suggestion of ConfigObj's author
 -        if value.find('"""') == -1:
--            quot = tdquot
--        else:
 -            quot = tsquot
+-        else:
+-            quot = tdquot
 -        return quot
 -
 -
@@ -2500,4 +2502,3 @@ Bug-Debian: http://bugs.debian.org/555336
 -
 -
 -"""*A programming language is a medium of expression.* - Paul Graham"""
-

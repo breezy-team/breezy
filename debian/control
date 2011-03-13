@@ -6,7 +6,7 @@ Uploaders: Jeff Bailey <jbailey@raspberryginger.com>, Wouter van Heyst <larstiq@
 Build-Depends: debhelper (>> 7.4.16), python (>= 2.6.6-3), python-all-dev (>= 2.6.6-3), python-docutils, python-pyrex, python-testtools (>= 0.9.5~), python-configobj, python (>> 2.5) | python-celementtree | python-elementtree, python-subunit
 Standards-Version: 3.9.1
 X-Python-Version: >= 2.4
-Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr/unstable
+Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr/2.3
 Homepage: http://bazaar-vcs.org
 Dm-Upload-Allowed: yes
 
