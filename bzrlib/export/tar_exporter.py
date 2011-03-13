@@ -34,7 +34,7 @@ from bzrlib.filters import (
 from bzrlib.trace import mutter
 
 
-def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
+def tar_exporter(tree, dest, root, subdir, compression, filtered=False,
                  force_mtime=None):
     """Export this tree to a new tar file.
 
@@ -42,7 +42,6 @@ def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
     already exists, it will be clobbered, like with "tar -c".
     """
     mutter('export version %r', tree)
-    compression = str(compression or '')
     if dest == '-':
         # XXX: If no root is given, the output tarball will contain files
         # named '-/foo'; perhaps this is the most reasonable thing.
