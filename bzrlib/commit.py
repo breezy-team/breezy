@@ -408,9 +408,7 @@ class Commit(object):
             raise errors.ExcludesUnsupported(self.branch.repository)
 
         try:
-
-            if not self.use_record_iter_changes:
-                self.builder.will_record_deletes()
+            self.builder.will_record_deletes()
             # find the location being committed to
             if self.bound_branch:
                 master_location = self.master_branch.base
