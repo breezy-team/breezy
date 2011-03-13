@@ -644,8 +644,9 @@ class TextConflict(Conflict):
         winner_tid = tt.trans_id_tree_path(winner_path)
         winner_parent_tid = tt.get_tree_parent(winner_tid)
         # Switch the paths to preserve the content
-        tt.adjust_path(self.path, winner_parent_tid, winner_tid)
-        tt.adjust_path(winner_path, item_parent_tid, item_tid)
+        tt.adjust_path(osutils.basename(self.path),
+                       winner_parent_tid, winner_tid)
+        tt.adjust_path(osutils.basename(winner_path), item_parent_tid, item_tid)
         # Associate the file_id to the right content
         tt.unversion_file(item_tid)
         tt.version_file(self.file_id, winner_tid)
@@ -755,18 +756,15 @@ class ParentLoop(HandledPathConflict):
         pass
 
     def action_take_other(self, tree):
-        # FIXME: We shouldn't have to manipulate so many paths here (and there
-        # is probably a bug or two...)
-        base_path = osutils.basename(self.path)
-        conflict_base_path = osutils.basename(self.conflict_path)
         tt = transform.TreeTransform(tree)
         try:
             p_tid = tt.trans_id_file_id(self.file_id)
             parent_tid = tt.get_tree_parent(p_tid)
             cp_tid = tt.trans_id_file_id(self.conflict_file_id)
             cparent_tid = tt.get_tree_parent(cp_tid)
-            tt.adjust_path(base_path, cparent_tid, cp_tid)
-            tt.adjust_path(conflict_base_path, parent_tid, p_tid)
+            tt.adjust_path(osutils.basename(self.path), cparent_tid, cp_tid)
+            tt.adjust_path(osutils.basename(self.conflict_path),
+                           parent_tid, p_tid)
             tt.apply()
         finally:
             tt.finalize()

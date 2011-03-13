@@ -2133,14 +2133,14 @@ class RemoteBranchFormat(branch.BranchFormat):
         repo_format = response_tuple_to_repo_format(response[3:])
         repo_path = response[2]
         if repository is not None:
-            remote_repo_url = urlutils.join(medium.base, repo_path)
+            remote_repo_url = urlutils.join(a_bzrdir.user_url, repo_path)
             url_diff = urlutils.relative_url(repository.user_url,
                     remote_repo_url)
             if url_diff != '.':
                 raise AssertionError(
                     'repository.user_url %r does not match URL from server '
                     'response (%r + %r)'
-                    % (repository.user_url, medium.base, repo_path))
+                    % (repository.user_url, a_bzrdir.user_url, repo_path))
             remote_repo = repository
         else:
             if repo_path == '':
