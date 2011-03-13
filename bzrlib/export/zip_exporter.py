@@ -49,7 +49,6 @@ def zip_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be overwritten".
     """
-    mutter('export version %r', tree)
 
     compression = zipfile.ZIP_DEFLATED
     zipf = zipfile.ZipFile(dest, "w", compression)

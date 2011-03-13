@@ -31,34 +31,6 @@ from bzrlib.filters import (
     ContentFilterContext,
     filtered_output_bytes,
     )
-from bzrlib.trace import mutter
-
-
-def tar_exporter(tree, dest, root, subdir, compression, filtered=False,
-                 force_mtime=None):
-    """Export this tree to a new tar file.
-
-    `dest` will be created holding the contents of this tree; if it
-    already exists, it will be clobbered, like with "tar -c".
-    """
-    mutter('export version %r', tree)
-    if dest == '-':
-        # XXX: If no root is given, the output tarball will contain files
-        # named '-/foo'; perhaps this is the most reasonable thing.
-        ball = tarfile.open(None, 'w|' + compression, sys.stdout)
-    else:
-        if root is None:
-            root = export.get_root_name(dest)
-
-        # tarfile.open goes on to do 'os.getcwd() + dest' for opening
-        # the tar file. With dest being unicode, this throws UnicodeDecodeError
-        # unless we encode dest before passing it on. This works around
-        # upstream python bug http://bugs.python.org/issue8396
-        # (fixed in Python 2.6.5 and 2.7b1)
-        ball = tarfile.open(dest.encode(osutils._fs_enc), 'w:' + compression)
-    export_tarball(tree, ball, root, subdir, filtered=filtered,
-                   force_mtime=force_mtime)
-    ball.close()
 
 
 def export_tarball(tree, ball, root, subdir, filtered=False,
@@ -115,15 +87,79 @@ def export_tarball(tree, ball, root, subdir, filtered=False,
 
 
 def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
-    tar_exporter(tree, dest, root, subdir, compression='gz',
-                 filtered=filtered, force_mtime=force_mtime)
+    """Export this tree to a new tar file.
+
+    `dest` will be created holding the contents of this tree; if it
+    already exists, it will be clobbered, like with "tar -c".
+    """
+    import gzip
+    if force_mtime is not None:
+        root_mtime = force_mtime
+    else:
+        # FIXME: Use tree.get_revision_id()'s timestamp ?
+        root_mtime = tree.get_file_mtime(tree.root.id, "")
+    if dest == '-':
+        # XXX: If no root is given, the output tarball will contain files
+        # named '-/foo'; perhaps this is the most reasonable thing.
+        stream = gzip.GzipFile(None, mode='w', mtime=root_mtime,
+            fileobj=sys.stdout)
+    else:
+        if root is None:
+            root = export.get_root_name(dest)
+        stream = gzip.GzipFile(dest.encode(osutils._fs_enc), 'w',
+            mtime=root_mtime)
+    ball = tarfile.open(None, 'w:', fileobj=stream)
+    export_tarball(tree, ball, root, subdir, filtered=filtered,
+                   force_mtime=force_mtime)
+    ball.close()
 
 
 def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
-    tar_exporter(tree, dest, root, subdir, compression='bz2',
-                 filtered=filtered, force_mtime=force_mtime)
+    """Export this tree to a new tar file.
+
+    `dest` will be created holding the contents of this tree; if it
+    already exists, it will be clobbered, like with "tar -c".
+    """
+    if dest == '-':
+        # XXX: If no root is given, the output tarball will contain files
+        # named '-/foo'; perhaps this is the most reasonable thing.
+        ball = tarfile.open(None, 'w|bz2', sys.stdout)
+    else:
+        if root is None:
+            root = export.get_root_name(dest)
+
+        # tarfile.open goes on to do 'os.getcwd() + dest' for opening
+        # the tar file. With dest being unicode, this throws UnicodeDecodeError
+        # unless we encode dest before passing it on. This works around
+        # upstream python bug http://bugs.python.org/issue8396
+        # (fixed in Python 2.6.5 and 2.7b1)
+        ball = tarfile.open(dest.encode(osutils._fs_enc), 'w:bz2')
+    export_tarball(tree, ball, root, subdir, filtered=filtered,
+                   force_mtime=force_mtime)
+    ball.close()
+
 
 def plain_tar_exporter(tree, dest, root, subdir, compression=None,
                        filtered=False, force_mtime=None):
-    tar_exporter(tree, dest, root, subdir, compression='',
-                 filtered=filtered, force_mtime=force_mtime)
+    """Export this tree to a new tar file.
+
+    `dest` will be created holding the contents of this tree; if it
+    already exists, it will be clobbered, like with "tar -c".
+    """
+    if dest == '-':
+        # XXX: If no root is given, the output tarball will contain files
+        # named '-/foo'; perhaps this is the most reasonable thing.
+        ball = tarfile.open(None, 'w|', sys.stdout)
+    else:
+        if root is None:
+            root = export.get_root_name(dest)
+
+        # tarfile.open goes on to do 'os.getcwd() + dest' for opening
+        # the tar file. With dest being unicode, this throws UnicodeDecodeError
+        # unless we encode dest before passing it on. This works around
+        # upstream python bug http://bugs.python.org/issue8396
+        # (fixed in Python 2.6.5 and 2.7b1)
+        ball = tarfile.open(dest.encode(osutils._fs_enc), 'w:')
+    export_tarball(tree, ball, root, subdir, filtered=filtered,
+                   force_mtime=force_mtime)
+    ball.close()

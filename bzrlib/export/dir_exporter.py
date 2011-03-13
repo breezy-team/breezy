@@ -25,7 +25,6 @@ from bzrlib.filters import (
     ContentFilterContext,
     filtered_output_bytes,
     )
-from bzrlib.trace import mutter
 
 
 def dir_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
@@ -37,7 +36,6 @@ def dir_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     :note: If the export fails, the destination directory will be
            left in an incompletely exported state: export is not transactional.
     """
-    mutter('export version %r', tree)
     try:
         os.mkdir(dest)
     except OSError, e:

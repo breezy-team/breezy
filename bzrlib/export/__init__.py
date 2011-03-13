@@ -24,6 +24,7 @@ import time
 from bzrlib import (
     errors,
     pyutils,
+    trace,
     )
 
 # Maps format name => export function
@@ -109,6 +110,8 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
         force_mtime = time.time()
     else:
         force_mtime = None
+
+    trace.mutter('export version %r', tree)
 
     tree.lock_read()
     try:
