@@ -121,6 +121,7 @@ class GitCommitBuilder(CommitBuilder):
                 else:
                     blob.data = basis_tree.get_file_text(entry.file_id)
                 self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
+        self.new_inventory = None
 
     def finish_inventory(self):
         # eliminate blobs that were removed
