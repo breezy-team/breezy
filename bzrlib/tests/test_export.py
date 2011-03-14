@@ -224,7 +224,7 @@ class TarExporterTests(tests.TestCaseWithTransport):
         ball = tarfile.open(None, "w|", target)
         wt.lock_read()
         try:
-            export_tarball(wt, ball, "bar", subdir=None)
+            export_tarball(wt, ball, "bar")
         finally:
             wt.unlock()
         self.assertEquals(["bar/a"], ball.getnames())
@@ -238,13 +238,12 @@ class ZipExporterTests(tests.TestCaseWithTransport):
         self.build_tree_contents([('har', 'foo')])
         tree.add('har')
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
-        tree.commit('setup', timestamp=315532800)
+        tree.commit('setup', timestamp=315532800, timezone=0)
         export.export(tree.basis_tree(), 'test.zip', format='zip',
             per_file_timestamps=True)
         zfile = zipfile.ZipFile('test.zip')
         info = zfile.getinfo("test/har")
         self.assertEquals((1980, 1, 1, 1, 0, 0), info.date_time)
-
 
 
 class RootNameTests(tests.TestCase):
