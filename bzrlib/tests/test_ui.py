@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 """Tests for the bzrlib ui
 """
 
-import os
 import time
 
 from StringIO import StringIO
@@ -26,14 +25,9 @@ from testtools.matchers import *
 
 from bzrlib import (
     config,
-    errors,
     remote,
-    repository,
     tests,
     ui as _mod_ui,
-    )
-from bzrlib.symbol_versioning import (
-    deprecated_in,
     )
 from bzrlib.tests import (
     fixtures,

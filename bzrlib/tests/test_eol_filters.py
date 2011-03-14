@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 
 from bzrlib import (
     errors,
-    rules,
     )
 from bzrlib.filters import _get_filter_stack_for
 from bzrlib.filters.eol import (

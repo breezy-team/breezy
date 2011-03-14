@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -514,7 +514,7 @@ class PathConflict(Conflict):
         # Adjust the path for the retained file id
         tid = tt.trans_id_file_id(file_id)
         parent_tid = tt.get_tree_parent(tid)
-        tt.adjust_path(path, parent_tid, tid)
+        tt.adjust_path(osutils.basename(path), parent_tid, tid)
         tt.apply()
 
     def _revision_tree(self, tree, revid):
@@ -600,7 +600,7 @@ class ContentsConflict(PathConflict):
         # 'item.suffix_to_remove' has been deleted, this is a no-op)
         this_tid = tt.trans_id_file_id(self.file_id)
         parent_tid = tt.get_tree_parent(this_tid)
-        tt.adjust_path(self.path, parent_tid, this_tid)
+        tt.adjust_path(osutils.basename(self.path), parent_tid, this_tid)
         tt.apply()
 
     def action_take_this(self, tree):
@@ -644,8 +644,9 @@ class TextConflict(Conflict):
         winner_tid = tt.trans_id_tree_path(winner_path)
         winner_parent_tid = tt.get_tree_parent(winner_tid)
         # Switch the paths to preserve the content
-        tt.adjust_path(self.path, winner_parent_tid, winner_tid)
-        tt.adjust_path(winner_path, item_parent_tid, item_tid)
+        tt.adjust_path(osutils.basename(self.path),
+                       winner_parent_tid, winner_tid)
+        tt.adjust_path(osutils.basename(winner_path), item_parent_tid, item_tid)
         # Associate the file_id to the right content
         tt.unversion_file(item_tid)
         tt.version_file(self.file_id, winner_tid)
@@ -755,18 +756,15 @@ class ParentLoop(HandledPathConflict):
         pass
 
     def action_take_other(self, tree):
-        # FIXME: We shouldn't have to manipulate so many paths here (and there
-        # is probably a bug or two...)
-        base_path = osutils.basename(self.path)
-        conflict_base_path = osutils.basename(self.conflict_path)
         tt = transform.TreeTransform(tree)
         try:
             p_tid = tt.trans_id_file_id(self.file_id)
             parent_tid = tt.get_tree_parent(p_tid)
             cp_tid = tt.trans_id_file_id(self.conflict_file_id)
             cparent_tid = tt.get_tree_parent(cp_tid)
-            tt.adjust_path(base_path, cparent_tid, cp_tid)
-            tt.adjust_path(conflict_base_path, parent_tid, p_tid)
+            tt.adjust_path(osutils.basename(self.path), cparent_tid, cp_tid)
+            tt.adjust_path(osutils.basename(self.conflict_path),
+                           parent_tid, p_tid)
             tt.apply()
         finally:
             tt.finalize()

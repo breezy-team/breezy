@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -480,7 +480,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
 
     def test_create_open_reference(self):
         bzrdirformat = bzrdir.BzrDirMetaFormat1()
-        t = transport.get_transport(self.get_url('.'))
+        t = self.get_transport()
         t.mkdir('repo')
         dir = bzrdirformat.initialize(self.get_url('repo'))
         dir.create_repository()

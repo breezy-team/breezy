@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,13 +18,12 @@
 import os
 
 from bzrlib import (
-    branchbuilder,
     bzrdir,
     conflicts,
     errors,
     option,
+    osutils,
     tests,
-    workingtree,
     )
 from bzrlib.tests import (
     script,
@@ -378,17 +377,26 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
 
     scenarios = mirror_scenarios(
         [
-            # File modified/deleted
+            # File modified on both sides
             (dict(_base_actions='create_file',
                   _path='file', _file_id='file-id'),
              ('filed_modified_A',
               dict(actions='modify_file_A', check='file_has_content_A')),
              ('file_modified_B',
               dict(actions='modify_file_B', check='file_has_content_B')),),
+            # File modified on both sides in dir
+            (dict(_base_actions='create_file_in_dir',
+                  _path='dir/file', _file_id='file-id'),
+             ('filed_modified_A_in_dir',
+              dict(actions='modify_file_A',
+                   check='file_in_dir_has_content_A')),
+             ('file_modified_B',
+              dict(actions='modify_file_B',
+                   check='file_in_dir_has_content_B')),),
             ])
 
-    def do_create_file(self):
-        return [('add', ('file', 'file-id', 'file', 'trunk content\n'))]
+    def do_create_file(self, path='file'):
+        return [('add', (path, 'file-id', 'file', 'trunk content\n'))]
 
     def do_modify_file_A(self):
         return [('modify', ('file-id', 'trunk content\nfeature A\n'))]
@@ -396,11 +404,23 @@ class TestResolveTextConflicts(TestParametrizedResolveConflicts):
     def do_modify_file_B(self):
         return [('modify', ('file-id', 'trunk content\nfeature B\n'))]
 
-    def check_file_has_content_A(self):
-        self.assertFileEqual('trunk content\nfeature A\n', 'branch/file')
+    def check_file_has_content_A(self, path='file'):
+        self.assertFileEqual('trunk content\nfeature A\n',
+                             osutils.pathjoin('branch', path))
 
-    def check_file_has_content_B(self):
-        self.assertFileEqual('trunk content\nfeature B\n', 'branch/file')
+    def check_file_has_content_B(self, path='file'):
+        self.assertFileEqual('trunk content\nfeature B\n',
+                             osutils.pathjoin('branch', path))
+
+    def do_create_file_in_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', '')),
+            ] + self.do_create_file('dir/file')
+
+    def check_file_in_dir_has_content_A(self):
+        self.check_file_has_content_A('dir/file')
+
+    def check_file_in_dir_has_content_B(self):
+        self.check_file_has_content_B('dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         return self._path
@@ -429,6 +449,15 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
               dict(actions='modify_file', check='file_has_more_content')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist')),),
+            # File modified/deleted in dir
+            (dict(_base_actions='create_file_in_dir',
+                  _path='dir/file', _file_id='file-id'),
+             ('file_modified_in_dir',
+              dict(actions='modify_file_in_dir',
+                   check='file_in_dir_has_more_content')),
+             ('file_deleted_in_dir',
+              dict(actions='delete_file',
+                   check='file_in_dir_doesnt_exist')),),
             ])
 
     def do_create_file(self):
@@ -445,6 +474,19 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
 
     def check_file_doesnt_exist(self):
         self.failIfExists('branch/file')
+
+    def do_create_file_in_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', '')),
+                ('add', ('dir/file', 'file-id', 'file', 'trunk content\n'))]
+
+    def do_modify_file_in_dir(self):
+        return [('modify', ('file-id', 'trunk content\nmore content\n'))]
+
+    def check_file_in_dir_has_more_content(self):
+        self.assertFileEqual('trunk content\nmore content\n', 'branch/dir/file')
+
+    def check_file_in_dir_doesnt_exist(self):
+        self.failIfExists('branch/dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         return self._path
@@ -474,6 +516,16 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
                    path='new-file', file_id='file-id')),
              ('file_deleted',
               dict(actions='delete_file', check='file_doesnt_exist',
+                   # PathConflicts deletion handling requires a special
+                   # hard-coded value
+                   path='<deleted>', file_id='file-id')),),
+            # File renamed/deleted in dir
+            (dict(_base_actions='create_file_in_dir'),
+             ('file_renamed_in_dir',
+              dict(actions='rename_file_in_dir', check='file_in_dir_renamed',
+                   path='dir/new-file', file_id='file-id')),
+             ('file_deleted',
+              dict(actions='delete_file', check='file_in_dir_doesnt_exist',
                    # PathConflicts deletion handling requires a special
                    # hard-coded value
                    path='<deleted>', file_id='file-id')),),
@@ -550,6 +602,20 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
 
     def check_dir_doesnt_exist(self):
         self.failIfExists('branch/dir')
+
+    def do_create_file_in_dir(self):
+        return [('add', ('dir', 'dir-id', 'directory', '')),
+                ('add', ('dir/file', 'file-id', 'file', 'trunk content\n'))]
+
+    def do_rename_file_in_dir(self):
+        return [('rename', ('dir/file', 'dir/new-file'))]
+
+    def check_file_in_dir_renamed(self):
+        self.failIfExists('branch/dir/file')
+        self.failUnlessExists('branch/dir/new-file')
+
+    def check_file_in_dir_doesnt_exist(self):
+        self.failIfExists('branch/dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         tpath = self._this['path']

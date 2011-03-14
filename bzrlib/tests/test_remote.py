@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,8 +61,6 @@ from bzrlib.smart import medium
 from bzrlib.smart.client import _SmartClient
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests import (
-    condition_isinstance,
-    multiply_tests,
     test_server,
     )
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
@@ -71,7 +69,7 @@ from bzrlib.transport.remote import (
     RemoteTransport,
     RemoteSSHTransport,
     RemoteTCPTransport,
-)
+    )
 
 
 load_tests = load_tests_apply_scenarios
@@ -717,6 +715,34 @@ class TestBzrDirCreateBranch(TestRemote):
         a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
             _client=client)
         branch = a_bzrdir.create_branch()
+        # We should have got a remote branch
+        self.assertIsInstance(branch, remote.RemoteBranch)
+        # its format should have the settings from the response
+        format = branch._format
+        self.assertEqual(network_name, format.network_name())
+
+    def test_already_open_repo_and_reused_medium(self):
+        """Bug 726584: create_branch(..., repository=repo) should work
+        regardless of what the smart medium's base URL is.
+        """
+        self.transport_server = test_server.SmartTCPServer_for_testing
+        transport = self.get_transport('.')
+        repo = self.make_repository('quack')
+        # Client's medium rooted a transport root (not at the bzrdir)
+        client = FakeClient(transport.base)
+        transport = transport.clone('quack')
+        reference_bzrdir_format = bzrdir.format_registry.get('default')()
+        reference_format = reference_bzrdir_format.get_branch_format()
+        network_name = reference_format.network_name()
+        reference_repo_fmt = reference_bzrdir_format.repository_format
+        reference_repo_name = reference_repo_fmt.network_name()
+        client.add_expected_call(
+            'BzrDir.create_branch', ('extra/quack/', network_name),
+            'success', ('ok', network_name, '', 'no', 'no', 'yes',
+            reference_repo_name))
+        a_bzrdir = RemoteBzrDir(transport, remote.RemoteBzrDirFormat(),
+            _client=client)
+        branch = a_bzrdir.create_branch(repository=repo)
         # We should have got a remote branch
         self.assertIsInstance(branch, remote.RemoteBranch)
         # its format should have the settings from the response

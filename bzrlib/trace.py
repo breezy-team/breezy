@@ -123,14 +123,12 @@ def note(*args, **kwargs):
     # FIXME: clearing the ui and then going through the abstract logging
     # framework is whack; we should probably have a logging Handler that
     # deals with terminal output if needed.
-    import bzrlib.ui
-    bzrlib.ui.ui_factory.clear_term()
+    ui.ui_factory.clear_term()
     _bzr_logger.info(*args, **kwargs)
 
 
 def warning(*args, **kwargs):
-    import bzrlib.ui
-    bzrlib.ui.ui_factory.clear_term()
+    ui.ui_factory.clear_term()
     _bzr_logger.warning(*args, **kwargs)
 
 

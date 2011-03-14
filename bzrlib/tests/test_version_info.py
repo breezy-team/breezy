@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@ import sys
 from bzrlib import (
     errors,
     registry,
-    symbol_versioning,
     tests,
     version_info_formats,
     )
@@ -193,6 +192,7 @@ class TestVersionInfo(TestCaseWithTransport):
         val = sio.getvalue()
         self.assertContainsRe(val, "'revision_id': None")
         self.assertContainsRe(val, "'revno': 0")
+        self.assertNotContainsString(val, '\n\n\n\n')
 
     def test_python_version(self):
         wt = self.create_branch()

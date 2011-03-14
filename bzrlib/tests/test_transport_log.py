@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,8 +17,6 @@
 
 """Tests for log+ transport decorator."""
 
-
-import types
 
 from bzrlib import transport
 from bzrlib.tests import TestCaseWithMemoryTransport
