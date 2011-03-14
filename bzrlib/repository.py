@@ -94,6 +94,8 @@ class CommitBuilder(object):
     record_root_entry = True
     # the default CommitBuilder does not manage trees whose root is versioned.
     _versioned_root = False
+    # this commit builder supports the record_entry_contents interface
+    supports_record_entry_contents = True
 
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
