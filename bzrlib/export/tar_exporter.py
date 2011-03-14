@@ -22,7 +22,11 @@ import sys
 import tarfile
 import time
 
-from bzrlib import export, osutils
+from bzrlib import (
+    errors,
+    export,
+    osutils,
+    )
 from bzrlib.export import _export_iter_entries
 from bzrlib.filters import (
     ContentFilterContext,
@@ -93,7 +97,7 @@ def tar_exporter(tree, dest, root, subdir, compression=None, filtered=False,
             item.linkname = ie.symlink_target
             fileobj = None
         else:
-            raise BzrError("don't know how to export {%s} of kind %r" %
+            raise errors.BzrError("don't know how to export {%s} of kind %r" %
                            (ie.file_id, ie.kind))
         ball.addfile(item, fileobj)
     ball.close()
