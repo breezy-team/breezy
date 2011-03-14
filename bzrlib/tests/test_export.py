@@ -155,6 +155,19 @@ class TarExporterTests(tests.TestCaseWithTransport):
         tf = tarfile.open(fileobj=lzma.LZMAFile('target.tar.xz'))
         self.assertEquals(["target/a"], tf.getnames())
 
+    def test_lzma(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1")
+        try:
+            export.export(wt, 'target.tar.lzma', format="tlzma")
+        except errors.DependencyNotPresent:
+            raise tests.TestSkipped("lzma module not available")
+        import lzma
+        tf = tarfile.open(fileobj=lzma.LZMAFile('target.tar.lzma'))
+        self.assertEquals(["target/a"], tf.getnames())
+
     def test_tgz(self):
         wt = self.make_branch_and_tree('.')
         self.build_tree(['a'])

@@ -194,6 +194,7 @@ register_lazy_exporter('dir', [], 'bzrlib.export.dir_exporter', 'dir_exporter')
 register_lazy_exporter('tar', ['.tar'], 'bzrlib.export.tar_exporter', 'plain_tar_exporter')
 register_lazy_exporter('tgz', ['.tar.gz', '.tgz'], 'bzrlib.export.tar_exporter', 'tgz_exporter')
 register_lazy_exporter('tbz2', ['.tar.bz2', '.tbz2'], 'bzrlib.export.tar_exporter', 'tbz_exporter')
-register_lazy_exporter('txz', ['.tar.xz'], 'bzrlib.export.tar_exporter', 'txz_exporter')
+register_lazy_exporter('tlzma', ['.tar.lzma'], 'bzrlib.export.tar_exporter', 'tar_lzma_exporter')
+register_lazy_exporter('txz', ['.tar.xz'], 'bzrlib.export.tar_exporter', 'tar_xz_exporter')
 register_lazy_exporter('zip', ['.zip'], 'bzrlib.export.zip_exporter', 'zip_exporter')
 

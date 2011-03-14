@@ -160,21 +160,29 @@ def plain_tar_exporter(tree, dest, root, subdir, compression=None,
     ball.close()
 
 
-def txz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
-    """Export this tree to a new .tar.xz file.
+def tar_xz_exporter(tree, dest, root, subdir, filtered=False,
+                    force_mtime=None):
+    return tar_lzma_exporter(tree, dest, root, subdir, filtered=filtered,
+        force_mtime=force_mtime, compression_format="xz")
+
+
+def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, compression_format="lzma"):
+    """Export this tree to a new .tar.lzma file.
 
     `dest` will be created holding the contents of this tree; if it
     already exists, it will be clobbered, like with "tar -c".
     """
     if dest == '-':
-        raise errors.BzrError("Writing to stdout not supported for .tar.xz")
+        raise errors.BzrError("Writing to stdout not supported for .tar.lzma")
 
     try:
         import lzma
     except ImportError, e:
         raise errors.DependencyNotPresent('lzma', e)
 
-    stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w')
+    assert compression_format in ("lzma", "xz")
+    stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w',
+            options={"format": compression_format})
     ball = tarfile.open(None, 'w:', fileobj=stream)
     export_tarball(tree, ball, root, subdir, filtered=filtered,
                    force_mtime=force_mtime)
