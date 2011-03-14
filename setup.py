@@ -37,7 +37,8 @@ if __name__ == '__main__':
           url="http://jameswestby.net/bzr/bzr-builddeb/",
           packages=['bzrlib.plugins.builddeb',
                     'bzrlib.plugins.builddeb.tests',
-                    'bzrlib.plugins.builddeb.tests.blackbox'],
+                    'bzrlib.plugins.builddeb.tests.blackbox',
+                    'bzrlib.plugins.builddeb.upstream'],
           package_dir={'bzrlib.plugins.builddeb': '.'},
           scripts=['bzr-buildpackage'],
           data_files=[('share/man/man1', ['bzr-buildpackage.1'])])
