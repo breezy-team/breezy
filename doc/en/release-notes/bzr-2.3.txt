@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Fix "Unprintable exception" error when a RetryWithNewPacks error is
+  displayed.  (Andrew Bennetts)
+
 Documentation
 *************
 

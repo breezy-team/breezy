@@ -712,6 +712,14 @@ class TestErrors(TestCaseWithTransport):
             'Please use `bzr unbind` to fix.')
         self.assertEqualDiff(msg, str(error))
 
+    def test_retry_with_new_packs(self):
+        fake_exc_info = ('{exc type}', '{exc value}', '{exc traceback}')
+        error = errors.RetryWithNewPacks(
+            '{context}', reload_occurred=False, exc_info=fake_exc_info)
+        self.assertEqual(
+            'Pack files have changed, reload and retry. context: '
+            '{context} {exc value}', str(error))
+
 
 class PassThroughError(errors.BzrError):
 
