@@ -21,7 +21,6 @@ import os
 import StringIO
 import sys
 import tarfile
-import time
 
 from bzrlib import (
     errors,
@@ -104,7 +103,7 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     elif tree.get_root_id() is not None:
         root_mtime = tree.get_file_mtime(tree.get_root_id())
     else:
-        root_mtime = time.time()
+        root_mtime = None
     if dest == '-':
         basename = None
         stream = sys.stdout
