@@ -95,19 +95,12 @@ class EntryConflict(Exception):
     pass
 
 
-def merge_entries_old(base_entries, this_entries, other_entries):
-    # Determine which entries have been added by other (compared to base)
-    base_entries = frozenset(base_entries)
-    new_in_other = [
-        entry for entry in other_entries if entry not in base_entries]
-    # Prepend them to the entries in this
-    result_entries = new_in_other + this_entries
-    return result_entries
-
-
 def default_guess_edits(new_entries, deleted_entries, entry_as_str=''.join):
-    # This algorithm does O(N^2 * logN) SequenceMatcher.ratio() calls, which is
-    # pretty bad, but it shouldn't be used very often.
+    """Default implementation of guess_edits param of merge_entries.
+
+    This algorithm does O(N^2 * logN) SequenceMatcher.ratio() calls, which is
+    pretty bad, but it shouldn't be used very often.
+    """
     deleted_entries_as_strs = [
         entry_as_str(entry) for entry in deleted_entries]
     new_entries_as_strs = [
@@ -142,10 +135,10 @@ def default_guess_edits(new_entries, deleted_entries, entry_as_str=''.join):
     return result_new, result_deleted, result_edits
 
 
-def merge_entries_new(base_entries, this_entries, other_entries,
+def merge_entries(base_entries, this_entries, other_entries,
         guess_edits=default_guess_edits):
-    m3 = Merge3(base_entries, this_entries, other_entries,
-        allow_objects=True)
+    """Merge changelog given base, this, and other versions."""
+    m3 = Merge3(base_entries, this_entries, other_entries, allow_objects=True)
     result_entries = []
     at_top = True
     for group in m3.merge_groups():
@@ -197,6 +190,3 @@ def merge_entries_new(base_entries, this_entries, other_entries,
             result_entries.extend(lines)
         at_top = False
     return result_entries
-
-
-merge_entries = merge_entries_new
