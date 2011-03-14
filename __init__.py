@@ -31,39 +31,29 @@ separated by commas.  (This is unlike the news_merge plugin, which matches
 paths.)  e.g. the above config examples would match both
 ``src/foolib/ChangeLog`` and ``docs/ChangeLog``.
 
-The algorithm this implements is very simple: it emits all the entries in OTHER
-that are new compared to the common base version, followed by all the entries
-in THIS.  The effect of this is to float new entries from the file being merged
-in to the top of the ChangeLog.
+The algorithm used to merge the changes can be summarised as:
 
-    e.g. Given a changelog in THIS containing::
+ * new entries added to the top of OTHER are emitted first
+ * all other additions, deletions and edits from THIS and OTHER are preserved
+ * edits (e.g. to fix typos) at the top of OTHER are hard to distinguish from
+   adding and deleting independent entries; the algorithm tries to guess which
+   based on how similar the old and new entries are.
 
-      NEW-1
-      OLD-2
-      OLD-1
+Caveats
+-------
 
-    and a changelog in OTHER containing::
+Most changes can be merged, but conflicts are possible if the plugin finds
+edits at the top of OTHER to entries that have been deleted (or also edited) by
+THIS.  In that case the plugin gives up and bzr's default merge logic will be
+used.
 
-      NEW-2
-      OLD-1
+No effort is made to deduplicate entries added by both sides.
 
-    it will merge as::
-
-      NEW-2
-      NEW-1
-      OLD-2
-      OLD-1
-
-This has some limitations:
-
- * it makes no effort to detect deletions or modifications to existing entries,
-   and so never conflicts.
- * it makes no effort to deduplicate entries added by both sides.
- * the results depend on the choice of the 'base' version, so it might give
-   strange results if there is a criss-cross merge.
+The results depend on the choice of the 'base' version, so it might give
+strange results if there is a criss-cross merge.
 """
 
-version_info = (0, 0, 1, 'beta', 1)
+version_info = (0, 2, 0, 'beta', 1)
 
 # Put most of the code in a separate module that we lazy-import to keep the
 # overhead of this plugin as minimal as possible.
