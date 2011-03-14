@@ -21,6 +21,7 @@ import os
 import StringIO
 import sys
 import tarfile
+import time
 
 from bzrlib import (
     errors,
@@ -93,11 +94,17 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     already exists, it will be clobbered, like with "tar -c".
     """
     import gzip
-    if force_mtime is None and tree.get_root_id():
-        # FIXME: Use tree.get_revision_id()'s timestamp ?
+    if force_mtime is not None:
+        root_mtime = force_mtime
+    elif (getattr(tree, "repository", None) and
+          getattr(tree, "get_revision_id", None)):
+        # If this is a revision tree, use the revisions' timestamp
+        rev = tree.repository.get_revision(tree.get_revision_id())
+        root_mtime = rev.timestamp
+    elif tree.get_root_id() is not None:
         root_mtime = tree.get_file_mtime(tree.get_root_id())
     else:
-        root_mtime = force_mtime
+        root_mtime = time.time()
     if dest == '-':
         # XXX: If no root is given, the output tarball will contain files
         # named '-/foo'; perhaps this is the most reasonable thing.
