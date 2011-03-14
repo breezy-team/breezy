@@ -106,15 +106,19 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     else:
         root_mtime = time.time()
     if dest == '-':
-        stream = gzip.GzipFile(None, mode='w', mtime=root_mtime,
-            fileobj=sys.stdout)
+        basename = None
+        stream = sys.stdout
     else:
         stream = open(dest.encode(osutils._fs_enc), 'w')
         # gzip file is used with an explicit fileobj so that
         # the basename can be stored in the gzip file rather than
         # dest. (bug 102234)
-        stream = gzip.GzipFile(os.path.basename(dest), 'w',
-            mtime=root_mtime, fileobj=stream)
+        basename = os.path.basename(dest)
+    try:
+        stream = gzip.GzipFile(basename, 'w', fileobj=stream, mtime=root_mtime)
+    except TypeError:
+        # Python < 2.7 doesn't support the mtime argument
+        stream = gzip.GzipFile(basename, 'w', fileobj=stream)
     ball = tarfile.open(None, 'w|', fileobj=stream)
     export_tarball(tree, ball, root, subdir, filtered=filtered,
                    force_mtime=force_mtime)
