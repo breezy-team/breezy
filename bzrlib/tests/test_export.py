@@ -138,12 +138,6 @@ class TestDirExport(tests.TestCaseWithTransport):
 
 class TarExporterTests(tests.TestCaseWithTransport):
 
-    def test_empty(self):
-        wt = self.make_branch_and_tree('.')
-        export.export(wt, 'target.tar', format="tar")
-        tf = tarfile.open('target.tar')
-        self.assertEquals([], tf.getnames())
-
     def test_xz(self):
         self.requireFeature(features.lzma)
         import lzma
@@ -238,12 +232,13 @@ class ZipExporterTests(tests.TestCaseWithTransport):
         self.build_tree_contents([('har', 'foo')])
         tree.add('har')
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
-        tree.commit('setup', timestamp=315532800)
+        timestamp = 347151600
+        tree.commit('setup', timestamp=timestamp)
         export.export(tree.basis_tree(), 'test.zip', format='zip',
             per_file_timestamps=True)
         zfile = zipfile.ZipFile('test.zip')
         info = zfile.getinfo("test/har")
-        self.assertEquals((1980, 1, 1, 1, 0, 0), info.date_time)
+        self.assertEquals(time.localtime(timestamp)[:6], info.date_time)
 
 
 class RootNameTests(tests.TestCase):
