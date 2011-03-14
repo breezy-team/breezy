@@ -1,4 +1,4 @@
-bzr-builddeb (2.7.2) UNRELEASED; urgency=low
+bzr-builddeb (2.7.2) unstable; urgency=high
 
   [ Andrew Mitchell ]
   * Add upstream/ directory to setup.py. Closes: #618380. LP: #735147
