@@ -124,26 +124,11 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
 def get_root_name(dest):
     """Get just the root name for an export.
 
-    >>> get_root_name('../mytest.tar')
-    'mytest'
-    >>> get_root_name('mytar.tar')
-    'mytar'
-    >>> get_root_name('mytar.tar.bz2')
-    'mytar'
-    >>> get_root_name('tar.tar.tar.tgz')
-    'tar.tar.tar'
-    >>> get_root_name('bzr-0.0.5.tar.gz')
-    'bzr-0.0.5'
-    >>> get_root_name('bzr-0.0.5.zip')
-    'bzr-0.0.5'
-    >>> get_root_name('bzr-0.0.5')
-    'bzr-0.0.5'
-    >>> get_root_name('a/long/path/mytar.tgz')
-    'mytar'
-    >>> get_root_name('../parent/../dir/other.tbz2')
-    'other'
     """
     global _exporter_extensions
+    if dest == '-':
+        # Exporting to -/foo doesn't make sense so use relative paths.
+        return ''
     dest = os.path.basename(dest)
     for ext in _exporter_extensions:
         if dest.endswith(ext):

@@ -27,6 +27,7 @@ from bzrlib import (
     export,
     tests,
     )
+from bzrlib.export import get_root_name
 from bzrlib.export.tar_exporter import export_tarball
 
 
@@ -246,3 +247,20 @@ class ZipExporterTests(tests.TestCaseWithTransport):
         zfile = zipfile.ZipFile('test.zip')
         info = zfile.getinfo("test/har")
         self.assertEquals((1980, 1, 1, 1, 0, 0), info.date_time)
+
+
+
+class RootNameTests(tests.TestCase):
+
+    def test_root_name(self):
+        self.assertEquals('mytest', get_root_name('../mytest.tar'))
+        self.assertEquals('mytar', get_root_name('mytar.tar'))
+        self.assertEquals('mytar', get_root_name('mytar.tar.bz2'))
+        self.assertEquals('tar.tar.tar', get_root_name('tar.tar.tar.tgz'))
+        self.assertEquals('bzr-0.0.5', get_root_name('bzr-0.0.5.tar.gz'))
+        self.assertEquals('bzr-0.0.5', get_root_name('bzr-0.0.5.zip'))
+        self.assertEquals('bzr-0.0.5', get_root_name('bzr-0.0.5'))
+        self.assertEquals('mytar', get_root_name('a/long/path/mytar.tgz'))
+        self.assertEquals('other',
+            get_root_name('../parent/../dir/other.tbz2'))
+        self.assertEquals('', get_root_name('-'))

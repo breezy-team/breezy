@@ -106,8 +106,6 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
     else:
         root_mtime = time.time()
     if dest == '-':
-        # XXX: If no root is given, the output tarball will contain files
-        # named '-/foo'; perhaps this is the most reasonable thing.
         stream = gzip.GzipFile(None, mode='w', mtime=root_mtime,
             fileobj=sys.stdout)
     else:

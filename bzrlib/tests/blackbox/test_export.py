@@ -125,7 +125,7 @@ class TestExport(TestCaseWithTransport):
         os.chdir('zip')
         contents = self.run_bzr('export --format=zip -')[0]
         zfile = zipfile.ZipFile(StringIO(contents))
-        self.assertEqual(['-/a'], sorted(zfile.namelist()))
+        self.assertEqual(['a'], sorted(zfile.namelist()))
 
     def test_tgz_export_stdout(self):
         tree = self.make_branch_and_tree('z')
@@ -135,7 +135,7 @@ class TestExport(TestCaseWithTransport):
         os.chdir('z')
         contents = self.run_bzr('export --format=tgz -')[0]
         ball = tarfile.open(mode='r|gz', fileobj=StringIO(contents))
-        self.assertEqual(['-/a'], ball.getnames())
+        self.assertEqual(['a'], ball.getnames())
 
     def test_tbz2_export_stdout(self):
         tree = self.make_branch_and_tree('z')
@@ -145,7 +145,7 @@ class TestExport(TestCaseWithTransport):
         os.chdir('z')
         contents = self.run_bzr('export --format=tbz2 -')[0]
         ball = tarfile.open(mode='r|bz2', fileobj=StringIO(contents))
-        self.assertEqual(['-/a'], ball.getnames())
+        self.assertEqual(['a'], ball.getnames())
 
     def test_zip_export_unicode(self):
         self.requireFeature(tests.UnicodeFilenameFeature)
