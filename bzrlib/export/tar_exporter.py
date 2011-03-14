@@ -164,7 +164,7 @@ def tar_xz_exporter(tree, dest, root, subdir, filtered=False,
         force_mtime=force_mtime, compression_format="xz")
 
 
-def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, compression_format="lzma"):
+def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None, compression_format="alone"):
     """Export this tree to a new .tar.lzma file.
 
     `dest` will be created holding the contents of this tree; if it
@@ -178,7 +178,6 @@ def tar_lzma_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None
     except ImportError, e:
         raise errors.DependencyNotPresent('lzma', e)
 
-    assert compression_format in ("lzma", "xz")
     stream = lzma.LZMAFile(dest.encode(osutils._fs_enc), 'w',
             options={"format": compression_format})
     ball = tarfile.open(None, 'w:', fileobj=stream)
