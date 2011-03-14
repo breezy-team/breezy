@@ -29,6 +29,7 @@ from bzrlib import (
     )
 from bzrlib.export import get_root_name
 from bzrlib.export.tar_exporter import export_tarball
+from bzrlib.tests import features
 
 
 class TestDirExport(tests.TestCaseWithTransport):
@@ -144,28 +145,24 @@ class TarExporterTests(tests.TestCaseWithTransport):
         self.assertEquals([], tf.getnames())
 
     def test_xz(self):
+        self.requireFeature(features.lzma)
+        import lzma
         wt = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         wt.add(["a"])
         wt.commit("1")
-        try:
-            export.export(wt, 'target.tar.xz', format="txz")
-        except errors.DependencyNotPresent:
-            raise tests.TestSkipped("lzma module not available")
-        import lzma
+        export.export(wt, 'target.tar.xz', format="txz")
         tf = tarfile.open(fileobj=lzma.LZMAFile('target.tar.xz'))
         self.assertEquals(["target/a"], tf.getnames())
 
     def test_lzma(self):
+        self.requireFeature(features.lzma)
+        import lzma
         wt = self.make_branch_and_tree('.')
         self.build_tree(['a'])
         wt.add(["a"])
         wt.commit("1")
-        try:
-            export.export(wt, 'target.tar.lzma', format="tlzma")
-        except errors.DependencyNotPresent:
-            raise tests.TestSkipped("lzma module not available")
-        import lzma
+        export.export(wt, 'target.tar.lzma', format="tlzma")
         tf = tarfile.open(fileobj=lzma.LZMAFile('target.tar.lzma'))
         self.assertEquals(["target/a"], tf.getnames())
 
