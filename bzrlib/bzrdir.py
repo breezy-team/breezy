@@ -25,8 +25,6 @@ methods. To free any associated resources, simply stop referencing the
 objects returned.
 """
 
-# TODO: Move old formats into a plugin to make this file smaller.
-
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -58,10 +56,6 @@ from bzrlib.repofmt import pack_repo
 from bzrlib.transport import (
     do_catching_redirections,
     local,
-    )
-from bzrlib.weave import (
-    WeaveFile,
-    Weave,
     )
 """)
 
