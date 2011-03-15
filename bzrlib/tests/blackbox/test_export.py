@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ import zipfile
 
 from bzrlib import (
     export,
+    osutils,
     tests,
     )
 from bzrlib.tests import TestCaseWithTransport
@@ -38,8 +39,11 @@ class TestExport(TestCaseWithTransport):
 
     def test_tar_export(self):
         tree = self.make_branch_and_tree('tar')
-        self.build_tree(['tar/a'])
-        tree.add('a')
+        # On Windows, if we fail to set the binary bit, and a '\r' or '\n'
+        # ends up in the data stream, we will get corruption. Add a fair amount
+        # of random data, to help ensure there is at least one.
+        self.build_tree_contents([('tar/a', osutils.rand_chars(65536))])
+        tree.add(['a'])
         self.build_tree_contents([('tar/.bzrrules', '')])
         tree.add('.bzrrules')
         self.build_tree(['tar/.bzr-adir/', 'tar/.bzr-adir/afile'])
@@ -57,14 +61,16 @@ class TestExport(TestCaseWithTransport):
         ball = tarfile.open('test.tar.gz')
         # Make sure the tarball contains 'a', but does not contain
         # '.bzrignore'.
-        self.assertEqual(['test/a'], sorted(ball.getnames()))
+        self.assertEqual(['test/a'],
+                         sorted(ball.getnames()))
 
         if sys.version_info < (2, 5, 2) and sys.platform == 'darwin':
             raise tests.KnownFailure('python %r has a tar related bug, upgrade'
                                      % (sys.version_info,))
         out, err = self.run_bzr('export --format=tgz --root=test -')
         ball = tarfile.open('', fileobj=StringIO(out))
-        self.assertEqual(['test/a'], sorted(ball.getnames()))
+        self.assertEqual(['test/a'],
+                         sorted(ball.getnames()))
 
     def test_tar_export_unicode(self):
         self.requireFeature(tests.UnicodeFilenameFeature)
