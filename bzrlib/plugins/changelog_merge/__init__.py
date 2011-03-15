@@ -63,6 +63,8 @@ lazy_import(globals(), """
 from bzrlib.plugins.changelog_merge import changelog_merge as _mod_changelog_merge
 """)
 
+from bzrlib.merge import Merger
+
 
 def changelog_merge_hook(merger):
     """Merger.merge_file_content hook for GNU-format ChangeLog files."""
@@ -70,7 +72,6 @@ def changelog_merge_hook(merger):
 
 
 def install_hook():
-    from bzrlib.merge import Merger
     Merger.hooks.install_named_hook(
         'merge_file_content', changelog_merge_hook, 'GNU ChangeLog file merge')
 install_hook()
