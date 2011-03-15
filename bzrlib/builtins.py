@@ -2922,6 +2922,7 @@ class cmd_export(Command):
          zip                          .zip
       =================       =========================
     """
+    encoding = 'exact'
     takes_args = ['dest', 'branch_or_subdir?']
     takes_options = ['directory',
         Option('format',
