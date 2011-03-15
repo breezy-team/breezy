@@ -50,8 +50,22 @@ Improvements
 
 * Branching, merging and pulling a branch now copies revisions named in
   tags, not just the tag metadata.  (Andrew Bennetts, #309682)
-  
-* ``bzr cat-revision`` no longer requires a working tree. (Jelmer Vernooij, #704405)
+
+* ``bzr cat-revision`` no longer requires a working tree.
+  (Jelmer Vernooij, #704405)
+
+* ``bzr export --per-file-timestamps`` for .tar.gz files will now
+  override the mtime for trees exported on Python 2.7 and later, which
+  expose the 'mtime' field in gzip files. This makes the output of
+  ``bzr export --per-file-timestamps`` for a particular tree
+  deterministic.  (Jelmer Vernooij, #711226)
+
+* ``bzr export --format=zip`` can now export to standard output,
+  like the other exporters can. (Jelmer Vernooij, #513752)
+
+* ``bzr export`` can now create ``.tar.xz`` and ``.tar.lzma`` files.
+  (Jelmer Vernooij, #551714)
+
 
 Bug Fixes
 *********
@@ -68,6 +82,9 @@ Bug Fixes
 
 * ``bzr export`` to zip files will now set a mode on directories.
   (Jelmer Vernooij, #207253)
+
+* ``bzr export`` to tgz files will only write out the basename of the
+  tarfile to the gzip file. (Jelmer Vernooij, #102234)
 
 * ``bzr push --overwrite`` with an older revision specified will now correctly
   roll back the target branch. (Jelmer Vernooij, #386576)
