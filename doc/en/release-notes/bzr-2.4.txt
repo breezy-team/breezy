@@ -20,12 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
-* The ``lp:`` directory service now supports Launchpad's QA staging.
-  (Jelmer Vernooij, #667483)
-
-* External merge tools can now be configured in bazaar.conf. See
-  ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
-
+* Added ``changelog_merge`` plugin for merging changes to ``Changelog`` files
+  in GNU format.  See ``bzr help changelog_merge`` for details.
+  (Andrew Bennetts)
+  
 * Configuration options can now use references to other options in the same
   file by enclosing them with curly brackets (``{other_opt}``). This makes it
   possible to use, for example,
@@ -33,6 +31,12 @@ New Features
   using a loom. During the beta period, the default behaviour is to disable
   this feature. It can be activated by declaring ``bzr.config.expand = True``
   in ``bazaar.conf``. (Vincent Ladeuil)
+
+* External merge tools can now be configured in bazaar.conf. See
+  ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
+
+* The ``lp:`` directory service now supports Launchpad's QA staging.
+  (Jelmer Vernooij, #667483)
 
 Improvements
 ************
