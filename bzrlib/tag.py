@@ -290,16 +290,17 @@ class BasicTags(_Tags):
         return result, conflicts
 
 
-def _merge_tags_if_possible(from_branch, to_branch, ignore_master=False):
+def _merge_tags_if_possible(from_branch, to_branch, ignore_master=False,
+        overwrite=False):
     # Try hard to support merge_to implementations that don't expect
     # 'ignore_master' (new in bzr 2.3).  First, if the flag isn't set then we
     # can safely avoid passing ignore_master at all.
     if not ignore_master:
-        from_branch.tags.merge_to(to_branch.tags)
-        return
+        return from_branch.tags.merge_to(to_branch.tags, overwrite=overwrite)
     # If the flag is set, try to pass it, but be ready to catch TypeError.
     try:
-        from_branch.tags.merge_to(to_branch.tags, ignore_master=ignore_master)
+        return from_branch.tags.merge_to(
+            to_branch.tags, ignore_master=ignore_master, overwrite=overwrite)
     except TypeError:
         # Probably this implementation of 'merge_to' is from a plugin that
         # doesn't expect the 'ignore_master' keyword argument (e.g. bzr-svn
@@ -312,7 +313,7 @@ def _merge_tags_if_possible(from_branch, to_branch, ignore_master=False):
                 "Tags.merge_to (of %r) that doesn't accept ignore_master kwarg"
                 % (from_branch.tags,),),
             DeprecationWarning)
-        from_branch.tags.merge_to(to_branch.tags)
+        return from_branch.tags.merge_to(to_branch.tags)
 
 
 def sort_natural(branch, tags):

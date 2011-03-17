@@ -35,6 +35,7 @@ from bzrlib import (
         revision as _mod_revision,
         rio,
         symbol_versioning,
+        tag,
         transport,
         tsort,
         ui,
@@ -96,6 +97,7 @@ class Branch(controldir.ControlComponent):
         self._last_revision_info_cache = None
         self._merge_sorted_revisions_cache = None
         self._open_hook()
+        self._suppress_merge_tags_to_master = False
         hooks = Branch.hooks['open']
         for hook in hooks:
             hook(self)
@@ -2671,8 +2673,9 @@ class BzrBranch(Branch, _RelockDebugMixin):
             target.update_revisions(self, stop_revision,
                 overwrite=overwrite, graph=graph)
         if self._push_should_merge_tags():
-            result.tag_conflicts = self.tags.merge_to(target.tags,
-                overwrite)
+            result.tag_conflicts = tag._merge_tags_if_possible(
+                self, target, overwrite=overwrite,
+                ignore_master=self._suppress_merge_tags_to_master)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
 
@@ -3526,8 +3529,12 @@ class GenericInterBranch(InterBranch):
                 # and push into the target branch from the source. Note that we
                 # push from the source branch again, because it's considered the
                 # highest bandwidth repository.
-                result = self.source._basic_push(self.target, overwrite,
-                    stop_revision)
+                self.source._suppress_merge_tags_to_master = True
+                try:
+                    result = self.source._basic_push(self.target, overwrite,
+                        stop_revision)
+                finally:
+                    self.source._suppress_merge_tags_to_master = False
                 result.master_branch = master_branch
                 result.local_branch = self.target
                 _run_hooks()

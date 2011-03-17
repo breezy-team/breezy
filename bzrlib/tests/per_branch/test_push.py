@@ -128,6 +128,8 @@ class TestPush(per_branch.TestCaseWithBranch):
         except errors.TagsNotSupported:
             raise tests.TestNotApplicable('Format does not support tags')
         other.push(bound)
+        self.assertEqual({'new-tag': 'some-rev'}, bound.tags.get_tag_dict())
+        self.assertEqual({'new-tag': 'some-rev'}, master.tags.get_tag_dict())
 
     def test_push_uses_read_lock(self):
         """Push should only need a read lock on the source side."""
