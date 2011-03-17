@@ -27,23 +27,18 @@ Specific tests for individual variations are in other places such as:
 
 from bzrlib import (
     errors,
-    osutils,
-    progress,
     tests,
     transform,
     )
-from bzrlib.tests.per_bzrdir.test_bzrdir import TestCaseWithBzrDir
+from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
 from bzrlib.tests.per_workingtree import (
     make_scenarios as wt_make_scenarios,
     make_scenario as wt_make_scenario,
     )
-from bzrlib.revision import NULL_REVISION
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.transform import TransformPreview
 from bzrlib.workingtree import (
-    WorkingTreeFormat,
-    WorkingTreeFormat3,
-    _legacy_formats,
+    format_registry,
     )
 from bzrlib.workingtree_4 import (
     DirStateRevisionTree,
@@ -98,7 +93,7 @@ class TestTreeImplementationSupport(tests.TestCaseWithTransport):
         self.assertIsInstance(tree, RevisionTree)
 
 
-class TestCaseWithTree(TestCaseWithBzrDir):
+class TestCaseWithTree(TestCaseWithControlDir):
 
     def make_branch_and_tree(self, relpath):
         made_control = self.make_bzrdir(relpath, format=
@@ -337,7 +332,7 @@ def make_scenarios(transport_server, transport_readonly_server, formats):
         # for working tree format tests, preserve the tree
         scenario[1]["_workingtree_to_test_tree"] = return_parameter
     # add RevisionTree scenario
-    workingtree_format = WorkingTreeFormat._default_format
+    workingtree_format = format_registry.get_default()
     scenarios.append((RevisionTree.__name__,
         create_tree_scenario(transport_server, transport_readonly_server,
         workingtree_format, revision_tree_from_workingtree,)))
@@ -385,6 +380,7 @@ def load_tests(standard_tests, module, loader):
         'get_symlink_target',
         'inv',
         'iter_search_rules',
+        'is_executable',
         'list_files',
         'locking',
         'path_content_summary',
@@ -401,6 +397,6 @@ def load_tests(standard_tests, module, loader):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        WorkingTreeFormat._formats.values() + _legacy_formats)
+        format_registry._get_all())
     # add the tests for the sub modules
     return tests.multiply_tests(submod_tests, scenarios, standard_tests)

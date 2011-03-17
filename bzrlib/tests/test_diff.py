@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ from bzrlib import (
     )
 from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import features
+from bzrlib.tests.blackbox.test_diff import subst_dates
 
 
 class _AttribFeature(tests.Feature):
@@ -143,31 +144,22 @@ class TestDiff(tests.TestCase):
         self.check_patch(lines)
 
     def test_external_diff_binary_lang_c(self):
-        old_env = {}
         for lang in ('LANG', 'LC_ALL', 'LANGUAGE'):
-            old_env[lang] = osutils.set_or_unset_env(lang, 'C')
-        try:
-            lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
-            # Older versions of diffutils say "Binary files", newer
-            # versions just say "Files".
-            self.assertContainsRe(lines[0],
-                                  '(Binary f|F)iles old and new differ\n')
-            self.assertEquals(lines[1:], ['\n'])
-        finally:
-            for lang, old_val in old_env.iteritems():
-                osutils.set_or_unset_env(lang, old_val)
+            self.overrideEnv(lang, 'C')
+        lines = external_udiff_lines(['\x00foobar\n'], ['foo\x00bar\n'])
+        # Older versions of diffutils say "Binary files", newer
+        # versions just say "Files".
+        self.assertContainsRe(lines[0], '(Binary f|F)iles old and new differ\n')
+        self.assertEquals(lines[1:], ['\n'])
 
     def test_no_external_diff(self):
         """Check that NoDiff is raised when diff is not available"""
-        # Use os.environ['PATH'] to make sure no 'diff' command is available
-        orig_path = os.environ['PATH']
-        try:
-            os.environ['PATH'] = ''
-            self.assertRaises(errors.NoDiff, diff.external_diff,
-                              'old', ['boo\n'], 'new', ['goo\n'],
-                              StringIO(), diff_opts=['-u'])
-        finally:
-            os.environ['PATH'] = orig_path
+        # Make sure no 'diff' command is available
+        # XXX: Weird, using None instead of '' breaks the test -- vila 20101216
+        self.overrideEnv('PATH', '')
+        self.assertRaises(errors.NoDiff, diff.external_diff,
+                          'old', ['boo\n'], 'new', ['goo\n'],
+                          StringIO(), diff_opts=['-u'])
 
     def test_internal_diff_default(self):
         # Default internal diff encoding is utf8
@@ -521,7 +513,6 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertNotContainsRe(d, r"file 'e'")
         self.assertNotContainsRe(d, r"file 'f'")
 
-
     def test_binary_unicode_filenames(self):
         """Test that contents of files are *not* encoded in UTF-8 when there
         is a binary file in the diff.
@@ -579,6 +570,49 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         self.assertContainsRe(d, "=== added file 'add_%s'"%autf8)
         self.assertContainsRe(d, "=== modified file 'mod_%s'"%autf8)
         self.assertContainsRe(d, "=== removed file 'del_%s'"%autf8)
+
+    def test_unicode_filename_path_encoding(self):
+        """Test for bug #382699: unicode filenames on Windows should be shown
+        in user encoding.
+        """
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        # The word 'test' in Russian
+        _russian_test = u'\u0422\u0435\u0441\u0442'
+        directory = _russian_test + u'/'
+        test_txt = _russian_test + u'.txt'
+        u1234 = u'\u1234.txt'
+
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([
+            (test_txt, 'foo\n'),
+            (u1234, 'foo\n'),
+            (directory, None),
+            ])
+        tree.add([test_txt, u1234, directory])
+
+        sio = StringIO()
+        diff.show_diff_trees(tree.basis_tree(), tree, sio,
+            path_encoding='cp1251')
+
+        output = subst_dates(sio.getvalue())
+        shouldbe = ('''\
+=== added directory '%(directory)s'
+=== added file '%(test_txt)s'
+--- a/%(test_txt)s\tYYYY-MM-DD HH:MM:SS +ZZZZ
++++ b/%(test_txt)s\tYYYY-MM-DD HH:MM:SS +ZZZZ
+@@ -0,0 +1,1 @@
++foo
+
+=== added file '?.txt'
+--- a/?.txt\tYYYY-MM-DD HH:MM:SS +ZZZZ
++++ b/?.txt\tYYYY-MM-DD HH:MM:SS +ZZZZ
+@@ -0,0 +1,1 @@
++foo
+
+''' % {'directory': _russian_test.encode('cp1251'),
+       'test_txt': test_txt.encode('cp1251'),
+      })
+        self.assertEqualDiff(output, shouldbe)
 
 
 class DiffWasIs(diff.DiffPath):

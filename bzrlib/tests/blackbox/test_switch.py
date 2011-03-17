@@ -22,11 +22,11 @@ import os
 
 from bzrlib import osutils
 from bzrlib.workingtree import WorkingTree
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.directory_service import directories
 
 
-class TestSwitch(ExternalBase):
+class TestSwitch(TestCaseWithTransport):
 
     def _create_sample_tree(self):
         tree = self.make_branch_and_tree('branch-1')
@@ -252,3 +252,21 @@ class TestSwitch(ExternalBase):
         self.assertLength(0, calls)
         out, err = self.run_bzr('switch ../branch2')
         self.assertLength(1, calls)
+
+    def test_switch_lightweight_directory(self):
+        """Test --directory option"""
+
+        # create a source branch
+        a_tree = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/a', 'initial\n')])
+        a_tree.add('a')
+        a_tree.commit(message='initial')
+
+        # clone and add a differing revision
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+        self.build_tree_contents([('b/a', 'initial\nmore\n')])
+        b_tree.commit(message='more')
+
+        self.run_bzr('checkout --lightweight a checkout')
+        self.run_bzr('switch --directory checkout b')
+        self.assertFileEqual('initial\nmore\n', 'checkout/a')

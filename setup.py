@@ -9,6 +9,7 @@ Run it with
 import os
 import os.path
 import sys
+import copy
 
 if sys.version_info < (2, 4):
     sys.stderr.write("[ERROR] Not a supported Python version. Need 2.4+\n")
@@ -65,6 +66,7 @@ PKG_DATA = {# install files from selftest suite
             'package_data': {'bzrlib': ['doc/api/*.txt',
                                         'tests/test_patches_data/*',
                                         'help_topics/en/*.txt',
+                                        'tests/ssl_certs/ca.crt',
                                         'tests/ssl_certs/server_without_pass.key',
                                         'tests/ssl_certs/server_with_pass.key',
                                         'tests/ssl_certs/server.crt'
@@ -125,9 +127,10 @@ class my_install_scripts(install_scripts):
                 f = file(batch_path, "w")
                 f.write(batch_str)
                 f.close()
-                print "Created:", batch_path
-            except Exception, e:
-                print "ERROR: Unable to create %s: %s" % (batch_path, e)
+                print("Created: %s" % batch_path)
+            except Exception:
+                e = sys.exc_info()[1]
+                print("ERROR: Unable to create %s: %s" % (batch_path, e))
 
     def _quoted_path(self, path):
         if ' ' in path:
@@ -171,18 +174,18 @@ try:
         from Pyrex.Distutils import build_ext
         from Pyrex.Compiler.Version import version as pyrex_version
     except ImportError:
-        print "No Pyrex, trying Cython..."
+        print("No Pyrex, trying Cython...")
         from Cython.Distutils import build_ext
         from Cython.Compiler.Version import version as pyrex_version
 except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
-    print
-    print ("The python package 'Pyrex' is not available."
-           " If the .c files are available,")
-    print ("they will be built,"
-           " but modifying the .pyx files will not rebuild them.")
-    print
+    print("")
+    print("The python package 'Pyrex' is not available."
+          " If the .c files are available,")
+    print("they will be built,"
+          " but modifying the .pyx files will not rebuild them.")
+    print("")
     from distutils.command.build_ext import build_ext
 else:
     have_pyrex = True
@@ -204,7 +207,8 @@ class build_ext_if_possible(build_ext):
     def run(self):
         try:
             build_ext.run(self)
-        except DistutilsPlatformError, e:
+        except DistutilsPlatformError:
+            e = sys.exc_info()[1]
             if not self.allow_python_fallback:
                 log.warn('\n  Cannot build extensions.\n'
                          '  Use "build_ext --allow-python-fallback" to use'
@@ -287,13 +291,13 @@ else:
         # The code it generates re-uses a "local" pointer and
         # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
         # which is NULL safe with PY_DECREF which is not.)
-        # <https://bugs.edge.launchpad.net/bzr/+bug/449372>
-        # <https://bugs.edge.launchpad.net/bzr/+bug/276868>
-        print 'Cannot build extension "bzrlib._dirstate_helpers_pyx" using'
-        print 'your version of pyrex "%s". Please upgrade your pyrex' % (
-            pyrex_version,)
-        print 'install. For now, the non-compiled (python) version will'
-        print 'be used instead.'
+        # <https://bugs.launchpad.net/bzr/+bug/449372>
+        # <https://bugs.launchpad.net/bzr/+bug/276868>
+        print('Cannot build extension "bzrlib._dirstate_helpers_pyx" using')
+        print('your version of pyrex "%s". Please upgrade your pyrex'
+              % (pyrex_version,))
+        print('install. For now, the non-compiled (python) version will')
+        print('be used instead.')
     else:
         add_pyrex_extension('bzrlib._dirstate_helpers_pyx')
     add_pyrex_extension('bzrlib._readdir_pyx')
@@ -301,12 +305,12 @@ add_pyrex_extension('bzrlib._chk_map_pyx')
 ext_modules.append(Extension('bzrlib._patiencediff_c',
                              ['bzrlib/_patiencediff_c.c']))
 if have_pyrex and pyrex_version_info < (0, 9, 6, 3):
-    print
-    print 'Your Pyrex/Cython version %s is too old to build the simple_set' % (
-        pyrex_version)
-    print 'and static_tuple extensions.'
-    print 'Please upgrade to at least Pyrex 0.9.6.3'
-    print
+    print("")
+    print('Your Pyrex/Cython version %s is too old to build the simple_set' % (
+        pyrex_version))
+    print('and static_tuple extensions.')
+    print('Please upgrade to at least Pyrex 0.9.6.3')
+    print("")
     # TODO: Should this be a fatal error?
 else:
     # We only need 0.9.6.3 to build _simple_set_pyx, but static_tuple depends
@@ -318,10 +322,10 @@ add_pyrex_extension('bzrlib._btree_serializer_pyx')
 
 
 if unavailable_files:
-    print 'C extension(s) not found:'
-    print '   %s' % ('\n  '.join(unavailable_files),)
-    print 'The python versions will be used instead.'
-    print
+    print('C extension(s) not found:')
+    print('   %s' % ('\n  '.join(unavailable_files),))
+    print('The python versions will be used instead.')
+    print("")
 
 
 def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
@@ -391,7 +395,8 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # ditto for the tbzrcommand tool
     tbzrcommand = dict(
         script = os.path.join(tbzr_root, "scripts", "tbzrcommand.py"),
-        icon_resources = [(0,'bzr.ico')],
+        icon_resources = icon_resources,
+        other_resources = other_resources,
     )
     console_targets.append(tbzrcommand)
     tbzrcommandw = tbzrcommand.copy()
@@ -411,19 +416,12 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
 
 def get_qbzr_py2exe_info(includes, excludes, packages, data_files):
     # PyQt4 itself still escapes the plugin detection code for some reason...
-    packages.append('PyQt4')
-    excludes.append('PyQt4.elementtree.ElementTree')
-    excludes.append('PyQt4.uic.port_v3')
+    includes.append('PyQt4.QtCore')
+    includes.append('PyQt4.QtGui')
     includes.append('sip') # extension module required for Qt.
     packages.append('pygments') # colorizer for qbzr
     packages.append('docutils') # html formatting
     includes.append('win32event')  # for qsubprocess stuff
-    # but we can avoid many Qt4 Dlls.
-    dll_excludes.extend(
-        """QtAssistantClient4.dll QtCLucene4.dll QtDesigner4.dll
-        QtHelp4.dll QtNetwork4.dll QtOpenGL4.dll QtScript4.dll
-        QtSql4.dll QtTest4.dll QtWebKit4.dll QtXml4.dll
-        qscintilla2.dll""".split())
     # the qt binaries might not be on PATH...
     # They seem to install to a place like C:\Python25\PyQt4\*
     # Which is not the same as C:\Python25\Lib\site-packages\PyQt4
@@ -536,6 +534,14 @@ elif 'py2exe' in sys.argv:
             #                time before living with docstring stripping
             optimize = 1
             compile_names = [f for f in self.outfiles if f.endswith('.py')]
+            # Round mtime to nearest even second so that installing on a FAT
+            # filesystem bytecode internal and script timestamps will match
+            for f in compile_names:
+                mtime = os.stat(f).st_mtime
+                remainder = mtime % 2
+                if remainder:
+                    mtime -= remainder
+                    os.utime(f, (mtime, mtime))
             byte_compile(compile_names,
                          optimize=optimize,
                          force=self.force, prefix=self.install_dir,
@@ -554,6 +560,8 @@ elif 'py2exe' in sys.argv:
                                      company_name = "Canonical Ltd.",
                                      comments = META_INFO['description'],
                                     )
+    gui_target = copy.copy(target)
+    gui_target.dest_base = "bzrw"
 
     packages = BZRLIB['packages']
     packages.remove('bzrlib')
@@ -644,7 +652,7 @@ elif 'py2exe' in sys.argv:
     console_targets = [target,
                        'tools/win32/bzr_postinstall.py',
                        ]
-    gui_targets = []
+    gui_targets = [gui_target]
     data_files = topics_files + plugins_files
 
     if 'qbzr' in plugins:
@@ -677,28 +685,45 @@ elif 'py2exe' in sys.argv:
         # print this warning to stderr as output is redirected, so it is seen
         # at build time.  Also to stdout so it appears in the log
         for f in (sys.stderr, sys.stdout):
-            print >> f, \
-                "Skipping TBZR binaries - please set TBZR to a directory to enable"
+            f.write("Skipping TBZR binaries - "
+                "please set TBZR to a directory to enable\n")
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
-    dll_excludes.extend(["MSWSOCK.dll", "MSVCP60.dll", "powrprof.dll"])
+    dll_excludes.extend(["MSWSOCK.dll",
+                         "MSVCP60.dll",
+                         "MSVCP90.dll",
+                         "powrprof.dll",
+                         "SHFOLDER.dll"])
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes,
                                "excludes": excludes,
                                "dll_excludes": dll_excludes,
                                "dist_dir": "win32_bzr.exe",
                                "optimize": 2,
+                               "custom_boot_script":
+                                        "tools/win32/py2exe_boot_common.py",
                               },
                    }
 
-    setup(options=options_list,
-          console=console_targets,
-          windows=gui_targets,
-          zipfile='lib/library.zip',
-          data_files=data_files,
-          cmdclass={'install_data': install_data_with_bytecompile},
-          )
+    # We want the libaray.zip to have optimize = 2, but the exe to have
+    # optimize = 1, so that .py files that get compilied at run time
+    # (e.g. user installed plugins) dont have their doc strings removed.
+    class py2exe_no_oo_exe(py2exe.build_exe.py2exe):
+        def build_executable(self, *args, **kwargs):
+            self.optimize = 1
+            py2exe.build_exe.py2exe.build_executable(self, *args, **kwargs)
+            self.optimize = 2
+
+    if __name__ == '__main__':
+        setup(options=options_list,
+              console=console_targets,
+              windows=gui_targets,
+              zipfile='lib/library.zip',
+              data_files=data_files,
+              cmdclass={'install_data': install_data_with_bytecompile,
+                        'py2exe': py2exe_no_oo_exe},
+              )
 
 else:
     # ad-hoc for easy_install
@@ -707,19 +732,6 @@ else:
         # generate and install bzr.1 only with plain install, not the
         # easy_install one
         DATA_FILES = [('man/man1', ['bzr.1'])]
-
-    if sys.platform != 'win32':
-        # see https://wiki.kubuntu.org/Apport/DeveloperHowTo
-        #
-        # checking the paths and hardcoding the check for root is a bit gross,
-        # but I don't see a cleaner way to find out the locations in a way
-        # that's going to align with the hardcoded paths in apport.
-        if os.geteuid() == 0:
-            DATA_FILES += [
-                ('/usr/share/apport/package-hooks',
-                    ['apport/source_bzr.py']),
-                ('/etc/apport/crashdb.conf.d/',
-                    ['apport/bzr-crashdb.conf']),]
 
     # std setup
     ARGS = {'scripts': ['bzr'],
@@ -732,4 +744,5 @@ else:
     ARGS.update(BZRLIB)
     ARGS.update(PKG_DATA)
 
-    setup(**ARGS)
+    if __name__ == '__main__':
+        setup(**ARGS)

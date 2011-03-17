@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,11 +46,11 @@ from bzrlib.branch import Branch
 from bzrlib.errors import BzrCommandError
 from bzrlib.tests.http_utils import TestCaseWithWebserver
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class TestCommands(ExternalBase):
+class TestCommands(TestCaseWithTransport):
 
     def test_invalid_commands(self):
         self.run_bzr("pants", retcode=3)
@@ -315,37 +315,28 @@ class TestCommands(ExternalBase):
         cmd_name = 'test-command'
         if sys.platform == 'win32':
             cmd_name += '.bat'
-        oldpath = os.environ.get('BZRPATH', None)
-        try:
-            if 'BZRPATH' in os.environ:
-                del os.environ['BZRPATH']
+        self.overrideEnv('BZRPATH', None)
 
-            f = file(cmd_name, 'wb')
-            if sys.platform == 'win32':
-                f.write('@echo off\n')
-            else:
-                f.write('#!/bin/sh\n')
-            # f.write('echo Hello from test-command')
-            f.close()
-            os.chmod(cmd_name, 0755)
+        f = file(cmd_name, 'wb')
+        if sys.platform == 'win32':
+            f.write('@echo off\n')
+        else:
+            f.write('#!/bin/sh\n')
+        # f.write('echo Hello from test-command')
+        f.close()
+        os.chmod(cmd_name, 0755)
 
-            # It should not find the command in the local
-            # directory by default, since it is not in my path
-            self.run_bzr(cmd_name, retcode=3)
+        # It should not find the command in the local
+        # directory by default, since it is not in my path
+        self.run_bzr(cmd_name, retcode=3)
 
-            # Now put it into my path
-            os.environ['BZRPATH'] = '.'
+        # Now put it into my path
+        self.overrideEnv('BZRPATH', '.')
+        self.run_bzr(cmd_name)
 
-            self.run_bzr(cmd_name)
-
-            # Make sure empty path elements are ignored
-            os.environ['BZRPATH'] = os.pathsep
-
-            self.run_bzr(cmd_name, retcode=3)
-
-        finally:
-            if oldpath:
-                os.environ['BZRPATH'] = oldpath
+        # Make sure empty path elements are ignored
+        self.overrideEnv('BZRPATH', os.pathsep)
+        self.run_bzr(cmd_name, retcode=3)
 
 
 def listdir_sorted(dir):
@@ -354,7 +345,7 @@ def listdir_sorted(dir):
     return L
 
 
-class OldTests(ExternalBase):
+class OldTests(TestCaseWithTransport):
     """old tests moved from ./testbzr."""
 
     def test_bzr(self):

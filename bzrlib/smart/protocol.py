@@ -1231,6 +1231,7 @@ class ProtocolThreeResponder(_ProtocolThreeEncoder):
                     if first_chunk is None:
                         first_chunk = chunk
                     self._write_prefixed_body(chunk)
+                    self.flush()
                     if 'hpssdetail' in debug.debug_flags:
                         # Not worth timing separately, as _write_func is
                         # actually buffered

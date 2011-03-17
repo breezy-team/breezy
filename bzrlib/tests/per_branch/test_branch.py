@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
+    config,
     delta as _mod_delta,
     errors,
     gpg,
@@ -186,7 +187,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch_b.get_parent(), branch_c.get_parent())
 
         # We can also set a specific parent, and it should be honored
-        random_parent = 'http://bazaar-vcs.org/path/to/branch'
+        random_parent = 'http://example.com/path/to/branch'
         branch_b.set_parent(random_parent)
         repo_d = self.make_repository('d')
         branch_b.repository.copy_content_into(repo_d)
@@ -309,36 +310,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
 
-    def test_missing_revisions(self):
-        t1 = self.make_branch_and_tree('b1')
-        rev1 = t1.commit('one')
-        t2 = t1.bzrdir.sprout('b2').open_workingtree()
-        rev2 = t1.commit('two')
-        rev3 = t1.commit('three')
-
-        self.assertEqual([rev2, rev3],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch))
-
-        self.assertEqual([],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=1))
-        self.assertEqual([rev2],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=2))
-        self.assertEqual([rev2, rev3],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=3))
-
-        self.assertRaises(errors.NoSuchRevision,
-            self.applyDeprecated, deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=4)
-
-        rev4 = t2.commit('four')
-        self.assertRaises(errors.DivergedBranches,
-            self.applyDeprecated, deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch)
-
     def test_nicks(self):
         """Test explicit and implicit branch nicknames.
 
@@ -346,7 +317,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         explicit nickname is set.  That is, an explicit nickname always
         overrides the implicit one.
         """
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         branch = self.make_branch('bzr.dev')
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
@@ -496,6 +467,26 @@ class TestBranch(per_branch.TestCaseWithBranch):
         br.set_revision_history([])
         self.assertEquals(br.revision_history(), [])
 
+    def test_heads_to_fetch(self):
+        # heads_to_fetch is a method that returns a collection of revids that
+        # need to be fetched to copy this branch into another repo.  At a
+        # minimum this will include the tip.
+        # (In native formats, this is the tip + tags, but other formats may
+        # have other revs needed)
+        tree = self.make_branch_and_tree('a')
+        tree.commit('first commit', rev_id='rev1')
+        tree.commit('second commit', rev_id='rev2')
+        must_fetch, should_fetch = tree.branch.heads_to_fetch()
+        self.assertTrue('rev2' in must_fetch)
+
+    def test_heads_to_fetch_not_null_revision(self):
+        # NULL_REVISION does not appear in the result of heads_to_fetch, even
+        # for an empty branch.
+        tree = self.make_branch_and_tree('a')
+        must_fetch, should_fetch = tree.branch.heads_to_fetch()
+        self.assertFalse(revision.NULL_REVISION in must_fetch)
+        self.assertFalse(revision.NULL_REVISION in should_fetch)
+
 
 class TestBranchFormat(per_branch.TestCaseWithBranch):
 
@@ -617,13 +608,9 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
         self.assertEqual(None, self.get_branch().get_push_location())
 
     def test_get_push_location_exact(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
-        open(fn, 'wt').write(("[%s]\n"
-                                  "push_location=foo\n" %
-                                  self.get_branch().base[:-1]))
+        b = self.get_branch()
+        config.LocationConfig.from_string(
+            '[%s]\npush_location=foo\n' % (b.base,), b.base, save=True)
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
@@ -685,7 +672,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
             # they may not be initializable.
             return
         # supported formats must be able to init and open
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         readonly_t = transport.get_transport(self.get_readonly_url())
         made_branch = self.make_branch('.')
         self.failUnless(isinstance(made_branch, _mod_branch.Branch))

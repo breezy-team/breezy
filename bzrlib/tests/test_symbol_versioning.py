@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@ from bzrlib import symbol_versioning
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
-    deprecated_list,
     deprecated_method,
     )
 from bzrlib.tests import TestCase
@@ -240,6 +239,11 @@ class TestSuppressAndActivate(TestCase):
         """suppress_deprecation_warnings sets DeprecationWarning to ignored."""
         symbol_versioning.suppress_deprecation_warnings()
         self.assertFirstWarning('ignore', DeprecationWarning)
+
+    def test_set_restore_filters(self):
+        original_filters = warnings.filters[:]
+        symbol_versioning.suppress_deprecation_warnings()()
+        self.assertEqual(original_filters, warnings.filters)
 
     def test_suppress_deprecation_with_warning_filter(self):
         """don't suppress if we already have a filter"""

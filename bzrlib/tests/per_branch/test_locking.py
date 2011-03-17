@@ -17,7 +17,6 @@
 """Test locks across all branch implemenations"""
 
 from bzrlib import (
-    branch as _mod_branch,
     errors,
     tests,
     )
@@ -501,10 +500,6 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
         self.assertThat(branch.lock_read, ReturnsUnlockable(branch))
 
     def test_lock_write_locks_repo_too(self):
-        if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
-            # Branch format 4 is combined with the repository, so this test
-            # doesn't apply.
-            return
         branch = self.make_branch('b')
         branch = branch.bzrdir.open_branch()
         branch.lock_write()
@@ -533,6 +528,7 @@ class TestBranchLocking(per_branch.TestCaseWithBranch):
     def test_lock_write_raises_in_lock_read(self):
         branch = self.make_branch('b')
         branch.lock_read()
+        self.addCleanup(branch.unlock)
         err = self.assertRaises(errors.ReadOnlyError, branch.lock_write)
 
     def test_lock_and_unlock_leaves_repo_unlocked(self):

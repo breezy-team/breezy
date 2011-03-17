@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import errno
 import inspect
 import sys
@@ -95,9 +94,7 @@ class TestCommands(tests.TestCase):
 class TestGetAlias(tests.TestCase):
 
     def _get_config(self, config_text):
-        my_config = config.GlobalConfig()
-        config_file = StringIO(config_text.encode('utf-8'))
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig.from_string(config_text)
         return my_config
 
     def test_simple(self):
@@ -345,6 +342,7 @@ class TestListCommandHook(tests.TestCase):
         cmds = list(commands.all_command_names())
         self.assertEqual(['called'], hook_calls)
         self.assertSubset(['foo', 'bar'], cmds)
+
 
 class TestDeprecations(tests.TestCase):
 

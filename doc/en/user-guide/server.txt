@@ -13,7 +13,7 @@ not offer any assistance to Bazaar.  If you make a Bazaar repository available
 over any of these protocols, Bazaar will allow you to read it remotely.  Just
 enter the URL to the branch in the Bazaar command you are running.::
 
-    bzr log http://bazaar-vcs.org/bzr/bzr.dev
+    bzr log http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev
 
 Bazaar supports writing over FTP, SFTP and (via a plugin) over HTTP-WebDAV.
 
@@ -64,7 +64,7 @@ for a shared repository in ``/srv/bzr/repo`` which has a branch at
 
 Running a Bazaar server from inetd requires an inetd.conf entry::
 
-    4155  stream  tcp  nowait  bzruser  /usr/bin/bzr /usr/bin/bzr serve --inet --directory=/srv/bzr/repo
+    4155  stream  TCP  nowait  bzruser  /usr/bin/bzr /usr/bin/bzr serve --inet --directory=/srv/bzr/repo
 
 When running client commands, the URL you supply is a `bzr://` URL relative to
 the ``--directory`` option given in inetd.conf::

@@ -13,8 +13,7 @@ import sys, os
 sys.path = [os.path.abspath('../..')] + sys.path
 
 # Most of the configuration for Bazaar docs is defined here ...
-from bzrlib.doc_generate.sphinx_conf import *
-
+from bzrlib.doc_generate.conf import *
 
 ## Configuration specific to this site ##
 
@@ -56,7 +55,7 @@ latex_documents = [
     bzr_title(u'Bazaar User Guide'), bzr_team, 'manual'),
   ('user-reference/index', 'bzr-%s-user-reference.tex' % (bzr_locale,),
     bzr_title(u'Bazaar User Reference'), bzr_team, 'manual'),
-  ('release-notes/NEWS', 'bzr-%s-release-notes.tex' % (bzr_locale,),
+  ('release-notes/index', 'bzr-%s-release-notes.tex' % (bzr_locale,),
     bzr_title(u'Bazaar Release Notes'), bzr_team, 'manual'),
   ('upgrade-guide/index', 'bzr-%s-upgrade-guide.tex' % (bzr_locale,),
     bzr_title(u'Bazaar Upgrade Guide'), bzr_team, 'manual'),
@@ -88,6 +87,9 @@ unused_docs = [
     'user-reference/bzr_man',
     'user-guide/index-plain',
     'admin-guide/index-plain',
+    # Templates
+    'release-notes/release-template',
+    'release-notes/series-template',
     # Miscellaneous
     'user-reference/readme',
 ]

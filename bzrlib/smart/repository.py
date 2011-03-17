@@ -30,7 +30,6 @@ from bzrlib import (
     osutils,
     pack,
     ui,
-    versionedfile,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart.request import (
@@ -39,7 +38,6 @@ from bzrlib.smart.request import (
     SuccessfulSmartServerResponse,
     )
 from bzrlib.repository import _strip_NULL_ghosts, network_format_registry
-from bzrlib.recordcounter import RecordCounter
 from bzrlib import revision as _mod_revision
 from bzrlib.versionedfile import (
     NetworkRecordStream,
@@ -83,6 +81,8 @@ class SmartServerRepositoryRequest(SmartServerRequest):
             recreate_search trusts that clients will look for missing things
             they expected and get it from elsewhere.
         """
+        if search_bytes == 'everything':
+            return graph.EverythingResult(repository), None
         lines = search_bytes.split('\n')
         if lines[0] == 'ancestry-of':
             heads = lines[1:]
@@ -414,6 +414,13 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
     def do_repository_request(self, repository, to_network_name):
         """Get a stream for inserting into a to_format repository.
 
+        The request body is 'search_bytes', a description of the revisions
+        being requested.
+
+        In 2.3 this verb added support for search_bytes == 'everything'.  Older
+        implementations will respond with a BadSearch error, and clients should
+        catch this and fallback appropriately.
+
         :param repository: The repository to stream from.
         :param to_network_name: The network name of the format of the target
             repository.
@@ -491,6 +498,13 @@ class SmartServerRepositoryGetStream(SmartServerRepositoryRequest):
 
 
 class SmartServerRepositoryGetStream_1_19(SmartServerRepositoryGetStream):
+    """The same as Repository.get_stream, but will return stream CHK formats to
+    clients.
+
+    See SmartServerRepositoryGetStream._should_fake_unknown.
+    
+    New in 1.19.
+    """
 
     def _should_fake_unknown(self):
         """Returns False; we don't need to workaround bugs in 1.19+ clients."""
@@ -506,8 +520,6 @@ def _stream_to_byte_stream(stream, src_format):
         for record in substream:
             if record.storage_kind in ('chunked', 'fulltext'):
                 serialised = record_to_fulltext_bytes(record)
-            elif record.storage_kind == 'inventory-delta':
-                serialised = record_to_inventory_delta_bytes(record)
             elif record.storage_kind == 'absent':
                 raise ValueError("Absent factory for %s" % (record.key,))
             else:

@@ -59,6 +59,7 @@ import logging
 import os
 import sys
 import time
+import tempfile
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -122,14 +123,12 @@ def note(*args, **kwargs):
     # FIXME: clearing the ui and then going through the abstract logging
     # framework is whack; we should probably have a logging Handler that
     # deals with terminal output if needed.
-    import bzrlib.ui
-    bzrlib.ui.ui_factory.clear_term()
+    ui.ui_factory.clear_term()
     _bzr_logger.info(*args, **kwargs)
 
 
 def warning(*args, **kwargs):
-    import bzrlib.ui
-    bzrlib.ui.ui_factory.clear_term()
+    ui.ui_factory.clear_term()
     _bzr_logger.warning(*args, **kwargs)
 
 
@@ -306,26 +305,27 @@ def enable_default_logging():
     logging.getLogger("bzr").
 
     Output can be redirected away by calling _push_log_file.
+
+    :return: A memento from push_log_file for restoring the log state.
     """
-    # Do this before we open the log file, so we prevent
-    # get_terminal_encoding() from mutter()ing multiple times
-    term_encoding = osutils.get_terminal_encoding()
     start_time = osutils.format_local_date(_bzr_log_start_time,
                                            timezone='local')
     # create encoded wrapper around stderr
     bzr_log_file = _open_bzr_log()
     if bzr_log_file is not None:
         bzr_log_file.write(start_time.encode('utf-8') + '\n')
-    push_log_file(bzr_log_file,
+    memento = push_log_file(bzr_log_file,
         r'[%(process)5d] %(asctime)s.%(msecs)03d %(levelname)s: %(message)s',
         r'%Y-%m-%d %H:%M:%S')
     # after hooking output into bzr_log, we also need to attach a stderr
     # handler, writing only at level info and with encoding
+    term_encoding = osutils.get_terminal_encoding()
     writer_factory = codecs.getwriter(term_encoding)
     encoded_stderr = writer_factory(sys.stderr, errors='replace')
     stderr_handler = logging.StreamHandler(encoded_stderr)
     stderr_handler.setLevel(logging.INFO)
     logging.getLogger('bzr').addHandler(stderr_handler)
+    return memento
 
 
 def push_log_file(to_file, log_format=None, date_format=None):
@@ -367,18 +367,20 @@ def push_log_file(to_file, log_format=None, date_format=None):
 def pop_log_file((magic, old_handlers, new_handler, old_trace_file, new_trace_file)):
     """Undo changes to logging/tracing done by _push_log_file.
 
-    This flushes, but does not close the trace file.
+    This flushes, but does not close the trace file (so that anything that was
+    in it is output.
 
     Takes the memento returned from _push_log_file."""
     global _trace_file
     _trace_file = old_trace_file
     bzr_logger = logging.getLogger('bzr')
     bzr_logger.removeHandler(new_handler)
-    # must be closed, otherwise logging will try to close it atexit, and the
+    # must be closed, otherwise logging will try to close it at exit, and the
     # file will likely already be closed underneath.
     new_handler.close()
     bzr_logger.handlers = old_handlers
-    new_trace_file.flush()
+    if new_trace_file is not None:
+        new_trace_file.flush()
 
 
 def log_exception_quietly():
@@ -466,6 +468,40 @@ def _debug_memory_proc(message='', short=True):
                     note(line)
                     break
 
+def _dump_memory_usage(err_file):
+    try:
+        try:
+            fd, name = tempfile.mkstemp(prefix="bzr_memdump", suffix=".json")
+            dump_file = os.fdopen(fd, 'w')
+            from meliae import scanner
+            scanner.dump_gc_objects(dump_file)
+            err_file.write("Memory dumped to %s\n" % name)
+        except ImportError:
+            err_file.write("Dumping memory requires meliae module.\n")
+            log_exception_quietly()
+        except:
+            err_file.write("Exception while dumping memory.\n")
+            log_exception_quietly()
+    finally:
+        if dump_file is not None:
+            dump_file.close()
+        elif fd is not None:
+            os.close(fd)
+
+
+def _qualified_exception_name(eclass, unqualified_bzrlib_errors=False):
+    """Give name of error class including module for non-builtin exceptions
+
+    If `unqualified_bzrlib_errors` is True, errors specific to bzrlib will
+    also omit the module prefix.
+    """
+    class_name = eclass.__name__
+    module_name = eclass.__module__
+    if module_name in ("exceptions", "__main__") or (
+            unqualified_bzrlib_errors and module_name == "bzrlib.errors"):
+        return class_name
+    return "%s.%s" % (module_name, class_name)
+
 
 def report_exception(exc_info, err_file):
     """Report an exception to err_file (typically stderr) and to .bzr.log.
@@ -489,6 +525,10 @@ def report_exception(exc_info, err_file):
         return errors.EXIT_ERROR
     elif isinstance(exc_object, MemoryError):
         err_file.write("bzr: out of memory\n")
+        if 'mem_dump' in debug.debug_flags:
+            _dump_memory_usage(err_file)
+        else:
+            err_file.write("Use -Dmem_dump to dump memory to a file.\n")
         return errors.EXIT_ERROR
     elif isinstance(exc_object, ImportError) \
         and str(exc_object).startswith("No module named "):
@@ -540,7 +580,7 @@ def report_bug(exc_info, err_file):
 
 
 def _flush_stdout_stderr():
-    # installed into an atexit hook by bzrlib.initialize()
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
     try:
         sys.stdout.flush()
         sys.stderr.flush()
@@ -553,7 +593,40 @@ def _flush_stdout_stderr():
 
 
 def _flush_trace():
-    # run from atexit hook
+    # called from the bzrlib library finalizer returned by bzrlib.initialize()
     global _trace_file
     if _trace_file:
         _trace_file.flush()
+
+
+class Config(object):
+    """Configuration of message tracing in bzrlib.
+
+    This implements the context manager protocol and should manage any global
+    variables still used. The default config used is DefaultConfig, but
+    embedded uses of bzrlib may wish to use a custom manager.
+    """
+
+    def __enter__(self):
+        return self # This is bound to the 'as' clause in a with statement.
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return False # propogate exceptions.
+
+
+class DefaultConfig(Config):
+    """A default configuration for tracing of messages in bzrlib.
+
+    This implements the context manager protocol.
+    """
+
+    def __enter__(self):
+        self._original_filename = _bzr_log_filename
+        self._original_state = enable_default_logging()
+        return self # This is bound to the 'as' clause in a with statement.
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pop_log_file(self._original_state)
+        global _bzr_log_filename
+        _bzr_log_filename = self._original_filename
+        return False # propogate exceptions.

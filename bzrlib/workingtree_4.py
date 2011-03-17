@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -1247,7 +1247,8 @@ class DirStateWorkingTree(WorkingTree3):
         # have to change the legacy inventory too.
         if self._inventory is not None:
             for file_id in file_ids:
-                self._inventory.remove_recursive_id(file_id)
+                if self._inventory.has_id(file_id):
+                    self._inventory.remove_recursive_id(file_id)
 
     @needs_tree_write_lock
     def rename_one(self, from_rel, to_rel, after=False):
@@ -1291,6 +1292,27 @@ class DirStateWorkingTree(WorkingTree3):
         if had_inventory:
             self._inventory = inv
         self.flush()
+
+    @needs_tree_write_lock
+    def reset_state(self, revision_ids=None):
+        """Reset the state of the working tree.
+
+        This does a hard-reset to a last-known-good state. This is a way to
+        fix if something got corrupted (like the .bzr/checkout/dirstate file)
+        """
+        if revision_ids is None:
+            revision_ids = self.get_parent_ids()
+        if not revision_ids:
+            base_tree = self.branch.repository.revision_tree(
+                _mod_revision.NULL_REVISION)
+            trees = []
+        else:
+            trees = zip(revision_ids,
+                        self.branch.repository.revision_trees(revision_ids))
+            base_tree = trees[0][1]
+        state = self.current_dirstate()
+        # We don't support ghosts yet
+        state.set_state_from_scratch(base_tree.inventory, trees, [])
 
 
 class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
@@ -1383,6 +1405,8 @@ class WorkingTree6(ContentFilteringDirStateWorkingTree):
 
 
 class DirStateWorkingTreeFormat(WorkingTreeFormat3):
+
+    missing_parent_conflicts = True
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
@@ -1737,8 +1761,6 @@ class DirStateRevisionTree(Tree):
                 elif kind == 'directory':
                     parent_ies[(dirname + '/' + name).strip('/')] = inv_entry
                 elif kind == 'symlink':
-                    inv_entry.executable = False
-                    inv_entry.text_size = None
                     inv_entry.symlink_target = utf8_decode(fingerprint)[0]
                 elif kind == 'tree-reference':
                     inv_entry.reference_revision = fingerprint or None
@@ -1868,7 +1890,7 @@ class DirStateRevisionTree(Tree):
     def is_executable(self, file_id, path=None):
         ie = self.inventory[file_id]
         if ie.kind != "file":
-            return None
+            return False
         return ie.executable
 
     def is_locked(self):

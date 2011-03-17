@@ -1724,13 +1724,13 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
         return br
 
     def assertLogRevnos(self, expected_revnos, b, start, end,
-                        exclude_common_ancestry):
+                        exclude_common_ancestry, generate_merge_revisions=True):
         # FIXME: the layering in log makes it hard to test intermediate levels,
         # I wish adding filters with their parameters were easier...
         # -- vila 20100413
         iter_revs = log._calc_view_revisions(
             b, start, end, direction='reverse',
-            generate_merge_revisions=True,
+            generate_merge_revisions=generate_merge_revisions,
             exclude_common_ancestry=exclude_common_ancestry)
         self.assertEqual(expected_revnos,
                          [revid for revid, revno, depth in iter_revs])
@@ -1738,11 +1738,19 @@ class TestLogExcludeAncestry(tests.TestCaseWithTransport):
     def test_merge_sorted_exclude_ancestry(self):
         b = self.make_branch_with_alternate_ancestries()
         self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2', '1'],
-                             b, '1', '3', False)
+                             b, '1', '3', exclude_common_ancestry=False)
         # '2' is part of the '3' ancestry but not part of '1.1.1' ancestry so
         # it should be mentioned even if merge_sort order will make it appear
         # after 1.1.1
         self.assertLogRevnos(['3', '1.1.2', '1.2.1', '2'],
-                             b, '1.1.1', '3', True)
+                             b, '1.1.1', '3', exclude_common_ancestry=True)
 
+    def test_merge_sorted_simple_revnos_exclude_ancestry(self):
+        b = self.make_branch_with_alternate_ancestries()
+        self.assertLogRevnos(['3', '2'],
+                             b, '1', '3', exclude_common_ancestry=True,
+                             generate_merge_revisions=False)
+        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2'],
+                             b, '1', '3', exclude_common_ancestry=True,
+                             generate_merge_revisions=True)
 

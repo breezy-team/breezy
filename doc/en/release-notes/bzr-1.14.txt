@@ -1,0 +1,459 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 1.14
+########
+:Codename: brisbane-core
+:1.14rc1: 2009-04-06
+:1.14rc2: 2009-04-19
+:1.14: 2009-04-28
+:1.14.1: 2009-05-01
+
+New formats 1.14 and 1.14-rich-root supporting End-Of-Line (EOL) conversions,
+keyword templating (via the bzr-keywords plugin) and generic content filtering.
+End-of-line conversion is now supported for formats supporting content
+filtering.
+
+Changes from 1.14final to 1.14.1
+********************************
+
+* Change api_minimum_version back to api_minimum_version = (1, 13, 0)
+
+Changes from 1.14rc2 to 1.14final
+*********************************
+
+* Fix a bug in the pure-python ``GroupCompress`` code when handling copies
+  longer than 64KiB. (John Arbash Meinel, #364900)
+
+Changes from 1.14rc1 to 1.14rc2
+*******************************
+
+* Fix for bug 358037 Revision not in
+  bzrlib.groupcompress.GroupCompressVersionedFiles (Brian de Alwis, 
+  John A Meinel)
+
+* Fix for bug 354036 ErrorFromSmartServer - AbsentContentFactory object has no
+  attribute 'get_bytes_as' exception while pulling from Launchpad 
+  (Jean-Francois Roy, Andrew Bennetts, Robert Collins)
+
+* Fix for bug 355280 eol content filters are never loaded and thus never
+  applied (Brian de Alwis, Ian Clatworthy)
+ 
+* bzr.dev -r4280  Change _fetch_uses_deltas = False for CHK repos until we can
+  write a better fix. (John Arbash Meinel, Robert Collins)
+
+* Fix for bug 361574 uncommit recommends undefined --levels and -n options
+  (Marius Kruger, Ian Clatworthy)
+
+* bzr.dev r4289 as cherrypicked at lp:~spiv/bzr/stacking-cherrypick-1.14 
+  (Andrew Bennetts, Robert Collins)
+
+Compatibility Breaks
+********************
+
+* A previously disabled code path to accelerate getting configuration
+  settings from a smart server has been reinstated. We think this *may*
+  cause a incompatibility with servers older than bzr 0.15. We intend
+  to issue a point release to address this if it turns out to be a
+  problem. (Robert Collins, Andrew Bennetts)
+
+* bzr no longer autodetects nested trees as 'tree-references'.  They
+  must now be explicitly added tree references.  At the commandline, use
+  join --reference instead of add.  (Aaron Bentley)
+
+* The ``--long`` log format (the default) no longer shows merged
+  revisions implicitly, making it consistent with the ``short`` and
+  ``line`` log formats.  To see merged revisions for just a given
+  revision, use ``bzr log -n0 -rX``. To see every merged revision,
+  use ``bzr log -n0``.  (Ian Clatworthy)
+
+New Features
+************
+
+* New formats ``1.14`` and ``1.14-rich-root`` supporting End-Of-Line
+  (EOL) conversions, keyword templating (via the bzr-keywords plugin)
+  and generic content filtering. These formats replace the experimental
+  ``development-wt5`` and ``development-wt5-rich-root`` formats
+  respectively, but have support for filtered views disabled.
+  (Ian Clatworthy)
+
+* New ``mv --auto`` option recognizes renames after they occur.
+  (Aaron Bentley)
+
+* ``bzr`` can now get passwords from stdin without requiring a controlling
+  terminal (i.e. by redirecting stdin). (Vincent Ladeuil)
+
+* ``bzr log`` now supports filtering of multiple files and directories
+  and will show changes that touch any of them. Furthermore,
+  directory filtering now shows the changes to any children of that
+  directory, not just the directory object itself.
+  (Ian Clatworthy, #97715)
+
+* ``bzr shelve`` can now apply changes without storing anything on the
+  shelf, via the new --destroy option.  (Aaron Bentley)
+
+* ``bzr send`` now accepts --body to specify an initial message body.
+  (Aaron bentley)
+
+* ``bzr xxx --usage`` where xxx is a command now shows a usage
+  message and the options without the descriptive help sections
+  (like Description and Examples). A message is also given
+  explaining how to see the complete help, i.e. ``bzr help xxx``.
+  (Ian Clatworthy)
+
+* Content filters can now be used to provide custom conversion
+  between the canonical format of content (i.e. as stored) and
+  the convenience format of content (i.e. as created in working
+  trees). See ``bzr help content-filters`` for further details.
+  (Ian Clatworthy, Alexander Belchenko)
+
+* End-of-line conversion is now supported for formats supporting
+  content filtering. See ``bzr help eol`` for details.
+  (Ian Clatworthy)
+
+* Newly-blessed `join` command allows combining two trees into one.
+  (Aaron Bentley)
+
+Improvements
+************
+
+* A new format name alias ``default-rich-root`` has been added and
+  points at the closest relative of the default format that supports 
+  rich roots. (Jelmer Vernooij, #338061)
+
+* Branching from a stacked branch using ``bzr*://`` will now stream
+  the data when the target repository does not need topological
+  ordering, reducing round trips and network overhead. This uses the
+  existing smart server methods added in 1.13, so will work on any
+  1.13 or newer server. (Robert Collins, Andrew Bennetts)
+
+* ``bzr cat`` and ``bzr export`` now supports a ``--filters`` option
+  that displays/saves the content after content filters are applied.
+  (Ian Clatworthy)
+
+* ``bzr ignore`` gives a more informative message when existing
+  version controlled files match the ignore pattern. (Neil
+  Martinsen-Burrell, #248895)
+
+* ``bzr log`` now has ``--include-merges`` as an alias for ``--levels 0``.
+  (Ian Clatworthy)
+
+* ``bzr send`` is faster on repositories with deep histories.
+  (Ian Clatworthy)
+
+* IPv6 literals are accepted in URLs.
+  (stlman, Martin Pool, Jelmer Vernooij, #165014)
+
+* Progress bars now show the rate of network activity for
+  ``bzr+ssh://`` and ``bzr://`` connections.  (Andrew Bennetts)
+
+* Prompt for user names if they are not in the configuration. 
+  (Jelmer Vernooij, #256612)
+
+* Pushing to a stacked pack-format branch on a 1.12 or older smart server
+  now takes many less round trips.  (Andrew Bennetts, Robert Collins,
+  #294479)
+  
+* Streaming push can be done to older repository formats.  This is
+  implemented using a new ``Repository.insert_stream_locked`` RPC.
+  (Andrew Bennetts, Robert Collins)
+
+* The "ignoring files outside view: .." message has been re-worded
+  to "Ignoring files outside view. View is .." to reduce confusion
+  about what was being considered and what was being ignored.
+  (Ian Clatworthy)
+
+* The ``long`` log formatter now shows [merge] indicators. If
+  only one level of revisions is displayed and merges are found,
+  the ``long`` and ``short`` log formatters now tell the user
+  how to see the hidden merged revisions.  (Ian Clatworthy)
+
+* The ``brisbane-core`` project has delivered its beta format
+  ``development6-rich-root``. This format is suitable for judicious
+  testing by early adopters. In particular if you are benchmarking bzr
+  performance please be sure to test using this format. At this stage
+  more information is best obtained by contacting the Bazaar mailing list
+  or IRC channel if you are interested in using this format. We will make
+  end user documentation available closer to blessing the format as
+  production ready. (Robert Collins, John Arbash Meinel, Ian Clatworthy,
+  Vincent Ladeuil, Andrew Bennetts, Martin Pool)
+
+* Tildes are no longer escaped. No more %7Euser/project/branch!
+  (Jonathan Lange)
+
+Bug Fixes
+*********
+
+* Pushing a new stacked branch will also push the parent inventories for
+  revisions at the stacking boundary.  This makes sure that the stacked
+  branch has enough data to calculate inventory deltas for all of its
+  revisions (without requiring the fallback branch).  This avoids
+  "'AbsentContentFactory' object has no attribute 'get_bytes_as'" errors
+  when fetching the stacked branch from a 1.13 (or later) smart server.
+  This partially fixes #354036.  (Andrew Bennetts, Robert Collins)
+
+* End-Of-Line content filters are now loaded correctly.
+  (Ian Clatworthy, Brian de Alwis, #355280)
+
+* Authentication plugins now receive all the parameters from the request
+  itself (aka host, port, realm, path, etc). Previously, only the 
+  authentication section name, username and encoded password were 
+  provided. (Jean-Francois Roy)
+
+* bzr gives a better message if an invalid regexp is passed to ``bzr log
+  -m``.  (Anne Mohsen, Martin Pool)
+
+* ``bzr split`` now says "See also: join" (Aaron Bentley, #335015)
+
+* ``bzr version-info`` now works in empty branches. (Jelmer Vernooij,
+  #313028)
+
+* Fix "is not a stackable format" error when pushing a
+  stackable-format branch with an unstackable-format repository to a
+  destination with a default stacking policy.  (Andrew Bennetts)
+
+* Fixed incorrect "Source format does not support stacking" warning
+  when pushing to a smart server.  (Andrew Bennetts, #334114)
+
+* Fix 'make check-dist-tarball' failure by converting paths to unicode when
+  needed. (Vincent Ladeuil, #355454)
+
+* Fixed "Specified file 'x/y/z' is outside current view: " occurring
+  on ``bzr add x/y/z`` in formats supporting views when no view is
+  defined.  (Ian Clatworthy, #344708)
+
+* It is no longer possible to fetch between repositories while the
+  target repository is in a write group. This prevents race conditions
+  that prevent the use of RPC's to perform fetch, and thus allows
+  optimising more operations. (Robert Collins, Andrew Bennetts)
+
+* ``merge --force`` works again. (Robert Collins, #342105)
+
+* No more warnings are issued about ``sha`` being deprecated under python-2.6.
+  (Vincent Ladeuil, #346593)
+
+* Pushing a new branch to a server that has a stacking policy will now
+  upgrade from the local branch format when the stacking policy points at
+  a branch which is itself stackable, because we know the client can read
+  both branches, we know that the trunk for the project can be read too,
+  so the upgrade will not inconvenience users. (Robert Collins, #345169)
+
+* Pushing a new stacked branch will also push the parent inventories for
+  revisions at the stacking boundary.  This makes sure that the stacked
+  branch has enough data to calculate inventory deltas for all of its
+  revisions (without requiring the fallback branch).  This avoids
+  "'AbsentContentFactory' object has no attribute 'get_bytes_as'" errors
+  when fetching the stacked branch from a 1.13 (or later) smart server.
+  This partially fixes #354036.  (Andrew Bennetts, Robert Collins)
+
+* The full test suite is passing again on OSX. Several minor issues (mostly
+  test related) have been fixed. (Vincent Ladeuil, #355273).
+
+* The GNU Changelog formatter is slightly improved in the case where
+  the delta is empty, and now correctly claims not to support tags.
+  (Andrea Bolognani)
+
+* Shelve can now shelve changes to a symlink target.
+  (James Westby, #341558)
+
+* The help for the ``info`` command has been corrected.
+  (Ian Clatworthy, #351931)
+
+* Upgrade will now use a sensible default format if the source repository
+  uses rich roots.  (Jelmer Vernooij, #252908)
+
+Documentation
+*************
+
+* Expanded the index of the developer documentation. (Eric Siegerman)
+
+* New topic `bzr help debug-flags`.  (Martin Pool)
+
+* The generated manpage now explicitly lists aliases as commands.
+  (James Westby, #336998)
+
+API Changes
+***********
+
+* APIs deprecated in 1.6 and previous versions of bzr are now removed.
+  (Martin Pool)
+
+* ``CommitReporter`` is no longer called with ``unchanged`` status during
+  commit - this was a full-tree overhead that bzr no longer performs.
+  (Robert Collins)
+
+* New abstract ``UIFactory`` method ``get_username`` which will be called to 
+  obtain the username to use when connecting to remote machines. 
+  (Jelmer Vernooij)
+
+* New API ``Inventory.filter()`` added that filters an inventory by
+  a set of file-ids so that only those fileids, their parents and
+  their children are included.  (Ian Clatworthy)
+
+* New sort order for ``get_record_stream`` ``groupcompress`` which
+  sorts optimally for use with groupcompress compressors. (John Arbash
+  Meinel, Robert Collins)
+
+* Repository APIs ``get_deltas_for_revisions()`` and
+  ``get_revision_delta()`` now support an optional ``specific_fileids``
+  parameter. If provided, the deltas are filtered so that only those
+  file-ids, their parents and their children are included.
+  (Ian Clatworthy)
+
+* The ``get_credentials`` and ``set_credentials`` methods of 
+  ``AuthenticationConfig`` now accept an optional realm argument.
+  (Jean-Francois Roy)
+
+* The ``pb`` argument to ``fetch()`` is deprecated.
+  (Martin Pool)
+
+* The ``Serializer`` class and the serializer ``format registry`` have moved
+  from ``bzrlib.xml_serializer`` to ``bzrlib.serializer``. (Jelmer Vernooij)
+
+* The smart server jail now hooks into BzrDir.open to prevent any BzrDir
+  that is not inside the backing transport from being opened.  See the
+  module documentation for ``bzrlib.smart.request`` for details.
+  (Andrew Bennetts, Robert Collins)
+
+* ``Tree.get_symlink_target`` now always returns a unicode string result
+  or None. Previously it would return the bytes from reading the link
+  which could be in any arbitrary encoding. (Robert Collins)
+
+Testing
+*******
+
+* ``bzrlib.tests.TestCase`` now fails the test if its own ``setUp``
+  and ``tearDown`` weren't called.  This catches faulty tests that
+  forget to upcall when overriding ``setUp`` and ``tearDown``.  Those
+  faulty tests were not properly isolated.
+  (Andrew Bennetts, Robert Collins)
+
+* Fix test_msgeditor.MsgEditorTest test isolation.
+  (Vincent Ladeuil, #347130)
+
+* ``medusa`` is not used anymore as an FTP test server starting with
+  python2.6. A new FTP test server based on ``pyftplib`` can be used
+  instead. This new server is a soft dependency as medusa which is still
+  preferred if both are available (modulo python version).
+  (Vincent Ladeuil)
+
+Internals
+*********
+
+* Added ``chk_map`` for fast, trie-based storage of tuple to string maps.
+  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
+
+* Added ``bzrlib.chk_map`` for fast, trie-based storage of tuple to string
+  maps.  (Robert Collins, John Arbash Meinel, Vincent Ladeuil)
+
+* Added ``bzrlib.inventory_delta`` module.  This will be used for
+  serializing and deserializing inventory deltas for more efficient
+  streaming on the network.  (Robert Collins, Andrew Bennetts)
+
+* ``Branch._get_config`` has been added, which splits out access to the
+  specific config file from the branch. This is used to let RemoteBranch
+  avoid constructing real branch objects to access configuration settings.
+  (Robert Collins, Andrew Bennetts)
+
+* ``Branch`` now implements ``set_stacked_on_url`` in the base class as
+  the implementation is generic and should impact foreign formats. This
+  helps performance for ``RemoteBranch`` push operations to new stacked
+  branches. (Robert Collins, Andrew Bennetts)
+
+* ``BtreeIndex._spill_mem_keys_to_disk()`` now generates disk index with
+  optmizations turned off. This only has effect when processing > 100,000
+  keys during something like ``bzr pack``. (John Arbash Meinel)
+
+* ``bzr selftest`` now accepts ``--subunit`` to run in subunit output
+  mode. Requires ``lp:subunit`` installed to work, but is not a hard
+  dependency. (Robert Collins)
+
+* ``BzrDir.open_branch`` now takes an optional ``ignore_fallbacks``
+  parameter for controlling opening of stacked branches.
+  (Andrew Bennetts, Robert Collins)
+  
+* ``CommitBuilder`` has a new method, ``record_iter_changes`` which works
+  in terms of an iter_changes iterator rather than full tree scanning.
+  (Robert Collins)
+
+* ``DirState`` can now be passed a custom ``SHA1Provider`` object
+  enabling it to store the SHA1 and stat of the canonical (post
+  content filtered) form. (Ian Clatworthy)
+
+* New ``assertLength`` method based on one Martin has squirreled away
+  somewhere. (Robert Collins, Martin Pool)
+
+* New hook ``BzrDir.pre_open`` which runs before opening ``BzrDir``
+  objects, allowing better enforcement of the smart server jail when
+  dealing with stacked branches. (Robert Collins, Andrew Bennetts)
+
+* New hook ``RioVersionInfoBuilder.revision``, allowing extra entries 
+  to be added to the stanza that is printed for a particular revision.
+  (Jelmer Vernooij)
+
+* New repository method ``refresh_data`` to cause any repository to
+  make visible data inserted into the repository by a smart server
+  fetch operation. (Robert Collins, Andrew Bennetts)
+
+* ``register_filter_stack_map`` now takes an optional fallback parameter,
+  a callable to invoke if a preference has a value not in the map
+  of filter stacks. This enhancement allows, for example,  bzr-svn to
+  handle existing svn properties that define a list of keywords to be
+  expanded.  (Ian Clatworthy)
+
+* ``RemoteBranchConfig`` will use a new verb ``Branch.set_config_option``
+  to write config settings to smart servers that support this, saving
+  5 round trips on the stacked streaming acceptance test.
+  (Robert Collins, Andrew Bennetts)
+
+* ``RemoteBranch`` now provides ``_get_config`` for access to just the
+  branch specific configuration from a remote server, which uses the 
+  already existing ``Branch.get_config_file`` smart verb.
+  (Robert Collins, Andrew Bennetts)
+
+* ``RemoteRepository`` will now negatively cache missing revisions during
+  ``get_parent_map`` while read-locked. Write-locks are unaffected.
+  (Robert Collins, Andrew Bennetts)
+
+* Removed ``InterRemoteToOther``, ``InterOtherToRemote`` and
+  ``InterPackToRemotePack`` classes, as they are now unnecessary.
+  (Andrew Bennetts)
+
+* ``RepositoryFormat`` as a new attribute ``fast_deltas`` to indicate
+  whether the repository can efficiently generate deltas between trees
+  regardless of tree size. (Robert Collins)
+
+* ``Repository.iter_files_bytes()`` now properly returns an "iterable of
+  byte strings" (aka 'chunked') for the content. It previously was
+  returning a plain string, which worked, but performed very poorly when
+  building a working tree (file.writelines(str) is very inefficient). This
+  can have a large effect on ``bzr checkout`` times. (John Arbash Meinel)
+
+* selftest now supports a --parallel option, with values of 'fork' or
+  'subprocess' to run the test suite in parallel. Currently only Linux
+  machines work, other platforms need patches submitted. (Robert Collins,
+  Vincent Ladeuil)
+
+* ``tests.run_suite`` has a new parameter ``suite_decorators``, a list of 
+  callables to use to decorate the test suite. Such decorators can add or
+  remove tests, or even remote the test suite to another machine if
+  desired. (Robert Collins)
+
+* The smart server verb ``Repository.get_parent_map`` can now include
+  information about ghosts when the special revision ``include-missing:``
+  is in the requested parents map list. With this flag, ghosts are
+  included as ``missing:REVISION_ID``. (Robert Collins, Andrew Bennetts)
+
+* ``_walk_to_common_revisions`` will now batch up at least 50
+  revisions before calling ``get_parent_map`` on the target,
+  regardless of ``InterRepository``.
+  (Andrew Bennetts, Robert Collins)
+
+
+..
+   vim: tw=74 ft=rst ff=unix
+

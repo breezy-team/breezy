@@ -100,11 +100,50 @@ def bool_from_string(s, accepted_values=None):
     return val
 
 
+class ConfirmationUserInterfacePolicy(object):
+    """Wrapper for a UIFactory that allows or denies all confirmed actions."""
+
+    def __init__(self, wrapped_ui, default_answer, specific_answers):
+        """Generate a proxy UI that does no confirmations.
+
+        :param wrapped_ui: Underlying UIFactory.
+        :param default_answer: Bool for whether requests for
+            confirmation from the user should be noninteractively accepted or
+            denied.
+        :param specific_answers: Map from confirmation_id to bool answer.
+        """
+        self.wrapped_ui = wrapped_ui
+        self.default_answer = default_answer
+        self.specific_answers = specific_answers
+
+    def __getattr__(self, name):
+        return getattr(self.wrapped_ui, name)
+
+    def __repr__(self):
+        return '%s(%r, %r, %r)' % (
+            self.__class__.__name__,
+            self.wrapped_ui,
+            self.default_answer, 
+            self.specific_answers)
+
+    def confirm_action(self, prompt, confirmation_id, prompt_kwargs):
+        if confirmation_id in self.specific_answers:
+            return self.specific_answers[confirmation_id]
+        elif self.default_answer is not None:
+            return self.default_answer
+        else:
+            return self.wrapped_ui.confirm_action(
+                prompt, confirmation_id, prompt_kwargs)
+
+
 class UIFactory(object):
     """UI abstraction.
 
     This tells the library how to display things to the user.  Through this
     layer different applications can choose the style of UI.
+
+    UI Factories are also context managers, for some syntactic sugar some users
+    need.
 
     :ivar suppressed_warnings: Identifiers for user warnings that should 
         no be emitted.
@@ -123,6 +162,23 @@ class UIFactory(object):
         self.suppressed_warnings = set()
         self._quiet = False
 
+    def __enter__(self):
+        """Context manager entry support.
+
+        Override in a concrete factory class if initialisation before use is
+        needed.
+        """
+        return self # This is bound to the 'as' clause in a with statement.
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit support.
+
+        Override in a concrete factory class if more cleanup than a simple
+        self.clear_term() is needed when the UIFactory is finished with.
+        """
+        self.clear_term()
+        return False # propogate exceptions.
+
     def be_quiet(self, state):
         """Tell the UI to be more quiet, or not.
 
@@ -130,6 +186,24 @@ class UIFactory(object):
         at ui_factory.is_quiet().
         """
         self._quiet = state
+
+    def confirm_action(self, prompt, confirmation_id, prompt_kwargs):
+        """Seek user confirmation for an action.
+
+        If the UI is noninteractive, or the user does not want to be asked
+        about this action, True is returned, indicating bzr should just
+        proceed.
+
+        The confirmation id allows the user to configure certain actions to
+        always be confirmed or always denied, and for UIs to specialize the
+        display of particular confirmations.
+
+        :param prompt: Suggested text to display to the user.
+        :param prompt_kwargs: A dictionary of arguments that can be
+            string-interpolated into the prompt.
+        :param confirmation_id: Unique string identifier for the confirmation.
+        """
+        return self.get_boolean(prompt % prompt_kwargs)
 
     def get_password(self, prompt='', **kwargs):
         """Prompt the user for a password.
@@ -158,8 +232,9 @@ class UIFactory(object):
         version of stdout, but in a GUI it might be appropriate to send it to a 
         window displaying the text.
      
-        :param encoding: Unicode encoding for output; default is the 
-            terminal encoding, which may be different from the user encoding.
+        :param encoding: Unicode encoding for output; if not specified 
+            uses the configured 'output_encoding' if any; otherwise the 
+            terminal encoding. 
             (See get_terminal_encoding.)
 
         :param encoding_type: How to handle encoding errors:
@@ -167,7 +242,11 @@ class UIFactory(object):
         """
         # XXX: is the caller supposed to close the resulting object?
         if encoding is None:
-            encoding = osutils.get_terminal_encoding()
+            from bzrlib import config
+            encoding = config.GlobalConfig().get_user_option(
+                'output_encoding')
+        if encoding is None:
+            encoding = osutils.get_terminal_encoding(trace=True)
         if encoding_type is None:
             encoding_type = 'replace'
         out_stream = self._make_output_stream_explicit(encoding, encoding_type)
@@ -352,8 +431,17 @@ class UIFactory(object):
                 "without an upgrade path.\n" % (inter.target._format,))
 
 
+class NoninteractiveUIFactory(UIFactory):
+    """Base class for UIs with no user."""
 
-class SilentUIFactory(UIFactory):
+    def confirm_action(self, prompt, confirmation_id, prompt_kwargs):
+        return True
+
+    def __repr__(self):
+        return '%s()' % (self.__class__.__name__, )
+
+
+class SilentUIFactory(NoninteractiveUIFactory):
     """A UI Factory which never prints anything.
 
     This is the default UI, if another one is never registered by a program
@@ -393,6 +481,9 @@ class CannedInputUIFactory(SilentUIFactory):
 
     def __repr__(self):
         return "%s(%r)" % (self.__class__.__name__, self.responses)
+
+    def confirm_action(self, prompt, confirmation_id, args):
+        return self.get_boolean(prompt % args)
 
     def get_boolean(self, prompt):
         return self.responses.pop(0)

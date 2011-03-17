@@ -90,7 +90,7 @@ the way the plugin are searched.
 
 As for the ``PATH`` variables, if multiple directories are
 specified in ``BZR_PLUGIN_PATH`` they should be separated by the
-platform specific appropriate character (':' on Unix/Linux/etc,
+platform specific appropriate character (':' on Unix,
 ';' on windows)
 
 By default if ``BZR_PLUGIN_PATH`` is set, it replaces searching
@@ -179,13 +179,22 @@ BZRPATH
 The path where Bazaar should look for shell plugin external commands.
 
 
+http_proxy, https_proxy
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Specifies the network proxy for outgoing connections, for example::
+
+  http_proxy=http://proxy.example.com:3128/ 
+  https_proxy=http://proxy.example.com:3128/
+
+
 Configuration files
 -------------------
 
 Location
 ~~~~~~~~
 
-Configuration files are located in ``$HOME/.bazaar`` on Linux/Unix and
+Configuration files are located in ``$HOME/.bazaar`` on Unix and
 ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0`` on
 Windows. (You can check the location for your system by using
 ``bzr version``.)
@@ -248,6 +257,13 @@ variable name, an equals sign and a value.  For example::
 
     email            = John Doe <jdoe@isp.com>
     check_signatures = require
+
+A variable can reference other variables **in the same configuration file** by
+enclosing them in curly brackets::
+
+    my_branch_name = feature_x
+    my_server      = bzr+ssh://example.com
+    push_location   = {my_server}/project/{my_branch_name}
 
 
 Variable policies
@@ -313,7 +329,7 @@ for. The '?' and '*' wildcards are supported::
     create_signatures = always
     check_signatures  = always
 
-    [http://bazaar-vcs.org/bzr/*]
+    [http://example.com/bzr/*]
     check_signatures  = require
 
 The authentication configuration file, authentication.conf
@@ -495,6 +511,23 @@ Valid values:
     whether the format deprecation warning is shown on repositories that are
     using deprecated formats.
 
+default_format
+~~~~~~~~~~~~~~
+
+A format name for the default format used when creating branches.  See ``bzr
+help formats`` for possible values.
+
+
+Unicode options
+---------------
+
+output_encoding
+~~~~~~~~~~~~~~~
+
+A Python unicode encoding name for text output from bzr, such as log
+information.  Values include: utf8, cp850, ascii, iso-8859-1.  The default
+is the terminal encoding prefered by the operating system.
+
 
 Branch type specific options
 ----------------------------
@@ -558,3 +591,37 @@ send_strict
 If present, defines the ``--strict`` option default value for checking
 uncommitted changes before sending a merge directive.
 
+
+External Merge Tools
+--------------------
+
+bzr.mergetool.<name>
+~~~~~~~~~~~~~~~~~~~~
+
+Defines an external merge tool called <name> with the given command-line.
+Arguments containing spaces should be quoted using single or double quotes. The
+executable may omit its path if it can be found on the PATH.
+
+The following markers can be used in the command-line to substitute filenames
+involved in the merge conflict:
+
+{base}      file.BASE
+{this}      file.THIS
+{other}     file.OTHER
+{result}    output file
+{this_temp} temp copy of file.THIS, used to overwrite output file if merge
+            succeeds.
+
+For example:
+
+  bzr.mergetool.kdiff3 = kdiff3 {base} {this} {other} -o {result}
+
+bzr.default_mergetool
+~~~~~~~~~~~~~~~~~
+
+Specifies which external merge tool (as defined above) should be selected by
+default in tools such as ``bzr qconflicts``.
+
+For example:
+
+  bzr.default_mergetool = kdiff3

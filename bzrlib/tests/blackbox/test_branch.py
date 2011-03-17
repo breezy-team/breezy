@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,13 +23,12 @@ from bzrlib import (
     branch,
     bzrdir,
     errors,
-    repository,
     revision as _mod_revision,
     )
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit1
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
-    KnownFailure,
+    fixtures,
     HardlinkFeature,
     test_server,
     )
@@ -38,7 +37,7 @@ from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
 from bzrlib.workingtree import WorkingTree
 
 
-class TestBranch(ExternalBase):
+class TestBranch(TestCaseWithTransport):
 
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
@@ -174,6 +173,29 @@ class TestBranch(ExternalBase):
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
 
+    def test_branch_files_from(self):
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        out, err = self.run_bzr('branch source target --files-from source')
+        self.failUnlessExists('target/file1')
+
+    def test_branch_files_from_hardlink(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        source.bzrdir.sprout('second')
+        out, err = self.run_bzr('branch source target --files-from second'
+                                ' --hardlink')
+        source_stat = os.stat('source/file1')
+        second_stat = os.stat('second/file1')
+        target_stat = os.stat('target/file1')
+        self.assertNotEqual(source_stat, target_stat)
+        self.assertEqual(second_stat, target_stat)
+
     def test_branch_standalone(self):
         shared_repo = self.make_repository('repo', shared=True)
         self.example_branch('source')
@@ -247,8 +269,19 @@ class TestBranch(ExternalBase):
         self.run_bzr('checkout --lightweight a b')
         self.assertLength(2, calls)
 
+    def test_branch_fetches_all_tags(self):
+        builder = self.make_branch_builder('source')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.tags.set_tag('tag-a', 'rev-2')
+        # Now source has a tag not in its ancestry.  Make a branch from it.
+        self.run_bzr('branch source new-branch')
+        new_branch = branch.Branch.open('new-branch')
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2', new_branch.tags.lookup_tag('tag-a'))
+        new_branch.repository.get_revision('rev-2')
 
-class TestBranchStacked(ExternalBase):
+
+class TestBranchStacked(TestCaseWithTransport):
     """Tests for branch --stacked"""
 
     def assertRevisionInRepository(self, repo_path, revid):
@@ -376,7 +409,7 @@ class TestBranchStacked(ExternalBase):
             err)
 
 
-class TestSmartServerBranching(ExternalBase):
+class TestSmartServerBranching(TestCaseWithTransport):
 
     def test_branch_from_trivial_branch_to_same_server_branch_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -391,7 +424,7 @@ class TestSmartServerBranching(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(38, self.hpss_calls)
+        self.assertLength(36, self.hpss_calls)
 
     def test_branch_from_trivial_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -406,7 +439,7 @@ class TestSmartServerBranching(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(10, self.hpss_calls)
+        self.assertLength(9, self.hpss_calls)
 
     def test_branch_from_trivial_stacked_branch_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
@@ -426,7 +459,23 @@ class TestSmartServerBranching(ExternalBase):
         # being too low. If rpc_count increases, more network roundtrips have
         # become necessary for this use case. Please do not adjust this number
         # upwards without agreement from bzr's network support maintainers.
-        self.assertLength(15, self.hpss_calls)
+        self.assertLength(14, self.hpss_calls)
+
+    def test_branch_from_branch_with_tags(self):
+        self.setup_smart_server_with_call_log()
+        builder = self.make_branch_builder('source')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        source.tags.set_tag('tag-a', 'rev-2')
+        source.tags.set_tag('tag-missing', 'missing-rev')
+        # Now source has a tag not in its ancestry.  Make a branch from it.
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', self.get_url('source'), 'target'])
+        # This figure represent the amount of work to perform this use case. It
+        # is entirely ok to reduce this number if a test fails due to rpc_count
+        # being too low. If rpc_count increases, more network roundtrips have
+        # become necessary for this use case. Please do not adjust this number
+        # upwards without agreement from bzr's network support maintainers.
+        self.assertLength(9, self.hpss_calls)
 
 
 class TestRemoteBranch(TestCaseWithSFTPServer):

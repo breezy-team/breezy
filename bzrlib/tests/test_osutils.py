@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,13 +21,14 @@ import errno
 import os
 import re
 import socket
-import stat
 import sys
 import time
 
 from bzrlib import (
     errors,
+    lazy_regex,
     osutils,
+    symbol_versioning,
     tests,
     trace,
     win32utils,
@@ -37,6 +38,7 @@ from bzrlib.tests import (
     file_utils,
     test__walkdirs_win32,
     )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
 class _UTF8DirReaderFeature(tests.Feature):
@@ -95,13 +97,7 @@ def dir_reader_scenarios():
     return scenarios
 
 
-def load_tests(basic_tests, module, loader):
-    suite = loader.suiteClass()
-    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
-        basic_tests, tests.condition_isinstance(TestDirReader))
-    tests.multiply_tests(dir_reader_tests, dir_reader_scenarios(), suite)
-    suite.addTest(remaining_tests)
-    return suite
+load_tests = load_tests_apply_scenarios
 
 
 class TestContainsWhitespace(tests.TestCase):
@@ -861,7 +857,7 @@ class TestWin32Funcs(tests.TestCase):
         self.assertEqual('//HOST/path', osutils._win98_abspath('//HOST/path'))
         # relative path
         cwd = osutils.getcwd().rstrip('/')
-        drive = osutils._nt_splitdrive(cwd)[0]
+        drive = osutils.ntpath.splitdrive(cwd)[0]
         self.assertEqual(cwd+'/path', osutils._win98_abspath('path'))
         self.assertEqual(drive+'/path', osutils._win98_abspath('/path'))
         # unicode path
@@ -1070,6 +1066,7 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         if sys.platform == 'win32':
             raise tests.TestNotApplicable(
                 "readdir IOError not tested on win32")
+        self.requireFeature(features.not_running_as_root)
         os.mkdir("test-unreadable")
         os.chmod("test-unreadable", 0000)
         # must chmod it back so that it can be removed
@@ -1082,6 +1079,42 @@ class TestWalkDirs(tests.TestCaseInTempDir):
         self.assertEquals(errno.EACCES, e.errno)
         # Ensure the message contains the file name
         self.assertContainsRe(str(e), "\./test-unreadable")
+
+
+    def test_walkdirs_encoding_error(self):
+        # <https://bugs.launchpad.net/bzr/+bug/488519>
+        # walkdirs didn't raise a useful message when the filenames
+        # are not using the filesystem's encoding
+
+        # require a bytestring based filesystem
+        self.requireFeature(tests.ByteStringNamedFilesystem)
+
+        tree = [
+            '.bzr',
+            '0file',
+            '1dir/',
+            '1dir/0file',
+            '1dir/1dir/',
+            '1file'
+            ]
+
+        self.build_tree(tree)
+
+        # rename the 1file to a latin-1 filename
+        os.rename("./1file", "\xe8file")
+        if "\xe8file" not in os.listdir("."):
+            self.skip("Lack filesystem that preserves arbitrary bytes")
+
+        self._save_platform_info()
+        win32utils.winver = None # Avoid the win32 detection code
+        osutils._fs_enc = 'UTF-8'
+
+        # this should raise on error
+        def attempt():
+            for dirdetail, dirblock in osutils.walkdirs('.'):
+                pass
+
+        self.assertRaises(errors.BadFilenameEncoding, attempt)
 
     def test__walkdirs_utf8(self):
         tree = [
@@ -1671,23 +1704,33 @@ class TestResourceLoading(tests.TestCaseInTempDir):
 
 class TestReCompile(tests.TestCase):
 
+    def _deprecated_re_compile_checked(self, *args, **kwargs):
+        return self.applyDeprecated(symbol_versioning.deprecated_in((2, 2, 0)),
+            osutils.re_compile_checked, *args, **kwargs)
+
     def test_re_compile_checked(self):
-        r = osutils.re_compile_checked(r'A*', re.IGNORECASE)
+        r = self._deprecated_re_compile_checked(r'A*', re.IGNORECASE)
         self.assertTrue(r.match('aaaa'))
         self.assertTrue(r.match('aAaA'))
 
     def test_re_compile_checked_error(self):
         # like https://bugs.launchpad.net/bzr/+bug/251352
+
+        # Due to possible test isolation error, re.compile is not lazy at
+        # this point. We re-install lazy compile.
+        lazy_regex.install_lazy_compile()
         err = self.assertRaises(
             errors.BzrCommandError,
-            osutils.re_compile_checked, '*', re.IGNORECASE, 'test case')
+            self._deprecated_re_compile_checked, '*', re.IGNORECASE, 'test case')
         self.assertEqual(
-            "Invalid regular expression in test case: '*': "
-            "nothing to repeat",
+            'Invalid regular expression in test case: '
+            '"*" nothing to repeat',
             str(err))
 
 
 class TestDirReader(tests.TestCaseInTempDir):
+
+    scenarios = dir_reader_scenarios()
 
     # Set by load_tests
     _dir_reader_class = None
@@ -1856,17 +1899,17 @@ class TestConcurrency(tests.TestCase):
         self.assertIsInstance(concurrency, int)
 
     def test_local_concurrency_environment_variable(self):
-        os.environ['BZR_CONCURRENCY'] = '2'
+        self.overrideEnv('BZR_CONCURRENCY', '2')
         self.assertEqual(2, osutils.local_concurrency(use_cache=False))
-        os.environ['BZR_CONCURRENCY'] = '3'
+        self.overrideEnv('BZR_CONCURRENCY', '3')
         self.assertEqual(3, osutils.local_concurrency(use_cache=False))
-        os.environ['BZR_CONCURRENCY'] = 'foo'
+        self.overrideEnv('BZR_CONCURRENCY', 'foo')
         self.assertEqual(1, osutils.local_concurrency(use_cache=False))
 
     def test_option_concurrency(self):
-        os.environ['BZR_CONCURRENCY'] = '1'
+        self.overrideEnv('BZR_CONCURRENCY', '1')
         self.run_bzr('rocks --concurrency 42')
-        # Command line overrides envrionment variable
+        # Command line overrides environment variable
         self.assertEquals('42', os.environ['BZR_CONCURRENCY'])
         self.assertEquals(42, osutils.local_concurrency(use_cache=False))
 
@@ -1921,7 +1964,7 @@ class TestTerminalWidth(tests.TestCase):
     def restore_osutils_globals(self):
         osutils._terminal_size_state = self._orig_terminal_size_state
         osutils._first_terminal_size = self._orig_first_terminal_size
-        
+
     def replace_stdout(self, new):
         self.overrideAttr(sys, 'stdout', new)
 
@@ -1942,19 +1985,23 @@ class TestTerminalWidth(tests.TestCase):
     def test_defaults_to_BZR_COLUMNS(self):
         # BZR_COLUMNS is set by the test framework
         self.assertNotEqual('12', os.environ['BZR_COLUMNS'])
-        os.environ['BZR_COLUMNS'] = '12'
+        self.overrideEnv('BZR_COLUMNS', '12')
         self.assertEqual(12, osutils.terminal_width())
 
+    def test_BZR_COLUMNS_0_no_limit(self):
+        self.overrideEnv('BZR_COLUMNS', '0')
+        self.assertEqual(None, osutils.terminal_width())
+
     def test_falls_back_to_COLUMNS(self):
-        del os.environ['BZR_COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
         self.assertNotEqual('42', os.environ['COLUMNS'])
         self.set_fake_tty()
-        os.environ['COLUMNS'] = '42'
+        self.overrideEnv('COLUMNS', '42')
         self.assertEqual(42, osutils.terminal_width())
 
     def test_tty_default_without_columns(self):
-        del os.environ['BZR_COLUMNS']
-        del os.environ['COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('COLUMNS', None)
 
         def terminal_size(w, h):
             return 42, 42
@@ -1967,8 +2014,8 @@ class TestTerminalWidth(tests.TestCase):
         self.assertEqual(42, osutils.terminal_width())
 
     def test_non_tty_default_without_columns(self):
-        del os.environ['BZR_COLUMNS']
-        del os.environ['COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('COLUMNS', None)
         self.replace_stdout(None)
         self.assertEqual(None, osutils.terminal_width())
 
@@ -1984,8 +2031,8 @@ class TestTerminalWidth(tests.TestCase):
         else:
             self.overrideAttr(termios, 'TIOCGWINSZ')
             del termios.TIOCGWINSZ
-        del os.environ['BZR_COLUMNS']
-        del os.environ['COLUMNS']
+        self.overrideEnv('BZR_COLUMNS', None)
+        self.overrideEnv('COLUMNS', None)
         # Whatever the result is, if we don't raise an exception, it's ok.
         osutils.terminal_width()
 
@@ -2027,10 +2074,70 @@ class TestCreationOps(tests.TestCaseInTempDir):
 class TestGetuserUnicode(tests.TestCase):
 
     def test_ascii_user(self):
-        osutils.set_or_unset_env('LOGNAME', 'jrandom')
+        self.overrideEnv('LOGNAME', 'jrandom')
         self.assertEqual(u'jrandom', osutils.getuser_unicode())
 
     def test_unicode_user(self):
         ue = osutils.get_user_encoding()
-        osutils.set_or_unset_env('LOGNAME', u'jrandom\xb6'.encode(ue))
+        uni_val, env_val = tests.probe_unicode_in_user_encoding()
+        if uni_val is None:
+            raise tests.TestSkipped(
+                'Cannot find a unicode character that works in encoding %s'
+                % (osutils.get_user_encoding(),))
+        uni_username = u'jrandom' + uni_val
+        encoded_username = uni_username.encode(ue)
+        self.overrideEnv('LOGNAME', encoded_username)
+        self.assertEqual(uni_username, osutils.getuser_unicode())
+        self.overrideEnv('LOGNAME', u'jrandom\xb6'.encode(ue))
         self.assertEqual(u'jrandom\xb6', osutils.getuser_unicode())
+
+class TestBackupNames(tests.TestCase):
+
+    def setUp(self):
+        super(TestBackupNames, self).setUp()
+        self.backups = []
+
+    def backup_exists(self, name):
+        return name in self.backups
+
+    def available_backup_name(self, name):
+        backup_name = osutils.available_backup_name(name, self.backup_exists)
+        self.backups.append(backup_name)
+        return backup_name
+
+    def assertBackupName(self, expected, name):
+        self.assertEqual(expected, self.available_backup_name(name))
+
+    def test_empty(self):
+        self.assertBackupName('file.~1~', 'file')
+
+    def test_existing(self):
+        self.available_backup_name('file')
+        self.available_backup_name('file')
+        self.assertBackupName('file.~3~', 'file')
+        # Empty slots are found, this is not a strict requirement and may be
+        # revisited if we test against all implementations.
+        self.backups.remove('file.~2~')
+        self.assertBackupName('file.~2~', 'file')
+
+
+class TestFindExecutableInPath(tests.TestCase):
+
+    def test_windows(self):
+        if sys.platform != 'win32':
+            raise tests.TestSkipped('test requires win32')
+        self.assertTrue(osutils.find_executable_on_path('explorer') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('explorer.exe') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('EXPLORER.EXE') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)
+        self.assertTrue(osutils.find_executable_on_path('file.txt') is None)
+
+    def test_other(self):
+        if sys.platform == 'win32':
+            raise tests.TestSkipped('test requires non-win32')
+        self.assertTrue(osutils.find_executable_on_path('sh') is not None)
+        self.assertTrue(
+            osutils.find_executable_on_path('THIS SHOULD NOT EXIST') is None)

@@ -23,6 +23,7 @@ import os
 import stat
 import sys
 import tarfile
+import time
 import zipfile
 
 
@@ -30,10 +31,10 @@ from bzrlib import (
     export,
     tests,
     )
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestExport(ExternalBase):
+class TestExport(TestCaseWithTransport):
 
     def test_tar_export(self):
         tree = self.make_branch_and_tree('tar')
@@ -66,15 +67,13 @@ class TestExport(ExternalBase):
         self.assertEqual(['test/a'], sorted(ball.getnames()))
 
     def test_tar_export_unicode(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('tar')
         # FIXME: using fname = u'\xe5.txt' below triggers a bug revealed since
         # bzr.dev revno 4216 but more related to OSX/working trees/unicode than
         # export itself --vila 20090406
         fname = u'\N{Euro Sign}.txt'
-        try:
-            self.build_tree(['tar/' + fname])
-        except UnicodeError:
-            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
+        self.build_tree(['tar/' + fname])
         tree.add([fname])
         tree.commit('first')
 
@@ -87,6 +86,7 @@ class TestExport(ExternalBase):
 
     def test_tar_export_unicode_basedir(self):
         """Test for bug #413406"""
+        self.requireFeature(tests.UnicodeFilenameFeature)
         basedir = u'\N{euro sign}'
         os.mkdir(basedir)
         os.chdir(basedir)
@@ -118,13 +118,41 @@ class TestExport(ExternalBase):
         # '.bzrignore'.
         self.assertEqual(['test/a'], sorted(zfile.namelist()))
 
+    def test_zip_export_stdout(self):
+        tree = self.make_branch_and_tree('zip')
+        self.build_tree(['zip/a'])
+        tree.add('a')
+        tree.commit('1')
+        os.chdir('zip')
+        contents = self.run_bzr('export --format=zip -')[0]
+        zfile = zipfile.ZipFile(StringIO(contents))
+        self.assertEqual(['a'], sorted(zfile.namelist()))
+
+    def test_tgz_export_stdout(self):
+        tree = self.make_branch_and_tree('z')
+        self.build_tree(['z/a'])
+        tree.add('a')
+        tree.commit('1')
+        os.chdir('z')
+        contents = self.run_bzr('export --format=tgz -')[0]
+        ball = tarfile.open(mode='r|gz', fileobj=StringIO(contents))
+        self.assertEqual(['a'], ball.getnames())
+
+    def test_tbz2_export_stdout(self):
+        tree = self.make_branch_and_tree('z')
+        self.build_tree(['z/a'])
+        tree.add('a')
+        tree.commit('1')
+        os.chdir('z')
+        contents = self.run_bzr('export --format=tbz2 -')[0]
+        ball = tarfile.open(mode='r|bz2', fileobj=StringIO(contents))
+        self.assertEqual(['a'], ball.getnames())
+
     def test_zip_export_unicode(self):
+        self.requireFeature(tests.UnicodeFilenameFeature)
         tree = self.make_branch_and_tree('zip')
         fname = u'\N{Euro Sign}.txt'
-        try:
-            self.build_tree(['zip/' + fname])
-        except UnicodeError:
-            raise tests.TestSkipped('Unable to represent path %r' % (fname,))
+        self.build_tree(['zip/' + fname])
         tree.add([fname])
         tree.commit('first')
 
@@ -151,7 +179,8 @@ class TestExport(ExternalBase):
         self.assertEqual(['test/a', 'test/b/', 'test/b/c', 'test/d/'], names)
 
         file_attr = stat.S_IFREG | export.zip_exporter.FILE_PERMISSIONS
-        dir_attr = stat.S_IFDIR | export.zip_exporter.ZIP_DIRECTORY_BIT
+        dir_attr = (stat.S_IFDIR | export.zip_exporter.ZIP_DIRECTORY_BIT |
+                    export.zip_exporter.DIR_PERMISSIONS)
 
         a_info = zfile.getinfo(names[0])
         self.assertEqual(file_attr, a_info.external_attr)
@@ -319,3 +348,15 @@ class TestExport(ExternalBase):
         self.run_bzr(['export', '--directory=branch', 'latest'])
         self.assertEqual(['goodbye', 'hello'], sorted(os.listdir('latest')))
         self.check_file_contents('latest/goodbye', 'baz')
+
+    def test_zip_export_per_file_timestamps(self):
+        tree = self.example_branch()
+        self.build_tree_contents([('branch/har', 'foo')])
+        tree.add('har')
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        timestamp = 347151600
+        tree.commit('setup', timestamp=timestamp)
+        self.run_bzr('export --per-file-timestamps test.zip branch')
+        zfile = zipfile.ZipFile('test.zip')
+        info = zfile.getinfo("test/har")
+        self.assertEquals(time.localtime(timestamp)[:6], info.date_time)

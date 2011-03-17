@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ class LaunchpadServiceTests(TestCase):
     def setUp(self):
         super(LaunchpadServiceTests, self).setUp()
         # make sure we have a reproducible standard environment
-        self._captureVar('BZR_LP_XMLRPC_URL', None)
+        self.overrideEnv('BZR_LP_XMLRPC_URL', None)
 
     def test_default_service(self):
         service = LaunchpadService()
@@ -52,11 +52,6 @@ class LaunchpadServiceTests(TestCase):
     def test_staging_service(self):
         service = LaunchpadService(lp_instance='staging')
         self.assertEqual('https://xmlrpc.staging.launchpad.net/bazaar/',
-                         service.service_url)
-
-    def test_edge_service(self):
-        service = LaunchpadService(lp_instance='edge')
-        self.assertEqual('https://xmlrpc.edge.launchpad.net/bazaar/',
                          service.service_url)
 
     def test_dev_service(self):
@@ -170,13 +165,6 @@ class TestURLInference(TestCase):
             'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
         self.assertEqual(
             'https://code.staging.launchpad.net/~foo/bar/baz', web_url)
-
-    def test_edge_url(self):
-        service = LaunchpadService(lp_instance='edge')
-        web_url = service.get_web_url_from_branch_url(
-            'bzr+ssh://bazaar.launchpad.net/~foo/bar/baz')
-        self.assertEqual(
-            'https://code.edge.launchpad.net/~foo/bar/baz', web_url)
 
     def test_dev_url(self):
         service = LaunchpadService(lp_instance='dev')

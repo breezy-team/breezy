@@ -27,7 +27,6 @@ it.
 """
 
 from cStringIO import StringIO
-import re
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -84,10 +83,7 @@ def _get_transport_modules():
     modules = set()
     for prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
-            if hasattr(factory, "_module_name"):
-                modules.add(factory._module_name)
-            else:
-                modules.add(factory._obj.__module__)
+            modules.add(factory.get_module())
     # Add chroot and pathfilter directly, because there is no handler
     # registered for it.
     modules.add('bzrlib.transport.chroot')
@@ -1289,6 +1285,12 @@ class Transport(object):
         # should be asked to ConnectedTransport only.
         return None
 
+    def disconnect(self):
+        # This is really needed for ConnectedTransport only, but it's easier to
+        # have Transport do nothing than testing that the disconnect should be
+        # asked to ConnectedTransport only.
+        pass
+
     def _redirected_to(self, source, target):
         """Returns a transport suitable to re-issue a redirected request.
 
@@ -1356,6 +1358,7 @@ class ConnectedTransport(Transport):
             # prompt the user for one when appropriate.
             self._password = _from_transport._password
 
+        import pdb; pdb.set_trace()
         base = self._unsplit_url(self._scheme,
                                  self._user, self._password,
                                  self._host, self._port,
@@ -1553,9 +1556,13 @@ class ConnectedTransport(Transport):
             transport = self.__class__(other_base, _from_transport=self)
         return transport
 
+    def disconnect(self):
+        """Disconnect the transport.
 
-# We try to recognize an url lazily (ignoring user, password, etc)
-_urlRE = re.compile(r'^(?P<proto>[^:/\\]+)://(?P<rest>.*)$')
+        If and when required the transport willl reconnect automatically.
+        """
+        raise NotImplementedError(self.disconnect)
+
 
 def get_transport(base, possible_transports=None):
     """Open a transport to access a URL or directory.
@@ -1575,8 +1582,7 @@ def get_transport(base, possible_transports=None):
     base = directories.dereference(base)
 
     def convert_path_to_url(base, error_str):
-        m = _urlRE.match(base)
-        if m:
+        if urlutils.is_url(base):
             # This looks like a URL, but we weren't able to
             # instantiate it as such raise an appropriate error
             # FIXME: we have a 'error_str' unused and we use last_err below
@@ -1743,43 +1749,32 @@ register_transport_proto('ftp://', help="Access using passive FTP.")
 register_lazy_transport('ftp://', 'bzrlib.transport.ftp', 'FtpTransport')
 register_transport_proto('aftp://', help="Access using active FTP.")
 register_lazy_transport('aftp://', 'bzrlib.transport.ftp', 'FtpTransport')
-
 register_transport_proto('gio+', help="Access using any GIO supported protocols.")
 register_lazy_transport('gio+', 'bzrlib.transport.gio_transport', 'GioTransport')
 
-try:
-    import kerberos
-    kerberos_available = True
-except ImportError:
-    kerberos_available = False
 
-if kerberos_available:
-    # Default to trying GSSAPI authentication (if the kerberos module is
-    # available)
-    register_transport_proto('ftp+gssapi://', register_netloc=True)
-    register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
-                            'GSSAPIFtpTransport')
-    register_transport_proto('aftp+gssapi://', register_netloc=True)
-    register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
-                            'GSSAPIFtpTransport')
-    register_transport_proto('ftp+nogssapi://', register_netloc=True)
-    register_transport_proto('aftp+nogssapi://', register_netloc=True)
-
-    register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi',
-                            'GSSAPIFtpTransport')
-    register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi',
-                            'GSSAPIFtpTransport')
-    register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp',
-                            'FtpTransport')
-    register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp',
-                            'FtpTransport')
+# Default to trying GSSAPI authentication (if the kerberos module is
+# available)
+register_transport_proto('ftp+gssapi://', register_netloc=True)
+register_transport_proto('aftp+gssapi://', register_netloc=True)
+register_transport_proto('ftp+nogssapi://', register_netloc=True)
+register_transport_proto('aftp+nogssapi://', register_netloc=True)
+register_lazy_transport('ftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                        'GSSAPIFtpTransport')
+register_lazy_transport('aftp+gssapi://', 'bzrlib.transport.ftp._gssapi',
+                        'GSSAPIFtpTransport')
+register_lazy_transport('ftp://', 'bzrlib.transport.ftp._gssapi',
+                        'GSSAPIFtpTransport')
+register_lazy_transport('aftp://', 'bzrlib.transport.ftp._gssapi',
+                        'GSSAPIFtpTransport')
+register_lazy_transport('ftp+nogssapi://', 'bzrlib.transport.ftp',
+                        'FtpTransport')
+register_lazy_transport('aftp+nogssapi://', 'bzrlib.transport.ftp',
+                        'FtpTransport')
 
 register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',
                         'MemoryTransport')
-
-# chroots cannot be implicitly accessed, they must be explicitly created:
-register_transport_proto('chroot+')
 
 register_transport_proto('readonly+',
 #              help="This modifier converts any transport to be readonly."
@@ -1814,12 +1809,6 @@ register_lazy_transport('vfat+',
 register_transport_proto('nosmart+')
 register_lazy_transport('nosmart+', 'bzrlib.transport.nosmart',
                         'NoSmartTransportDecorator')
-
-# These two schemes were registered, but don't seem to have an actual transport
-# protocol registered
-for scheme in ['ssh', 'bzr+loopback']:
-    register_urlparse_netloc_protocol(scheme)
-del scheme
 
 register_transport_proto('bzr://',
             help="Fast access using the Bazaar smart server.",

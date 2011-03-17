@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,18 +21,14 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
-    lockdir,
-    osutils,
-    tests,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
+from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
 from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed,
                            LockContention)
 from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
-from bzrlib.workingtree import WorkingTree
 
 
 # TODO: Test commit with some added, and added-but-missing files

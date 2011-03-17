@@ -18,7 +18,7 @@ Subversionリポジトリへのアクセスは大部分は透明、\
 利用からまだ採用していないチームのための共通の暫定ステップです
 
 インストールの手引きに関しては、bzr-svnのホームページをご覧ください:
-http://bazaar-vcs.org/BzrForeignBranches/Subversion.
+http://wiki.bazaar.canonical.com/BzrForeignBranches/Subversion.
 
 
 シンプルな例
@@ -109,4 +109,4 @@ bzr-svn 0.5.4 に関するいくつかの例です:
  * Bazaarはファイルのコピーのトラッキングをサポートしません
 
 現在の制約の一覧に関しては、bzr-svnのウェブページ、\
-http://bazaar-vcs.org/BzrForeignBranches/Subversion を参照してください。
+http://wiki.bazaar.canonical.com/BzrForeignBranches/Subversion を参照してください。

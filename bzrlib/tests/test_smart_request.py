@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,11 +18,13 @@
 
 import threading
 
-from bzrlib import errors
+from bzrlib import (
+    errors,
+    transport,
+    )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import request
 from bzrlib.tests import TestCase, TestCaseWithMemoryTransport
-from bzrlib.transport import get_transport
 
 
 class NoBodyRequest(request.SmartServerRequest):
@@ -34,9 +36,16 @@ class NoBodyRequest(request.SmartServerRequest):
 
 class DoErrorRequest(request.SmartServerRequest):
     """A request that raises an error from self.do()."""
-    
+
     def do(self):
         raise errors.NoSuchFile('xyzzy')
+
+
+class DoUnexpectedErrorRequest(request.SmartServerRequest):
+    """A request that encounters a generic error in self.do()"""
+
+    def do(self):
+        dict()[1]
 
 
 class ChunkErrorRequest(request.SmartServerRequest):
@@ -147,6 +156,14 @@ class TestSmartRequestHandlerErrorTranslation(TestCase):
         handler.end_received()
         self.assertResponseIsTranslatedError(handler)
 
+    def test_unexpected_error_translation(self):
+        handler = request.SmartServerRequestHandler(
+            None, {'foo': DoUnexpectedErrorRequest}, '/')
+        handler.args_received(('foo',))
+        self.assertEqual(
+            request.FailedSmartServerResponse(('error', 'KeyError', "1")),
+            handler.response)
+
 
 class TestRequestHanderErrorTranslation(TestCase):
     """Tests for bzrlib.smart.request._translate_error."""
@@ -170,9 +187,26 @@ class TestRequestHanderErrorTranslation(TestCase):
             ('TokenMismatch', 'some-token', 'actual-token'),
             errors.TokenMismatch('some-token', 'actual-token'))
 
+    def test_MemoryError(self):
+        self.assertTranslationEqual(("MemoryError",), MemoryError())
+
+    def test_generic_Exception(self):
+        self.assertTranslationEqual(('error', 'Exception', ""),
+            Exception())
+
+    def test_generic_BzrError(self):
+        self.assertTranslationEqual(('error', 'BzrError', "some text"),
+            errors.BzrError(msg="some text"))
+
+    def test_generic_zlib_error(self):
+        from zlib import error
+        msg = "Error -3 while decompressing data: incorrect data check"
+        self.assertTranslationEqual(('error', 'zlib.error', msg),
+            error(msg))
+
 
 class TestRequestJail(TestCaseWithMemoryTransport):
-    
+
     def test_jail(self):
         transport = self.get_transport('blah')
         req = request.SmartServerRequest(transport)
@@ -185,9 +219,11 @@ class TestRequestJail(TestCaseWithMemoryTransport):
 
 class TestJailHook(TestCaseWithMemoryTransport):
 
-    def tearDown(self):
-        request.jail_info.transports = None
-        TestCaseWithMemoryTransport.tearDown(self)
+    def setUp(self):
+        super(TestJailHook, self).setUp()
+        def clear_jail_info():
+            request.jail_info.transports = None
+        self.addCleanup(clear_jail_info)
 
     def test_jail_hook(self):
         request.jail_info.transports = None
@@ -203,8 +239,8 @@ class TestJailHook(TestCaseWithMemoryTransport):
         # A parent is not allowed
         self.assertRaises(errors.JailBreak, _pre_open_hook, t.clone('..'))
         # A completely unrelated transport is not allowed
-        self.assertRaises(
-            errors.JailBreak, _pre_open_hook, get_transport('http://host/'))
+        self.assertRaises(errors.JailBreak, _pre_open_hook,
+                          transport.get_transport('http://host/'))
 
     def test_open_bzrdir_in_non_main_thread(self):
         """Opening a bzrdir in a non-main thread should work ok.

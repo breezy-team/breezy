@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,10 +17,10 @@
 
 """Tests of the 'bzr ignored' command."""
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestIgnored(ExternalBase):
+class TestIgnored(TestCaseWithTransport):
 
     def test_ignored_added_file(self):
         """'bzr ignored' should not list versioned files."""

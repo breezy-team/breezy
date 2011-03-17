@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,30 +18,34 @@
 from bzrlib import (
     chk_map,
     groupcompress,
-    bzrdir,
     errors,
     inventory,
     osutils,
     repository,
     revision,
     tests,
+    workingtree,
     )
-from bzrlib.inventory import (CHKInventory, Inventory, ROOT_ID, InventoryFile,
-    InventoryDirectory, InventoryEntry, TreeReference)
+from bzrlib.inventory import (
+    CHKInventory,
+    Inventory,
+    ROOT_ID,
+    InventoryFile,
+    InventoryDirectory,
+    InventoryEntry,
+    TreeReference,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
-    condition_isinstance,
-    multiply_tests,
-    split_suite_by_condition,
     )
-from bzrlib.tests.per_workingtree import workingtree_formats
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterise some inventory tests."""
-    to_adapt, result = split_suite_by_condition(standard_tests,
-        condition_isinstance(TestDeltaApplication))
+load_tests = load_tests_apply_scenarios
+
+
+def delta_application_scenarios():
     scenarios = [
         ('Inventory', {'apply_delta':apply_inventory_Inventory}),
         ]
@@ -52,10 +56,14 @@ def load_tests(standard_tests, module, loader):
     # just creating trees.
     formats = set()
     for _, format in repository.format_registry.iteritems():
-        scenarios.append((str(format.__name__), {
-            'apply_delta':apply_inventory_Repository_add_inventory_by_delta,
-            'format':format}))
-    for format in workingtree_formats():
+        if format.supports_full_versioned_files:
+            scenarios.append((str(format.__name__), {
+                'apply_delta':apply_inventory_Repository_add_inventory_by_delta,
+                'format':format}))
+    for format in workingtree.format_registry._get_all():
+        repo_fmt = format._matchingbzrdir.repository_format
+        if not repo_fmt.supports_full_versioned_files:
+            continue
         scenarios.append(
             (str(format.__class__.__name__) + ".update_basis_by_delta", {
             'apply_delta':apply_inventory_WT_basis,
@@ -64,7 +72,7 @@ def load_tests(standard_tests, module, loader):
             (str(format.__class__.__name__) + ".apply_inventory_delta", {
             'apply_delta':apply_inventory_WT,
             'format':format}))
-    return multiply_tests(to_adapt, scenarios, result)
+    return scenarios
 
 
 def create_texts_for_inv(repo, inv):
@@ -74,7 +82,8 @@ def create_texts_for_inv(repo, inv):
         else:
             lines = []
         repo.texts.add_lines((ie.file_id, ie.revision), [], lines)
-    
+
+
 def apply_inventory_Inventory(self, basis, delta):
     """Apply delta to basis and return the result.
     
@@ -330,6 +339,8 @@ class TestInventoryUpdates(TestCase):
 
 
 class TestDeltaApplication(TestCaseWithTransport):
+
+    scenarios = delta_application_scenarios()
  
     def get_empty_inventory(self, reference_inv=None):
         """Get an empty inventory.
@@ -590,6 +601,11 @@ class TestInventory(TestCase):
         self.assertFalse(inv.is_root('TREE_ROOT'))
         self.assertFalse(inv.is_root('booga'))
 
+    def test_entries_for_empty_inventory(self):
+        """Test that entries() will not fail for an empty inventory"""
+        inv = Inventory(root_id=None)
+        self.assertEqual([], inv.entries())
+
 
 class TestInventoryEntry(TestCase):
 
@@ -607,12 +623,7 @@ class TestInventoryEntry(TestCase):
 
     def test_dir_detect_changes(self):
         left = inventory.InventoryDirectory('123', 'hello.c', ROOT_ID)
-        left.text_sha1 = 123
-        left.executable = True
-        left.symlink_target='foo'
         right = inventory.InventoryDirectory('123', 'hello.c', ROOT_ID)
-        right.text_sha1 = 321
-        right.symlink_target='bar'
         self.assertEqual((False, False), left.detect_changes(right))
         self.assertEqual((False, False), right.detect_changes(left))
 
@@ -632,11 +643,8 @@ class TestInventoryEntry(TestCase):
 
     def test_symlink_detect_changes(self):
         left = inventory.InventoryLink('123', 'hello.c', ROOT_ID)
-        left.text_sha1 = 123
-        left.executable = True
         left.symlink_target='foo'
         right = inventory.InventoryLink('123', 'hello.c', ROOT_ID)
-        right.text_sha1 = 321
         right.symlink_target='foo'
         self.assertEqual((False, False), left.detect_changes(right))
         self.assertEqual((False, False), right.detect_changes(left))

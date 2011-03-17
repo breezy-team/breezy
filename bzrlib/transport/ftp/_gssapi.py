@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,15 +19,13 @@
 See RFC2228 for details.
 """
 
-import base64, ftplib, getpass, socket
+import base64, ftplib
 
 from bzrlib import (
-    config,
     errors,
     )
 from bzrlib.trace import mutter
 from bzrlib.transport.ftp import FtpTransport
-from bzrlib.transport import register_transport_proto, register_transport
 
 try:
     import kerberos

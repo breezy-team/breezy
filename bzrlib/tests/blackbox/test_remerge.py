@@ -17,11 +17,11 @@
 
 import os
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.workingtree import WorkingTree
 
 
-class TestRemerge(ExternalBase):
+class TestRemerge(TestCaseWithTransport):
 
     def make_file(self, name, contents):
         f = open(name, 'wb')

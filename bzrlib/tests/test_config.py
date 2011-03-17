@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,10 @@
 from cStringIO import StringIO
 import os
 import sys
+import threading
+
+
+from testtools import matchers
 
 #import bzrlib specific imports here
 from bzrlib import (
@@ -29,13 +33,33 @@ from bzrlib import (
     errors,
     osutils,
     mail_client,
+    mergetools,
     ui,
     urlutils,
     tests,
     trace,
     transport,
     )
+from bzrlib.tests import (
+    features,
+    scenarios,
+    )
 from bzrlib.util.configobj import configobj
+
+
+def lockable_config_scenarios():
+    return [
+        ('global',
+         {'config_class': config.GlobalConfig,
+          'config_args': [],
+          'config_section': 'DEFAULT'}),
+        ('locations',
+         {'config_class': config.LocationConfig,
+          'config_args': ['.'],
+          'config_section': '.'}),]
+
+
+load_tests = scenarios.load_tests_apply_scenarios
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -47,6 +71,9 @@ change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
 log_format=short
 user_global_option=something
+bzr.mergetool.sometool=sometool {base} {this} {other} -o {result}
+bzr.mergetool.funkytool=funkytool "arg with spaces" {this_temp}
+bzr.default_mergetool=sometool
 [ALIASES]
 h=help
 ll=""" + sample_long_alias + "\n"
@@ -105,6 +132,49 @@ post_commit=bzrlib.tests.test_config.post_commit
 """
 
 
+def create_configs(test):
+    """Create configuration files for a given test.
+
+    This requires creating a tree (and populate the ``test.tree`` attribute)
+    and its associated branch and will populate the following attributes:
+
+    - branch_config: A BranchConfig for the associated branch.
+
+    - locations_config : A LocationConfig for the associated branch
+
+    - bazaar_config: A GlobalConfig.
+
+    The tree and branch are created in a 'tree' subdirectory so the tests can
+    still use the test directory to stay outside of the branch.
+    """
+    tree = test.make_branch_and_tree('tree')
+    test.tree = tree
+    test.branch_config = config.BranchConfig(tree.branch)
+    test.locations_config = config.LocationConfig(tree.basedir)
+    test.bazaar_config = config.GlobalConfig()
+
+
+def create_configs_with_file_option(test):
+    """Create configuration files with a ``file`` option set in each.
+
+    This builds on ``create_configs`` and add one ``file`` option in each
+    configuration with a value which allows identifying the configuration file.
+    """
+    create_configs(test)
+    test.bazaar_config.set_user_option('file', 'bazaar')
+    test.locations_config.set_user_option('file', 'locations')
+    test.branch_config.set_user_option('file', 'branch')
+
+
+class TestOptionsMixin:
+
+    def assertOptions(self, expected, conf):
+        # We don't care about the parser (as it will make tests hard to write
+        # and error-prone anyway)
+        self.assertThat([opt[:4] for opt in conf._get_options()],
+                        matchers.Equals(expected))
+
+
 class InstrumentedConfigObj(object):
     """A config obj look-enough-alike to record calls made to it."""
 
@@ -128,6 +198,9 @@ class InstrumentedConfigObj(object):
     def keys(self):
         self._calls.append(('keys',))
         return []
+
+    def reload(self):
+        self._calls.append(('reload',))
 
     def write(self, arg):
         self._calls.append(('write',))
@@ -240,10 +313,36 @@ class TestConfigObj(tests.TestCase):
         """
         co = config.ConfigObj()
         co['test'] = 'foo#bar'
-        lines = co.write()
+        outfile = StringIO()
+        co.write(outfile=outfile)
+        lines = outfile.getvalue().splitlines()
         self.assertEqual(lines, ['test = "foo#bar"'])
         co2 = config.ConfigObj(lines)
         self.assertEqual(co2['test'], 'foo#bar')
+
+    def test_triple_quotes(self):
+        # Bug #710410: if the value string has triple quotes
+        # then ConfigObj versions up to 4.7.2 will quote them wrong
+        # and won't able to read them back
+        triple_quotes_value = '''spam
+""" that's my spam """
+eggs'''
+        co = config.ConfigObj()
+        co['test'] = triple_quotes_value
+        # While writing this test another bug in ConfigObj has been found:
+        # method co.write() without arguments produces list of lines
+        # one option per line, and multiline values are not split
+        # across multiple lines,
+        # and that breaks the parsing these lines back by ConfigObj.
+        # This issue only affects test, but it's better to avoid
+        # `co.write()` construct at all.
+        # [bialix 20110222] bug report sent to ConfigObj's author
+        outfile = StringIO()
+        co.write(outfile=outfile)
+        output = outfile.getvalue()
+        # now we're trying to read it back
+        co2 = config.ConfigObj(StringIO(output))
+        self.assertEquals(triple_quotes_value, co2['test'])
 
 
 erroneous_config = """[section] # line 1
@@ -333,11 +432,11 @@ class TestConfigPath(tests.TestCase):
 
     def setUp(self):
         super(TestConfigPath, self).setUp()
-        os.environ['HOME'] = '/home/bogus'
-        os.environ['XDG_CACHE_DIR'] = ''
+        self.overrideEnv('HOME', '/home/bogus')
+        self.overrideEnv('XDG_CACHE_DIR', '')
         if sys.platform == 'win32':
-            os.environ['BZR_HOME'] = \
-                r'C:\Documents and Settings\bogus\Application Data'
+            self.overrideEnv(
+                'BZR_HOME', r'C:\Documents and Settings\bogus\Application Data')
             self.bzr_home = \
                 'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
         else:
@@ -349,10 +448,6 @@ class TestConfigPath(tests.TestCase):
     def test_config_filename(self):
         self.assertEqual(config.config_filename(),
                          self.bzr_home + '/bazaar.conf')
-
-    def test_branches_config_filename(self):
-        self.assertEqual(config.branches_config_filename(),
-                         self.bzr_home + '/branches.conf')
 
     def test_locations_config_filename(self):
         self.assertEqual(config.locations_config_filename(),
@@ -367,31 +462,435 @@ class TestConfigPath(tests.TestCase):
             '/home/bogus/.cache')
 
 
-class TestIniConfig(tests.TestCase):
+class TestXDGConfigDir(tests.TestCaseInTempDir):
+    # must be in temp dir because config tests for the existence of the bazaar
+    # subdirectory of $XDG_CONFIG_HOME
+
+    def setUp(self):
+        if sys.platform in ('darwin', 'win32'):
+            raise tests.TestNotApplicable(
+                'XDG config dir not used on this platform')
+        super(TestXDGConfigDir, self).setUp()
+        self.overrideEnv('HOME', self.test_home_dir)
+        # BZR_HOME overrides everything we want to test so unset it.
+        self.overrideEnv('BZR_HOME', None)
+
+    def test_xdg_config_dir_exists(self):
+        """When ~/.config/bazaar exists, use it as the config dir."""
+        newdir = osutils.pathjoin(self.test_home_dir, '.config', 'bazaar')
+        os.makedirs(newdir)
+        self.assertEqual(config.config_dir(), newdir)
+
+    def test_xdg_config_home(self):
+        """When XDG_CONFIG_HOME is set, use it."""
+        xdgconfigdir = osutils.pathjoin(self.test_home_dir, 'xdgconfig')
+        self.overrideEnv('XDG_CONFIG_HOME', xdgconfigdir)
+        newdir = osutils.pathjoin(xdgconfigdir, 'bazaar')
+        os.makedirs(newdir)
+        self.assertEqual(config.config_dir(), newdir)
+
+
+class TestIniConfig(tests.TestCaseInTempDir):
 
     def make_config_parser(self, s):
-        conf = config.IniBasedConfig(None)
-        parser = conf._get_parser(file=StringIO(s.encode('utf-8')))
-        return conf, parser
+        conf = config.IniBasedConfig.from_string(s)
+        return conf, conf._get_parser()
 
 
 class TestIniConfigBuilding(TestIniConfig):
 
     def test_contructs(self):
-        my_config = config.IniBasedConfig("nothing")
+        my_config = config.IniBasedConfig()
 
     def test_from_fp(self):
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.IniBasedConfig(None)
-        self.failUnless(
-            isinstance(my_config._get_parser(file=config_file),
-                        configobj.ConfigObj))
+        my_config = config.IniBasedConfig.from_string(sample_config_text)
+        self.assertIsInstance(my_config._get_parser(), configobj.ConfigObj)
 
     def test_cached(self):
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.IniBasedConfig(None)
-        parser = my_config._get_parser(file=config_file)
+        my_config = config.IniBasedConfig.from_string(sample_config_text)
+        parser = my_config._get_parser()
         self.failUnless(my_config._get_parser() is parser)
+
+    def _dummy_chown(self, path, uid, gid):
+        self.path, self.uid, self.gid = path, uid, gid
+
+    def test_ini_config_ownership(self):
+        """Ensure that chown is happening during _write_config_file"""
+        self.requireFeature(features.chown_feature)
+        self.overrideAttr(os, 'chown', self._dummy_chown)
+        self.path = self.uid = self.gid = None
+        conf = config.IniBasedConfig(file_name='./foo.conf')
+        conf._write_config_file()
+        self.assertEquals(self.path, './foo.conf')
+        self.assertTrue(isinstance(self.uid, int))
+        self.assertTrue(isinstance(self.gid, int))
+
+    def test_get_filename_parameter_is_deprecated_(self):
+        conf = self.callDeprecated([
+            'IniBasedConfig.__init__(get_filename) was deprecated in 2.3.'
+            ' Use file_name instead.'],
+            config.IniBasedConfig, lambda: 'ini.conf')
+        self.assertEqual('ini.conf', conf.file_name)
+
+    def test_get_parser_file_parameter_is_deprecated_(self):
+        config_file = StringIO(sample_config_text.encode('utf-8'))
+        conf = config.IniBasedConfig.from_string(sample_config_text)
+        conf = self.callDeprecated([
+            'IniBasedConfig._get_parser(file=xxx) was deprecated in 2.3.'
+            ' Use IniBasedConfig(_content=xxx) instead.'],
+            conf._get_parser, file=config_file)
+
+
+class TestIniConfigSaving(tests.TestCaseInTempDir):
+
+    def test_cant_save_without_a_file_name(self):
+        conf = config.IniBasedConfig()
+        self.assertRaises(AssertionError, conf._write_config_file)
+
+    def test_saved_with_content(self):
+        content = 'foo = bar\n'
+        conf = config.IniBasedConfig.from_string(
+            content, file_name='./test.conf', save=True)
+        self.assertFileEqual(content, 'test.conf')
+
+
+class TestIniConfigOptionExpansionDefaultValue(tests.TestCaseInTempDir):
+    """What is the default value of expand for config options.
+
+    This is an opt-in beta feature used to evaluate whether or not option
+    references can appear in dangerous place raising exceptions, disapearing
+    (and as such corrupting data) or if it's safe to activate the option by
+    default.
+
+    Note that these tests relies on config._expand_default_value being already
+    overwritten in the parent class setUp.
+    """
+
+    def setUp(self):
+        super(TestIniConfigOptionExpansionDefaultValue, self).setUp()
+        self.config = None
+        self.warnings = []
+        def warning(*args):
+            self.warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+
+    def get_config(self, expand):
+        c = config.GlobalConfig.from_string('bzr.config.expand=%s' % (expand,),
+                                            save=True)
+        return c
+
+    def assertExpandIs(self, expected):
+        actual = config._get_expand_default_value()
+        #self.config.get_user_option_as_bool('bzr.config.expand')
+        self.assertEquals(expected, actual)
+
+    def test_default_is_None(self):
+        self.assertEquals(None, config._expand_default_value)
+
+    def test_default_is_False_even_if_None(self):
+        self.config = self.get_config(None)
+        self.assertExpandIs(False)
+
+    def test_default_is_False_even_if_invalid(self):
+        self.config = self.get_config('<your choice>')
+        self.assertExpandIs(False)
+        # ...
+        # Huh ? My choice is False ? Thanks, always happy to hear that :D
+        # Wait, you've been warned !
+        self.assertLength(1, self.warnings)
+        self.assertEquals(
+            'Value "<your choice>" is not a boolean for "bzr.config.expand"',
+            self.warnings[0])
+
+    def test_default_is_True(self):
+        self.config = self.get_config(True)
+        self.assertExpandIs(True)
+        
+    def test_default_is_False(self):
+        self.config = self.get_config(False)
+        self.assertExpandIs(False)
+        
+
+class TestIniConfigOptionExpansion(tests.TestCase):
+    """Test option expansion from the IniConfig level.
+
+    What we really want here is to test the Config level, but the class being
+    abstract as far as storing values is concerned, this can't be done
+    properly (yet).
+    """
+    # FIXME: This should be rewritten when all configs share a storage
+    # implementation -- vila 2011-02-18
+
+    def get_config(self, string=None):
+        if string is None:
+            string = ''
+        c = config.IniBasedConfig.from_string(string)
+        return c
+
+    def assertExpansion(self, expected, conf, string, env=None):
+        self.assertEquals(expected, conf.expand_options(string, env))
+
+    def test_no_expansion(self):
+        c = self.get_config('')
+        self.assertExpansion('foo', c, 'foo')
+
+    def test_env_adding_options(self):
+        c = self.get_config('')
+        self.assertExpansion('bar', c, '{foo}', {'foo': 'bar'})
+
+    def test_env_overriding_options(self):
+        c = self.get_config('foo=baz')
+        self.assertExpansion('bar', c, '{foo}', {'foo': 'bar'})
+
+    def test_simple_ref(self):
+        c = self.get_config('foo=xxx')
+        self.assertExpansion('xxx', c, '{foo}')
+
+    def test_unknown_ref(self):
+        c = self.get_config('')
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          c.expand_options, '{foo}')
+
+    def test_indirect_ref(self):
+        c = self.get_config('''
+foo=xxx
+bar={foo}
+''')
+        self.assertExpansion('xxx', c, '{bar}')
+
+    def test_embedded_ref(self):
+        c = self.get_config('''
+foo=xxx
+bar=foo
+''')
+        self.assertExpansion('xxx', c, '{{bar}}')
+
+    def test_simple_loop(self):
+        c = self.get_config('foo={foo}')
+        self.assertRaises(errors.OptionExpansionLoop, c.expand_options, '{foo}')
+
+    def test_indirect_loop(self):
+        c = self.get_config('''
+foo={bar}
+bar={baz}
+baz={foo}''')
+        e = self.assertRaises(errors.OptionExpansionLoop,
+                              c.expand_options, '{foo}')
+        self.assertEquals('foo->bar->baz', e.refs)
+        self.assertEquals('{foo}', e.string)
+
+    def test_list(self):
+        conf = self.get_config('''
+foo=start
+bar=middle
+baz=end
+list={foo},{bar},{baz}
+''')
+        self.assertEquals(['start', 'middle', 'end'],
+                           conf.get_user_option('list', expand=True))
+
+    def test_cascading_list(self):
+        conf = self.get_config('''
+foo=start,{bar}
+bar=middle,{baz}
+baz=end
+list={foo}
+''')
+        self.assertEquals(['start', 'middle', 'end'],
+                           conf.get_user_option('list', expand=True))
+
+    def test_pathological_hidden_list(self):
+        conf = self.get_config('''
+foo=bin
+bar=go
+start={foo
+middle=},{
+end=bar}
+hidden={start}{middle}{end}
+''')
+        # Nope, it's either a string or a list, and the list wins as soon as a
+        # ',' appears, so the string concatenation never occur.
+        self.assertEquals(['{foo', '}', '{', 'bar}'],
+                          conf.get_user_option('hidden', expand=True))
+
+class TestLocationConfigOptionExpansion(tests.TestCaseInTempDir):
+
+    def get_config(self, location, string=None):
+        if string is None:
+            string = ''
+        # Since we don't save the config we won't strictly require to inherit
+        # from TestCaseInTempDir, but an error occurs so quickly...
+        c = config.LocationConfig.from_string(string, location)
+        return c
+
+    def test_dont_cross_unrelated_section(self):
+        c = self.get_config('/another/branch/path','''
+[/one/branch/path]
+foo = hello
+bar = {foo}/2
+
+[/another/branch/path]
+bar = {foo}/2
+''')
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          c.get_user_option, 'bar', expand=True)
+
+    def test_cross_related_sections(self):
+        c = self.get_config('/project/branch/path','''
+[/project]
+foo = qu
+
+[/project/branch/path]
+bar = {foo}ux
+''')
+        self.assertEquals('quux', c.get_user_option('bar', expand=True))
+
+
+class TestIniBaseConfigOnDisk(tests.TestCaseInTempDir):
+
+    def test_cannot_reload_without_name(self):
+        conf = config.IniBasedConfig.from_string(sample_config_text)
+        self.assertRaises(AssertionError, conf.reload)
+
+    def test_reload_see_new_value(self):
+        c1 = config.IniBasedConfig.from_string('editor=vim\n',
+                                               file_name='./test/conf')
+        c1._write_config_file()
+        c2 = config.IniBasedConfig.from_string('editor=emacs\n',
+                                               file_name='./test/conf')
+        c2._write_config_file()
+        self.assertEqual('vim', c1.get_user_option('editor'))
+        self.assertEqual('emacs', c2.get_user_option('editor'))
+        # Make sure we get the Right value
+        c1.reload()
+        self.assertEqual('emacs', c1.get_user_option('editor'))
+
+
+class TestLockableConfig(tests.TestCaseInTempDir):
+
+    scenarios = lockable_config_scenarios()
+
+    # Set by load_tests
+    config_class = None
+    config_args = None
+    config_section = None
+
+    def setUp(self):
+        super(TestLockableConfig, self).setUp()
+        self._content = '[%s]\none=1\ntwo=2\n' % (self.config_section,)
+        self.config = self.create_config(self._content)
+
+    def get_existing_config(self):
+        return self.config_class(*self.config_args)
+
+    def create_config(self, content):
+        kwargs = dict(save=True)
+        c = self.config_class.from_string(content, *self.config_args, **kwargs)
+        return c
+
+    def test_simple_read_access(self):
+        self.assertEquals('1', self.config.get_user_option('one'))
+
+    def test_simple_write_access(self):
+        self.config.set_user_option('one', 'one')
+        self.assertEquals('one', self.config.get_user_option('one'))
+
+    def test_listen_to_the_last_speaker(self):
+        c1 = self.config
+        c2 = self.get_existing_config()
+        c1.set_user_option('one', 'ONE')
+        c2.set_user_option('two', 'TWO')
+        self.assertEquals('ONE', c1.get_user_option('one'))
+        self.assertEquals('TWO', c2.get_user_option('two'))
+        # The second update respect the first one
+        self.assertEquals('ONE', c2.get_user_option('one'))
+
+    def test_last_speaker_wins(self):
+        # If the same config is not shared, the same variable modified twice
+        # can only see a single result.
+        c1 = self.config
+        c2 = self.get_existing_config()
+        c1.set_user_option('one', 'c1')
+        c2.set_user_option('one', 'c2')
+        self.assertEquals('c2', c2._get_user_option('one'))
+        # The first modification is still available until another refresh
+        # occur
+        self.assertEquals('c1', c1._get_user_option('one'))
+        c1.set_user_option('two', 'done')
+        self.assertEquals('c2', c1._get_user_option('one'))
+
+    def test_writes_are_serialized(self):
+        c1 = self.config
+        c2 = self.get_existing_config()
+
+        # We spawn a thread that will pause *during* the write
+        before_writing = threading.Event()
+        after_writing = threading.Event()
+        writing_done = threading.Event()
+        c1_orig = c1._write_config_file
+        def c1_write_config_file():
+            before_writing.set()
+            c1_orig()
+            # The lock is held we wait for the main thread to decide when to
+            # continue
+            after_writing.wait()
+        c1._write_config_file = c1_write_config_file
+        def c1_set_option():
+            c1.set_user_option('one', 'c1')
+            writing_done.set()
+        t1 = threading.Thread(target=c1_set_option)
+        # Collect the thread after the test
+        self.addCleanup(t1.join)
+        # Be ready to unblock the thread if the test goes wrong
+        self.addCleanup(after_writing.set)
+        t1.start()
+        before_writing.wait()
+        self.assertTrue(c1._lock.is_held)
+        self.assertRaises(errors.LockContention,
+                          c2.set_user_option, 'one', 'c2')
+        self.assertEquals('c1', c1.get_user_option('one'))
+        # Let the lock be released
+        after_writing.set()
+        writing_done.wait()
+        c2.set_user_option('one', 'c2')
+        self.assertEquals('c2', c2.get_user_option('one'))
+
+    def test_read_while_writing(self):
+       c1 = self.config
+       # We spawn a thread that will pause *during* the write
+       ready_to_write = threading.Event()
+       do_writing = threading.Event()
+       writing_done = threading.Event()
+       c1_orig = c1._write_config_file
+       def c1_write_config_file():
+           ready_to_write.set()
+           # The lock is held we wait for the main thread to decide when to
+           # continue
+           do_writing.wait()
+           c1_orig()
+           writing_done.set()
+       c1._write_config_file = c1_write_config_file
+       def c1_set_option():
+           c1.set_user_option('one', 'c1')
+       t1 = threading.Thread(target=c1_set_option)
+       # Collect the thread after the test
+       self.addCleanup(t1.join)
+       # Be ready to unblock the thread if the test goes wrong
+       self.addCleanup(do_writing.set)
+       t1.start()
+       # Ensure the thread is ready to write
+       ready_to_write.wait()
+       self.assertTrue(c1._lock.is_held)
+       self.assertEquals('c1', c1.get_user_option('one'))
+       # If we read during the write, we get the old value
+       c2 = self.get_existing_config()
+       self.assertEquals('1', c2.get_user_option('one'))
+       # Let the writing occur and ensure it occurred
+       do_writing.set()
+       writing_done.wait()
+       # Now we get the updated value
+       c3 = self.get_existing_config()
+       self.assertEquals('c1', c3.get_user_option('one'))
 
 
 class TestGetUserOptionAs(TestIniConfig):
@@ -505,11 +1004,10 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         self.assertEqual('branch', branch.nick)
 
-        locations = config.locations_config_filename()
-        config.ensure_config_dir_exists()
         local_url = urlutils.local_path_to_url('branch')
-        open(locations, 'wb').write('[%s]\nnickname = foobar'
-                                    % (local_url,))
+        conf = config.LocationConfig.from_string(
+            '[%s]\nnickname = foobar' % (local_url,),
+            local_url, save=True)
         self.assertEqual('foobar', branch.nick)
 
     def test_config_local_path(self):
@@ -517,20 +1015,19 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         branch = self.make_branch('branch')
         self.assertEqual('branch', branch.nick)
 
-        locations = config.locations_config_filename()
-        config.ensure_config_dir_exists()
-        open(locations, 'wb').write('[%s/branch]\nnickname = barry'
-                                    % (osutils.getcwd().encode('utf8'),))
+        local_path = osutils.getcwd().encode('utf8')
+        conf = config.LocationConfig.from_string(
+            '[%s/branch]\nnickname = barry' % (local_path,),
+            'branch',  save=True)
         self.assertEqual('barry', branch.nick)
 
     def test_config_creates_local(self):
         """Creating a new entry in config uses a local path."""
         branch = self.make_branch('branch', format='knit')
         branch.set_push_location('http://foobar')
-        locations = config.locations_config_filename()
         local_path = osutils.getcwd().encode('utf8')
         # Surprisingly ConfigObj doesn't create a trailing newline
-        self.check_file_contents(locations,
+        self.check_file_contents(config.locations_config_filename(),
                                  '[%s/branch]\n'
                                  'push_location = http://foobar\n'
                                  'push_location:policy = norecurse\n'
@@ -541,10 +1038,10 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         self.assertEqual('!repo', b.get_config().get_nickname())
 
     def test_warn_if_masked(self):
-        _warning = trace.warning
         warnings = []
         def warning(*args):
             warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
 
         def set_option(store, warn_masked=True):
             warnings[:] = []
@@ -556,53 +1053,41 @@ class TestBranchConfig(tests.TestCaseWithTransport):
             else:
                 self.assertEqual(1, len(warnings))
                 self.assertEqual(warning, warnings[0])
-        trace.warning = warning
-        try:
-            branch = self.make_branch('.')
-            conf = branch.get_config()
-            set_option(config.STORE_GLOBAL)
-            assertWarning(None)
-            set_option(config.STORE_BRANCH)
-            assertWarning(None)
-            set_option(config.STORE_GLOBAL)
-            assertWarning('Value "4" is masked by "3" from branch.conf')
-            set_option(config.STORE_GLOBAL, warn_masked=False)
-            assertWarning(None)
-            set_option(config.STORE_LOCATION)
-            assertWarning(None)
-            set_option(config.STORE_BRANCH)
-            assertWarning('Value "3" is masked by "0" from locations.conf')
-            set_option(config.STORE_BRANCH, warn_masked=False)
-            assertWarning(None)
-        finally:
-            trace.warning = _warning
+        branch = self.make_branch('.')
+        conf = branch.get_config()
+        set_option(config.STORE_GLOBAL)
+        assertWarning(None)
+        set_option(config.STORE_BRANCH)
+        assertWarning(None)
+        set_option(config.STORE_GLOBAL)
+        assertWarning('Value "4" is masked by "3" from branch.conf')
+        set_option(config.STORE_GLOBAL, warn_masked=False)
+        assertWarning(None)
+        set_option(config.STORE_LOCATION)
+        assertWarning(None)
+        set_option(config.STORE_BRANCH)
+        assertWarning('Value "3" is masked by "0" from locations.conf')
+        set_option(config.STORE_BRANCH, warn_masked=False)
+        assertWarning(None)
 
 
-class TestGlobalConfigItems(tests.TestCase):
+class TestGlobalConfigItems(tests.TestCaseInTempDir):
 
     def test_user_id(self):
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig.from_string(sample_config_text)
         self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
 
     def test_absent_user_id(self):
-        config_file = StringIO("")
         my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
         self.assertEqual(None, my_config._get_user_id())
 
     def test_configured_editor(self):
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig.from_string(sample_config_text)
         self.assertEqual("vim", my_config.get_editor())
 
     def test_signatures_always(self):
-        config_file = StringIO(sample_always_signatures)
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig.from_string(sample_always_signatures)
         self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_ALWAYS,
@@ -610,9 +1095,7 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(True, my_config.signature_needed())
 
     def test_signatures_if_possible(self):
-        config_file = StringIO(sample_maybe_signatures)
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig.from_string(sample_maybe_signatures)
         self.assertEqual(config.CHECK_NEVER,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_WHEN_REQUIRED,
@@ -620,9 +1103,7 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(False, my_config.signature_needed())
 
     def test_signatures_ignore(self):
-        config_file = StringIO(sample_ignore_signatures)
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig.from_string(sample_ignore_signatures)
         self.assertEqual(config.CHECK_ALWAYS,
                          my_config.signature_checking())
         self.assertEqual(config.SIGN_NEVER,
@@ -630,9 +1111,7 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(False, my_config.signature_needed())
 
     def _get_sample_config(self):
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
+        my_config = config.GlobalConfig.from_string(sample_config_text)
         return my_config
 
     def test_gpg_signing_command(self):
@@ -641,9 +1120,7 @@ class TestGlobalConfigItems(tests.TestCase):
         self.assertEqual(False, my_config.signature_needed())
 
     def _get_empty_config(self):
-        config_file = StringIO("")
         my_config = config.GlobalConfig()
-        my_config._parser = my_config._get_parser(file=config_file)
         return my_config
 
     def test_gpg_signing_command_unset(self):
@@ -699,6 +1176,41 @@ class TestGlobalConfigItems(tests.TestCase):
         change_editor = my_config.get_change_editor('old', 'new')
         self.assertIs(None, change_editor)
 
+    def test_get_merge_tools(self):
+        conf = self._get_sample_config()
+        tools = conf.get_merge_tools()
+        self.log(repr(tools))
+        self.assertEqual(
+            {u'funkytool' : u'funkytool "arg with spaces" {this_temp}',
+            u'sometool' : u'sometool {base} {this} {other} -o {result}'},
+            tools)
+
+    def test_get_merge_tools_empty(self):
+        conf = self._get_empty_config()
+        tools = conf.get_merge_tools()
+        self.assertEqual({}, tools)
+
+    def test_find_merge_tool(self):
+        conf = self._get_sample_config()
+        cmdline = conf.find_merge_tool('sometool')
+        self.assertEqual('sometool {base} {this} {other} -o {result}', cmdline)
+
+    def test_find_merge_tool_not_found(self):
+        conf = self._get_sample_config()
+        cmdline = conf.find_merge_tool('DOES NOT EXIST')
+        self.assertIs(cmdline, None)
+
+    def test_find_merge_tool_known(self):
+        conf = self._get_empty_config()
+        cmdline = conf.find_merge_tool('kdiff3')
+        self.assertEquals('kdiff3 {base} {this} {other} -o {result}', cmdline)
+
+    def test_find_merge_tool_override_known(self):
+        conf = self._get_empty_config()
+        conf.set_user_option('bzr.mergetool.kdiff3', 'kdiff3 blah')
+        cmdline = conf.find_merge_tool('kdiff3')
+        self.assertEqual('kdiff3 blah', cmdline)
+
 
 class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
 
@@ -722,7 +1234,7 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
         self.assertIs(None, new_config.get_alias('commit'))
 
 
-class TestLocationConfig(tests.TestCaseInTempDir):
+class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
 
     def test_constructs(self):
         my_config = config.LocationConfig('http://example.com')
@@ -744,18 +1256,6 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.assertEqual(parser._calls,
                          [('__init__', config.locations_config_filename(),
                            'utf-8')])
-        config.ensure_config_dir_exists()
-        #os.mkdir(config.config_dir())
-        f = file(config.branches_config_filename(), 'wb')
-        f.write('')
-        f.close()
-        oldparserclass = config.ConfigObj
-        config.ConfigObj = InstrumentedConfigObj
-        try:
-            my_config = config.LocationConfig('http://www.example.com')
-            parser = my_config._get_parser()
-        finally:
-            config.ConfigObj = oldparserclass
 
     def test_get_global_config(self):
         my_config = config.BranchConfig(FakeBranch('http://example.com'))
@@ -847,6 +1347,21 @@ class TestLocationConfig(tests.TestCaseInTempDir):
             self.my_location_config._get_option_policy(
             'http://www.example.com', 'appendpath_option'),
             config.POLICY_APPENDPATH)
+
+    def test__get_options_with_policy(self):
+        self.get_branch_config('/dir/subdir',
+                               location_config="""\
+[/dir]
+other_url = /other-dir
+other_url:policy = appendpath
+[/dir/subdir]
+other_url = /other-subdir
+""")
+        self.assertOptions(
+            [(u'other_url', u'/other-subdir', u'/dir/subdir', 'locations'),
+             (u'other_url', u'/other-dir', u'/dir', 'locations'),
+             (u'other_url:policy', u'appendpath', u'/dir', 'locations')],
+            self.my_location_config)
 
     def test_location_without_username(self):
         self.get_branch_config('http://www.example.com/ignoreparent')
@@ -989,43 +1504,34 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          self.my_config.post_commit())
 
-    def get_branch_config(self, location, global_config=None):
+    def get_branch_config(self, location, global_config=None,
+                          location_config=None):
+        my_branch = FakeBranch(location)
         if global_config is None:
-            global_file = StringIO(sample_config_text.encode('utf-8'))
-        else:
-            global_file = StringIO(global_config.encode('utf-8'))
-        branches_file = StringIO(sample_branches_text.encode('utf-8'))
-        self.my_config = config.BranchConfig(FakeBranch(location))
-        # Force location config to use specified file
-        self.my_location_config = self.my_config._get_location_config()
-        self.my_location_config._get_parser(branches_file)
-        # Force global config to use specified file
-        self.my_config._get_global_config()._get_parser(global_file)
+            global_config = sample_config_text
+        if location_config is None:
+            location_config = sample_branches_text
+
+        my_global_config = config.GlobalConfig.from_string(global_config,
+                                                           save=True)
+        my_location_config = config.LocationConfig.from_string(
+            location_config, my_branch.base, save=True)
+        my_config = config.BranchConfig(my_branch)
+        self.my_config = my_config
+        self.my_location_config = my_config._get_location_config()
 
     def test_set_user_setting_sets_and_saves(self):
         self.get_branch_config('/a/c')
         record = InstrumentedConfigObj("foo")
         self.my_location_config._parser = record
 
-        real_mkdir = os.mkdir
-        self.created = False
-        def checked_mkdir(path, mode=0777):
-            self.log('making directory: %s', path)
-            real_mkdir(path, mode)
-            self.created = True
-
-        os.mkdir = checked_mkdir
-        try:
-            self.callDeprecated(['The recurse option is deprecated as of '
-                                 '0.14.  The section "/a/c" has been '
-                                 'converted to use policies.'],
-                                self.my_config.set_user_option,
-                                'foo', 'bar', store=config.STORE_LOCATION)
-        finally:
-            os.mkdir = real_mkdir
-
-        self.failUnless(self.created, 'Failed to create ~/.bazaar')
-        self.assertEqual([('__contains__', '/a/c'),
+        self.callDeprecated(['The recurse option is deprecated as of '
+                             '0.14.  The section "/a/c" has been '
+                             'converted to use policies.'],
+                            self.my_config.set_user_option,
+                            'foo', 'bar', store=config.STORE_LOCATION)
+        self.assertEqual([('reload',),
+                          ('__contains__', '/a/c'),
                           ('__contains__', '/a/c/'),
                           ('__setitem__', '/a/c', {}),
                           ('__getitem__', '/a/c'),
@@ -1060,7 +1566,7 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.assertEqual('bzr', my_config.get_bzr_remote_path())
         my_config.set_user_option('bzr_remote_path', '/path-bzr')
         self.assertEqual('/path-bzr', my_config.get_bzr_remote_path())
-        os.environ['BZR_REMOTE_PATH'] = '/environ-bzr'
+        self.overrideEnv('BZR_REMOTE_PATH', '/environ-bzr')
         self.assertEqual('/environ-bzr', my_config.get_bzr_remote_path())
 
 
@@ -1074,19 +1580,18 @@ option = recurse
 option = exact
 """
 
-
 class TestBranchConfigItems(tests.TestCaseInTempDir):
 
     def get_branch_config(self, global_config=None, location=None,
                           location_config=None, branch_data_config=None):
-        my_config = config.BranchConfig(FakeBranch(location))
+        my_branch = FakeBranch(location)
         if global_config is not None:
-            global_file = StringIO(global_config.encode('utf-8'))
-            my_config._get_global_config()._get_parser(global_file)
-        self.my_location_config = my_config._get_location_config()
+            my_global_config = config.GlobalConfig.from_string(global_config,
+                                                               save=True)
         if location_config is not None:
-            location_file = StringIO(location_config.encode('utf-8'))
-            self.my_location_config._get_parser(location_file)
+            my_location_config = config.LocationConfig.from_string(
+                location_config, my_branch.base, save=True)
+        my_config = config.BranchConfig(my_branch)
         if branch_data_config is not None:
             my_config.branch.control_files.files['branch.conf'] = \
                 branch_data_config
@@ -1106,14 +1611,14 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
                          my_config.username())
 
     def test_not_set_in_branch(self):
-        my_config = self.get_branch_config(sample_config_text)
+        my_config = self.get_branch_config(global_config=sample_config_text)
         self.assertEqual(u"Erik B\u00e5gfors <erik@bagfors.nu>",
                          my_config._get_user_id())
         my_config.branch.control_files.files['email'] = "John"
         self.assertEqual("John", my_config._get_user_id())
 
     def test_BZR_EMAIL_OVERRIDES(self):
-        os.environ['BZR_EMAIL'] = "Robert Collins <robertc@example.org>"
+        self.overrideEnv('BZR_EMAIL', "Robert Collins <robertc@example.org>")
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.org>",
@@ -1136,29 +1641,25 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
 
     def test_gpg_signing_command(self):
         my_config = self.get_branch_config(
+            global_config=sample_config_text,
             # branch data cannot set gpg_signing_command
             branch_data_config="gpg_signing_command=pgp")
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        my_config._get_global_config()._get_parser(config_file)
         self.assertEqual('gnome-gpg', my_config.gpg_signing_command())
 
     def test_get_user_option_global(self):
-        branch = FakeBranch()
-        my_config = config.BranchConfig(branch)
-        config_file = StringIO(sample_config_text.encode('utf-8'))
-        (my_config._get_global_config()._get_parser(config_file))
+        my_config = self.get_branch_config(global_config=sample_config_text)
         self.assertEqual('something',
                          my_config.get_user_option('user_global_option'))
 
     def test_post_commit_default(self):
-        branch = FakeBranch()
-        my_config = self.get_branch_config(sample_config_text, '/a/c',
-                                           sample_branches_text)
+        my_config = self.get_branch_config(global_config=sample_config_text,
+                                      location='/a/c',
+                                      location_config=sample_branches_text)
         self.assertEqual(my_config.branch.base, '/a/c')
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          my_config.post_commit())
         my_config.set_user_option('post_commit', 'rmtree_root')
-        # post-commit is ignored when bresent in branch data
+        # post-commit is ignored when present in branch data
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          my_config.post_commit())
         my_config.set_user_option('post_commit', 'rmtree_root',
@@ -1166,19 +1667,23 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         self.assertEqual('rmtree_root', my_config.post_commit())
 
     def test_config_precedence(self):
+        # FIXME: eager test, luckily no persitent config file makes it fail
+        # -- vila 20100716
         my_config = self.get_branch_config(global_config=precedence_global)
         self.assertEqual(my_config.get_user_option('option'), 'global')
         my_config = self.get_branch_config(global_config=precedence_global,
-                                      branch_data_config=precedence_branch)
+                                           branch_data_config=precedence_branch)
         self.assertEqual(my_config.get_user_option('option'), 'branch')
-        my_config = self.get_branch_config(global_config=precedence_global,
-                                      branch_data_config=precedence_branch,
-                                      location_config=precedence_location)
+        my_config = self.get_branch_config(
+            global_config=precedence_global,
+            branch_data_config=precedence_branch,
+            location_config=precedence_location)
         self.assertEqual(my_config.get_user_option('option'), 'recurse')
-        my_config = self.get_branch_config(global_config=precedence_global,
-                                      branch_data_config=precedence_branch,
-                                      location_config=precedence_location,
-                                      location='http://example.com/specific')
+        my_config = self.get_branch_config(
+            global_config=precedence_global,
+            branch_data_config=precedence_branch,
+            location_config=precedence_location,
+            location='http://example.com/specific')
         self.assertEqual(my_config.get_user_option('option'), 'exact')
 
     def test_get_mail_client(self):
@@ -1310,6 +1815,158 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertEqual('Foo', bzrdir_config.get_default_stack_on())
         bzrdir_config.set_default_stack_on(None)
         self.assertIs(None, bzrdir_config.get_default_stack_on())
+
+
+class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
+
+    def setUp(self):
+        super(TestConfigGetOptions, self).setUp()
+        create_configs(self)
+
+    # One variable in none of the above
+    def test_no_variable(self):
+        # Using branch should query branch, locations and bazaar
+        self.assertOptions([], self.branch_config)
+
+    def test_option_in_bazaar(self):
+        self.bazaar_config.set_user_option('file', 'bazaar')
+        self.assertOptions([('file', 'bazaar', 'DEFAULT', 'bazaar')],
+                           self.bazaar_config)
+
+    def test_option_in_locations(self):
+        self.locations_config.set_user_option('file', 'locations')
+        self.assertOptions(
+            [('file', 'locations', self.tree.basedir, 'locations')],
+            self.locations_config)
+
+    def test_option_in_branch(self):
+        self.branch_config.set_user_option('file', 'branch')
+        self.assertOptions([('file', 'branch', 'DEFAULT', 'branch')],
+                           self.branch_config)
+
+    def test_option_in_bazaar_and_branch(self):
+        self.bazaar_config.set_user_option('file', 'bazaar')
+        self.branch_config.set_user_option('file', 'branch')
+        self.assertOptions([('file', 'branch', 'DEFAULT', 'branch'),
+                            ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+                           self.branch_config)
+
+    def test_option_in_branch_and_locations(self):
+        # Hmm, locations override branch :-/
+        self.locations_config.set_user_option('file', 'locations')
+        self.branch_config.set_user_option('file', 'branch')
+        self.assertOptions(
+            [('file', 'locations', self.tree.basedir, 'locations'),
+             ('file', 'branch', 'DEFAULT', 'branch'),],
+            self.branch_config)
+
+    def test_option_in_bazaar_locations_and_branch(self):
+        self.bazaar_config.set_user_option('file', 'bazaar')
+        self.locations_config.set_user_option('file', 'locations')
+        self.branch_config.set_user_option('file', 'branch')
+        self.assertOptions(
+            [('file', 'locations', self.tree.basedir, 'locations'),
+             ('file', 'branch', 'DEFAULT', 'branch'),
+             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+            self.branch_config)
+
+
+class TestConfigRemoveOption(tests.TestCaseWithTransport, TestOptionsMixin):
+
+    def setUp(self):
+        super(TestConfigRemoveOption, self).setUp()
+        create_configs_with_file_option(self)
+
+    def test_remove_in_locations(self):
+        self.locations_config.remove_user_option('file', self.tree.basedir)
+        self.assertOptions(
+            [('file', 'branch', 'DEFAULT', 'branch'),
+             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+            self.branch_config)
+
+    def test_remove_in_branch(self):
+        self.branch_config.remove_user_option('file')
+        self.assertOptions(
+            [('file', 'locations', self.tree.basedir, 'locations'),
+             ('file', 'bazaar', 'DEFAULT', 'bazaar'),],
+            self.branch_config)
+
+    def test_remove_in_bazaar(self):
+        self.bazaar_config.remove_user_option('file')
+        self.assertOptions(
+            [('file', 'locations', self.tree.basedir, 'locations'),
+             ('file', 'branch', 'DEFAULT', 'branch'),],
+            self.branch_config)
+
+
+class TestConfigGetSections(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestConfigGetSections, self).setUp()
+        create_configs(self)
+
+    def assertSectionNames(self, expected, conf, name=None):
+        """Check which sections are returned for a given config.
+
+        If fallback configurations exist their sections can be included.
+
+        :param expected: A list of section names.
+
+        :param conf: The configuration that will be queried.
+
+        :param name: An optional section name that will be passed to
+            get_sections().
+        """
+        sections = list(conf._get_sections(name))
+        self.assertLength(len(expected), sections)
+        self.assertEqual(expected, [name for name, _, _ in sections])
+
+    def test_bazaar_default_section(self):
+        self.assertSectionNames(['DEFAULT'], self.bazaar_config)
+
+    def test_locations_default_section(self):
+        # No sections are defined in an empty file
+        self.assertSectionNames([], self.locations_config)
+
+    def test_locations_named_section(self):
+        self.locations_config.set_user_option('file', 'locations')
+        self.assertSectionNames([self.tree.basedir], self.locations_config)
+
+    def test_locations_matching_sections(self):
+        loc_config = self.locations_config
+        loc_config.set_user_option('file', 'locations')
+        # We need to cheat a bit here to create an option in sections above and
+        # below the 'location' one.
+        parser = loc_config._get_parser()
+        # locations.cong deals with '/' ignoring native os.sep
+        location_names = self.tree.basedir.split('/')
+        parent = '/'.join(location_names[:-1])
+        child = '/'.join(location_names + ['child'])
+        parser[parent] = {}
+        parser[parent]['file'] = 'parent'
+        parser[child] = {}
+        parser[child]['file'] = 'child'
+        self.assertSectionNames([self.tree.basedir, parent], loc_config)
+
+    def test_branch_data_default_section(self):
+        self.assertSectionNames([None],
+                                self.branch_config._get_branch_data_config())
+
+    def test_branch_default_sections(self):
+        # No sections are defined in an empty locations file
+        self.assertSectionNames([None, 'DEFAULT'],
+                                self.branch_config)
+        # Unless we define an option
+        self.branch_config._get_location_config().set_user_option(
+            'file', 'locations')
+        self.assertSectionNames([self.tree.basedir, None, 'DEFAULT'],
+                                self.branch_config)
+
+    def test_bazaar_named_section(self):
+        # We need to cheat as the API doesn't give direct access to sections
+        # other than DEFAULT.
+        self.bazaar_config.set_alias('bazaar', 'bzr')
+        self.assertSectionNames(['ALIASES'], self.bazaar_config, 'ALIASES')
 
 
 class TestAuthenticationConfigFile(tests.TestCase):

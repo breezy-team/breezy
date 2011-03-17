@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -222,6 +222,7 @@ def builtin_command_names():
     Use of all_command_names() is encouraged rather than builtin_command_names
     and/or plugin_command_names.
     """
+    _register_builtin_commands()
     return builtin_command_registry.keys()
 
 
@@ -686,7 +687,15 @@ class Command(object):
 
         self._setup_outf()
 
-        return self.run(**all_cmd_args)
+        try:
+            return self.run(**all_cmd_args)
+        finally:
+            # reset it, so that other commands run in the same process won't
+            # inherit state. Before we reset it, log any activity, so that it
+            # gets properly tracked.
+            ui.ui_factory.log_transport_activity(
+                display=('bytes' in debug.debug_flags))
+            trace.set_verbosity_level(0)
 
     def _setup_run(self):
         """Wrap the defined run method on self with a cleanup.
@@ -809,7 +818,13 @@ def parse_args(command, argv, alias_argv=None):
     else:
         args = argv
 
-    options, args = parser.parse_args(args)
+    # for python 2.5 and later, optparse raises this exception if a non-ascii
+    # option name is given.  See http://bugs.python.org/issue2931
+    try:
+        options, args = parser.parse_args(args)
+    except UnicodeEncodeError,e:
+        raise errors.BzrCommandError('Only ASCII permitted in option names')
+
     opts = dict([(k, v) for k, v in options.__dict__.iteritems() if
                  v is not option.OptionParser.DEFAULT_VALUE])
     return args, opts
@@ -1054,6 +1069,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         elif a == '--coverage':
             opt_coverage_dir = argv[i + 1]
             i += 1
+        elif a == '--profile-imports':
+            pass # already handled in startup script Bug #588277
         elif a.startswith('-D'):
             debug.debug_flags.add(a[2:])
         else:
@@ -1188,8 +1205,6 @@ def main(argv=None):
     argv = _specified_or_unicode_argv(argv)
     _register_builtin_commands()
     ret = run_bzr_catch_errors(argv)
-    bzrlib.ui.ui_factory.log_transport_activity(
-        display=('bytes' in debug.debug_flags))
     trace.mutter("return code %d", ret)
     return ret
 

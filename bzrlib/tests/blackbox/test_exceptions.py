@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,22 +16,20 @@
 
 """Tests for display of exceptions."""
 
-from cStringIO import StringIO
-import os
 import sys
 
 from bzrlib import (
     bzrdir,
     config,
+    controldir,
     errors,
     osutils,
     repository,
     tests,
-    trace,
     )
+from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 
-from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.errors import NotBranchError
+from bzrlib.tests import TestCase
 
 
 class TestExceptionReporting(TestCase):
@@ -48,6 +46,28 @@ class TestExceptionReporting(TestCase):
         self.assertContainsRe(err, r'Bazaar has encountered an internal error')
 
 
+class TestOptParseBugHandling(TestCase):
+    "Test that we handle http://bugs.python.org/issue2931"
+
+    def test_nonascii_optparse(self):
+        """Reasonable error raised when non-ascii in option name"""
+        if sys.version_info < (2,5):
+            error_re = 'no such option'
+        else:
+            error_re = 'Only ASCII permitted in option names'
+        out = self.run_bzr_error([error_re], ['st',u'-\xe4'])
+
+
+class TestObsoleteRepoFormat(RepositoryFormat2a):
+
+    @classmethod
+    def get_format_string(cls):
+        return "Test Obsolete Repository Format"
+
+    def is_deprecated(self):
+        return True
+
+
 class TestDeprecationWarning(tests.TestCaseWithTransport):
     """The deprecation warning is controlled via a global variable:
     repository._deprecation_warning_done. As such, it can be emitted only once
@@ -59,6 +79,16 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestDeprecationWarning, self).setUp()
+        self.addCleanup(repository.format_registry.remove,
+            TestObsoleteRepoFormat)
+        repository.format_registry.register(TestObsoleteRepoFormat)
+        self.addCleanup(controldir.format_registry.remove, "testobsolete")
+        bzrdir.register_metadir(controldir.format_registry, "testobsolete",
+            "bzrlib.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
+            branch_format='bzrlib.branch.BzrBranchFormat7',
+            tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+            deprecated=True,
+            help='Same as 2a, but with an obsolete repo format.')
         self.disable_deprecation_warning()
 
     def enable_deprecation_warning(self, repo=None):
@@ -71,7 +101,8 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
 
     def make_obsolete_repo(self, path):
         # We don't want the deprecation raising during the repo creation
-        tree = self.make_branch_and_tree(path, format=bzrdir.BzrDirFormat5())
+        format = controldir.format_registry.make_bzrdir("testobsolete")
+        tree = self.make_branch_and_tree(path, format=format)
         return tree
 
     def check_warning(self, present):

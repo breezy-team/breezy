@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2011 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,12 +18,11 @@
 """Tests for signing and verifying blobs of data via gpg."""
 
 # import system imports here
-import os
 import sys
 
 from bzrlib import errors, ui
 import bzrlib.gpg as gpg
-from bzrlib.tests import TestCase, TestCaseInTempDir
+from bzrlib.tests import TestCase
 
 class FakeConfig(object):
 

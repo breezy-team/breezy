@@ -1,0 +1,227 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.6
+#######
+
+:Released: 2005-10-28
+
+Improvements
+************
+
+* pull now takes --verbose to show you what revisions are added or removed
+  (John A Meinel)
+
+* merge now takes a --show-base option to include the base text in
+  conflicts.
+  (Aaron Bentley)
+
+* The config files are now read using ConfigObj, so '=' should be used as
+  a separator, not ':'.
+  (Aaron Bentley)
+
+* New 'bzr commit --strict' option refuses to commit if there are
+  any unknown files in the tree.  To commit, make sure all files are
+  either ignored, added, or deleted.  (Michael Ellerman)
+
+* The config directory is now ~/.bazaar, and there is a single file
+  ~/.bazaar/bazaar.conf storing email, editor and other preferences.
+  (Robert Collins)
+
+* 'bzr add' no longer takes a --verbose option, and a --quiet option
+  has been added that suppresses all output.
+
+* Improved zsh completion support in contrib/zsh, from Clint
+  Adams.
+
+* Builtin 'bzr annotate' command, by Martin Pool with improvements from
+  Goffredo Baroncelli.
+
+* 'bzr check' now accepts -v for verbose reporting, and checks for
+  ghosts in the branch. (Robert Collins)
+
+* New command 're-sign' which will regenerate the gpg signature for
+  a revision. (Robert Collins)
+
+* If you set ``check_signatures=require`` for a path in
+  ``~/.bazaar/branches.conf`` then bzr will invoke your
+  ``gpg_signing_command`` (defaults to gpg) and record a digital signature
+  of your commit. (Robert Collins)
+
+* New SFTP transport, based on Paramiko.  (Robey Pointer)
+
+* 'bzr pull' now accepts '--clobber' which will discard local changes
+  and make this branch identical to the source branch. (Robert Collins)
+
+* Just give a quieter warning if a plugin can't be loaded, and
+  put the details in .bzr.log.  (Martin Pool)
+
+* 'bzr branch' will now set the branch-name to the last component of the
+  output directory, if one was supplied.
+
+* If the option ``post_commit`` is set to one (or more) python function
+  names (must be in the bzrlib namespace), then they will be invoked
+  after the commit has completed, with the branch and ``revision_id`` as
+  parameters. (Robert Collins)
+
+* Merge now has a retcode of 1 when conflicts occur. (Robert Collins)
+
+* --merge-type weave is now supported for file contents.  Tree-shape
+  changes are still three-way based.  (Martin Pool, Aaron Bentley)
+
+* 'bzr check' allows the first revision on revision-history to have
+  parents - something that is expected for cheap checkouts, and occurs
+  when conversions from baz do not have all history.  (Robert Collins).
+
+* 'bzr merge' can now graft unrelated trees together, if your specify
+  0 as a base. (Aaron Bentley)
+
+* 'bzr commit branch' and 'bzr commit branch/file1 branch/file2' now work
+  (Aaron Bentley)
+
+* Add '.sconsign*' to default ignore list.  (Alexander Belchenko)
+
+* 'bzr merge --reprocess' minimizes conflicts
+
+Testing
+*******
+
+* The 'bzr selftest --pattern' option for has been removed, now
+  test specifiers on the command line can be simple strings, or
+  regexps, or both. (Robert Collins)
+
+* Passing -v to selftest will now show the time each test took to
+  complete, which will aid in analysing performance regressions and
+  related questions. (Robert Collins)
+
+* 'bzr selftest' runs all tests, even if one fails, unless '--one'
+  is given. (Martin Pool)
+
+* There is a new method for TestCaseInTempDir, assertFileEqual, which
+  will check that a given content is equal to the content of the named
+  file. (Robert Collins)
+
+* Fix test suite's habit of leaving many temporary log files in $TMPDIR.
+  (Martin Pool)
+
+Internals
+*********
+
+* New 'testament' command and concept for making gpg-signatures
+  of revisions that are not tied to a particular internal
+  representation.  (Martin Pool).
+
+* Per-revision properties ('revprops') as key-value associated
+  strings on each revision created when the revision is committed.
+  Intended mainly for the use of external tools.  (Martin Pool).
+
+* Config options have moved from bzrlib.osutils to bzrlib.config.
+  (Robert Collins)
+
+* Improved command line option definitions allowing explanations
+  for individual options, among other things.  Contributed by
+  Magnus Therning.
+
+* Config options have moved from bzrlib.osutils to bzrlib.config.
+  Configuration is now done via the config.Config interface:
+  Depending on whether you have a Branch, a Location or no information
+  available, construct a ``*Config``, and use its ``signature_checking``,
+  ``username`` and ``user_email`` methods. (Robert Collins)
+
+* Plugins are now loaded under bzrlib.plugins, not bzrlib.plugin, and
+  they are made available for other plugins to use. You should not
+  import other plugins during the ``__init__`` of your plugin though, as
+  no ordering is guaranteed, and the plugins directory is not on the
+  python path. (Robert Collins)
+
+* Branch.relpath has been moved to WorkingTree.relpath. WorkingTree no
+  no longer takes an inventory, rather it takes an option branch
+  parameter, and if None is given will open the branch at basedir
+  implicitly. (Robert Collins)
+
+* Cleaner exception structure and error reporting.  Suggested by
+  Scott James Remnant.  (Martin Pool)
+
+* Branch.remove has been moved to WorkingTree, which has also gained
+  ``lock_read``, ``lock_write`` and ``unlock`` methods for convenience.
+  (Robert Collins)
+
+* Two decorators, ``needs_read_lock`` and ``needs_write_lock`` have been
+  added to the branch module. Use these to cause a function to run in a
+  read or write lock respectively. (Robert Collins)
+
+* ``Branch.open_containing`` now returns a tuple (Branch, relative-path),
+  which allows direct access to the common case of 'get me this file
+  from its branch'. (Robert Collins)
+
+* Transports can register using ``register_lazy_transport``, and they
+  will be loaded when first used.  (Martin Pool)
+
+* 'pull' has been factored out of the command as ``WorkingTree.pull()``.
+  A new option to WorkingTree.pull has been added, clobber, which will
+  ignore diverged history and pull anyway.
+  (Robert Collins)
+
+* config.Config has a ``get_user_option`` call that accepts an option name.
+  This will be looked up in branches.conf and bazaar.conf as normal.
+  It is intended that this be used by plugins to support options -
+  options of built in programs should have specific methods on the config.
+  (Robert Collins)
+
+* ``merge.merge_inner`` now has tempdir as an optional parameter.
+  (Robert Collins)
+
+* Tree.kind is not recorded at the top level of the hierarchy, as it was
+  missing on EmptyTree, leading to a bug with merge on EmptyTrees.
+  (Robert Collins)
+
+* ``WorkingTree.__del__`` has been removed, it was non deterministic and not
+  doing what it was intended to. See ``WorkingTree.__init__`` for a comment
+  about future directions. (Robert Collins/Martin Pool)
+
+* bzrlib.transport.http has been modified so that only 404 urllib errors
+  are returned as NoSuchFile. Other exceptions will propagate as normal.
+  This allows debuging of actual errors. (Robert Collins)
+
+* bzrlib.transport.Transport now accepts *ONLY* URL-escaped relative paths
+  to apis like 'put', 'get' and 'has'. This is to provide consistent
+  behaviour - it operates on URLs only. (Robert Collins)
+
+* Transports can register using ``register_lazy_transport``, and they
+  will be loaded when first used.  (Martin Pool)
+
+* ``merge_flex`` no longer calls ``conflict_handler.finalize()``, instead that
+  is called by ``merge_inner``. This is so that the conflict count can be
+  retrieved (and potentially manipulated) before returning to the caller
+  of ``merge_inner``. Likewise 'merge' now returns the conflict count to the
+  caller. (Robert Collins)
+
+* ``revision.revision_graph`` can handle having only partial history for
+  a revision - that is no revisions in the graph with no parents.
+  (Robert Collins).
+
+* New ``builtins.branch_files`` uses the standard ``file_list`` rules to
+  produce a branch and a list of paths, relative to that branch
+  (Aaron Bentley)
+
+* New TestCase.addCleanup facility.
+
+* New ``bzrlib.version_info`` tuple (similar to ``sys.version_info``),
+  which can be used by programs importing bzrlib.
+
+Bug Fixes
+*********
+
+* Better handling of branches in directories with non-ascii names.
+  (Joel Rosdahl, Panagiotis Papadakos)
+
+* Upgrades of trees with no commits will not fail due to accessing
+  [-1] in the revision-history. (Andres Salomon)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

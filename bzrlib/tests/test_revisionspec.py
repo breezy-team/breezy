@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,20 +15,17 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import datetime
-import os
 import time
 
 from bzrlib import (
-    branch,
-    bzrdir,
     errors,
-    repository,
     revision as _mod_revision,
     )
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.revisionspec import (
+    RevisionInfo,
     RevisionSpec,
-    RevisionSpec_revno,
+    RevisionSpec_dwim,
     RevisionSpec_tag,
     )
 
@@ -147,6 +144,17 @@ class TestOddRevisionSpec(TestRevisionSpec):
         self.assertRaises(TypeError, RevisionSpec.from_string, object())
 
 
+class RevisionSpec_bork(RevisionSpec):
+
+    prefix = 'irrelevant:'
+
+    def _match_on(self, branch, revs):
+        if self.spec == "bork":
+            return RevisionInfo.from_revision_id(branch, "r1", revs)
+        else:
+            raise errors.InvalidRevisionSpec(self.spec, branch)
+
+
 class TestRevisionSpec_dwim(TestRevisionSpec):
 
     # Don't need to test revno's explicitly since TRS_revno already
@@ -189,6 +197,23 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.assertInvalid('1..1', invalid_as_revision_id=False)
         self.assertInvalid('1.2..1', invalid_as_revision_id=False)
         self.assertInvalid('1.', invalid_as_revision_id=False)
+
+    def test_append_dwim_revspec(self):
+        original_dwim_revspecs = list(RevisionSpec_dwim._possible_revspecs)
+        def reset_dwim_revspecs():
+            RevisionSpec_dwim._possible_revspecs = original_dwim_revspecs
+        self.addCleanup(reset_dwim_revspecs)
+        RevisionSpec_dwim.append_possible_revspec(RevisionSpec_bork)
+        self.assertAsRevisionId('r1', 'bork')
+
+    def test_append_lazy_dwim_revspec(self):
+        original_dwim_revspecs = list(RevisionSpec_dwim._possible_revspecs)
+        def reset_dwim_revspecs():
+            RevisionSpec_dwim._possible_revspecs = original_dwim_revspecs
+        self.addCleanup(reset_dwim_revspecs)
+        RevisionSpec_dwim.append_possible_lazy_revspec(
+            "bzrlib.tests.test_revisionspec", "RevisionSpec_bork")
+        self.assertAsRevisionId('r1', 'bork')
 
 
 class TestRevisionSpec_revno(TestRevisionSpec):
@@ -652,3 +677,79 @@ class TestRevisionSpec_submit(TestRevisionSpec):
     def test_as_revision_id(self):
         self.tree.branch.set_submit_branch('tree2')
         self.assertAsRevisionId('alt_r2', 'branch:tree2')
+
+
+class TestRevisionSpec_mainline(TestRevisionSpec):
+
+    def test_as_revision_id(self):
+        self.assertAsRevisionId('r1', 'mainline:1')
+        self.assertAsRevisionId('r2', 'mainline:1.1.1')
+        self.assertAsRevisionId('r2', 'mainline:revid:alt_r2')
+        spec = RevisionSpec.from_string('mainline:revid:alt_r22')
+        e = self.assertRaises(errors.InvalidRevisionSpec,
+                              spec.as_revision_id, self.tree.branch)
+        self.assertContainsRe(str(e),
+            "Requested revision: 'mainline:revid:alt_r22' does not exist in"
+            " branch: ")
+
+    def test_in_history(self):
+        self.assertInHistoryIs(2, 'r2', 'mainline:revid:alt_r2')
+
+
+class TestRevisionSpec_annotate(TestRevisionSpec):
+
+    def setUp(self):
+        TestRevisionSpec.setUp(self)
+        self.tree = self.make_branch_and_tree('annotate-tree')
+        self.build_tree_contents([('annotate-tree/file1', '1\n')])
+        self.tree.add('file1')
+        self.tree.commit('r1', rev_id='r1')
+        self.build_tree_contents([('annotate-tree/file1', '2\n1\n')])
+        self.tree.commit('r2', rev_id='r2')
+        self.build_tree_contents([('annotate-tree/file1', '2\n1\n3\n')])
+
+    def test_as_revision_id_r1(self):
+        self.assertAsRevisionId('r1', 'annotate:annotate-tree/file1:2')
+
+    def test_as_revision_id_r2(self):
+        self.assertAsRevisionId('r2', 'annotate:annotate-tree/file1:1')
+
+    def test_as_revision_id_uncommitted(self):
+        spec = RevisionSpec.from_string('annotate:annotate-tree/file1:3')
+        e = self.assertRaises(errors.InvalidRevisionSpec,
+                              spec.as_revision_id, self.tree.branch)
+        self.assertContainsRe(str(e),
+            r"Requested revision: \'annotate:annotate-tree/file1:3\' does not"
+            " exist in branch: .*\nLine 3 has not been committed.")
+
+    def test_non_existent_line(self):
+        spec = RevisionSpec.from_string('annotate:annotate-tree/file1:4')
+        e = self.assertRaises(errors.InvalidRevisionSpec,
+                              spec.as_revision_id, self.tree.branch)
+        self.assertContainsRe(str(e),
+            r"Requested revision: \'annotate:annotate-tree/file1:4\' does not"
+            " exist in branch: .*\nNo such line: 4")
+
+    def test_invalid_line(self):
+        spec = RevisionSpec.from_string('annotate:annotate-tree/file1:q')
+        e = self.assertRaises(errors.InvalidRevisionSpec,
+                              spec.as_revision_id, self.tree.branch)
+        self.assertContainsRe(str(e),
+            r"Requested revision: \'annotate:annotate-tree/file1:q\' does not"
+            " exist in branch: .*\nNo such line: q")
+
+    def test_no_such_file(self):
+        spec = RevisionSpec.from_string('annotate:annotate-tree/file2:1')
+        e = self.assertRaises(errors.InvalidRevisionSpec,
+                              spec.as_revision_id, self.tree.branch)
+        self.assertContainsRe(str(e),
+            r"Requested revision: \'annotate:annotate-tree/file2:1\' does not"
+            " exist in branch: .*\nFile 'file2' is not versioned")
+
+    def test_no_such_file_with_colon(self):
+        spec = RevisionSpec.from_string('annotate:annotate-tree/fi:le2:1')
+        e = self.assertRaises(errors.InvalidRevisionSpec,
+                              spec.as_revision_id, self.tree.branch)
+        self.assertContainsRe(str(e),
+            r"Requested revision: \'annotate:annotate-tree/fi:le2:1\' does not"
+            " exist in branch: .*\nFile 'fi:le2' is not versioned")
