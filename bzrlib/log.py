@@ -1719,7 +1719,10 @@ class LineLogFormatter(LogFormatter):
         if revno:
             # show revno only when is not None
             out.append("%s:" % revno)
-        out.append(self.truncate(self.short_author(rev), 20))
+        if max_chars is not None:
+            out.append(self.truncate(self.short_author(rev), max_chars/4))
+        else:
+            out.append(self.short_author(rev))
         out.append(self.date_string(rev))
         if len(rev.parent_ids) > 1:
             out.append('[merge]')

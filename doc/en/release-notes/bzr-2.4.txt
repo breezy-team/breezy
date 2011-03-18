@@ -66,6 +66,10 @@ Improvements
 * ``bzr export`` can now create ``.tar.xz`` and ``.tar.lzma`` files.
   (Jelmer Vernooij, #551714)
 
+* ``bzr log --line`` scales the width of the author field with the size of
+  the line.  This means that the full author name is shown when the
+  environment variable BZR_COLUMNS=0.  (Neil Martinsen-Burrell)
+
 
 Bug Fixes
 *********
