@@ -3005,6 +3005,7 @@ class BzrBranch8(BzrBranch5):
 
     def set_bound_location(self, location):
         """See Branch.set_push_location."""
+        self._master_branch_cache = None
         result = None
         config = self.get_config()
         if location is None:
