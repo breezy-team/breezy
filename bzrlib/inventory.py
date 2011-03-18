@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -718,6 +718,14 @@ class CommonInventory(object):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
+    def _preload_cache(self):
+        """Populate any caches, we are about to access all items.
+        
+        The default implementation does nothing, because CommonInventory doesn't
+        have a cache.
+        """
+        pass
+    
     def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None,
         yield_parents=False):
         """Iterate over the entries in a directory first order.
@@ -736,6 +744,11 @@ class CommonInventory(object):
             specific_file_ids = set(specific_file_ids)
         # TODO? Perhaps this should return the from_dir so that the root is
         # yielded? or maybe an option?
+        if from_dir is None and specific_file_ids is None:
+            # They are iterating from the root, and have not specified any
+            # specific entries to look at. All current callers fully consume the
+            # iterator, so we can safely assume we are accessing all entries
+            self._preload_cache()
         if from_dir is None:
             if self.root is None:
                 return
@@ -1390,6 +1403,7 @@ class CHKInventory(CommonInventory):
     def __init__(self, search_key_name):
         CommonInventory.__init__(self)
         self._fileid_to_entry_cache = {}
+        self._fully_cached = False
         self._path_to_fileid_cache = {}
         self._search_key_name = search_key_name
         self.root_id = None
@@ -1969,7 +1983,40 @@ class CHKInventory(CommonInventory):
                 ie = self._bytes_to_entry(entry)
                 self._fileid_to_entry_cache[file_id] = ie
             yield ie
-
+            
+    def _preload_cache(self):
+        """Make sure all file-ids are in _fileid_to_entry_cache"""
+        if self._fully_cached:
+            return # No need to do it again
+        # The optimal sort order is to use iteritems() directly
+        cache = self._fileid_to_entry_cache
+        for key, entry in self.id_to_entry.iteritems():
+            file_id = key[0]
+            if file_id not in cache:
+                ie = self._bytes_to_entry(entry)
+                cache[file_id] = ie
+            else:
+                ie = cache[file_id]
+        last_parent_id = last_parent_ie = None
+        pid_items = self.parent_id_basename_to_file_id.iteritems()
+        for key, child_file_id in pid_items:
+            if key == ('', ''): # This is the root
+                assert child_file_id == self.root_id
+                continue
+            parent_id, basename = key
+            ie = cache[child_file_id]
+            if parent_id == last_parent_id:
+                parent_ie = last_parent_ie
+            else:
+                parent_ie = cache[parent_id]
+            assert parent_ie.kind == 'directory'
+            if parent_ie._children is None:
+                parent_ie._children = {}
+            assert basename not in parent_ie._children
+            assert basename == ie.name
+            parent_ie._children[basename] = ie
+        self._fully_cached = True
+        
     def iter_changes(self, basis):
         """Generate a Tree.iter_changes change list between this and basis.
 

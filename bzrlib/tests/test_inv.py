@@ -1222,6 +1222,38 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertIsInstance(ie2.name, unicode)
         self.assertEqual(('tree\xce\xa9name', 'tree-root-id', 'tree-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
+        
+    def test__preload_populates_cache(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        root_id = inv.root.file_id
+        inv.add(InventoryFile("fileid", "file", root_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        inv.add(InventoryDirectory("dirid", "dir", root_id))
+        inv.add(InventoryFile("childid", "child", "dirid"))
+        inv["childid"].revision = "filerev"
+        inv["childid"].executable = False
+        inv["childid"].text_sha1 = "dddd"
+        inv["childid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        self.assertEqual({}, new_inv._fileid_to_entry_cache)
+        self.assertFalse(new_inv._fully_cached)
+        new_inv._preload_cache()
+        self.assertEqual(
+            sorted([root_id, "fileid", "dirid", "childid"]),
+            sorted(new_inv._fileid_to_entry_cache.keys()))
+        self.assertTrue(new_inv._fully_cached)
+        ie_root = new_inv._fileid_to_entry_cache[root_id]
+        self.assertEqual(['dir', 'file'], sorted(ie_root._children.keys()))
+        ie_dir = new_inv._fileid_to_entry_cache['dirid']
+        self.assertEqual(['child'], sorted(ie_dir._children.keys()))
 
 
 class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
