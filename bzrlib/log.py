@@ -540,8 +540,7 @@ def _generate_one_revision(branch, rev_id, br_rev_id, br_revno):
         # It's the tip
         return [(br_rev_id, br_revno, 0)]
     else:
-        revno = branch.revision_id_to_dotted_revno(rev_id)
-        revno_str = '.'.join(str(n) for n in revno)
+        revno_str = _compute_revno_str(branch, rev_id)
         return [(rev_id, revno_str, 0)]
 
 
@@ -627,11 +626,31 @@ def _has_merges(branch, rev_id):
     return len(parents) > 1
 
 
+def _compute_revno_str(branch, rev_id):
+    """Compute the revno string from a rev_id.
+
+    :return: The revno string, falling back to the rev_id string itself if the
+        revision is not in the supplied branch.
+    """
+    try:
+        revno = branch.revision_id_to_dotted_revno(rev_id)
+    except errors.NoSuchRevision:
+        # The revision must be outside of this branch; just use the rev id
+        # in place of the revno.
+        return rev_id
+    else:
+        return '.'.join(str(n) for n in revno)
+
+
 def _is_obvious_ancestor(branch, start_rev_id, end_rev_id):
     """Is start_rev_id an obvious ancestor of end_rev_id?"""
     if start_rev_id and end_rev_id:
-        start_dotted = branch.revision_id_to_dotted_revno(start_rev_id)
-        end_dotted = branch.revision_id_to_dotted_revno(end_rev_id)
+        try:
+            start_dotted = branch.revision_id_to_dotted_revno(start_rev_id)
+            end_dotted = branch.revision_id_to_dotted_revno(end_rev_id)
+        except errors.NoSuchRevision:
+            # one or both is not in the branch; not obvious
+            return False
         if len(start_dotted) == 1 and len(end_dotted) == 1:
             # both on mainline
             return start_dotted[0] <= end_dotted[0]
@@ -671,8 +690,7 @@ def _linear_view_revisions(branch, start_rev_id, end_rev_id,
             end_rev_id = br_rev_id
         found_start = start_rev_id is None
         for revision_id in repo.iter_reverse_revision_history(end_rev_id):
-            revno = branch.revision_id_to_dotted_revno(revision_id)
-            revno_str = '.'.join(str(n) for n in revno)
+            revno_str = _compute_revno_str(branch, revision_id)
             if not found_start and revision_id == start_rev_id:
                 if not exclude_common_ancestry:
                     yield revision_id, revno_str, 0

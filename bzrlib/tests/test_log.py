@@ -1462,6 +1462,26 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         self.assertContainsRe(s.getvalue(), 'Removed Revisions:')
         self.assertNotContainsRe(s.getvalue(), 'Added Revisions:')
 
+    def test_out_of_branch_revision_one(self):
+        tree = self.setup_ab_tree()
+        lf = LogCatcher()
+        rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        log.show_log(tree.branch, lf, verbose=True, start_revision=rev,
+                     end_revision=rev)
+        self.assertEqual(1, len(lf.revisions))
+        self.assertEqual('3a', lf.revisions[0].revno)   # Out-of-branch
+
+    def test_out_of_branch_revision_many(self):
+        tree = self.setup_ab_tree()
+        lf = LogCatcher()
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        log.show_log(tree.branch, lf, verbose=True, start_revision=start_rev,
+                     end_revision=end_rev)
+        self.assertEqual(3, len(lf.revisions))
+        self.assertEqual('3a', lf.revisions[0].revno)   # Out-of-branch
+        self.assertEqual('2a', lf.revisions[1].revno)   # Out-of-branch
+        self.assertEqual('1', lf.revisions[2].revno)    # In-branch
 
 
 class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
