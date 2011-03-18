@@ -747,9 +747,7 @@ class TestBound(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable('Format does not support binding')
 
     def test_unbind_clears_cached_master_branch(self):
-        """b.get_master_branch may return a cached branch if b is locked.  That
-        cache should be cleared if the master branch is changed via unbind.
-        """
+        """b.unbind clears any cached value of b.get_master_branch."""
         master = self.make_branch('master')
         branch = self.make_branch('branch')
         try:
@@ -778,10 +776,7 @@ class TestBound(per_branch.TestCaseWithBranch):
         self.assertEqual(None, branch1.get_master_branch())
 
     def test_bind_clears_cached_master_branch(self):
-        """b.get_master_branch may return a cached branch if b is locked.  That
-        cache should be cleared if the master branch is changed via
-        set_bound_location.
-        """
+        """b.bind clears any cached value of b.get_master_branch."""
         master1 = self.make_branch('master1')
         master2 = self.make_branch('master2')
         branch = self.make_branch('branch')
@@ -796,9 +791,7 @@ class TestBound(per_branch.TestCaseWithBranch):
                 branch.get_master_branch().base))
 
     def test_set_bound_location_clears_cached_master_branch(self):
-        """b.get_master_branch may return a cached branch if b is locked.  That
-        cache should be cleared if the master branch is changed via
-        set_bound_location.
+        """b.set_bound_location clears any cached value of b.get_master_branch.
         """
         master1 = self.make_branch('master1')
         master2 = self.make_branch('master2')

@@ -71,8 +71,9 @@ class Branch(controldir.ControlComponent):
     :ivar base:
         Base directory/url of the branch; using control_url and
         control_transport is more standardized.
-
-    hooks: An instance of BranchHooks.
+    :ivar hooks: An instance of BranchHooks.
+    :ivar _master_branch_cache: cached result of get_master_branch, see
+        _clear_cached_state.
     """
     # this is really an instance variable - FIXME move it there
     # - RBC 20060112
