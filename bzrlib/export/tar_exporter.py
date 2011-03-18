@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -108,7 +108,7 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         basename = None
         stream = sys.stdout
     else:
-        stream = open(dest.encode(osutils._fs_enc), 'w')
+        stream = open(dest, 'w')
         # gzip file is used with an explicit fileobj so that
         # the basename can be stored in the gzip file rather than
         # dest. (bug 102234)
@@ -154,7 +154,7 @@ def plain_tar_exporter(tree, dest, root, subdir, compression=None,
     if dest == '-':
         stream = sys.stdout
     else:
-        stream = open(dest.encode(osutils._fs_enc), 'w')
+        stream = open(dest, 'wb')
     ball = tarfile.open(None, 'w|', stream)
     export_tarball(tree, ball, root, subdir, filtered=filtered,
                    force_mtime=force_mtime)
