@@ -176,7 +176,7 @@ class GitInventoryDirectory(GitInventoryEntry):
 
     def _retrieve_children(self):
         self._children = {}
-        for mode, name, hexsha in self.object.entries():
+        for name, mode, hexsha in self.object.iteritems():
             basename = name.decode("utf-8")
             child_path = osutils.pathjoin(self.path, basename)
             if self._inventory.mapping.is_control_file(child_path):

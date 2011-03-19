@@ -260,7 +260,7 @@ def import_git_tree(texts, mapping, path, name, (base_hexsha, hexsha),
     # Remember for next time
     existing_children = set()
     child_modes = {}
-    for child_mode, name, child_hexsha in tree.entries():
+    for name, child_mode, child_hexsha in tree.iteritems():
         existing_children.add(name)
         child_path = posixpath.join(path, name)
         if type(base_tree) is Tree:
