@@ -52,6 +52,8 @@ cdef extern from "delta.h":
         DELTA_INDEX_NEEDED
         DELTA_SOURCE_EMPTY
         DELTA_SOURCE_BAD
+        DELTA_BUFFER_EMPTY
+        DELTA_SIZE_TOO_BIG
     delta_result create_delta_index(source_info *src,
                                     delta_index *old,
                                     delta_index **fresh) nogil
@@ -59,9 +61,11 @@ cdef extern from "delta.h":
                                                delta_index *old,
                                                delta_index **fresh) nogil
     void free_delta_index(delta_index *index) nogil
-    void *create_delta(delta_index *indexes,
-             void *buf, unsigned long bufsize,
-             unsigned long *delta_size, unsigned long max_delta_size) nogil
+    delta_result create_delta(delta_index *indexes,
+                              void *buf, unsigned long bufsize,
+                              unsigned long *delta_size,
+                              unsigned long max_delta_size,
+                              void **delta_data) nogil
     unsigned long get_delta_hdr_size(unsigned char **datap,
                                      unsigned char *top) nogil
     unsigned long sizeof_delta_index(delta_index *index)
@@ -104,6 +108,8 @@ cdef object _translate_delta_failure(delta_result result):
         return ValueError("Delta function given empty source_info param")
     elif result == DELTA_SOURCE_BAD:
         return RuntimeError("Delta function given invalid source_info param")
+    elif result == DELTA_BUFFER_EMPTY:
+        return ValueError("Delta function given empty buffer params")
     return AssertionError("Unrecognised delta result code: %d" % result)
 
 
@@ -268,6 +274,7 @@ cdef class DeltaIndex:
         cdef void * delta
         cdef unsigned long delta_size
         cdef unsigned long c_max_delta_size
+        cdef delta_result res
 
         if self._index == NULL:
             if len(self._sources) == 0:
@@ -286,13 +293,14 @@ cdef class DeltaIndex:
         #       allocate the bytes into the final string
         c_max_delta_size = max_delta_size
         with nogil:
-            delta = create_delta(self._index,
-                                 target, target_size,
-                                 &delta_size, c_max_delta_size)
+            res = create_delta(self._index, target, target_size,
+                               &delta_size, c_max_delta_size, &delta)
         result = None
-        if delta:
+        if res == DELTA_OK:
             result = PyString_FromStringAndSize(<char *>delta, delta_size)
             free(delta)
+        elif res != DELTA_SIZE_TOO_BIG:
+            raise _translate_delta_failure(res)
         return result
 
 

@@ -29,6 +29,8 @@ typedef enum {
     DELTA_INDEX_NEEDED,   /* A delta_index must be passed */
     DELTA_SOURCE_EMPTY,   /* A source_info had no content */
     DELTA_SOURCE_BAD,     /* A source_info had invalid or corrupt content */
+    DELTA_BUFFER_EMPTY,   /* A buffer pointer and size */
+    DELTA_SIZE_TOO_BIG,   /*  */
 } delta_result;
 
 
@@ -80,15 +82,16 @@ extern unsigned long sizeof_delta_index(struct delta_index *index);
  *
  * This function may be called multiple times with different buffers using
  * the same delta_index pointer.  If max_delta_size is non-zero and the
- * resulting delta is to be larger than max_delta_size then NULL is returned.
- * On success, a non-NULL pointer to the buffer with the delta data is
- * returned and *delta_size is updated with its size.  The returned buffer
- * must be freed by the caller.
+ * resulting delta is to be larger than max_delta_size then DELTA_SIZE_TOO_BIG
+ * is returned.  Otherwise on success, DELTA_OK is returned and the outparam 
+ * is set to a new buffer with the delta data and *delta_size is updated with
+ * its size.  That buffer must be freed by the caller.
  */
-extern void *
+extern delta_result
 create_delta(const struct delta_index *index,
-         const void *buf, unsigned long bufsize,
-         unsigned long *delta_size, unsigned long max_delta_size);
+             const void *buf, unsigned long bufsize,
+             unsigned long *delta_size, unsigned long max_delta_size,
+             void **delta_data);
 
 /* the smallest possible delta size is 3 bytes
  * Target size, Copy command, Copy length

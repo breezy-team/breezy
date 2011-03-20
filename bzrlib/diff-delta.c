@@ -879,10 +879,11 @@ sizeof_delta_index(struct delta_index *index)
  */
 #define MAX_OP_SIZE (5 + 5 + 1 + RABIN_WINDOW + 7)
 
-void *
+delta_result
 create_delta(const struct delta_index *index,
              const void *trg_buf, unsigned long trg_size,
-             unsigned long *delta_size, unsigned long max_size)
+             unsigned long *delta_size, unsigned long max_size,
+             void **delta_data)
 {
     unsigned int i, outpos, outsize, moff, val;
     int msize;
@@ -893,9 +894,9 @@ create_delta(const struct delta_index *index,
     unsigned long source_size;
 
     if (!trg_buf || !trg_size)
-        return NULL;
+        return DELTA_BUFFER_EMPTY;
     if (index == NULL)
-        return NULL;
+        return DELTA_INDEX_NEEDED;
 
     outpos = 0;
     outsize = 8192;
@@ -903,7 +904,7 @@ create_delta(const struct delta_index *index,
         outsize = max_size + MAX_OP_SIZE + 1;
     out = malloc(outsize);
     if (!out)
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
 
     source_size = index->last_src->size + index->last_src->agg_offset;
 
@@ -1082,7 +1083,7 @@ create_delta(const struct delta_index *index,
             out = realloc(out, outsize);
             if (!out) {
                 free(tmp);
-                return NULL;
+                return DELTA_OUT_OF_MEMORY;
             }
         }
     }
@@ -1092,11 +1093,12 @@ create_delta(const struct delta_index *index,
 
     if (max_size && outpos > max_size) {
         free(out);
-        return NULL;
+        return DELTA_SIZE_TOO_BIG;
     }
 
     *delta_size = outpos;
-    return out;
+    *delta_data = out;
+    return DELTA_OK;
 }
 
 /* vim: et ts=4 sw=4 sts=4
