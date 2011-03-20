@@ -373,9 +373,10 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 }
 
 
-struct delta_index *
+delta_result
 create_delta_index(const struct source_info *src,
-                   struct delta_index *old)
+                   struct delta_index *old,
+                   struct delta_index **fresh)
 {
     unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
     unsigned int total_num_entries;
@@ -386,7 +387,7 @@ create_delta_index(const struct source_info *src,
     unsigned long memsize;
 
     if (!src->buf || !src->size)
-        return NULL;
+        return DELTA_SOURCE_EMPTY;
     buffer = src->buf;
 
     /* Determine index hash size.  Note that indexing skips the
@@ -411,7 +412,7 @@ create_delta_index(const struct source_info *src,
           sizeof(*entry) * total_num_entries;
     mem = malloc(memsize);
     if (!mem)
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
     hash = mem;
     mem = hash + hsize;
     entry = mem;
@@ -422,7 +423,7 @@ create_delta_index(const struct source_info *src,
     hash_count = calloc(hsize, sizeof(*hash_count));
     if (!hash_count) {
         free(hash);
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
     }
 
     /* then populate the index for the new data */
@@ -455,11 +456,13 @@ create_delta_index(const struct source_info *src,
     free(hash_count);
     index = pack_delta_index(hash, hsize, total_num_entries, old);
     free(hash);
+    /* pack_delta_index only returns NULL on malloc failure */
     if (!index) {
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
     }
     index->last_src = src;
-    return index;
+    *fresh = index;
+    return DELTA_OK;
 }
 
 /* Take some entries, and put them into a custom hash.
@@ -679,9 +682,10 @@ get_text(char buff[128], const unsigned char *ptr)
     }
 }
 
-struct delta_index *
+delta_result
 create_delta_index_from_delta(const struct source_info *src,
-                              struct delta_index *old_index)
+                              struct delta_index *old_index,
+                              struct delta_index **fresh)
 {
     unsigned int i, num_entries, max_num_entries, prev_val, num_inserted;
     unsigned int hash_offset;
@@ -690,9 +694,10 @@ create_delta_index_from_delta(const struct source_info *src,
     struct delta_index *new_index;
     struct index_entry *entry, *entries;
 
-    assert(old_index != NULL);
+    if (!old_index)
+        return DELTA_INDEX_NEEDED;
     if (!src->buf || !src->size)
-        return NULL;
+        return DELTA_SOURCE_EMPTY;
     buffer = src->buf;
     top = buffer + src->size;
 
@@ -708,7 +713,7 @@ create_delta_index_from_delta(const struct source_info *src,
     /* allocate an array to hold whatever entries we find */
     entries = malloc(sizeof(*entry) * max_num_entries);
     if (!entries) /* malloc failure */
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
 
     /* then populate the index for the new data */
     prev_val = ~0;
@@ -774,17 +779,16 @@ create_delta_index_from_delta(const struct source_info *src,
             break;
         }
     }
-    /* GZ 2011-03-04: What is 'something' exactly? If this an unrecoverable
-                      error perhaps it should be an assert? */
     if (data != top) {
-        /* Something was wrong with this delta */
+        /* The source_info data passed was corrupted or otherwise invalid */
         free(entries);
-        return old_index;
+        return DELTA_SOURCE_BAD;
     }
     if (num_entries == 0) {
         /** Nothing to index **/
         free(entries);
-        return old_index;
+        *fresh = old_index;
+        return DELTA_OK;
     }
     old_index->last_src = src;
     /* See if we can fill in these values into the holes in the array */
@@ -842,12 +846,17 @@ create_delta_index_from_delta(const struct source_info *src,
         // fprintf(stderr, "inserted %d before resize\n", num_inserted);
         new_index = create_index_from_old_and_new_entries(old_index,
             entry, num_entries);
+        
     } else {
         new_index = old_index;
         // fprintf(stderr, "inserted %d without resizing\n", num_inserted);
     }
     free(entries);
-    return new_index;
+    /* create_index_from_old_and_new_entries returns NULL on malloc failure */
+    if (!new_index)
+        return DELTA_OUT_OF_MEMORY;
+    *fresh = new_index;
+    return DELTA_OK;
 }
 
 void free_delta_index(struct delta_index *index)
