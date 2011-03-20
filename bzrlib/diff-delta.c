@@ -846,7 +846,6 @@ create_delta_index_from_delta(const struct source_info *src,
         // fprintf(stderr, "inserted %d before resize\n", num_inserted);
         new_index = create_index_from_old_and_new_entries(old_index,
             entry, num_entries);
-        
     } else {
         new_index = old_index;
         // fprintf(stderr, "inserted %d without resizing\n", num_inserted);

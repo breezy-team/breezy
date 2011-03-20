@@ -30,7 +30,7 @@ typedef enum {
     DELTA_SOURCE_EMPTY,   /* A source_info had no content */
     DELTA_SOURCE_BAD,     /* A source_info had invalid or corrupt content */
     DELTA_BUFFER_EMPTY,   /* A buffer pointer and size */
-    DELTA_SIZE_TOO_BIG,   /*  */
+    DELTA_SIZE_TOO_BIG,   /* Delta data is larger than the max requested */
 } delta_result;
 
 
