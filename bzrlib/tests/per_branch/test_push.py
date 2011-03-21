@@ -114,6 +114,23 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 other.branch.push, checkout.branch)
 
+    def test_push_new_tag_to_bound_branch(self):
+        master = self.make_branch('master')
+        bound = self.make_branch('bound')
+        try:
+            bound.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable(
+                'Format does not support bound branches')
+        other = bound.bzrdir.sprout('other').open_branch()
+        try:
+            other.tags.set_tag('new-tag', 'some-rev')
+        except errors.TagsNotSupported:
+            raise tests.TestNotApplicable('Format does not support tags')
+        other.push(bound)
+        self.assertEqual({'new-tag': 'some-rev'}, bound.tags.get_tag_dict())
+        self.assertEqual({'new-tag': 'some-rev'}, master.tags.get_tag_dict())
+
     def test_push_uses_read_lock(self):
         """Push should only need a read lock on the source side."""
         source = self.make_branch_and_tree('source')
