@@ -1497,7 +1497,8 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
         log.show_log(tree.branch, lf, verbose=True, start_revision=rev,
                      end_revision=rev)
         self.assertEqual(1, len(lf.revisions))
-        self.assertEqual('3a', lf.revisions[0].revno)   # Out-of-branch
+        self.assertEqual(None, lf.revisions[0].revno)   # Out-of-branch
+        self.assertEqual('3a', lf.revisions[0].rev.revision_id)
 
     def test_many_revisions(self):
         tree = self.setup_ab_tree()
@@ -1507,8 +1508,10 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
         log.show_log(tree.branch, lf, verbose=True, start_revision=start_rev,
                      end_revision=end_rev)
         self.assertEqual(3, len(lf.revisions))
-        self.assertEqual('3a', lf.revisions[0].revno)   # Out-of-branch
-        self.assertEqual('2a', lf.revisions[1].revno)   # Out-of-branch
+        self.assertEqual(None, lf.revisions[0].revno)   # Out-of-branch
+        self.assertEqual('3a', lf.revisions[0].rev.revision_id)
+        self.assertEqual(None, lf.revisions[1].revno)   # Out-of-branch
+        self.assertEqual('2a', lf.revisions[1].rev.revision_id)
         self.assertEqual('1', lf.revisions[2].revno)    # In-branch
 
     def test_long_format(self):
@@ -1517,14 +1520,12 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
         end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
         self.assertFormatterResult("""\
 ------------------------------------------------------------
-revno: 3a
 committer: Joe Foo <joe@foo.com>
 branch nick: tree
 timestamp: Tue 2005-11-22 11:00:00 +1100
 message:
   commit 3a
 ------------------------------------------------------------
-revno: 2a
 committer: Joe Foo <joe@foo.com>
 branch nick: tree
 timestamp: Tue 2005-11-22 11:00:00 +1100
@@ -1547,10 +1548,10 @@ message:
         start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
         end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
         self.assertFormatterResult("""\
-   3a Joe Foo\t2005-11-22
+      Joe Foo\t2005-11-22
       commit 3a
 
-   2a Joe Foo\t2005-11-22
+      Joe Foo\t2005-11-22
       commit 2a
 
     1 Joe Foo\t2005-11-22
@@ -1566,8 +1567,8 @@ message:
         start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
         end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
         self.assertFormatterResult("""\
-3a: Joe Foo 2005-11-22 commit 3a
-2a: Joe Foo 2005-11-22 commit 2a
+Joe Foo 2005-11-22 commit 3a
+Joe Foo 2005-11-22 commit 2a
 1: Joe Foo 2005-11-22 commit 1a
 """,
             tree.branch, log.LineLogFormatter, show_log_kwargs={

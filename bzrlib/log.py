@@ -629,15 +629,14 @@ def _has_merges(branch, rev_id):
 def _compute_revno_str(branch, rev_id):
     """Compute the revno string from a rev_id.
 
-    :return: The revno string, falling back to the rev_id string itself if the
-        revision is not in the supplied branch.
+    :return: The revno string, or None if the revision is not in the supplied
+        branch.
     """
     try:
         revno = branch.revision_id_to_dotted_revno(rev_id)
     except errors.NoSuchRevision:
-        # The revision must be outside of this branch; just use the rev id
-        # in place of the revno.
-        return rev_id
+        # The revision must be outside of this branch
+        return None
     else:
         return '.'.join(str(n) for n in revno)
 
@@ -1318,7 +1317,7 @@ class LogRevision(object):
     def __init__(self, rev=None, revno=None, merge_depth=0, delta=None,
                  tags=None, diff=None):
         self.rev = rev
-        self.revno = str(revno)
+        self.revno = None if revno is None else str(revno)
         self.merge_depth = merge_depth
         self.delta = delta
         self.tags = tags
@@ -1645,7 +1644,7 @@ class ShortLogFormatter(LogFormatter):
         indent = '    ' * depth
         revno_width = self.revno_width_by_depth.get(depth)
         if revno_width is None:
-            if revision.revno.find('.') == -1:
+            if revision.revno is None or revision.revno.find('.') == -1:
                 # mainline revno, e.g. 12345
                 revno_width = 5
             else:
@@ -1659,7 +1658,7 @@ class ShortLogFormatter(LogFormatter):
         if revision.tags:
             tags = ' {%s}' % (', '.join(revision.tags))
         to_file.write(indent + "%*s %s\t%s%s%s\n" % (revno_width,
-                revision.revno, self.short_author(revision.rev),
+                revision.revno or "", self.short_author(revision.rev),
                 format_date(revision.rev.timestamp,
                             revision.rev.timezone or 0,
                             self.show_timezone, date_fmt="%Y-%m-%d",
