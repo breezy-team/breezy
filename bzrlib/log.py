@@ -1574,8 +1574,9 @@ class LongLogFormatter(LogFormatter):
                 self.merge_marker(revision)))
         if revision.tags:
             lines.append('tags: %s' % (', '.join(revision.tags)))
-        if self.show_ids:
+        if self.show_ids or revision.revno is None:
             lines.append('revision-id: %s' % (revision.rev.revision_id,))
+        if self.show_ids:
             for parent_id in revision.rev.parent_ids:
                 lines.append('parent: %s' % (parent_id,))
         lines.extend(self.custom_properties(revision.rev))
@@ -1665,7 +1666,7 @@ class ShortLogFormatter(LogFormatter):
                             show_offset=False),
                 tags, self.merge_marker(revision)))
         self.show_properties(revision.rev, indent+offset)
-        if self.show_ids:
+        if self.show_ids or revision.revno is None:
             to_file.write(indent + offset + 'revision-id:%s\n'
                           % (revision.rev.revision_id,))
         if not revision.rev.message:

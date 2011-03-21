@@ -1520,12 +1520,14 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
         end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
         self.assertFormatterResult("""\
 ------------------------------------------------------------
+revision-id: 3a
 committer: Joe Foo <joe@foo.com>
 branch nick: tree
 timestamp: Tue 2005-11-22 11:00:00 +1100
 message:
   commit 3a
 ------------------------------------------------------------
+revision-id: 2a
 committer: Joe Foo <joe@foo.com>
 branch nick: tree
 timestamp: Tue 2005-11-22 11:00:00 +1100
@@ -1549,9 +1551,11 @@ message:
         end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
         self.assertFormatterResult("""\
       Joe Foo\t2005-11-22
+      revision-id:3a
       commit 3a
 
       Joe Foo\t2005-11-22
+      revision-id:2a
       commit 2a
 
     1 Joe Foo\t2005-11-22
