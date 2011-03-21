@@ -108,7 +108,7 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         basename = None
         stream = sys.stdout
     else:
-        stream = open(dest, 'w')
+        stream = open(dest, 'wb')
         # gzip file is used with an explicit fileobj so that
         # the basename can be stored in the gzip file rather than
         # dest. (bug 102234)
