@@ -32,6 +32,11 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzr push`` into a repository (that doesn't have a branch), will no
+  longer copy all revisions in the repository. Only the ones in the
+  ancestry of the source branch, like it does in all other cases.
+  (John Arbash Meinel, #465517)
+
 * Fix "Unable to obtain lock" error when pushing to a bound branch if tags
   had changed.  Bazaar was attempting to open and lock the master branch
   twice in this case.  (Andrew Bennetts, #733350)
