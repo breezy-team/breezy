@@ -1469,17 +1469,25 @@ class TestRevisionNotInBranch(tests.TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         tree.lock_write()
         self.addCleanup(tree.unlock)
-        tree.commit('1a', rev_id='1a')
-        tree.commit('2a', rev_id='2a')
-        tree.commit('3a', rev_id='3a')
+        kwargs = {
+            'committer': 'Joe Foo <joe@foo.com>',
+            'timestamp': 1132617600, # Mon 2005-11-22 00:00:00 +0000
+        }
+        tree.commit('commit 1a', rev_id='1a', **kwargs)
+        tree.commit('commit 2a', rev_id='2a', **kwargs)
+        tree.commit('commit 3a', rev_id='3a', **kwargs)
         return tree
 
     def setup_ab_tree(self):
         tree = self.setup_a_tree()
         tree.set_last_revision('1a')
         tree.branch.set_last_revision_info(1, '1a')
-        tree.commit('2b', rev_id='2b')
-        tree.commit('3b', rev_id='3b')
+        kwargs = {
+            'committer': 'Joe Foo <joe@foo.com>',
+            'timestamp': 1132617600, # Mon 2005-11-22 00:00:00 +0000
+        }
+        tree.commit('commit 2b', rev_id='2b', **kwargs)
+        tree.commit('commit 3b', rev_id='3b', **kwargs)
         return tree
 
     def test_one_revision(self):
