@@ -1462,7 +1462,27 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         self.assertContainsRe(s.getvalue(), 'Removed Revisions:')
         self.assertNotContainsRe(s.getvalue(), 'Added Revisions:')
 
-    def test_out_of_branch_revision_one(self):
+
+class TestRevisionNotInBranch(tests.TestCaseWithTransport):
+
+    def setup_a_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        tree.commit('1a', rev_id='1a')
+        tree.commit('2a', rev_id='2a')
+        tree.commit('3a', rev_id='3a')
+        return tree
+
+    def setup_ab_tree(self):
+        tree = self.setup_a_tree()
+        tree.set_last_revision('1a')
+        tree.branch.set_last_revision_info(1, '1a')
+        tree.commit('2b', rev_id='2b')
+        tree.commit('3b', rev_id='3b')
+        return tree
+
+    def test_one_revision(self):
         tree = self.setup_ab_tree()
         lf = LogCatcher()
         rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
@@ -1471,7 +1491,7 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         self.assertEqual(1, len(lf.revisions))
         self.assertEqual('3a', lf.revisions[0].revno)   # Out-of-branch
 
-    def test_out_of_branch_revision_many(self):
+    def test_many_revisions(self):
         tree = self.setup_ab_tree()
         lf = LogCatcher()
         start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
