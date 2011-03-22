@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -186,6 +186,41 @@ class TestPush(per_branch.TestCaseWithBranch):
 
         self.assertEqual(tree.branch.last_revision(),
                          to_branch.last_revision())
+
+    def test_push_repository_no_branch_doesnt_fetch_all_revs(self):
+        # See https://bugs.launchpad.net/bzr/+bug/465517
+        t = self.get_transport('target')
+        t.ensure_base()
+        bzrdir = self.bzrdir_format.initialize_on_transport(t)
+        try:
+            bzrdir.open_branch()
+        except errors.NotBranchError:
+            pass
+        else:
+            raise tests.TestNotApplicable('older formats can\'t have a repo'
+                                          ' without a branch')
+        try:
+            source = self.make_branch_builder('source',
+                                              format=self.bzrdir_format)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('cannot initialize this format')
+        source.start_series()
+        source.build_snapshot('A', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        source.build_snapshot('B', ['A'], [])
+        source.build_snapshot('C', ['A'], [])
+        source.finish_series()
+        b = source.get_branch()
+        # Note: We can't read lock the source branch. Some formats take a write
+        # lock to 'set_push_location', which breaks
+        self.addCleanup(b.lock_write().unlock)
+        repo = bzrdir.create_repository()
+        # This means 'push the source branch into this dir'
+        bzrdir.push_branch(b)
+        self.addCleanup(repo.lock_read().unlock)
+        # We should have pushed 'C', but not 'B', since it isn't in the
+        # ancestry
+        self.assertEqual([('A',), ('C',)], sorted(repo.revisions.keys()))
 
     def test_push_overwrite_of_non_tip_with_stop_revision(self):
         """Combining the stop_revision and overwrite options works.
