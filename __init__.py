@@ -44,6 +44,10 @@ class CVSUnsupportedError(bzrlib.errors.UnsupportedFormatError):
             "bzr, please see http://bazaar-vcs.org/BzrMigration and/or "
             "https://launchpad.net/launchpad-bazaar/+faq/26.")
 
+    def __init__(self, format):
+        bzrlib.errors.BzrError.__init__(self)
+        self.format = format
+
 
 class CVSDirFormat(ControlDirFormat):
     """The CVS directory control format."""
@@ -55,14 +59,13 @@ class CVSDirFormat(ControlDirFormat):
         return "CVS control directory."
 
     def initialize_on_transport(self, transport):
-        raise NotImplementedError(self.get_converter)
+        raise bzrlib.errors.UninitializableFormat(self)
 
-    @classmethod
-    def _known_formats(self):
-        return set([CVSDirFormat()])
+    def is_supported(self):
+        return False
 
-    def open(self, transport, _found=False):
-        """Open this directory."""
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+           basedir=None):
         raise CVSUnsupportedError(self)
 
     @classmethod
