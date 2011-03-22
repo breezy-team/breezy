@@ -92,7 +92,7 @@ class TestUrlToPath(TestCase):
         # All the crazy characters get escaped in local paths => file:/// urls
         # The ' ' character must not be at the end, because on win32
         # it gets stripped off by ntpath.abspath
-        norm_file('%27%20%3B/%3F%3A%40%26%2B%24%23', "' ;/?:@&+$#")
+        norm_file('%27%20%3B/%3F%3A%40%26%3D%2B%24%2C%23', "' ;/?:@&=+$,#")
 
     def test_normalize_url_hybrid(self):
         # Anything with a scheme:// should be treated as a hybrid url
@@ -347,6 +347,9 @@ class TestUrlToPath(TestCase):
         self.assertEqual('file:///path/to/foo',
             to_url('/path/to/foo'))
 
+        self.assertEqual('file:///path/to/foo%2Cbar',
+            to_url('/path/to/foo,bar'))
+
         try:
             result = to_url(u'/path/to/r\xe4ksm\xf6rg\xe5s')
         except UnicodeError:
@@ -386,6 +389,8 @@ class TestUrlToPath(TestCase):
 
         self.assertEqual('file:///', to_url('/'))
 
+        self.assertEqual('file:///C:/path/to/foo%2Cbar',
+            to_url('C:/path/to/foo,bar'))
         try:
             result = to_url(u'd:/path/to/r\xe4ksm\xf6rg\xe5s')
         except UnicodeError:
@@ -617,8 +622,9 @@ class TestUrlToPath(TestCase):
     def test_escape_tildes(self):
         self.assertEqual('~foo', urlutils.escape('~foo'))
 
-    def test_escape_commas(self):
-        self.assertEqual('~foo,name=value', urlutils.escape('~foo,name=value'))
+    def test_escape_safe_characters(self):
+        self.assertEqual('~foo,', urlutils.escape('~foo,', '~,'))
+        self.assertEqual('%7Efoo%2C', urlutils.escape('~foo,', '/'))
 
     def test_unescape(self):
         self.assertEqual('%', urlutils.unescape('%25'))

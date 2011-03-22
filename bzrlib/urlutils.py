@@ -60,13 +60,13 @@ def dirname(url, exclude_trailing_slash=True):
     return split(url, exclude_trailing_slash=exclude_trailing_slash)[0]
 
 
-def escape(relpath):
+def escape(relpath, safe='/~'):
     """Escape relpath to be a valid url."""
     if isinstance(relpath, unicode):
         relpath = relpath.encode('utf-8')
     # After quoting and encoding, the path should be perfectly
     # safe as a plain ASCII string, str() just enforces this
-    return str(urllib.quote(relpath, safe='/~,='))
+    return str(urllib.quote(relpath, safe=safe))
 
 
 def file_relpath(base, path):
