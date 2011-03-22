@@ -1317,7 +1317,10 @@ class LogRevision(object):
     def __init__(self, rev=None, revno=None, merge_depth=0, delta=None,
                  tags=None, diff=None):
         self.rev = rev
-        self.revno = None if revno is None else str(revno)
+        if revno is None:
+            self.revno = None
+        else:
+            self.revno = str(revno)
         self.merge_depth = merge_depth
         self.delta = delta
         self.tags = tags
