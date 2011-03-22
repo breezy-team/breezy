@@ -356,10 +356,6 @@ class cmd_builddeb(Command):
                 build_type = config.build_type
             contains_upstream_source = tree_contains_upstream_source(tree)
             (changelog, larstiq) = find_changelog(tree, not contains_upstream_source)
-            try:
-                prev_version = find_previous_upload(tree, not contains_upstream_source)
-            except NoPreviousUpload:
-                prev_version = None
             if build_type is None:
                 build_type = guess_build_type(tree, changelog.version,
                     contains_upstream_source)
@@ -367,6 +363,10 @@ class cmd_builddeb(Command):
             note("Building package in %s mode" % build_type)
 
             if package_merge:
+                try:
+                    prev_version = find_previous_upload(tree, not contains_upstream_source)
+                except NoPreviousUpload:
+                    prev_version = None
                 build_options.append("-v%s" % str(prev_version))
                 if (prev_version.upstream_version
                         != changelog.version.upstream_version
