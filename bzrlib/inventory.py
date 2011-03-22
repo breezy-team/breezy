@@ -2022,10 +2022,12 @@ class CHKInventory(CommonInventory):
                 parent_ie._children = {}
             basename = basename.decode('utf-8')
             if basename in parent_ie._children:
-                raise ValueError('Data inconsistency detected.'
-                    ' Two entries with basename %r were found'
-                    ' in the parent entry {%s}'
-                    % (basename, parent_id))
+                existing_ie = parent_ie._children[basename]
+                if existing_ie != ie:
+                    raise ValueError('Data inconsistency detected.'
+                        ' Two entries with basename %r were found'
+                        ' in the parent entry {%s}'
+                        % (basename, parent_id))
             if basename != ie.name:
                 raise ValueError('Data inconsistency detected.'
                     ' In the parent_id_basename_to_file_id map, file_id'

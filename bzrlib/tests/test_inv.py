@@ -1223,7 +1223,7 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(('tree\xce\xa9name', 'tree-root-id', 'tree-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
-    def test__preload_handles_utf8(self):
+    def make_basic_utf8_inventory(self):
         inv = Inventory()
         inv.revision_id = "revid"
         inv.root.revision = "rootrev"
@@ -1240,14 +1240,17 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         chk_bytes = self.get_chk_bytes()
         chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
         bytes = ''.join(chk_inv.to_lines())
-        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        return CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+
+    def test__preload_handles_utf8(self):
+        new_inv = self.make_basic_utf8_inventory()
         self.assertEqual({}, new_inv._fileid_to_entry_cache)
         self.assertFalse(new_inv._fully_cached)
         new_inv._preload_cache()
         self.assertEqual(
-            sorted([root_id, "fileid", "dirid", "childid"]),
+            sorted([new_inv.root_id, "fileid", "dirid", "childid"]),
             sorted(new_inv._fileid_to_entry_cache.keys()))
-        ie_root = new_inv._fileid_to_entry_cache[root_id]
+        ie_root = new_inv._fileid_to_entry_cache[new_inv.root_id]
         self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
                          sorted(ie_root._children.keys()))
         ie_dir = new_inv._fileid_to_entry_cache['dirid']
@@ -1284,6 +1287,23 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(['dir', 'file'], sorted(ie_root._children.keys()))
         ie_dir = new_inv._fileid_to_entry_cache['dirid']
         self.assertEqual(['child'], sorted(ie_dir._children.keys()))
+
+    def test__preload_handles_partially_evaluated_inventory(self):
+        new_inv = self.make_basic_utf8_inventory()
+        ie = new_inv[new_inv.root_id]
+        self.assertIs(None, ie._children)
+        self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
+                         sorted(ie.children.keys()))
+        # Accessing .children loads _children
+        self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
+                         sorted(ie._children.keys()))
+        new_inv._preload_cache()
+        # No change
+        self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
+                         sorted(ie._children.keys()))
+        ie_dir = new_inv["dirid"]
+        self.assertEqual([u'ch\xefld'],
+                         sorted(ie_dir._children.keys()))
 
 
 class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
