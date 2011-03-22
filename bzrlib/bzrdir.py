@@ -707,7 +707,7 @@ class BzrDir(controldir.ControlDir):
         except errors.TooManyRedirections:
             raise errors.NotBranchError(base)
 
-        format.check_status(_unsupported)
+        format.check_support_status(_unsupported)
         return format.open(transport, _found=True)
 
     @staticmethod
@@ -1147,7 +1147,7 @@ class BzrDirMeta1(BzrDir):
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
         format = self.find_branch_format(name=name)
-        format.check_status(unsupported)
+        format.check_support_status(unsupported)
         return format.open(self, name=name,
             _found=True, ignore_fallbacks=ignore_fallbacks)
 
@@ -1155,7 +1155,7 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.open_repository."""
         from bzrlib.repository import RepositoryFormat
         format = RepositoryFormat.find_format(self)
-        format.check_status(unsupported)
+        format.check_support_status(unsupported)
         return format.open(self, _found=True)
 
     def open_workingtree(self, unsupported=False,
@@ -1163,7 +1163,7 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.open_workingtree."""
         from bzrlib.workingtree import WorkingTreeFormat
         format = WorkingTreeFormat.find_format(self)
-        format.check_status(unsupported, recommend_upgrade,
+        format.check_support_status(unsupported, recommend_upgrade,
             basedir=self.root_transport.base)
         return format.open(self, _found=True)
 
