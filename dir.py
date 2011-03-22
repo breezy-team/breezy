@@ -120,16 +120,6 @@ class GitDir(ControlDir):
     def _branch_name_to_ref(self, name):
         raise NotImplementedError(self._branch_name_to_ref)
 
-    if bzrlib_version >= (2, 2):
-        def open_branch(self, name=None, unsupported=False, 
-            ignore_fallbacks=None):
-            return self._open_branch(name=name,
-                ignore_fallbacks=ignore_fallbacks, unsupported=unsupported)
-    else:
-        def open_branch(self, ignore_fallbacks=None, unsupported=False):
-            return self._open_branch(name=None,
-                ignore_fallbacks=ignore_fallbacks, unsupported=unsupported)
-
     def get_config(self):
         return GitDirConfig()
 
@@ -298,7 +288,7 @@ class LocalGitDir(GitDir):
             return self.transport
         raise bzr_errors.IncompatibleFormat(format, self._format)
 
-    def _open_branch(self, name=None, ignore_fallbacks=None, unsupported=False):
+    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=None):
         """'create' a branch for this dir."""
         repo = self.open_repository()
         from bzrlib.plugins.git.branch import LocalGitBranch

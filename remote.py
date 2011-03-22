@@ -219,8 +219,7 @@ class RemoteGitDir(GitDir):
     def open_repository(self):
         return RemoteGitRepository(self, self._lockfiles)
 
-    def _open_branch(self, name=None, ignore_fallbacks=False, 
-                    unsupported=False):
+    def open_branch(self, name=None, unsupported=False, ignore_fallbacks=False):
         repo = self.open_repository()
         refname = self._branch_name_to_ref(name)
         return RemoteGitBranch(self, repo, refname, self._lockfiles)
