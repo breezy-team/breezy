@@ -293,7 +293,7 @@ class Transport(object):
     def __init__(self, base):
         super(Transport, self).__init__()
         self.base = base
-        self.segment_parameters = urlutils.split_segment_parameters(base)[1]
+        self.segment_parameters = urlutils.split_segment_parameters(base.rstrip("/"))[1]
 
     def _translate_error(self, e, path, raise_generic=True):
         """Translate an IOError or OSError into an appropriate bzr error.
@@ -1358,7 +1358,6 @@ class ConnectedTransport(Transport):
             # prompt the user for one when appropriate.
             self._password = _from_transport._password
 
-        import pdb; pdb.set_trace()
         base = self._unsplit_url(self._scheme,
                                  self._user, self._password,
                                  self._host, self._port,

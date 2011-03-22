@@ -92,7 +92,7 @@ class TestUrlToPath(TestCase):
         # All the crazy characters get escaped in local paths => file:/// urls
         # The ' ' character must not be at the end, because on win32
         # it gets stripped off by ntpath.abspath
-        norm_file('%27%20%3B/%3F%3A%40%26%3D%2B%24%2C%23', "' ;/?:@&=+$,#")
+        norm_file('%27%20%3B/%3F%3A%40%26%2B%24%23', "' ;/?:@&+$#")
 
     def test_normalize_url_hybrid(self):
         # Anything with a scheme:// should be treated as a hybrid url
@@ -616,6 +616,9 @@ class TestUrlToPath(TestCase):
 
     def test_escape_tildes(self):
         self.assertEqual('~foo', urlutils.escape('~foo'))
+
+    def test_escape_commas(self):
+        self.assertEqual('~foo,name=value', urlutils.escape('~foo,name=value'))
 
     def test_unescape(self):
         self.assertEqual('%', urlutils.unescape('%25'))

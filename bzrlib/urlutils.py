@@ -66,7 +66,7 @@ def escape(relpath):
         relpath = relpath.encode('utf-8')
     # After quoting and encoding, the path should be perfectly
     # safe as a plain ASCII string, str() just enforces this
-    return str(urllib.quote(relpath, safe='/~'))
+    return str(urllib.quote(relpath, safe='/~,='))
 
 
 def file_relpath(base, path):
