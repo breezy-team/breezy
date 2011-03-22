@@ -59,12 +59,12 @@ class CVSDirFormat(ControlDirFormat):
         return "CVS control directory."
 
     def initialize_on_transport(self, transport):
-        raise NotImplementedError(self.get_converter)
+        raise bzrlib.errors.UninitializableFormat(self)
 
     def is_supported(self):
         return False
 
-    def check_status(self, allow_unsupported, recommend_upgrade=True,
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
            basedir=None):
         raise CVSUnsupportedError(self)
 
