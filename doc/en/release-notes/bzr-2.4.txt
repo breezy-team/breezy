@@ -207,6 +207,10 @@ Internals
   by cacthing them so they can be re-raised in the controlling thread. It's
   available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
 
+* Correctly propogate malloc failures from diff-delta.c code as MemoryError
+  so OOM conditions during groupcompress are clearly reported. This entailed a
+  change to several function signatures. (Martin [gz], #633336)
+
 * ``HookPoint.lazy_hook`` and ``Hooks.install_named_lazy_hook`` can install 
   hooks for which the callable is loaded lazily.  (Jelmer Vernooij)
 
