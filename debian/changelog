@@ -1,3 +1,10 @@
+bzr (2.3.1-2) UNRELEASED; urgency=low
+
+  * Add python-medusa, python-lzma and python-meliae as build
+    dependencies (used by the test suite).
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 22 Mar 2011 18:44:00 +0100
+
 bzr (2.3.1-1) unstable; urgency=low
 
   * New upstream release.
