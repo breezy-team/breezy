@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.4b1
+bzr 2.4b2
 #########
 
-:2.4b1: NOT RELEASED YET
+:2.4b2: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -20,12 +20,65 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
-* The ``lp:`` directory service now supports Launchpad's QA staging.
-  (Jelmer Vernooij, #667483)
+Improvements
+************
 
-* External merge tools can now be configured in bazaar.conf. See
-  ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
 
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.4b1
+#########
+
+:2.4b1: 2011-04-17
+
+This is the first beta of the 2.4 series, leading up to a 2.4.0
+release in August 2011.  Beta releases are suitable for everyday use
+but may cause some incompatibilities with plugins.  Some plugins may need
+small updates to work with 2.4b1.
+
+External Compatibility Breaks
+*****************************
+
+(none)
+
+New Features
+************
+
+* Added ``changelog_merge`` plugin for merging changes to ``Changelog`` files
+  in GNU format.  See ``bzr help changelog_merge`` for details.
+  (Andrew Bennetts)
+  
 * Configuration options can now use references to other options in the same
   file by enclosing them with curly brackets (``{other_opt}``). This makes it
   possible to use, for example,
@@ -34,11 +87,14 @@ New Features
   this feature. It can be activated by declaring ``bzr.config.expand = True``
   in ``bazaar.conf``. (Vincent Ladeuil)
 
+* External merge tools can now be configured in bazaar.conf. See
+  ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
+
+* The ``lp:`` directory service now supports Launchpad's QA staging.
+  (Jelmer Vernooij, #667483)
+
 Improvements
 ************
-
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
 
 * A new hidden command ``bzr repair-workingtree``. This is a way to force
   the dirstate file to be rebuilt, rather than using a ``bzr checkout``
@@ -50,14 +106,25 @@ Improvements
 
 * Branching, merging and pulling a branch now copies revisions named in
   tags, not just the tag metadata.  (Andrew Bennetts, #309682)
-  
-* ``bzr cat-revision`` no longer requires a working tree. (Jelmer Vernooij, #704405)
+
+* ``bzr cat-revision`` no longer requires a working tree.
+  (Jelmer Vernooij, #704405)
+
+* ``bzr export --per-file-timestamps`` for .tar.gz files will now
+  override the mtime for trees exported on Python 2.7 and later, which
+  expose the 'mtime' field in gzip files. This makes the output of
+  ``bzr export --per-file-timestamps`` for a particular tree
+  deterministic.  (Jelmer Vernooij, #711226)
+
+* ``bzr export --format=zip`` can now export to standard output,
+  like the other exporters can. (Jelmer Vernooij, #513752)
+
+* ``bzr export`` can now create ``.tar.xz`` and ``.tar.lzma`` files.
+  (Jelmer Vernooij, #551714)
+
 
 Bug Fixes
 *********
-
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
 
 * A MemoryError thrown on the server during a remote operation will now be
   usefully reported, and other unexpected errors will include the class name.
@@ -68,6 +135,9 @@ Bug Fixes
 
 * ``bzr export`` to zip files will now set a mode on directories.
   (Jelmer Vernooij, #207253)
+
+* ``bzr export`` to tgz files will only write out the basename of the
+  tarfile to the gzip file. (Jelmer Vernooij, #102234)
 
 * ``bzr push --overwrite`` with an older revision specified will now correctly
   roll back the target branch. (Jelmer Vernooij, #386576)
@@ -126,16 +196,8 @@ Bug Fixes
 * On Python 2.6 and higher, use multiprocessing.cpu_count() to retrieve the
   number of available processors. (Jelmer Vernooij, #693140)
 
-Documentation
-*************
-
-.. Improved or updated documentation.
-
 API Changes
 ***********
-
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
 
 * Added ``Branch.heads_to_fetch`` method.  Implementions of the Branch API
   must now inherit or implement this method.  (Andrew Bennetts, #721328)
@@ -182,9 +244,9 @@ API Changes
   now deprecated in favour of the ``BzrProber.formats`` format registry.
   (Jelmer Vernooij)
 
-* ``ControlDir`` implementations no longer have to provide the ``get_branch_transport``,
-  ``get_workingtree_transport`` and ``get_repository_transport`` methods.
-  (Jelmer Vernooij, #730325)
+* ``ControlDir`` implementations no longer have to provide the
+  ``get_branch_transport``, ``get_workingtree_transport`` and
+  ``get_repository_transport`` methods.  (Jelmer Vernooij, #730325)
 
 * ``Converter`` has been moved from ``bzrlib.bzrdir`` to
   ``bzrlib.controldir``. (Jelmer Vernooij)
@@ -220,9 +282,6 @@ API Changes
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
-
 * ``CatchingExceptionThread`` (formerly ThreadWithException) has been moved
   out of the ``bzrlib.tests`` hierarchy to make it clearer that it can be used
   outside of tests. This class makes it easier to track exceptions in threads
@@ -234,10 +293,6 @@ Internals
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * The Range parsing for HTTP requests will correctly parse incomplete ranges.
   (Vincent Ladeuil, #731240)

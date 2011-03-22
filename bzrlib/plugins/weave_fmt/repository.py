@@ -65,6 +65,8 @@ from bzrlib.versionedfile import (
     VersionedFiles,
     )
 
+from bzrlib.plugins.weave_fmt import bzrdir as weave_bzrdir
+
 
 class AllInOneRepository(Repository):
     """Legacy support - the repository behaviour for all-in-one branches."""
@@ -348,7 +350,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
 
     supports_funky_characters = False
 
-    _matchingbzrdir = bzrdir_weave.BzrDirFormat4()
+    _matchingbzrdir = weave_bzrdir.BzrDirFormat4()
 
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
@@ -372,7 +374,7 @@ class RepositoryFormat4(PreSplitOutRepositoryFormat):
         return None
 
     def _get_revisions(self, repo_transport, repo):
-        from bzrlib.xml4 import serializer_v4
+        from bzrlib.plugins.weave_fmt.xml4 import serializer_v4
         return RevisionTextStore(repo_transport.clone('revision-store'),
             serializer_v4, True, versionedfile.PrefixMapper(),
             repo.is_locked, repo.is_write_locked)
@@ -396,7 +398,7 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = bzrdir_weave.BzrDirFormat5()
+    _matchingbzrdir = weave_bzrdir.BzrDirFormat5()
     supports_funky_characters = False
 
     @property
@@ -432,6 +434,11 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         return versionedfile.ThunkedVersionedFiles(base_transport,
             weave.WeaveFile, mapper, repo.is_locked)
 
+    def _get_extra_interrepo_test_combinations(self):
+        from bzrlib.repofmt import knitrepo
+        return [(InterRepository, RepositoryFormat5(),
+            knitrepo.RepositoryFormatKnit3())]
+
 
 class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """Bzr control format 6.
@@ -443,7 +450,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """
 
     _versionedfile_class = weave.WeaveFile
-    _matchingbzrdir = bzrdir_weave.BzrDirFormat6()
+    _matchingbzrdir = weave_bzrdir.BzrDirFormat6()
     supports_funky_characters = False
     @property
     def _serializer(self):

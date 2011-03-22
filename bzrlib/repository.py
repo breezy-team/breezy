@@ -46,6 +46,7 @@ from bzrlib import (
     versionedfile,
     )
 from bzrlib.bundle import serializer
+from bzrlib.recordcounter import RecordCounter
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
@@ -65,7 +66,6 @@ from bzrlib.inventory import (
     ROOT_ID,
     entry_factory,
     )
-from bzrlib.recordcounter import RecordCounter
 from bzrlib.lock import _RelockDebugMixin, LogicalLockResult
 from bzrlib.trace import (
     log_exception_quietly, note, mutter, mutter_callsite, warning)
@@ -94,6 +94,8 @@ class CommitBuilder(object):
     record_root_entry = True
     # the default CommitBuilder does not manage trees whose root is versioned.
     _versioned_root = False
+    # this commit builder supports the record_entry_contents interface
+    supports_record_entry_contents = True
 
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
@@ -3218,42 +3220,11 @@ class MetaDirRepositoryFormat(RepositoryFormat):
         return self.get_format_string()
 
 
-# Pre-0.8 formats that don't have a disk format string (because they are
-# versioned by the matching control directory). We use the control directories
-# disk format string as a key for the network_name because they meet the
-# constraints (simple string, unique, immutable).
-network_format_registry.register_lazy(
-    "Bazaar-NG branch, format 5\n",
-    'bzrlib.repofmt.weaverepo',
-    'RepositoryFormat5',
-)
-network_format_registry.register_lazy(
-    "Bazaar-NG branch, format 6\n",
-    'bzrlib.repofmt.weaverepo',
-    'RepositoryFormat6',
-)
-
-format_registry.register_extra_lazy(
-    'bzrlib.repofmt.weaverepo',
-    'RepositoryFormat4')
-format_registry.register_extra_lazy(
-    'bzrlib.repofmt.weaverepo',
-    'RepositoryFormat5')
-format_registry.register_extra_lazy(
-    'bzrlib.repofmt.weaverepo',
-    'RepositoryFormat6')
-
 # formats which have no format string are not discoverable or independently
 # creatable on disk, so are not registered in format_registry.  They're
-# all in bzrlib.repofmt.weaverepo now.  When an instance of one of these is
+# all in bzrlib.repofmt.knitreponow.  When an instance of one of these is
 # needed, it's constructed directly by the BzrDir.  Non-native formats where
 # the repository is not separately opened are similar.
-
-format_registry.register_lazy(
-    'Bazaar-NG Repository format 7',
-    'bzrlib.repofmt.weaverepo',
-    'RepositoryFormat7'
-    )
 
 format_registry.register_lazy(
     'Bazaar-NG Knit Repository Format 1',
@@ -4024,14 +3995,6 @@ class _VersionedFileChecker(object):
         return wrong_parents, unused_keys
 
 
-def _old_get_graph(repository, revision_id):
-    """DO NOT USE. That is all. I'm serious."""
-    graph = repository.get_graph()
-    revision_graph = dict(((key, value) for key, value in
-        graph.iter_ancestry([revision_id]) if value is not None))
-    return _strip_NULL_ghosts(revision_graph)
-
-
 def _strip_NULL_ghosts(revision_graph):
     """Also don't use this. more compatibility code for unmigrated clients."""
     # Filter ghosts, and null:
@@ -4551,6 +4514,3 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
     except StopIteration:
         # No more history
         return
-
-
-

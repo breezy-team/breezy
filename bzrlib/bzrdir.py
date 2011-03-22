@@ -25,8 +25,6 @@ methods. To free any associated resources, simply stop referencing the
 objects returned.
 """
 
-# TODO: Move old formats into a plugin to make this file smaller.
-
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -58,10 +56,6 @@ from bzrlib.repofmt import pack_repo
 from bzrlib.transport import (
     do_catching_redirections,
     local,
-    )
-from bzrlib.weave import (
-    WeaveFile,
-    Weave,
     )
 """)
 
@@ -1672,15 +1666,6 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
 
 # Register bzr formats
-BzrProber.formats.register_lazy(
-    "Bazaar-NG branch, format 0.0.4\n", "bzrlib.bzrdir_weave",
-    "BzrDirFormat4")
-BzrProber.formats.register_lazy(
-    "Bazaar-NG branch, format 5\n", "bzrlib.bzrdir_weave",
-    "BzrDirFormat5")
-BzrProber.formats.register_lazy(
-    "Bazaar-NG branch, format 6\n", "bzrlib.bzrdir_weave",
-    "BzrDirFormat6")
 BzrProber.formats.register(BzrDirMetaFormat1.get_format_string(),
     BzrDirMetaFormat1)
 controldir.ControlDirFormat._default_format = BzrDirMetaFormat1()
@@ -1969,22 +1954,6 @@ def register_metadir(registry, key,
     registry.register(key, helper, help, native, deprecated, hidden,
         experimental, alias)
 
-# The pre-0.8 formats have their repository format network name registered in
-# repository.py. MetaDir formats have their repository format network name
-# inferred from their disk format string.
-controldir.format_registry.register_lazy('weave', 
-    'bzrlib.bzrdir_weave', 'BzrDirFormat6',
-    'Pre-0.8 format.  Slower than knit and does not'
-    ' support checkouts or shared repositories.',
-    hidden=True,
-    deprecated=True)
-register_metadir(controldir.format_registry, 'metaweave',
-    'bzrlib.repofmt.weaverepo.RepositoryFormat7',
-    'Transitional format in 0.8.  Slower than knit.',
-    branch_format='bzrlib.branch.BzrBranchFormat5',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat3',
-    hidden=True,
-    deprecated=True)
 register_metadir(controldir.format_registry, 'knit',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Format using knits.  Recommended for interoperation with bzr <= 0.14.',

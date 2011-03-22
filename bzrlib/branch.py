@@ -2349,10 +2349,6 @@ format_registry.register(__format6)
 format_registry.register(__format7)
 format_registry.register(__format8)
 format_registry.set_default(__format7)
-format_registry.register_extra_lazy("bzrlib.branch_weave",
-    "BzrBranchFormat4")
-network_format_registry.register_lazy("Bazaar-NG branch, format 6\n",
-    "bzrlib.branch_weave", "BzrBranchFormat4")
 
 
 class BranchWriteLockResult(LogicalLockResult):

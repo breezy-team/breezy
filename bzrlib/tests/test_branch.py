@@ -27,17 +27,12 @@ from cStringIO import StringIO
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
-    bzrdir_weave,
     config,
     errors,
     symbol_versioning,
     tests,
     trace,
     urlutils,
-    )
-
-from bzrlib.branch_weave import (
-    BzrBranchFormat4,
     )
 
 
@@ -70,23 +65,6 @@ class TestDefaultFormat(tests.TestCase):
             _mod_branch.format_registry.set_default(old_format)
         self.assertEqual(old_format,
                          _mod_branch.format_registry.get_default())
-
-
-class TestBranchFormat4(tests.TestCaseWithTransport):
-    """Tests specific to branch format 4"""
-
-    def test_no_metadir_support(self):
-        url = self.get_url()
-        bdir = bzrdir.BzrDirMetaFormat1().initialize(url)
-        bdir.create_repository()
-        self.assertRaises(errors.IncompatibleFormat,
-            BzrBranchFormat4().initialize, bdir)
-
-    def test_supports_bzrdir_6(self):
-        url = self.get_url()
-        bdir = bzrdir_weave.BzrDirFormat6().initialize(url)
-        bdir.create_repository()
-        BzrBranchFormat4().initialize(bdir)
 
 
 class TestBranchFormat5(tests.TestCaseWithTransport):

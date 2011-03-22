@@ -42,7 +42,6 @@ from bzrlib import (
     urlutils,
     versionedfile,
     weave,
-    xml4,
     xml5,
     )
 from bzrlib.store.versioned import VersionedFileStore
@@ -51,6 +50,7 @@ from bzrlib.transport import (
     get_transport,
     local,
     )
+from bzrlib.plugins.weave_fmt import xml4
 """)
 
 
@@ -102,7 +102,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
         return "Bazaar-NG branch, format 5\n"
 
     def get_branch_format(self):
-        from bzrlib.branch_weave import BzrBranchFormat4
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
         return BzrBranchFormat4()
 
     def get_format_description(self):
@@ -122,8 +122,8 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
 
         Except when they are being cloned.
         """
-        from bzrlib.branch_weave import BzrBranchFormat4
-        from bzrlib.repofmt.weaverepo import RepositoryFormat5
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat5
         result = (super(BzrDirFormat5, self).initialize_on_transport(transport))
         RepositoryFormat5().initialize(result, _internal=True)
         if not _cloning:
@@ -140,7 +140,7 @@ class BzrDirFormat5(BzrDirFormatAllInOne):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from bzrlib.repofmt.weaverepo import RepositoryFormat5
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat5
         return RepositoryFormat5()
     repository_format = property(__return_repository_format)
 
@@ -169,7 +169,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
         return "All-in-one format 6"
 
     def get_branch_format(self):
-        from bzrlib.branch_weave import BzrBranchFormat4
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
         return BzrBranchFormat4()
 
     def get_converter(self, format=None):
@@ -185,8 +185,8 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
 
         Except when they are being cloned.
         """
-        from bzrlib.branch_weave import BzrBranchFormat4
-        from bzrlib.repofmt.weaverepo import RepositoryFormat6
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat6
         result = super(BzrDirFormat6, self).initialize_on_transport(transport)
         RepositoryFormat6().initialize(result, _internal=True)
         if not _cloning:
@@ -203,7 +203,7 @@ class BzrDirFormat6(BzrDirFormatAllInOne):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from bzrlib.repofmt.weaverepo import RepositoryFormat6
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat6
         return RepositoryFormat6()
     repository_format = property(__return_repository_format)
 
@@ -323,7 +323,7 @@ class ConvertBzrDir4To5(Converter):
         revision_transport = self.bzrdir.transport.clone('revision-store')
         # TODO permissions
         from bzrlib.xml5 import serializer_v5
-        from bzrlib.repofmt.weaverepo import RevisionTextStore
+        from bzrlib.plugins.weave_fmt.repository import RevisionTextStore
         revision_store = RevisionTextStore(revision_transport,
             serializer_v5, False, versionedfile.PrefixMapper(),
             lambda:True, lambda:True)
@@ -527,7 +527,7 @@ class ConvertBzrDir6ToMeta(Converter):
 
     def convert(self, to_convert, pb):
         """See Converter.convert()."""
-        from bzrlib.repofmt.weaverepo import RepositoryFormat7
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat7
         from bzrlib.branch import BzrBranchFormat5
         self.bzrdir = to_convert
         self.pb = ui.ui_factory.nested_progress_bar()
@@ -698,7 +698,7 @@ class BzrDirFormat4(BzrDirFormat):
 
     def __return_repository_format(self):
         """Circular import protection."""
-        from bzrlib.repofmt.weaverepo import RepositoryFormat4
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat4
         return RepositoryFormat4()
     repository_format = property(__return_repository_format)
 
@@ -798,7 +798,7 @@ class BzrDirPreSplitOut(BzrDir):
         return result
 
     def _init_workingtree(self):
-        from bzrlib.workingtree_2 import WorkingTreeFormat2
+        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
         try:
             return WorkingTreeFormat2().initialize(self)
         except errors.NotLocalUrl:
@@ -861,7 +861,7 @@ class BzrDirPreSplitOut(BzrDir):
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
-        from bzrlib.branch_weave import BzrBranchFormat4
+        from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
         format.check_supported(unsupported)
         return format.open(self, name, _found=True)
@@ -883,7 +883,7 @@ class BzrDirPreSplitOut(BzrDir):
         if not create_tree_if_local:
             raise errors.MustHaveWorkingTree(
                 self._format, self.root_transport.base)
-        from bzrlib.workingtree_2 import WorkingTreeFormat2
+        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
         self._make_tail(url)
         result = self._format._initialize_for_clone(url)
         try:
@@ -921,7 +921,7 @@ class BzrDir4(BzrDirPreSplitOut):
 
     def open_repository(self):
         """See BzrDir.open_repository."""
-        from bzrlib.repofmt.weaverepo import RepositoryFormat4
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat4
         return RepositoryFormat4().open(self, _found=True)
 
 
@@ -937,13 +937,13 @@ class BzrDir5(BzrDirPreSplitOut):
     
     def open_repository(self):
         """See BzrDir.open_repository."""
-        from bzrlib.repofmt.weaverepo import RepositoryFormat5
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat5
         return RepositoryFormat5().open(self, _found=True)
 
     def open_workingtree(self, _unsupported=False,
             recommend_upgrade=True):
         """See BzrDir.create_workingtree."""
-        from bzrlib.workingtree_2 import WorkingTreeFormat2
+        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
         wt_format = WorkingTreeFormat2()
         # we don't warn here about upgrades; that ought to be handled for the
         # bzrdir as a whole
@@ -962,7 +962,7 @@ class BzrDir6(BzrDirPreSplitOut):
 
     def open_repository(self):
         """See BzrDir.open_repository."""
-        from bzrlib.repofmt.weaverepo import RepositoryFormat6
+        from bzrlib.plugins.weave_fmt.repository import RepositoryFormat6
         return RepositoryFormat6().open(self, _found=True)
 
     def open_workingtree(self, _unsupported=False,
@@ -970,5 +970,5 @@ class BzrDir6(BzrDirPreSplitOut):
         """See BzrDir.create_workingtree."""
         # we don't warn here about upgrades; that ought to be handled for the
         # bzrdir as a whole
-        from bzrlib.workingtree_2 import WorkingTreeFormat2
+        from bzrlib.plugins.weave_fmt.workingtree import WorkingTreeFormat2
         return WorkingTreeFormat2().open(self, _found=True)

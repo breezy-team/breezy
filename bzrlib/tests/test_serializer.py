@@ -21,7 +21,6 @@
 from bzrlib import (
     chk_serializer,
     serializer,
-    xml4,
     xml5,
     xml6,
     xml7,
@@ -34,8 +33,6 @@ class TestSerializer(TestCase):
     """Test serializer"""
 
     def test_registry(self):
-        self.assertIs(xml4.serializer_v4,
-                      serializer.format_registry.get('4'))
         self.assertIs(xml5.serializer_v5,
                       serializer.format_registry.get('5'))
         self.assertIs(xml6.serializer_v6,
