@@ -1970,7 +1970,7 @@ class CHKInventory(CommonInventory):
 
     def iter_just_entries(self):
         """Iterate over all entries.
-        
+
         Unlike iter_entries(), just the entries are returned (not (path, ie))
         and the order of entries is undefined.
 
@@ -1983,7 +1983,7 @@ class CHKInventory(CommonInventory):
                 ie = self._bytes_to_entry(entry)
                 self._fileid_to_entry_cache[file_id] = ie
             yield ie
-            
+
     def _preload_cache(self):
         """Make sure all file-ids are in _fileid_to_entry_cache"""
         if self._fully_cached:
@@ -2020,6 +2020,7 @@ class CHKInventory(CommonInventory):
                     ' is %r not "directory"' % (parent_id, parent_ie.kind))
             if parent_ie._children is None:
                 parent_ie._children = {}
+            basename = basename.decode('utf-8')
             if basename in parent_ie._children:
                 raise ValueError('Data inconsistency detected.'
                     ' Two entries with basename %r were found'
