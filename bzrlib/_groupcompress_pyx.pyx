@@ -46,7 +46,7 @@ cdef extern from "delta.h":
         unsigned long agg_offset
     struct delta_index:
         pass
-    enum delta_result:
+    ctypedef enum delta_result:
         DELTA_OK
         DELTA_OUT_OF_MEMORY
         DELTA_INDEX_NEEDED
