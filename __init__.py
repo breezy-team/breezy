@@ -51,7 +51,7 @@ class MonotoneDirFormat(controldir.ControlDirFormat):
     def is_supported(self):
         return False
 
-    def check_status(self, allow_unsupported, recommend_upgrade=True,
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
            basedir=None):
         raise MonotoneUnsupportedError(self)
 
