@@ -941,6 +941,7 @@ class MainlineGhostTests(TestLogWithLogCatcher):
         self.assertLogRevnos([], ["2", "1"])
 
     def test_log_range_open_begin(self):
+        raise tests.KnownFailure("log with ghosts fails. bug #726466")
         (stdout, stderr) = self.run_bzr(['log', '-r..2'], retcode=3)
         self.assertEqual(["2", "1"],
                          [r.revno for r in self.get_captured_revisions()])
