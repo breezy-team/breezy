@@ -196,6 +196,9 @@ Bug Fixes
 * On Python 2.6 and higher, use multiprocessing.cpu_count() to retrieve the
   number of available processors. (Jelmer Vernooij, #693140)
 
+* ``bzr log`` now works on revisions which are not in the current branch.
+  (Matt Giuca, #241998)
+
 API Changes
 ***********
 
@@ -274,6 +277,10 @@ API Changes
 * Working tree formats should now be registered on the format registry
   (``bzrlib.working_tree.format_registry``) rather than using the class
   methods on ``WorkingTreeFormat``. (Jelmer Vernooij, #714730)
+
+* The ``revno`` parameter of ``log.LogRevision`` may now be None,
+  representing a revision which is not in the current branch.
+  (Matt Giuca, #241998)
 
 Internals
 *********
