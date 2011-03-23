@@ -180,16 +180,16 @@ class DirectoryUrlTests(TestCaseInTempDir):
         self.assertEquals('http://bazaar.launchpad.net/~apt/apt/devel',
                           directory._resolve('lp:///apt', factory))
 
-    def test_rewrite_bzr_ssh_launchpad_net(self):
+    def test_with_login_avoid_resolve_factory(self):
         # Test that bzr+ssh URLs get rewritten to include the user's
         # Launchpad ID (assuming we know the Launchpad ID).
         factory = FakeResolveFactory(
             self, 'apt', dict(urls=[
-                    'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
+                    'bzr+ssh://my-super-custom/special/devel',
                     'http://bazaar.launchpad.net/~apt/apt/devel']))
         directory = LaunchpadDirectory()
         self.assertEquals(
-            'bzr+ssh://bazaar.launchpad.net/~apt/apt/devel',
+            'bzr+ssh://bazaar.launchpad.net/+branch/apt',
             directory._resolve('lp:///apt', factory, _lp_login='username'))
 
     def test_no_rewrite_of_other_bzr_ssh(self):
@@ -212,15 +212,15 @@ class DirectoryUrlTests(TestCaseInTempDir):
     def test_resolve_tilde_to_user(self):
         factory = FakeResolveFactory(
             self, '~username/apt/test', dict(urls=[
-                    'bzr+ssh://bazaar.launchpad.net/~username/apt/test']))
+                'bzr+ssh://bazaar.launchpad.net/+branch/~username/apt/test']))
         directory = LaunchpadDirectory()
         self.assertEquals(
-            'bzr+ssh://bazaar.launchpad.net/~username/apt/test',
+            'bzr+ssh://bazaar.launchpad.net/+branch/~username/apt/test',
             directory._resolve('lp:~/apt/test', factory, _lp_login='username'))
         # Should also happen when the login is just set by config
         set_lp_login('username')
         self.assertEquals(
-            'bzr+ssh://bazaar.launchpad.net/~username/apt/test',
+            'bzr+ssh://bazaar.launchpad.net/+branch/~username/apt/test',
             directory._resolve('lp:~/apt/test', factory))
 
     def test_tilde_fails_no_login(self):

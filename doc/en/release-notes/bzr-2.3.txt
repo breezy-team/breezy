@@ -26,6 +26,22 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Getting all entries from ``CHKInventory.iter_entries_by_dir()`` has been
+  sped up dramatically for large trees. Iterating by dir is not the best
+  way to load data from a CHK inventory, so it preloads all the items in
+  the correct order. (With the gcc-tree, this changes it (re)reading 8GB
+  of CHK data, down to just 150MB.) This has noticeable affects for things
+  like building checkouts, etc.  (John Arbash Meinel, #737234)
+
+* Resolve ``lp:FOO`` urls locally rather than doing an XMLRPC request if
+  the user has done ``bzr launchpad-login``. The bzr+ssh URLs were already
+  being handed off to the remote server anyway (xmlrpc has been mapping
+  ``lp:bzr`` to ``bzr+ssh://bazaar.launchpad.net/+branch/bzr``, rather
+  than ``bzr+ssh://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev`` for a few
+  months now.) By doing it ourselves, we can cut out substantial startup
+  time. From Netherlands to London it was taking 368ms to do the XMLRPC
+  call as much as 2s from Sydney. (John Arbash Meinel, #397739)
+
 Bug Fixes
 *********
 
