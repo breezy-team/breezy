@@ -69,7 +69,7 @@ class LaunchpadDirectory(object):
         # Launchpad is now capable of doing the short-name to long name
         # resolution inside the bzr+ssh server. We aren't yet able to do so for
         # HTTP urls. - jam 20110323
-        return {'urls': ['bzr+ssh://bazaar.launchpad.net/+branch/' + path]
+        return {'urls': ['bzr+ssh://bazaar.launchpad.net/+branch/' + path]}
 
     def _resolve_via_xmlrpc(self, path, url, _request_factory):
         service = LaunchpadService.for_url(url)
@@ -121,7 +121,7 @@ class LaunchpadDirectory(object):
             scheme, netloc, path, query, fragment = urlsplit(url)
         return url, path
 
-    def _expand_user(self, path, lp_login):
+    def _expand_user(self, path, url, lp_login):
         if path.startswith('~/'):
             if lp_login is None:
                 raise errors.InvalidURL(path=url,
@@ -138,7 +138,7 @@ class LaunchpadDirectory(object):
         if _lp_login is None:
             _lp_login = get_lp_login()
         path = path.strip('/')
-        path = self._expand_user(path, _lp_login)
+        path = self._expand_user(path, url, _lp_login)
         if _lp_login is not None:
             result = self._resolve_locally(path)
         else:
