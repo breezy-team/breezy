@@ -863,7 +863,7 @@ class BzrDirPreSplitOut(BzrDir):
         """See BzrDir.open_branch."""
         from bzrlib.plugins.weave_fmt.branch import BzrBranchFormat4
         format = BzrBranchFormat4()
-        format.check_supported(unsupported)
+        format.check_support_status(unsupported)
         return format.open(self, name, _found=True)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
