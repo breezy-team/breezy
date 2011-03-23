@@ -30,7 +30,6 @@ from bzrlib import (
     cleanup,
     errors,
     fetch,
-    graph,
     revision as _mod_revision,
     transport as _mod_transport,
     urlutils,
@@ -214,45 +213,6 @@ class ControlDir(ControlComponent):
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
         return None
-
-    def get_branch_transport(self, branch_format, name=None):
-        """Get the transport for use by branch format in this ControlDir.
-
-        Note that bzr dirs that do not support format strings will raise
-        IncompatibleFormat if the branch format they are given has
-        a format string, and vice versa.
-
-        If branch_format is None, the transport is returned with no
-        checking. If it is not None, then the returned transport is
-        guaranteed to point to an existing directory ready for use.
-        """
-        raise NotImplementedError(self.get_branch_transport)
-
-    def get_repository_transport(self, repository_format):
-        """Get the transport for use by repository format in this ControlDir.
-
-        Note that bzr dirs that do not support format strings will raise
-        IncompatibleFormat if the repository format they are given has
-        a format string, and vice versa.
-
-        If repository_format is None, the transport is returned with no
-        checking. If it is not None, then the returned transport is
-        guaranteed to point to an existing directory ready for use.
-        """
-        raise NotImplementedError(self.get_repository_transport)
-
-    def get_workingtree_transport(self, tree_format):
-        """Get the transport for use by workingtree format in this ControlDir.
-
-        Note that bzr dirs that do not support format strings will raise
-        IncompatibleFormat if the workingtree format they are given has a
-        format string, and vice versa.
-
-        If workingtree_format is None, the transport is returned with no
-        checking. If it is not None, then the returned transport is
-        guaranteed to point to an existing directory ready for use.
-        """
-        raise NotImplementedError(self.get_workingtree_transport)
 
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
@@ -520,6 +480,10 @@ class ControlDir(ControlComponent):
         if br_to is None:
             # We have a repository but no branch, copy the revisions, and then
             # create a branch.
+            if revision_id is None:
+                # No revision supplied by the user, default to the branch
+                # revision
+                revision_id = source.last_revision()
             repository_to.fetch(source.repository, revision_id=revision_id)
             br_to = source.clone(self, revision_id=revision_id)
             if source.get_push_location() is None or remember:
@@ -709,6 +673,22 @@ class ControlComponentFormatRegistry(registry.FormatRegistry):
         return modules
 
 
+class Converter(object):
+    """Converts a disk format object from one format to another."""
+
+    def convert(self, to_convert, pb):
+        """Perform the conversion of to_convert, giving feedback via pb.
+
+        :param to_convert: The disk object to convert.
+        :param pb: a progress bar to use for progress information.
+        """
+
+    def step(self, message):
+        """Update the pb by a step."""
+        self.count +=1
+        self.pb.update(message, self.count, self.total)
+
+
 class ControlDirFormat(object):
     """An encapsulation of the initialization and open routines for a format.
 
@@ -732,12 +712,6 @@ class ControlDirFormat(object):
 
     _default_format = None
     """The default format used for new control directories."""
-
-    _formats = []
-    """The registered control formats - .bzr, ....
-
-    This is a list of ControlDirFormat objects.
-    """
 
     _server_probers = []
     """The registered server format probers, e.g. RemoteBzrProber.
@@ -799,7 +773,8 @@ class ControlDirFormat(object):
         """Register a format that does not use '.bzr' for its control dir.
 
         """
-        klass._formats.append(format)
+        raise errors.BzrError("ControlDirFormat.register_format() has been "
+            "removed in Bazaar 2.4. Please upgrade your plugins.")
 
     @classmethod
     def register_prober(klass, prober):
@@ -831,14 +806,13 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
-    def unregister_format(klass, format):
-        klass._formats.remove(format)
-
-    @classmethod
     def known_formats(klass):
         """Return all the known formats.
         """
-        return set(klass._formats)
+        result = set()
+        for prober_kls in klass._probers + klass._server_probers:
+            result.update(prober_kls.known_formats())
+        return result
 
     @classmethod
     def find_format(klass, transport, _server_formats=True):
@@ -934,12 +908,19 @@ class ControlDirFormat(object):
 
 
 class Prober(object):
-    """Abstract class that can be used to detect a particular kind of 
+    """Abstract class that can be used to detect a particular kind of
     control directory.
 
-    At the moment this just contains a single method to probe a particular 
-    transport, but it may be extended in the future to e.g. avoid 
+    At the moment this just contains a single method to probe a particular
+    transport, but it may be extended in the future to e.g. avoid
     multiple levels of probing for Subversion repositories.
+
+    See BzrProber and RemoteBzrProber in bzrlib.bzrdir for the
+    probers that detect .bzr/ directories and Bazaar smart servers,
+    respectively.
+
+    Probers should be registered using the register_server_prober or
+    register_prober methods on ControlDirFormat.
     """
 
     def probe_transport(self, transport):
@@ -951,6 +932,17 @@ class Prober(object):
         :return: A ControlDirFormat instance.
         """
         raise NotImplementedError(self.probe_transport)
+
+    @classmethod
+    def known_formats(cls):
+        """Return the control dir formats known by this prober.
+
+        Multiple probers can return the same formats, so this should
+        return a set.
+
+        :return: A set of known formats.
+        """
+        raise NotImplementedError(cls.known_formats)
 
 
 class ControlDirFormatInfo(object):

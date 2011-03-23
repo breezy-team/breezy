@@ -22,8 +22,10 @@ from stat import S_ISDIR
 import bzrlib.branch
 from bzrlib import (
     errors,
+    repository,
     revision as _mod_revision,
     transport,
+    workingtree,
     )
 from bzrlib.tests import (
     TestSkipped,
@@ -32,6 +34,48 @@ from bzrlib.tests.per_bzrdir import TestCaseWithBzrDir
 from bzrlib.transport.local import (
     LocalTransport,
     )
+
+
+class AnonymousTestBranchFormat(bzrlib.branch.BranchFormat):
+    """An anonymous branch format (does not have a format string)"""
+
+    def get_format_string(self):
+        raise NotImplementedError(self.get_format_string)
+
+
+class IdentifiableTestBranchFormat(bzrlib.branch.BranchFormat):
+    """An identifable branch format (has a format string)"""
+
+    def get_format_string(self):
+        return "I have an identity"
+
+
+class AnonymousTestRepositoryFormat(repository.RepositoryFormat):
+    """An anonymous branch format (does not have a format string)"""
+
+    def get_format_string(self):
+        raise NotImplementedError(self.get_format_string)
+
+
+class IdentifiableTestRepositoryFormat(repository.RepositoryFormat):
+    """An identifable branch format (has a format string)"""
+
+    def get_format_string(self):
+        return "I have an identity"
+
+
+class AnonymousTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
+    """An anonymous branch format (does not have a format string)"""
+
+    def get_format_string(self):
+        raise NotImplementedError(self.get_format_string)
+
+
+class IdentifiableTestWorkingTreeFormat(workingtree.WorkingTreeFormat):
+    """An identifable branch format (has a format string)"""
+
+    def get_format_string(self):
+        return "I have an identity"
 
 
 class TestBzrDir(TestCaseWithBzrDir):
@@ -490,3 +534,66 @@ class TestBzrDir(TestCaseWithBzrDir):
         self.failUnless(transport.has('.bzr'))
         self.assertRaises((errors.FileExists, errors.DirectoryNotEmpty),
             bd.retire_bzrdir, limit=0)
+
+    def test_get_branch_transport(self):
+        dir = self.make_bzrdir('.')
+        # without a format, get_branch_transport gives use a transport
+        # which -may- point to an existing dir.
+        self.assertTrue(isinstance(dir.get_branch_transport(None),
+                                   transport.Transport))
+        # with a given format, either the bzr dir supports identifiable
+        # branches, or it supports anonymous branch formats, but not both.
+        anonymous_format = AnonymousTestBranchFormat()
+        identifiable_format = IdentifiableTestBranchFormat()
+        try:
+            found_transport = dir.get_branch_transport(anonymous_format)
+            self.assertRaises(errors.IncompatibleFormat,
+                              dir.get_branch_transport,
+                              identifiable_format)
+        except errors.IncompatibleFormat:
+            found_transport = dir.get_branch_transport(identifiable_format)
+        self.assertTrue(isinstance(found_transport, transport.Transport))
+        # and the dir which has been initialized for us must exist.
+        found_transport.list_dir('.')
+
+    def test_get_repository_transport(self):
+        dir = self.make_bzrdir('.')
+        # without a format, get_repository_transport gives use a transport
+        # which -may- point to an existing dir.
+        self.assertTrue(isinstance(dir.get_repository_transport(None),
+                                   transport.Transport))
+        # with a given format, either the bzr dir supports identifiable
+        # repositories, or it supports anonymous repository formats, but not both.
+        anonymous_format = AnonymousTestRepositoryFormat()
+        identifiable_format = IdentifiableTestRepositoryFormat()
+        try:
+            found_transport = dir.get_repository_transport(anonymous_format)
+            self.assertRaises(errors.IncompatibleFormat,
+                              dir.get_repository_transport,
+                              identifiable_format)
+        except errors.IncompatibleFormat:
+            found_transport = dir.get_repository_transport(identifiable_format)
+        self.assertTrue(isinstance(found_transport, transport.Transport))
+        # and the dir which has been initialized for us must exist.
+        found_transport.list_dir('.')
+
+    def test_get_workingtree_transport(self):
+        dir = self.make_bzrdir('.')
+        # without a format, get_workingtree_transport gives use a transport
+        # which -may- point to an existing dir.
+        self.assertTrue(isinstance(dir.get_workingtree_transport(None),
+                                   transport.Transport))
+        # with a given format, either the bzr dir supports identifiable
+        # trees, or it supports anonymous tree formats, but not both.
+        anonymous_format = AnonymousTestWorkingTreeFormat()
+        identifiable_format = IdentifiableTestWorkingTreeFormat()
+        try:
+            found_transport = dir.get_workingtree_transport(anonymous_format)
+            self.assertRaises(errors.IncompatibleFormat,
+                              dir.get_workingtree_transport,
+                              identifiable_format)
+        except errors.IncompatibleFormat:
+            found_transport = dir.get_workingtree_transport(identifiable_format)
+        self.assertTrue(isinstance(found_transport, transport.Transport))
+        # and the dir which has been initialized for us must exist.
+        found_transport.list_dir('.')

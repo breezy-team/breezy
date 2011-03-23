@@ -19,13 +19,13 @@
 
 
 from bzrlib.errors import (
+    IncompatibleFormat,
     UnstackableBranchFormat,
     )
 from bzrlib.revision import (
     NULL_REVISION,
     )
 from bzrlib.tests import (
-    TestCase,
     TestCaseWithTransport,
     )
 
@@ -129,7 +129,7 @@ class ForeignBranchTests(TestCaseWithTransport):
         self.assertEquals((0, NULL_REVISION), branch.last_revision_info())
 
 
-class ForeignBranchFormatTests(TestCase):
+class ForeignBranchFormatTests(TestCaseWithTransport):
     """Basic tests for foreign branch format objects."""
 
     branch_format = None # Set to a BranchFormat instance by adapter
@@ -140,7 +140,8 @@ class ForeignBranchFormatTests(TestCase):
         Remote branches may be initializable on their own, but none currently
         support living in .bzr/branch.
         """
-        self.assertRaises(NotImplementedError, self.branch_format.initialize, None)
+        bzrdir = self.make_bzrdir('dir')
+        self.assertRaises(IncompatibleFormat, self.branch_format.initialize, bzrdir)
 
     def test_get_format_description_type(self):
         self.assertIsInstance(self.branch_format.get_format_description(), str)

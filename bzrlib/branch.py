@@ -25,7 +25,6 @@ from bzrlib import (
         bzrdir,
         cache_utf8,
         config as _mod_config,
-        controldir,
         debug,
         errors,
         fetch,
@@ -50,7 +49,14 @@ from bzrlib.tag import (
     )
 """)
 
-from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
+from bzrlib import (
+    controldir,
+    )
+from bzrlib.decorators import (
+    needs_read_lock,
+    needs_write_lock,
+    only_raises,
+    )
 from bzrlib.hooks import HookPoint, Hooks
 from bzrlib.inter import InterObject
 from bzrlib.lock import _RelockDebugMixin, LogicalLockResult
@@ -73,8 +79,9 @@ class Branch(controldir.ControlComponent):
     :ivar base:
         Base directory/url of the branch; using control_url and
         control_transport is more standardized.
-
-    hooks: An instance of BranchHooks.
+    :ivar hooks: An instance of BranchHooks.
+    :ivar _master_branch_cache: cached result of get_master_branch, see
+        _clear_cached_state.
     """
     # this is really an instance variable - FIXME move it there
     # - RBC 20060112
@@ -96,6 +103,7 @@ class Branch(controldir.ControlComponent):
         self._partial_revision_history_cache = []
         self._tags_bytes = None
         self._last_revision_info_cache = None
+        self._master_branch_cache = None
         self._merge_sorted_revisions_cache = None
         self._open_hook()
         hooks = Branch.hooks['open']
@@ -805,7 +813,7 @@ class Branch(controldir.ControlComponent):
 
     def _unstack(self):
         """Change a branch to be unstacked, copying data as needed.
-        
+
         Don't call this directly, use set_stacked_on_url(None).
         """
         pb = ui.ui_factory.nested_progress_bar()
@@ -931,6 +939,7 @@ class Branch(controldir.ControlComponent):
         self._revision_history_cache = None
         self._revision_id_to_revno_cache = None
         self._last_revision_info_cache = None
+        self._master_branch_cache = None
         self._merge_sorted_revisions_cache = None
         self._partial_revision_history_cache = []
         self._partial_revision_id_to_revno_cache = {}
@@ -1531,6 +1540,26 @@ class Branch(controldir.ControlComponent):
         else:
             raise AssertionError("invalid heads: %r" % (heads,))
 
+    def heads_to_fetch(self):
+        """Return the heads that must and that should be fetched to copy this
+        branch into another repo.
+
+        :returns: a 2-tuple of (must_fetch, if_present_fetch).  must_fetch is a
+            set of heads that must be fetched.  if_present_fetch is a set of
+            heads that must be fetched if present, but no error is necessary if
+            they are not present.
+        """
+        # For bzr native formats must_fetch is just the tip, and if_present_fetch
+        # are the tags.
+        must_fetch = set([self.last_revision()])
+        try:
+            if_present_fetch = set(self.tags.get_reverse_tag_dict())
+        except errors.TagsNotSupported:
+            if_present_fetch = set()
+        must_fetch.discard(_mod_revision.NULL_REVISION)
+        if_present_fetch.discard(_mod_revision.NULL_REVISION)
+        return must_fetch, if_present_fetch
+
 
 class BranchFormat(controldir.ControlComponentFormat):
     """An encapsulation of the initialization and open routines for a format.
@@ -1630,47 +1659,29 @@ class BranchFormat(controldir.ControlComponentFormat):
             hook(params)
 
     def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
-                           repository=None, lock_type='metadir',
-                           set_format=True):
+                           repository=None):
         """Initialize a branch in a bzrdir, with specified files
 
         :param a_bzrdir: The bzrdir to initialize the branch in
         :param utf8_files: The files to create as a list of
             (filename, content) tuples
         :param name: Name of colocated branch to create, if any
-        :param set_format: If True, set the format with
-            self.get_format_string.  (BzrBranch4 has its format set
-            elsewhere)
         :return: a branch in this format
         """
         mutter('creating branch %r in %s', self, a_bzrdir.user_url)
         branch_transport = a_bzrdir.get_branch_transport(self, name=name)
-        lock_map = {
-            'metadir': ('lock', lockdir.LockDir),
-            'branch4': ('branch-lock', lockable_files.TransportLock),
-        }
-        lock_name, lock_class = lock_map[lock_type]
         control_files = lockable_files.LockableFiles(branch_transport,
-            lock_name, lock_class)
+            'lock', lockdir.LockDir)
         control_files.create_lock()
+        control_files.lock_write()
         try:
-            control_files.lock_write()
-        except errors.LockContention:
-            if lock_type != 'branch4':
-                raise
-            lock_taken = False
-        else:
-            lock_taken = True
-        if set_format:
             utf8_files += [('format', self.get_format_string())]
-        try:
             for (filename, content) in utf8_files:
                 branch_transport.put_bytes(
                     filename, content,
                     mode=a_bzrdir._get_file_mode())
         finally:
-            if lock_taken:
-                control_files.unlock()
+            control_files.unlock()
         branch = self.open(a_bzrdir, name, _found=True,
                 found_repository=repository)
         self._run_post_branch_init_hooks(a_bzrdir, name, branch)
@@ -2005,58 +2016,6 @@ class SwitchHookParams(object):
             self.revision_id)
 
 
-class BzrBranchFormat4(BranchFormat):
-    """Bzr branch format 4.
-
-    This format has:
-     - a revision-history file.
-     - a branch-lock lock file [ to be shared with the bzrdir ]
-    """
-
-    def get_format_description(self):
-        """See BranchFormat.get_format_description()."""
-        return "Branch format 4"
-
-    def initialize(self, a_bzrdir, name=None, repository=None):
-        """Create a branch of this format in a_bzrdir."""
-        if repository is not None:
-            raise NotImplementedError(
-                "initialize(repository=<not None>) on %r" % (self,))
-        utf8_files = [('revision-history', ''),
-                      ('branch-name', ''),
-                      ]
-        return self._initialize_helper(a_bzrdir, utf8_files, name=name,
-                                       lock_type='branch4', set_format=False)
-
-    def __init__(self):
-        super(BzrBranchFormat4, self).__init__()
-        self._matchingbzrdir = bzrdir.BzrDirFormat6()
-
-    def network_name(self):
-        """The network name for this format is the control dirs disk label."""
-        return self._matchingbzrdir.get_format_string()
-
-    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
-            found_repository=None):
-        """See BranchFormat.open()."""
-        if not _found:
-            # we are being called directly and must probe.
-            raise NotImplementedError
-        if found_repository is None:
-            found_repository = a_bzrdir.open_repository()
-        return BzrBranchPreSplitOut(_format=self,
-                         _control_files=a_bzrdir._control_files,
-                         a_bzrdir=a_bzrdir,
-                         name=name,
-                         _repository=found_repository)
-
-    def __str__(self):
-        return "Bazaar-NG branch format 4"
-
-    def supports_leaving_lock(self):
-        return False
-
-
 class BranchFormatMetadir(BranchFormat):
     """Common logic for meta-dir based branch formats."""
 
@@ -2383,7 +2342,6 @@ format_registry = BranchFormatRegistry(network_format_registry)
 
 # formats which have no format string are not discoverable
 # and not independently creatable, so are not registered.
-__format4 = BzrBranchFormat4()
 __format5 = BzrBranchFormat5()
 __format6 = BzrBranchFormat6()
 __format7 = BzrBranchFormat7()
@@ -2394,8 +2352,6 @@ format_registry.register(__format6)
 format_registry.register(__format7)
 format_registry.register(__format8)
 format_registry.set_default(__format7)
-format_registry.register_extra(__format4)
-network_format_registry.register(__format4.network_name(), __format4)
 
 
 class BranchWriteLockResult(LogicalLockResult):
@@ -2684,8 +2640,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             target.update_revisions(self, stop_revision,
                 overwrite=overwrite, graph=graph)
         if self._push_should_merge_tags():
-            result.tag_conflicts = self.tags.merge_to(target.tags,
-                overwrite)
+            result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
         result.new_revno, result.new_revid = target.last_revision_info()
         return result
 
@@ -2706,19 +2661,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
                 mode=self.bzrdir._get_file_mode())
 
 
-class BzrBranchPreSplitOut(BzrBranch):
-
-    def _get_checkout_format(self):
-        """Return the most suitable metadir for a checkout of this branch.
-        Weaves are used if this branch's repository uses weaves.
-        """
-        from bzrlib.repofmt.weaverepo import RepositoryFormat7
-        from bzrlib.bzrdir import BzrDirMetaFormat1
-        format = BzrDirMetaFormat1()
-        format.repository_format = RepositoryFormat7()
-        return format
-
-
 class BzrBranch5(BzrBranch):
     """A format 5 branch. This supports new features over plain branches.
 
@@ -2736,12 +2678,13 @@ class BzrBranch5(BzrBranch):
         """Return the branch we are bound to.
 
         :return: Either a Branch, or None
-
-        This could memoise the branch, but if thats done
-        it must be revalidated on each new lock.
-        So for now we just don't memoise it.
-        # RBC 20060304 review this decision.
         """
+        if self._master_branch_cache is None:
+            self._master_branch_cache = self._get_master_branch(
+                possible_transports)
+        return self._master_branch_cache
+
+    def _get_master_branch(self, possible_transports):
         bound_loc = self.get_bound_location()
         if not bound_loc:
             return None
@@ -2758,6 +2701,7 @@ class BzrBranch5(BzrBranch):
 
         :param location: URL to the target branch
         """
+        self._master_branch_cache = None
         if location:
             self._transport.put_bytes('bound', location+'\n',
                 mode=self.bzrdir._get_file_mode())
@@ -3015,6 +2959,7 @@ class BzrBranch8(BzrBranch5):
 
     def set_bound_location(self, location):
         """See Branch.set_push_location."""
+        self._master_branch_cache = None
         result = None
         config = self.get_config()
         if location is None:
