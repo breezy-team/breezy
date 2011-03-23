@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -65,10 +65,23 @@ class LaunchpadDirectory(object):
         """See DirectoryService.look_up"""
         return self._resolve(url)
 
-    def _resolve(self, url,
-                 _request_factory=ResolveLaunchpadPathRequest,
-                 _lp_login=None):
-        """Resolve the base URL for this transport."""
+    def _resolve_locally(self, path):
+        # Launchpad is now capable of doing the short-name to long name
+        # resolution inside the bzr+ssh server. We aren't yet able to do so for
+        # HTTP urls. - jam 20110323
+        return {'urls': ['bzr+ssh://bazaar.launchpad.net/+branch/' + path]
+
+    def _resolve_via_xmlrpc(self, path, url, _request_factory):
+        service = LaunchpadService.for_url(url)
+        resolve = _request_factory(path)
+        try:
+            result = resolve.submit(service)
+        except xmlrpclib.Fault, fault:
+            raise errors.InvalidURL(
+                path=url, extra=fault.faultString)
+        return result
+
+    def _update_url_scheme(self, url):
         # Do ubuntu: and debianlp: expansions.
         scheme, netloc, path, query, fragment = urlsplit(url)
         if scheme in ('ubuntu', 'debianlp'):
@@ -106,22 +119,30 @@ class LaunchpadDirectory(object):
                 series=series,
                 project=project)
             scheme, netloc, path, query, fragment = urlsplit(url)
-        service = LaunchpadService.for_url(url)
-        if _lp_login is None:
-            _lp_login = get_lp_login()
-        path = path.strip('/')
+        return url, path
+
+    def _expand_user(self, path, lp_login):
         if path.startswith('~/'):
-            if _lp_login is None:
+            if lp_login is None:
                 raise errors.InvalidURL(path=url,
                     extra='Cannot resolve "~" to your username.'
                           ' See "bzr help launchpad-login"')
-            path = '~' + _lp_login + path[1:]
-        resolve = _request_factory(path)
-        try:
-            result = resolve.submit(service)
-        except xmlrpclib.Fault, fault:
-            raise errors.InvalidURL(
-                path=url, extra=fault.faultString)
+            path = '~' + lp_login + path[1:]
+        return path
+
+    def _resolve(self, url,
+                 _request_factory=ResolveLaunchpadPathRequest,
+                 _lp_login=None):
+        """Resolve the base URL for this transport."""
+        url, path = self._update_url_scheme(url)
+        if _lp_login is None:
+            _lp_login = get_lp_login()
+        path = path.strip('/')
+        path = self._expand_user(path, _lp_login)
+        if _lp_login is not None:
+            result = self._resolve_locally(path)
+        else:
+            result = self._resolve_via_xmlrpc(path, url, _request_factory)
 
         if 'launchpad' in debug.debug_flags:
             trace.mutter("resolve_lp_path(%r) == %r", url, result)
