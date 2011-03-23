@@ -197,6 +197,15 @@ class GitDir(ControlDir):
         lockfiles = GitLockableFiles(transport, GitLock())
         return self.__class__(transport, lockfiles, target_git_repo, format)
 
+    def find_repository(self):
+        """Find the repository that should be used.
+
+        This does not require a branch as we use it to find the repo for
+        new branches as well as to hook existing branches up to their
+        repository.
+        """
+        return self.open_repository()
+
 
 class LocalGitControlDirFormat(GitControlDirFormat):
     """The .git directory control format."""
@@ -420,15 +429,6 @@ class LocalGitDir(GitDir):
         finally:
             f.close()
         return self.open_workingtree()
-
-    def find_repository(self):
-        """Find the repository that should be used.
-
-        This does not require a branch as we use it to find the repo for
-        new branches as well as to hook existing branches up to their
-        repository.
-        """
-        return self.open_repository()
 
     def _find_or_create_repository(self, force_new_repo=None):
         return self.create_repository(shared=False)
