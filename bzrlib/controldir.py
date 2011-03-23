@@ -632,7 +632,7 @@ class ControlComponentFormat(object):
         """
         if not allow_unsupported and not self.is_supported():
             # see open_downlevel to open legacy branches.
-            raise errors.UnsupportedFormatError(format=format)
+            raise errors.UnsupportedFormatError(format=self)
         if recommend_upgrade and self.upgrade_recommended:
             ui.ui_factory.recommend_upgrade(
                 self.get_format_description(), basedir)
@@ -813,7 +813,7 @@ class ControlDirFormat(object):
         """
         if not allow_unsupported and not self.is_supported():
             # see open_downlevel to open legacy branches.
-            raise errors.UnsupportedFormatError(format=format)
+            raise errors.UnsupportedFormatError(format=self)
         if recommend_upgrade and self.upgrade_recommended:
             ui.ui_factory.recommend_upgrade(
                 self.get_format_description(), basedir)
