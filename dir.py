@@ -149,8 +149,8 @@ class GitDir(ControlDir):
         interrepo = InterRepository.get(source_repository, result_repo)
 
         if revision_id is not None:
-            determine_wants = source_repository.determine_wants_revid_and_tags(
-                revision_id)
+            determine_wants = source_repository.determine_wants_revids_and_tags(
+                [revision_id])
         else:
             from bzrlib.plugins.git.object_store import get_object_store
             store = get_object_store(result_repo, source_branch.mapping)

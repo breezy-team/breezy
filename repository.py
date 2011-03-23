@@ -92,14 +92,17 @@ class GitRepository(ForeignRepository):
         interrepo = repository.InterRepository.get(source, self)
         return interrepo.dfetch(stop_revision)
 
-    def determine_wants_revid_and_tags(self, revision_id):
+    def determine_wants_revids_and_tags(self, revids):
         from dulwich.protocol import (
             ZERO_SHA,
             )
         from bzrlib.plugins.git.refs import extract_tags
-        git_sha, mapping = self.lookup_bzr_revision_id(revision_id)
+        wants = []
+        for revid in revids:
+            git_sha, mapping = self.lookup_bzr_revision_id(revid)
+            wants.append(git_sha)
         def determine_wants(heads):
-            potential = [git_sha] + [v[0] for v in extract_tags(heads).itervalues()]
+            potential = wants + [v[0] for v in extract_tags(heads).itervalues()]
             # FIXME: What about already present revisions?
             return [r for r in potential if r != ZERO_SHA]
         return determine_wants
