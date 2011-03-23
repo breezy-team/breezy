@@ -1689,6 +1689,7 @@ message:
 
 """)
 
+
 class TestLogExcludeAncestry(tests.TestCaseWithTransport):
 
     def make_branch_with_alternate_ancestries(self, relpath='.'):
