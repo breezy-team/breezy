@@ -66,7 +66,8 @@ class EmailSender(object):
 
         outf.write('At %s\n\n' % self.url())
 
-        lf = log.log_formatter('long',
+        log_format = self.config.get_user_option('post_commit_log_format')
+        lf = log.log_formatter(log_format or 'long',
                                show_ids=True,
                                to_file=outf
                                )
@@ -115,7 +116,8 @@ class EmailSender(object):
         # 8-bit strings. It is an error to write a Unicode string here.
         from cStringIO import StringIO
         diff_content = StringIO()
-        show_diff_trees(tree_old, tree_new, diff_content)
+        diff_options = self.config.get_user_option('post_commit_diffoptions')
+        show_diff_trees(tree_old, tree_new, diff_content, None, diff_options)
         numlines = diff_content.getvalue().count('\n')+1
         if numlines <= difflimit:
             return diff_content.getvalue()
