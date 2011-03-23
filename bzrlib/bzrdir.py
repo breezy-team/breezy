@@ -122,34 +122,6 @@ class BzrDir(controldir.ControlDir):
             # No repo, no problem.
             pass
 
-    @staticmethod
-    def _check_supported(format, allow_unsupported,
-        recommend_upgrade=True,
-        basedir=None):
-        """Give an error or warning on old formats.
-
-        :param format: may be any kind of format - workingtree, branch,
-        or repository.
-
-        :param allow_unsupported: If true, allow opening
-        formats that are strongly deprecated, and which may
-        have limited functionality.
-
-        :param recommend_upgrade: If true (default), warn
-        the user through the ui object that they may wish
-        to upgrade the object.
-        """
-        # TODO: perhaps move this into a base Format class; it's not BzrDir
-        # specific. mbp 20070323
-        if not allow_unsupported and not format.is_supported():
-            # see open_downlevel to open legacy branches.
-            raise errors.UnsupportedFormatError(format=format)
-        if recommend_upgrade \
-            and getattr(format, 'upgrade_recommended', False):
-            ui.ui_factory.recommend_upgrade(
-                format.get_format_description(),
-                basedir)
-
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
         create_prefix=False, use_existing_dir=True, no_tree=False):
@@ -729,7 +701,7 @@ class BzrDir(controldir.ControlDir):
         except errors.TooManyRedirections:
             raise errors.NotBranchError(base)
 
-        BzrDir._check_supported(format, _unsupported)
+        format.check_support_status(_unsupported)
         return format.open(transport, _found=True)
 
     @staticmethod
@@ -1169,7 +1141,7 @@ class BzrDirMeta1(BzrDir):
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
         format = self.find_branch_format(name=name)
-        self._check_supported(format, unsupported)
+        format.check_support_status(unsupported)
         return format.open(self, name=name,
             _found=True, ignore_fallbacks=ignore_fallbacks)
 
@@ -1177,7 +1149,7 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.open_repository."""
         from bzrlib.repository import RepositoryFormat
         format = RepositoryFormat.find_format(self)
-        self._check_supported(format, unsupported)
+        format.check_support_status(unsupported)
         return format.open(self, _found=True)
 
     def open_workingtree(self, unsupported=False,
@@ -1185,8 +1157,7 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.open_workingtree."""
         from bzrlib.workingtree import WorkingTreeFormat
         format = WorkingTreeFormat.find_format(self)
-        self._check_supported(format, unsupported,
-            recommend_upgrade,
+        format.check_support_status(unsupported, recommend_upgrade,
             basedir=self.root_transport.base)
         return format.open(self, _found=True)
 

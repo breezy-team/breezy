@@ -32,6 +32,7 @@ from bzrlib import (
     fetch,
     revision as _mod_revision,
     transport as _mod_transport,
+    ui,
     urlutils,
     )
 from bzrlib.push import (
@@ -80,6 +81,7 @@ class ControlComponent(object):
     @property
     def user_url(self):
         return self.user_transport.base
+
 
 
 class ControlDir(ControlComponent):
@@ -597,6 +599,8 @@ class ControlDir(ControlComponent):
 class ControlComponentFormat(object):
     """A component that can live inside of a .bzr meta directory."""
 
+    upgrade_recommended = False
+
     def get_format_string(self):
         """Return the format of this format, if usable in meta directories."""
         raise NotImplementedError(self.get_format_string)
@@ -604,6 +608,34 @@ class ControlComponentFormat(object):
     def get_format_description(self):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
+
+    def is_supported(self):
+        """Is this format supported?
+
+        Supported formats must be initializable and openable.
+        Unsupported formats may not support initialization or committing or
+        some other features depending on the reason for not being supported.
+        """
+        return True
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+        basedir=None):
+        """Give an error or warning on old formats.
+
+        :param allow_unsupported: If true, allow opening
+            formats that are strongly deprecated, and which may
+            have limited functionality.
+
+        :param recommend_upgrade: If true (default), warn
+            the user through the ui object that they may wish
+            to upgrade the object.
+        """
+        if not allow_unsupported and not self.is_supported():
+            # see open_downlevel to open legacy branches.
+            raise errors.UnsupportedFormatError(format=self)
+        if recommend_upgrade and self.upgrade_recommended:
+            ui.ui_factory.recommend_upgrade(
+                self.get_format_description(), basedir)
 
 
 class ControlComponentFormatRegistry(registry.FormatRegistry):
@@ -737,6 +769,9 @@ class ControlDirFormat(object):
     """Whether components can not change format independent of the control dir.
     """
 
+    upgrade_recommended = False
+    """Whether an upgrade from this format is recommended."""
+
     def get_format_description(self):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
@@ -763,6 +798,25 @@ class ControlDirFormat(object):
         some other features depending on the reason for not being supported.
         """
         return True
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+        basedir=None):
+        """Give an error or warning on old formats.
+
+        :param allow_unsupported: If true, allow opening
+            formats that are strongly deprecated, and which may
+            have limited functionality.
+
+        :param recommend_upgrade: If true (default), warn
+            the user through the ui object that they may wish
+            to upgrade the object.
+        """
+        if not allow_unsupported and not self.is_supported():
+            # see open_downlevel to open legacy branches.
+            raise errors.UnsupportedFormatError(format=self)
+        if recommend_upgrade and self.upgrade_recommended:
+            ui.ui_factory.recommend_upgrade(
+                self.get_format_description(), basedir)
 
     def same_model(self, target_format):
         return (self.repository_format.rich_root_data ==
