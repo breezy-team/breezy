@@ -122,6 +122,13 @@ Improvements
 * ``bzr export`` can now create ``.tar.xz`` and ``.tar.lzma`` files.
   (Jelmer Vernooij, #551714)
 
+* Getting all entries from ``CHKInventory.iter_entries_by_dir()`` has been
+  sped up dramatically for large trees. Iterating by dir is not the best
+  way to load data from a CHK inventory, so it preloads all the items in
+  the correct order. (With the gcc-tree, this changes it (re)reading 8GB
+  of CHK data, down to just 150MB.) This has noticeable affects for things
+  like building checkouts, etc.  (John Arbash Meinel, #737234)
+
 
 Bug Fixes
 *********
@@ -287,6 +294,10 @@ Internals
   outside of tests. This class makes it easier to track exceptions in threads
   by cacthing them so they can be re-raised in the controlling thread. It's
   available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
+
+* Correctly propogate malloc failures from diff-delta.c code as MemoryError
+  so OOM conditions during groupcompress are clearly reported. This entailed a
+  change to several function signatures. (Martin [gz], #633336)
 
 * ``HookPoint.lazy_hook`` and ``Hooks.install_named_lazy_hook`` can install 
   hooks for which the callable is loaded lazily.  (Jelmer Vernooij)
