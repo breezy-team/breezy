@@ -596,6 +596,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 objects_iter = self.source.fetch_objects(
                     wants_recorder, graph_walker, store.get_raw,
                     progress)
+                trace.mutter("Fetching %d new revisions", len(wants_recorder.wants))
                 (pack_hint, last_rev) = import_git_objects(self.target, mapping,
                     objects_iter, store, wants_recorder.wants, pb, limit)
                 return (pack_hint, last_rev, wants_recorder.remote_refs)
