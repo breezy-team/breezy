@@ -582,19 +582,18 @@ class InterFromGitBranch(branch.GenericInterBranch):
         def determine_wants(heads):
             if self.source.ref is not None and not self.source.ref in heads:
                 raise NoSuchRef(self.source.ref, heads.keys())
-            if stop_revision is not None:
-                self._last_revid = stop_revision
-                head, mapping = self.source.repository.lookup_bzr_revision_id(
-                    stop_revision)
-            else:
+
+            if stop_revision is None:
                 if self.source.ref is not None:
                     head = heads[self.source.ref]
                 else:
                     head = heads["HEAD"]
                 self._last_revid = self.source.lookup_foreign_revision_id(head)
-            if self.target.repository.has_revision(self._last_revid):
-                return []
-            return [head]
+            else:
+                self._last_revid = stop_revision
+            real = interrepo.get_determine_wants_revids(
+                [self._last_revid], include_tags=True)
+            return real(heads)
         pack_hint, head, refs = interrepo.fetch_objects(
             determine_wants, self.source.mapping, limit=limit)
         if (pack_hint is not None and
@@ -607,7 +606,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
         else:
             prev_last_revid = self.target.last_revision()
         self.target.generate_revision_history(self._last_revid,
-            prev_last_revid)
+            prev_last_revid, self.source)
         return head, refs
 
     def update_revisions(self, stop_revision=None, overwrite=False,

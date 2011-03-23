@@ -502,19 +502,21 @@ class InterGitNonGitRepository(InterGitRepository):
         revids = [self.source.lookup_foreign_revision_id(sha) for sha in shas]
         return self.target.has_revisions(revids)
 
-    def get_determine_wants_revids(self, revids, include_tags=False):
-        wants = set()
-        revids = set(revids)
-        present = self.target.has_revisions(revids)
-        for revid in revids - present:
-            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
-            wants.add(git_sha)
+    def get_determine_wants_heads(self, wants, include_tags=False):
+        wants = set(wants)
         def determine_wants(refs):
             potential = set(wants)
             if include_tags:
                 potential.update([v[0] for v in extract_tags(refs).itervalues()])
             return list(potential - self._target_has_shas(potential))
         return determine_wants
+
+    def get_determine_wants_revids(self, revids, include_tags=False):
+        wants = set()
+        for revid in set(revids):
+            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
+            wants.add(git_sha)
+        return self.get_determine_wants_heads(wants, include_tags=include_tags)
 
     def determine_wants_all(self, refs):
         potential = set([sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")])
@@ -614,6 +616,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 objects_iter = self.source.fetch_objects(
                     wants_recorder, graph_walker, store.get_raw,
                     progress)
+                trace.mutter("Importing %d new revisions", len(wants_recorder.wants))
                 (pack_hint, last_rev) = import_git_objects(self.target, mapping,
                     objects_iter, store, wants_recorder.wants, pb, limit)
                 return (pack_hint, last_rev, wants_recorder.remote_refs)
