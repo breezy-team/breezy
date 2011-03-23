@@ -504,7 +504,9 @@ class InterGitNonGitRepository(InterGitRepository):
 
     def get_determine_wants_revids(self, revids, include_tags=False):
         wants = set()
-        for revid in revids:
+        revids = set(revids)
+        present = self.target.has_revisions(revids)
+        for revid in revids - present:
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             wants.add(git_sha)
         def determine_wants(refs):
