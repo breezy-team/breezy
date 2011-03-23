@@ -480,6 +480,10 @@ class ControlDir(ControlComponent):
         if br_to is None:
             # We have a repository but no branch, copy the revisions, and then
             # create a branch.
+            if revision_id is None:
+                # No revision supplied by the user, default to the branch
+                # revision
+                revision_id = source.last_revision()
             repository_to.fetch(source.repository, revision_id=revision_id)
             br_to = source.clone(self, revision_id=revision_id)
             if source.get_push_location() is None or remember:
