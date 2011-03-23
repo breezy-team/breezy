@@ -10,6 +10,9 @@
   * Provide custom GitDir.sprout() implementation for compatibility with bzr 2.4.
     (Jelmer Vernooij, #717937)
 
+  * Revisions attached to tags that are not in the tips ancestry are now fetched.
+    (Jelmer Vernooij, #309682)
+
  API COMPLETENESS
 
   * Implement LocalGitControlDir.clone_on_transport. (Jelmer Vernooij, #721899)
