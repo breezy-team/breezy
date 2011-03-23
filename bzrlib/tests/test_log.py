@@ -117,6 +117,7 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
             branch.tags.set_tag('v1.0', 'rev-3')
         return wt
 
+
 class LogCatcher(log.LogFormatter):
     """Pull log messages into a list rather than displaying them.
 
