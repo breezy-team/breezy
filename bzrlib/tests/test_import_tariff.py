@@ -117,6 +117,8 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.plugins.weave_fmt.bzrdir',
             'bzrlib.plugins.weave_fmt.repository',
             'bzrlib.plugins.weave_fmt.workingtree',
+            'bzrlib.weave',
+            'bzrlib.weavefile',
             'bzrlib.xml4',
             'bzrlib.xml5',
             'bzrlib.xml6',

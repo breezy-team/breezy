@@ -20,24 +20,27 @@ These were formats present in pre-1.0 version of Bazaar.
 """
 
 from bzrlib import (
-    branch,
-    bzrdir,
+    branch as _mod_branch,
     controldir,
-    repository,
+    repository as _mod_repository,
     serializer,
-    workingtree,
+    workingtree as _mod_workingtree,
+    )
+from bzrlib.bzrdir import (
+    BzrProber,
+    register_metadir,
     )
 
 # Pre-0.8 formats that don't have a disk format string (because they are
 # versioned by the matching control directory). We use the control directories
 # disk format string as a key for the network_name because they meet the
 # constraints (simple string, unique, immutable).
-repository.network_format_registry.register_lazy(
+_mod_repository.network_format_registry.register_lazy(
     "Bazaar-NG branch, format 5\n",
     'bzrlib.plugins.weave_fmt.repository',
     'RepositoryFormat5',
 )
-repository.network_format_registry.register_lazy(
+_mod_repository.network_format_registry.register_lazy(
     "Bazaar-NG branch, format 6\n",
     'bzrlib.plugins.weave_fmt.repository',
     'RepositoryFormat6',
@@ -49,19 +52,19 @@ repository.network_format_registry.register_lazy(
 # needed, it's constructed directly by the BzrDir.  Non-native formats where
 # the repository is not separately opened are similar.
 
-repository.format_registry.register_lazy(
+_mod_repository.format_registry.register_lazy(
     'Bazaar-NG Repository format 7',
     'bzrlib.plugins.weave_fmt.repository',
     'RepositoryFormat7'
     )
 
-repository.format_registry.register_extra_lazy(
+_mod_repository.format_registry.register_extra_lazy(
     'bzrlib.plugins.weave_fmt.repository',
     'RepositoryFormat4')
-repository.format_registry.register_extra_lazy(
+_mod_repository.format_registry.register_extra_lazy(
     'bzrlib.plugins.weave_fmt.repository',
     'RepositoryFormat5')
-repository.format_registry.register_extra_lazy(
+_mod_repository.format_registry.register_extra_lazy(
     'bzrlib.plugins.weave_fmt.repository',
     'RepositoryFormat6')
 
@@ -75,7 +78,7 @@ controldir.format_registry.register_lazy('weave',
     ' support checkouts or shared repositories.',
     hidden=True,
     deprecated=True)
-bzrdir.register_metadir(controldir.format_registry, 'metaweave',
+register_metadir(controldir.format_registry, 'metaweave',
     'bzrlib.plugins.weave_fmt.repository.RepositoryFormat7',
     'Transitional format in 0.8.  Slower than knit.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
@@ -84,25 +87,25 @@ bzrdir.register_metadir(controldir.format_registry, 'metaweave',
     deprecated=True)
 
 
-bzrdir.BzrProber.formats.register_lazy(
+BzrProber.formats.register_lazy(
     "Bazaar-NG branch, format 0.0.4\n", "bzrlib.plugins.weave_fmt.bzrdir",
     "BzrDirFormat4")
-bzrdir.BzrProber.formats.register_lazy(
+BzrProber.formats.register_lazy(
     "Bazaar-NG branch, format 5\n", "bzrlib.plugins.weave_fmt.bzrdir",
     "BzrDirFormat5")
-bzrdir.BzrProber.formats.register_lazy(
+BzrProber.formats.register_lazy(
     "Bazaar-NG branch, format 6\n", "bzrlib.plugins.weave_fmt.bzrdir",
     "BzrDirFormat6")
 
 
-branch.format_registry.register_extra_lazy(
+_mod_branch.format_registry.register_extra_lazy(
     'bzrlib.plugins.weave_fmt.branch', 'BzrBranchFormat4')
-branch.network_format_registry.register_lazy(
+_mod_branch.network_format_registry.register_lazy(
     "Bazaar-NG branch, format 6\n",
     'bzrlib.plugins.weave_fmt.branch', "BzrBranchFormat4")
 
 
-workingtree.format_registry.register_extra_lazy(
+_mod_workingtree.format_registry.register_extra_lazy(
     'bzrlib.plugins.weave_fmt.workingtree',
     'WorkingTreeFormat2')
 
