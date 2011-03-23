@@ -22,6 +22,7 @@ from dulwich.objects import (
     )
 from dulwich.object_store import (
     tree_lookup_path,
+    ZERO_SHA,
     )
 from itertools import (
     imap,
@@ -77,6 +78,7 @@ from bzrlib.plugins.git.object_store import (
     LRUTreeCache,
     _tree_to_objects,
     )
+from bzrlib.plugins.git.refs import extract_tags
 from bzrlib.plugins.git.remote import (
     RemoteGitRepository,
     )
@@ -496,6 +498,30 @@ class InterGitNonGitRepository(InterGitRepository):
     """Base InterRepository that copies revisions from a Git into a non-Git
     repository."""
 
+    def _target_has_shas(self, shas):
+        revids = [self.source.lookup_foreign_revision_id(sha) for sha in shas]
+        return self.target.has_revisions(revids)
+
+    def get_determine_wants_heads(self, wants, include_tags=False):
+        wants = set(wants)
+        def determine_wants(refs):
+            potential = set(wants)
+            if include_tags:
+                potential.update([v[0] for v in extract_tags(refs).itervalues()])
+            return list(potential - self._target_has_shas(potential))
+        return determine_wants
+
+    def get_determine_wants_revids(self, revids, include_tags=False):
+        wants = set()
+        for revid in set(revids):
+            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
+            wants.add(git_sha)
+        return self.get_determine_wants_heads(wants, include_tags=include_tags)
+
+    def determine_wants_all(self, refs):
+        potential = set([sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")])
+        return list(potential - self._target_has_shas(potential))
+
     def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
         """Fetch objects from a remote server.
 
@@ -521,18 +547,12 @@ class InterGitNonGitRepository(InterGitRepository):
                 raise AssertionError("Unsupported search result type %s" % recipe[0])
         else:
             interesting_heads = None
-        def determine_wants(refs):
-            if interesting_heads is None:
-                todo = [(sha, None) for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")]
-            else:
-                todo = [(self.source.lookup_bzr_revision_id(revid)[0], revid) for revid in interesting_heads if revid not in (None, NULL_REVISION)]
-            ret = []
-            for (sha, revid) in todo:
-                if revid is None:
-                    revid = self.source.lookup_foreign_revision_id(sha)
-                if not self.target.has_revision(revid):
-                    ret.append(sha)
-            return ret
+
+        if interesting_heads is not None:
+            determine_wants = self.get_determine_wants_revids(interesting_heads,
+                include_tags=False)
+        else:
+            determine_wants = self.determine_wants_all
 
         (pack_hint, _, remote_refs) = self.fetch_objects(determine_wants,
             mapping, pb)
@@ -596,7 +616,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 objects_iter = self.source.fetch_objects(
                     wants_recorder, graph_walker, store.get_raw,
                     progress)
-                trace.mutter("Fetching %d new revisions", len(wants_recorder.wants))
+                trace.mutter("Importing %d new revisions", len(wants_recorder.wants))
                 (pack_hint, last_rev) = import_git_objects(self.target, mapping,
                     objects_iter, store, wants_recorder.wants, pb, limit)
                 return (pack_hint, last_rev, wants_recorder.remote_refs)

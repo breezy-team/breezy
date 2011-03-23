@@ -56,7 +56,7 @@ from bzrlib.plugins.git.tests import (
     )
 
 
-class RepositoryFetchTests:
+class RepositoryFetchTests(object):
 
     def make_git_repo(self, path):
         os.mkdir(path)

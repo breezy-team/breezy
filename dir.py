@@ -123,6 +123,55 @@ class GitDir(ControlDir):
     def get_config(self):
         return GitDirConfig()
 
+    def sprout(self, url, revision_id=None, force_new_repo=False,
+               recurse='down', possible_transports=None,
+               accelerator_tree=None, hardlink=False, stacked=False,
+               source_branch=None, create_tree_if_local=True):
+        from bzrlib.repository import InterRepository
+        from bzrlib.transport.local import LocalTransport
+        from bzrlib.transport import get_transport
+        target_transport = get_transport(url, possible_transports)
+        target_transport.ensure_base()
+        cloning_format = self.cloning_metadir()
+        # Create/update the result branch
+        result = cloning_format.initialize_on_transport(target_transport)
+        source_branch = self.open_branch()
+        source_repository = self.find_repository()
+        try:
+            result_repo = result.find_repository()
+        except bzr_errors.NoRepositoryPresent:
+            result_repo = result.create_repository()
+            target_is_empty = True
+        else:
+            target_is_empty = None # Unknown
+        if stacked:
+            raise bzr_errors.IncompatibleRepositories(source_repository, result_repo)
+        interrepo = InterRepository.get(source_repository, result_repo)
+
+        if revision_id is not None:
+            determine_wants = interrepo.get_determine_wants_revids(
+                [revision_id], include_tags=True)
+        else:
+            determine_wants = interrepo.determine_wants_all
+        interrepo.fetch_objects(determine_wants=determine_wants,
+            mapping=source_branch.mapping)
+        result_branch = source_branch.sprout(result,
+            revision_id=revision_id, repository=result_repo)
+        if (create_tree_if_local and isinstance(target_transport, LocalTransport)
+            and (result_repo is None or result_repo.make_working_trees())):
+            wt = result.create_workingtree(accelerator_tree=accelerator_tree,
+                hardlink=hardlink, from_branch=result_branch)
+            wt.lock_write()
+            try:
+                if wt.path2id('') is None:
+                    try:
+                        wt.set_root_id(self.open_workingtree.get_root_id())
+                    except bzr_errors.NoWorkingTree:
+                        pass
+            finally:
+                wt.unlock()
+        return result
+
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
         create_prefix=False, use_existing_dir=True, no_tree=False):
@@ -137,12 +186,7 @@ class GitDir(ControlDir):
         source_repo = self.open_repository()
         source_git_repo = source_repo._git
         if revision_id is not None:
-            git_sha, mapping = source_repo.lookup_bzr_revision_id(revision_id)
-            if git_sha == ZERO_SHA:
-                wants = []
-            else:
-                wants = [git_sha]
-            determine_wants = lambda heads: wants
+            determine_wants = source_repo.determine_wants_revid_and_tags(revision_id)
         else:
             determine_wants = target_git_repo.object_store.determine_wants_all
         refs = source_git_repo.fetch(target_git_repo, determine_wants)
@@ -150,6 +194,15 @@ class GitDir(ControlDir):
             target_git_repo.refs[name] = val
         lockfiles = GitLockableFiles(transport, GitLock())
         return self.__class__(transport, lockfiles, target_git_repo, format)
+
+    def find_repository(self):
+        """Find the repository that should be used.
+
+        This does not require a branch as we use it to find the repo for
+        new branches as well as to hook existing branches up to their
+        repository.
+        """
+        return self.open_repository()
 
 
 class LocalGitControlDirFormat(GitControlDirFormat):
@@ -374,15 +427,6 @@ class LocalGitDir(GitDir):
         finally:
             f.close()
         return self.open_workingtree()
-
-    def find_repository(self):
-        """Find the repository that should be used.
-
-        This does not require a branch as we use it to find the repo for
-        new branches as well as to hook existing branches up to their
-        repository.
-        """
-        return self.open_repository()
 
     def _find_or_create_repository(self, force_new_repo=None):
         return self.create_repository(shared=False)
