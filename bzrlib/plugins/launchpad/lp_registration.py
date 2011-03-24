@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -87,6 +87,7 @@ class LaunchpadService(object):
     LAUNCHPAD_DOMAINS = {
         'production': 'launchpad.net',
         'staging': 'staging.launchpad.net',
+        'qastaging': 'qastaging.launchpad.net',
         'demo': 'demo.launchpad.net',
         'dev': 'launchpad.dev',
         }
