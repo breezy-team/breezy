@@ -95,11 +95,11 @@ to refer to one of Alice's branches. [#]_
 Using a restricted SSH account to host multiple users and repositories
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Once you have a bzr+ssh setup using a shared repository.  You may want to share
+Once you have a bzr+ssh setup using a shared repository you may want to share
 that repository among a small set of developers.  Using shared SSH access enables
-you to complete this task without any complicationed setup or ongoing management.
+you to complete this task without any complicated setup or ongoing management.
 
-To allow multiple users to access bazaar over ssh we can allow ssh access to a common
+To allow multiple users to access Bazaar over ssh we can allow ssh access to a common
 account that only allows users to run a specific command.  Using a single account
 simplifies deployment as no permissions management issues exist for the filesystem.
 All users are the same user at the server level.  Bazaar labels the commits with
