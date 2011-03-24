@@ -20,6 +20,7 @@ import os
 import xmlrpclib
 
 from bzrlib import (
+    debug,
     errors,
     tests,
     transport,
@@ -197,6 +198,12 @@ class LocalDirectoryURLTests(TestCaseInTempDir):
         self.assertResolve('bzr+ssh://bazaar.demo.launchpad.net/+branch/apt',
                            'lp://demo/apt')
 
+    def test_debug_launchpad_uses_resolver(self):
+        self.assertResolve('bzr+ssh://bazaar.launchpad.net/+branch/bzr',
+                           'lp:bzr', submitted=False)
+        debug.debug_flags.add('launchpad')
+        self.addCleanup(debug.debug_flags.discard, 'launchpad')
+        self.assertResolve('bzr+ssh://fake-resolved', 'lp:bzr', submitted=True)
 
 
 class DirectoryUrlTests(TestCaseInTempDir):

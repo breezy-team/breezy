@@ -162,9 +162,10 @@ class LaunchpadDirectory(object):
         if _lp_login is not None:
             result = self._resolve_locally(path, url, _request_factory)
             if 'launchpad' in debug.debug_flags:
-                res2 = self._resolve_via_xmlrpc(path, url, _request_factory)
-                trace.note('resolution for %s\nlocal: %s\nremote: %s'
-                           % (url, result['urls'], res2['urls']))
+                local_res = result
+                result = self._resolve_via_xmlrpc(path, url, _request_factory)
+                trace.note('resolution for %s\n  local: %s\n remote: %s'
+                           % (url, local_res['urls'], result['urls']))
         else:
             result = self._resolve_via_xmlrpc(path, url, _request_factory)
 
