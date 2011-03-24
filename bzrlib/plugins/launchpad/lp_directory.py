@@ -65,11 +65,31 @@ class LaunchpadDirectory(object):
         """See DirectoryService.look_up"""
         return self._resolve(url)
 
-    def _resolve_locally(self, path):
-        # Launchpad is now capable of doing the short-name to long name
-        # resolution inside the bzr+ssh server. We aren't yet able to do so for
-        # HTTP urls. - jam 20110323
-        return {'urls': ['bzr+ssh://bazaar.launchpad.net/+branch/' + path]}
+    def _resolve_locally(self, path, url, _request_factory):
+        # This is the best I could work out about XMLRPC. If an lp: url
+        # includes ~user, then it is specially validated. Otherwise, it is just
+        # sent to +branch/$path.
+        _, netloc, _, _, _ = urlsplit(url)
+        if netloc == '':
+            netloc = LaunchpadService.DEFAULT_INSTANCE
+        base_url = LaunchpadService.LAUNCHPAD_DOMAINS[netloc]
+        base = 'bzr+ssh://bazaar.%s/' % (base_url,)
+        maybe_invalid = False
+        if path.startswith('~'):
+            # A ~user style path, validate it a bit.
+            # If a path looks fishy, fall back to asking XMLRPC to
+            # resolve it for us. That way we still get their nicer error
+            # messages.
+            parts = path.split('/')
+            if (len(parts) < 3
+                or (parts[1] in ('ubuntu', 'debian') and len(parts) < 5)):
+                # This special case requires 5-parts to be valid.
+                maybe_invalid = True
+        else:
+            base += '+branch/'
+        if maybe_invalid:
+            return self._resolve_via_xmlrpc(path, url, _request_factory)
+        return {'urls': [base + path]}
 
     def _resolve_via_xmlrpc(self, path, url, _request_factory):
         service = LaunchpadService.for_url(url)
@@ -140,7 +160,12 @@ class LaunchpadDirectory(object):
         path = path.strip('/')
         path = self._expand_user(path, url, _lp_login)
         if _lp_login is not None:
-            result = self._resolve_locally(path)
+            result = self._resolve_locally(path, url, _request_factory)
+            if 'launchpad' in debug.debug_flags:
+                local_res = result
+                result = self._resolve_via_xmlrpc(path, url, _request_factory)
+                trace.note('resolution for %s\n  local: %s\n remote: %s'
+                           % (url, local_res['urls'], result['urls']))
         else:
             result = self._resolve_via_xmlrpc(path, url, _request_factory)
 
