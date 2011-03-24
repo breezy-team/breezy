@@ -230,6 +230,10 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
+* Because it was too specific to BzrDir implementations,
+  ``ControlDir.sprout`` no longer has a default implementation; it now
+  raises ``NotImplementedError``. (Jelmer Vernooij, #717937)
+
 * ``ControlDirFormat.register_format`` has been removed. Instead,
   ``Prober`` implementations should now implement a ``known_formats``
   method. (Jelmer Vernooij)
