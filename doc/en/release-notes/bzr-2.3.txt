@@ -40,7 +40,8 @@ Improvements
   than ``bzr+ssh://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev`` for a few
   months now.) By doing it ourselves, we can cut out substantial startup
   time. From Netherlands to London it was taking 368ms to do the XMLRPC
-  call as much as 2s from Sydney. (John Arbash Meinel, #397739)
+  call as much as 2s from Sydney. You can test the local logic by using
+  ``-Dlaunchpad``.  (John Arbash Meinel, #397739)
 
 Bug Fixes
 *********
