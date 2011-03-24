@@ -35,7 +35,8 @@ Bug Fixes
 Documentation
 *************
 
-.. Improved or updated documentation.
+* Added a section about using a shared SSH account on a server for bzr+ssh
+  access.  (Russell Smith)
 
 API Changes
 ***********
