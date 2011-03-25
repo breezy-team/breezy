@@ -54,6 +54,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Commands now have an `invoked_as` attribute, showing the name under
+  which they were called before alias expansion.
+
 Internals
 *********
 
