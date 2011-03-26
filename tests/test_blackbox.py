@@ -69,6 +69,20 @@ class TestGitBlackBox(ExternalBase):
         output, error = self.run_bzr(['branch', 'gitbranch', 'bzrbranch'])
         self.assertEqual(error, 'Branched 1 revision(s).\n')
 
+    def test_checkout(self):
+        os.mkdir("gitbranch")
+        GitRepo.init(os.path.join(self.test_dir, "gitbranch"))
+        os.chdir('gitbranch')
+        builder = tests.GitBranchBuilder()
+        builder.set_file('a', 'text for a\n', False)
+        builder.commit('Joe Foo <joe@foo.com>', u'<The commit message>')
+        builder.finish()
+        os.chdir('..')
+
+        output, error = self.run_bzr(['checkout', 'gitbranch', 'bzrbranch'])
+        self.assertEqual(error, '')
+        self.assertEqual(output, '')
+
     def test_branch_ls(self):
         self.simple_commit()
         output, error = self.run_bzr(['ls', '-r-1'])

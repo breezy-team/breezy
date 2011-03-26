@@ -13,6 +13,9 @@
   * Revisions attached to tags that are not in the tips ancestry are now fetched.
     (Jelmer Vernooij, #309682)
 
+  * Fix recursion error merging tags for bound branches.
+    (Jelmer Vernooij, #742833)
+
  API COMPLETENESS
 
   * Implement LocalGitControlDir.clone_on_transport. (Jelmer Vernooij, #721899)
