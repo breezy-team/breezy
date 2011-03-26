@@ -235,7 +235,7 @@ API Changes
   (Jelmer Vernooij)
 
 * ``Branch.fetch`` implementations must now accept an optional
-  ``fetch_spec`` keyword argument. (Andrew Bennetts)
+  ``fetch_tags`` keyword argument. (Andrew Bennetts)
 
 * ``Branch.import_last_revision_info`` is deprecated.  Use the
   ``import_last_revision_info_and_tags`` method instead.
