@@ -22,8 +22,8 @@ from collections import defaultdict
 from dulwich.objects import (
     Commit,
     Tag,
+    ZERO_SHA,
     )
-from dulwich.protocol import ZERO_SHA
 
 from bzrlib import (
     branch,

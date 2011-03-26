@@ -22,7 +22,6 @@ from dulwich.objects import (
     )
 from dulwich.object_store import (
     tree_lookup_path,
-    ZERO_SHA,
     )
 from itertools import (
     imap,

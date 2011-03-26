@@ -21,6 +21,7 @@ from dulwich.objects import (
     Commit,
     Tree,
     sha_to_hex,
+    ZERO_SHA,
     )
 from dulwich.object_store import (
     BaseObjectStore,
@@ -493,7 +494,6 @@ class BazaarObjectStore(BaseObjectStore):
 
     def _lookup_revision_sha1(self, revid):
         """Return the SHA1 matching a Bazaar revision."""
-        from dulwich.protocol import ZERO_SHA
         if revid == NULL_REVISION:
             return ZERO_SHA
         try:
@@ -533,7 +533,6 @@ class BazaarObjectStore(BaseObjectStore):
             return False
 
     def lookup_git_shas(self, shas, update_map=True):
-        from dulwich.protocol import ZERO_SHA
         ret = {}
         for sha in shas:
             if sha == ZERO_SHA:

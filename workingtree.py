@@ -27,8 +27,6 @@ from dulwich.index import (
     )
 from dulwich.objects import (
     Blob,
-    )
-from dulwich.protocol import (
     ZERO_SHA,
     )
 import os

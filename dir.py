@@ -175,7 +175,6 @@ class GitDir(ControlDir):
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
         create_prefix=False, use_existing_dir=True, no_tree=False):
-        from dulwich.protocol import ZERO_SHA
         """See ControlDir.clone_on_transport."""
         if no_tree:
             format = BareLocalGitControlDirFormat()
