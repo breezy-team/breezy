@@ -20,6 +20,7 @@
 
 import re
 
+from bzrlib.branch import Branch
 from bzrlib.errors import InvalidRevisionId
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note
@@ -212,7 +213,7 @@ class UpstreamBranchSource(UpstreamSource):
     """Upstream source that uses the upstream branch.
 
     :ivar upstream_branch: Branch with upstream sources
-    :ivar upstream_version_map: Map from version strings to revids
+    :ivar upstream_version_map: Map from version strings to revspecs
     """
 
     def __init__(self, upstream_branch, upstream_revision_map=None,
@@ -227,8 +228,9 @@ class UpstreamBranchSource(UpstreamSource):
     def version_as_revision(self, package, version):
         assert isinstance(version, str)
         if version in self.upstream_revision_map:
-             return self.upstream_revision_map[version]
-        revspec = get_export_upstream_revision(self.config, version=version)
+            revspec = self.upstream_revision_map[version]
+        else:
+            revspec = get_export_upstream_revision(self.config, version=version)
         if revspec is not None:
             return RevisionSpec.from_string(
                 revspec).as_revision_id(self.upstream_branch)
@@ -267,4 +269,26 @@ class UpstreamBranchSource(UpstreamSource):
             self.upstream_branch.base)
 
 
+class LazyUpstreamBranchSource(UpstreamBranchSource):
+    """Upstream branch source that defers loading the branch until it is used.
+    """
 
+    def __init__(self, upstream_branch_url, upstream_revision_map=None,
+                 config=None):
+        self.upstream_branch_url = upstream_branch_url
+        self._upstream_branch = None
+        self.config = config
+        if upstream_revision_map is None:
+            self.upstream_revision_map = {}
+        else:
+            self.upstream_revision_map = upstream_revision_map
+
+    @property
+    def upstream_branch(self):
+        if self._upstream_branch is None:
+            self._upstream_branch = Branch.open(self.upstream_branch_url)
+        return self._upstream_branch
+
+    def __repr__(self):
+        return "<%s for %r>" % (self.__class__.__name__,
+            self.upstream_branch_url)
