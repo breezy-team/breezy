@@ -682,21 +682,8 @@ class Branch(controldir.ControlComponent):
             last_revision.
         :return: None
         """
-        if fetch_spec is not None and last_revision is not None:
-            raise AssertionError(
-                "fetch_spec and last_revision are mutually exclusive.")
-        if self.base == from_branch.base:
-            return (0, [])
-        from_branch.lock_read()
-        try:
-            if last_revision is None and fetch_spec is None:
-                last_revision = from_branch.last_revision()
-                last_revision = _mod_revision.ensure_null(last_revision)
-            return self.repository.fetch(from_branch.repository,
-                                         revision_id=last_revision,
-                                         fetch_spec=fetch_spec)
-        finally:
-            from_branch.unlock()
+        return InterBranch.get(from_branch, self).fetch(last_revision,
+            fetch_spec)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
@@ -3331,6 +3318,15 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.copy_content_into)
 
+    @needs_write_lock
+    def fetch(self, stop_revision=None, fetch_spec=None):
+        """Fetch revisions.
+
+        :param stop_revision: Last revision to fetch
+        :param fetch_spec: Fetch spec.
+        """
+        raise NotImplementedError(self.fetch)
+
 
 class GenericInterBranch(InterBranch):
     """InterBranch implementation that uses public Branch functions."""
@@ -3369,6 +3365,23 @@ class GenericInterBranch(InterBranch):
                 self.target.set_parent(parent)
         if self.source._push_should_merge_tags():
             self.source.tags.merge_to(self.target.tags)
+
+    @needs_write_lock
+    def fetch(self, stop_revision=None, fetch_spec=None):
+        if fetch_spec is not None and stop_revision is not None:
+            raise AssertionError(
+                "fetch_spec and last_revision are mutually exclusive.")
+        if self.target.base == self.source.base:
+            return (0, [])
+        self.source.lock_read()
+        try:
+            if stop_revision is None and fetch_spec is None:
+                stop_revision = self.source.last_revision()
+                stop_revision = _mod_revision.ensure_null(stop_revision)
+            return self.target.repository.fetch(self.source.repository,
+                revision_id=stop_revision, fetch_spec=fetch_spec)
+        finally:
+            self.source.unlock()
 
     @needs_write_lock
     def update_revisions(self, stop_revision=None, overwrite=False,
