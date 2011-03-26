@@ -16,6 +16,9 @@
   * Fix recursion error merging tags for bound branches.
     (Jelmer Vernooij, #742833)
 
+  * Fix fetching from remote git repositories during merge.
+    (Jelmer Vernooij, #741760)
+
  API COMPLETENESS
 
   * Implement LocalGitControlDir.clone_on_transport. (Jelmer Vernooij, #721899)
