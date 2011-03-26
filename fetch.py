@@ -484,6 +484,22 @@ class InterGitRepository(InterRepository):
 
     _matching_repo_format = GitRepositoryFormat()
 
+    def _target_has_shas(self, shas):
+        raise NotImplementedError(self._target_has_shas)
+
+    def get_determine_wants_heads(self, wants, include_tags=False):
+        wants = set(wants)
+        def determine_wants(refs):
+            potential = set(wants)
+            if include_tags:
+                potential.update([v[0] for v in extract_tags(refs).itervalues()])
+            return list(potential - self._target_has_shas(potential))
+        return determine_wants
+
+    def determine_wants_all(self, refs):
+        potential = set([sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")])
+        return list(potential - self._target_has_shas(potential))
+
     @staticmethod
     def _get_repo_format_to_test():
         return None
@@ -501,25 +517,12 @@ class InterGitNonGitRepository(InterGitRepository):
         revids = [self.source.lookup_foreign_revision_id(sha) for sha in shas]
         return self.target.has_revisions(revids)
 
-    def get_determine_wants_heads(self, wants, include_tags=False):
-        wants = set(wants)
-        def determine_wants(refs):
-            potential = set(wants)
-            if include_tags:
-                potential.update([v[0] for v in extract_tags(refs).itervalues()])
-            return list(potential - self._target_has_shas(potential))
-        return determine_wants
-
     def get_determine_wants_revids(self, revids, include_tags=False):
         wants = set()
         for revid in set(revids):
             git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
             wants.add(git_sha)
         return self.get_determine_wants_heads(wants, include_tags=include_tags)
-
-    def determine_wants_all(self, refs):
-        potential = set([sha for (ref, sha) in refs.iteritems() if not ref.endswith("^{}")])
-        return list(potential - self._target_has_shas(potential))
 
     def fetch_objects(self, determine_wants, mapping, pb=None, limit=None):
         """Fetch objects from a remote server.
@@ -697,6 +700,9 @@ class InterGitGitRepository(InterGitRepository):
         else:
             raise AssertionError
 
+    def _target_has_shas(self, shas):
+        return set([sha for sha in shas if self.target._git.object_store])
+
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
               mapping=None, fetch_spec=None, branches=None):
         if mapping is None:
@@ -714,7 +720,7 @@ class InterGitGitRepository(InterGitRepository):
         if branches is not None:
             determine_wants = lambda x: [x[y] for y in branches if not x[y] in r.object_store]
         elif fetch_spec is None and revision_id is None:
-            determine_wants = r.object_store.determine_wants_all
+            determine_wants = self.determine_wants_all
         else:
             determine_wants = lambda x: [y for y in args if not y in r.object_store]
         self.fetch_objects(determine_wants, mapping)
