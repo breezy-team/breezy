@@ -2009,7 +2009,7 @@ class InterDirStateTree(InterTree):
     def make_source_parent_tree(source, target):
         """Change the source tree into a parent of the target."""
         revid = source.commit('record tree')
-        target.branch.repository.fetch(source.branch.repository, revid)
+        target.branch.fetch(source.branch, revid)
         target.set_parent_ids([revid])
         return target.basis_tree(), target
 

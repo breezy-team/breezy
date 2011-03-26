@@ -670,20 +670,17 @@ class Branch(controldir.ControlComponent):
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     @needs_write_lock
-    def fetch(self, from_branch, last_revision=None, fetch_spec=None):
+    def fetch(self, from_branch, last_revision=None, fetch_tags=True):
         """Copy revisions from from_branch into this branch.
 
         :param from_branch: Where to copy from.
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
-        :param fetch_spec: If specified, a SearchResult or
-            PendingAncestryResult that describes which revisions to copy.  This
-            allows copying multiple heads at once.  Mutually exclusive with
-            last_revision.
+        :param fetch_tags: Whether to fetch tags
         :return: None
         """
         return InterBranch.get(from_branch, self).fetch(last_revision,
-            fetch_spec)
+            fetch_tags=fetch_tags)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
@@ -1038,14 +1035,7 @@ class Branch(controldir.ControlComponent):
         :param revid: Revision id of the new tip
         """
         if not self.repository.has_same_location(source.repository):
-            try:
-                tags_to_fetch = set(source.tags.get_reverse_tag_dict())
-            except errors.TagsNotSupported:
-                tags_to_fetch = set()
-            fetch_spec = _mod_graph.NotInOtherForRevs(self.repository,
-                source.repository, [revid],
-                if_present_ids=tags_to_fetch).execute()
-            self.repository.fetch(source.repository, fetch_spec=fetch_spec)
+            self.fetch(source, revid, fetch_tags=True)
         self.set_last_revision_info(revno, revid)
 
     def revision_id_to_revno(self, revision_id):
@@ -3319,11 +3309,11 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.copy_content_into)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None, fetch_spec=None):
+    def fetch(self, stop_revision=None, fetch_tags=False):
         """Fetch revisions.
 
         :param stop_revision: Last revision to fetch
-        :param fetch_spec: Fetch spec.
+        :param fetch_tags: Whether to fetch tags
         """
         raise NotImplementedError(self.fetch)
 
@@ -3367,19 +3357,27 @@ class GenericInterBranch(InterBranch):
             self.source.tags.merge_to(self.target.tags)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None, fetch_spec=None):
-        if fetch_spec is not None and stop_revision is not None:
-            raise AssertionError(
-                "fetch_spec and last_revision are mutually exclusive.")
+    def fetch(self, stop_revision=None, fetch_tags=True):
         if self.target.base == self.source.base:
             return (0, [])
         self.source.lock_read()
         try:
-            if stop_revision is None and fetch_spec is None:
+            if stop_revision is None:
                 stop_revision = self.source.last_revision()
                 stop_revision = _mod_revision.ensure_null(stop_revision)
+            if fetch_tags:
+                fetch_spec_factory = fetch.FetchSpecFactory()
+                fetch_spec_factory.source_branch = self.source
+                fetch_spec_factory.source_branch_stop_revision_id = stop_revision
+                fetch_spec_factory.source_repo = self.source.repository
+                fetch_spec_factory.target_repo = self.target.repository
+                fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+                fetch_spec = fetch_spec_factory.make_fetch_spec()
+            else:
+                fetch_spec = _mod_graph.NotInOtherForRevs(self.target.repository,
+                    self.source.repository, revision_ids=[stop_revision]).execute()
             return self.target.repository.fetch(self.source.repository,
-                revision_id=stop_revision, fetch_spec=fetch_spec)
+                fetch_spec=fetch_spec)
         finally:
             self.source.unlock()
 
@@ -3403,18 +3401,7 @@ class GenericInterBranch(InterBranch):
         # case of having something to pull, and so that the check for
         # already merged can operate on the just fetched graph, which will
         # be cached in memory.
-        if fetch_tags:
-            fetch_spec_factory = fetch.FetchSpecFactory()
-            fetch_spec_factory.source_branch = self.source
-            fetch_spec_factory.source_branch_stop_revision_id = stop_revision
-            fetch_spec_factory.source_repo = self.source.repository
-            fetch_spec_factory.target_repo = self.target.repository
-            fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
-            fetch_spec = fetch_spec_factory.make_fetch_spec()
-        else:
-            fetch_spec = _mod_graph.NotInOtherForRevs(self.target.repository,
-                self.source.repository, revision_ids=[stop_revision]).execute()
-        self.target.fetch(self.source, fetch_spec=fetch_spec)
+        self.fetch(stop_revision=stop_revision, fetch_tags=fetch_tags)
         # Check to see if one is an ancestor of the other
         if not overwrite:
             if graph is None:
