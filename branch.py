@@ -570,9 +570,10 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 not isinstance(target, GitBranch) and
                 (getattr(cls._get_interrepo(source, target), "fetch_objects", None) is not None))
 
-    def update_revisions(self, stop_revision=None, overwrite=False,
-                         graph=None):
-        """See InterBranch.update_revisions()."""
+    def fetch(self, stop_revision=None, fetch_tags=True):
+        self.fetch_objects(stop_revision, fetch_tags=fetch_tags)
+
+    def fetch_objects(self, stop_revision, fetch_tags):
         interrepo = self._get_interrepo(self.source, self.target)
         def determine_wants(heads):
             if self.source.ref is not None and not self.source.ref in heads:
@@ -587,13 +588,19 @@ class InterFromGitBranch(branch.GenericInterBranch):
             else:
                 self._last_revid = stop_revision
             real = interrepo.get_determine_wants_revids(
-                [self._last_revid], include_tags=True)
+                [self._last_revid], include_tags=fetch_tags)
             return real(heads)
         pack_hint, head, refs = interrepo.fetch_objects(
             determine_wants, self.source.mapping)
         if (pack_hint is not None and
             self.target.repository._format.pack_compresses):
             self.target.repository.pack(hint=pack_hint)
+        return head, refs
+
+    def update_revisions(self, stop_revision=None, overwrite=False,
+                         graph=None):
+        """See InterBranch.update_revisions()."""
+        head, refs = self.fetch_objects(stop_revision, fetch_tags=True)
         if overwrite:
             prev_last_revid = None
         else:
