@@ -661,7 +661,8 @@ class cmd_merge_upstream(Command):
 
             if location is not None:
                 try:
-                    primary_upstream_source = UpstreamBranchSource(location, config=config)
+                    primary_upstream_source = UpstreamBranchSource(
+                        Branch.open(location), config=config)
                 except NotBranchError:
                     primary_upstream_source = TarfileSource(location, version)
             else:
