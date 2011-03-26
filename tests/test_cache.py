@@ -112,7 +112,7 @@ class TestGitShaMap:
         updater.add_object(self._get_test_commit(), {
             "testament3-sha1": "mytestamentsha" }, None)
         t = Tree()
-        t.add(stat.S_IFREG, "somename", Blob().id)
+        t.add("somename", stat.S_IFREG, Blob().id)
         ie = InventoryDirectory("fileid", "myname", ROOT_ID)
         ie.revision = "irrelevant"
         updater.add_object(t, ie, "")

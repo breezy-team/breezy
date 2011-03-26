@@ -546,12 +546,11 @@ def directory_to_tree(entry, lookup_ie_sha1, unusual_modes, empty_file_name):
             mode = entry_mode(ie)
         hexsha = lookup_ie_sha1(ie)
         if hexsha is not None:
-            tree.add(mode, name.encode("utf-8"), hexsha)
+            tree.add(name.encode("utf-8"), mode, hexsha)
     if entry.parent_id is not None and len(tree) == 0:
         # Only the root can be an empty tree
         if empty_file_name is not None:
-            tree.add(stat.S_IFREG | 0644, empty_file_name, 
-                Blob().id)
+            tree.add(empty_file_name, stat.S_IFREG | 0644, Blob().id)
         else:
             return None
     return tree

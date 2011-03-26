@@ -337,5 +337,5 @@ class DirectoryToTreeTests(tests.TestCase):
         b = Blob.from_string("bla")
         t1 = directory_to_tree(ie, lambda x: b.id, {}, None)
         t2 = Tree()
-        t2.add(0100644, "bar", b.id)
+        t2.add("bar", 0100644, b.id)
         self.assertEquals(t1, t2)

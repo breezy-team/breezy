@@ -339,7 +339,7 @@ class ImportObjects(TestCaseWithTransport):
         base_inv = Inventory()
         blob = Blob.from_string("bar1")
         tree = Tree()
-        tree.add(stat.S_IFREG | 0644, "foo", blob.id)
+        tree.add("foo", stat.S_IFREG | 0644, blob.id)
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
                 (None, tree.id), base_inv, None, "somerevid", [],
@@ -364,10 +364,10 @@ class ImportObjects(TestCaseWithTransport):
         base_inv = Inventory()
         blob = Blob.from_string("bar1")
         tree = Tree()
-        tree.add(stat.S_IFREG | 0664, "foo", blob.id)
+        tree.add("foo", stat.S_IFREG | 0664, blob.id)
         objects = { blob.id: blob, tree.id: tree }
-        ret, child_modes = import_git_tree(self._texts, self._mapping, "bla", "bla",
-                (None, tree.id), base_inv, None, "somerevid", [],
+        ret, child_modes = import_git_tree(self._texts, self._mapping,
+            "bla", "bla", (None, tree.id), base_inv, None, "somerevid", [],
             objects.__getitem__, (None, stat.S_IFDIR), DummyStoreUpdater(),
             self._mapping.generate_file_id)
         self.assertEquals(child_modes, { "bla/foo": stat.S_IFREG | 0664 })
@@ -376,7 +376,7 @@ class ImportObjects(TestCaseWithTransport):
         base_inv = Inventory(root_id=None)
         blob = Blob.from_string("bar")
         tree = Tree()
-        tree.add(0100755, "foo", blob.id)
+        tree.add("foo", 0100755, blob.id)
         objects = { blob.id: blob, tree.id: tree }
         ret, child_modes = import_git_tree(self._texts, self._mapping, "", "",
                 (None, tree.id), base_inv, None, "somerevid", [],
