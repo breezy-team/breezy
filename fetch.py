@@ -492,7 +492,7 @@ class InterGitRepository(InterRepository):
         def determine_wants(refs):
             potential = set(wants)
             if include_tags:
-                potential.update([v[0] for v in extract_tags(refs).itervalues()])
+                potential.update([v[1] or v[0] for v in extract_tags(refs).itervalues()])
             return list(potential - self._target_has_shas(potential))
         return determine_wants
 
