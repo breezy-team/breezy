@@ -24,6 +24,8 @@
 
 from base64 import standard_b64encode
 
+import bz2
+import gzip
 import os
 import tarfile
 import zipfile
@@ -615,6 +617,18 @@ class TarfileSourceTests(TestCaseWithTransport):
         os.mkdir("bar")
         self.assertRaises(PackageVersionNotPresent,
             source.fetch_tarball, "foo", "0.9", "bar")
+
+    def test_fetch_tarball_bz2(self):
+        tar = tarfile.open("foo-1.0.tar.bz2", "w:bz2")
+        tar.close()
+        # verify this is a bzip2 file
+        bz2.BZ2File("foo-1.0.tar.bz2").close()
+        source = TarfileSource("foo-1.0.tar.bz2", "1.0")
+        os.mkdir("bar")
+        self.assertEquals("bar/foo_1.0.orig.tar.gz",
+            source.fetch_tarball("foo", "1.0", "bar"))
+        self.failUnlessExists("bar/foo_1.0.orig.tar.gz")
+        gzip.open("bar/foo_1.0.orig.tar.gz").close()
 
 
 class _MissingUpstreamProvider(UpstreamProvider):

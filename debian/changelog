@@ -1,3 +1,9 @@
+bzr-builddeb (2.7.3) UNRELEASED; urgency=low
+
+  * Fix merge of bz2 upstream tarballs. LP: #737012
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 27 Mar 2011 01:25:57 +0100
+
 bzr-builddeb (2.7.2) unstable; urgency=high
 
   [ Andrew Mitchell ]
