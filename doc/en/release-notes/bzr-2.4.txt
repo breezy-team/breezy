@@ -15,6 +15,10 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* Two command synonyms for ``bzr branch`` have been deprecated, to avoid
+  confusion and to allow the names to later be reused.  The removed names
+  are: ``get`` and ``clone``.   (Martin Pool, #506265)
+
 New Features
 ************
 
