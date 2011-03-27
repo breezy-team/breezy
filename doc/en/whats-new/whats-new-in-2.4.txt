@@ -32,6 +32,12 @@ copied new tags visible in ``bzr tags``, but not copied the revisions.  Now
 revisions from tags will always be present, so that operations like ``bzr
 log -r tag:foo`` will always work.
 
+Deprecated command synonyms
+***************************
+
+Two built-in synonyms for ``bzr branch`` have been deprecated: ``clone`` and
+``get``.
+
 Configuration files
 *******************
 
