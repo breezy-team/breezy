@@ -33,6 +33,7 @@ from bzrlib.tests import (
     test_server,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
+from bzrlib.tests.script import run_script
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
 from bzrlib.workingtree import WorkingTree
 
@@ -501,3 +502,17 @@ class TestRemoteBranch(TestCaseWithSFTPServer):
         # Ensure that no working tree what created remotely
         self.assertFalse(t.has('remote/file'))
 
+
+class TestDeprecatedAliases(TestCaseWithTransport):
+
+    def test_deprecated_aliases(self):
+        """bzr branch can be called clone or get, but those names are deprecated.
+
+        See bug 506265.
+        """
+        for command in ['clone', 'get']:
+            run_script(self, """
+            $ bzr %(command)s A B
+            2>The command 'bzr %(command)s' has been deprecated in bzr 2.4. Please use 'bzr branch' instead.
+            2>bzr: ERROR: Not a branch...
+            """ % locals())
