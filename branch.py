@@ -807,7 +807,10 @@ class InterToGitBranch(branch.GenericInterBranch):
             # FIXME: Check for diverged branches
             refs.update(new_refs)
             return refs
-        old_refs, new_refs = self.interrepo.fetch_refs(update_refs)
+        try:
+            old_refs, new_refs = self.interrepo.fetch_refs(update_refs)
+        except NoPushSupport:
+            raise errors.NoRepositoryPresent(self.source, self.target)
         (result.old_revid, old_sha1) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
         if result.old_revid is None:
             result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
@@ -825,7 +828,10 @@ class InterToGitBranch(branch.GenericInterBranch):
             # FIXME: Check for diverged branches
             refs.update(new_refs)
             return refs
-        old_refs, new_refs = self.interrepo.fetch_refs(update_refs)
+        try:
+            old_refs, new_refs = self.interrepo.fetch_refs(update_refs)
+        except NoPushSupport:
+            raise errors.NoRepositoryPresent(self.source, self.target)
         (result.old_revid, old_sha1) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
         if result.old_revid is None:
             result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)

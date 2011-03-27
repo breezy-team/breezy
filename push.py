@@ -274,6 +274,8 @@ class InterToLocalGitRepository(InterToGitRepository):
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None, mapped_refs=None):
+        if not self.mapping.roundtripping:
+            raise NoPushSupport()
         if mapped_refs is not None:
             stop_revisions = mapped_refs
         elif revision_id is not None:

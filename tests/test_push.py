@@ -17,9 +17,6 @@
 
 """Tests for pushing revisions from Bazaar into Git."""
 
-from bzrlib import (
-    errors,
-    )
 from bzrlib.bzrdir import (
     format_registry,
     )
@@ -27,6 +24,7 @@ from bzrlib.repository import (
     InterRepository,
     )
 from bzrlib.tests import (
+    KnownFailure,
     TestCaseWithTransport,
     )
 
@@ -50,6 +48,7 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         self.assertIsInstance(self.interrepo, InterToGitRepository)
 
     def test_pointless_fetch_refs(self):
+        raise KnownFailure("roundtripping not yet supported")
         old_refs, new_refs = self.interrepo.fetch_refs(lambda x: x)
         self.assertEquals(old_refs, new_refs)
 

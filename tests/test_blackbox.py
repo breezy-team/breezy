@@ -27,6 +27,7 @@ from bzrlib.bzrdir import (
     )
 
 from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import KnownFailure
 
 from bzrlib.plugins.git import (
     tests,
@@ -107,6 +108,10 @@ class TestGitBlackBox(ExternalBase):
         GitRepo.init(os.path.join(self.test_dir, "bla"))
         self.run_bzr(['init', 'foo'])
         self.run_bzr(['commit', '--unchanged', '-m', 'bla', 'foo'])
+        output, error = self.run_bzr(['push', '-d', 'foo', 'bla'], retcode=3)
+        raise KnownFailure("roundtripping is not supported")
+
+        # when roundtripping is supported
         output, error = self.run_bzr(['push', '-d', 'foo', 'bla'])
         self.assertEquals("", output)
         self.assertTrue(error.endswith("Created new branch.\n"))
