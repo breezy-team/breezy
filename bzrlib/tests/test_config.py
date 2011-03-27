@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -35,7 +35,10 @@ from bzrlib import (
     trace,
     transport,
     )
-from bzrlib.tests import features
+from bzrlib.tests import (
+    features,
+    TestSkipped,
+    )
 from bzrlib.util.configobj import configobj
 
 
@@ -1829,3 +1832,25 @@ class TestPlainTextCredentialStore(tests.TestCase):
 # test_user_prompted ?
 class TestAuthenticationRing(tests.TestCaseWithTransport):
     pass
+
+
+class TestAutoUserId(tests.TestCase):
+    """Test inferring an automatic user name."""
+
+    def test_auto_user_id(self):
+        """Automatic inference of user name.
+        
+        This is a bit hard to test in an isolated way, because it depends on
+        system functions that go direct to /etc or perhaps somewhere else.
+        But it's reasonable to say that on Unix, with an /etc/mailname, we ought
+        to be able to choose a user name with no configuration.
+        """
+        if sys.platform == 'win32':
+            raise TestSkipped("User name inference not implemented on win32")
+        realname, address = config._auto_user_id()
+        if os.path.exists('/etc/mailname'):
+            self.assertTrue(realname)
+            self.assertTrue(address)
+        else:
+            self.assertEquals((None, None), (realname, address))
+
