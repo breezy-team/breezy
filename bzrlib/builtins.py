@@ -2922,6 +2922,7 @@ class cmd_export(Command):
          zip                          .zip
       =================       =========================
     """
+    encoding = 'exact'
     takes_args = ['dest', 'branch_or_subdir?']
     takes_options = ['directory',
         Option('format',
@@ -5566,7 +5567,7 @@ class cmd_tags(Command):
                     revno = branch.revision_id_to_dotted_revno(revid)
                     if isinstance(revno, tuple):
                         revno = '.'.join(map(str, revno))
-                except errors.NoSuchRevision:
+                except (errors.NoSuchRevision, errors.GhostRevisionsHaveNoRevno):
                     # Bad tag data/merges can lead to tagged revisions
                     # which are not in this branch. Fail gracefully ...
                     revno = '?'

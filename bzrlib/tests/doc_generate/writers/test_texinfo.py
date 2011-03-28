@@ -177,8 +177,6 @@ class TestTableGeneration(test_dg.TestSphinx):
 class TestTocTreeGeneration(test_dg.TestSphinx):
 
     def test_toctree(self):
-        if self.sphinx_version() >= (1, 0):
-            raise tests.TestSkipped('Not compatible with sphinx >= 1.0')
         self.build_tree_contents(
             [('index.txt', """
 Table of Contents
@@ -234,6 +232,29 @@ implicitly add the parent, and so on up to the root.
 @end itemize
 """,
                              'bzr-0.0.8.texi')
+
+    def test_toctree_empty(self):
+        self.build_tree_contents(
+            [('index.txt', """
+Table of Contents
+=================
+
+.. toctree::
+   :maxdepth: 1
+""")])
+        app, out, err = self.make_sphinx()
+        self.build(app)
+        self.assertFileEqual("""\
+This file has been converted using a beta rst->texinfo converter. 
+Most of the info links are currently bogus, don't report bugs about them,
+this is currently worked on.
+@node Top
+@top Placeholder
+@node table-of-contents
+@chapter Table of Contents
+""",
+                             'index.texi')
+
 
 class TestSections(test_dg.TestSphinx):
 

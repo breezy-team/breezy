@@ -954,6 +954,10 @@ class TestCase(testtools.TestCase):
         # between tests.  We should get rid of this altogether: bug 656694. --
         # mbp 20101008
         self.overrideAttr(bzrlib.trace, '_verbosity_level', 0)
+        # Isolate config option expansion until its default value for bzrlib is
+        # settled on or a the FIXME associated with _get_expand_default_value
+        # is addressed -- vila 20110219
+        self.overrideAttr(config, '_expand_default_value', None)
 
     def debug(self):
         # debug a frame up.
@@ -3707,6 +3711,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.per_repository',
         'bzrlib.tests.per_repository_chk',
         'bzrlib.tests.per_repository_reference',
+        'bzrlib.tests.per_repository_vf',
         'bzrlib.tests.per_uifactory',
         'bzrlib.tests.per_versionedfile',
         'bzrlib.tests.per_workingtree',
@@ -3746,6 +3751,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_commit_merge',
         'bzrlib.tests.test_config',
         'bzrlib.tests.test_conflicts',
+        'bzrlib.tests.test_controldir',
         'bzrlib.tests.test_counted_lock',
         'bzrlib.tests.test_crash',
         'bzrlib.tests.test_decorators',
@@ -3897,7 +3903,6 @@ def _test_suite_modules_to_doctest():
         'bzrlib',
         'bzrlib.branchbuilder',
         'bzrlib.decorators',
-        'bzrlib.export',
         'bzrlib.inventory',
         'bzrlib.iterablefile',
         'bzrlib.lockdir',

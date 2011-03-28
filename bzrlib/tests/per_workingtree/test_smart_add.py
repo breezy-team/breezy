@@ -29,7 +29,6 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.tests import (
-    features,
     test_smart_add,
     per_workingtree,
     )

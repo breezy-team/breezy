@@ -49,6 +49,10 @@ class MemoryTree(mutabletree.MutableTree):
         self._locks = 0
         self._lock_mode = None
 
+    def is_control_filename(self, filename):
+        # Memory tree doesn't have any control filenames
+        return False
+
     @needs_tree_write_lock
     def _add(self, files, ids, kinds):
         """See MutableTree._add."""

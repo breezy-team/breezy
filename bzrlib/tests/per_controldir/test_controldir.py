@@ -45,9 +45,9 @@ from bzrlib.ui import (
     )
 from bzrlib.remote import (
     RemoteBzrDir,
+    RemoteBzrDirFormat,
     RemoteRepository,
     )
-from bzrlib.repofmt import weaverepo
 
 
 class TestControlDir(TestCaseWithControlDir):
@@ -906,6 +906,8 @@ class TestControlDir(TestCaseWithControlDir):
         readonly_t = self.get_readonly_transport()
         made_control = self.bzrdir_format.initialize(t.base)
         self.failUnless(isinstance(made_control, controldir.ControlDir))
+        if isinstance(self.bzrdir_format, RemoteBzrDirFormat):
+            return
         self.assertEqual(self.bzrdir_format,
                          controldir.ControlDirFormat.find_format(readonly_t))
         direct_opened_dir = self.bzrdir_format.open(readonly_t)
@@ -972,8 +974,7 @@ class TestControlDir(TestCaseWithControlDir):
         if control is None:
             # uninitialisable format
             return
-        if not isinstance(control._format, (bzrdir.BzrDirFormat5,
-            bzrdir.BzrDirFormat6,)):
+        if not control._format.fixed_components:
             self.assertEqual(repo.bzrdir.root_transport.base,
                 made_repo.bzrdir.root_transport.base)
 
@@ -1041,8 +1042,7 @@ class TestControlDir(TestCaseWithControlDir):
         if control is None:
             # uninitialisable format
             return
-        if isinstance(self.bzrdir_format, (bzrdir.BzrDirFormat5,
-            bzrdir.BzrDirFormat6)):
+        if self.bzrdir_format.fixed_components:
             # must stay with the all-in-one-format.
             repo_name = self.bzrdir_format.network_name()
         self.assertEqual(repo_name, repo._format.network_name())
@@ -1067,19 +1067,14 @@ class TestControlDir(TestCaseWithControlDir):
             # Repositories are open write-locked
             self.assertTrue(repo.is_write_locked())
             self.addCleanup(repo.unlock)
-        self.assertIsInstance(control, bzrdir.BzrDir)
+        self.assertIsInstance(control, controldir.ControlDir)
         opened = bzrdir.BzrDir.open(t.base)
         expected_format = self.bzrdir_format
-        if isinstance(expected_format, bzrdir.RemoteBzrDirFormat):
-            # Current RemoteBzrDirFormat's do not reliably get network_name
-            # set, so we skip a number of tests for RemoteBzrDirFormat's.
-            self.assertIsInstance(control, RemoteBzrDir)
-        else:
-            if need_meta and isinstance(expected_format, (bzrdir.BzrDirFormat5,
-                bzrdir.BzrDirFormat6)):
-                # Pre-metadir formats change when we are making something that
-                # needs a metaformat, because clone is used for push.
-                expected_format = bzrdir.BzrDirMetaFormat1()
+        if need_meta and expected_format.fixed_components:
+            # Pre-metadir formats change when we are making something that
+            # needs a metaformat, because clone is used for push.
+            expected_format = bzrdir.BzrDirMetaFormat1()
+        if not isinstance(expected_format, RemoteBzrDirFormat):
             self.assertEqual(control._format.network_name(),
                 expected_format.network_name())
             self.assertEqual(control._format.network_name(),
@@ -1096,7 +1091,7 @@ class TestControlDir(TestCaseWithControlDir):
         # key in the registry gives back the same format. For remote obects
         # we check that the network_name of the RemoteBzrDirFormat we have
         # locally matches the actual format present on disk.
-        if isinstance(format, bzrdir.RemoteBzrDirFormat):
+        if isinstance(format, RemoteBzrDirFormat):
             dir._ensure_real()
             real_dir = dir._real_bzrdir
             network_name = format.network_name()
@@ -1277,69 +1272,6 @@ class TestControlDir(TestCaseWithControlDir):
         self.failUnless(isinstance(opened_tree, made_tree.__class__))
         self.failUnless(isinstance(opened_tree._format, made_tree._format.__class__))
 
-    def test_get_branch_transport(self):
-        dir = self.make_bzrdir('.')
-        # without a format, get_branch_transport gives use a transport
-        # which -may- point to an existing dir.
-        self.assertTrue(isinstance(dir.get_branch_transport(None),
-                                   transport.Transport))
-        # with a given format, either the bzr dir supports identifiable
-        # branches, or it supports anonymous  branch formats, but not both.
-        anonymous_format = bzrlib.branch.BzrBranchFormat4()
-        identifiable_format = bzrlib.branch.BzrBranchFormat5()
-        try:
-            found_transport = dir.get_branch_transport(anonymous_format)
-            self.assertRaises(errors.IncompatibleFormat,
-                              dir.get_branch_transport,
-                              identifiable_format)
-        except errors.IncompatibleFormat:
-            found_transport = dir.get_branch_transport(identifiable_format)
-        self.assertTrue(isinstance(found_transport, transport.Transport))
-        # and the dir which has been initialized for us must exist.
-        found_transport.list_dir('.')
-
-    def test_get_repository_transport(self):
-        dir = self.make_bzrdir('.')
-        # without a format, get_repository_transport gives use a transport
-        # which -may- point to an existing dir.
-        self.assertTrue(isinstance(dir.get_repository_transport(None),
-                                   transport.Transport))
-        # with a given format, either the bzr dir supports identifiable
-        # repositories, or it supports anonymous repository formats, but not both.
-        anonymous_format = weaverepo.RepositoryFormat6()
-        identifiable_format = weaverepo.RepositoryFormat7()
-        try:
-            found_transport = dir.get_repository_transport(anonymous_format)
-            self.assertRaises(errors.IncompatibleFormat,
-                              dir.get_repository_transport,
-                              identifiable_format)
-        except errors.IncompatibleFormat:
-            found_transport = dir.get_repository_transport(identifiable_format)
-        self.assertTrue(isinstance(found_transport, transport.Transport))
-        # and the dir which has been initialized for us must exist.
-        found_transport.list_dir('.')
-
-    def test_get_workingtree_transport(self):
-        dir = self.make_bzrdir('.')
-        # without a format, get_workingtree_transport gives use a transport
-        # which -may- point to an existing dir.
-        self.assertTrue(isinstance(dir.get_workingtree_transport(None),
-                                   transport.Transport))
-        # with a given format, either the bzr dir supports identifiable
-        # trees, or it supports anonymous tree formats, but not both.
-        anonymous_format = workingtree.WorkingTreeFormat2()
-        identifiable_format = workingtree.WorkingTreeFormat3()
-        try:
-            found_transport = dir.get_workingtree_transport(anonymous_format)
-            self.assertRaises(errors.IncompatibleFormat,
-                              dir.get_workingtree_transport,
-                              identifiable_format)
-        except errors.IncompatibleFormat:
-            found_transport = dir.get_workingtree_transport(identifiable_format)
-        self.assertTrue(isinstance(found_transport, transport.Transport))
-        # and the dir which has been initialized for us must exist.
-        found_transport.list_dir('.')
-
     def test_root_transport(self):
         dir = self.make_bzrdir('.')
         self.assertEqual(dir.root_transport.base,
@@ -1465,7 +1397,7 @@ class TestControlDir(TestCaseWithControlDir):
             # (we force the latest known format as downgrades may not be
             # available
             self.assertTrue(isinstance(dir._format.get_converter(
-                format=dir._format), bzrdir.Converter))
+                format=dir._format), controldir.Converter))
         dir.needs_format_conversion(
             controldir.ControlDirFormat.get_default_format())
 

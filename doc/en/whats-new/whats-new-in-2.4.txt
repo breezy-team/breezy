@@ -32,6 +32,22 @@ copied new tags visible in ``bzr tags``, but not copied the revisions.  Now
 revisions from tags will always be present, so that operations like ``bzr
 log -r tag:foo`` will always work.
 
+Configuration files
+*******************
+
+Option values can now refer to other options in the same configuration file by
+enclosing them in curly brackets (``{option}``). This is an opt-in feature
+during the beta period controlled by the ``bzr.config.expand`` option that
+should be declared in ``bazaar.conf`` and no other file.
+
+Changelog merge plugin
+**********************
+
+The ``changelog_merge`` plugin has been added.  It provides a merge hook
+to automate merging of changes to ``ChangeLog`` files in GNU's change log
+format.  Refer to ``bzr help changelog_merge`` for documentation on how to
+enable it and what it can do.
+
 Further information
 *******************
 
@@ -46,3 +62,6 @@ For a summary of changes made in earlier releases, see:
 * :doc:`whats-new-in-2.1`
 * :doc:`whats-new-in-2.2`
 * :doc:`whats-new-in-2.3`
+
+..
+   vim: tw=74 ft=rst ff=unix

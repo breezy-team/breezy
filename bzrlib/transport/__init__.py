@@ -27,7 +27,6 @@ it.
 """
 
 from cStringIO import StringIO
-import re
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -84,10 +83,7 @@ def _get_transport_modules():
     modules = set()
     for prefix, factory_list in transport_list_registry.items():
         for factory in factory_list:
-            if hasattr(factory, "_module_name"):
-                modules.add(factory._module_name)
-            else:
-                modules.add(factory._obj.__module__)
+            modules.add(factory.get_module())
     # Add chroot and pathfilter directly, because there is no handler
     # registered for it.
     modules.add('bzrlib.transport.chroot')
@@ -1776,9 +1772,6 @@ register_transport_proto('memory://')
 register_lazy_transport('memory://', 'bzrlib.transport.memory',
                         'MemoryTransport')
 
-# chroots cannot be implicitly accessed, they must be explicitly created:
-register_transport_proto('chroot+')
-
 register_transport_proto('readonly+',
 #              help="This modifier converts any transport to be readonly."
             )
@@ -1812,12 +1805,6 @@ register_lazy_transport('vfat+',
 register_transport_proto('nosmart+')
 register_lazy_transport('nosmart+', 'bzrlib.transport.nosmart',
                         'NoSmartTransportDecorator')
-
-# These two schemes were registered, but don't seem to have an actual transport
-# protocol registered
-for scheme in ['ssh', 'bzr+loopback']:
-    register_urlparse_netloc_protocol(scheme)
-del scheme
 
 register_transport_proto('bzr://',
             help="Fast access using the Bazaar smart server.",

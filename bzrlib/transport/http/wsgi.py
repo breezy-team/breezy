@@ -101,7 +101,7 @@ class SmartWSGIApp(object):
             backing_transport.  This is used to interpret relpaths received from
             the client.
         """
-        # Use a ChrootTransportDecorator so that this web application won't
+        # Use a ChrootServer so that this web application won't
         # accidentally let people access locations they shouldn't.
         # e.g. consider a smart server request for "get /etc/passwd" or
         # something.

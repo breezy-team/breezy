@@ -42,6 +42,7 @@ class _NotRunningAsRoot(tests.Feature):
 not_running_as_root = _NotRunningAsRoot()
 
 apport = tests.ModuleAvailableFeature('apport')
+lzma = tests.ModuleAvailableFeature('lzma')
 meliae = tests.ModuleAvailableFeature('meliae')
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
