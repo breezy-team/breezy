@@ -99,6 +99,7 @@ from bzrlib.plugins.builddeb.upstream import (
         UpstreamProvider,
         )
 from bzrlib.plugins.builddeb.upstream.branch import (
+        LazyUpstreamBranchSource,
         UpstreamBranchSource,
         )
 from bzrlib.plugins.builddeb.util import (
@@ -308,16 +309,9 @@ class cmd_builddeb(Command):
 
     def _get_upstream_branch(self, export_upstream, export_upstream_revision,
             config, version):
-        upstream_branch = Branch.open(export_upstream)
-        upstream_branch.lock_read()
-        try:
-            upstream_source = UpstreamBranchSource(upstream_branch, config=config)
-            if export_upstream_revision:
-                revspec = RevisionSpec.from_string(export_upstream_revision)
-                revid = revspec.as_revision_id(upstream_branch)
-                upstream_source.upstream_revision_map[version.encode("utf-8")] = revid
-        finally:
-            upstream_branch.unlock()
+        upstream_source = LazyUpstreamBranchSource(export_upstream, config=config)
+        if export_upstream_revision:
+            upstream_source.upstream_revision_map[version.encode("utf-8")] = export_upstream_revision
         return upstream_source
 
     def run(self, branch_or_build_options_list=None, verbose=False,
@@ -394,8 +388,7 @@ class cmd_builddeb(Command):
                         changelog.version.upstream_version)
                     upstream_sources.append(upstream_branch_source)
             elif not native and config.upstream_branch is not None:
-                upstream_branch = Branch.open(config.upstream_branch)
-                upstream_sources.append(UpstreamBranchSource(upstream_branch))
+                upstream_sources.append(LazyUpstreamBranchSource(config.upstream_branch))
             upstream_sources.extend([
                 GetOrigSourceSource(tree, larstiq),
                 UScanSource(tree, larstiq),
