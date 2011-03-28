@@ -217,7 +217,7 @@ Bug Fixes
 API Changes
 ***********
 
-* Added ``Branch.heads_to_fetch`` method.  Implementions of the Branch API
+* Added ``Branch.heads_to_fetch`` method.  Implementations of the Branch API
   must now inherit or implement this method.  (Andrew Bennetts, #721328)
   
 * Added ``bzrlib.mergetools`` module with helper functions for working with
@@ -307,7 +307,7 @@ Internals
 * ``CatchingExceptionThread`` (formerly ThreadWithException) has been moved
   out of the ``bzrlib.tests`` hierarchy to make it clearer that it can be used
   outside of tests. This class makes it easier to track exceptions in threads
-  by cacthing them so they can be re-raised in the controlling thread. It's
+  by catching them so they can be re-raised in the controlling thread. It's
   available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
 
 * Correctly propogate malloc failures from diff-delta.c code as MemoryError
