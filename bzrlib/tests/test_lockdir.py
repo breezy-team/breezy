@@ -36,7 +36,10 @@ from bzrlib.errors import (
     LockFailed,
     LockNotHeld,
     )
-from bzrlib.lockdir import LockDir
+from bzrlib.lockdir import (
+    LockDir,
+    LockHeldInfo,
+    )
 from bzrlib.tests import (
     features,
     TestCaseWithTransport,
@@ -882,6 +885,9 @@ class TestStaleLockDir(TestCaseWithTransport):
 
     :see: https://bugs.launchpad.net/bzr/+bug/220464
     """
+
+    def test_is_own_lock(self):
+        info = LockHeldInfo.for_this_process('abcabc')
 
     def test_lock_holder_still_active(self):
         """Detect that the holder (this process) is still running."""

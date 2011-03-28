@@ -203,7 +203,6 @@ class LockDir(lock.Lock):
         except (TransportError, PathError), e:
             raise LockFailed(self, e)
 
-
     def _attempt_lock(self):
         """Make the pending directory and attempt to rename into place.
 
@@ -288,13 +287,13 @@ class LockDir(lock.Lock):
             # After creating the lock directory, try again
             self.transport.mkdir(tmpname)
         self.nonce = rand_chars(20)
-        info_bytes = self._prepare_info()
+        info = LockHeldInfo.for_this_process(self.nonce)
         # We use put_file_non_atomic because we just created a new unique
         # directory so we don't have to worry about files existing there.
         # We'll rename the whole directory into place to get atomic
         # properties
         self.transport.put_bytes_non_atomic(tmpname + self.__INFO_NAME,
-                                            info_bytes)
+            info.to_bytes())
         return tmpname
 
     @only_raises(LockNotHeld, LockBroken)
@@ -491,19 +490,6 @@ class LockDir(lock.Lock):
     def _prepare_info(self):
         """Write information about a pending lock to a temporary file.
         """
-        # XXX: is creating this here inefficient?
-        config = bzrlib.config.GlobalConfig()
-        try:
-            user = config.username()
-        except errors.NoWhoami:
-            user = osutils.getuser_unicode()
-        s = rio.Stanza(hostname=get_host_name(),
-                   pid=str(os.getpid()),
-                   start_time=str(int(time.time())),
-                   nonce=self.nonce,
-                   user=user,
-                   )
-        return s.to_string()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
@@ -693,6 +679,28 @@ class LockHeldInfo(object):
     def get(self, field_name):
         """Return the contents of a field from the lock info, or None."""
         return self.info_dict.get(field_name)
+
+    @classmethod
+    def for_this_process(cls, nonce):
+        """Return a new LockHeldInfo for a lock taken by this process.
+        """
+        # XXX: is creating this here inefficient?
+        config = bzrlib.config.GlobalConfig()
+        try:
+            user = config.username()
+        except errors.NoWhoami:
+            user = osutils.getuser_unicode()
+        return cls(dict(
+            hostname=get_host_name(),
+            pid=str(os.getpid()),
+            start_time=str(int(time.time())),
+            nonce=nonce,
+            user=user,
+            ))
+
+    def to_bytes(self):
+        s = rio.Stanza(**self.info_dict)
+        return s.to_string()
 
     @classmethod
     def from_info_file_bytes(cls, info_file_bytes):
