@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -357,7 +357,7 @@ class LockDir(lock.Lock):
                 self.force_break_corrupt(e.file_data)
             return
         if holder_info is not None:
-            lock_info = '\n'.join(self._format_lock_info(holder_info))
+            lock_info = '\n'.join(holder_info.to_readable_list())
             if bzrlib.ui.ui_factory.get_boolean("Break %s" % lock_info):
                 self.force_break(holder_info)
 
@@ -368,16 +368,17 @@ class LockDir(lock.Lock):
         it still thinks it has the lock there will be two concurrent writers.
         In general the user's approval should be sought for lock breaks.
 
-        dead_holder_info must be the result of a previous LockDir.peek() call;
-        this is used to check that it's still held by the same process that
-        the user decided was dead.  If this is not the current holder,
-        LockBreakMismatch is raised.
-
         After the lock is broken it will not be held by any process.
         It is possible that another process may sneak in and take the
         lock before the breaking process acquires it.
+
+        :param dead_holder_info: 
+            Must be the result of a previous LockDir.peek() call; this is used
+            to check that it's still held by the same process that the user
+            decided was dead.  If this is not the current holder,
+            LockBreakMismatch is raised.
         """
-        if not isinstance(dead_holder_info, dict):
+        if not isinstance(dead_holder_info, LockHeldInfo):
             raise ValueError("dead_holder_info: %r" % dead_holder_info)
         self._check_not_locked()
         current_info = self.peek()
@@ -461,7 +462,8 @@ class LockDir(lock.Lock):
 
         peek() reads the info file of the lock holder, if any.
         """
-        return self._parse_info(self.transport.get_bytes(path))
+        return LockHeldInfo.from_info_file_bytes(
+            self.transport.get_bytes(path))
 
     def peek(self):
         """Check if the lock is held by anyone.
@@ -493,22 +495,6 @@ class LockDir(lock.Lock):
                    user=user,
                    )
         return s.to_string()
-
-    def _parse_info(self, info_bytes):
-        lines = osutils.split_lines(info_bytes)
-        try:
-            stanza = rio.read_stanza(lines)
-        except ValueError, e:
-            mutter('Corrupt lock info file: %r', lines)
-            raise LockCorrupt("could not parse lock info file: " + str(e),
-                              lines)
-        if stanza is None:
-            # see bug 185013; we fairly often end up with the info file being
-            # empty after an interruption; we could log a message here but
-            # there may not be much we can say
-            return {}
-        else:
-            return stanza.as_dict()
 
     def attempt_lock(self):
         """Take the lock; fail if it's already held.
@@ -577,7 +563,7 @@ class LockDir(lock.Lock):
                 else:
                     start = 'Lock owner changed for'
                 last_info = new_info
-                formatted_info = self._format_lock_info(new_info)
+                formatted_info = new_info.to_readable_list()
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
@@ -662,23 +648,6 @@ class LockDir(lock.Lock):
             raise LockContention(self)
         self._fake_read_lock = True
 
-    def _format_lock_info(self, info):
-        """Turn the contents of peek() into something for the user"""
-        start_time = info.get('start_time')
-        if start_time is None:
-            time_ago = '(unknown)'
-        else:
-            time_ago = format_delta(time.time() - int(info['start_time']))
-        user = info.get('user', '<unknown>')
-        hostname = info.get('hostname', '<unknown>')
-        pid = info.get('pid', '<unknown>')
-        return [
-            user,
-            hostname,
-            pid,
-            time_ago,
-            ]
-
     def validate_token(self, token):
         if token is not None:
             info = self.peek()
@@ -696,3 +665,67 @@ class LockDir(lock.Lock):
         if 'lock' not in debug.debug_flags:
             return
         mutter(str(self) + ": " + (format % args))
+
+
+class LockHeldInfo(object):
+    """The information recorded about a held lock.
+
+    This information is recorded into the lock when it's taken, and it can be
+    read back by any process with access to the lockdir.  It can be used, for 
+    example, to tell the user who holds the lock, or to try to detect whether
+    the lock holder is still alive.
+
+    Prior to bzr 2.4 a simple dict was used instead of an object.
+    """
+
+    def __init__(self, info_dict):
+        self.info_dict = info_dict
+
+    def get(self, field_name):
+        """Return the contents of a field from the lock info, or None."""
+        return self.info_dict.get(field_name)
+
+    @classmethod
+    def from_info_file_bytes(cls, info_file_bytes):
+        """Construct from the contents of the held file."""
+        lines = osutils.split_lines(info_file_bytes)
+        try:
+            stanza = rio.read_stanza(lines)
+        except ValueError, e:
+            mutter('Corrupt lock info file: %r', lines)
+            raise LockCorrupt("could not parse lock info file: " + str(e),
+                lines)
+        if stanza is None:
+            # see bug 185013; we fairly often end up with the info file being
+            # empty after an interruption; we could log a message here but
+            # there may not be much we can say
+            return cls({})
+        else:
+            return cls(stanza.as_dict())
+
+    def to_readable_list(self):
+        """Turn the contents of peek() into something for the user.
+        
+        Returns a list of [user, hostname, pid, time_ago] all as readable 
+        strings.
+        """
+        start_time = self.info_dict.get('start_time')
+        if start_time is None:
+            time_ago = '(unknown)'
+        else:
+            time_ago = format_delta(
+                time.time() - int(self.info_dict['start_time']))
+        user = self.info_dict.get('user', '<unknown>')
+        hostname = self.info_dict.get('hostname', '<unknown>')
+        pid = self.info_dict.get('pid', '<unknown>')
+        return [
+            user,
+            hostname,
+            pid,
+            time_ago,
+            ]
+
+    def __cmp__(self, other):
+        return (
+            cmp(type(self), type(other))
+            or cmp(self.info_dict, other.info_dict))

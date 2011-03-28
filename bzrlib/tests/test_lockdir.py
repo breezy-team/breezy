@@ -147,7 +147,7 @@ class TestLockDir(TestCaseWithTransport):
         self.addCleanup(lf1.unlock)
         # lock is held, should get some info on it
         info1 = lf1.peek()
-        self.assertEqual(set(info1.keys()),
+        self.assertEqual(set(info1.info_dict.keys()),
                          set(['user', 'nonce', 'hostname', 'pid', 'start_time']))
         # should get the same info if we look at it through a different
         # instance
@@ -167,7 +167,7 @@ class TestLockDir(TestCaseWithTransport):
         self.addCleanup(lf1.unlock)
         info2 = lf2.peek()
         self.assertTrue(info2)
-        self.assertEqual(info2['nonce'], lf1.nonce)
+        self.assertEqual(info2.get('nonce'), lf1.nonce)
 
     def test_30_lock_wait_fail(self):
         """Wait on a lock, then fail
@@ -646,12 +646,12 @@ class TestLockDir(TestCaseWithTransport):
         lf1.unlock()
         self.failIf(t.has('test_lock/held/info'))
 
-    def test__format_lock_info(self):
+    def test_display_form(self):
         ld1 = self.get_lock()
         ld1.create()
         ld1.lock_write()
         try:
-            info_list = ld1._format_lock_info(ld1.peek())
+            info_list = ld1.peek().to_readable_list()
         finally:
             ld1.unlock()
         self.assertEqual(info_list[0], u'jrandom@example.com')
@@ -734,7 +734,7 @@ class TestLockDir(TestCaseWithTransport):
         t.put_bytes('test_lock/held/info', '')
         lf = LockDir(t, 'test_lock')
         info = lf.peek()
-        formatted_info = lf._format_lock_info(info)
+        formatted_info = info.to_readable_list()
         self.assertEquals(
             ['<unknown>', '<unknown>', '<unknown>', '(unknown)'],
             formatted_info)
