@@ -54,6 +54,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* Information about held lockdir locks returned from eg `LockDir.peek` is
+  now represented as a `LockHeldInfo` object, rather than a plain Python
+  dict.
+
 Internals
 *********
 
