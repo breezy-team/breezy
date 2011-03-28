@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,28 +26,25 @@ from cStringIO import StringIO
 from StringIO import StringIO as pyStringIO
 import stat
 import sys
-import unittest
 
 from bzrlib import (
     errors,
     osutils,
+    pyutils,
     tests,
+    transport as _mod_transport,
     urlutils,
     )
 from bzrlib.errors import (ConnectionError,
-                           DirectoryNotEmpty,
                            FileExists,
                            InvalidURL,
-                           LockError,
                            NoSuchFile,
-                           NotLocalUrl,
                            PathError,
                            TransportNotPossible,
                            )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
 from bzrlib.tests import (
-    TestCaseInTempDir,
     TestSkipped,
     TestNotApplicable,
     multiply_tests,
@@ -56,7 +53,6 @@ from bzrlib.tests import test_server
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
     ConnectedTransport,
-    get_transport,
     _get_transport_modules,
     )
 from bzrlib.transport.memory import MemoryTransport
@@ -78,7 +74,7 @@ def transport_test_permutations():
     for module in _get_transport_modules():
         try:
             permutations = get_transport_test_permutations(
-                reduce(getattr, (module).split('.')[1:], __import__(module)))
+                pyutils.get_named_object(module))
             for (klass, server_factory) in permutations:
                 scenario = ('%s,%s' % (klass.__name__, server_factory.__name__),
                     {"transport_class":klass,
@@ -102,11 +98,11 @@ class TransportTests(TestTransportImplementation):
 
     def setUp(self):
         super(TransportTests, self).setUp()
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
 
     def check_transport_contents(self, content, transport, relpath):
-        """Check that transport.get(relpath).read() == content."""
-        self.assertEqualDiff(content, transport.get(relpath).read())
+        """Check that transport.get_bytes(relpath) == content."""
+        self.assertEqualDiff(content, transport.get_bytes(relpath))
 
     def test_ensure_base_missing(self):
         """.ensure_base() should create the directory if it doesn't exist"""
@@ -260,7 +256,7 @@ class TransportTests(TestTransportImplementation):
         handle = t.open_write_stream('foo')
         try:
             handle.write('b')
-            self.assertEqual('b', t.get('foo').read())
+            self.assertEqual('b', t.get_bytes('foo'))
         finally:
             handle.close()
 
@@ -272,7 +268,11 @@ class TransportTests(TestTransportImplementation):
         try:
             handle.write('b')
             self.assertEqual('b', t.get_bytes('foo'))
-            self.assertEqual('b', t.get('foo').read())
+            f = t.get('foo')
+            try:
+                self.assertEqual('b', f.read())
+            finally:
+                f.close()
         finally:
             handle.close()
 
@@ -644,7 +644,7 @@ class TransportTests(TestTransportImplementation):
             self.build_tree(files, transport=transport_from)
             self.assertEqual(4, transport_from.copy_to(files, transport_to))
             for f in files:
-                self.check_transport_contents(transport_to.get(f).read(),
+                self.check_transport_contents(transport_to.get_bytes(f),
                                               transport_from, f)
 
         t = self.get_transport()
@@ -673,7 +673,7 @@ class TransportTests(TestTransportImplementation):
         files = ['a', 'b', 'c', 'd']
         t.copy_to(iter(files), temp_transport)
         for f in files:
-            self.check_transport_contents(temp_transport.get(f).read(),
+            self.check_transport_contents(temp_transport.get_bytes(f),
                                           t, f)
         del temp_transport
 
@@ -1041,7 +1041,7 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        t = get_transport(url)
+        t = _mod_transport.get_transport(url)
         self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
 
     def test_stat(self):
@@ -1398,6 +1398,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(transport.clone("/").abspath('foo'),
                          transport.abspath("/foo"))
 
+    # GZ 2011-01-26: Test in per_transport but not using self.get_transport?
     def test_win32_abspath(self):
         # Note: we tried to set sys.platform='win32' so we could test on
         # other platforms too, but then osutils does platform specific
@@ -1408,11 +1409,11 @@ class TransportTests(TestTransportImplementation):
 
         # smoke test for abspath on win32.
         # a transport based on 'file:///' never fully qualifies the drive.
-        transport = get_transport("file:///")
+        transport = _mod_transport.get_transport("file:///")
         self.failUnlessEqual(transport.abspath("/"), "file:///")
 
         # but a transport that starts with a drive spec must keep it.
-        transport = get_transport("file:///C:/")
+        transport = _mod_transport.get_transport("file:///C:/")
         self.failUnlessEqual(transport.abspath("/"), "file:///C:/")
 
     def test_local_abspath(self):

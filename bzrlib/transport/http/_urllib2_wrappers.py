@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -75,6 +75,26 @@ from bzrlib import (
     )
 
 
+class addinfourl(urllib2.addinfourl):
+    '''Replacement addinfourl class compatible with python-2.7's xmlrpclib
+
+    In python-2.7, xmlrpclib expects that the response object that it receives
+    has a getheader method.  httplib.HTTPResponse provides this but
+    urllib2.addinfourl does not.  Add the necessary functions here, ported to
+    use the internal data structures of addinfourl.
+    '''
+
+    def getheader(self, name, default=None):
+        if self.headers is None:
+            raise httplib.ResponseNotReady()
+        return self.headers.getheader(name, default)
+
+    def getheaders(self):
+        if self.headers is None:
+            raise httplib.ResponseNotReady()
+        return self.headers.items()
+
+
 class _ReportingFileSocket(object):
 
     def __init__(self, filesock, report_activity=None):
@@ -90,15 +110,19 @@ class _ReportingFileSocket(object):
         self.report_activity(len(s), 'read')
         return s
 
-    def readline(self):
-        # This should be readline(self, size=-1), but httplib in python 2.4 and
-        #  2.5 defines a SSLFile wrapper whose readline method lacks the size
-        #  parameter.  So until we drop support for 2.4 and 2.5 and since we
-        #  don't *need* the size parameter we'll stay with readline(self)
-        #  --  vila 20090209
-        s = self.filesock.readline()
-        self.report_activity(len(s), 'read')
-        return s
+    # httplib in python 2.4 and 2.5 defines a SSLFile wrapper whose readline
+    # method lacks the size parameter. python2.6 provides a proper ssl socket
+    # and added it. python2.7 uses it, forcing us to provide it.
+    if sys.version_info < (2, 6):
+        def readline(self):
+            s = self.filesock.readline()
+            self.report_activity(len(s), 'read')
+            return s
+    else:
+        def readline(self, size=-1):
+            s = self.filesock.readline(size)
+            self.report_activity(len(s), 'read')
+            return s
 
     def __getattr__(self, name):
         return getattr(self.filesock, name)
@@ -145,7 +169,7 @@ class Response(httplib.HTTPResponse):
     """
 
     # Some responses have bodies in which we have no interest
-    _body_ignored_responses = [301,302, 303, 307, 401, 403, 404]
+    _body_ignored_responses = [301,302, 303, 307, 400, 401, 403, 404, 501]
 
     # in finish() below, we may have to discard several MB in the worst
     # case. To avoid buffering that much, we read and discard by chunks
@@ -246,17 +270,27 @@ class AbstractHTTPConnection:
     def cleanup_pipe(self):
         """Read the remaining bytes of the last response if any."""
         if self._response is not None:
-            pending = self._response.finish()
-            # Warn the user (once)
-            if (self._ranges_received_whole_file is None
-                and self._response.status == 200
-                and pending and pending > self._range_warning_thresold
-                ):
-                self._ranges_received_whole_file = True
-                trace.warning(
-                    'Got a 200 response when asking for multiple ranges,'
-                    ' does your server at %s:%s support range requests?',
-                    self.host, self.port)
+            try:
+                pending = self._response.finish()
+                # Warn the user (once)
+                if (self._ranges_received_whole_file is None
+                    and self._response.status == 200
+                    and pending and pending > self._range_warning_thresold
+                    ):
+                    self._ranges_received_whole_file = True
+                    trace.warning(
+                        'Got a 200 response when asking for multiple ranges,'
+                        ' does your server at %s:%s support range requests?',
+                        self.host, self.port)
+            except socket.error, e:
+                # It's conceivable that the socket is in a bad state here
+                # (including some test cases) and in this case, it doesn't need
+                # cleaning anymore, so no need to fail, we just get rid of the
+                # socket and let callers reconnect
+                if (len(e.args) == 0
+                    or e.args[0] not in (errno.ECONNRESET, errno.ECONNABORTED)):
+                    raise
+                self.close()
             self._response = None
         # Preserve our preciousss
         sock = self.sock
@@ -564,7 +598,9 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
                         'Bad status line received',
                         orig_error=exc_val)
                 elif (isinstance(exc_val, socket.error) and len(exc_val.args)
-                      and exc_val.args[0] in (errno.ECONNRESET, 10054)):
+                      and exc_val.args[0] in (errno.ECONNRESET, 10053, 10054)):
+                      # 10053 == WSAECONNABORTED
+                      # 10054 == WSAECONNRESET
                     raise errors.ConnectionReset(
                         "Connection lost while sending request.")
                 else:
@@ -656,7 +692,7 @@ class AbstractHTTPHandler(urllib2.AbstractHTTPHandler):
             r = response
             r.recv = r.read
             fp = socket._fileobject(r, bufsize=65536)
-            resp = urllib2.addinfourl(fp, r.msg, req.get_full_url())
+            resp = addinfourl(fp, r.msg, req.get_full_url())
             resp.code = r.status
             resp.msg = r.reason
             resp.version = r.version
@@ -906,9 +942,31 @@ class ProxyHandler(urllib2.ProxyHandler):
         return None
 
     def proxy_bypass(self, host):
-        """Check if host should be proxied or not"""
+        """Check if host should be proxied or not.
+
+        :returns: True to skip the proxy, False otherwise.
+        """
         no_proxy = self.get_proxy_env_var('no', default_to=None)
+        bypass = self.evaluate_proxy_bypass(host, no_proxy)
+        if bypass is None:
+            # Nevertheless, there are platform-specific ways to
+            # ignore proxies...
+            return urllib.proxy_bypass(host)
+        else:
+            return bypass
+
+    def evaluate_proxy_bypass(self, host, no_proxy):
+        """Check the host against a comma-separated no_proxy list as a string.
+
+        :param host: ``host:port`` being requested
+
+        :param no_proxy: comma-separated list of hosts to access directly.
+
+        :returns: True to skip the proxy, False not to, or None to
+            leave it to urllib.
+        """
         if no_proxy is None:
+            # All hosts are proxied
             return False
         hhost, hport = urllib.splitport(host)
         # Does host match any of the domains mentioned in
@@ -916,6 +974,9 @@ class ProxyHandler(urllib2.ProxyHandler):
         # are fuzzy (to say the least). We try to allow most
         # commonly seen values.
         for domain in no_proxy.split(','):
+            domain = domain.strip()
+            if domain == '':
+                continue
             dhost, dport = urllib.splitport(domain)
             if hport == dport or dport is None:
                 # Protect glob chars
@@ -924,9 +985,8 @@ class ProxyHandler(urllib2.ProxyHandler):
                 dhost = dhost.replace("?", r".")
                 if re.match(dhost, hhost, re.IGNORECASE):
                     return True
-        # Nevertheless, there are platform-specific ways to
-        # ignore proxies...
-        return urllib.proxy_bypass(host)
+        # Nothing explicitly avoid the host
+        return None
 
     def set_proxy(self, request, type):
         if self.proxy_bypass(request.get_host()):
@@ -1182,15 +1242,17 @@ class AbstractAuthHandler(urllib2.BaseHandler):
         user = auth.get('user', None)
         password = auth.get('password', None)
         realm = auth['realm']
+        port = auth.get('port', None)
 
         if user is None:
             user = auth_conf.get_user(auth['protocol'], auth['host'],
-                                      port=auth['port'], path=auth['path'],
+                                      port=port, path=auth['path'],
                                       realm=realm, ask=True,
                                       prompt=self.build_username_prompt(auth))
         if user is not None and password is None:
             password = auth_conf.get_password(
-                auth['protocol'], auth['host'], user, port=auth['port'],
+                auth['protocol'], auth['host'], user,
+                port=port,
                 path=auth['path'], realm=realm,
                 prompt=self.build_password_prompt(auth))
 

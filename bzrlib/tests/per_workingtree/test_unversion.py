@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,7 +42,7 @@ class TestUnversion(TestCaseWithWorkingTree):
         # unversioning children of reparented children of unversioned
         # paths when relocation entries are present and the relocation
         # points later into the dirstate.
-        tree = self.make_branch_and_tree(['.'])
+        tree = self.make_branch_and_tree('.')
         self.build_tree(['del/', 'del/sub/', 'del/sub/b'])
         tree.add(['del', 'del/sub', 'del/sub/b'], ['del', 'sub', 'b'])
         tree.commit('setup')

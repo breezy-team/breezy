@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ import sys
 import tempfile
 
 from bzrlib import (
+    debug,
     errors,
     trace,
     )
@@ -81,7 +82,18 @@ class TestTrace(TestCase):
             pass
         msg = _format_exception()
         self.assertEquals(msg,
-            "bzr: out of memory\n")
+            "bzr: out of memory\nUse -Dmem_dump to dump memory to a file.\n")
+
+    def test_format_mem_dump(self):
+        self.requireFeature(features.meliae)
+        debug.debug_flags.add('mem_dump')
+        try:
+            raise MemoryError()
+        except MemoryError:
+            pass
+        msg = _format_exception()
+        self.assertStartsWith(msg,
+            "bzr: out of memory\nMemory dumped to ")
 
     def test_format_os_error(self):
         try:
@@ -289,9 +301,7 @@ class TestTrace(TestCase):
         # set up.
         self.overrideAttr(sys, 'stderr', StringIO())
         # Set the log file to something that cannot exist
-        # FIXME: A bit dangerous: we are not in an isolated dir here -- vilajam
-        # 20100125
-        os.environ['BZR_LOG'] = os.getcwd() + '/no-dir/bzr.log'
+        self.overrideEnv('BZR_LOG', os.getcwd() + '/no-dir/bzr.log')
         self.overrideAttr(trace, '_bzr_log_filename')
         logf = trace._open_bzr_log()
         self.assertIs(None, logf)

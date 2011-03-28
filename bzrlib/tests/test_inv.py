@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,23 +24,28 @@ from bzrlib import (
     repository,
     revision,
     tests,
+    workingtree,
     )
-from bzrlib.inventory import (CHKInventory, Inventory, ROOT_ID, InventoryFile,
-    InventoryDirectory, InventoryEntry, TreeReference)
+from bzrlib.inventory import (
+    CHKInventory,
+    Inventory,
+    ROOT_ID,
+    InventoryFile,
+    InventoryDirectory,
+    InventoryEntry,
+    TreeReference,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
-    condition_isinstance,
-    multiply_tests,
-    split_suite_by_condition,
     )
-from bzrlib.tests.per_workingtree import workingtree_formats
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterise some inventory tests."""
-    to_adapt, result = split_suite_by_condition(standard_tests,
-        condition_isinstance(TestDeltaApplication))
+load_tests = load_tests_apply_scenarios
+
+
+def delta_application_scenarios():
     scenarios = [
         ('Inventory', {'apply_delta':apply_inventory_Inventory}),
         ]
@@ -51,10 +56,14 @@ def load_tests(standard_tests, module, loader):
     # just creating trees.
     formats = set()
     for _, format in repository.format_registry.iteritems():
-        scenarios.append((str(format.__name__), {
-            'apply_delta':apply_inventory_Repository_add_inventory_by_delta,
-            'format':format}))
-    for format in workingtree_formats():
+        if format.supports_full_versioned_files:
+            scenarios.append((str(format.__name__), {
+                'apply_delta':apply_inventory_Repository_add_inventory_by_delta,
+                'format':format}))
+    for format in workingtree.format_registry._get_all():
+        repo_fmt = format._matchingbzrdir.repository_format
+        if not repo_fmt.supports_full_versioned_files:
+            continue
         scenarios.append(
             (str(format.__class__.__name__) + ".update_basis_by_delta", {
             'apply_delta':apply_inventory_WT_basis,
@@ -63,7 +72,7 @@ def load_tests(standard_tests, module, loader):
             (str(format.__class__.__name__) + ".apply_inventory_delta", {
             'apply_delta':apply_inventory_WT,
             'format':format}))
-    return multiply_tests(to_adapt, scenarios, result)
+    return scenarios
 
 
 def create_texts_for_inv(repo, inv):
@@ -73,7 +82,8 @@ def create_texts_for_inv(repo, inv):
         else:
             lines = []
         repo.texts.add_lines((ie.file_id, ie.revision), [], lines)
-    
+
+
 def apply_inventory_Inventory(self, basis, delta):
     """Apply delta to basis and return the result.
     
@@ -329,6 +339,8 @@ class TestInventoryUpdates(TestCase):
 
 
 class TestDeltaApplication(TestCaseWithTransport):
+
+    scenarios = delta_application_scenarios()
  
     def get_empty_inventory(self, reference_inv=None):
         """Get an empty inventory.
@@ -588,6 +600,11 @@ class TestInventory(TestCase):
         inv.root = None
         self.assertFalse(inv.is_root('TREE_ROOT'))
         self.assertFalse(inv.is_root('booga'))
+
+    def test_entries_for_empty_inventory(self):
+        """Test that entries() will not fail for an empty inventory"""
+        inv = Inventory(root_id=None)
+        self.assertEqual([], inv.entries())
 
 
 class TestInventoryEntry(TestCase):
@@ -1205,6 +1222,88 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertIsInstance(ie2.name, unicode)
         self.assertEqual(('tree\xce\xa9name', 'tree-root-id', 'tree-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
+
+    def make_basic_utf8_inventory(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        root_id = inv.root.file_id
+        inv.add(InventoryFile("fileid", u'f\xefle', root_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 0
+        inv.add(InventoryDirectory("dirid", u'dir-\N{EURO SIGN}', root_id))
+        inv.add(InventoryFile("childid", u'ch\xefld', "dirid"))
+        inv["childid"].revision = "filerev"
+        inv["childid"].text_sha1 = "ffff"
+        inv["childid"].text_size = 0
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        return CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+
+    def test__preload_handles_utf8(self):
+        new_inv = self.make_basic_utf8_inventory()
+        self.assertEqual({}, new_inv._fileid_to_entry_cache)
+        self.assertFalse(new_inv._fully_cached)
+        new_inv._preload_cache()
+        self.assertEqual(
+            sorted([new_inv.root_id, "fileid", "dirid", "childid"]),
+            sorted(new_inv._fileid_to_entry_cache.keys()))
+        ie_root = new_inv._fileid_to_entry_cache[new_inv.root_id]
+        self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
+                         sorted(ie_root._children.keys()))
+        ie_dir = new_inv._fileid_to_entry_cache['dirid']
+        self.assertEqual([u'ch\xefld'], sorted(ie_dir._children.keys()))
+
+    def test__preload_populates_cache(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        root_id = inv.root.file_id
+        inv.add(InventoryFile("fileid", "file", root_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        inv.add(InventoryDirectory("dirid", "dir", root_id))
+        inv.add(InventoryFile("childid", "child", "dirid"))
+        inv["childid"].revision = "filerev"
+        inv["childid"].executable = False
+        inv["childid"].text_sha1 = "dddd"
+        inv["childid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        self.assertEqual({}, new_inv._fileid_to_entry_cache)
+        self.assertFalse(new_inv._fully_cached)
+        new_inv._preload_cache()
+        self.assertEqual(
+            sorted([root_id, "fileid", "dirid", "childid"]),
+            sorted(new_inv._fileid_to_entry_cache.keys()))
+        self.assertTrue(new_inv._fully_cached)
+        ie_root = new_inv._fileid_to_entry_cache[root_id]
+        self.assertEqual(['dir', 'file'], sorted(ie_root._children.keys()))
+        ie_dir = new_inv._fileid_to_entry_cache['dirid']
+        self.assertEqual(['child'], sorted(ie_dir._children.keys()))
+
+    def test__preload_handles_partially_evaluated_inventory(self):
+        new_inv = self.make_basic_utf8_inventory()
+        ie = new_inv[new_inv.root_id]
+        self.assertIs(None, ie._children)
+        self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
+                         sorted(ie.children.keys()))
+        # Accessing .children loads _children
+        self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
+                         sorted(ie._children.keys()))
+        new_inv._preload_cache()
+        # No change
+        self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
+                         sorted(ie._children.keys()))
+        ie_dir = new_inv["dirid"]
+        self.assertEqual([u'ch\xefld'],
+                         sorted(ie_dir._children.keys()))
 
 
 class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):

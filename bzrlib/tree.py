@@ -157,18 +157,6 @@ class Tree(object):
         """
         return self.inventory.id2path(file_id)
 
-    def is_control_filename(self, filename):
-        """True if filename is the name of a control file in this tree.
-
-        :param filename: A filename within the tree. This is a relative path
-        from the root of this tree.
-
-        This is true IF and ONLY IF the filename is part of the meta data
-        that bzr controls in this tree. I.E. a random .bzr directory placed
-        on disk will not be a control file for this tree.
-        """
-        return self.bzrdir.is_control_filename(filename)
-
     @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         """Walk the tree in 'by_dir' order.
@@ -776,17 +764,6 @@ def file_status(filename, old_tree, new_tree):
         return 'D'
 
     return 'wtf?'
-
-
-@deprecated_function(deprecated_in((1, 9, 0)))
-def find_renames(old_inv, new_inv):
-    for file_id in old_inv:
-        if file_id not in new_inv:
-            continue
-        old_name = old_inv.id2path(file_id)
-        new_name = new_inv.id2path(file_id)
-        if old_name != new_name:
-            yield (old_name, new_name)
 
 
 def find_ids_across_trees(filenames, trees, require_versioned=True):

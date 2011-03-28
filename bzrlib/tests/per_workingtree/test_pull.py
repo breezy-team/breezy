@@ -15,8 +15,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 
+from bzrlib import tests
 from bzrlib.tests import per_workingtree
 
 
@@ -62,3 +62,41 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
         tree.commit('second')
         to_tree.pull(tree.branch)
         self.assertEqual('second_root_id', to_tree.get_root_id())
+
+
+class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
+
+    def make_branch_deleting_dir(self, relpath=None):
+        if relpath is None:
+            relpath = 'trunk'
+        builder = self.make_branch_builder(relpath)
+        builder.start_series()
+
+        # Create an empty trunk
+        builder.build_snapshot('1', None, [
+                ('add', ('', 'root-id', 'directory', ''))])
+        builder.build_snapshot('2', ['1'], [
+                ('add', ('dir', 'dir-id', 'directory', '')),
+                ('add', ('file', 'file-id', 'file', 'trunk content\n')),])
+        builder.build_snapshot('3', ['2'], [
+                ('unversion', 'dir-id'),])
+        builder.finish_series()
+        return builder.get_branch()
+
+    def test_pull_orphans(self):
+        if not self.workingtree_format.missing_parent_conflicts:
+            raise tests.TestSkipped(
+                '%r does not support missing parent conflicts' %
+                    self.workingtree_format)
+        trunk = self.make_branch_deleting_dir('trunk')
+        work = trunk.bzrdir.sprout('work', revision_id='2').open_workingtree()
+        work.branch.get_config().set_user_option(
+            'bzr.transform.orphan_policy', 'move')
+        # Add some unversioned files in dir
+        self.build_tree(['work/dir/foo',
+                         'work/dir/subdir/',
+                         'work/dir/subdir/foo'])
+        work.pull(trunk)
+        self.assertLength(0, work.conflicts())
+        # The directory removal should succeed
+        self.failIfExists('work/dir')

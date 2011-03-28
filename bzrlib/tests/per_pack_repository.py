@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 These tests are repeated for all pack-based repository formats.
 """
 
-from cStringIO import StringIO
 from stat import S_ISDIR
 
 from bzrlib.btree_index import BTreeGraphIndex
@@ -29,35 +28,24 @@ from bzrlib import (
     errors,
     inventory,
     osutils,
-    progress,
     repository,
     revision as _mod_revision,
-    symbol_versioning,
     tests,
+    transport,
     ui,
-    upgrade,
-    workingtree,
-    )
-from bzrlib.repofmt import (
-    pack_repo,
-    groupcompress_repo,
     )
 from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 from bzrlib.smart import (
     client,
     )
 from bzrlib.tests import (
-    TestCase,
     TestCaseWithTransport,
     TestNotApplicable,
-    TestSkipped,
     )
 from bzrlib.transport import (
-    get_transport,
     memory,
     )
 from bzrlib.tests import test_server
-from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestPackRepository(TestCaseWithTransport):
@@ -278,8 +266,8 @@ class TestPackRepository(TestCaseWithTransport):
         format = self.get_format()
         server = test_server.FakeNFSServer()
         self.start_server(server)
-        transport = get_transport(server.get_url())
-        bzrdir = self.get_format().initialize_on_transport(transport)
+        t = transport.get_transport(server.get_url())
+        bzrdir = self.get_format().initialize_on_transport(t)
         repo = bzrdir.create_repository()
         repo_transport = bzrdir.get_repository_transport(None)
         self.assertTrue(repo_transport.has('obsolete_packs'))

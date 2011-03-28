@@ -336,3 +336,46 @@ class TestRenameOne(TestCaseWithWorkingTree):
         tree.add(['a'])
         self.assertRaises((errors.InvalidNormalization, UnicodeEncodeError),
             tree.rename_one, 'a', u'ba\u030arry')
+
+    def test_rename_unversioned_non_ascii(self):
+        """Check error when renaming an unversioned non-ascii file"""
+        self.requireFeature(tests.UnicodeFilename)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree([u"\xA7"])
+        e = self.assertRaises(errors.BzrRenameFailedError,
+            tree.rename_one, u"\xA7", "b")
+        self.assertIsInstance(e.extra, errors.NotVersionedError)
+        self.assertEqual(e.extra.path, u"\xA7")
+
+    def test_rename_into_unversioned_non_ascii_dir(self):
+        """Check error when renaming into unversioned non-ascii directory"""
+        self.requireFeature(tests.UnicodeFilename)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["a", u"\xA7/"])
+        tree.add(["a"])
+        e = self.assertRaises(errors.BzrMoveFailedError,
+            tree.rename_one, "a", u"\xA7/a")
+        self.assertIsInstance(e.extra, errors.NotVersionedError)
+        self.assertEqual(e.extra.path, u"\xA7")
+
+    def test_rename_over_already_versioned_non_ascii(self):
+        """Check error renaming over an already versioned non-ascii file"""
+        self.requireFeature(tests.UnicodeFilename)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["a", u"\xA7"])
+        tree.add(["a", u"\xA7"])
+        e = self.assertRaises(errors.BzrMoveFailedError,
+            tree.rename_one, "a", u"\xA7")
+        self.assertIsInstance(e.extra, errors.AlreadyVersionedError)
+        self.assertEqual(e.extra.path, u"\xA7")
+
+    def test_rename_after_non_existant_non_ascii(self):
+        """Check error renaming after move with missing non-ascii file"""
+        self.requireFeature(tests.UnicodeFilename)
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["a"])
+        tree.add(["a"])
+        e = self.assertRaises(errors.BzrMoveFailedError,
+            tree.rename_one, "a", u"\xA7", after=True)
+        self.assertIsInstance(e.extra, errors.NoSuchFile)
+        self.assertEqual(e.extra.path, u"\xA7")

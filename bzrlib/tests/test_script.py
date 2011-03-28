@@ -19,6 +19,7 @@ from bzrlib import (
     commands,
     osutils,
     tests,
+    trace,
     ui,
     )
 from bzrlib.tests import script
@@ -160,7 +161,51 @@ class TestRedirections(tests.TestCase):
 class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_unknown_command(self):
-        self.assertRaises(SyntaxError, self.run_script, 'foo')
+        """A clear error is reported for commands that aren't recognised
+
+        Testing the attributes of the SyntaxError instance is equivalent to
+        using traceback.format_exception_only and comparing with:
+          File "<string>", line 1
+            foo --frob
+            ^
+        SyntaxError: Command not found "foo"
+        """
+        e = self.assertRaises(SyntaxError, self.run_script, "$ foo --frob")
+        self.assertContainsRe(e.msg, "not found.*foo")
+        self.assertEquals(e.text, "foo --frob")
+
+    def test_blank_output_mismatches_output(self):
+        """If you give output, the output must actually be blank.
+        
+        See <https://bugs.launchpad.net/bzr/+bug/637830>: previously blank
+        output was a wildcard.  Now you must say ... if you want that.
+        """
+        self.assertRaises(AssertionError,
+            self.run_script,
+            """
+            $ echo foo
+            """)
+
+    def test_null_output_matches_option(self):
+        """If you want null output to be a wild card, you can pass 
+        null_output_matches_anything to run_script"""
+        self.run_script(
+            """
+            $ echo foo
+            """, null_output_matches_anything=True)
+
+    def test_ellipsis_everything(self):
+        """A simple ellipsis matches everything."""
+        self.run_script("""
+        $ echo foo
+        ...
+        """)
+
+    def test_ellipsis_matches_empty(self):
+        self.run_script("""
+        $ cd .
+        ...
+        """)
 
     def test_stops_on_unexpected_output(self):
         story = """
@@ -169,7 +214,6 @@ $ cd dir
 The cd command ouputs nothing
 """
         self.assertRaises(AssertionError, self.run_script, story)
-
 
     def test_stops_on_unexpected_error(self):
         story = """
@@ -190,10 +234,13 @@ $ bzr not-a-command
         # The status matters, not the output
         story = """
 $ bzr init
+...
 $ cat >file
 <Hello
 $ bzr add file
+...
 $ bzr commit -m 'adding file'
+2>...
 """
         self.run_script(story)
 
@@ -244,6 +291,15 @@ $ cat '*'
 $ echo 'cat' "dog" '"chicken"' "'dragon'"
 cat dog "chicken" 'dragon'
 """)
+
+    def test_verbosity_isolated(self):
+        """Global verbosity is isolated from commands run in scripts.
+        """
+        # see also 656694; we should get rid of global verbosity
+        self.run_script("""
+        $ bzr init --quiet a
+        """)
+        self.assertEquals(trace.is_quiet(), False)
 
 
 class TestCat(script.TestCaseWithTransportAndScript):
@@ -356,7 +412,10 @@ $ cd dir
 class TestBzr(script.TestCaseWithTransportAndScript):
 
     def test_bzr_smoke(self):
-        self.run_script('$ bzr init branch')
+        self.run_script("""
+            $ bzr init branch
+            Created a standalone tree (format: ...)
+            """)
         self.failUnlessExists('branch')
 
 

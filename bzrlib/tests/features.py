@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,16 +19,36 @@
 import os
 import stat
 
-from bzrlib import tests
-from bzrlib.symbol_versioning import deprecated_in
+from bzrlib import (
+    osutils,
+    tests,
+    )
 
+
+class _NotRunningAsRoot(tests.Feature):
+
+    def _probe(self):
+        try:
+            uid = os.getuid()
+        except AttributeError:
+            # If there is no uid, chances are there is no root either
+            return True
+        return uid != 0
+
+    def feature_name(self):
+        return 'Not running as root'
+
+
+not_running_as_root = _NotRunningAsRoot()
 
 apport = tests.ModuleAvailableFeature('apport')
+lzma = tests.ModuleAvailableFeature('lzma')
+meliae = tests.ModuleAvailableFeature('meliae')
 paramiko = tests.ModuleAvailableFeature('paramiko')
 pycurl = tests.ModuleAvailableFeature('pycurl')
 pywintypes = tests.ModuleAvailableFeature('pywintypes')
-subunit = tests.ModuleAvailableFeature('subunit')
 sphinx = tests.ModuleAvailableFeature('sphinx')
+subunit = tests.ModuleAvailableFeature('subunit')
 
 
 class _BackslashDirSeparatorFeature(tests.Feature):
@@ -97,16 +117,8 @@ class ExecutableFeature(tests.Feature):
         return self._path
 
     def _probe(self):
-        path = os.environ.get('PATH')
-        if path is None:
-            return False
-        for d in path.split(os.pathsep):
-            if d:
-                f = os.path.join(d, self.name)
-                if os.access(f, os.X_OK):
-                    self._path = f
-                    return True
-        return False
+        self._path = osutils.find_executable_on_path(self.name)
+        return self._path is not None
 
     def feature_name(self):
         return '%s executable' % self.name

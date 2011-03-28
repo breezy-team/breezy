@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ rather than in tests/per_workingtree/*.py.
 """
 
 from bzrlib import (
+    branchbuilder,
     errors,
     tests,
     workingtree,
@@ -58,11 +59,12 @@ class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
         made_control.create_branch()
         return self.workingtree_format.initialize(made_control)
 
-
-def workingtree_formats():
-    """The known working tree formats."""
-    return (workingtree.WorkingTreeFormat._formats.values() +
-        workingtree._legacy_formats)
+    def make_branch_builder(self, relpath, format=None):
+        if format is None:
+            format = self.bzrdir_format
+        builder = branchbuilder.BranchBuilder(self.get_transport(relpath),
+                                              format=format)
+        return builder
 
 
 def load_tests(standard_tests, module, loader):
@@ -75,6 +77,7 @@ def load_tests(standard_tests, module, loader):
         'break_lock',
         'changes_from',
         'check',
+        'check_state',
         'content_filters',
         'commit',
         'eol_conversion',
@@ -117,7 +120,7 @@ def load_tests(standard_tests, module, loader):
         # None here will cause a readonly decorator to be created
         # by the TestCaseWithTransport.get_readonly_transport method.
         None,
-        workingtree_formats()
+        workingtree.format_registry._get_all()
         )
 
     # add the tests for the sub modules

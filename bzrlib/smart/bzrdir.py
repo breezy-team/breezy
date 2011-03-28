@@ -181,7 +181,8 @@ class SmartServerRequestCreateBranch(SmartServerRequestBzrDir):
 
         :param path: The path to the bzrdir.
         :param network_name: The network name of the branch type to create.
-        :return: (ok, network_name)
+        :return: ('ok', branch_format, repo_path, rich_root, tree_ref,
+            external_lookup, repo_format)
         """
         bzrdir = BzrDir.open_from_transport(
             self.transport_from_client_path(path))

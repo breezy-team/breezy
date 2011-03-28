@@ -53,7 +53,7 @@ class TestSprout(TestCaseWithBranch):
         # Start with a format that is unlikely to be the target format
         # We call the super class to allow overriding the format of creation)
         source = tests.TestCaseWithTransport.make_branch(self, 'old-branch',
-                                                         format='metaweave')
+                                                         format='knit')
         target_bzrdir = self.make_bzrdir('target')
         target_bzrdir.create_repository()
         result_format = self.branch_format
@@ -110,6 +110,25 @@ class TestSprout(TestCaseWithBranch):
         branch2 = wt.branch.sprout(repo.bzrdir, revision_id='rev2-alt')
         self.assertEqual((2, 'rev2-alt'), branch2.last_revision_info())
         self.assertEqual(['rev1', 'rev2-alt'], branch2.revision_history())
+
+    def test_sprout_preserves_tags(self):
+        """Sprout preserves tags, even tags of absent revisions."""
+        try:
+            builder = self.make_branch_builder('source')
+        except errors.UninitializableFormat:
+            raise tests.TestSkipped('Uninitializable branch format')
+        builder.build_commit(message="Rev 1", rev_id='rev-1')
+        source = builder.get_branch()
+        try:
+            source.tags.set_tag('tag-a', 'missing-rev')
+        except errors.TagsNotSupported:
+            raise tests.TestNotApplicable(
+                'Branch format does not support tags.')
+        # Now source has a tag pointing to an absent revision.  Sprout it.
+        target_bzrdir = self.make_repository('target').bzrdir
+        new_branch = source.sprout(target_bzrdir)
+        # The tag is present in the target
+        self.assertEqual('missing-rev', new_branch.tags.lookup_tag('tag-a'))
 
     def test_sprout_from_any_repo_revision(self):
         """We should be able to sprout from any revision."""
@@ -182,9 +201,9 @@ class TestSprout(TestCaseWithBranch):
                 source.last_revision(), possible_transports=[target_transport],
                 source_branch=source, stacked=True)
         except errors.UnstackableBranchFormat:
-            if isinstance(self.branch_format, _mod_branch.BzrBranchFormat4):
-                raise tests.KnownFailure(
-                    "Format 4 doesn't auto stack successfully.")
+            if not self.branch_format.supports_stacking():
+                raise tests.TestNotApplicable(
+                    "Format doesn't auto stack successfully.")
             else:
                 raise
         result = dir.open_branch()

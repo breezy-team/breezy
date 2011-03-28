@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -79,6 +79,18 @@ class MutableTree(tree.Tree):
         # Sub-classes may initialize to False if they detect they are being
         # used on media which doesn't differentiate the case of names.
         self.case_sensitive = True
+
+    def is_control_filename(self, filename):
+        """True if filename is the name of a control file in this tree.
+
+        :param filename: A filename within the tree. This is a relative path
+        from the root of this tree.
+
+        This is true IF and ONLY IF the filename is part of the meta data
+        that bzr controls in this tree. I.E. a random .bzr directory placed
+        on disk will not be a control file for this tree.
+        """
+        raise NotImplementedError(self.is_control_filename)
 
     @needs_tree_write_lock
     def add(self, files, ids=None, kinds=None):
@@ -418,7 +430,9 @@ class MutableTree(tree.Tree):
 
         # expand any symlinks in the directory part, while leaving the
         # filename alone
-        file_list = map(osutils.normalizepath, file_list)
+        # only expanding if symlinks are supported avoids windows path bugs
+        if osutils.has_symlinks():
+            file_list = map(osutils.normalizepath, file_list)
 
         # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
@@ -545,6 +559,13 @@ class MutableTree(tree.Tree):
                         this_ie = None
                     else:
                         this_ie = inv[this_id]
+                        # Same as in _add_one below, if the inventory doesn't
+                        # think this is a directory, update the inventory
+                        if this_ie.kind != 'directory':
+                            this_ie = inventory.make_entry('directory',
+                                this_ie.name, this_ie.parent_id, this_id)
+                            del inv[this_id]
+                            inv.add(this_ie)
 
                 for subf in sorted(os.listdir(abspath)):
                     # here we could use TreeDirectory rather than

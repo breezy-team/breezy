@@ -1,0 +1,206 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 1.5
+#######
+
+:Released: 2008-05-16
+
+This release of Bazaar includes several updates to the documentation, and fixes
+to prepare for making rich root support the default format. Many bugs have been
+squashed, including fixes to log, bzr+ssh inter-operation with older servers.
+
+Changes
+*******
+
+* Suppress deprecation warnings when bzrlib is a 'final' release. This way
+  users of packaged software won't be bothered with DeprecationWarnings,
+  but developers and testers will still see them. (John Arbash Meinel)
+
+Documentation
+*************
+
+* Incorporate feedback from Jelmer Vernooij and Neil Martinsen-Burrell
+  on the plugin and integration chapters of the User Guide.
+  (Ian Clatworthy)
+
+
+bzr 1.5rc1
+##########
+
+:Released: 2008-05-09
+
+Changes
+*******
+
+* Broader support of GNU Emacs mail clients. Set
+  ``mail_client=emacsclient`` in your bazaar.conf and ``send`` will pop the
+  bundle in a mail buffer according to the value of ``mail-user-agent``
+  variable. (Xavier Maillard)
+
+Improvements
+************
+
+* Diff now handles revision specs like "branch:" and "submit:" more
+  efficiently.  (Aaron Bentley, #202928)
+
+* More friendly error given when attempt to start the smart server
+  on an address already in use. (Andrea Corbellini, #200575)
+
+* Pull completes much faster when there is nothing to pull.
+  (Aaron Bentley)
+
+Bugfixes
+********
+
+* Authentication.conf can define sections without password.
+  (Vincent Ladeuil, #199440)
+
+* Avoid muttering every time a child update does not cause a progress bar
+  update. (John Arbash Meinel, #213771)
+
+* ``Branch.reconcile()`` is now implemented. This allows ``bzr reconcile``
+  to fix when a Branch has a non-canonical mainline history. ``bzr check``
+  also detects this condition. (John Arbash Meinel, #177855)
+
+* ``bzr log -r ..X bzr://`` was failing, because it was getting a request
+  for ``revision_id=None`` which was not a string.
+  (John Arbash Meinel, #211661)
+
+* ``bzr commit`` now works with Microsoft's FTP service.
+  (Andreas Deininger)
+
+* Catch definitions outside sections in authentication.conf.
+  (Vincent Ladeuil, #217650)
+
+* Conversion from non-rich-root to rich-root(-pack) updates inventory
+  sha1s, even when bundles are used.  (Aaron Bentley, #181391)
+
+* Conversion from non-rich-root to rich-root(-pack) works correctly even
+  though search keys are not topologically sorted.  (Aaron Bentley)
+
+* Conversion from non-rich-root to rich-root(-pack) works even when a
+  parent revision has a different root id.  (Aaron Bentley, #177874)
+
+* Disable strace testing until strace is fixed (see bug #103133) and emit a
+  warning when selftest ends to remind us of leaking tests.
+  (Vincent Ladeuil, #226769)
+
+* Fetching all revisions from a repository does not cause pack collisions.
+  (Robert Collins, Aaron Bentley, #212908)
+
+* Fix error about "attempt to add line-delta in non-delta knit".
+  (Andrew Bennetts, #217701)
+
+* Pushing a branch in "dirstate" format (Branch5) over bzr+ssh would break
+  if the remote server was < version 1.2. This was due to a bug in the
+  RemoteRepository.get_parent_map() fallback code.
+  (John Arbash Meinel, #214894)
+
+* Remove leftover code in ``bzr_branch`` that inappropriately creates
+  a ``branch-name`` file in the branch control directory.
+  (Martin Pool)
+
+* Set SO_REUSEADDR on server sockets of ``bzr serve`` to avoid problems
+  rebinding the socket when starting the server a second time.
+  (John Arbash Meinel, Martin Pool, #164288)
+
+* Severe performance degradation in fetching from knit repositories to
+  knits and packs due to parsing the entire revisions.kndx on every graph
+  walk iteration fixed by using the Repository.get_graph API.  There was
+  another regression in knit => knit fetching which re-read the index for
+  every revision each side had in common.
+  (Robert Collins, John Arbash Meinel)
+
+* When logging the changes to a particular file, there was a bug if there
+  were ghosts in the revision ancestry. (John Arbash Meinel, #209948)
+
+* xs4all's FTP server returns a temporary error when trying to list an
+  empty directory, rather than returning an empty list. Adding a
+  workaround so that we don't get spurious failures.
+  (John Arbash Meinel, #215522)
+
+Documentation
+*************
+
+* Expanded the User Guide to include new chapters on popular plugins and
+  integrating Bazaar into your environment. The *Best practices* chapter
+  was renamed to *Miscellaneous topics* as suggested by community
+  feedback as well. (Ian Clatworthy)
+
+* Document outlining strategies for TortoiseBzr. (Mark Hammond)
+
+* Improved the documentation on hooks. (Ian Clatworthy)
+
+* Update authentication docs regarding SSH agents.
+  (Vincent Ladeuil, #183705)
+
+Testing
+*******
+
+* Add ``thread_name_suffix`` parameter to SmartTCPServer_for_testing, to
+  make it easy to identify which test spawned a thread with an unhandled
+  exception. (Andrew Bennetts)
+
+* New ``--debugflag``/``-E`` option to ``bzr selftest`` for setting
+  options for debugging tests, these are complementary to the -D
+  options.  The ``-Dselftest_debug`` global option has been replaced by the
+  ``-E=allow_debug`` option for selftest. (Andrew Bennetts)
+
+* Parameterised test ids are preserved correctly to aid diagnosis of test
+  failures. (Robert Collins, Andrew Bennetts)
+
+* selftest now accepts --starting-with <id> to load only the tests whose id
+  starts with the one specified. This greatly speeds up running the test
+  suite on a limited set of tests and can be used to run the tests for a
+  single module, a single class or even a single test.  (Vincent Ladeuil)
+
+* The test suite modules have been modified to define load_tests() instead
+  of test_suite(). That speeds up selective loading (via --load-list)
+  significantly and provides many examples on how to migrate (grep for
+  load_tests).  (Vincent Ladeuil)
+
+Internals
+*********
+
+* ``Hooks.install_hook`` is now deprecated in favour of
+  ``Hooks.install_named_hook`` which adds a required ``name`` parameter, to
+  avoid having to call ``Hooks.name_hook``. (Daniel Watkins)
+
+* Implement xml8 serializer.  (Aaron Bentley)
+
+* New form ``@deprecated_method(deprecated_in(1, 5, 0))`` for making
+  deprecation wrappers.  (Martin Pool)
+
+* ``Repository.revision_parents`` is now deprecated in favour of
+  ``Repository.get_parent_map([revid])[revid]``. (Jelmer Vernooij)
+
+* The Python ``assert`` statement is no longer used in Bazaar source, and
+  a test checks this.  (Martin Pool)
+
+API Changes
+***********
+
+* ``bzrlib.status.show_pending_merges`` requires the repository to be
+  locked by the caller. Callers should have been doing it anyway, but it
+  will now raise an exception if they do not. (John Arbash Meinel)
+
+* Repository.get_data_stream, Repository.get_data_stream_for_search(),
+  Repository.get_deltas_for_revsions(), Repository.revision_trees(),
+  Repository.item_keys_introduced_by() no longer take read locks.
+  (Aaron Bentley)
+
+* ``LockableFiles.get_utf8`` and ``.get`` are deprecated, as a start
+  towards removing LockableFiles and ``.control_files`` entirely.
+  (Martin Pool)
+
+* Methods deprecated prior to 1.1 have been removed.
+  (Martin Pool)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

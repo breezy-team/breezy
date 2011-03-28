@@ -31,6 +31,8 @@ Overall developer documentation
 * `Writing plugins <http://doc.bazaar.canonical.com/plugins/en/plugin-development.html>`_
   |--| specific advice on writing Bazaar plugins. (web link)
 
+* `Documenting changes <documenting-changes.html>`_.
+
 Process
 =======
 

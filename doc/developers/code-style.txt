@@ -78,9 +78,9 @@ Python versions
 ===============
 
 Bazaar supports Python from 2.4 through 2.6, and in the future we want to
-support Python 3.0.  Avoid using language features added in 2.5 or 2.6, or
-features deprecated in Python 3.0.  (You can check v3 compatibility using
-the ``-3`` option of Python2.6.)
+support Python 2.7 and 3.0.  Avoid using language features added in 2.5,
+2.6 or 2.7, or features deprecated in Python 3.0.  (You can check v3
+compatibility using the ``-3`` option of Python2.6.)
 
 Specifically:
 
@@ -364,6 +364,8 @@ implementation.)
 
 Because repr methods are often called when something has already gone
 wrong, they should be written somewhat more defensively than most code.
+They shouldn't have side effects like doing network or disk
+IO.
 The object may be half-initialized or in some other way in an illegal
 state.  The repr method shouldn't raise an exception, or it may hide the
 (probably more useful) underlying exception.
@@ -384,6 +386,13 @@ really should terminate the program such as ``MemoryError`` and
 later re-raised.  Even then, think about whether catching just
 ``Exception`` (which excludes system errors in Python2.5 and later) would
 be better.
+
+The ``__str__`` method on exceptions should be small and have no side
+effects, following the rules given for `Object string representations`_.
+In particular it should not do any network IO, or complicated
+introspection of other objects.  All the state needed to present the
+exception to the user should be gathered before the error is raised.
+In other words, exceptions should basically be value objects.
 
 
 Test coverage
@@ -484,6 +493,20 @@ Bazaar is a GNU project and uses standard GNU terminology, especially:
    <https://bugs.launchpad.net/bzr/+bug/528253>`_).
 
  * Don't say "open source" when you mean "free software".
+
+
+Dynamic imports
+===============
+
+If you need to import a module (or attribute of a module) named in a
+variable:
+
+ * If importing a module, not an attribute, and the module is a top-level
+   module (i.e. has no dots in the name), then it's ok to use the builtin
+   ``__import__``, e.g. ``__import__(module_name)``.
+ * In all other cases, prefer ``bzrlib.pyutils.get_named_object`` to the
+   built-in ``__import__``.  ``__import__`` has some subtleties and
+   unintuitive behaviours that make it hard to use correctly.
 
 ..
    vim: ft=rst tw=74 ai

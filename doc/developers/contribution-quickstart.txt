@@ -26,7 +26,7 @@ relevant existing bug, or send a proposal to the list.  If there is a bug
 you should set it to "In Progress" and if you wish assign it to yourself.
 
 You might like to start with a bug tagged `easy
-<https://bugs.edge.launchpad.net/bzr/+bugs?field.tag=easy>`_.
+<https://bugs.launchpad.net/bzr/+bugs?field.tag=easy>`_.
 
 Making a branch
 ---------------
@@ -113,7 +113,7 @@ Proposing a merge
 
 
 Then propose a merge into bzr; for bzr 2.2 and later you can use the ``bzr
-propose-merge`` command.  In the comment for your merge proposal please
+lp-propose-merge`` command.  In the comment for your merge proposal please
 explain what you're trying to do and why.  For `example
 <https://code.launchpad.net/~ian-clatworthy/bzr/whats-new-in-2.1/+merge/19677>`_:
 

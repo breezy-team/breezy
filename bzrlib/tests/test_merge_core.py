@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,11 @@ from bzrlib import (
     merge_directive,
     osutils,
     )
-from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
+from bzrlib.conflicts import (
+    ContentsConflict,
+    TextConflict,
+    PathConflict,
+    )
 from bzrlib.merge import (
     Merge3Merger,
     Diff3Merger,
@@ -32,7 +36,6 @@ from bzrlib.merge import (
     Merger,
     )
 from bzrlib.osutils import getcwd, pathjoin
-from bzrlib import progress
 from bzrlib.transform import TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.workingtree import WorkingTree

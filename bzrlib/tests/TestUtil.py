@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #       Author: Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -20,6 +20,8 @@ import sys
 import logging
 import unittest
 
+from bzrlib import pyutils
+
 # Mark this python module as being part of the implementation
 # of unittest: this gives us better tracebacks where the last
 # shown frame is the test code, not our assertXYZ.
@@ -27,9 +29,11 @@ __unittest = 1
 
 
 class LogCollector(logging.Handler):
+
     def __init__(self):
         logging.Handler.__init__(self)
         self.records=[]
+
     def emit(self, record):
         self.records.append(record.getMessage())
 
@@ -58,7 +62,8 @@ def visitTests(suite, visitor):
                 visitor.visitSuite(test)
                 visitTests(test, visitor)
             else:
-                print "unvisitable non-unittest.TestCase element %r (%r)" % (test, test.__class__)
+                print "unvisitable non-unittest.TestCase element %r (%r)" % (
+                    test, test.__class__)
 
 
 class TestSuite(unittest.TestSuite):
@@ -106,7 +111,7 @@ class TestLoader(unittest.TestLoader):
 
     def loadTestsFromModuleName(self, name):
         result = self.suiteClass()
-        module = _load_module_by_name(name)
+        module = pyutils.get_named_object(name)
 
         result.addTests(self.loadTestsFromModule(module))
         return result
@@ -179,20 +184,11 @@ class FilteredByModuleTestLoader(TestLoader):
             return self.suiteClass()
 
 
-def _load_module_by_name(mod_name):
-    parts = mod_name.split('.')
-    module = __import__(mod_name)
-    del parts[0]
-    # for historical reasons python returns the top-level module even though
-    # it loads the submodule; we need to walk down to get the one we want.
-    while parts:
-        module = getattr(module, parts.pop(0))
-    return module
-
-
 class TestVisitor(object):
     """A visitor for Tests"""
+
     def visitSuite(self, aTestSuite):
         pass
+
     def visitCase(self, aTestCase):
         pass

@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,9 @@
 """Classes to provide name-to-object registry-like support."""
 
 
+from bzrlib.pyutils import get_named_object
+
+
 class _ObjectGetter(object):
     """Maintain a reference to an object, and return the object on request.
 
@@ -31,6 +34,10 @@ class _ObjectGetter(object):
 
     def __init__(self, obj):
         self._obj = obj
+
+    def get_module(self):
+        """Get the module the object was loaded from."""
+        return self._obj.__module__
 
     def get_obj(self):
         """Get the object that was saved at creation time"""
@@ -51,6 +58,11 @@ class _LazyObjectGetter(_ObjectGetter):
         self._imported = False
         super(_LazyObjectGetter, self).__init__(None)
 
+    def get_module(self):
+        """Get the module the referenced object will be loaded from.
+        """
+        return self._module_name
+
     def get_obj(self):
         """Get the referenced object.
 
@@ -58,26 +70,14 @@ class _LazyObjectGetter(_ObjectGetter):
         return the imported object.
         """
         if not self._imported:
-            self._do_import()
+            self._obj = get_named_object(self._module_name, self._member_name)
+            self._imported = True
         return super(_LazyObjectGetter, self).get_obj()
 
-    def _do_import(self):
-        if self._member_name:
-            segments = self._member_name.split('.')
-            names = segments[0:1]
-        else:
-            names = [self._member_name]
-        obj = __import__(self._module_name, globals(), locals(), names)
-        if self._member_name:
-            for segment in segments:
-                obj = getattr(obj, segment)
-        self._obj = obj
-        self._imported = True
-
     def __repr__(self):
-        return "<%s.%s object at %x, module=%r attribute=%r>" % (
+        return "<%s.%s object at %x, module=%r attribute=%r imported=%r>" % (
             self.__class__.__module__, self.__class__.__name__, id(self),
-            self._module_name, self._member_name)
+            self._module_name, self._member_name, self._imported)
 
 
 class Registry(object):
@@ -172,6 +172,14 @@ class Registry(object):
         """
         return self._dict[self._get_key_or_default(key)].get_obj()
 
+    def _get_module(self, key):
+        """Return the module the object will be or was loaded from.
+
+        :param key: The key to obtain the module for.
+        :return: The name of the module
+        """
+        return self._dict[key].get_module()
+
     def get_prefix(self, fullname):
         """Return an object whose key is a prefix of the supplied value.
 
@@ -248,6 +256,14 @@ class FormatRegistry(Registry):
         Registry.__init__(self)
         self._other_registry = other_registry
 
+    def register(self, key, obj, help=None, info=None,
+                 override_existing=False):
+        Registry.register(self, key, obj, help=help, info=info,
+            override_existing=override_existing)
+        if self._other_registry is not None:
+            self._other_registry.register(key, obj, help=help,
+                info=info, override_existing=override_existing)
+
     def register_lazy(self, key, module_name, member_name,
                       help=None, info=None,
                       override_existing=False):
@@ -259,10 +275,13 @@ class FormatRegistry(Registry):
             self._other_registry.register_lazy(key, module_name, member_name,
                 help=help, info=info, override_existing=override_existing)
 
+    def remove(self, key):
+        Registry.remove(self, key)
+        if self._other_registry is not None:
+            self._other_registry.remove(key)
+
     def get(self, format_string):
         r = Registry.get(self, format_string)
         if callable(r):
             r = r()
         return r
-
-

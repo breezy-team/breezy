@@ -347,6 +347,8 @@ class LockDir(lock.Lock):
         This is a UI centric function: it uses the bzrlib.ui.ui_factory to
         prompt for input if a lock is detected and there is any doubt about
         it possibly being still active.
+
+        :returns: LockResult for the broken lock.
         """
         self._check_not_locked()
         try:
@@ -357,9 +359,13 @@ class LockDir(lock.Lock):
                 self.force_break_corrupt(e.file_data)
             return
         if holder_info is not None:
-            lock_info = '\n'.join(holder_info.to_readable_list())
-            if bzrlib.ui.ui_factory.get_boolean("Break %s" % lock_info):
-                self.force_break(holder_info)
+            info_text = '\n'.join(holder_info.to_readable_list())
+            if bzrlib.ui.ui_factory.confirm_action(
+                "Break %(lock_info)s", 'bzrlib.lockdir.break', 
+                dict(lock_info=info_text)):
+                result = self.force_break(holder_info)
+                bzrlib.ui.ui_factory.show_message(
+                    "Broke lock %s" % result.lock_url)
 
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
@@ -377,6 +383,8 @@ class LockDir(lock.Lock):
             to check that it's still held by the same process that the user
             decided was dead.  If this is not the current holder,
             LockBreakMismatch is raised.
+
+        :returns: LockResult for the broken lock.
         """
         if not isinstance(dead_holder_info, LockHeldInfo):
             raise ValueError("dead_holder_info: %r" % dead_holder_info)
@@ -402,6 +410,7 @@ class LockDir(lock.Lock):
                                  current_info.get('nonce'))
         for hook in self.hooks['lock_broken']:
             hook(result)
+        return result
 
     def force_break_corrupt(self, corrupt_info_lines):
         """Release a lock that has been corrupted.
@@ -422,8 +431,8 @@ class LockDir(lock.Lock):
         # there's a small race window between checking it and doing the
         # rename.
         broken_info_path = tmpname + self.__INFO_NAME
-        f = self.transport.get(broken_info_path)
-        broken_lines = f.readlines()
+        broken_content = self.transport.get_bytes(broken_info_path)
+        broken_lines = osutils.split_lines(broken_content)
         if broken_lines != corrupt_info_lines:
             raise LockBreakMismatch(self, broken_lines, corrupt_info_lines)
         self.transport.delete(broken_info_path)

@@ -722,7 +722,7 @@ class Packer(object):
         :return: A Pack object, or None if nothing was copied.
         """
         # open a pack - using the same name as the last temporary file
-        # - which has already been flushed, so its safe.
+        # - which has already been flushed, so it's safe.
         # XXX: - duplicate code warning with start_write_group; fix before
         #      considering 'done'.
         if self._pack_collection._new_pack is not None:
@@ -1222,8 +1222,7 @@ class ReconcilePacker(Packer):
     def _process_inventory_lines(self, inv_lines):
         """Generate a text key reference map rather for reconciling with."""
         repo = self._pack_collection.repo
-        refs = repo._find_text_key_references_from_xml_inventory_lines(
-            inv_lines)
+        refs = repo._serializer._find_text_key_references(inv_lines)
         self._text_refs = refs
         # during reconcile we:
         #  - convert unreferenced texts to full texts
@@ -1292,7 +1291,7 @@ class ReconcilePacker(Packer):
         # reinserted, and if d3 has incorrect parents it will also be
         # reinserted. If we insert d3 first, d2 is present (as it was bulk
         # copied), so we will try to delta, but d2 is not currently able to be
-        # extracted because it's basis d1 is not present. Topologically sorting
+        # extracted because its basis d1 is not present. Topologically sorting
         # addresses this. The following generates a sort for all the texts that
         # are being inserted without having to reference the entire text key
         # space (we only topo sort the revisions, which is smaller).
@@ -1573,6 +1572,20 @@ class RepositoryPackCollection(object):
         mutter('Packing repository %s, which has %d pack files, '
             'containing %d revisions with hint %r.', self, total_packs,
             total_revisions, hint)
+        while True:
+            try:
+                self._try_pack_operations(hint)
+            except RetryPackOperations:
+                continue
+            break
+
+        if clean_obsolete_packs:
+            self._clear_obsolete_packs()
+
+    def _try_pack_operations(self, hint):
+        """Calculate the pack operations based on the hint (if any), and
+        execute them.
+        """
         # determine which packs need changing
         pack_operations = [[0, []]]
         for pack in self.all_packs():
@@ -1581,10 +1594,8 @@ class RepositoryPackCollection(object):
                 # or this pack was included in the hint.
                 pack_operations[-1][0] += pack.get_revision_count()
                 pack_operations[-1][1].append(pack)
-        self._execute_pack_operations(pack_operations, OptimisingPacker)
-
-        if clean_obsolete_packs:
-            self._clear_obsolete_packs()
+        self._execute_pack_operations(pack_operations, OptimisingPacker,
+            reload_func=self._restart_pack_operations)
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
         """Plan a pack operation.
@@ -1600,9 +1611,9 @@ class RepositoryPackCollection(object):
         pack_operations = [[0, []]]
         # plan out what packs to keep, and what to reorganise
         while len(existing_packs):
-            # take the largest pack, and if its less than the head of the
+            # take the largest pack, and if it's less than the head of the
             # distribution chart we will include its contents in the new pack
-            # for that position. If its larger, we remove its size from the
+            # for that position. If it's larger, we remove its size from the
             # distribution chart
             next_pack_rev_count, next_pack = existing_packs.pop(0)
             if next_pack_rev_count >= pack_distribution[0]:
@@ -1643,7 +1654,7 @@ class RepositoryPackCollection(object):
 
         :return: True if the disk names had not been previously read.
         """
-        # NB: if you see an assertion error here, its probably access against
+        # NB: if you see an assertion error here, it's probably access against
         # an unlocked repo. Naughty.
         if not self.repo.is_locked():
             raise errors.ObjectNotLocked(self.repo)
@@ -1946,7 +1957,7 @@ class RepositoryPackCollection(object):
                     # disk index because the set values are the same, unless
                     # the only index shows up as deleted by the set difference
                     # - which it may. Until there is a specific test for this,
-                    # assume its broken. RBC 20071017.
+                    # assume it's broken. RBC 20071017.
                     self._remove_pack_from_memory(self.get_pack_by_name(name))
                     self._names[name] = sizes
                     self.get_pack_by_name(name)
@@ -2017,9 +2028,9 @@ class RepositoryPackCollection(object):
         """
         # The ensure_loaded call is to handle the case where the first call
         # made involving the collection was to reload_pack_names, where we 
-        # don't have a view of disk contents. Its a bit of a bandaid, and
-        # causes two reads of pack-names, but its a rare corner case not struck
-        # with regular push/pull etc.
+        # don't have a view of disk contents. It's a bit of a bandaid, and
+        # causes two reads of pack-names, but it's a rare corner case not
+        # struck with regular push/pull etc.
         first_read = self.ensure_loaded()
         if first_read:
             return True
@@ -2043,6 +2054,14 @@ class RepositoryPackCollection(object):
             # and a restart didn't find it
             raise
         raise errors.RetryAutopack(self.repo, False, sys.exc_info())
+
+    def _restart_pack_operations(self):
+        """Reload the pack names list, and restart the autopack code."""
+        if not self.reload_pack_names():
+            # Re-raise the original exception, because something went missing
+            # and a restart didn't find it
+            raise
+        raise RetryPackOperations(self.repo, False, sys.exc_info())
 
     def _clear_obsolete_packs(self, preserve=None):
         """Delete everything from the obsolete-packs directory.
@@ -2284,11 +2303,6 @@ class KnitPackRepository(KnitRepository):
         self._reconcile_fixes_text_parents = True
         self._reconcile_backsup_inventory = False
 
-    def _warn_if_deprecated(self, branch=None):
-        # This class isn't deprecated, but one sub-format is
-        if isinstance(self._format, RepositoryFormatKnitPack5RichRootBroken):
-            super(KnitPackRepository, self)._warn_if_deprecated(branch)
-
     def _abort_write_group(self):
         self.revisions._index._key_dependencies.clear()
         self._pack_collection._abort_write_group()
@@ -2456,7 +2470,7 @@ class KnitPackStreamSource(StreamSource):
         from_repo = self.from_repository
         parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
         parent_keys = [(p,) for p in parent_ids]
-        find_text_keys = from_repo._find_text_key_references_from_xml_inventory_lines
+        find_text_keys = from_repo._serializer._find_text_key_references
         parent_text_keys = set(find_text_keys(
             from_repo._inventory_xml_lines_for_keys(parent_keys)))
         content_text_keys = set()
@@ -2544,6 +2558,8 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     index_class = None
     _fetch_uses_deltas = True
     fast_deltas = False
+    supports_full_versioned_files = True
+    supports_funky_characters = True
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a pack based repository.
@@ -2819,6 +2835,9 @@ class RepositoryFormatKnitPack5RichRootBroken(RepositoryFormatPack):
         return ("Packs 5 rich-root (adds stacking support, requires bzr 1.6)"
                 " (deprecated)")
 
+    def is_deprecated(self):
+        return True
+
 
 class RepositoryFormatKnitPack6(RepositoryFormatPack):
     """A repository with stacking and btree indexes,
@@ -2894,12 +2913,10 @@ class RepositoryFormatKnitPack6RichRoot(RepositoryFormatPack):
 class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
     """A subtrees development repository.
 
-    This format should be retained until the second release after bzr 1.7.
+    This format should be retained in 2.3, to provide an upgrade path from this
+    to RepositoryFormat2aSubtree.  It can be removed in later releases.
 
     1.6.1-subtree[as it might have been] with B+Tree indices.
-
-    This is [now] retained until we have a CHK based subtree format in
-    development.
     """
 
     repository_class = KnitPackRepository
@@ -2934,4 +2951,18 @@ class RepositoryFormatPackDevelopment2Subtree(RepositoryFormatPack):
         """See RepositoryFormat.get_format_description()."""
         return ("Development repository format, currently the same as "
             "1.6.1-subtree with B+Tree indices.\n")
+
+
+class RetryPackOperations(errors.RetryWithNewPacks):
+    """Raised when we are packing and we find a missing file.
+
+    Meant as a signaling exception, to tell the RepositoryPackCollection.pack
+    code it should try again.
+    """
+
+    internal_error = True
+
+    _fmt = ("Pack files have changed, reload and try pack again."
+            " context: %(context)s %(orig_error)s")
+
 

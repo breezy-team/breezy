@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,11 +24,9 @@ from bzrlib import (
     builtins,
     bzrdir,
     check,
-    debug,
     errors,
     memorytree,
     push,
-    repository,
     revision,
     symbol_versioning,
     tests,
@@ -36,8 +34,6 @@ from bzrlib import (
     )
 from bzrlib.smart import (
     client,
-    server,
-    repository as _mod_smart_repo,
     )
 from bzrlib.tests import (
     per_branch,
@@ -118,6 +114,23 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 other.branch.push, checkout.branch)
 
+    def test_push_new_tag_to_bound_branch(self):
+        master = self.make_branch('master')
+        bound = self.make_branch('bound')
+        try:
+            bound.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable(
+                'Format does not support bound branches')
+        other = bound.bzrdir.sprout('other').open_branch()
+        try:
+            other.tags.set_tag('new-tag', 'some-rev')
+        except errors.TagsNotSupported:
+            raise tests.TestNotApplicable('Format does not support tags')
+        other.push(bound)
+        self.assertEqual({'new-tag': 'some-rev'}, bound.tags.get_tag_dict())
+        self.assertEqual({'new-tag': 'some-rev'}, master.tags.get_tag_dict())
+
     def test_push_uses_read_lock(self):
         """Push should only need a read lock on the source side."""
         source = self.make_branch_and_tree('source')
@@ -174,6 +187,21 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.assertEqual(tree.branch.last_revision(),
                          to_branch.last_revision())
 
+    def test_push_overwrite_with_older_mainline_rev(self):
+        """Pushing an older mainline revision with overwrite.
+
+        This was <https://bugs.launchpad.net/bzr/+bug/386576>.
+        """
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch('target')
+
+        source.commit('1st commit')
+        source.commit('2nd commit', rev_id='rev-2')
+        source.commit('3rd commit')
+        source.branch.push(target)
+        source.branch.push(target, stop_revision='rev-2', overwrite=True)
+        self.assertEqual('rev-2', target.last_revision())
+
     def test_push_overwrite_of_non_tip_with_stop_revision(self):
         """Combining the stop_revision and overwrite options works.
 
@@ -190,6 +218,41 @@ class TestPush(per_branch.TestCaseWithBranch):
         source.branch.push(target, stop_revision='rev-2', overwrite=True)
         self.assertEqual('rev-2', target.last_revision())
 
+    def test_push_repository_no_branch_doesnt_fetch_all_revs(self):
+        # See https://bugs.launchpad.net/bzr/+bug/465517
+        t = self.get_transport('target')
+        t.ensure_base()
+        bzrdir = self.bzrdir_format.initialize_on_transport(t)
+        try:
+            bzrdir.open_branch()
+        except errors.NotBranchError:
+            pass
+        else:
+            raise tests.TestNotApplicable('older formats can\'t have a repo'
+                                          ' without a branch')
+        try:
+            source = self.make_branch_builder('source',
+                                              format=self.bzrdir_format)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('cannot initialize this format')
+        source.start_series()
+        source.build_snapshot('A', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        source.build_snapshot('B', ['A'], [])
+        source.build_snapshot('C', ['A'], [])
+        source.finish_series()
+        b = source.get_branch()
+        # Note: We can't read lock the source branch. Some formats take a write
+        # lock to 'set_push_location', which breaks
+        self.addCleanup(b.lock_write().unlock)
+        repo = bzrdir.create_repository()
+        # This means 'push the source branch into this dir'
+        bzrdir.push_branch(b)
+        self.addCleanup(repo.lock_read().unlock)
+        # We should have pushed 'C', but not 'B', since it isn't in the
+        # ancestry
+        self.assertEqual([('A',), ('C',)], sorted(repo.revisions.keys()))
+
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
         stacking policy at the destination.
@@ -198,7 +261,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        if self.bzrdir_format.fixed_components:
             raise tests.TestNotApplicable('Not a metadir format.')
         if isinstance(self.branch_format, branch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
@@ -339,9 +402,9 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
             raise tests.TestNotApplicable(
                 'Does not apply when remote backing branch is also '
                 'a smart branch')
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        if not self.branch_format.supports_leaving_lock():
             raise tests.TestNotApplicable(
-                'Branch format 4 is not usable via HPSS.')
+                'Branch format is not usable via HPSS.')
         super(EmptyPushSmartEffortTests, self).setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.

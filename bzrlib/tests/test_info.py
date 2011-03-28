@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import sys
-from urllib import quote
 
 from bzrlib import (
     branch as _mod_branch,
@@ -149,7 +148,10 @@ class TestInfo(tests.TestCaseWithTransport):
             if key in ('pack-0.92',):
                 expected = 'pack-0.92'
             elif key in ('knit', 'metaweave'):
-                expected = 'knit or metaweave'
+                if 'metaweave' in bzrdir.format_registry:
+                    expected = 'knit or metaweave'
+                else:
+                    expected = 'knit'
             elif key in ('1.14', '1.14-rich-root'):
                 expected = '1.14 or 1.14-rich-root'
             self.assertCheckoutDescription(key, expected)
@@ -184,7 +186,7 @@ class TestInfo(tests.TestCaseWithTransport):
                 expected = '1.14-rich-root'
             self.assertRepoDescription(key, expected)
 
-        format = bzrdir.format_registry.make_bzrdir('metaweave')
+        format = bzrdir.format_registry.make_bzrdir('knit')
         format.set_branch_format(_mod_branch.BzrBranchFormat6())
         tree = self.make_branch_and_tree('unknown', format=format)
         self.assertEqual('unnamed', info.describe_format(tree.bzrdir,

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,10 +25,13 @@ from bzrlib import (
     bzrdir,
     errors,
     osutils,
-    symbol_versioning,
     urlutils,
     )
-from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    TestSkipped,
+    )
 
 
 class TestErrors(TestCaseWithTransport):
@@ -297,11 +300,10 @@ class TestErrors(TestCaseWithTransport):
             str(error))
 
     def test_up_to_date(self):
-        error = errors.UpToDateFormat(bzrdir.BzrDirFormat4())
-        self.assertEqualDiff("The branch format All-in-one "
-                             "format 4 is already at the most "
-                             "recent format.",
-                             str(error))
+        error = errors.UpToDateFormat("someformat")
+        self.assertEqualDiff(
+            "The branch format someformat is already at the most "
+            "recent format.", str(error))
 
     def test_corrupt_repository(self):
         repo = self.make_repository('.')
@@ -670,6 +672,15 @@ class TestErrors(TestCaseWithTransport):
     def test_not_branch_bzrdir_without_repo(self):
         bzrdir = self.make_bzrdir('bzrdir')
         err = errors.NotBranchError('path', bzrdir=bzrdir)
+        self.assertEqual('Not a branch: "path".', str(err))
+
+    def test_not_branch_bzrdir_with_recursive_not_branch_error(self):
+        class FakeBzrDir(object):
+            def open_repository(self):
+                # str() on the NotBranchError will trigger a call to this,
+                # which in turn will another, identical NotBranchError.
+                raise errors.NotBranchError('path', bzrdir=FakeBzrDir())
+        err = errors.NotBranchError('path', bzrdir=FakeBzrDir())
         self.assertEqual('Not a branch: "path".', str(err))
 
     def test_not_branch_laziness(self):

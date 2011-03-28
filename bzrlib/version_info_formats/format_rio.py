@@ -84,10 +84,12 @@ class RioVersionInfoBuilderHooks(hooks.Hooks):
     """Hooks for rio-formatted version-info output."""
 
     def __init__(self):
-        super(RioVersionInfoBuilderHooks, self).__init__()
-        self.create_hook(hooks.HookPoint('revision',
+        super(RioVersionInfoBuilderHooks, self).__init__(
+            "bzrlib.version_info_formats.format_rio", "RioVersionInfoBuilder.hooks")
+        self.add_hook('revision',
             "Invoked when adding information about a revision to the"
             " RIO stanza that is printed. revision is called with a"
-            " revision object and a RIO stanza.", (1, 15), None))
+            " revision object and a RIO stanza.", (1, 15), None)
+
 
 RioVersionInfoBuilder.hooks = RioVersionInfoBuilderHooks()

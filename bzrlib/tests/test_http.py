@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,10 +23,7 @@ transport implementation, http protocol versions and authentication schemes.
 # TODO: Should be renamed to bzrlib.transport.http.tests?
 # TODO: What about renaming to bzrlib.tests.transport.http ?
 
-from cStringIO import StringIO
 import httplib
-import os
-import select
 import SimpleHTTPServer
 import socket
 import sys
@@ -35,6 +32,7 @@ import threading
 import bzrlib
 from bzrlib import (
     bzrdir,
+    cethread,
     config,
     errors,
     osutils,
@@ -42,13 +40,16 @@ from bzrlib import (
     tests,
     transport,
     ui,
-    urlutils,
     )
 from bzrlib.tests import (
     features,
     http_server,
     http_utils,
     test_server,
+    )
+from bzrlib.tests.scenarios import (
+    load_tests_apply_scenarios,
+    multiply_scenarios,
     )
 from bzrlib.transport import (
     http,
@@ -64,17 +65,11 @@ if features.pycurl.available():
     from bzrlib.transport.http._pycurl import PyCurlTransport
 
 
-def load_tests(standard_tests, module, loader):
-    """Multiply tests for http clients and protocol versions."""
-    result = loader.suiteClass()
+load_tests = load_tests_apply_scenarios
 
-    # one for each transport implementation
-    t_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((
-                TestHttpTransportRegistration,
-                TestHttpTransportUrls,
-                Test_redirected_to,
-                )))
+
+def vary_by_http_client_implementation():
+    """Test the two libraries we can use, pycurl and urllib."""
     transport_scenarios = [
         ('urllib', dict(_transport=_urllib.HttpTransport_urllib,
                         _server=http_server.HttpServer_urllib,
@@ -85,85 +80,48 @@ def load_tests(standard_tests, module, loader):
             ('pycurl', dict(_transport=PyCurlTransport,
                             _server=http_server.HttpServer_PyCurl,
                             _url_protocol='http+pycurl',)))
-    tests.multiply_tests(t_tests, transport_scenarios, result)
+    return transport_scenarios
 
-    protocol_scenarios = [
-            ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
-            ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
-            ]
 
-    # some tests are parametrized by the protocol version only
-    p_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance((
-                TestAuthOnRedirected,
-                )))
-    tests.multiply_tests(p_tests, protocol_scenarios, result)
+def vary_by_http_protocol_version():
+    """Test on http/1.0 and 1.1"""
+    return [
+        ('HTTP/1.0',  dict(_protocol_version='HTTP/1.0')),
+        ('HTTP/1.1',  dict(_protocol_version='HTTP/1.1')),
+        ]
 
-    # each implementation tested with each HTTP version
-    tp_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance((
-                SmartHTTPTunnellingTest,
-                TestDoCatchRedirections,
-                TestHTTPConnections,
-                TestHTTPRedirections,
-                TestHTTPSilentRedirections,
-                TestLimitedRangeRequestServer,
-                TestPost,
-                TestProxyHttpServer,
-                TestRanges,
-                TestSpecificRequestHandler,
-                )))
-    tp_scenarios = tests.multiply_scenarios(transport_scenarios,
-                                            protocol_scenarios)
-    tests.multiply_tests(tp_tests, tp_scenarios, result)
 
-    # proxy auth: each auth scheme on all http versions on all implementations.
-    tppa_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance((
-                TestProxyAuth,
-                )))
-    proxy_auth_scheme_scenarios = [
+def vary_by_http_proxy_auth_scheme():
+    return [
         ('basic', dict(_auth_server=http_utils.ProxyBasicAuthServer)),
         ('digest', dict(_auth_server=http_utils.ProxyDigestAuthServer)),
         ('basicdigest',
-         dict(_auth_server=http_utils.ProxyBasicAndDigestAuthServer)),
+            dict(_auth_server=http_utils.ProxyBasicAndDigestAuthServer)),
         ]
-    tppa_scenarios = tests.multiply_scenarios(tp_scenarios,
-                                              proxy_auth_scheme_scenarios)
-    tests.multiply_tests(tppa_tests, tppa_scenarios, result)
 
-    # auth: each auth scheme on all http versions on all implementations.
-    tpa_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance((
-                TestAuth,
-                )))
-    auth_scheme_scenarios = [
+
+def vary_by_http_auth_scheme():
+    return [
         ('basic', dict(_auth_server=http_utils.HTTPBasicAuthServer)),
         ('digest', dict(_auth_server=http_utils.HTTPDigestAuthServer)),
         ('basicdigest',
-         dict(_auth_server=http_utils.HTTPBasicAndDigestAuthServer)),
+            dict(_auth_server=http_utils.HTTPBasicAndDigestAuthServer)),
         ]
-    tpa_scenarios = tests.multiply_scenarios(tp_scenarios,
-                                             auth_scheme_scenarios)
-    tests.multiply_tests(tpa_tests, tpa_scenarios, result)
 
-    # activity: on all http[s] versions on all implementations
-    tpact_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance((
-                TestActivity,
-                )))
+
+def vary_by_http_activity():
     activity_scenarios = [
         ('urllib,http', dict(_activity_server=ActivityHTTPServer,
-                             _transport=_urllib.HttpTransport_urllib,)),
+                            _transport=_urllib.HttpTransport_urllib,)),
         ]
     if tests.HTTPSServerFeature.available():
         activity_scenarios.append(
             ('urllib,https', dict(_activity_server=ActivityHTTPSServer,
-                                  _transport=_urllib.HttpTransport_urllib,)),)
+                                _transport=_urllib.HttpTransport_urllib,)),)
     if features.pycurl.available():
         activity_scenarios.append(
             ('pycurl,http', dict(_activity_server=ActivityHTTPServer,
-                                 _transport=PyCurlTransport,)),)
+                                _transport=PyCurlTransport,)),)
         if tests.HTTPSServerFeature.available():
             from bzrlib.tests import (
                 ssl_certs,
@@ -181,16 +139,8 @@ def load_tests(standard_tests, module, loader):
 
             activity_scenarios.append(
                 ('pycurl,https', dict(_activity_server=ActivityHTTPSServer,
-                                      _transport=HTTPS_pycurl_transport,)),)
-
-    tpact_scenarios = tests.multiply_scenarios(activity_scenarios,
-                                               protocol_scenarios)
-    tests.multiply_tests(tpact_tests, tpact_scenarios, result)
-
-    # No parametrization for the remaining tests
-    result.addTests(remaining_tests)
-
-    return result
+                                    _transport=HTTPS_pycurl_transport,)),)
+    return activity_scenarios
 
 
 class FakeManager(object):
@@ -229,8 +179,8 @@ class RecordingServer(object):
         self._sock.bind(('127.0.0.1', 0))
         self.host, self.port = self._sock.getsockname()
         self._ready = threading.Event()
-        self._thread = test_server.ThreadWithException(
-            event=self._ready, target=self._accept_read_and_reply)
+        self._thread = test_server.TestThread(
+            sync_event=self._ready, target=self._accept_read_and_reply)
         self._thread.start()
         if 'threads' in tests.selftest_debug_flags:
             sys.stderr.write('Thread started: %s\n' % (self._thread.ident,))
@@ -303,6 +253,40 @@ class TestAuthHeader(tests.TestCase):
             'Digest realm="Thou should not pass"')
         self.assertEqual('digest', scheme)
         self.assertEqual('realm="Thou should not pass"', remainder)
+
+
+class TestHTTPRangeParsing(tests.TestCase):
+
+    def setUp(self):
+        super(TestHTTPRangeParsing, self).setUp()
+        # We focus on range  parsing here and ignore everything else
+        class RequestHandler(http_server.TestingHTTPRequestHandler):
+            def setup(self): pass
+            def handle(self): pass
+            def finish(self): pass
+
+        self.req_handler = RequestHandler(None, None, None)
+
+    def assertRanges(self, ranges, header, file_size):
+        self.assertEquals(ranges,
+                          self.req_handler._parse_ranges(header, file_size))
+
+    def test_simple_range(self):
+        self.assertRanges([(0,2)], 'bytes=0-2', 12)
+
+    def test_tail(self):
+        self.assertRanges([(8, 11)], 'bytes=-4', 12)
+
+    def test_tail_bigger_than_file(self):
+        self.assertRanges([(0, 11)], 'bytes=-99', 12)
+
+    def test_range_without_end(self):
+        self.assertRanges([(4, 11)], 'bytes=4-', 12)
+
+    def test_invalid_ranges(self):
+        self.assertRanges(None, 'bytes=12-22', 12)
+        self.assertRanges(None, 'bytes=1-3,12-22', 12)
+        self.assertRanges(None, 'bytes=-', 12)
 
 
 class TestHTTPServer(tests.TestCase):
@@ -401,29 +385,31 @@ class TestHttpUrls(tests.TestCase):
 class TestHttpTransportUrls(tests.TestCase):
     """Test the http urls."""
 
+    scenarios = vary_by_http_client_implementation()
+
     def test_abs_url(self):
         """Construction of absolute http URLs"""
-        t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
+        t = self._transport('http://example.com/bzr/bzr.dev/')
         eq = self.assertEqualDiff
-        eq(t.abspath('.'), 'http://bazaar-vcs.org/bzr/bzr.dev')
-        eq(t.abspath('foo/bar'), 'http://bazaar-vcs.org/bzr/bzr.dev/foo/bar')
-        eq(t.abspath('.bzr'), 'http://bazaar-vcs.org/bzr/bzr.dev/.bzr')
+        eq(t.abspath('.'), 'http://example.com/bzr/bzr.dev')
+        eq(t.abspath('foo/bar'), 'http://example.com/bzr/bzr.dev/foo/bar')
+        eq(t.abspath('.bzr'), 'http://example.com/bzr/bzr.dev/.bzr')
         eq(t.abspath('.bzr/1//2/./3'),
-           'http://bazaar-vcs.org/bzr/bzr.dev/.bzr/1/2/3')
+           'http://example.com/bzr/bzr.dev/.bzr/1/2/3')
 
     def test_invalid_http_urls(self):
         """Trap invalid construction of urls"""
-        t = self._transport('http://bazaar-vcs.org/bzr/bzr.dev/')
+        self._transport('http://example.com/bzr/bzr.dev/')
         self.assertRaises(errors.InvalidURL,
                           self._transport,
-                          'http://http://bazaar-vcs.org/bzr/bzr.dev/')
+                          'http://http://example.com/bzr/bzr.dev/')
 
     def test_http_root_urls(self):
         """Construction of URLs from server root"""
-        t = self._transport('http://bzr.ozlabs.org/')
+        t = self._transport('http://example.com/')
         eq = self.assertEqualDiff
         eq(t.abspath('.bzr/tree-version'),
-           'http://bzr.ozlabs.org/.bzr/tree-version')
+           'http://example.com/.bzr/tree-version')
 
     def test_http_impl_urls(self):
         """There are servers which ask for particular clients to connect"""
@@ -475,6 +461,11 @@ class TestHttps_pycurl(TestWithTransport_pycurl, tests.TestCase):
 class TestHTTPConnections(http_utils.TestCaseWithWebserver):
     """Test the http connections."""
 
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        )
+
     def setUp(self):
         http_utils.TestCaseWithWebserver.setUp(self)
         self.build_tree(['foo/', 'foo/bar'], line_endings='binary',
@@ -525,6 +516,8 @@ class TestHTTPConnections(http_utils.TestCaseWithWebserver):
 class TestHttpTransportRegistration(tests.TestCase):
     """Test registrations of various http implementations"""
 
+    scenarios = vary_by_http_client_implementation()
+
     def test_http_registered(self):
         t = transport.get_transport('%s://foo.com/' % self._url_protocol)
         self.assertIsInstance(t, transport.Transport)
@@ -532,6 +525,11 @@ class TestHttpTransportRegistration(tests.TestCase):
 
 
 class TestPost(tests.TestCase):
+
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        )
 
     def test_post_body_is_received(self):
         server = RecordingServer(expect_body_tail='end-of-body',
@@ -544,6 +542,8 @@ class TestPost(tests.TestCase):
         self.assertTrue(
             server.received_bytes.startswith('POST /.bzr/smart HTTP/1.'))
         self.assertTrue('content-length: 19\r' in server.received_bytes.lower())
+        self.assertTrue('content-type: application/octet-stream\r'
+                        in server.received_bytes.lower())
         # The transport should not be assuming that the server can accept
         # chunked encoding the first time it connects, because HTTP/1.1, so we
         # check for the literal string.
@@ -584,6 +584,11 @@ class TestSpecificRequestHandler(http_utils.TestCaseWithWebserver):
 
     Daughter classes are expected to override _req_handler_class
     """
+
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        )
 
     # Provide a useful default
     _req_handler_class = http_server.TestingHTTPRequestHandler
@@ -841,7 +846,7 @@ class TestRangeRequestServer(TestSpecificRequestHandler):
         t = self.get_readonly_transport()
         # force transport to issue multiple requests
         t._get_max_size = 2
-        l = list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
+        list(t.readv('a', ((0, 1), (1, 1), (2, 4), (6, 4))))
         # The server should have issued 3 requests
         self.assertEqual(3, server.GET_request_nb)
         self.assertEqual('0123456789', t.get_bytes('a'))
@@ -924,6 +929,8 @@ class MultipleRangeWithoutContentLengthRequestHandler(
     def get_multiple_ranges(self, file, file_size, ranges):
         self.send_response(206)
         self.send_header('Accept-Ranges', 'bytes')
+        # XXX: this is strange; the 'random' name below seems undefined and
+        # yet the tests pass -- mbp 2010-10-11 bug 658773
         boundary = "%d" % random.randint(0,0x7FFFFFFF)
         self.send_header("Content-Type",
                          "multipart/byteranges; boundary=%s" % boundary)
@@ -991,7 +998,7 @@ class TruncatedMultipleRangeRequestHandler(
                 return
             self.send_range_content(file, start, end - start + 1)
             cur += 1
-        # No final boundary
+        # Final boundary
         self.wfile.write(boundary_line)
 
 
@@ -1026,6 +1033,7 @@ class TestTruncatedMultipleRangeServer(TestSpecificRequestHandler):
         # that mode
         self.assertEqual('single', t._range_hint)
 
+
 class LimitedRangeRequestHandler(http_server.TestingHTTPRequestHandler):
     """Errors out when range specifiers exceed the limit"""
 
@@ -1054,6 +1062,11 @@ class LimitedRangeHTTPServer(http_server.HttpServer):
 
 class TestLimitedRangeRequestServer(http_utils.TestCaseWithWebserver):
     """Tests readv requests against a server erroring out on too much ranges."""
+
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        )
 
     # Requests with more range specifiers will error out
     range_limit = 3
@@ -1095,34 +1108,52 @@ class TestHttpProxyWhiteBox(tests.TestCase):
     Only the urllib implementation is tested here.
     """
 
-    def setUp(self):
-        tests.TestCase.setUp(self)
-        self._old_env = {}
-        self.addCleanup(self._restore_env)
-
-    def _install_env(self, env):
-        for name, value in env.iteritems():
-            self._old_env[name] = osutils.set_or_unset_env(name, value)
-
-    def _restore_env(self):
-        for name, value in self._old_env.iteritems():
-            osutils.set_or_unset_env(name, value)
-
     def _proxied_request(self):
         handler = _urllib2_wrappers.ProxyHandler()
-        request = _urllib2_wrappers.Request('GET','http://baz/buzzle')
+        request = _urllib2_wrappers.Request('GET', 'http://baz/buzzle')
         handler.set_proxy(request, 'http')
         return request
 
+    def assertEvaluateProxyBypass(self, expected, host, no_proxy):
+        handler = _urllib2_wrappers.ProxyHandler()
+        self.assertEquals(expected,
+                          handler.evaluate_proxy_bypass(host, no_proxy))
+
     def test_empty_user(self):
-        self._install_env({'http_proxy': 'http://bar.com'})
+        self.overrideEnv('http_proxy', 'http://bar.com')
+        request = self._proxied_request()
+        self.assertFalse(request.headers.has_key('Proxy-authorization'))
+
+    def test_user_with_at(self):
+        self.overrideEnv('http_proxy',
+                         'http://username@domain:password@proxy_host:1234')
         request = self._proxied_request()
         self.assertFalse(request.headers.has_key('Proxy-authorization'))
 
     def test_invalid_proxy(self):
         """A proxy env variable without scheme"""
-        self._install_env({'http_proxy': 'host:1234'})
+        self.overrideEnv('http_proxy', 'host:1234')
         self.assertRaises(errors.InvalidURL, self._proxied_request)
+
+    def test_evaluate_proxy_bypass_true(self):
+        """The host is not proxied"""
+        self.assertEvaluateProxyBypass(True, 'example.com', 'example.com')
+        self.assertEvaluateProxyBypass(True, 'bzr.example.com', '*example.com')
+
+    def test_evaluate_proxy_bypass_false(self):
+        """The host is proxied"""
+        self.assertEvaluateProxyBypass(False, 'bzr.example.com', None)
+
+    def test_evaluate_proxy_bypass_unknown(self):
+        """The host is not explicitly proxied"""
+        self.assertEvaluateProxyBypass(None, 'example.com', 'not.example.com')
+        self.assertEvaluateProxyBypass(None, 'bzr.example.com', 'example.com')
+
+    def test_evaluate_proxy_bypass_empty_entries(self):
+        """Ignore empty entries"""
+        self.assertEvaluateProxyBypass(None, 'example.com', '')
+        self.assertEvaluateProxyBypass(None, 'example.com', ',')
+        self.assertEvaluateProxyBypass(None, 'example.com', 'foo,,bar')
 
 
 class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
@@ -1133,6 +1164,11 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
     different content (the faked proxy server append '-proxied'
     to the file names).
     """
+
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        )
 
     # FIXME: We don't have an https server available, so we don't
     # test https connections. --vila toolongago
@@ -1153,39 +1189,23 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
             self.no_proxy_host = self.server_host_port
         # The secondary server is the proxy
         self.proxy_url = self.get_secondary_url()
-        self._old_env = {}
 
     def _testing_pycurl(self):
         # TODO: This is duplicated for lots of the classes in this file
         return (features.pycurl.available()
                 and self._transport == PyCurlTransport)
 
-    def _install_env(self, env):
-        for name, value in env.iteritems():
-            self._old_env[name] = osutils.set_or_unset_env(name, value)
-
-    def _restore_env(self):
-        for name, value in self._old_env.iteritems():
-            osutils.set_or_unset_env(name, value)
-
-    def proxied_in_env(self, env):
-        self._install_env(env)
+    def assertProxied(self):
         t = self.get_readonly_transport()
-        try:
-            self.assertEqual('proxied contents of foo\n', t.get('foo').read())
-        finally:
-            self._restore_env()
+        self.assertEqual('proxied contents of foo\n', t.get('foo').read())
 
-    def not_proxied_in_env(self, env):
-        self._install_env(env)
+    def assertNotProxied(self):
         t = self.get_readonly_transport()
-        try:
-            self.assertEqual('contents of foo\n', t.get('foo').read())
-        finally:
-            self._restore_env()
+        self.assertEqual('contents of foo\n', t.get('foo').read())
 
     def test_http_proxy(self):
-        self.proxied_in_env({'http_proxy': self.proxy_url})
+        self.overrideEnv('http_proxy', self.proxy_url)
+        self.assertProxied()
 
     def test_HTTP_PROXY(self):
         if self._testing_pycurl():
@@ -1194,47 +1214,58 @@ class TestProxyHttpServer(http_utils.TestCaseWithTwoWebservers):
             # about. Should we ?)
             raise tests.TestNotApplicable(
                 'pycurl does not check HTTP_PROXY for security reasons')
-        self.proxied_in_env({'HTTP_PROXY': self.proxy_url})
+        self.overrideEnv('HTTP_PROXY', self.proxy_url)
+        self.assertProxied()
 
     def test_all_proxy(self):
-        self.proxied_in_env({'all_proxy': self.proxy_url})
+        self.overrideEnv('all_proxy', self.proxy_url)
+        self.assertProxied()
 
     def test_ALL_PROXY(self):
-        self.proxied_in_env({'ALL_PROXY': self.proxy_url})
+        self.overrideEnv('ALL_PROXY', self.proxy_url)
+        self.assertProxied()
 
     def test_http_proxy_with_no_proxy(self):
-        self.not_proxied_in_env({'http_proxy': self.proxy_url,
-                                 'no_proxy': self.no_proxy_host})
+        self.overrideEnv('no_proxy', self.no_proxy_host)
+        self.overrideEnv('http_proxy', self.proxy_url)
+        self.assertNotProxied()
 
     def test_HTTP_PROXY_with_NO_PROXY(self):
         if self._testing_pycurl():
             raise tests.TestNotApplicable(
                 'pycurl does not check HTTP_PROXY for security reasons')
-        self.not_proxied_in_env({'HTTP_PROXY': self.proxy_url,
-                                 'NO_PROXY': self.no_proxy_host})
+        self.overrideEnv('NO_PROXY', self.no_proxy_host)
+        self.overrideEnv('HTTP_PROXY', self.proxy_url)
+        self.assertNotProxied()
 
     def test_all_proxy_with_no_proxy(self):
-        self.not_proxied_in_env({'all_proxy': self.proxy_url,
-                                 'no_proxy': self.no_proxy_host})
+        self.overrideEnv('no_proxy', self.no_proxy_host)
+        self.overrideEnv('all_proxy', self.proxy_url)
+        self.assertNotProxied()
 
     def test_ALL_PROXY_with_NO_PROXY(self):
-        self.not_proxied_in_env({'ALL_PROXY': self.proxy_url,
-                                 'NO_PROXY': self.no_proxy_host})
+        self.overrideEnv('NO_PROXY', self.no_proxy_host)
+        self.overrideEnv('ALL_PROXY', self.proxy_url)
+        self.assertNotProxied()
 
     def test_http_proxy_without_scheme(self):
+        self.overrideEnv('http_proxy', self.server_host_port)
         if self._testing_pycurl():
             # pycurl *ignores* invalid proxy env variables. If that ever change
             # in the future, this test will fail indicating that pycurl do not
             # ignore anymore such variables.
-            self.not_proxied_in_env({'http_proxy': self.server_host_port})
+            self.assertNotProxied()
         else:
-            self.assertRaises(errors.InvalidURL,
-                              self.proxied_in_env,
-                              {'http_proxy': self.server_host_port})
+            self.assertRaises(errors.InvalidURL, self.assertProxied)
 
 
 class TestRanges(http_utils.TestCaseWithWebserver):
     """Test the Range header in GET methods."""
+
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        )
 
     def setUp(self):
         http_utils.TestCaseWithWebserver.setUp(self)
@@ -1280,6 +1311,11 @@ class TestRanges(http_utils.TestCaseWithWebserver):
 
 class TestHTTPRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test redirection between http servers."""
+
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        )
 
     def setUp(self):
         super(TestHTTPRedirections, self).setUp()
@@ -1349,6 +1385,11 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
     -- vila 20070212
     """
 
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        )
+
     def setUp(self):
         if (features.pycurl.available()
             and self._transport == PyCurlTransport):
@@ -1399,6 +1440,11 @@ class TestHTTPSilentRedirections(http_utils.TestCaseWithRedirectedWebserver):
 class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
     """Test transport.do_catching_redirections."""
 
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        )
+
     def setUp(self):
         super(TestDoCatchRedirections, self).setUp()
         self.build_tree_contents([('a', '0123456789'),],)
@@ -1445,6 +1491,12 @@ class TestDoCatchRedirections(http_utils.TestCaseWithRedirectedWebserver):
 
 class TestAuth(http_utils.TestCaseWithWebserver):
     """Test authentication scheme"""
+
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        vary_by_http_auth_scheme(),
+        )
 
     _auth_header = 'Authorization'
     _password_prompt_prefix = ''
@@ -1598,34 +1650,15 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         ui.ui_factory = tests.TestUIFactory(stdin=stdin_content,
                                             stderr=tests.StringIOWrapper())
         # Create a minimal config file with the right password
-        conf = config.AuthenticationConfig()
-        conf._get_config().update(
-            {'httptest': {'scheme': 'http', 'port': self.server.port,
-                          'user': user, 'password': password}})
-        conf._save()
+        _setup_authentication_config(
+            scheme='http', 
+            port=self.server.port,
+            user=user,
+            password=password)
         # Issue a request to the server to connect
         self.assertEqual('contents of a\n',t.get('a').read())
         # stdin should have  been left untouched
         self.assertEqual(stdin_content, ui.ui_factory.stdin.readline())
-        # Only one 'Authentication Required' error should occur
-        self.assertEqual(1, self.server.auth_required_errors)
-
-    def test_user_from_auth_conf(self):
-        if self._testing_pycurl():
-            raise tests.TestNotApplicable(
-                'pycurl does not support authentication.conf')
-        user = 'joe'
-        password = 'foo'
-        self.server.add_user(user, password)
-        # Create a minimal config file with the right password
-        conf = config.AuthenticationConfig()
-        conf._get_config().update(
-            {'httptest': {'scheme': 'http', 'port': self.server.port,
-                          'user': user, 'password': password}})
-        conf._save()
-        t = self.get_user_transport(None, None)
-        # Issue a request to the server to connect
-        self.assertEqual('contents of a\n', t.get('a').read())
         # Only one 'Authentication Required' error should occur
         self.assertEqual(1, self.server.auth_required_errors)
 
@@ -1650,10 +1683,66 @@ class TestAuth(http_utils.TestCaseWithWebserver):
         # initial 'who are you' and a second 'who are you' with the new nonce)
         self.assertEqual(2, self.server.auth_required_errors)
 
+    def test_user_from_auth_conf(self):
+        if self._testing_pycurl():
+            raise tests.TestNotApplicable(
+                'pycurl does not support authentication.conf')
+        user = 'joe'
+        password = 'foo'
+        self.server.add_user(user, password)
+        _setup_authentication_config(
+            scheme='http', 
+            port=self.server.port,
+            user=user,
+            password=password)
+        t = self.get_user_transport(None, None)
+        # Issue a request to the server to connect
+        self.assertEqual('contents of a\n', t.get('a').read())
+        # Only one 'Authentication Required' error should occur
+        self.assertEqual(1, self.server.auth_required_errors)
+
+
+def _setup_authentication_config(**kwargs):
+    conf = config.AuthenticationConfig()
+    conf._get_config().update({'httptest': kwargs})
+    conf._save()
+
+
+
+class TestUrllib2AuthHandler(tests.TestCaseWithTransport):
+    """Unit tests for glue by which urllib2 asks us for authentication"""
+
+    def test_get_user_password_without_port(self):
+        """We cope if urllib2 doesn't tell us the port.
+
+        See https://bugs.launchpad.net/bzr/+bug/654684
+        """
+        user = 'joe'
+        password = 'foo'
+        _setup_authentication_config(
+            scheme='http', 
+            host='localhost',
+            user=user,
+            password=password)
+        handler = _urllib2_wrappers.HTTPAuthHandler()
+        got_pass = handler.get_user_password(dict(
+            user='joe',
+            protocol='http',
+            host='localhost',
+            path='/',
+            realm='Realm',
+            ))
+        self.assertEquals((user, password), got_pass)
 
 
 class TestProxyAuth(TestAuth):
     """Test proxy authentication schemes."""
+
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        vary_by_http_proxy_auth_scheme(),
+        )
 
     _auth_header = 'Proxy-authorization'
     _password_prompt_prefix = 'Proxy '
@@ -1661,8 +1750,6 @@ class TestProxyAuth(TestAuth):
 
     def setUp(self):
         super(TestProxyAuth, self).setUp()
-        self._old_env = {}
-        self.addCleanup(self._restore_env)
         # Override the contents to avoid false positives
         self.build_tree_contents([('a', 'not proxied contents of a\n'),
                                   ('b', 'not proxied contents of b\n'),
@@ -1671,16 +1758,8 @@ class TestProxyAuth(TestAuth):
                                   ])
 
     def get_user_transport(self, user, password):
-        self._install_env({'all_proxy': self.get_user_url(user, password)})
+        self.overrideEnv('all_proxy', self.get_user_url(user, password))
         return TestAuth.get_user_transport(self, user, password)
-
-    def _install_env(self, env):
-        for name, value in env.iteritems():
-            self._old_env[name] = osutils.set_or_unset_env(name, value)
-
-    def _restore_env(self):
-        for name, value in self._old_env.iteritems():
-            osutils.set_or_unset_env(name, value)
 
     def test_empty_pass(self):
         if self._testing_pycurl():
@@ -1716,10 +1795,15 @@ class SampleSocket(object):
 
 class SmartHTTPTunnellingTest(tests.TestCaseWithTransport):
 
+    scenarios = multiply_scenarios(
+        vary_by_http_client_implementation(),
+        vary_by_http_protocol_version(),
+        )
+
     def setUp(self):
         super(SmartHTTPTunnellingTest, self).setUp()
         # We use the VFS layer as part of HTTP tunnelling tests.
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
         self.transport_readonly_server = http_utils.HTTPServerWithSmarts
         self.http_server = self.get_readonly_server()
 
@@ -1809,6 +1893,8 @@ class SmartClientAgainstNotSmartServer(TestSpecificRequestHandler):
 
 
 class Test_redirected_to(tests.TestCase):
+
+    scenarios = vary_by_http_client_implementation()
 
     def test_redirected_to_subdir(self):
         t = self._transport('http://www.example.com/foo')
@@ -2061,6 +2147,11 @@ lalala whatever as long as itsssss
 
 class TestActivity(tests.TestCase, TestActivityMixin):
 
+    scenarios = multiply_scenarios(
+        vary_by_http_activity(),
+        vary_by_http_protocol_version(),
+        )
+
     def setUp(self):
         TestActivityMixin.setUp(self)
 
@@ -2086,6 +2177,8 @@ class TestNoReportActivity(tests.TestCase, TestActivityMixin):
 
 class TestAuthOnRedirected(http_utils.TestCaseWithRedirectedWebserver):
     """Test authentication on the redirected http server."""
+
+    scenarios = vary_by_http_protocol_version()
 
     _auth_header = 'Authorization'
     _password_prompt_prefix = ''

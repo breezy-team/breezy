@@ -35,7 +35,7 @@ from bzrlib.transport import memory
 
 
 def make_scenarios(vfs_factory, transport_server, transport_readonly_server,
-    formats, name_suffix=''):
+                   formats, name_suffix=''):
     """Transform the input to a list of scenarios.
 
     :param formats: A list of bzrdir_format objects.
@@ -77,6 +77,7 @@ class TestCaseWithControlDir(TestCaseWithTransport):
 def load_tests(standard_tests, module, loader):
     test_per_controldir = [
         'bzrlib.tests.per_controldir.test_controldir',
+        'bzrlib.tests.per_controldir.test_format',
         'bzrlib.tests.per_controldir.test_push',
         ]
     submod_tests = loader.loadTestsFromModuleNames(test_per_controldir)

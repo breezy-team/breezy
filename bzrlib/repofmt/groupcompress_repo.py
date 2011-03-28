@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -421,9 +421,18 @@ class GCCHKPacker(Packer):
         inventory_keys = source_vf.keys()
         missing_inventories = set(self.revision_keys).difference(inventory_keys)
         if missing_inventories:
-            missing_inventories = sorted(missing_inventories)
-            raise ValueError('We are missing inventories for revisions: %s'
-                % (missing_inventories,))
+            # Go back to the original repo, to see if these are really missing
+            # https://bugs.launchpad.net/bzr/+bug/437003
+            # If we are packing a subset of the repo, it is fine to just have
+            # the data in another Pack file, which is not included in this pack
+            # operation.
+            inv_index = self._pack_collection.repo.inventories._index
+            pmap = inv_index.get_parent_map(missing_inventories)
+            really_missing = missing_inventories.difference(pmap)
+            if really_missing:
+                missing_inventories = sorted(really_missing)
+                raise ValueError('We are missing inventories for revisions: %s'
+                    % (missing_inventories,))
         self._copy_stream(source_vf, target_vf, inventory_keys,
                           'inventories', self._get_filtered_inv_stream, 2)
 
@@ -1339,19 +1348,15 @@ def _filter_text_keys(interesting_nodes_iterable, text_keys, bytes_to_text_key):
         yield record
 
 
-
-
-class RepositoryFormatCHK1(RepositoryFormatPack):
-    """A hashed CHK+group compress pack repository."""
+class RepositoryFormat2a(RepositoryFormatPack):
+    """A CHK repository that uses the bencode revision serializer."""
 
     repository_class = CHKInventoryRepository
     supports_external_lookups = True
     supports_chks = True
-    # For right now, setting this to True gives us InterModel1And2 rather
-    # than InterDifferingSerializer
     _commit_builder_class = PackRootCommitBuilder
     rich_root_data = True
-    _serializer = chk_serializer.chk_serializer_255_bigpage
+    _serializer = chk_serializer.chk_bencode_serializer
     _commit_inv_deltas = True
     # What index classes to use
     index_builder_class = BTreeBuilder
@@ -1366,52 +1371,6 @@ class RepositoryFormatCHK1(RepositoryFormatPack):
     _fetch_uses_deltas = False # essentially ignored by the groupcompress code.
     fast_deltas = True
     pack_compresses = True
-
-    def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development6-rich-root')
-
-    def _ignore_setting_bzrdir(self, format):
-        pass
-
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return ('Bazaar development format - group compression and chk inventory'
-                ' (needs bzr.dev from 1.14)\n')
-
-    def get_format_description(self):
-        """See RepositoryFormat.get_format_description()."""
-        return ("Development repository format - rich roots, group compression"
-            " and chk inventories")
-
-
-class RepositoryFormatCHK2(RepositoryFormatCHK1):
-    """A CHK repository that uses the bencode revision serializer."""
-
-    _serializer = chk_serializer.chk_bencode_serializer
-
-    def _get_matching_bzrdir(self):
-        return bzrdir.format_registry.make_bzrdir('development7-rich-root')
-
-    def _ignore_setting_bzrdir(self, format):
-        pass
-
-    _matchingbzrdir = property(_get_matching_bzrdir, _ignore_setting_bzrdir)
-
-    def get_format_string(self):
-        """See RepositoryFormat.get_format_string()."""
-        return ('Bazaar development format - chk repository with bencode '
-                'revision serialization (needs bzr.dev from 1.16)\n')
-
-
-class RepositoryFormat2a(RepositoryFormatCHK2):
-    """A CHK repository that uses the bencode revision serializer.
-
-    This is the same as RepositoryFormatCHK2 but with a public name.
-    """
-
-    _serializer = chk_serializer.chk_bencode_serializer
 
     def _get_matching_bzrdir(self):
         return bzrdir.format_registry.make_bzrdir('2a')

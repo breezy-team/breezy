@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 """Tests for LockDir"""
 
-from cStringIO import StringIO
 import os
 from threading import Thread, Lock
 import time
@@ -34,12 +33,12 @@ from bzrlib.errors import (
     LockBreakMismatch,
     LockBroken,
     LockContention,
-    LockError,
     LockFailed,
     LockNotHeld,
     )
 from bzrlib.lockdir import LockDir
 from bzrlib.tests import (
+    features,
     TestCaseWithTransport,
     )
 from bzrlib.trace import note
@@ -582,16 +581,12 @@ class TestLockDir(TestCaseWithTransport):
                 self.prompts.append(('boolean', prompt))
                 return True
         ui = LoggingUIFactory()
-        orig_factory = bzrlib.ui.ui_factory
-        bzrlib.ui.ui_factory = ui
-        try:
-            ld2.break_lock()
-            self.assertLength(1, ui.prompts)
-            self.assertEqual('boolean', ui.prompts[0][0])
-            self.assertStartsWith(ui.prompts[0][1], 'Break (corrupt LockDir')
-            self.assertRaises(LockBroken, ld.unlock)
-        finally:
-            bzrlib.ui.ui_factory = orig_factory
+        self.overrideAttr(bzrlib.ui, 'ui_factory', ui)
+        ld2.break_lock()
+        self.assertLength(1, ui.prompts)
+        self.assertEqual('boolean', ui.prompts[0][0])
+        self.assertStartsWith(ui.prompts[0][1], 'Break (corrupt LockDir')
+        self.assertRaises(LockBroken, ld.unlock)
 
     def test_break_lock_missing_info(self):
         """break_lock works even if the info file is missing (and tells the UI
@@ -669,6 +664,7 @@ class TestLockDir(TestCaseWithTransport):
         ld1.unlock()
 
     def test_lock_permission(self):
+        self.requireFeature(features.not_running_as_root)
         if not osutils.supports_posix_readonly():
             raise tests.TestSkipped('Cannot induce a permission failure')
         ld1 = self.get_lock()
@@ -742,7 +738,7 @@ class TestLockDir(TestCaseWithTransport):
     def test_corrupt_lockdir_info(self):
         """We can cope with corrupt (and thus unparseable) info files."""
         # This seems like a fairly common failure case too - see
-        # <https://bugs.edge.launchpad.net/bzr/+bug/619872> for instance.
+        # <https://bugs.launchpad.net/bzr/+bug/619872> for instance.
         # In particular some systems tend to fill recently created files with
         # nul bytes after recovering from a system crash.
         t = self.get_transport()

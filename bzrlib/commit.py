@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -55,6 +55,7 @@ from bzrlib import (
     revision,
     trace,
     tree,
+    ui,
     )
 from bzrlib.branch import Branch
 from bzrlib.cleanup import OperationWithCleanups
@@ -72,7 +73,6 @@ from bzrlib.trace import mutter, note, is_quiet
 from bzrlib.inventory import Inventory, InventoryEntry, make_entry
 from bzrlib import symbol_versioning
 from bzrlib.urlutils import unescape_for_display
-import bzrlib.ui
 
 
 class NullCommitReporter(object):
@@ -326,7 +326,7 @@ class Commit(object):
                 minimum_path_selection(specific_files))
         else:
             self.specific_files = None
-            
+
         self.allow_pointless = allow_pointless
         self.message_callback = message_callback
         self.timestamp = timestamp
@@ -346,7 +346,7 @@ class Commit(object):
             not self.branch.repository._format.supports_tree_reference and
             (self.branch.repository._format.fast_deltas or
              len(self.parents) < 2))
-        self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.pb = ui.ui_factory.nested_progress_bar()
         operation.add_cleanup(self.pb.finished)
         self.basis_revid = self.work_tree.last_revision()
         self.basis_tree = self.work_tree.basis_tree()
@@ -380,7 +380,9 @@ class Commit(object):
         self.pb_stage_count = 0
         self.pb_stage_total = 5
         if self.bound_branch:
-            self.pb_stage_total += 1
+            # 2 extra stages: "Uploading data to master branch" and "Merging
+            # tags to master branch"
+            self.pb_stage_total += 2
         self.pb.show_pct = False
         self.pb.show_spinner = False
         self.pb.show_eta = False
@@ -400,6 +402,9 @@ class Commit(object):
         self._set_progress_stage("Collecting changes", counter=True)
         self.builder = self.branch.get_commit_builder(self.parents,
             self.config, timestamp, timezone, committer, self.revprops, rev_id)
+        if not self.builder.supports_record_entry_contents and self.exclude:
+            self.builder.abort()
+            raise errors.ExcludesUnsupported(self.branch.repository)
 
         try:
             self.builder.will_record_deletes()
@@ -444,11 +449,20 @@ class Commit(object):
             self._set_progress_stage("Uploading data to master branch")
             # 'commit' to the master first so a timeout here causes the
             # local branch to be out of date
-            self.master_branch.import_last_revision_info(
-                self.branch.repository, new_revno, self.rev_id)
+            self.master_branch.import_last_revision_info_and_tags(
+                self.branch, new_revno, self.rev_id)
 
         # and now do the commit locally.
         self.branch.set_last_revision_info(new_revno, self.rev_id)
+
+        # Merge local tags to remote
+        if self.bound_branch:
+            self._set_progress_stage("Merging tags to master branch")
+            tag_conflicts = self.branch.tags.merge_to(self.master_branch.tags)
+            if tag_conflicts:
+                warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
+                note("Conflicting tags in bound branch:\n" +
+                    "\n".join(warning_lines))
 
         # Make the working tree be up to date with the branch. This
         # includes automatic changes scheduled to be made to the tree, such

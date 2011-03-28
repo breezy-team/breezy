@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
     probe_bad_non_ascii,
     TestSkipped,
+    UnicodeFilenameFeature,
     )
 from bzrlib.tests import TestCaseWithTransport
 
@@ -112,6 +113,7 @@ class TestCommit(TestCaseWithTransport):
     def test_unicode_commit_message_is_filename(self):
         """Unicode commit message same as a filename (Bug #563646).
         """
+        self.requireFeature(UnicodeFilenameFeature)
         file_name = u'\N{euro sign}'
         self.run_bzr(['init'])
         open(file_name, 'w').write('hello world')
@@ -717,13 +719,13 @@ altered in u2
             f = file('fed.bat', 'w')
             f.write('@rem dummy fed')
             f.close()
-            osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
+            self.overrideEnv('BZR_EDITOR', "fed.bat")
         else:
             f = file('fed.sh', 'wb')
             f.write('#!/bin/sh\n')
             f.close()
             os.chmod('fed.sh', 0755)
-            osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
+            self.overrideEnv('BZR_EDITOR', "./fed.sh")
 
     def setup_commit_with_template(self):
         self.setup_editor()
@@ -754,8 +756,8 @@ altered in u2
         os.chdir('foo')
         open('foo.txt', 'w').write('hello')
         self.run_bzr(['add'])
-        osutils.set_or_unset_env('EMAIL', None)
-        osutils.set_or_unset_env('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
         out, err = self.run_bzr(['commit', '-m', 'initial'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
 

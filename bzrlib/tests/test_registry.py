@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@ import os
 import sys
 
 from bzrlib import (
-    errors,
+    branch,
     osutils,
     registry,
     tests,
@@ -286,6 +286,13 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
             '\n\n'
         )
 
+    def test_lazy_import_registry_foo(self):
+        a_registry = registry.Registry()
+        a_registry.register_lazy('foo', 'bzrlib.branch', 'Branch')
+        a_registry.register_lazy('bar', 'bzrlib.branch', 'Branch.hooks')
+        self.assertEqual(branch.Branch, a_registry.get('foo'))
+        self.assertEqual(branch.Branch.hooks, a_registry.get('bar'))
+
     def test_lazy_import_registry(self):
         plugin_name = self.create_simple_plugin()
         a_registry = registry.Registry()
@@ -331,3 +338,17 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         finally:
             sys.path.remove(plugin_path)
 
+    def test_lazy_import_get_module(self):
+        a_registry = registry.Registry()
+        a_registry.register_lazy('obj', "bzrlib.tests.test_registry",
+            'object1')
+        self.assertEquals("bzrlib.tests.test_registry",
+            a_registry._get_module("obj"))
+
+    def test_normal_get_module(self):
+        class AThing(object):
+            """Something"""
+        a_registry = registry.Registry()
+        a_registry.register("obj", AThing())
+        self.assertEquals("bzrlib.tests.test_registry",
+            a_registry._get_module("obj"))

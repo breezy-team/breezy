@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,26 +31,24 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     TestCaseWithTransport,
-    condition_isinstance,
-    multiply_tests,
-    split_suite_by_condition,
+    scenarios,
     )
 
 
-def load_tests(standard_tests, module, loader):
-    # parameterise the TestBTreeNodes tests
-    node_tests, others = split_suite_by_condition(standard_tests,
-        condition_isinstance(TestBTreeNodes))
+load_tests = scenarios.load_tests_apply_scenarios
+
+
+def btreeparser_scenarios():
     import bzrlib._btree_serializer_py as py_module
     scenarios = [('python', {'parse_btree': py_module})]
     if compiled_btreeparser_feature.available():
-        scenarios.append(('C', {'parse_btree':
-                                compiled_btreeparser_feature.module}))
-    return multiply_tests(node_tests, scenarios, others)
+        scenarios.append(('C', 
+            {'parse_btree': compiled_btreeparser_feature.module}))
+    return scenarios
 
 
 compiled_btreeparser_feature = tests.ModuleAvailableFeature(
-                                'bzrlib._btree_serializer_pyx')
+    'bzrlib._btree_serializer_pyx')
 
 
 class BTreeTestCase(TestCaseWithTransport):
@@ -798,7 +796,7 @@ class TestBTreeIndex(BTreeTestCase):
     def test_eq_ne(self):
         # two indices are equal when constructed with the same parameters:
         t1 = transport.get_transport('trace+' + self.get_url(''))
-        t2 = transport.get_transport(self.get_url(''))
+        t2 = self.get_transport()
         self.assertTrue(
             btree_index.BTreeGraphIndex(t1, 'index', None) ==
             btree_index.BTreeGraphIndex(t1, 'index', None))
@@ -1153,7 +1151,7 @@ class TestBTreeIndex(BTreeTestCase):
         for node in nodes:
             builder.add_node(*node)
         stream = builder.finish()
-        trans = transport.get_transport(self.get_url())
+        trans = self.get_transport()
         size = trans.put_file('index', stream)
         index = btree_index.BTreeGraphIndex(trans, 'index', size)
         self.assertEqual(500, index.key_count())
@@ -1184,6 +1182,8 @@ class TestBTreeIndex(BTreeTestCase):
 
 
 class TestBTreeNodes(BTreeTestCase):
+
+    scenarios = btreeparser_scenarios()
 
     def setUp(self):
         BTreeTestCase.setUp(self)
