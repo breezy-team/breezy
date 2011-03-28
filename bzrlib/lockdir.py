@@ -684,18 +684,12 @@ class LockHeldInfo(object):
     def for_this_process(cls, nonce):
         """Return a new LockHeldInfo for a lock taken by this process.
         """
-        # XXX: is creating this here inefficient?
-        config = bzrlib.config.GlobalConfig()
-        try:
-            user = config.username()
-        except errors.NoWhoami:
-            user = osutils.getuser_unicode()
         return cls(dict(
             hostname=get_host_name(),
             pid=str(os.getpid()),
             start_time=str(int(time.time())),
             nonce=nonce,
-            user=user,
+            user=get_username_for_lock_info(),
             ))
 
     def to_bytes(self):
@@ -743,6 +737,27 @@ class LockHeldInfo(object):
             ]
 
     def __cmp__(self, other):
+        """Value comparison of lock holders."""
         return (
             cmp(type(self), type(other))
             or cmp(self.info_dict, other.info_dict))
+
+    def is_locked_by_this_process(self):
+        """Check if the hostname and pid in the lock are the same as for this process."""
+        return (
+            self.get('hostname') == get_host_name()
+            and self.get('pid') == str(os.getpid())
+            and self.get('user') == get_username_for_lock_info())
+
+
+def get_username_for_lock_info():
+    """Get a username suitable for putting into a lock.
+
+    It's ok if what's written here is not a proper email address as long
+    as it gives some clue who the user is.
+    """
+    config = bzrlib.config.GlobalConfig()
+    try:
+        return config.username()
+    except errors.NoWhoami:
+        return osutils.getuser_unicode()

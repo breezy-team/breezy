@@ -886,8 +886,9 @@ class TestStaleLockDir(TestCaseWithTransport):
     :see: https://bugs.launchpad.net/bzr/+bug/220464
     """
 
-    def test_is_own_lock(self):
+    def test_is_locked_by_this_process(self):
         info = LockHeldInfo.for_this_process('abcabc')
+        self.assertTrue(info.is_locked_by_this_process())
 
     def test_lock_holder_still_active(self):
         """Detect that the holder (this process) is still running."""
