@@ -93,8 +93,7 @@ def report_bug_legacy(exc_info, err_file):
         'encoding: %r, fsenc: %r, lang: %r\n' % (
             osutils.get_user_encoding(), sys.getfilesystemencoding(),
             os.environ.get('LANG')))
-    err_file.write("plugins:\n")
-    err_file.write(_format_plugin_list())
+    # We used to show all the plugins here, but it's too verbose.
     err_file.write(
         "\n\n"
         "*** Bazaar has encountered an internal error.  This probably indicates a\n"
