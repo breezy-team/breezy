@@ -108,6 +108,7 @@ import os
 import time
 
 from bzrlib import (
+    config,
     debug,
     errors,
     lock,
@@ -115,7 +116,6 @@ from bzrlib import (
     ui,
     urlutils,
     )
-import bzrlib.config
 from bzrlib.decorators import only_raises
 from bzrlib.errors import (
         DirectoryNotEmpty,
@@ -242,7 +242,10 @@ class LockDir(lock.Lock):
                 # XXX: Cope if the lock has disappeared at this point.
                 other_holder = self.peek()
                 self._trace("other holder is %r" % other_holder)
-                if other_holder.is_lock_holder_known_dead():
+                if (other_holder.is_lock_holder_known_dead()
+                    and self.get_config().get_user_option_as_bool(
+                        'steal_dead_locks',
+                        default=True)):
                     ui.ui_factory.show_user_warning(
                         'steal_dead_lock',
                         lock_url=urlutils.join(self.transport.base, self.path),
@@ -683,6 +686,12 @@ class LockDir(lock.Lock):
             return
         mutter(str(self) + ": " + (format % args))
 
+    def get_config(self):
+        """Get the configuration that governs this lockdir."""
+        # XXX: This really should also use the locationconfig at least, but
+        # that seems a bit hard to hook up at the moment. -- mbp 20110329
+        return config.GlobalConfig()
+
 
 class LockHeldInfo(object):
     """The information recorded about a held lock.
@@ -832,8 +841,7 @@ def get_username_for_lock_info():
     It's ok if what's written here is not a proper email address as long
     as it gives some clue who the user is.
     """
-    config = bzrlib.config.GlobalConfig()
     try:
-        return config.username()
+        return config.GlobalConfig().username()
     except errors.NoWhoami:
         return osutils.getuser_unicode()

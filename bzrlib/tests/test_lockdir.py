@@ -950,4 +950,15 @@ class TestStaleLockDir(TestCaseWithTransport):
         l2.unlock()
 
     def test_auto_break_stale_lock_configured_off(self):
-        self.knownFailure("not implemented")
+        """Automatic breaking can be turned off"""
+        l1 = LockDir(self.get_transport(), 'a',
+            extra_holder_info={'pid': '12312313'})
+        token_1 = l1.attempt_lock()
+        self.addCleanup(l1.unlock)
+        l2 = LockDir(self.get_transport(), 'a')
+        # This fails now, because dead lock breaking is turned off.
+        config.GlobalConfig().set_user_option('steal_dead_locks', False)
+        self.assertRaises(LockContention,
+            l2.attempt_lock)
+        # and it's in fact not broken
+        l1.confirm()
