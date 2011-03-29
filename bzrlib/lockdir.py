@@ -103,6 +103,7 @@ Example usage:
 # the existing locking code and needs a new format of the containing object.
 # -- robertc, mbp 20070628
 
+import errno
 import os
 import time
 
@@ -676,6 +677,9 @@ class LockHeldInfo(object):
     def __init__(self, info_dict):
         self.info_dict = info_dict
 
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.info_dict)
+
     def get(self, field_name):
         """Return the contents of a field from the lock info, or None."""
         return self.info_dict.get(field_name)
@@ -748,6 +752,51 @@ class LockHeldInfo(object):
             self.get('hostname') == get_host_name()
             and self.get('pid') == str(os.getpid())
             and self.get('user') == get_username_for_lock_info())
+
+    def is_lock_holder_known_dead(self):
+        """True if the lock holder process is known to be dead.
+
+        False if it's either known to be still alive, or if we just can't tell.
+
+        We can be fairly sure the lock holder is dead if it declared the same
+        hostname and there is no process with the given pid alive.  If people
+        have multiple machines with the same hostname this may cause trouble.
+
+        This doesn't check whether the lock holder is in fact the same process
+        calling this method.  (In that case it will return true.)
+        """
+        if self.get('hostname') != get_host_name():
+            return False
+        if getattr(os, 'kill', None) is None:
+            # Probably not available on Windows.  
+            # XXX: How should we check for process liveness there?
+            return False
+        pid_str = self.info_dict.get('pid', None)
+        if not pid_str:
+            mutter("no pid recorded in %r" % (self, ))
+            return False
+        try:
+            pid = int(pid_str)
+        except ValueError:
+            mutter("can't parse pid %r from %r" 
+                % (pid_str, self))
+            return False
+        try:
+            # Special meaning of unix kill: just check if it's there.
+            os.kill(pid, 0)
+        except OSError, e:
+            if e.errno == errno.ESRCH:
+                # On this machine, and really not found: as sure as we can be
+                # that it's dead.
+                return True
+            elif e.errno == errno.EPERM:
+                # exists, though not ours
+                return False
+            else:
+                raise
+        else:
+            # Exists and our process: not dead.
+            return False
 
 
 def get_username_for_lock_info():

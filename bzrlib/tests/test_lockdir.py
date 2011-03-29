@@ -17,6 +17,7 @@
 """Tests for LockDir"""
 
 import os
+import sys
 from threading import Thread, Lock
 import time
 
@@ -890,17 +891,27 @@ class TestStaleLockDir(TestCaseWithTransport):
         info = LockHeldInfo.for_this_process('abcabc')
         self.assertTrue(info.is_locked_by_this_process())
 
-    def test_lock_holder_still_active(self):
+    def test_is_not_locked_by_this_process(self):
+        info = LockHeldInfo.for_this_process('abcabc')
+        info.info_dict['pid'] = '123123123123123' # probably not us
+        self.assertFalse(info.is_locked_by_this_process())
+
+    def test_lock_holder_live_process(self):
         """Detect that the holder (this process) is still running."""
-        self.knownFailure("not implemented")
+        info = LockHeldInfo.for_this_process('abcabc')
+        self.assertFalse(info.is_lock_holder_known_dead())
+        
+    def test_lock_holder_dead_process(self):
+        """Detect that the holder (this process) is still running."""
+        info = LockHeldInfo.for_this_process('abcabc')
+        info.info_dict['pid'] = '123123123' # probably not alive at all
+        self.assertTrue(info.is_lock_holder_known_dead())
         
     def test_lock_holder_other_machine(self):
         """The lock holder isn't here so we don't know if they're alive."""
-        self.knownFailure("not implemented")
-
-    def test_lock_holder_gone(self):
-        """Lock holder a dead process on the same machine."""
-        self.knownFailure("not implemented")
+        info = LockHeldInfo.for_this_process('abcabc')
+        info.info_dict['host'] = 'egg.example.com'
+        self.assertFalse(info.is_lock_holder_known_dead())
 
     def test_no_good_hostname(self):
         """Correctly handle ambiguous hostnames.
