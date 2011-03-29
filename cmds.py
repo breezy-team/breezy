@@ -2,7 +2,7 @@
 #    Copyright (C) 2005 Jamie Wilkinson <jaq@debian.org> 
 #                  2006, 2007 James Westby <jw+debian@jameswestby.net>
 #                  2007 Reinhard Tartler <siretart@tauware.de>
-#                  2008 Canonical Ltd.
+#                  2008-2011 Canonical Ltd.
 #
 #    This file is part of bzr-builddeb.
 #
@@ -47,6 +47,7 @@ from bzrlib.errors import (
     NoWorkingTree,
     )
 from bzrlib.option import Option
+from bzrlib.revisionspec import RevisionSpec
 from bzrlib.tag import _merge_tags_if_possible
 from bzrlib.trace import note, warning
 from bzrlib.workingtree import WorkingTree
@@ -63,7 +64,6 @@ from bzrlib.plugins.builddeb.builder import (
 from bzrlib.plugins.builddeb.config import (
     BUILD_TYPE_MERGE,
     BUILD_TYPE_NATIVE,
-    BUILD_TYPE_NORMAL,
     BUILD_TYPE_SPLIT,
     )
 from bzrlib.plugins.builddeb.errors import (
@@ -99,6 +99,7 @@ from bzrlib.plugins.builddeb.upstream import (
         UpstreamProvider,
         )
 from bzrlib.plugins.builddeb.upstream.branch import (
+        LazyUpstreamBranchSource,
         UpstreamBranchSource,
         )
 from bzrlib.plugins.builddeb.util import (
@@ -306,27 +307,12 @@ class cmd_builddeb(Command):
             source = True
         return branch, build_options, source
 
-    def _get_upstream_branch(self, build_type, export_upstream,
-            export_upstream_revision, config, version):
-        upstream_branch = None
-        upstream_revision = None
-        if build_type == BUILD_TYPE_MERGE:
-            if export_upstream is None:
-                export_upstream = config.export_upstream
-            if export_upstream:
-                upstream_branch = Branch.open(export_upstream)
-                upstream_branch.lock_read()
-                try:
-                    upstream_source = UpstreamBranchSource(upstream_branch,
-                        config=config)
-                    if version is None:
-                        upstream_revision = upstream_branch.last_revision()
-                    else:
-                        upstream_revision = upstream_source.version_as_revision(
-                            None, version.upstream_version.encode("utf-8"))
-                finally:
-                    upstream_branch.unlock()
-        return (upstream_branch, upstream_revision)
+    def _get_upstream_branch(self, export_upstream, export_upstream_revision,
+            config, version):
+        upstream_source = LazyUpstreamBranchSource(export_upstream, config=config)
+        if export_upstream_revision:
+            upstream_source.upstream_revision_map[version.encode("utf-8")] = export_upstream_revision
+        return upstream_source
 
     def run(self, branch_or_build_options_list=None, verbose=False,
             working_tree=False,
@@ -364,10 +350,6 @@ class cmd_builddeb(Command):
                 build_type = config.build_type
             contains_upstream_source = tree_contains_upstream_source(tree)
             (changelog, larstiq) = find_changelog(tree, not contains_upstream_source)
-            try:
-                prev_version = find_previous_upload(tree, not contains_upstream_source)
-            except NoPreviousUpload:
-                prev_version = None
             if build_type is None:
                 build_type = guess_build_type(tree, changelog.version,
                     contains_upstream_source)
@@ -375,6 +357,10 @@ class cmd_builddeb(Command):
             note("Building package in %s mode" % build_type)
 
             if package_merge:
+                try:
+                    prev_version = find_previous_upload(tree, not contains_upstream_source)
+                except NoPreviousUpload:
+                    prev_version = None
                 build_options.append("-v%s" % str(prev_version))
                 if (prev_version.upstream_version
                         != changelog.version.upstream_version
@@ -390,17 +376,19 @@ class cmd_builddeb(Command):
                 AptSource(),
                 ]
             if build_type == BUILD_TYPE_MERGE:
-                upstream_branch, upstream_revision = self._get_upstream_branch(
-                    build_type, export_upstream, export_upstream_revision, config,
-                    changelog.version)
-                if upstream_branch is not None:
-                    upstream_sources.append(UpstreamBranchSource(
-                            upstream_branch,
-                            {changelog.version.upstream_version:
-                            upstream_revision}))
+                if export_upstream is None and config.export_upstream:
+                    export_upstream = config.export_upstream
+                    warning("The 'export-upstream' configuration option is deprecated. "
+                            "Use 'upstream-branch' instead.")
+                if export_upstream is None and config.upstream_branch:
+                    export_upstream = config.upstream_branch
+                if export_upstream:
+                    upstream_branch_source = self._get_upstream_branch(
+                        export_upstream, export_upstream_revision, config,
+                        changelog.version.upstream_version)
+                    upstream_sources.append(upstream_branch_source)
             elif not native and config.upstream_branch is not None:
-                upstream_branch = Branch.open(config.upstream_branch)
-                upstream_sources.append(UpstreamBranchSource(upstream_branch))
+                upstream_sources.append(LazyUpstreamBranchSource(config.upstream_branch))
             upstream_sources.extend([
                 GetOrigSourceSource(tree, larstiq),
                 UScanSource(tree, larstiq),
@@ -714,7 +702,12 @@ class cmd_merge_upstream(Command):
                 version = primary_upstream_source.get_latest_version(
                     package, current_version)
             if version is None:
-                raise BzrCommandError("You must specify the version number using --version.")
+                if upstream_branch_source is not None:
+                    raise BzrCommandError("You must specify the version "
+                        "number using --version or specify --snapshot to "
+                        "merge a snapshot from the upstream branch.")
+                else:
+                    raise BzrCommandError("You must specify the version number using --version.")
             assert isinstance(version, str)
             note("Using version string %s." % (version))
             # Look up the revision id from the version string

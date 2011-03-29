@@ -76,12 +76,12 @@ from bzrlib.plugins.builddeb.errors import (
     )
 
 
-DEBIAN_RELEASES = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'stable',
-        'testing', 'unstable', 'experimental', 'frozen', 'sid')
+DEBIAN_RELEASES = ('woody', 'sarge', 'etch', 'lenny', 'squeeze', 'wheezy',
+        'stable', 'testing', 'unstable', 'experimental', 'frozen', 'sid')
 DEBIAN_POCKETS = ('', '-security', '-proposed-updates', '-backports')
 UBUNTU_RELEASES = ('warty', 'hoary', 'breezy', 'dapper', 'edgy',
         'feisty', 'gutsy', 'hardy', 'intrepid', 'jaunty', 'karmic',
-        'lucid', 'maverick', 'natty')
+        'lucid', 'maverick', 'natty', "oneiric")
 UBUNTU_POCKETS = ('', '-proposed', '-updates', '-security', '-backports')
 
 
@@ -626,7 +626,7 @@ def tree_contains_upstream_source(tree):
     if root is None:
         return False # Empty tree
     present_files = set(root.children.keys())
-    packaging_files = frozenset(["debian", ".bzr-builddeb"])
+    packaging_files = frozenset(["debian", ".bzr-builddeb", ".bzrignore"])
     return (len(present_files - packaging_files) > 0)
 
 

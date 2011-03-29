@@ -37,7 +37,8 @@ except ImportError:
 
 def _get_launchpad():
     try:
-        return Launchpad.login_with("bzr-builddeb", "production")
+        return Launchpad.login_anonymously("bzr-builddeb",
+            service_root=LPNET_SERVICE_ROOT)
     except AttributeError: # older version of launchpadlib
         creds_path = os.path.join(config_dir(), "builddeb.lp_creds.txt")
         if not os.path.exists(creds_path):

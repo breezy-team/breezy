@@ -57,6 +57,7 @@ from bzrlib.plugins.builddeb.upstream import (
 from bzrlib.plugins.builddeb.upstream.branch import (
     get_export_upstream_revision,
     get_snapshot_revision,
+    LazyUpstreamBranchSource,
     UpstreamBranchSource,
     _upstream_branch_version,
     upstream_tag_to_version,
@@ -361,6 +362,61 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
         self.assertEquals(revid2,
             source.version_as_revision("foo", "2.1+bzr2"))
         self.assertEquals(revid1, source.version_as_revision("foo", "2.1"))
+
+
+class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
+    """Tests for LazyUpstreamBranchSource."""
+
+    def setUp(self):
+        super(LazyUpstreamBranchSourceTests, self).setUp()
+        self.tree = self.make_branch_and_tree('.')
+
+    def test_fetch_tarball(self):
+        self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("1.0", self.tree.branch.last_revision())
+        source = LazyUpstreamBranchSource(self.tree.branch.base,
+            {"1.0": self.tree.branch.last_revision()})
+        self.assertIs(None, source._upstream_branch)
+        os.mkdir("mydir")
+        self.assertEquals("mydir/foo_1.0.orig.tar.gz",
+            source.fetch_tarball("foo", "1.0", "mydir"))
+        self.failUnlessExists("mydir/foo_1.0.orig.tar.gz")
+        self.assertIsNot(None, source._upstream_branch)
+
+    def test_fetch_tarball_not_found(self):
+        source = LazyUpstreamBranchSource(self.tree.branch.base)
+        self.assertIs(None, source._upstream_branch)
+        self.tree.commit("msg")
+        self.assertRaises(PackageVersionNotPresent,
+            source.fetch_tarball, "foo", "1.0", "mydir")
+        self.assertIsNot(None, source._upstream_branch)
+
+    def test_get_latest_version(self):
+        self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
+        source = LazyUpstreamBranchSource(self.tree.branch.base,
+            {"2.1": self.tree.branch.last_revision()})
+        self.assertIs(None, source._upstream_branch)
+        self.assertEquals("2.1", source.get_latest_version("foo", "1.0"))
+        self.tree.commit("msg")
+        self.assertEquals("2.1+bzr2", source.get_latest_version("foo", "1.0"))
+        self.assertIsNot(None, source._upstream_branch)
+
+    def test_version_as_revision(self):
+        revid1 = self.tree.commit("msg")
+        self.tree.branch.tags.set_tag("2.1", self.tree.branch.last_revision())
+        config = DebBuildConfig(
+            [('user.conf', True), ('default.conf', False)],
+            branch=self.tree.branch)
+        source = LazyUpstreamBranchSource(self.tree.branch.base,
+            {"2.1": self.tree.branch.last_revision()},
+            config=config)
+        self.assertIs(None, source._upstream_branch)
+        revid2 = self.tree.commit("msg")
+        self.assertEquals(revid2,
+            source.version_as_revision("foo", "2.1+bzr2"))
+        self.assertEquals(revid1, source.version_as_revision("foo", "2.1"))
+        self.assertIsNot(None, source._upstream_branch)
 
 
 class TestUpstreamBranchVersion(TestCase):

@@ -1,4 +1,26 @@
-bzr-builddeb (2.7) UNRELEASED; urgency=low
+bzr-builddeb (2.7.3) UNRELEASED; urgency=low
+
+  * Avoid opening upstream branch when it is not necessary. LP: #730589
+  * Retrieve the upstream branch URL from Launchpad if not specified or
+    set in configuration. LP: #726460
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 26 Mar 2011 23:31:37 +0100
+
+bzr-builddeb (2.7.2) unstable; urgency=high
+
+  [ Andrew Mitchell ]
+  * Add upstream/ directory to setup.py. Closes: #618380. LP: #735147
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 14 Mar 2011 23:27:25 +0100
+
+bzr-builddeb (2.7.1) unstable; urgency=low
+
+  * Add Ubuntu oneiric and Debian wheezy to the list of supported
+    distributions.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 11 Mar 2011 11:18:52 +0100
+
+bzr-builddeb (2.7) unstable; urgency=low
 
   [ James Westby ]
 
@@ -39,16 +61,19 @@ bzr-builddeb (2.7) UNRELEASED; urgency=low
     the build is targetted at the same distribution as the build before.
   * A hook for 'bzr merge-upstream' has been added. LP: #657501
   * Support running the test suite in parallel during package build.
+  * Pristine tarballs are now automatically created when merging upstream
+    from a branch. Closes: #517867
 
   [ Max Bowsher ]
 
   * Add devscripts to Build-Depends-Indep, the test suite runs dch.
 
   [ Jelmer Vernooij ]
-  * Retrieve the upstream branch URL from Launchpad if not specified or
-    set in configuration. LP: #726460
+  * The 'export-upstream' configuration option is now deprecated in
+    favour of 'upstream-branch'. LP: #730293
+  * Switch to dh_python2. Closes: #616752
 
- -- Jelmer Vernooij <jelmer@debian.org>  Fri, 04 Mar 2011 17:22:50 +0100
+ -- Jelmer Vernooij <jelmer@debian.org>  Mon, 07 Mar 2011 12:28:08 +0100
 
 bzr-builddeb (2.6) unstable; urgency=low
 
