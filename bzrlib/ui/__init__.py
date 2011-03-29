@@ -310,13 +310,13 @@ class UIFactory(object):
         try:
             template = self._user_warning_templates[warning_id]
         except KeyError:
-            fail = "failed to format warning %r, %r" % (warning_id, message_args)
-            warnings.warn(fail)   # so tests will fail etc
+            fail = "bzr warning: %r, %r" % (warning_id, message_args)
+            warnings.warn("no template for warning: " + fail)   # so tests will fail etc
             return fail
         try:
             return template % message_args
         except ValueError, e:
-            fail = "failed to format warning %r, %r: %s" % (
+            fail = "bzr unprintable warning: %r, %r, %s" % (
                 warning_id, message_args, e)
             warnings.warn(fail)   # so tests will fail etc
             return fail
