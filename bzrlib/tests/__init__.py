@@ -1459,7 +1459,7 @@ class TestCase(testtools.TestCase):
         checker = doctest.OutputChecker()
         if optionflags is None:
             # XXX: More here by default?
-            optionflags = doctest.ELLIPSIS
+            optionflags = doctest.ELLIPSIS | doctest.REPORT_UDIFF
         if not checker.check_output(expected, actual, optionflags):
             # The Doctest api insists on an internal object here but doesn't
             # really need it; just pretend.
