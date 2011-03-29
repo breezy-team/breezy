@@ -185,9 +185,9 @@ class GitDir(ControlDir):
         source_repo = self.open_repository()
         source_git_repo = source_repo._git
         if revision_id is not None:
-            determine_wants = source_repo.determine_wants_revid_and_tags(revision_id)
+            determine_wants = self.get_determine_wants_revids([revision_id], include_tags=True)
         else:
-            determine_wants = target_git_repo.object_store.determine_wants_all
+            determine_wants = self.determine_wants_all
         refs = source_git_repo.fetch(target_git_repo, determine_wants)
         for name, val in refs.iteritems():
             target_git_repo.refs[name] = val
