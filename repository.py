@@ -93,6 +93,9 @@ class GitRepository(ForeignRepository):
         interrepo = repository.InterRepository.get(source, self)
         return interrepo.dfetch(stop_revision)
 
+    def add_signature_text(self, revid, signature):
+        raise errors.UnsupportedOperation(self.add_signature_text, self)
+
 
 class LocalGitRepository(GitRepository):
     """Git repository on the file system."""
