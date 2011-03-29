@@ -43,6 +43,12 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* If you call `bzrlib.initialize` but forget to enter the resulting object
+  as a context manager, bzrlib will now be initialized anyhow.
+  (Previously simple programs calling bzrlib might find the library was
+  mysteriously silent.)
+  (Martin Pool)
+
 Internals
 *********
 
