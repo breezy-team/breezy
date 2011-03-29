@@ -586,6 +586,10 @@ Testing
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
 
+* New assertion method `assertDoctestExampleMatches` allows easily reusing
+  doctest string template matches against arbitrary strings.
+  (Martin Pool)
+
 * Skip tests that needs a bzr source tree when there isn't one. This is
   needed to successfully run the test suite for installed versions.
   (Vincent Ladeuil, #644855).

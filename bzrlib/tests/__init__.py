@@ -1450,6 +1450,26 @@ class TestCase(testtools.TestCase):
         else:
             self.assertEqual(expected_docstring, obj.__doc__)
 
+    def assertDoctestExampleMatches(self, expected, actual, optionflags=None):
+        """Check for a doctest-style string match.
+
+        :param optionflags: or'd together integers from doctest, typically
+        including ELLIPSIS.  If not passed, reasonable defaults are passed.
+        """
+        checker = doctest.OutputChecker()
+        if optionflags is None:
+            # XXX: More here by default?
+            optionflags = doctest.ELLIPSIS
+        if not checker.check_output(expected, actual, optionflags):
+            # The Doctest api insists on an internal object here but doesn't
+            # really need it; just pretend.
+            class FakeExample:
+                pass
+            example = FakeExample()
+            example.want = expected
+            self.fail("doctest-type check failed: "
+                + checker.output_difference(example, actual, optionflags))
+
     def failUnlessExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
