@@ -42,10 +42,6 @@ from bzrlib.tests import (
     )
 from bzrlib.trace import note
 
-# These tests sometimes use threads to test the behaviour of lock files with
-# concurrent actors.  This is not a typical (or necessarily supported) use;
-# they're really meant for guarding between processes.
-
 # These tests are run on the default transport provided by the test framework
 # (typically a local disk transport).  That can be changed by the --transport
 # option to bzr selftest.  The required properties of the transport
