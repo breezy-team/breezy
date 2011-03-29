@@ -44,6 +44,7 @@ from bzrlib.lockdir import (
     )
 from bzrlib.tests import (
     features,
+    TestCase,
     TestCaseWithTransport,
     )
 from bzrlib.trace import note
@@ -878,33 +879,27 @@ class TestLockDirHooks(TestCaseWithTransport):
         self.assertEqual([], self._calls)
 
 
-class TestStaleLockDir(TestCaseWithTransport):
-    """bzr can detect and specially deal with stale locks.
-
-    A detectable stale lock is one where the hostname is the same as the one
-    where bzr is running, and there's no running process with the pid given in
-    the file.
-
-    :see: https://bugs.launchpad.net/bzr/+bug/220464
-    """
+class TestLockHeldInfo(TestCase):
+    """Can get information about the lock holder, and detect whether they're
+    still alive."""
 
     def test_is_locked_by_this_process(self):
-        info = LockHeldInfo.for_this_process('abcabc')
+        info = LockHeldInfo.for_this_process(None)
         self.assertTrue(info.is_locked_by_this_process())
 
     def test_is_not_locked_by_this_process(self):
-        info = LockHeldInfo.for_this_process('abcabc')
+        info = LockHeldInfo.for_this_process(None)
         info.info_dict['pid'] = '123123123123123' # probably not us
         self.assertFalse(info.is_locked_by_this_process())
 
     def test_lock_holder_live_process(self):
         """Detect that the holder (this process) is still running."""
-        info = LockHeldInfo.for_this_process('abcabc')
+        info = LockHeldInfo.for_this_process(None)
         self.assertFalse(info.is_lock_holder_known_dead())
         
     def test_lock_holder_dead_process(self):
         """Detect that the holder (this process) is still running."""
-        info = LockHeldInfo.for_this_process('abcabc')
+        info = LockHeldInfo.for_this_process(None)
         info.info_dict['pid'] = '123123123' # probably not alive at all
         if sys.platform == 'win32':
             raise KnownFailure(
@@ -913,7 +908,7 @@ class TestStaleLockDir(TestCaseWithTransport):
         
     def test_lock_holder_other_machine(self):
         """The lock holder isn't here so we don't know if they're alive."""
-        info = LockHeldInfo.for_this_process('abcabc')
+        info = LockHeldInfo.for_this_process(None)
         info.info_dict['host'] = 'egg.example.com'
         self.assertFalse(info.is_lock_holder_known_dead())
 
@@ -927,16 +922,29 @@ class TestStaleLockDir(TestCaseWithTransport):
         """
         self.overrideAttr(lockdir, 'get_host_name',
             lambda: 'localhost')
-        info = LockHeldInfo.for_this_process(nonce='abcabc')
+        info = LockHeldInfo.for_this_process(None)
         info.info_dict['pid'] = '123123123'
         self.assertFalse(info.is_lock_holder_known_dead())
 
+
+class TestStaleLockDir(TestCaseWithTransport):
+    """Can automatically break stale locks.
+
+    :see: https://bugs.launchpad.net/bzr/+bug/220464
+    """
     def test_auto_break_stale_lock(self):
         """Locks safely known to be stale are just cleaned up.
 
         This generates a warning but no other user interaction.
         """
-        self.knownFailure("not implemented")
+        # Create a lock pretending to come from a different nonexistent
+        # process on the same machine.
+        l1 = LockDir(self.get_transport(), 'a',
+            extra_holder_info={'pid': '12312313'})
+        token_1 = l1.attempt_lock()
+        self.addCleanup(l1.unlock)
+        l2 = LockDir(self.get_transport(), 'a')
+        # token_2 = l2.attempt_lock()
 
     def test_auto_break_stale_lock_configured_off(self):
         self.knownFailure("not implemented")

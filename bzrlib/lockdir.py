@@ -163,7 +163,8 @@ class LockDir(lock.Lock):
 
     __INFO_NAME = '/info'
 
-    def __init__(self, transport, path, file_modebits=0644, dir_modebits=0755):
+    def __init__(self, transport, path, file_modebits=0644, dir_modebits=0755,
+        extra_holder_info=None):
         """Create a new LockDir object.
 
         The LockDir is initially unlocked - this just creates the object.
@@ -172,6 +173,10 @@ class LockDir(lock.Lock):
 
         :param path: Path to the lock within the base directory of the
             transport.
+
+        :param extra_holder_info: If passed, {str:str} dict of extra or
+            updated information to insert into the info file when the lock is
+            taken.
         """
         self.transport = transport
         self.path = path
@@ -182,8 +187,8 @@ class LockDir(lock.Lock):
         self._held_info_path = self._held_dir + self.__INFO_NAME
         self._file_modebits = file_modebits
         self._dir_modebits = dir_modebits
-
         self._report_function = note
+        self.extra_holder_info = extra_holder_info
 
     def __repr__(self):
         return '%s(%s%s)' % (self.__class__.__name__,
@@ -287,8 +292,8 @@ class LockDir(lock.Lock):
             self.create(mode=self._dir_modebits)
             # After creating the lock directory, try again
             self.transport.mkdir(tmpname)
-        self.nonce = rand_chars(20)
-        info = LockHeldInfo.for_this_process(self.nonce)
+        info = LockHeldInfo.for_this_process(self.extra_holder_info)
+        self.nonce = info.get('nonce')
         # We use put_file_non_atomic because we just created a new unique
         # directory so we don't have to worry about files existing there.
         # We'll rename the whole directory into place to get atomic
@@ -685,16 +690,19 @@ class LockHeldInfo(object):
         return self.info_dict.get(field_name)
 
     @classmethod
-    def for_this_process(cls, nonce):
+    def for_this_process(cls, extra_holder_info):
         """Return a new LockHeldInfo for a lock taken by this process.
         """
-        return cls(dict(
+        info = dict(
             hostname=get_host_name(),
             pid=str(os.getpid()),
+            nonce=rand_chars(20),
             start_time=str(int(time.time())),
-            nonce=nonce,
             user=get_username_for_lock_info(),
-            ))
+            )
+        if extra_holder_info is not None:
+            info.update(extra_holder_info)
+        return cls(info)
 
     def to_bytes(self):
         s = rio.Stanza(**self.info_dict)
