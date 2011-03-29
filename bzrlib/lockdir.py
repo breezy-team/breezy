@@ -767,6 +767,9 @@ class LockHeldInfo(object):
         """
         if self.get('hostname') != get_host_name():
             return False
+        if self.get('hostname') == 'localhost':
+            # Too ambiguous.
+            return False
         if getattr(os, 'kill', None) is None:
             # Probably not available on Windows.  
             # XXX: How should we check for process liveness there?

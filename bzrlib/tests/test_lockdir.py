@@ -26,6 +26,7 @@ from bzrlib import (
     config,
     errors,
     lock,
+    lockdir,
     osutils,
     tests,
     transport,
@@ -905,6 +906,9 @@ class TestStaleLockDir(TestCaseWithTransport):
         """Detect that the holder (this process) is still running."""
         info = LockHeldInfo.for_this_process('abcabc')
         info.info_dict['pid'] = '123123123' # probably not alive at all
+        if sys.platform == 'win32':
+            raise KnownFailure(
+                'live lock holder detection not implemented yet on win32')
         self.assertTrue(info.is_lock_holder_known_dead())
         
     def test_lock_holder_other_machine(self):
@@ -917,9 +921,15 @@ class TestStaleLockDir(TestCaseWithTransport):
         """Correctly handle ambiguous hostnames.
 
         If the lock's recorded with just 'localhost' we can't really trust
-        it's the same 'localhost'.
+        it's the same 'localhost'.  (There are quite a few of them. :-)
+        So even if the process is known not to be alive, we can't say that's
+        known for sure.
         """
-        self.knownFailure("not implemented")
+        self.overrideAttr(lockdir, 'get_host_name',
+            lambda: 'localhost')
+        info = LockHeldInfo.for_this_process(nonce='abcabc')
+        info.info_dict['pid'] = '123123123'
+        self.assertFalse(info.is_lock_holder_known_dead())
 
     def test_auto_break_stale_lock(self):
         """Locks safely known to be stale are just cleaned up.
