@@ -112,6 +112,8 @@ from bzrlib import (
     errors,
     lock,
     osutils,
+    ui,
+    urlutils,
     )
 import bzrlib.config
 from bzrlib.decorators import only_raises
@@ -131,7 +133,6 @@ from bzrlib.errors import (
         )
 from bzrlib.trace import mutter, note
 from bzrlib.osutils import format_delta, rand_chars, get_host_name
-import bzrlib.ui
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -231,17 +232,31 @@ class LockDir(lock.Lock):
         except (errors.TransportError, PathError), e:
             self._trace("... failed to create pending dir, %s", e)
             raise LockFailed(self, e)
-        try:
-            self.transport.rename(tmpname, self._held_dir)
-        except (errors.TransportError, PathError, DirectoryNotEmpty,
-                FileExists, ResourceBusy), e:
-            self._trace("... contention, %s", e)
-            self._remove_pending_dir(tmpname)
-            raise LockContention(self)
-        except Exception, e:
-            self._trace("... lock failed, %s", e)
-            self._remove_pending_dir(tmpname)
-            raise
+        while True:
+            try:
+                self.transport.rename(tmpname, self._held_dir)
+                break
+            except (errors.TransportError, PathError, DirectoryNotEmpty,
+                    FileExists, ResourceBusy), e:
+                self._trace("... contention, %s", e)
+                # XXX: Cope if the lock has disappeared at this point.
+                other_holder = self.peek()
+                self._trace("other holder is %r" % other_holder)
+                if other_holder.is_lock_holder_known_dead():
+                    ui.ui_factory.show_user_warning(
+                        'steal_dead_lock',
+                        lock_url=urlutils.join(self.transport.base, self.path),
+                        other_holder_info=str(other_holder))
+                    self.force_break(other_holder)
+                    self._trace("stole lock from dead holder")
+                    continue
+                else:
+                    self._remove_pending_dir(tmpname)
+                    raise LockContention(self)
+            except Exception, e:
+                self._trace("... lock failed, %s", e)
+                self._remove_pending_dir(tmpname)
+                raise
         # We must check we really got the lock, because Launchpad's sftp
         # server at one time had a bug were the rename would successfully
         # move the new directory into the existing directory, which was
@@ -349,9 +364,10 @@ class LockDir(lock.Lock):
     def break_lock(self):
         """Break a lock not held by this instance of LockDir.
 
-        This is a UI centric function: it uses the bzrlib.ui.ui_factory to
+        This is a UI centric function: it uses the ui.ui_factory to
         prompt for input if a lock is detected and there is any doubt about
-        it possibly being still active.
+        it possibly being still active.  force_break is the non-interactive
+        version.
 
         :returns: LockResult for the broken lock.
         """
@@ -360,16 +376,16 @@ class LockDir(lock.Lock):
             holder_info = self.peek()
         except LockCorrupt, e:
             # The lock info is corrupt.
-            if bzrlib.ui.ui_factory.get_boolean("Break (corrupt %r)" % (self,)):
+            if ui.ui_factory.get_boolean("Break (corrupt %r)" % (self,)):
                 self.force_break_corrupt(e.file_data)
             return
         if holder_info is not None:
             info_text = '\n'.join(holder_info.to_readable_list())
-            if bzrlib.ui.ui_factory.confirm_action(
+            if ui.ui_factory.confirm_action(
                 "Break %(lock_info)s", 'bzrlib.lockdir.break', 
                 dict(lock_info=info_text)):
                 result = self.force_break(holder_info)
-                bzrlib.ui.ui_factory.show_message(
+                ui.ui_factory.show_message(
                     "Broke lock %s" % result.lock_url)
 
     def force_break(self, dead_holder_info):

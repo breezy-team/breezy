@@ -942,13 +942,12 @@ class TestStaleLockDir(TestCaseWithTransport):
         l1 = LockDir(self.get_transport(), 'a',
             extra_holder_info={'pid': '12312313'})
         token_1 = l1.attempt_lock()
-        self.addCleanup(l1.unlock)
         l2 = LockDir(self.get_transport(), 'a')
-        # token_2 = l2.attempt_lock()
+        token_2 = l2.attempt_lock()
+        # l1 will notice its lock was stolen.
+        self.assertRaises(errors.LockBroken,
+            l1.unlock)
+        l2.unlock()
 
     def test_auto_break_stale_lock_configured_off(self):
         self.knownFailure("not implemented")
-
-    def test_break_stale_lock_no_confirmation(self):
-        self.knownFailure("not implemented")
-
