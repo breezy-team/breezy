@@ -368,16 +368,18 @@ class Config(object):
                 value = self._expand_options_in_string(value)
         return value
 
-    def get_user_option_as_bool(self, option_name, expand=None):
-        """Get a generic option as a boolean - no special process, no default.
+    def get_user_option_as_bool(self, option_name, expand=None, default=None):
+        """Get a generic option as a boolean.
 
+        :param expand: Allow expanding references to other config values.
+        :param default: Default value if nothing is configured
         :return None if the option doesn't exist or its value can't be
             interpreted as a boolean. Returns True or False otherwise.
         """
         s = self.get_user_option(option_name, expand=expand)
         if s is None:
             # The option doesn't exist
-            return None
+            return default
         val = ui.bool_from_string(s)
         if val is None:
             # The value can't be interpreted as a boolean
