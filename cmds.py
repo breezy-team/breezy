@@ -528,10 +528,13 @@ class cmd_merge_upstream(Command):
     snapshot_opt = Option('snapshot', help="Merge a snapshot from the "
             "upstream branch rather than a new upstream release.")
 
+    launchpad_opt = Option('launchpad',
+        help='Use Launchpad to find upstream locations.')
+
     takes_options = [package_opt, version_opt,
             distribution_opt, directory_opt, last_version_opt,
             force_opt, 'revision', 'merge-type',
-            snapshot_opt]
+            snapshot_opt, launchpad_opt]
 
     def _add_changelog_entry(self, tree, package, version, distribution_name,
             changelog):
@@ -618,7 +621,7 @@ class cmd_merge_upstream(Command):
     def run(self, location=None, upstream_branch=None, version=None,
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
-            last_version=None, force=None, snapshot=False):
+            last_version=None, force=None, snapshot=False, launchpad=False):
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -654,11 +657,12 @@ class cmd_merge_upstream(Command):
                 raise BzrCommandError("Merge upstream in native mode is not "
                         "supported.")
 
-            if upstream_branch is None and distribution_name == "ubuntu":
+            if launchpad:
                 from bzrlib.plugins.builddeb.launchpad import (
                     get_ubuntu_upstream_branch_url,
                     )
-                upstream_branch = get_ubuntu_upstream_branch_url(package, distribution)
+                upstream_branch = get_ubuntu_upstream_branch_url(package,
+                    distribution)
                 note("Using upstream branch %s" % upstream_branch)
 
             if upstream_branch is not None:
@@ -690,7 +694,8 @@ class cmd_merge_upstream(Command):
                     raise BzrCommandError("merge-upstream takes only a "
                         "single --revision")
                 upstream_revspec = revision[0]
-                upstream_revision = upstream_revspec.as_revision_id(upstream_branch)
+                upstream_revision = upstream_revspec.as_revision_id(
+                    upstream_branch)
             else:
                 upstream_revision = None
 
