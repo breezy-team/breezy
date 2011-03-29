@@ -1037,9 +1037,13 @@ class TestCase(testtools.TestCase):
         # break some locks on purpose and should be taken into account by
         # considering that breaking a lock is just a dirty way of releasing it.
         if len(acquired_locks) != (len(released_locks) + len(broken_locks)):
-            message = ('Different number of acquired and '
-                       'released or broken locks. (%s, %s + %s)' %
-                       (acquired_locks, released_locks, broken_locks))
+            message = (
+                'Different number of acquired and '
+                'released or broken locks.\n'
+                'acquired=%s\n'
+                'released=%s\n'
+                'broken=%s\n' %
+                (acquired_locks, released_locks, broken_locks))
             if not self._lock_check_thorough:
                 # Rather than fail, just warn
                 print "Broken test %s: %s" % (self, message)
