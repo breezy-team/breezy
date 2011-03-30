@@ -462,4 +462,7 @@ def _show_shelve_summary(params):
 
 hooks = StatusHooks()
 
-hooks.install_named_hook('post_status', _show_shelve_summary, 'bzr status')
+
+hooks.install_named_hook('post_status', _show_shelve_summary,
+    'bzr status')
+

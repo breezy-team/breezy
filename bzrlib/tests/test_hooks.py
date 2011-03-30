@@ -228,7 +228,7 @@ class TestHookRegistry(tests.TestCase):
                 "The factory(%r) for %r is not callable" % (factory, key))
             obj = known_hooks_key_to_object(key)
             self.assertIsInstance(obj, Hooks)
-            new_hooks = factory(key[0], key[1])
+            new_hooks = factory()
             self.assertIsInstance(obj, Hooks)
             self.assertEqual(type(obj), type(new_hooks))
             self.assertEqual("No hook name", new_hooks.get_hook_name(None))

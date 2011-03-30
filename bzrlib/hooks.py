@@ -115,7 +115,7 @@ class Hooks(dict):
     FOO hook is triggered.
     """
 
-    def __init__(self, module, member_name):
+    def __init__(self, module=None, member_name=None):
         """Create a new hooks dictionary.
 
         :param module: The module from which this hooks dictionary should be loaded
