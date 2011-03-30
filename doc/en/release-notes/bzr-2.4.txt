@@ -59,6 +59,8 @@ API Changes
 * ``Hooks.create_hook`` is now deprecated in favour of ``Hooks.add_hook``.
   (Jelmer Vernooij)
 
+* New method ``Hooks.uninstall_named_hook``. (Jelmer Vernooij, #301472)
+
 Internals
 *********
 

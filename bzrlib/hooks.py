@@ -243,6 +243,24 @@ class Hooks(dict):
         if name is not None:
             self.name_hook(a_callable, name)
 
+    def uninstall_named_hook(self, hook_name, label):
+        """Uninstall named hooks.
+
+        :param hook_name: Hook point name
+        :param label: Label of the callable to uninstall
+        """
+        try:
+            hook = self[hook_name]
+        except KeyError:
+            raise errors.UnknownHook(self.__class__.__name__, hook_name)
+        try:
+            uninstall = getattr(hook, "uninstall")
+        except AttributeError:
+            raise errors.UnsupportedOperation(self.install_named_hook_lazy,
+                self)
+        else:
+            uninstall(label)
+
     def name_hook(self, a_callable, name):
         """Associate name with a_callable to show users what is running."""
         self._callable_names[a_callable] = name
@@ -327,6 +345,19 @@ class HookPoint(object):
         """
         obj_getter = registry._ObjectGetter(callback)
         self._callbacks.append((obj_getter, callback_label))
+
+    def uninstall(self, label):
+        """Uninstall the callback with the specified label.
+
+        :param label: Label of the entry to uninstall
+        """
+        for entry in self._callbacks:
+            (entry_callback, entry_label) = entry
+            if entry_label == label:
+                self._callbacks.remove(entry)
+                break
+        else:
+            raise KeyError("No entry with label %r" % label)
 
     def __iter__(self):
         return (callback.get_obj() for callback, name in self._callbacks)
