@@ -37,11 +37,6 @@ from bzrlib.bzrdir import (
     BzrDirFormat,
     BzrDirMetaFormat1,
     )
-from bzrlib.errors import (
-    FileExists,
-    NotBranchError,
-    UninitializableFormat,
-    )
 from bzrlib.tests import (
     TestCaseWithTransport,
     multiply_tests,
@@ -86,7 +81,7 @@ def default_test_list():
 class TestCaseWithInterBranch(TestCaseWithTransport):
 
     def make_from_branch(self, relpath):
-        repo = self.make_repository(relpath)
+        repo = self.make_repository(relpath, format=self.branch_format_from._matchingbzrdir)
         return self.branch_format_from.initialize(repo.bzrdir)
 
     def make_from_branch_and_memory_tree(self, relpath):
@@ -109,7 +104,7 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
             format=format)
 
     def make_to_branch(self, relpath):
-        repo = self.make_repository(relpath)
+        repo = self.make_repository(relpath, format=self.branch_format_to._matchingbzrdir)
         return self.branch_format_to.initialize(repo.bzrdir)
 
     def make_to_branch_and_memory_tree(self, relpath):
@@ -171,6 +166,7 @@ class StubMatchingInter(object):
 
 def load_tests(standard_tests, module, loader):
     submod_tests = loader.loadTestsFromModuleNames([
+        'bzrlib.tests.per_interbranch.test_fetch',
         'bzrlib.tests.per_interbranch.test_get',
         'bzrlib.tests.per_interbranch.test_copy_content_into',
         'bzrlib.tests.per_interbranch.test_pull',

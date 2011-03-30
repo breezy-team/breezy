@@ -1439,12 +1439,6 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         install_bundle(repo_b, serializer.read(s))
 
 
-class V4WeaveBundleTester(V4BundleTester):
-
-    def bzrdir_format(self):
-        return 'metaweave'
-
-
 class V4_2aBundleTester(V4BundleTester):
 
     def bzrdir_format(self):

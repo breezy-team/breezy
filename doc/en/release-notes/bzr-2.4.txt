@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.4b1
+bzr 2.4b2
 #########
 
-:2.4b1: NOT RELEASED YET
+:2.4b2: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -20,12 +20,76 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
-* The ``lp:`` directory service now supports Launchpad's QA staging.
-  (Jelmer Vernooij, #667483)
+Improvements
+************
 
-* External merge tools can now be configured in bazaar.conf. See
-  ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
 
+* Resolve ``lp:FOO`` urls locally rather than doing an XMLRPC request if
+  the user has done ``bzr launchpad-login``. The bzr+ssh URLs were already
+  being handed off to the remote server anyway (xmlrpc has been mapping
+  ``lp:bzr`` to ``bzr+ssh://bazaar.launchpad.net/+branch/bzr``, rather
+  than ``bzr+ssh://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev`` for a few
+  months now.) By doing it ourselves, we can cut out substantial startup
+  time. From Netherlands to London it was taking 368ms to do the XMLRPC
+  call as much as 2s from Sydney. You can test the local logic by using
+  ``-Dlaunchpad``.  (John Arbash Meinel, #397739)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+* Added a section about using a shared SSH account on a server for bzr+ssh
+  access.  (Russell Smith)
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.4b1
+#########
+
+:2.4b1: 2011-04-17
+
+This is the first beta of the 2.4 series, leading up to a 2.4.0
+release in August 2011.  Beta releases are suitable for everyday use
+but may cause some incompatibilities with plugins.  Some plugins may need
+small updates to work with 2.4b1.
+
+External Compatibility Breaks
+*****************************
+
+(none)
+
+New Features
+************
+
+* Added ``changelog_merge`` plugin for merging changes to ``Changelog`` files
+  in GNU format.  See ``bzr help changelog_merge`` for details.
+  (Andrew Bennetts)
+  
 * Configuration options can now use references to other options in the same
   file by enclosing them with curly brackets (``{other_opt}``). This makes it
   possible to use, for example,
@@ -34,32 +98,64 @@ New Features
   this feature. It can be activated by declaring ``bzr.config.expand = True``
   in ``bazaar.conf``. (Vincent Ladeuil)
 
+* External merge tools can now be configured in bazaar.conf. See
+  ``bzr help configuration`` for more information.  (Gordon Tyler, #489915)
+
+* The ``lp:`` directory service now supports Launchpad's QA staging.
+  (Jelmer Vernooij, #667483)
+
 Improvements
 ************
-
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
 
 * A new hidden command ``bzr repair-workingtree``. This is a way to force
   the dirstate file to be rebuilt, rather than using a ``bzr checkout``
   workaround. (John Arbash Meinel)
 
+* Added a ``Branch.heads_to_fetch`` RPC to the smart server protocol.
+  This allows formats from plugins (such as looms) to efficiently tell the
+  client which revisions need to be fetched.  (Andrew Bennetts)
+
 * Branching, merging and pulling a branch now copies revisions named in
   tags, not just the tag metadata.  (Andrew Bennetts, #309682)
-  
-* ``bzr cat-revision`` no longer requires a working tree. (Jelmer Vernooij, #704405)
+
+* ``bzr cat-revision`` no longer requires a working tree.
+  (Jelmer Vernooij, #704405)
+
+* ``bzr export --per-file-timestamps`` for .tar.gz files will now
+  override the mtime for trees exported on Python 2.7 and later, which
+  expose the 'mtime' field in gzip files. This makes the output of
+  ``bzr export --per-file-timestamps`` for a particular tree
+  deterministic.  (Jelmer Vernooij, #711226)
+
+* ``bzr export --format=zip`` can now export to standard output,
+  like the other exporters can. (Jelmer Vernooij, #513752)
+
+* ``bzr export`` can now create ``.tar.xz`` and ``.tar.lzma`` files.
+  (Jelmer Vernooij, #551714)
+
+* Getting all entries from ``CHKInventory.iter_entries_by_dir()`` has been
+  sped up dramatically for large trees. Iterating by dir is not the best
+  way to load data from a CHK inventory, so it preloads all the items in
+  the correct order. (With the gcc-tree, this changes it (re)reading 8GB
+  of CHK data, down to just 150MB.) This has noticeable affects for things
+  like building checkouts, etc.  (John Arbash Meinel, #737234)
+
 
 Bug Fixes
 *********
 
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
+* A MemoryError thrown on the server during a remote operation will now be
+  usefully reported, and other unexpected errors will include the class name.
+  (Martin [gz], #722416)
 
 * ``bzr annotate -r-1 file`` will now properly annotate a deleted file.
   (Andrew King, #537442)
 
 * ``bzr export`` to zip files will now set a mode on directories.
   (Jelmer Vernooij, #207253)
+
+* ``bzr export`` to tgz files will only write out the basename of the
+  tarfile to the gzip file. (Jelmer Vernooij, #102234)
 
 * ``bzr push --overwrite`` with an older revision specified will now correctly
   roll back the target branch. (Jelmer Vernooij, #386576)
@@ -118,17 +214,12 @@ Bug Fixes
 * On Python 2.6 and higher, use multiprocessing.cpu_count() to retrieve the
   number of available processors. (Jelmer Vernooij, #693140)
 
-Documentation
-*************
-
-.. Improved or updated documentation.
-
 API Changes
 ***********
 
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
-
+* Added ``Branch.heads_to_fetch`` method.  Implementations of the Branch API
+  must now inherit or implement this method.  (Andrew Bennetts, #721328)
+  
 * Added ``bzrlib.mergetools`` module with helper functions for working with
   the list of external merge tools. (Gordon Tyler, #489915)
 
@@ -150,6 +241,18 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
+* Because it was too specific to BzrDir implementations,
+  ``ControlDir.sprout`` no longer has a default implementation; it now
+  raises ``NotImplementedError``. (Jelmer Vernooij, #717937)
+
+* ``ControlDirFormat.register_format`` has been removed. Instead,
+  ``Prober`` implementations should now implement a ``known_formats``
+  method. (Jelmer Vernooij)
+
+* ControlDirFormats can now provide a ``check_status`` method and
+  raise a custom exception or warning when an unsupported or deprecated
+  format is being opened.  (Jelmer Vernooij, #731311)
+
 * ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
   Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and
   ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_lazy_revspec``
@@ -159,6 +262,17 @@ API Changes
   indicates whether the components of the bzrdir can be upgraded
   independent of the ``BzrDir``. (Jelmer Vernooij)
 
+* ``BzrProber.register_format`` and ``BzrProber.unregister_format`` are
+  now deprecated in favour of the ``BzrProber.formats`` format registry.
+  (Jelmer Vernooij)
+
+* ``ControlDir`` implementations no longer have to provide the
+  ``get_branch_transport``, ``get_workingtree_transport`` and
+  ``get_repository_transport`` methods.  (Jelmer Vernooij, #730325)
+
+* ``Converter`` has been moved from ``bzrlib.bzrdir`` to
+  ``bzrlib.controldir``. (Jelmer Vernooij)
+
 * Repository formats can now provide
   ``_get_extra_interrepo_test_combinations`` in the same module 
   to provide extra test combinations for ``bzrlib.tests.per_repository``.
@@ -167,6 +281,16 @@ API Changes
 * Repository formats should now be registered on the format registry
   (``bzrlib.repository.format_registry``) rather than using the class
   methods on ``RepositoryFormat``. (Jelmer Vernooij)
+
+* Repository formats can now indicate they do not support the full
+  VersionedFiles API by setting the ``supports_full_versioned_files``
+  attribute to False. A subset of the VersionedFiles API
+  (signatures and text graphs) still needs to be supported.
+  (Jelmer Vernooij)
+
+* Repository formats have a new method ``is_deprecated`` that
+  implementations can override to return True to trigger a deprecation
+  warning. (Jelmer Vernooij)
 
 * The ``revision_id`` parameter of
   ``Repository.search_missing_revision_ids`` and
@@ -180,14 +304,15 @@ API Changes
 Internals
 *********
 
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
-
 * ``CatchingExceptionThread`` (formerly ThreadWithException) has been moved
   out of the ``bzrlib.tests`` hierarchy to make it clearer that it can be used
   outside of tests. This class makes it easier to track exceptions in threads
-  by cacthing them so they can be re-raised in the controlling thread. It's
+  by catching them so they can be re-raised in the controlling thread. It's
   available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
+
+* Correctly propogate malloc failures from diff-delta.c code as MemoryError
+  so OOM conditions during groupcompress are clearly reported. This entailed a
+  change to several function signatures. (Martin [gz], #633336)
 
 * ``HookPoint.lazy_hook`` and ``Hooks.install_named_lazy_hook`` can install 
   hooks for which the callable is loaded lazily.  (Jelmer Vernooij)
@@ -195,9 +320,8 @@ Internals
 Testing
 *******
 
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
+* The Range parsing for HTTP requests will correctly parse incomplete ranges.
+  (Vincent Ladeuil, #731240)
 
 ..
    vim: tw=74 ft=rst ff=unix

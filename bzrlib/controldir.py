@@ -27,19 +27,14 @@ lazy_import(globals(), """
 import textwrap
 
 from bzrlib import (
-    cleanup,
     errors,
-    fetch,
-    graph,
     revision as _mod_revision,
     transport as _mod_transport,
+    ui,
     urlutils,
     )
 from bzrlib.push import (
     PushResult,
-    )
-from bzrlib.trace import (
-    mutter,
     )
 from bzrlib.transport import (
     local,
@@ -81,6 +76,7 @@ class ControlComponent(object):
     @property
     def user_url(self):
         return self.user_transport.base
+
 
 
 class ControlDir(ControlComponent):
@@ -215,45 +211,6 @@ class ControlDir(ControlComponent):
             raise errors.NoColocatedBranchSupport(self)
         return None
 
-    def get_branch_transport(self, branch_format, name=None):
-        """Get the transport for use by branch format in this ControlDir.
-
-        Note that bzr dirs that do not support format strings will raise
-        IncompatibleFormat if the branch format they are given has
-        a format string, and vice versa.
-
-        If branch_format is None, the transport is returned with no
-        checking. If it is not None, then the returned transport is
-        guaranteed to point to an existing directory ready for use.
-        """
-        raise NotImplementedError(self.get_branch_transport)
-
-    def get_repository_transport(self, repository_format):
-        """Get the transport for use by repository format in this ControlDir.
-
-        Note that bzr dirs that do not support format strings will raise
-        IncompatibleFormat if the repository format they are given has
-        a format string, and vice versa.
-
-        If repository_format is None, the transport is returned with no
-        checking. If it is not None, then the returned transport is
-        guaranteed to point to an existing directory ready for use.
-        """
-        raise NotImplementedError(self.get_repository_transport)
-
-    def get_workingtree_transport(self, tree_format):
-        """Get the transport for use by workingtree format in this ControlDir.
-
-        Note that bzr dirs that do not support format strings will raise
-        IncompatibleFormat if the workingtree format they are given has a
-        format string, and vice versa.
-
-        If workingtree_format is None, the transport is returned with no
-        checking. If it is not None, then the returned transport is
-        guaranteed to point to an existing directory ready for use.
-        """
-        raise NotImplementedError(self.get_workingtree_transport)
-
     def open_branch(self, name=None, unsupported=False,
                     ignore_fallbacks=False):
         """Open the branch object at this ControlDir if one is present.
@@ -374,131 +331,7 @@ class ControlDir(ControlComponent):
         :param create_tree_if_local: If true, a working-tree will be created
             when working locally.
         """
-        operation = cleanup.OperationWithCleanups(self._sprout)
-        return operation.run(url, revision_id=revision_id,
-            force_new_repo=force_new_repo, recurse=recurse,
-            possible_transports=possible_transports,
-            accelerator_tree=accelerator_tree, hardlink=hardlink,
-            stacked=stacked, source_branch=source_branch,
-            create_tree_if_local=create_tree_if_local)
-
-    def _sprout(self, op, url, revision_id=None, force_new_repo=False,
-               recurse='down', possible_transports=None,
-               accelerator_tree=None, hardlink=False, stacked=False,
-               source_branch=None, create_tree_if_local=True):
-        add_cleanup = op.add_cleanup
-        fetch_spec_factory = fetch.FetchSpecFactory()
-        if revision_id is not None:
-            fetch_spec_factory.add_revision_ids([revision_id])
-            fetch_spec_factory.source_branch_stop_revision_id = revision_id
-        target_transport = _mod_transport.get_transport(url,
-            possible_transports)
-        target_transport.ensure_base()
-        cloning_format = self.cloning_metadir(stacked)
-        # Create/update the result branch
-        result = cloning_format.initialize_on_transport(target_transport)
-        source_branch, source_repository = self._find_source_repo(
-            add_cleanup, source_branch)
-        fetch_spec_factory.source_branch = source_branch
-        # if a stacked branch wasn't requested, we don't create one
-        # even if the origin was stacked
-        if stacked and source_branch is not None:
-            stacked_branch_url = self.root_transport.base
-        else:
-            stacked_branch_url = None
-        repository_policy = result.determine_repository_policy(
-            force_new_repo, stacked_branch_url, require_stacking=stacked)
-        result_repo, is_new_repo = repository_policy.acquire_repository()
-        add_cleanup(result_repo.lock_write().unlock)
-        fetch_spec_factory.source_repo = source_repository
-        fetch_spec_factory.target_repo = result_repo
-        if stacked or (len(result_repo._fallback_repositories) != 0):
-            target_repo_kind = fetch.TargetRepoKinds.STACKED
-        elif is_new_repo:
-            target_repo_kind = fetch.TargetRepoKinds.EMPTY
-        else:
-            target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
-        fetch_spec_factory.target_repo_kind = target_repo_kind
-        if source_repository is not None:
-            fetch_spec = fetch_spec_factory.make_fetch_spec()
-            result_repo.fetch(source_repository, fetch_spec=fetch_spec)
-
-        if source_branch is None:
-            # this is for sprouting a controldir without a branch; is that
-            # actually useful?
-            # Not especially, but it's part of the contract.
-            result_branch = result.create_branch()
-        else:
-            result_branch = source_branch.sprout(result,
-                revision_id=revision_id, repository_policy=repository_policy,
-                repository=result_repo)
-        mutter("created new branch %r" % (result_branch,))
-
-        # Create/update the result working tree
-        if (create_tree_if_local and
-            isinstance(target_transport, local.LocalTransport) and
-            (result_repo is None or result_repo.make_working_trees())):
-            wt = result.create_workingtree(accelerator_tree=accelerator_tree,
-                hardlink=hardlink, from_branch=result_branch)
-            wt.lock_write()
-            try:
-                if wt.path2id('') is None:
-                    try:
-                        wt.set_root_id(self.open_workingtree.get_root_id())
-                    except errors.NoWorkingTree:
-                        pass
-            finally:
-                wt.unlock()
-        else:
-            wt = None
-        if recurse == 'down':
-            basis = None
-            if wt is not None:
-                basis = wt.basis_tree()
-            elif result_branch is not None:
-                basis = result_branch.basis_tree()
-            elif source_branch is not None:
-                basis = source_branch.basis_tree()
-            if basis is not None:
-                add_cleanup(basis.lock_read().unlock)
-                subtrees = basis.iter_references()
-            else:
-                subtrees = []
-            for path, file_id in subtrees:
-                target = urlutils.join(url, urlutils.escape(path))
-                sublocation = source_branch.reference_parent(file_id, path)
-                sublocation.bzrdir.sprout(target,
-                    basis.get_reference_revision(file_id, path),
-                    force_new_repo=force_new_repo, recurse=recurse,
-                    stacked=stacked)
-        return result
-
-    def _find_source_repo(self, add_cleanup, source_branch):
-        """Find the source branch and repo for a sprout operation.
-        
-        This is helper intended for use by _sprout.
-
-        :returns: (source_branch, source_repository).  Either or both may be
-            None.  If not None, they will be read-locked (and their unlock(s)
-            scheduled via the add_cleanup param).
-        """
-        if source_branch is not None:
-            add_cleanup(source_branch.lock_read().unlock)
-            return source_branch, source_branch.repository
-        try:
-            source_branch = self.open_branch()
-            source_repository = source_branch.repository
-        except errors.NotBranchError:
-            source_branch = None
-            try:
-                source_repository = self.open_repository()
-            except errors.NoRepositoryPresent:
-                source_repository = None
-            else:
-                add_cleanup(source_repository.lock_read().unlock)
-        else:
-            add_cleanup(source_branch.lock_read().unlock)
-        return source_branch, source_repository
+        raise NotImplementedError(self.sprout)
 
     def push_branch(self, source, revision_id=None, overwrite=False, 
         remember=False, create_prefix=False):
@@ -520,6 +353,10 @@ class ControlDir(ControlComponent):
         if br_to is None:
             # We have a repository but no branch, copy the revisions, and then
             # create a branch.
+            if revision_id is None:
+                # No revision supplied by the user, default to the branch
+                # revision
+                revision_id = source.last_revision()
             repository_to.fetch(source.repository, revision_id=revision_id)
             br_to = source.clone(self, revision_id=revision_id)
             if source.get_push_location() is None or remember:
@@ -633,6 +470,8 @@ class ControlDir(ControlComponent):
 class ControlComponentFormat(object):
     """A component that can live inside of a .bzr meta directory."""
 
+    upgrade_recommended = False
+
     def get_format_string(self):
         """Return the format of this format, if usable in meta directories."""
         raise NotImplementedError(self.get_format_string)
@@ -640,6 +479,34 @@ class ControlComponentFormat(object):
     def get_format_description(self):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
+
+    def is_supported(self):
+        """Is this format supported?
+
+        Supported formats must be initializable and openable.
+        Unsupported formats may not support initialization or committing or
+        some other features depending on the reason for not being supported.
+        """
+        return True
+
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+        basedir=None):
+        """Give an error or warning on old formats.
+
+        :param allow_unsupported: If true, allow opening
+            formats that are strongly deprecated, and which may
+            have limited functionality.
+
+        :param recommend_upgrade: If true (default), warn
+            the user through the ui object that they may wish
+            to upgrade the object.
+        """
+        if not allow_unsupported and not self.is_supported():
+            # see open_downlevel to open legacy branches.
+            raise errors.UnsupportedFormatError(format=self)
+        if recommend_upgrade and self.upgrade_recommended:
+            ui.ui_factory.recommend_upgrade(
+                self.get_format_description(), basedir)
 
 
 class ControlComponentFormatRegistry(registry.FormatRegistry):
@@ -709,6 +576,22 @@ class ControlComponentFormatRegistry(registry.FormatRegistry):
         return modules
 
 
+class Converter(object):
+    """Converts a disk format object from one format to another."""
+
+    def convert(self, to_convert, pb):
+        """Perform the conversion of to_convert, giving feedback via pb.
+
+        :param to_convert: The disk object to convert.
+        :param pb: a progress bar to use for progress information.
+        """
+
+    def step(self, message):
+        """Update the pb by a step."""
+        self.count +=1
+        self.pb.update(message, self.count, self.total)
+
+
 class ControlDirFormat(object):
     """An encapsulation of the initialization and open routines for a format.
 
@@ -733,12 +616,6 @@ class ControlDirFormat(object):
     _default_format = None
     """The default format used for new control directories."""
 
-    _formats = []
-    """The registered control formats - .bzr, ....
-
-    This is a list of ControlDirFormat objects.
-    """
-
     _server_probers = []
     """The registered server format probers, e.g. RemoteBzrProber.
 
@@ -762,6 +639,9 @@ class ControlDirFormat(object):
     fixed_components = False
     """Whether components can not change format independent of the control dir.
     """
+
+    upgrade_recommended = False
+    """Whether an upgrade from this format is recommended."""
 
     def get_format_description(self):
         """Return the short description for this format."""
@@ -790,6 +670,25 @@ class ControlDirFormat(object):
         """
         return True
 
+    def check_support_status(self, allow_unsupported, recommend_upgrade=True,
+        basedir=None):
+        """Give an error or warning on old formats.
+
+        :param allow_unsupported: If true, allow opening
+            formats that are strongly deprecated, and which may
+            have limited functionality.
+
+        :param recommend_upgrade: If true (default), warn
+            the user through the ui object that they may wish
+            to upgrade the object.
+        """
+        if not allow_unsupported and not self.is_supported():
+            # see open_downlevel to open legacy branches.
+            raise errors.UnsupportedFormatError(format=self)
+        if recommend_upgrade and self.upgrade_recommended:
+            ui.ui_factory.recommend_upgrade(
+                self.get_format_description(), basedir)
+
     def same_model(self, target_format):
         return (self.repository_format.rich_root_data ==
             target_format.rich_root_data)
@@ -799,7 +698,8 @@ class ControlDirFormat(object):
         """Register a format that does not use '.bzr' for its control dir.
 
         """
-        klass._formats.append(format)
+        raise errors.BzrError("ControlDirFormat.register_format() has been "
+            "removed in Bazaar 2.4. Please upgrade your plugins.")
 
     @classmethod
     def register_prober(klass, prober):
@@ -831,14 +731,13 @@ class ControlDirFormat(object):
         return self.get_format_description().rstrip()
 
     @classmethod
-    def unregister_format(klass, format):
-        klass._formats.remove(format)
-
-    @classmethod
     def known_formats(klass):
         """Return all the known formats.
         """
-        return set(klass._formats)
+        result = set()
+        for prober_kls in klass._probers + klass._server_probers:
+            result.update(prober_kls.known_formats())
+        return result
 
     @classmethod
     def find_format(klass, transport, _server_formats=True):
@@ -934,12 +833,19 @@ class ControlDirFormat(object):
 
 
 class Prober(object):
-    """Abstract class that can be used to detect a particular kind of 
+    """Abstract class that can be used to detect a particular kind of
     control directory.
 
-    At the moment this just contains a single method to probe a particular 
-    transport, but it may be extended in the future to e.g. avoid 
+    At the moment this just contains a single method to probe a particular
+    transport, but it may be extended in the future to e.g. avoid
     multiple levels of probing for Subversion repositories.
+
+    See BzrProber and RemoteBzrProber in bzrlib.bzrdir for the
+    probers that detect .bzr/ directories and Bazaar smart servers,
+    respectively.
+
+    Probers should be registered using the register_server_prober or
+    register_prober methods on ControlDirFormat.
     """
 
     def probe_transport(self, transport):
@@ -951,6 +857,17 @@ class Prober(object):
         :return: A ControlDirFormat instance.
         """
         raise NotImplementedError(self.probe_transport)
+
+    @classmethod
+    def known_formats(cls):
+        """Return the control dir formats known by this prober.
+
+        Multiple probers can return the same formats, so this should
+        return a set.
+
+        :return: A set of known formats.
+        """
+        raise NotImplementedError(cls.known_formats)
 
 
 class ControlDirFormatInfo(object):
