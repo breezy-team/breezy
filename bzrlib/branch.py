@@ -1802,13 +1802,13 @@ class BranchHooks(Hooks):
     set_revision_history function is invoked.
     """
 
-    def __init__(self, module_name, member_name):
+    def __init__(self):
         """Create the default hooks.
 
         These are all empty initially, because by default nothing should get
         notified.
         """
-        Hooks.__init__(self, module_name, member_name)
+        Hooks.__init__(self, "bzrlib.branch", "Branch.hooks")
         self.add_hook('set_rh',
             "Invoked whenever the revision history has been set via "
             "set_revision_history. The api signature is (branch, "
@@ -1889,7 +1889,7 @@ class BranchHooks(Hooks):
 
 
 # install the default hooks into the Branch class.
-Branch.hooks = BranchHooks("bzrlib.branch", "Branch.hooks")
+Branch.hooks = BranchHooks()
 
 
 class ChangeBranchTipParams(object):

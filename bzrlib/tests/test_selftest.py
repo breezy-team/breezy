@@ -1486,15 +1486,12 @@ class TestTestCase(tests.TestCase):
         # Note this test won't fail with hooks that the core library doesn't
         # use - but it trigger with a plugin that adds hooks, so its still a
         # useful warning in that case.
+        self.assertEqual(bzrlib.branch.BranchHooks(), bzrlib.branch.Branch.hooks)
         self.assertEqual(
-            bzrlib.branch.BranchHooks("bzrlib.tests.test_selftest", "some_hooks"),
-            bzrlib.branch.Branch.hooks)
-        self.assertEqual(
-            bzrlib.smart.server.SmartServerHooks("bzrlib.tests.test_selftest", "hooks"),
+            bzrlib.smart.server.SmartServerHooks(),
             bzrlib.smart.server.SmartTCPServer.hooks)
         self.assertEqual(
-            bzrlib.commands.CommandHooks("bzrlib.tests.test_selftest", "hooks"),
-            bzrlib.commands.Command.hooks)
+            bzrlib.commands.CommandHooks(), bzrlib.commands.Command.hooks)
 
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.

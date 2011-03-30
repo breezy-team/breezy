@@ -297,12 +297,12 @@ class MessageEditorHooks(Hooks):
     generate a commit message template
     """
 
-    def __init__(self, module_name, member_name):
+    def __init__(self):
         """Create the default hooks.
 
         These are all empty initially.
         """
-        Hooks.__init__(self, module_name, member_name)
+        Hooks.__init__(self, "bzrlib.msgeditor", "hooks")
         self.add_hook('commit_message_template',
             "Called when a commit message is being generated. "
             "commit_message_template is called with the bzrlib.commit.Commit "
@@ -314,7 +314,7 @@ class MessageEditorHooks(Hooks):
             "on.", (1, 10))
 
 
-hooks = MessageEditorHooks("bzrlib.msgeditor", "hooks")
+hooks = MessageEditorHooks()
 
 
 def generate_commit_message_template(commit, start_message=None):

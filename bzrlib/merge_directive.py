@@ -58,8 +58,8 @@ class MergeRequestBodyParams(object):
 class MergeDirectiveHooks(hooks.Hooks):
     """Hooks for MergeDirective classes."""
 
-    def __init__(self, module_name, member_name):
-        hooks.Hooks.__init__(self, module_name, member_name)
+    def __init__(self):
+        hooks.Hooks.__init__(self, "bzrlib.merge_directive", "BaseMergeDirective.hooks")
         self.add_hook('merge_request_body',
             "Called with a MergeRequestBodyParams when a body is needed for"
             " a merge request.  Callbacks must return a body.  If more"
@@ -77,7 +77,7 @@ class BaseMergeDirective(object):
         stores a set of revisions in more than one file
     """
 
-    hooks = MergeDirectiveHooks("bzrlib.merge_directive", "BaseMergeDirective.hooks")
+    hooks = MergeDirectiveHooks()
 
     multiple_output_files = False
 

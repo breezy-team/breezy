@@ -50,8 +50,8 @@ from bzrlib.hooks import Hooks
 
 class LockHooks(Hooks):
 
-    def __init__(self, module_name, member_name):
-        Hooks.__init__(self, module_name, member_name)
+    def __init__(self):
+        Hooks.__init__(self, "bzrlib.lock", "Lock.hooks")
         self.add_hook('lock_acquired',
             "Called with a bzrlib.lock.LockResult when a physical lock is "
             "acquired.", (1, 8))
@@ -69,7 +69,7 @@ class Lock(object):
     :cvar hooks: Hook dictionary for operations on locks.
     """
 
-    hooks = LockHooks("bzrlib.lock", "Lock.hooks")
+    hooks = LockHooks()
 
 
 class LockResult(object):

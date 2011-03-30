@@ -35,8 +35,9 @@ from bzrlib.plugins.launchpad import (
 class ProposeMergeHooks(hooks.Hooks):
     """Hooks for proposing a merge on Launchpad."""
 
-    def __init__(self, module_name, member_name):
-        hooks.Hooks.__init__(self, module_name, member_name)
+    def __init__(self):
+        hooks.Hooks.__init__(self, "bzrlib.plugins.launchpad.lp_propose",
+            "Proposer.hooks")
         self.add_hook('get_prerequisite',
             "Return the prerequisite branch for proposing as merge.", (2, 1))
         self.add_hook('merge_proposal_body',
@@ -45,7 +46,7 @@ class ProposeMergeHooks(hooks.Hooks):
 
 class Proposer(object):
 
-    hooks = ProposeMergeHooks("bzrlib.plugins.launchpad.lp_propose", "Proposer.hooks")
+    hooks = ProposeMergeHooks()
 
     def __init__(self, tree, source_branch, target_branch, message, reviews,
                  staging=False, approve=False):

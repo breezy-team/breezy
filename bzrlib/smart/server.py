@@ -233,13 +233,13 @@ class SmartTCPServer(object):
 class SmartServerHooks(Hooks):
     """Hooks for the smart server."""
 
-    def __init__(self, module_name, member_name):
+    def __init__(self):
         """Create the default hooks.
 
         These are all empty initially, because by default nothing should get
         notified.
         """
-        Hooks.__init__(self, module_name, member_name)
+        Hooks.__init__(self, "bzrlib.smart.server", "SmartTCPServer.hooks")
         self.add_hook('server_started',
             "Called by the bzr server when it starts serving a directory. "
             "server_started is called with (backing urls, public url), "
@@ -255,7 +255,7 @@ class SmartServerHooks(Hooks):
             "server_stopped is called with the same parameters as the "
             "server_started hook: (backing_urls, public_url).", (0, 16))
 
-SmartTCPServer.hooks = SmartServerHooks("bzrlib.smart.server", "SmartTCPServer.hooks")
+SmartTCPServer.hooks = SmartServerHooks()
 
 
 def _local_path_for_transport(transport):

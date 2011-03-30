@@ -61,8 +61,8 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 
 class MergeHooks(hooks.Hooks):
 
-    def __init__(self, module_name, member_name):
-        hooks.Hooks.__init__(self, module_name, member_name)
+    def __init__(self):
+        hooks.Hooks.__init__(self, "bzrlib.merge", "Merger.hooks")
         self.add_hook('merge_file_content',
             "Called with a bzrlib.merge.Merger object to create a per file "
             "merge object when starting a merge. "
@@ -263,7 +263,7 @@ class MergeHookParams(object):
 
 class Merger(object):
 
-    hooks = MergeHooks("bzrlib.merge", "Merger.hooks")
+    hooks = MergeHooks()
 
     def __init__(self, this_branch, other_tree=None, base_tree=None,
                  this_tree=None, pb=None, change_reporter=None,

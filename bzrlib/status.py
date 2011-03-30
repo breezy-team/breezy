@@ -373,13 +373,13 @@ class StatusHooks(_mod_hooks.Hooks):
     status command has finished printing the status.
     """
 
-    def __init__(self, module_name, member_name):
+    def __init__(self):
         """Create the default hooks.
 
         These are all empty initially, because by default nothing should get
         notified.
         """
-        _mod_hooks.Hooks.__init__(self, module_name, member_name)
+        _mod_hooks.Hooks.__init__(self, "bzrlib.status", "hooks")
         self.add_hook('post_status',
             "Called with argument StatusHookParams after Bazaar has "
             "displayed the status. StatusHookParams has the attributes "
@@ -460,6 +460,6 @@ def _show_shelve_summary(params):
         params.to_file.write('See "bzr shelve --list" for details.\n')
 
 
-hooks = StatusHooks("bzrlib.status", "hooks")
+hooks = StatusHooks()
 
 hooks.install_named_hook('post_status', _show_shelve_summary, 'bzr status')

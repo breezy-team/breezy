@@ -1080,9 +1080,9 @@ class BzrDir(controldir.ControlDir):
 class BzrDirHooks(hooks.Hooks):
     """Hooks for BzrDir operations."""
 
-    def __init__(self, module_name, member_name):
+    def __init__(self):
         """Create the default hooks."""
-        hooks.Hooks.__init__(self, module_name, member_name)
+        hooks.Hooks.__init__(self, "bzrlib.bzrdir", "BzrDir.hooks")
         self.add_hook('pre_open',
             "Invoked before attempting to open a BzrDir with the transport "
             "that the open will use.", (1, 14))
@@ -1093,7 +1093,7 @@ class BzrDirHooks(hooks.Hooks):
             (2, 2))
 
 # install the default hooks
-BzrDir.hooks = BzrDirHooks("bzrlib.bzrdir", "BzrDir.hooks")
+BzrDir.hooks = BzrDirHooks()
 
 
 class RepoInitHookParams(object):

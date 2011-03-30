@@ -193,8 +193,8 @@ class _SmartClient(object):
 
 class SmartClientHooks(hooks.Hooks):
 
-    def __init__(self, module_name, member_name):
-        hooks.Hooks.__init__(self, module_name, member_name)
+    def __init__(self):
+        hooks.Hooks.__init__(self, "bzrlib.smart.client", "_SmartClient.hooks")
         self.add_hook('call',
             "Called when the smart client is submitting a request to the "
             "smart server. Called with a bzrlib.smart.client.CallHookParams "
@@ -202,7 +202,7 @@ class SmartClientHooks(hooks.Hooks):
             "accessible.", None)
 
 
-_SmartClient.hooks = SmartClientHooks("bzrlib.smart.client", "_SmartClient.hooks")
+_SmartClient.hooks = SmartClientHooks()
 
 
 class CallHookParams(object):

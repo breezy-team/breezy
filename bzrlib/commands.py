@@ -769,13 +769,13 @@ class Command(object):
 class CommandHooks(Hooks):
     """Hooks related to Command object creation/enumeration."""
 
-    def __init__(self, module_name, member_name):
+    def __init__(self):
         """Create the default hooks.
 
         These are all empty initially, because by default nothing should get
         notified.
         """
-        Hooks.__init__(self, module_name, member_name)
+        Hooks.__init__(self, "bzrlib.commands", "Command.hooks")
         self.add_hook('extend_command',
             "Called after creating a command object to allow modifications "
             "such as adding or removing options, docs etc. Called with the "
@@ -800,7 +800,7 @@ class CommandHooks(Hooks):
             "list_commands should return the updated set of command names.",
             (1, 17))
 
-Command.hooks = CommandHooks("bzrlib.commands", "Command.hooks")
+Command.hooks = CommandHooks()
 
 
 def parse_args(command, argv, alias_argv=None):
