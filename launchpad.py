@@ -21,7 +21,10 @@
 import os
 
 from bzrlib.config import config_dir
-from bzrlib.trace import mutter
+from bzrlib.trace import (
+    mutter,
+    note,
+    )
 
 try:
     from launchpadlib.launchpad import Launchpad
@@ -86,3 +89,41 @@ def debian_bugs_for_ubuntu_bug(bug_id):
         mutter(str(e))
         return []
     return []
+
+
+def get_upstream_branch_url(package, distribution_name, distroseries_name):
+    """Return the upstream branch URL based on a package in a distribution.
+
+    :param distribution_name: Distribution name
+    :param package: Source package name
+    :param distroseries_name: Distroseries name
+    """
+    if not HAVE_LPLIB:
+        return None
+    lp = _get_launchpad()
+    if lp is None:
+        return None
+    distribution = lp.distributions[distribution_name]
+    if distribution is None:
+        note("Launchpad: No such distribution %s" % distribution)
+        return None
+    distroseries = distribution.getSeries(name_or_version=distroseries_name)
+    if distroseries is None:
+        note("%s: No such distroseries %s" % (distribution_name, distroseries_name))
+        return None
+    sourcepackage = distroseries.getSourcePackage(name=package)
+    if sourcepackage is None:
+        note("%s: Source package %s not found in %s" % (distribution_name, package,
+            sourcepackage))
+        return None
+    productseries = sourcepackage.productseries
+    if productseries is None:
+        note("%s: Source package %s in %s not linked to a product series" % (
+            distribution_name, package, sourcepackage))
+        return None
+    branch = productseries.branch
+    if branch is None:
+        note(("%s: upstream product series %s for source package %s does not have "
+             "a branch") % (distribution_name, distroseries, package))
+        return None
+    return branch.bzr_identity

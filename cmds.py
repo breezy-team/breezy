@@ -309,7 +309,8 @@ class cmd_builddeb(Command):
 
     def _get_upstream_branch(self, export_upstream, export_upstream_revision,
             config, version):
-        upstream_source = LazyUpstreamBranchSource(export_upstream, config=config)
+        upstream_source = LazyUpstreamBranchSource(export_upstream,
+            config=config)
         if export_upstream_revision:
             upstream_source.upstream_revision_map[version.encode("utf-8")] = export_upstream_revision
         return upstream_source
@@ -528,10 +529,13 @@ class cmd_merge_upstream(Command):
     snapshot_opt = Option('snapshot', help="Merge a snapshot from the "
             "upstream branch rather than a new upstream release.")
 
+    launchpad_opt = Option('launchpad',
+        help='Use Launchpad to find upstream locations.')
+
     takes_options = [package_opt, version_opt,
             distribution_opt, directory_opt, last_version_opt,
             force_opt, 'revision', 'merge-type',
-            snapshot_opt]
+            snapshot_opt, launchpad_opt]
 
     def _add_changelog_entry(self, tree, package, version, distribution_name,
             changelog):
@@ -618,7 +622,7 @@ class cmd_merge_upstream(Command):
     def run(self, location=None, upstream_branch=None, version=None,
             distribution=None, package=None,
             directory=".", revision=None, merge_type=None,
-            last_version=None, force=None, snapshot=False):
+            last_version=None, force=None, snapshot=False, launchpad=False):
         tree, _ = WorkingTree.open_containing(directory)
         tree.lock_write()
         try:
@@ -628,24 +632,6 @@ class cmd_merge_upstream(Command):
                         "working tree. You must commit before using this "
                         "command.")
             config = debuild_config(tree, tree)
-
-            if upstream_branch is not None:
-                upstream_branch = Branch.open(upstream_branch)
-            elif location is not None:
-                try:
-                    upstream_branch = Branch.open(location)
-                except NotBranchError:
-                    upstream_branch = None
-            elif upstream_branch is None and config.upstream_branch is not None:
-                upstream_branch = Branch.open(config.upstream_branch)
-            else:
-                upstream_branch = None
-            if upstream_branch is not None:
-                upstream_branch_source = UpstreamBranchSource(
-                    upstream_branch, config=config)
-            else:
-                upstream_branch_source = None
-
             (current_version, package, distribution, distribution_name,
              changelog, larstiq) = self._get_changelog_info(tree, last_version,
                  package, distribution)
@@ -658,6 +644,32 @@ class cmd_merge_upstream(Command):
             if build_type == BUILD_TYPE_NATIVE:
                 raise BzrCommandError("Merge upstream in native mode is not "
                         "supported.")
+
+            if launchpad:
+                from bzrlib.plugins.builddeb.launchpad import (
+                    get_upstream_branch_url as lp_get_upstream_branch_url,
+                    )
+                upstream_branch = lp_get_upstream_branch_url(package,
+                    distribution_name, distribution)
+                note("Using upstream branch %s" % upstream_branch)
+
+            if upstream_branch is not None:
+                upstream_branch = Branch.open(upstream_branch)
+            elif location is not None:
+                try:
+                    upstream_branch = Branch.open(location)
+                except NotBranchError:
+                    upstream_branch = None
+            elif upstream_branch is None and config.upstream_branch is not None:
+                upstream_branch = Branch.open(config.upstream_branch)
+            else:
+                upstream_branch = None
+
+            if upstream_branch is not None:
+                upstream_branch_source = UpstreamBranchSource(
+                    upstream_branch, config=config)
+            else:
+                upstream_branch_source = None
 
             if location is not None:
                 try:
