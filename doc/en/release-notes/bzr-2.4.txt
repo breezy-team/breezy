@@ -42,6 +42,8 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+ * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
+
 Documentation
 *************
 
