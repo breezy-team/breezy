@@ -55,27 +55,17 @@ strange results if there is a criss-cross merge.
 
 # Since we are a built-in plugin we share the bzrlib version
 from bzrlib import version_info
+from bzrlib.hooks import install_lazy_named_hook
 
 # Put most of the code in a separate module that we lazy-import to keep the
 # overhead of this plugin as minimal as possible.
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
-from bzrlib.plugins.changelog_merge import changelog_merge as _mod_changelog_merge
-""")
-
-from bzrlib.merge import Merger
-
-
 def changelog_merge_hook(merger):
     """Merger.merge_file_content hook for GNU-format ChangeLog files."""
-    return _mod_changelog_merge.ChangeLogMerger(merger)
+    from brlib.plugins.changelog_merge.changelog_merge import ChangeLogMerger
+    return ChangeLogMerger(merger)
 
-
-def install_hook():
-    Merger.hooks.install_named_hook(
-        'merge_file_content', changelog_merge_hook, 'GNU ChangeLog file merge')
-install_hook()
-
+install_lazy_named_hook("bzrlib.merge", "Merger.hooks", "merge_file_content",
+    changelog_merge_hook, 'GNU ChangeLog file merge')
 
 def load_tests(basic_tests, module, loader):
     testmod_names = [
@@ -84,4 +74,3 @@ def load_tests(basic_tests, module, loader):
     basic_tests.addTest(loader.loadTestsFromModuleNames(
             ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
     return basic_tests
-
