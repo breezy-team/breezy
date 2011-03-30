@@ -154,7 +154,12 @@ class UIFactory(object):
             "%(from_format)s to %(to_format)s.\n"
             "This may take some time. Upgrade the repositories to the "
             "same format for better performance."
-            )
+            ),
+        recommend_upgrade=("%(current_format_name)s is deprecated "
+            "and a better format is available.\n"
+            "It is recommended that you upgrade by "
+            "running the command\n"
+            "  bzr upgrade %(basedir)s"),
         )
 
     def __init__(self):
@@ -343,21 +348,14 @@ class UIFactory(object):
         """
         return NullProgressView()
 
-    def recommend_upgrade(self,
-        current_format_name,
-        basedir):
-        # XXX: this should perhaps be in the TextUIFactory and the default can do
-        # nothing
-        #
-        # XXX: Change to show_user_warning - that will accomplish the previous
-        # xxx. -- mbp 2010-02-25
-        trace.warning("%s is deprecated "
-            "and a better format is available.\n"
-            "It is recommended that you upgrade by "
-            "running the command\n"
-            "  bzr upgrade %s",
-            current_format_name,
-            basedir)
+    def recommend_upgrade(self, current_format_name, basedir):
+        """Recommend the user upgrade a control directory.
+
+        :param current_format_name: Description of the current format
+        :param basedir: Location of the control dir
+        """
+        self.show_user_warning('recommend_upgrade',
+            current_format_name=current_format_name, basedir=basedir)
 
     def report_transport_activity(self, transport, byte_count, direction):
         """Called by transports as they do IO.

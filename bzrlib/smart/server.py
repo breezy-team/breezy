@@ -103,7 +103,7 @@ class SmartTCPServer(object):
         # The URL that a commit done on the same machine as the server will
         # have within the servers space. (e.g. file:///home/user/source)
         # The URL that will be given to other hooks in the same process -
-        # the URL of the backing transport itself. (e.g. chroot+:///)
+        # the URL of the backing transport itself. (e.g. filtered-36195:///)
         # We need all three because:
         #  * other machines see the first
         #  * local commits on this machine should be able to be mapped to

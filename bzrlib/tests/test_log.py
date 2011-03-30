@@ -117,6 +117,7 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
             branch.tags.set_tag('v1.0', 'rev-3')
         return wt
 
+
 class LogCatcher(log.LogFormatter):
     """Pull log messages into a list rather than displaying them.
 
@@ -370,6 +371,32 @@ Use --include-merges or -n0 to see merged revisions.
 """,
             wt.branch, log.ShortLogFormatter,
             show_log_kwargs=dict(start_revision=rev, end_revision=rev))
+
+    def test_show_ids(self):
+        wt = self.make_branch_and_tree('parent')
+        self.build_tree(['parent/f1', 'parent/f2'])
+        wt.add(['f1','f2'])
+        self.wt_commit(wt, 'first post', rev_id='a')
+        child_wt = wt.bzrdir.sprout('child').open_workingtree()
+        self.wt_commit(child_wt, 'branch 1 changes', rev_id='b')
+        wt.merge_from_branch(child_wt.branch)
+        self.wt_commit(wt, 'merge branch 1', rev_id='c')
+        self.assertFormatterResult("""\
+    2 Joe Foo\t2005-11-22 [merge]
+      revision-id:c
+      merge branch 1
+
+          1.1.1 Joe Foo\t2005-11-22
+                revision-id:b
+                branch 1 changes
+
+    1 Joe Foo\t2005-11-22
+      revision-id:a
+      first post
+
+""",
+            wt.branch, log.ShortLogFormatter,
+            formatter_kwargs=dict(levels=0,show_ids=True))
 
 
 class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
@@ -658,6 +685,47 @@ message:
         formatter.show_properties(revision, '')
         self.assertEqualDiff('''custom_prop_name: test_value\n''',
                              sio.getvalue())
+
+    def test_show_ids(self):
+        wt = self.make_branch_and_tree('parent')
+        self.build_tree(['parent/f1', 'parent/f2'])
+        wt.add(['f1','f2'])
+        self.wt_commit(wt, 'first post', rev_id='a')
+        child_wt = wt.bzrdir.sprout('child').open_workingtree()
+        self.wt_commit(child_wt, 'branch 1 changes', rev_id='b')
+        wt.merge_from_branch(child_wt.branch)
+        self.wt_commit(wt, 'merge branch 1', rev_id='c')
+        self.assertFormatterResult("""\
+------------------------------------------------------------
+revno: 2 [merge]
+revision-id: c
+parent: a
+parent: b
+committer: Joe Foo <joe@foo.com>
+branch nick: parent
+timestamp: Tue 2005-11-22 00:00:02 +0000
+message:
+  merge branch 1
+    ------------------------------------------------------------
+    revno: 1.1.1
+    revision-id: b
+    parent: a
+    committer: Joe Foo <joe@foo.com>
+    branch nick: child
+    timestamp: Tue 2005-11-22 00:00:01 +0000
+    message:
+      branch 1 changes
+------------------------------------------------------------
+revno: 1
+revision-id: a
+committer: Joe Foo <joe@foo.com>
+branch nick: parent
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  first post
+""",
+            wt.branch, log.LongLogFormatter,
+            formatter_kwargs=dict(levels=0,show_ids=True))
 
 
 class TestLongLogFormatterWithoutMergeRevisions(TestCaseForLogFormatter):
@@ -1687,6 +1755,7 @@ message:
 \tadd a
 
 """)
+
 
 class TestLogExcludeAncestry(tests.TestCaseWithTransport):
 

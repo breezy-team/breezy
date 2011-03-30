@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.3.1
+bzr 2.3.2
 #########
 
-:2.3.1: NOT RELEASED YET
+:2.3.2: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -26,18 +26,27 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Getting all entries from ``CHKInventory.iter_entries_by_dir()`` has been
+  sped up dramatically for large trees. Iterating by dir is not the best
+  way to load data from a CHK inventory, so it preloads all the items in
+  the correct order. (With the gcc-tree, this changes it (re)reading 8GB
+  of CHK data, down to just 150MB.) This has noticeable affects for things
+  like building checkouts, etc.  (John Arbash Meinel, #737234)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
-* Correctly resolve text conflicts for files in subdirs.
-  (Vincent Ladeuil, #715058)
+* ``bzr push`` into a repository (that doesn't have a branch), will no
+  longer copy all revisions in the repository. Only the ones in the
+  ancestry of the source branch, like it does in all other cases.
+  (John Arbash Meinel, #465517)
 
-* Restore proper logging of bytes transferred. We accidentally reset the
-  counter when commands finished before we logged the total transferred.
-  (John Arbash Meinel, #713258)
+* Fix "Unable to obtain lock" error when pushing to a bound branch if tags
+  had changed.  Bazaar was attempting to open and lock the master branch
+  twice in this case.  (Andrew Bennetts, #733350)
 
 Documentation
 *************
@@ -63,6 +72,38 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* FreeBSD8 has switched to python-2.7 which revealed a re-occurrence of a test
+  failure in the launchpad plugin. ``xmlrpclib.py`` on natty carries a patch
+  that is not in python-2.7 upstream and masked the issue. An additional fix
+  has been added in the interim
+  (<http://psf.upfronthosting.co.za/roundup/tracker/issue8194> should be fixed
+  in python > 2.7.1).  (Vincent Ladeuil, #654733)
+
+
+bzr 2.3.1
+#########
+
+:2.3.1: 2011-03-10
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.3 releases.
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* Correctly resolve text conflicts for files in subdirs.
+  (Vincent Ladeuil, #715058)
+
+* Fix "AssertionError: repository.user_url ... does not match URL from
+  server response" when reusing a smart transport.
+  (Andrew Bennetts, #726584)
+
+* Restore proper logging of bytes transferred. We accidentally reset the
+  counter when commands finished before we logged the total transferred.
+  (John Arbash Meinel, #713258)
 
 bzr 2.3.0
 #########

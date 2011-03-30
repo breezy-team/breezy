@@ -33,7 +33,10 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
         branch = self.make_branch('branch')
         bzrdir = branch.bzrdir
         colo_branch = bzrdir.create_branch('colo')
-        bzrdir.destroy_branch("colo")
+        try:
+            bzrdir.destroy_branch("colo")
+        except (errors.UnsupportedOperation, errors.TransportNotPossible):
+            raise tests.TestNotApplicable('Format does not support destroying branch')
         self.assertRaises(errors.NotBranchError, bzrdir.open_branch,
                           "colo")
 

@@ -53,7 +53,7 @@ class TestSprout(TestCaseWithBranch):
         # Start with a format that is unlikely to be the target format
         # We call the super class to allow overriding the format of creation)
         source = tests.TestCaseWithTransport.make_branch(self, 'old-branch',
-                                                         format='metaweave')
+                                                         format='knit')
         target_bzrdir = self.make_bzrdir('target')
         target_bzrdir.create_repository()
         result_format = self.branch_format

@@ -80,6 +80,18 @@ class MutableTree(tree.Tree):
         # used on media which doesn't differentiate the case of names.
         self.case_sensitive = True
 
+    def is_control_filename(self, filename):
+        """True if filename is the name of a control file in this tree.
+
+        :param filename: A filename within the tree. This is a relative path
+        from the root of this tree.
+
+        This is true IF and ONLY IF the filename is part of the meta data
+        that bzr controls in this tree. I.E. a random .bzr directory placed
+        on disk will not be a control file for this tree.
+        """
+        raise NotImplementedError(self.is_control_filename)
+
     @needs_tree_write_lock
     def add(self, files, ids=None, kinds=None):
         """Add paths to the set of versioned paths.
