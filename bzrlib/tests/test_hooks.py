@@ -19,6 +19,7 @@
 from bzrlib import (
     branch,
     errors,
+    hooks as _mod_hooks,
     pyutils,
     tests,
     )
@@ -29,7 +30,6 @@ from bzrlib.hooks import (
     known_hooks,
     known_hooks_key_to_object,
     known_hooks_key_to_parent_and_attribute,
-    _lazy_hooks,
     )
 from bzrlib.symbol_versioning import (
     deprecated_in,
@@ -124,7 +124,7 @@ class TestHooks(tests.TestCase):
         set_rh = lambda: None
         install_lazy_named_hook('bzrlib.tests.test_hooks',
             'TestHooks.hooks', 'set_rh', set_rh, "demo")
-        set_rh_lazy_hooks = _lazy_hooks[
+        set_rh_lazy_hooks = _mod_hooks._lazy_hooks[
             ('bzrlib.tests.test_hooks', 'TestHooks.hooks', 'set_rh')]
         self.assertEquals(1, len(set_rh_lazy_hooks))
         self.assertEquals(set_rh, set_rh_lazy_hooks[0][0].get_obj())
@@ -153,7 +153,7 @@ class TestHooks(tests.TestCase):
     def test_valid_lazy_hooks(self):
         # Make sure that all the registered lazy hooks are referring to existing
         # hook points which allow lazy registration.
-        for key, callbacks in _lazy_hooks.iteritems():
+        for key, callbacks in _mod_hooks._lazy_hooks.iteritems():
             (module_name, member_name, hook_name) = key
             obj = pyutils.get_named_object(module_name, member_name)
             self.assertEquals(obj._module, module_name)
