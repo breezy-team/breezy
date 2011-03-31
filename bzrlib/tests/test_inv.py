@@ -56,10 +56,14 @@ def delta_application_scenarios():
     # just creating trees.
     formats = set()
     for _, format in repository.format_registry.iteritems():
-        scenarios.append((str(format.__name__), {
-            'apply_delta':apply_inventory_Repository_add_inventory_by_delta,
-            'format':format}))
+        if format.supports_full_versioned_files:
+            scenarios.append((str(format.__name__), {
+                'apply_delta':apply_inventory_Repository_add_inventory_by_delta,
+                'format':format}))
     for format in workingtree.format_registry._get_all():
+        repo_fmt = format._matchingbzrdir.repository_format
+        if not repo_fmt.supports_full_versioned_files:
+            continue
         scenarios.append(
             (str(format.__class__.__name__) + ".update_basis_by_delta", {
             'apply_delta':apply_inventory_WT_basis,
@@ -79,7 +83,7 @@ def create_texts_for_inv(repo, inv):
             lines = []
         repo.texts.add_lines((ie.file_id, ie.revision), [], lines)
 
-    
+
 def apply_inventory_Inventory(self, basis, delta):
     """Apply delta to basis and return the result.
     
