@@ -61,7 +61,7 @@ from bzrlib.hooks import install_lazy_named_hook
 # overhead of this plugin as minimal as possible.
 def changelog_merge_hook(merger):
     """Merger.merge_file_content hook for GNU-format ChangeLog files."""
-    from brlib.plugins.changelog_merge.changelog_merge import ChangeLogMerger
+    from bzrlib.plugins.changelog_merge.changelog_merge import ChangeLogMerger
     return ChangeLogMerger(merger)
 
 install_lazy_named_hook("bzrlib.merge", "Merger.hooks", "merge_file_content",
