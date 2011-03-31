@@ -1817,6 +1817,23 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
+class TestConfigStackGet(tests.TestCase):
+
+    def test_compatibility(self):
+        self.assertRaises(AssertionError, config.ConfigStack, [object()])
+
+    def test_single_config_get(self):
+        conf = dict(foo='bar')
+        conf_stack = config.ConfigStack([conf])
+        self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_first_definition(self):
+        conf1 = dict(foo='bar')
+        conf2 = dict(foo='baz')
+        conf_stack = config.ConfigStack([conf1, conf2])
+        self.assertEquals('bar', conf_stack.get('foo'))
+
+
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):

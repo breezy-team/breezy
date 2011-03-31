@@ -1991,6 +1991,26 @@ class TransportConfig(object):
         self._transport.put_file(self._filename, out_file)
 
 
+class ConfigStack(object):
+    """A stack of configurations where an option can be defined"""
+
+    def __init__(self, config_list):
+        self.list = config_list
+        for c in self.list:
+            # Sanity check
+            if not hasattr(c, 'get'):
+                raise AssertionError("%r does not provide a 'get' method"
+                                     % (c,))
+
+    def get(self, name):
+        """Return the value from the first definition found in the list"""
+        for c in self.list:
+            value = c.get(name)
+            if value is not None:
+                break
+        return value
+
+
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
 
