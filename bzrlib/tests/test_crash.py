@@ -15,17 +15,17 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import doctest
+import os
 from StringIO import StringIO
 import sys
-
-
-import os
 
 
 from bzrlib import (
     config,
     crash,
     osutils,
+    plugin,
     tests,
     )
 
@@ -71,3 +71,45 @@ class TestApportReporting(tests.TestCaseInTempDir):
         self.assertContainsRe(report, 'test_apport_report')
         # should also be in there
         self.assertContainsRe(report, '(?m)^CommandLine:')
+
+
+class TestNonApportReporting(tests.TestCase):
+    """Reporting of crash-type bugs without apport.
+    
+    This should work in all environments.
+    """
+
+    def setup_fake_plugins(self):
+        def fake_plugins():
+            fake = plugin.PlugIn('fake_plugin', plugin)
+            fake.version_info = lambda: (1, 2, 3)
+            return {"fake_plugin": fake}
+        self.overrideAttr(plugin, 'plugins', fake_plugins)
+
+    def test_report_bug_legacy(self):
+        self.setup_fake_plugins()
+        err_file = StringIO()
+        try:
+            raise AssertionError("my error")
+        except AssertionError, e:
+            pass
+        crash.report_bug_legacy(sys.exc_info(), err_file)
+        self.assertDoctestExampleMatches("""\
+bzr: ERROR: exceptions.AssertionError: my error
+
+Traceback (most recent call last):
+  ...
+AssertionError: my error
+
+bzr ... on python ...
+arguments: ...
+plugins: fake_plugin[1.2.3]
+encoding: ...
+
+*** Bazaar has encountered an internal error.  This probably indicates a
+    bug in Bazaar.  You can help us fix it by filing a bug report at
+        https://bugs.launchpad.net/bzr/+filebug
+    including this traceback and a description of the problem.
+""", 
+    err_file.getvalue(),
+    )

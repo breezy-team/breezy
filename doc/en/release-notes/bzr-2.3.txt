@@ -39,6 +39,10 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* When reporting a crash without apport, don't print the full list of
+   plugins because it's often too long.
+   (Martin Pool, #716389)
+
 * ``bzr push`` into a repository (that doesn't have a branch), will no
   longer copy all revisions in the repository. Only the ones in the
   ancestry of the source branch, like it does in all other cases.
@@ -78,6 +82,10 @@ Testing
   has been added in the interim
   (<http://psf.upfronthosting.co.za/roundup/tracker/issue8194> should be fixed
   in python > 2.7.1).  (Vincent Ladeuil, #654733)
+
+* New assertion method `assertDoctestExampleMatches` allows easily reusing
+  doctest string template matches against arbitrary strings.
+  (Martin Pool)
 
 
 bzr 2.3.1
