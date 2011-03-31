@@ -326,7 +326,7 @@ class Commit(object):
                 minimum_path_selection(specific_files))
         else:
             self.specific_files = None
-            
+
         self.allow_pointless = allow_pointless
         self.message_callback = message_callback
         self.timestamp = timestamp
@@ -402,6 +402,9 @@ class Commit(object):
         self._set_progress_stage("Collecting changes", counter=True)
         self.builder = self.branch.get_commit_builder(self.parents,
             self.config, timestamp, timezone, committer, self.revprops, rev_id)
+        if not self.builder.supports_record_entry_contents and self.exclude:
+            self.builder.abort()
+            raise errors.ExcludesUnsupported(self.branch.repository)
 
         try:
             self.builder.will_record_deletes()
