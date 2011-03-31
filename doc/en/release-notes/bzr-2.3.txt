@@ -5,12 +5,88 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.3.2
+#########
+
+:2.3.2: NOT RELEASED YET
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+* Getting all entries from ``CHKInventory.iter_entries_by_dir()`` has been
+  sped up dramatically for large trees. Iterating by dir is not the best
+  way to load data from a CHK inventory, so it preloads all the items in
+  the correct order. (With the gcc-tree, this changes it (re)reading 8GB
+  of CHK data, down to just 150MB.) This has noticeable affects for things
+  like building checkouts, etc.  (John Arbash Meinel, #737234)
+
 Bug Fixes
 *********
 
- * When reporting a crash without apport, don't print the full list of
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* When reporting a crash without apport, don't print the full list of
    plugins because it's often too long.
    (Martin Pool, #716389)
+
+* ``bzr push`` into a repository (that doesn't have a branch), will no
+  longer copy all revisions in the repository. Only the ones in the
+  ancestry of the source branch, like it does in all other cases.
+  (John Arbash Meinel, #465517)
+
+* Fix "Unable to obtain lock" error when pushing to a bound branch if tags
+  had changed.  Bazaar was attempting to open and lock the master branch
+  twice in this case.  (Andrew Bennetts, #733350)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+* FreeBSD8 has switched to python-2.7 which revealed a re-occurrence of a test
+  failure in the launchpad plugin. ``xmlrpclib.py`` on natty carries a patch
+  that is not in python-2.7 upstream and masked the issue. An additional fix
+  has been added in the interim
+  (<http://psf.upfronthosting.co.za/roundup/tracker/issue8194> should be fixed
+  in python > 2.7.1).  (Vincent Ladeuil, #654733)
+
+* New assertion method `assertDoctestExampleMatches` allows easily reusing
+  doctest string template matches against arbitrary strings.
+  (Martin Pool)
+
 
 bzr 2.3.1
 #########
@@ -585,10 +661,6 @@ Testing
 
 * Fix tests that failed when run under ``LANG=C``.
   (Andrew Bennetts, #632387)
-
-* New assertion method `assertDoctestExampleMatches` allows easily reusing
-  doctest string template matches against arbitrary strings.
-  (Martin Pool)
 
 * Skip tests that needs a bzr source tree when there isn't one. This is
   needed to successfully run the test suite for installed versions.
