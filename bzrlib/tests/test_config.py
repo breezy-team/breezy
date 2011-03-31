@@ -1833,6 +1833,12 @@ class TestConfigStackGet(tests.TestCase):
         conf_stack = config.ConfigStack([conf1, conf2])
         self.assertEquals('bar', conf_stack.get('foo'))
 
+    def test_get_embedded_definition(self):
+        conf1 = dict(yy='12')
+        conf2 = config.ConfigStack([dict(xx='42'), dict(foo='baz')])
+        conf_stack = config.ConfigStack([conf1, conf2])
+        self.assertEquals('baz', conf_stack.get('foo'))
+
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
