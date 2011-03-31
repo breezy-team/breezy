@@ -26,32 +26,12 @@
 import os
 
 import bzrlib
-from bzrlib import (
-    branch as _mod_branch,
-    errors,
-    merge,
-    msgeditor,
-    )
 from bzrlib.commands import plugin_cmds
-from bzrlib.config import config_dir
 from bzrlib.directory_service import directories
 
 from info import (
     bzr_plugin_version as version_info,
     )
-
-
-if getattr(merge, 'ConfigurableFileMerger', None) is None:
-    raise ImportError(
-        'need at least bzr 2.1.0rc2 (you use %r)', bzrlib.version_info)
-else:
-    def changelog_merge_hook_factory(merger):
-        from bzrlib.plugins.builddeb import merge_changelog
-        return merge_changelog.ChangeLogFileMerge(merger)
-
-    merge.Merger.hooks.install_named_hook(
-        'merge_file_content', changelog_merge_hook_factory,
-        'Debian Changelog file merge')
 
 
 commands = {
@@ -72,6 +52,7 @@ for command, aliases in commands.iteritems():
 builddeb_dir = '.bzr-builddeb'
 default_conf = os.path.join(builddeb_dir, 'default.conf')
 def global_conf():
+    from bzrlib.config import config_dir
     return os.path.join(config_dir(), 'builddeb.conf')
 local_conf = os.path.join(builddeb_dir, 'local.conf')
 
@@ -128,10 +109,9 @@ def debian_changelog_commit_message(commit, start_message):
     return "".join(changes)
 
 
-msgeditor.hooks.install_named_hook("commit_message_template",
-        debian_changelog_commit_message,
-        "Use changes documented in debian/changelog to suggest "
-        "the commit message")
+def changelog_merge_hook_factory(merger):
+    from bzrlib.plugins.builddeb import merge_changelog
+    return merge_changelog.ChangeLogFileMerge(merger)
 
 
 def debian_tag_name(branch, revid):
@@ -158,12 +138,45 @@ def debian_tag_name(branch, revid):
 
 
 try:
-    _mod_branch.Branch.hooks.install_named_hook("automatic_tag_name",
-         debian_tag_name,
+    from bzrlib.hooks import install_lazy_named_hook
+except ImportError: # Compatibility with bzr < 2.4
+    from bzrlib import (
+        branch as _mod_branch,
+        errors,
+        merge,
+        msgeditor,
+        )
+    msgeditor.hooks.install_named_hook("commit_message_template",
+            debian_changelog_commit_message,
+            "Use changes documented in debian/changelog to suggest "
+            "the commit message")
+    if getattr(merge, 'ConfigurableFileMerger', None) is None:
+        raise ImportError(
+            'need at least bzr 2.1.0rc2 (you use %r)', bzrlib.version_info)
+    else:
+        merge.Merger.hooks.install_named_hook(
+            'merge_file_content', changelog_merge_hook_factory,
+            'Debian Changelog file merge')
+    try:
+        _mod_branch.Branch.hooks.install_named_hook("automatic_tag_name",
+             debian_tag_name,
+             "Automatically determine tag names from Debian version")
+    except errors.UnknownHook:
+        pass # bzr < 2.2 doesn't have this hook.
+else:
+    install_lazy_named_hook(
+        "bzrlib.msgeditor", "hooks", "commit_message_template",
+            debian_changelog_commit_message,
+            "Use changes documented in debian/changelog to suggest "
+            "the commit message")
+    install_lazy_named_hook(
+        "bzrlib.merge", "Merger.hooks",
+        'merge_file_content', changelog_merge_hook_factory,
+        'Debian Changelog file merge')
+    install_lazy_named_hook(
+        "bzrlib.branch", "Branch.hooks",
+        "automatic_tag_name", debian_tag_name,
          "Automatically determine tag names from Debian version")
-except errors.UnknownHook:
-    pass # bzr < 2.2 doesn't have this hook.
-
 
 try:
     from bzrlib.revisionspec import revspec_registry
