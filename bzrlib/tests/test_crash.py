@@ -96,16 +96,16 @@ class TestNonApportReporting(tests.TestCase):
         crash.report_bug_legacy(sys.exc_info(), err_file)
         self.assertDoctestExampleMatches("""\
 bzr: ERROR: exceptions.AssertionError: my error
-<BLANKLINE>
+
 Traceback (most recent call last):
   ...
 AssertionError: my error
-<BLANKLINE>
+
 bzr ... on python ...
 arguments: ...
 plugins: fake_plugin[1.2.3]
 encoding: ...
-<BLANKLINE>
+
 *** Bazaar has encountered an internal error.  This probably indicates a
     bug in Bazaar.  You can help us fix it by filing a bug report at
         https://bugs.launchpad.net/bzr/+filebug
