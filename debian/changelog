@@ -1,4 +1,4 @@
-bzr (2.4.0~beta1-1) UNRELEASED; urgency=low
+bzr (2.4.0~beta1-1) experimental; urgency=low
 
   * New upstream release.
    + Drop patches merged upstream: 01_test_locale, 04_cpu_count,
