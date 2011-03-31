@@ -1819,6 +1819,9 @@ class TestTransportConfig(tests.TestCaseWithTransport):
 
 class TestConfigStackGet(tests.TestCase):
 
+    # FIXME: This should be parametrized for all known ConfigStack or dedicated
+    # paramerized tests created to avoid bloating -- vila 2011-03-31
+
     def test_compatibility(self):
         self.assertRaises(AssertionError, config.ConfigStack, [object()])
 
