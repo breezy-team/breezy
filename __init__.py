@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -93,7 +93,7 @@ def load_fastimport():
     except ImportError, e:
         from bzrlib.errors import DependencyNotPresent
         raise DependencyNotPresent("fastimport",
-            "bzr-fastimport requires the fasimport python module")
+            "bzr-fastimport requires the fastimport python module")
 
 
 def test_suite():
