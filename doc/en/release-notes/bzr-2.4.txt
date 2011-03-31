@@ -56,6 +56,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Hooks.create_hook`` is now deprecated in favour of ``Hooks.add_hook``.
+  (Jelmer Vernooij)
+
 Internals
 *********
 

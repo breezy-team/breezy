@@ -47,7 +47,8 @@ class TransportHooks(bzrlib.hooks.Hooks):
     """Dict-mapping hook name to a list of callables for transport hooks"""
 
     def __init__(self):
-        super(TransportHooks, self).__init__()
+        super(TransportHooks, self).__init__("bzrlib.tests.transport_util",
+            "InstrumentedTransport.hooks")
         # Invoked when the transport has just created a new connection.
         # The api signature is (transport, connection, credentials)
         self['_set_connection'] = []
