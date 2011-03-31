@@ -48,6 +48,10 @@ Bug Fixes
   ancestry of the source branch, like it does in all other cases.
   (John Arbash Meinel, #465517)
 
+* Fix ``UnboundLocalError: local variable 'lock_url' in wait_lock`` error,
+  especially while trying to save configuration from QBzr.
+  (Martin Pool, #733136)
+
 * Fix "Unable to obtain lock" error when pushing to a bound branch if tags
   had changed.  Bazaar was attempting to open and lock the master branch
   twice in this case.  (Andrew Bennetts, #733350)
