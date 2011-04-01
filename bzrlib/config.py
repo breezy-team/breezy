@@ -1988,6 +1988,7 @@ class TransportConfig(object):
         self._transport.put_file(self._filename, out_file)
 
 
+# FIXME: This is not lazy yet -- vila 2011-04-01
 class ReadOnlySection(object):
     """A section defines a dict of options.
 
@@ -2009,6 +2010,7 @@ _Created = object()
 
 
 class MutableSection(ReadOnlySection):
+    """A section allowing changes and keeping track of the original values."""
 
     def __init__(self, section_id, options):
         super(MutableSection, self).__init__(section_id, options)

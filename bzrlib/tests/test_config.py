@@ -1820,7 +1820,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
 class TestConfigReadOnlySection(tests.TestCase):
 
     # FIXME: Parametrize so that all sections produced by Stores run these
-    # tests.
+    # tests -- vila 2011-04-01
 
     def test_get_a_value(self):
         a_dict = dict(foo='bar')
@@ -1842,7 +1842,7 @@ class TestConfigReadOnlySection(tests.TestCase):
 class TestConfigMutableSection(tests.TestCase):
 
     # FIXME: Parametrize so that all sections (includind os.envrion and the
-    # ones produced by Stores) run these tests.
+    # ones produced by Stores) run these tests -- vila 2011-04-01
 
     def test_set(self):
         a_dict = dict(foo='bar')
