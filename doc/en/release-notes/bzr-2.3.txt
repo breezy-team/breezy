@@ -87,11 +87,6 @@ Testing
   (<http://psf.upfronthosting.co.za/roundup/tracker/issue8194> should be fixed
   in python > 2.7.1).  (Vincent Ladeuil, #654733)
 
-* New assertion method `assertDoctestExampleMatches` allows easily reusing
-  doctest string template matches against arbitrary strings.
-  (Martin Pool)
-
-
 bzr 2.3.1
 #########
 

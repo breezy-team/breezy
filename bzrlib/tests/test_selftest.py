@@ -1327,14 +1327,6 @@ class TestTestCase(tests.TestCase):
         self.assertEqual('Incorrect length: wanted 2, got 3 for [1, 2, 3]',
             exception.args[0])
 
-    def test_assertDoctestExampleMatches(self):
-        self.assertDoctestExampleMatches("expected", "expected")
-        self.assertDoctestExampleMatches("hello ... world",
-            "hello round blue world")
-        self.assertRaises(AssertionError,
-            self.assertDoctestExampleMatches,
-            "blue\n", "green\n")
-
     def test_base_setUp_not_called_causes_failure(self):
         class TestCaseWithBrokenSetUp(tests.TestCase):
             def setUp(self):
