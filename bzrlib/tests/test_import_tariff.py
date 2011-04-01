@@ -100,6 +100,7 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.bundle.commands',
             'bzrlib.cmd_version_info',
             'bzrlib.externalcommand',
+            'bzrlib.filters',
             'bzrlib.foreign',
             'bzrlib.gpg',
             'bzrlib.info',
