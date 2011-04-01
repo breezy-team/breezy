@@ -26,22 +26,38 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Resolve ``lp:FOO`` urls locally rather than doing an XMLRPC request if
+  the user has done ``bzr launchpad-login``. The bzr+ssh URLs were already
+  being handed off to the remote server anyway (xmlrpc has been mapping
+  ``lp:bzr`` to ``bzr+ssh://bazaar.launchpad.net/+branch/bzr``, rather
+  than ``bzr+ssh://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev`` for a few
+  months now.) By doing it ourselves, we can cut out substantial startup
+  time. From Netherlands to London it was taking 368ms to do the XMLRPC
+  call as much as 2s from Sydney. You can test the local logic by using
+  ``-Dlaunchpad``.  (John Arbash Meinel, #397739)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+ * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
+
 Documentation
 *************
 
-.. Improved or updated documentation.
+* Added a section about using a shared SSH account on a server for bzr+ssh
+  access.  (Russell Smith)
 
 API Changes
 ***********
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``Hooks.create_hook`` is now deprecated in favour of ``Hooks.add_hook``.
+  (Jelmer Vernooij)
 
 * If you call `bzrlib.initialize` but forget to enter the resulting object
   as a context manager, bzrlib will now be initialized anyhow.
@@ -128,6 +144,13 @@ Improvements
 * ``bzr export`` can now create ``.tar.xz`` and ``.tar.lzma`` files.
   (Jelmer Vernooij, #551714)
 
+* Getting all entries from ``CHKInventory.iter_entries_by_dir()`` has been
+  sped up dramatically for large trees. Iterating by dir is not the best
+  way to load data from a CHK inventory, so it preloads all the items in
+  the correct order. (With the gcc-tree, this changes it (re)reading 8GB
+  of CHK data, down to just 150MB.) This has noticeable affects for things
+  like building checkouts, etc.  (John Arbash Meinel, #737234)
+
 
 Bug Fixes
 *********
@@ -205,7 +228,7 @@ Bug Fixes
 API Changes
 ***********
 
-* Added ``Branch.heads_to_fetch`` method.  Implementions of the Branch API
+* Added ``Branch.heads_to_fetch`` method.  Implementations of the Branch API
   must now inherit or implement this method.  (Andrew Bennetts, #721328)
   
 * Added ``bzrlib.mergetools`` module with helper functions for working with
@@ -229,9 +252,17 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
+* Because it was too specific to BzrDir implementations,
+  ``ControlDir.sprout`` no longer has a default implementation; it now
+  raises ``NotImplementedError``. (Jelmer Vernooij, #717937)
+
 * ``ControlDirFormat.register_format`` has been removed. Instead,
   ``Prober`` implementations should now implement a ``known_formats``
   method. (Jelmer Vernooij)
+
+* ControlDirFormats can now provide a ``check_status`` method and
+  raise a custom exception or warning when an unsupported or deprecated
+  format is being opened.  (Jelmer Vernooij, #731311)
 
 * ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
   Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and
@@ -287,8 +318,12 @@ Internals
 * ``CatchingExceptionThread`` (formerly ThreadWithException) has been moved
   out of the ``bzrlib.tests`` hierarchy to make it clearer that it can be used
   outside of tests. This class makes it easier to track exceptions in threads
-  by cacthing them so they can be re-raised in the controlling thread. It's
+  by catching them so they can be re-raised in the controlling thread. It's
   available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
+
+* Correctly propogate malloc failures from diff-delta.c code as MemoryError
+  so OOM conditions during groupcompress are clearly reported. This entailed a
+  change to several function signatures. (Martin [gz], #633336)
 
 * ``HookPoint.lazy_hook`` and ``Hooks.install_named_lazy_hook`` can install 
   hooks for which the callable is loaded lazily.  (Jelmer Vernooij)

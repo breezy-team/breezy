@@ -366,8 +366,7 @@ available to the world.
 #. Check that the documentation for this release is available in
    <http://doc.bazaar.canonical.com>.  It should be automatically build when the
    branch is created, by a cron script ``update-bzr-docs`` on
-   ``escudero``. As of today (2009-08-27) ``igc`` manually updates the
-   pretty version of it.
+   ``escudero``.
 
 
 Announcing the release

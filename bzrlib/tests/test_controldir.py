@@ -23,6 +23,7 @@ from bzrlib import (
     controldir,
     errors,
     tests,
+    ui,
     )
 from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
@@ -180,3 +181,57 @@ class TestNotBzrDir(tests.TestCaseWithTransport):
                 break
         else:
             self.fail("No NotBzrDirFormat in %s" % formats)
+
+
+class UnsupportedControlComponentFormat(controldir.ControlComponentFormat):
+
+    def is_supported(self):
+        return False
+
+
+class OldControlComponentFormat(controldir.ControlComponentFormat):
+
+    def get_format_description(self):
+        return "An old format that is slow"
+
+    upgrade_recommended = True
+
+
+class DefaultControlComponentFormatTests(tests.TestCase):
+    """Tests for default ControlComponentFormat implementation."""
+
+    def test_check_support_status_unsupported(self):
+        self.assertRaises(errors.UnsupportedFormatError,
+            UnsupportedControlComponentFormat().check_support_status,
+            allow_unsupported=False)
+        UnsupportedControlComponentFormat().check_support_status(
+            allow_unsupported=True)
+
+    def test_check_support_status_supported(self):
+        controldir.ControlComponentFormat().check_support_status(
+            allow_unsupported=False)
+        controldir.ControlComponentFormat().check_support_status(
+            allow_unsupported=True)
+
+    def test_recommend_upgrade_current_format(self):
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stderr=stderr)
+        format = controldir.ControlComponentFormat()
+        format.check_support_status(allow_unsupported=False,
+            recommend_upgrade=True)
+        self.assertEquals("", stderr.getvalue())
+
+    def test_recommend_upgrade_old_format(self):
+        stderr = tests.StringIOWrapper()
+        ui.ui_factory = tests.TestUIFactory(stderr=stderr)
+        format = OldControlComponentFormat()
+        format.check_support_status(allow_unsupported=False,
+            recommend_upgrade=False)
+        self.assertEquals("", stderr.getvalue())
+        format.check_support_status(allow_unsupported=False,
+            recommend_upgrade=True, basedir='apath')
+        self.assertEquals(
+            'An old format that is slow is deprecated and a better format '
+            'is available.\nIt is recommended that you upgrade by running '
+            'the command\n  bzr upgrade apath\n',
+            stderr.getvalue())

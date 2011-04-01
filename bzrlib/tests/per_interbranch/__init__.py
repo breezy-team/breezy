@@ -37,11 +37,6 @@ from bzrlib.bzrdir import (
     BzrDirFormat,
     BzrDirMetaFormat1,
     )
-from bzrlib.errors import (
-    FileExists,
-    NotBranchError,
-    UninitializableFormat,
-    )
 from bzrlib.tests import (
     TestCaseWithTransport,
     multiply_tests,
@@ -171,6 +166,7 @@ class StubMatchingInter(object):
 
 def load_tests(standard_tests, module, loader):
     submod_tests = loader.loadTestsFromModuleNames([
+        'bzrlib.tests.per_interbranch.test_fetch',
         'bzrlib.tests.per_interbranch.test_get',
         'bzrlib.tests.per_interbranch.test_copy_content_into',
         'bzrlib.tests.per_interbranch.test_pull',

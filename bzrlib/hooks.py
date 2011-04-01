@@ -145,10 +145,10 @@ class Hooks(dict):
         else:
             callbacks = None
         hookpoint = HookPoint(name=name, doc=doc, introduced=introduced,
-                              deprecated=deprecated,
-                              callbacks=callbacks)
+                              deprecated=deprecated, callbacks=callbacks)
         self[name] = hookpoint
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def create_hook(self, hook):
         """Create a hook which can have callbacks registered for it.
 
@@ -392,6 +392,8 @@ def hooks_help_text(topic):
     return '\n'.join(segments)
 
 
+# Lazily registered hooks. Maps (module, name, hook_name) tuples
+# to lists of tuples with objectgetters and names
 _lazy_hooks = {}
 
 
