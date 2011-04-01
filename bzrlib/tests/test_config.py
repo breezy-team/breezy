@@ -1817,6 +1817,48 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
+class TestConfigReadOnlySection(tests.TestCase):
+
+    # FIXME: Parametrize so that all sections produced by Stores run these
+    # tests.
+
+    def test_get_a_value(self):
+        a_dict = dict(foo='bar')
+        section = config.ReadOnlySection('myID', a_dict)
+        self.assertEquals('bar', section.get('foo'))
+
+    def test_options_is_shared(self):
+        a_dict = dict()
+        section = config.ReadOnlySection('myID', a_dict)
+        self.assertIs(a_dict, section.options)
+
+
+class TestConfigMutableSection(tests.TestCase):
+
+    # FIXME: Parametrize so that all sections produced by Stores run these
+    # tests.
+
+    def test_set(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'new_value')
+        self.assertEquals('new_value', section.get('foo'))
+        # The change appears in the shared section
+        self.assertEquals('new_value', a_dict.get('foo'))
+        # We keep track of the change
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_set_preserve_original_once(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'first_value')
+        section.set('foo', 'second_value')
+        # We keep track of the original value
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):

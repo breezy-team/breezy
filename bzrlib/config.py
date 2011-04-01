@@ -1991,6 +1991,39 @@ class TransportConfig(object):
         self._transport.put_file(self._filename, out_file)
 
 
+class ReadOnlySection(object):
+    """A section defines a dict of options.
+
+    This is merely a read-only dict which can add some knowledge about the
+    options.
+    """
+
+    def __init__(self, section_id, options):
+        self.id = section_id
+        # We re-use the dict-like object received
+        self.options = options
+
+    def get(self, name, default=None):
+        return self.options.get(name, default)
+
+
+class MutableSection(ReadOnlySection):
+
+    def __init__(self, section_id, options):
+        super(MutableSection, self).__init__(section_id, options)
+        self.orig = {}
+
+    def set(self, name, value):
+        if name not in self.orig:
+            self.orig[name] = self.get(name, None)
+        self.options[name] = value
+
+    def remove(self, name):
+        if name not in self.orig:
+            self.orig[name] = self.get(name, None)
+        del self.options[name]
+
+
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
 
