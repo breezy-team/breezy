@@ -39,6 +39,12 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Bazaar now infers the default user email address on Unix from the local
+  account name plus the contents of ``/etc/mailname`` if that file exists.
+  In particular, this means that committing as root through etckeeper will
+  normally not require running ``bzr whoami`` first.
+  (Martin Pool, #616878)
+
 * When reporting a crash without apport, don't print the full list of
    plugins because it's often too long.
    (Martin Pool, #716389)
