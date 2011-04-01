@@ -20,6 +20,7 @@ import os
 from StringIO import StringIO
 import sys
 
+from testtools.matchers import DocTestMatches
 
 from bzrlib import (
     config,
@@ -94,7 +95,9 @@ class TestNonApportReporting(tests.TestCase):
         except AssertionError, e:
             pass
         crash.report_bug_legacy(sys.exc_info(), err_file)
-        self.assertDoctestExampleMatches("""\
+        self.assertThat(
+            err_file.getvalue(),
+            DocTestMatches("""\
 bzr: ERROR: exceptions.AssertionError: my error
 
 Traceback (most recent call last):
@@ -110,6 +113,4 @@ encoding: ...
     bug in Bazaar.  You can help us fix it by filing a bug report at
         https://bugs.launchpad.net/bzr/+filebug
     including this traceback and a description of the problem.
-""", 
-    err_file.getvalue(),
-    )
+""", flags=doctest.ELLIPSIS|doctest.REPORT_UDIFF))
