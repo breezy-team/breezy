@@ -2006,6 +2006,8 @@ class ReadOnlySection(object):
     def get(self, name, default=None):
         return self.options.get(name, default)
 
+_Created = object()
+"""Was the option created during the MutableSection lifetime"""
 
 class MutableSection(ReadOnlySection):
 
@@ -2014,6 +2016,8 @@ class MutableSection(ReadOnlySection):
         self.orig = {}
 
     def set(self, name, value):
+        if name not in self.options:
+            self.orig[name] = _Created
         if name not in self.orig:
             self.orig[name] = self.get(name, None)
         self.options[name] = value

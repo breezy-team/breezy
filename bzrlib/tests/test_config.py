@@ -1827,6 +1827,12 @@ class TestConfigReadOnlySection(tests.TestCase):
         section = config.ReadOnlySection('myID', a_dict)
         self.assertEquals('bar', section.get('foo'))
 
+    def test_get_unkown_option(self):
+        a_dict = dict()
+        section = config.ReadOnlySection('myID', a_dict)
+        self.assertEquals('out of thin air',
+                          section.get('foo', 'out of thin air'))
+
     def test_options_is_shared(self):
         a_dict = dict()
         section = config.ReadOnlySection('myID', a_dict)
@@ -1857,6 +1863,30 @@ class TestConfigMutableSection(tests.TestCase):
         # We keep track of the original value
         self.assertTrue('foo' in section.orig)
         self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_remove(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.remove('foo')
+        # We get None for unknown options via the default value
+        self.assertEquals(None, section.get('foo'))
+        # Or we just get the default value
+        self.assertEquals('unknown', section.get('foo', 'unknown'))
+        self.assertFalse('foo' in section.options)
+        # We keep track of the deletion
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_remove_new_option(self):
+        a_dict = dict()
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'bar')
+        section.remove('foo')
+        self.assertFalse('foo' in section.options)
+        # The option didn't exist initially so it we need to keep track of it
+        # with a special value
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals(config._Created, section.orig['foo'])
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
