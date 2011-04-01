@@ -1841,8 +1841,8 @@ class TestConfigReadOnlySection(tests.TestCase):
 
 class TestConfigMutableSection(tests.TestCase):
 
-    # FIXME: Parametrize so that all sections produced by Stores run these
-    # tests.
+    # FIXME: Parametrize so that all sections (includind os.envrion and the
+    # ones produced by Stores) run these tests.
 
     def test_set(self):
         a_dict = dict(foo='bar')
