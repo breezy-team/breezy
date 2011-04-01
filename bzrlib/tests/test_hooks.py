@@ -117,11 +117,22 @@ class TestHooks(tests.TestCase):
 
     def test_uninstall_named_hook(self):
         hooks = Hooks("bzrlib.tests.test_hooks", "some_hooks")
-        hooks.add_hook('set_rh', "Set revision hsitory", (2, 0))
+        hooks.add_hook('set_rh', "Set revision history", (2, 0))
         hooks.install_named_hook('set_rh', None, "demo")
         self.assertEqual(1, len(hooks["set_rh"]))
         hooks.uninstall_named_hook("set_rh", "demo")
         self.assertEqual(0, len(hooks["set_rh"]))
+
+    def test_uninstall_multiple_named_hooks(self):
+        # Multiple callbacks with the same label all get removed
+        hooks = Hooks("bzrlib.tests.test_hooks", "some_hooks")
+        hooks.add_hook('set_rh', "Set revision history", (2, 0))
+        hooks.install_named_hook('set_rh', 1, "demo")
+        hooks.install_named_hook('set_rh', 2, "demo")
+        hooks.install_named_hook('set_rh', 3, "othername")
+        self.assertEqual(3, len(hooks["set_rh"]))
+        hooks.uninstall_named_hook("set_rh", "demo")
+        self.assertEqual(1, len(hooks["set_rh"]))
 
     def test_uninstall_named_hook_unknown_callable(self):
         hooks = Hooks("bzrlib.tests.test_hooks", "some_hooks")

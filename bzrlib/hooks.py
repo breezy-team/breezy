@@ -351,13 +351,15 @@ class HookPoint(object):
 
         :param label: Label of the entry to uninstall
         """
+        entries_to_remove = []
         for entry in self._callbacks:
             (entry_callback, entry_label) = entry
             if entry_label == label:
-                self._callbacks.remove(entry)
-                break
-        else:
+                entries_to_remove.append(entry)
+        if entries_to_remove == []:
             raise KeyError("No entry with label %r" % label)
+        for entry in entries_to_remove:
+            self._callbacks.remove(entry)
 
     def __iter__(self):
         return (callback.get_obj() for callback, name in self._callbacks)
