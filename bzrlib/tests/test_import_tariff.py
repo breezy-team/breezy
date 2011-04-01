@@ -100,7 +100,8 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.bundle.commands',
             'bzrlib.cmd_version_info',
             'bzrlib.externalcommand',
-            'bzrlib.foreign',
+            # foreign branch plugins import the foreign_vcs_registry from 
+            # bzrlib.foreign so it can't be blacklisted
             'bzrlib.gpg',
             'bzrlib.info',
             'bzrlib.merge3',
