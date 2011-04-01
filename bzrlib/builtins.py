@@ -2788,7 +2788,7 @@ class cmd_ignore(Command):
             bzr ignore "RE:(?!debian/).*"
         
         Ignore everything except the "local" toplevel directory,
-        but always ignore "*~" autosave files, even under local/::
+        but always ignore autosave files ending in ~, even under local/::
         
             bzr ignore "*"
             bzr ignore "!./local"
