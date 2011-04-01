@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -398,6 +398,17 @@ def plugins():
         if isinstance(plugin, types.ModuleType):
             result[name] = PlugIn(name, plugin)
     return result
+
+
+def format_concise_plugin_list():
+    """Return a string holding a concise list of plugins and their version.
+    """
+    items = []
+    for name, a_plugin in sorted(plugins().items()):
+        items.append("%s[%s]" %
+            (name, a_plugin.__version__))
+    return ', '.join(items)
+
 
 
 class PluginsHelpIndex(object):

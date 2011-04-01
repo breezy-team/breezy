@@ -26,7 +26,7 @@ When Bazaar generates a conflict, it adds information into the working tree to
 present the conflicting versions, and it's up to you to find the correct
 resolution.
 
-Whatever the conflict is, resolving it is roughly done in two steps::
+Whatever the conflict is, resolving it is roughly done in two steps:
 
 - modify the working tree content so that the conflicted item is now in the
   state you want to keep,
@@ -87,11 +87,11 @@ released Bazaar."  A conflict would look like this::
 
 The correct resolution would be "Martin Pool released Bazaar."
 
-You can handle text conflicts either by editing the main copy of the file, or
-by invoking external tools on the THIS, OTHER and BASE versions.  It's worth
-mentioning that resolving text conflicts rarely involves picking one set of
-changes over the other.  More often, the two sets of changes must be
-intelligently combined.
+You can handle text conflicts either by editing the main copy of the file,
+or by invoking external tools on the THIS, OTHER and BASE versions.  It's
+worth mentioning that resolving text conflicts rarely involves picking one
+set of changes over the other (but see below when you encounter these
+cases).  More often, the two sets of changes must be intelligently combined.
 
 If you edit the main copy, be sure to remove the herringbone markers.  When
 you are done editing, the file should look like it never had a conflict, and be
@@ -103,6 +103,16 @@ Bazaar will auto-detect which conflicts you have resolved.
 When the conflict is resolved, Bazaar deletes the previously generated
 ``.BASE``, ``.THIS`` and ``.OTHER`` files if they are still present in the
 working tree.
+
+
+When you want to pick one set of changes over the other, you can use ``bzr
+resolve`` with one of the following actions:
+
+* ``--action=take-this`` will issue ``mv FILE.THIS FILE``,
+* ``--action=take-other`` will issue ``mv FILE.OTHER FILE``.
+
+Note that if you have modified ``FILE.THIS`` or ``FILE.OTHER``, these
+modifications will be taken into account.
 
 Content conflicts
 -----------------
@@ -126,9 +136,9 @@ or a combination of both.
 
 ``bzr resolve`` recognizes the following actions:
 
-- ``--action=take-this`` will issue ``bzr mv FILE.THIS FILE``,
-- ``--action=take-other`` will issue ``bzr mv FILE.OTHER FILE``,
-- ``--action=done`` will just mark the conflict as resolved.
+* ``--action=take-this`` will issue ``bzr mv FILE.THIS FILE``,
+* ``--action=take-other`` will issue ``bzr mv FILE.OTHER FILE``,
+* ``--action=done`` will just mark the conflict as resolved.
 
 Any action will also delete the previously generated ``.BASE``, ``.THIS`` and
 ``.OTHER`` files if they are still present in the working tree.
@@ -172,11 +182,11 @@ already been used.  The existing file will be renamed to "FILE.moved".
 To resolve that kind of conflict, you should rebuild FILE from either version
 or a combination of both.
 
-``bzr resolve`` recognizes the following actions::
+``bzr resolve`` recognizes the following actions:
 
-- ``--action=take-this`` will issue ``bzr rm FILE ; bzr mv FILE.moved FILE``,
-- ``--action=take-other`` will issue ``bzr rm FILE.moved``,
-- ``--action=done`` will just mark the conflict as resolved.
+* ``--action=take-this`` will issue ``bzr rm FILE ; bzr mv FILE.moved FILE``,
+* ``--action=take-other`` will issue ``bzr rm FILE.moved``,
+* ``--action=done`` will just mark the conflict as resolved.
 
 Note that you must get rid of FILE.moved before using ``--action=done``.
 
@@ -213,12 +223,13 @@ Resolving this issue depends very much on the particular scenario.
 To resolve that kind of conflict, you should either remove or rename the
 children or the directory or a combination of both.
 
-``bzr resolve`` recognizes the following actions::
+``bzr resolve`` recognizes the following actions:
 
-- ``--action=take-this`` will issue ``bzr rm directory`` including the children,
-- ``--action=take-other`` will acknowledge Bazaar choice to keep the children
+* ``--action=take-this`` will issue ``bzr rm directory`` including the
+  children,
+* ``--action=take-other`` will acknowledge Bazaar choice to keep the children
   and restoring the directory,
-- ``--action=done`` will just mark the conflict as resolved.
+* ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 
@@ -230,18 +241,37 @@ Typical message::
   Conflict: can't delete DIR because it is not empty.  Not deleting.
 
 This is the opposite of "missing parent".  A directory is deleted in the
-source, but has new children in the target.  Bazaar will retain the directory.
-Resolving this issue depends very much on the particular scenario.
+source, but has new children in the target (either because a directory
+deletion is merged or because the merge introduce new children).  Bazaar
+will retain the directory.  Resolving this issue depends very much on the
+particular scenario.
 
 To resolve that kind of conflict, you should either remove or rename the
 children or the directory or a combination of both.
 
-``bzr resolve`` recognizes the following actions::
+``bzr resolve`` recognizes the following actions:
 
-- ``--action=take-this`` will acknowledge Bazaar choice to keep the directory,
-- ``--action=take-other`` will issue ``bzr rm directory`` including the 
+* ``--action=take-this`` will acknowledge Bazaar choice to keep the directory,
+
+* ``--action=take-other`` will issue ``bzr rm directory`` including the 
   children,
-- ``--action=done`` will just mark the conflict as resolved.
+
+* ``--action=done`` will just mark the conflict as resolved.
+
+Note that when merging a directory deletion, if unversioned files are
+present, they become potential orphans has they don't have a directory
+parent anymore.
+
+Handling such orphans, *before* the conflict is created, is controlled by
+setting the ``bzr.transform.orphan_policy`` configuration option.
+
+There are two possible values for this option:
+
+* ``conflict`` (the default): will leave the orphans in place and
+  generate a conflicts,
+
+* ``move``: will move the orphans to a ``bzr-orphans`` directory at the root
+  of the working tree with names like ``<file>.~#~``.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 
@@ -258,12 +288,12 @@ directory of a file.  Bazaar will use the path elements from the source.
 To resolve that kind of conflict, you just have to decide what name should be
 retained for the file involved.
 
-``bzr resolve`` recognizes the following actions::
+``bzr resolve`` recognizes the following actions:
 
-- ``--action=take-this`` will revert Bazaar choice and keep ``PATH1`` by
+* ``--action=take-this`` will revert Bazaar choice and keep ``PATH1`` by
   issuing ``bzr mv PATH2 PATH1``,
-- ``--action=take-other`` will acknowledge Bazaar choice of keeping ``PATH2``,
-- ``--action=done`` will just mark the conflict as resolved.
+* ``--action=take-other`` will acknowledge Bazaar choice of keeping ``PATH2``,
+* ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 
@@ -293,13 +323,13 @@ In this situation, Bazaar will cancel the move, and leave ``white`` in
 ``black``.  To resolve that kind of conflict, you just have to decide what
 name should be retained for the directories involved.
 
-``bzr resolve`` recognizes the following actions::
+``bzr resolve`` recognizes the following actions:
 
-- ``--action=take-this`` will acknowledge Bazaar choice of leaving ``white`` 
+* ``--action=take-this`` will acknowledge Bazaar choice of leaving ``white`` 
   in ``black``,
-- ``--action=take-other`` will revert Bazaar choice and move ``black`` in
-  ``white`` by issuing ``bzr mv black/white white ; bzr mv black white``,
-- ``--action=done`` will just mark the conflict as resolved.
+* ``--action=take-other`` will revert Bazaar choice and move ``black`` in
+   ``white`` by issuing ``bzr mv black/white white ; bzr mv black white``,
+* ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 
@@ -328,13 +358,13 @@ has changed the directory into a file or symlink.  For example::
 To resolve that kind of conflict, you have to decide what name should be
 retained for the file, directory or symlink involved.
 
-``bzr resolve`` recognizes the following actions::
+``bzr resolve`` recognizes the following actions:
 
-- ``--action=take-this`` will issue ``bzr rm --force foo.new`` and 
+* ``--action=take-this`` will issue ``bzr rm --force foo.new`` and 
   ``bzr add foo``,
-- ``--action=take-other`` will issue ``bzr rm --force foo`` and 
+* ``--action=take-other`` will issue ``bzr rm --force foo`` and 
   ``bzr mv foo.new foo``,
-- ``--action=done`` will just mark the conflict as resolved.
+* ``--action=done`` will just mark the conflict as resolved.
 
 Bazaar cannot auto-detect when conflicts of this kind have been resolved.
 

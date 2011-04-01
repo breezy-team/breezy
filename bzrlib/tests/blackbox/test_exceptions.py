@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,8 +16,6 @@
 
 """Tests for display of exceptions."""
 
-from cStringIO import StringIO
-import os
 import sys
 
 from bzrlib import (
@@ -27,11 +25,9 @@ from bzrlib import (
     osutils,
     repository,
     tests,
-    trace,
     )
 
-from bzrlib.tests import TestCaseInTempDir, TestCase
-from bzrlib.errors import NotBranchError
+from bzrlib.tests import TestCase
 
 
 class TestExceptionReporting(TestCase):
@@ -46,6 +42,18 @@ class TestExceptionReporting(TestCase):
         self.assertContainsRe(err,
                 r'exceptions\.AssertionError: always fails\n')
         self.assertContainsRe(err, r'Bazaar has encountered an internal error')
+
+
+class TestOptParseBugHandling(TestCase):
+    "Test that we handle http://bugs.python.org/issue2931"
+
+    def test_nonascii_optparse(self):
+        """Reasonable error raised when non-ascii in option name"""
+        if sys.version_info < (2,5):
+            error_re = 'no such option'
+        else:
+            error_re = 'Only ASCII permitted in option names'
+        out = self.run_bzr_error([error_re], ['st',u'-\xe4'])
 
 
 class TestDeprecationWarning(tests.TestCaseWithTransport):

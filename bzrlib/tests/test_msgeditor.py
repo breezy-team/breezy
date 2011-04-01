@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,14 +22,13 @@ import sys
 
 from bzrlib import (
     commit,
+    config,
     errors,
     msgeditor,
     osutils,
     tests,
     trace,
     )
-from bzrlib.branch import Branch
-from bzrlib.config import ensure_config_dir_exists, config_filename
 from bzrlib.msgeditor import (
     make_commit_message_template_encoded,
     edit_commit_message_encoded
@@ -156,7 +155,7 @@ added:
             return './fed.sh'
 
     def test_run_editor(self):
-        os.environ['BZR_EDITOR'] = self.make_do_nothing_editor()
+        self.overrideEnv('BZR_EDITOR', self.make_do_nothing_editor())
         self.assertEqual(True, msgeditor._run_editor(''),
                          'Unable to run dummy fake editor')
 
@@ -190,11 +189,11 @@ if len(sys.argv) == 2:
 "%s" fed.py %%1
 """ % sys.executable)
             f.close()
-            os.environ['BZR_EDITOR'] = 'fed.bat'
+            self.overrideEnv('BZR_EDITOR', 'fed.bat')
         else:
             # [non-win32] make python script executable and set BZR_EDITOR
             os.chmod('fed.py', 0755)
-            os.environ['BZR_EDITOR'] = './fed.py'
+            self.overrideEnv('BZR_EDITOR', './fed.py')
 
     def test_edit_commit_message(self):
         working_tree = self.make_uncommitted_tree()
@@ -229,57 +228,37 @@ if len(sys.argv) == 2:
         working_tree = self.make_uncommitted_tree()
 
         if sys.platform == 'win32':
-            os.environ['BZR_EDITOR'] = 'cmd.exe /c del'
+            editor = 'cmd.exe /c del'
         else:
-            os.environ['BZR_EDITOR'] = 'rm'
+            editor = 'rm'
+        self.overrideEnv('BZR_EDITOR', editor)
 
         self.assertRaises((IOError, OSError), msgeditor.edit_commit_message, '')
 
     def test__get_editor(self):
-        # Test that _get_editor can return a decent list of items
-        bzr_editor = os.environ.get('BZR_EDITOR')
-        visual = os.environ.get('VISUAL')
-        editor = os.environ.get('EDITOR')
-        try:
-            os.environ['BZR_EDITOR'] = 'bzr_editor'
-            os.environ['VISUAL'] = 'visual'
-            os.environ['EDITOR'] = 'editor'
+        self.overrideEnv('BZR_EDITOR', 'bzr_editor')
+        self.overrideEnv('VISUAL', 'visual')
+        self.overrideEnv('EDITOR', 'editor')
 
-            ensure_config_dir_exists()
-            f = open(config_filename(), 'wb')
-            f.write('editor = config_editor\n')
-            f.close()
+        conf = config.GlobalConfig.from_string('editor = config_editor\n',
+                                               save=True)
 
-            editors = list(msgeditor._get_editor())
-            editors = [editor for (editor, cfg_src) in editors]
+        editors = list(msgeditor._get_editor())
+        editors = [editor for (editor, cfg_src) in editors]
 
-            self.assertEqual(['bzr_editor', 'config_editor', 'visual',
-                              'editor'], editors[:4])
+        self.assertEqual(['bzr_editor', 'config_editor', 'visual', 'editor'],
+                         editors[:4])
 
-            if sys.platform == 'win32':
-                self.assertEqual(['wordpad.exe', 'notepad.exe'], editors[4:])
-            else:
-                self.assertEqual(['/usr/bin/editor', 'vi', 'pico', 'nano',
-                                  'joe'], editors[4:])
+        if sys.platform == 'win32':
+            self.assertEqual(['wordpad.exe', 'notepad.exe'], editors[4:])
+        else:
+            self.assertEqual(['/usr/bin/editor', 'vi', 'pico', 'nano', 'joe'],
+                             editors[4:])
 
-        finally:
-            # Restore the environment
-            if bzr_editor is None:
-                del os.environ['BZR_EDITOR']
-            else:
-                os.environ['BZR_EDITOR'] = bzr_editor
-            if visual is None:
-                del os.environ['VISUAL']
-            else:
-                os.environ['VISUAL'] = visual
-            if editor is None:
-                del os.environ['EDITOR']
-            else:
-                os.environ['EDITOR'] = editor
 
     def test__run_editor_EACCES(self):
         """If running a configured editor raises EACESS, the user is warned."""
-        os.environ['BZR_EDITOR'] = 'eacces.py'
+        self.overrideEnv('BZR_EDITOR', 'eacces.py')
         f = file('eacces.py', 'wb')
         f.write('# Not a real editor')
         f.close()
@@ -287,7 +266,7 @@ if len(sys.argv) == 2:
         os.chmod('eacces.py', 0)
         # Set $EDITOR so that _run_editor will terminate before trying real
         # editors.
-        os.environ['EDITOR'] = self.make_do_nothing_editor()
+        self.overrideEnv('EDITOR', self.make_do_nothing_editor())
         # Call _run_editor, capturing mutter.warning calls.
         warnings = []
         def warning(*args):
@@ -321,9 +300,12 @@ if len(sys.argv) == 2:
     def test__create_temp_file_with_commit_template_in_unicode_dir(self):
         self.requireFeature(tests.UnicodeFilenameFeature)
         if hasattr(self, 'info'):
-            os.mkdir(self.info['directory'])
-            os.chdir(self.info['directory'])
-            msgeditor._create_temp_file_with_commit_template('infotext')
+            tmpdir = self.info['directory']
+            os.mkdir(tmpdir)
+            # Force the creation of temp file in a directory whose name
+            # requires some encoding support
+            msgeditor._create_temp_file_with_commit_template('infotext',
+                                                             tmpdir=tmpdir)
         else:
             raise TestNotApplicable('Test run elsewhere with non-ascii data.')
 
@@ -336,23 +318,20 @@ if len(sys.argv) == 2:
         self.assertFileEqual('', msgfilename)
 
     def test_unsupported_encoding_commit_message(self):
-        old_env = osutils.set_or_unset_env('LANG', 'C')
-        try:
-            # LANG env variable has no effect on Windows
-            # but some characters anyway cannot be represented
-            # in default user encoding
-            char = probe_bad_non_ascii(osutils.get_user_encoding())
-            if char is None:
-                raise TestSkipped('Cannot find suitable non-ascii character '
-                    'for user_encoding (%s)' % osutils.get_user_encoding())
+        self.overrideEnv('LANG', 'C')
+        # LANG env variable has no effect on Windows
+        # but some characters anyway cannot be represented
+        # in default user encoding
+        char = probe_bad_non_ascii(osutils.get_user_encoding())
+        if char is None:
+            raise TestSkipped('Cannot find suitable non-ascii character '
+                'for user_encoding (%s)' % osutils.get_user_encoding())
 
-            self.make_fake_editor(message=char)
+        self.make_fake_editor(message=char)
 
-            working_tree = self.make_uncommitted_tree()
-            self.assertRaises(errors.BadCommitMessageEncoding,
-                              msgeditor.edit_commit_message, '')
-        finally:
-            osutils.set_or_unset_env('LANG', old_env)
+        working_tree = self.make_uncommitted_tree()
+        self.assertRaises(errors.BadCommitMessageEncoding,
+                          msgeditor.edit_commit_message, '')
 
     def test_generate_commit_message_template_no_hooks(self):
         commit_obj = commit.Commit()

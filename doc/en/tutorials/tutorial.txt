@@ -50,10 +50,10 @@ saved.
 These revisions have other uses as well. For example, one can comment
 revisions to record what the recent set of changes meant by providing an
 optional log message. Real life log messages include things like "Fixed
-the web template to close the table" and "Added sftp suppport. Fixes #595"
+the web template to close the table" and "Added SFTP suppport. Fixes #595"
 	
 We keep these logs so that if later there is some sort of problem with
-sftp, we can figure out when the problem probably happened.
+SFTP, we can figure out when the problem probably happened.
 
 How DVCS is different
 =====================
@@ -209,7 +209,7 @@ project.
 
 You'll usually refer to branches on your computer's filesystem just by
 giving the name of the directory containing the branch.  bzr also supports
-accessing branches over http and sftp, for example::
+accessing branches over HTTP and SFTP, for example::
 
     % bzr log http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/
     % bzr log sftp://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/

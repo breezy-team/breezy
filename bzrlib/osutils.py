@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -967,7 +967,6 @@ def failed_to_load_extension(exception):
     # they tend to happen very early in startup when we can't check config
     # files etc, and also we want to report all failures but not spam the user
     # with 10 warnings.
-    from bzrlib import trace
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
         trace.mutter("failed to load compiled extension: %s" % exception_str)
@@ -1462,10 +1461,16 @@ def terminal_width():
     # a similar effect.
 
     # If BZR_COLUMNS is set, take it, user is always right
+    # Except if they specified 0 in which case, impose no limit here
     try:
-        return int(os.environ['BZR_COLUMNS'])
+        width = int(os.environ['BZR_COLUMNS'])
     except (KeyError, ValueError):
-        pass
+        width = None
+    if width is not None:
+        if width > 0:
+            return width
+        else:
+            return None
 
     isatty = getattr(sys.stdout, 'isatty', None)
     if isatty is None or not isatty():
@@ -1875,7 +1880,10 @@ def copy_ownership_from_path(dst, src=None):
         s = os.stat(src)
         chown(dst, s.st_uid, s.st_gid)
     except OSError, e:
-        trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
+        trace.warning(
+            'Unable to copy ownership from "%s" to "%s". '
+            'You may want to set it manually.', src, dst)
+        trace.log_exception_quietly()
 
 
 def path_prefix_key(path):
@@ -1993,6 +2001,14 @@ def get_host_name():
 # data at once.
 MAX_SOCKET_CHUNK = 64 * 1024
 
+_end_of_stream_errors = [errno.ECONNRESET]
+for _eno in ['WSAECONNRESET', 'WSAECONNABORTED']:
+    _eno = getattr(errno, _eno, None)
+    if _eno is not None:
+        _end_of_stream_errors.append(_eno)
+del _eno
+
+
 def read_bytes_from_socket(sock, report_activity=None,
         max_read_size=MAX_SOCKET_CHUNK):
     """Read up to max_read_size of bytes from sock and notify of progress.
@@ -2006,7 +2022,7 @@ def read_bytes_from_socket(sock, report_activity=None,
             bytes = sock.recv(max_read_size)
         except socket.error, e:
             eno = e.args[0]
-            if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
+            if eno in _end_of_stream_errors:
                 # The connection was closed by the other side.  Callers expect
                 # an empty string to signal end-of-stream.
                 return ""
@@ -2063,6 +2079,29 @@ def send_all(sock, bytes, report_activity=None):
         else:
             sent_total += sent
             report_activity(sent, 'write')
+
+
+def connect_socket(address):
+    # Slight variation of the socket.create_connection() function (provided by
+    # python-2.6) that can fail if getaddrinfo returns an empty list. We also
+    # provide it for previous python versions. Also, we don't use the timeout
+    # parameter (provided by the python implementation) so we don't implement
+    # it either).
+    err = socket.error('getaddrinfo returns an empty list')
+    host, port = address
+    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+        af, socktype, proto, canonname, sa = res
+        sock = None
+        try:
+            sock = socket.socket(af, socktype, proto)
+            sock.connect(sa)
+            return sock
+
+        except socket.error, err:
+            # 'err' is now the most recent error
+            if sock is not None:
+                sock.close()
+    raise err
 
 
 def dereference_path(path):
@@ -2331,3 +2370,36 @@ def getuser_unicode():
         raise errors.BzrError("Can't decode username as %s." % \
                 user_encoding)
     return username
+
+
+def available_backup_name(base, exists):
+    """Find a non-existing backup file name.
+
+    This will *not* create anything, this only return a 'free' entry.  This
+    should be used for checking names in a directory below a locked
+    tree/branch/repo to avoid race conditions. This is LBYL (Look Before You
+    Leap) and generally discouraged.
+
+    :param base: The base name.
+
+    :param exists: A callable returning True if the path parameter exists.
+    """
+    counter = 1
+    name = "%s.~%d~" % (base, counter)
+    while exists(name):
+        counter += 1
+        name = "%s.~%d~" % (base, counter)
+    return name
+
+
+def set_fd_cloexec(fd):
+    """Set a Unix file descriptor's FD_CLOEXEC flag.  Do nothing if platform
+    support for this is not available.
+    """
+    try:
+        import fcntl
+        old = fcntl.fcntl(fd, fcntl.F_GETFD)
+        fcntl.fcntl(fd, fcntl.F_SETFD, old | fcntl.FD_CLOEXEC)
+    except (ImportError, AttributeError):
+        # Either the fcntl module or specific constants are not present
+        pass

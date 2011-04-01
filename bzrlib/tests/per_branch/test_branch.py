@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,6 +19,7 @@
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
+    config,
     delta as _mod_delta,
     errors,
     gpg,
@@ -186,7 +187,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch_b.get_parent(), branch_c.get_parent())
 
         # We can also set a specific parent, and it should be honored
-        random_parent = 'http://bazaar-vcs.org/path/to/branch'
+        random_parent = 'http://example.com/path/to/branch'
         branch_b.set_parent(random_parent)
         repo_d = self.make_repository('d')
         branch_b.repository.copy_content_into(repo_d)
@@ -346,7 +347,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         explicit nickname is set.  That is, an explicit nickname always
         overrides the implicit one.
         """
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         branch = self.make_branch('bzr.dev')
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
@@ -617,13 +618,9 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
         self.assertEqual(None, self.get_branch().get_push_location())
 
     def test_get_push_location_exact(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
-        open(fn, 'wt').write(("[%s]\n"
-                                  "push_location=foo\n" %
-                                  self.get_branch().base[:-1]))
+        b = self.get_branch()
+        config.LocationConfig.from_string(
+            '[%s]\npush_location=foo\n' % (b.base,), b.base, save=True)
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
@@ -685,7 +682,7 @@ class TestFormat(per_branch.TestCaseWithBranch):
             # they may not be initializable.
             return
         # supported formats must be able to init and open
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         readonly_t = transport.get_transport(self.get_readonly_url())
         made_branch = self.make_branch('.')
         self.failUnless(isinstance(made_branch, _mod_branch.Branch))
@@ -748,6 +745,66 @@ class TestBound(per_branch.TestCaseWithBranch):
             tree_b.branch.bind(tree_a.branch)
         except errors.UpgradeRequired:
             raise tests.TestNotApplicable('Format does not support binding')
+
+    def test_unbind_clears_cached_master_branch(self):
+        """b.unbind clears any cached value of b.get_master_branch."""
+        master = self.make_branch('master')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.unbind()
+        self.assertEqual(None, branch.get_master_branch())
+
+    def test_unlocked_does_not_cache_master_branch(self):
+        """Unlocked branches do not cache the result of get_master_branch."""
+        master = self.make_branch('master')
+        branch1 = self.make_branch('branch')
+        try:
+            branch1.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        # Open branch1 again
+        branch2 = branch1.bzrdir.open_branch()
+        self.assertNotEqual(None, branch1.get_master_branch())
+        # Unbind the branch via branch2.  branch1 isn't locked so will
+        # immediately return the new value for get_master_branch.
+        branch2.unbind()
+        self.assertEqual(None, branch1.get_master_branch())
+
+    def test_bind_clears_cached_master_branch(self):
+        """b.bind clears any cached value of b.get_master_branch."""
+        master1 = self.make_branch('master1')
+        master2 = self.make_branch('master2')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master1)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.bind(master2)
+        self.assertEqual('.', urlutils.relative_url(self.get_url('master2'),
+                branch.get_master_branch().base))
+
+    def test_set_bound_location_clears_cached_master_branch(self):
+        """b.set_bound_location clears any cached value of b.get_master_branch.
+        """
+        master1 = self.make_branch('master1')
+        master2 = self.make_branch('master2')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master1)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.set_bound_location(self.get_url('master2'))
+        self.assertEqual('.', urlutils.relative_url(self.get_url('master2'),
+                branch.get_master_branch().base))
 
 
 class TestStrict(per_branch.TestCaseWithBranch):

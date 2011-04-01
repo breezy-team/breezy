@@ -61,7 +61,7 @@ class TestsNeedingReweave(TestReconcile):
     def setUp(self):
         super(TestsNeedingReweave, self).setUp()
 
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         # an empty inventory with no revision for testing with.
         repo = self.make_repository('inventory_without_revision')
         repo.lock_write()
@@ -312,7 +312,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
         self.reduceLockdirTimeout()
         super(TestReconcileWithIncorrectRevisionCache, self).setUp()
 
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         # we need a revision with two parents in the wrong order
         # which should trigger reinsertion.
         # and another with the first one correct but the other two not
@@ -381,7 +381,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def test_reconcile_wrong_order(self):
         # a wrong order in primary parents is optionally correctable
-        t = transport.get_transport(self.get_url()).clone('wrong-first-parent')
+        t = self.get_transport().clone('wrong-first-parent')
         d = bzrlib.bzrdir.BzrDir.open_from_transport(t)
         repo = d.open_repository()
         repo.lock_read()
@@ -410,8 +410,7 @@ class TestReconcileWithIncorrectRevisionCache(TestReconcile):
 
     def test_reconcile_wrong_order_secondary_inventory(self):
         # a wrong order in the parents for inventories is ignored.
-        t = transport.get_transport(self.get_url()
-                                    ).clone('reversed-secondary-parents')
+        t = self.get_transport().clone('reversed-secondary-parents')
         d = bzrlib.bzrdir.BzrDir.open_from_transport(t)
         repo = d.open_repository()
         self.checkUnreconciled(d, repo.reconcile())

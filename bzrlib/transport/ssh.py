@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Robey Pointer <robey@lag.net>
+# Copyright (C) 2006-2011 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -126,12 +126,15 @@ class SSHVendorManager(object):
         elif 'SSH Secure Shell' in version:
             trace.mutter('ssh implementation is SSH Corp.')
             vendor = SSHCorpSubprocessVendor()
+        elif 'lsh' in version:
+            trace.mutter('ssh implementation is GNU lsh.')
+            vendor = LSHSubprocessVendor()
         # As plink user prompts are not handled currently, don't auto-detect
         # it by inspection below, but keep this vendor detection for if a path
         # is given in BZR_SSH. See https://bugs.launchpad.net/bugs/414743
         elif 'plink' in version and progname == 'plink':
             # Checking if "plink" was the executed argument as Windows
-            # sometimes reports 'ssh -V' incorrectly with 'plink' in it's
+            # sometimes reports 'ssh -V' incorrectly with 'plink' in its
             # version.  See https://bugs.launchpad.net/bzr/+bug/107155
             trace.mutter("ssh implementation is Putty's plink.")
             vendor = PLinkSubprocessVendor()
@@ -336,15 +339,14 @@ class ParamikoVendor(SSHVendor):
             self._raise_connection_error(host, port=port, orig_error=e,
                                          msg='Unable to invoke remote bzr')
 
+_ssh_connection_errors = (EOFError, OSError, IOError, socket.error)
 if paramiko is not None:
     vendor = ParamikoVendor()
     register_ssh_vendor('paramiko', vendor)
     register_ssh_vendor('none', vendor)
     register_default_ssh_vendor(vendor)
-    _sftp_connection_errors = (EOFError, paramiko.SSHException)
+    _ssh_connection_errors += (paramiko.SSHException,)
     del vendor
-else:
-    _sftp_connection_errors = (EOFError,)
 
 
 class SubprocessVendor(SSHVendor):
@@ -357,6 +359,7 @@ class SubprocessVendor(SSHVendor):
         # whatever) chunks.
         try:
             my_sock, subproc_sock = socket.socketpair()
+            osutils.set_fd_cloexec(my_sock)
         except (AttributeError, socket.error):
             # This platform doesn't support socketpair(), so just use ordinary
             # pipes instead.
@@ -376,14 +379,7 @@ class SubprocessVendor(SSHVendor):
                                                   subsystem='sftp')
             sock = self._connect(argv)
             return SFTPClient(SocketAsChannelAdapter(sock))
-        except _sftp_connection_errors, e:
-            self._raise_connection_error(host, port=port, orig_error=e)
-        except (OSError, IOError), e:
-            # If the machine is fast enough, ssh can actually exit
-            # before we try and send it the sftp request, which
-            # raises a Broken Pipe
-            if e.errno not in (errno.EPIPE,):
-                raise
+        except _ssh_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
     def connect_ssh(self, username, password, host, port, command):
@@ -391,14 +387,7 @@ class SubprocessVendor(SSHVendor):
             argv = self._get_vendor_specific_argv(username, host, port,
                                                   command=command)
             return self._connect(argv)
-        except (EOFError), e:
-            self._raise_connection_error(host, port=port, orig_error=e)
-        except (OSError, IOError), e:
-            # If the machine is fast enough, ssh can actually exit
-            # before we try and send it the sftp request, which
-            # raises a Broken Pipe
-            if e.errno not in (errno.EPIPE,):
-                raise
+        except _ssh_connection_errors, e:
             self._raise_connection_error(host, port=port, orig_error=e)
 
     def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
@@ -419,7 +408,7 @@ class OpenSSHSubprocessVendor(SubprocessVendor):
                                   command=None):
         args = [self.executable_path,
                 '-oForwardX11=no', '-oForwardAgent=no',
-                '-oClearAllForwardings=yes', '-oProtocol=2',
+                '-oClearAllForwardings=yes',
                 '-oNoHostAuthenticationForLocalhost=yes']
         if port is not None:
             args.extend(['-p', str(port)])
@@ -453,6 +442,27 @@ class SSHCorpSubprocessVendor(SubprocessVendor):
         return args
 
 register_ssh_vendor('sshcorp', SSHCorpSubprocessVendor())
+
+
+class LSHSubprocessVendor(SubprocessVendor):
+    """SSH vendor that uses the 'lsh' executable from GNU"""
+
+    executable_path = 'lsh'
+
+    def _get_vendor_specific_argv(self, username, host, port, subsystem=None,
+                                  command=None):
+        args = [self.executable_path]
+        if port is not None:
+            args.extend(['-p', str(port)])
+        if username is not None:
+            args.extend(['-l', username])
+        if subsystem is not None:
+            args.extend(['--subsystem', subsystem, host])
+        else:
+            args.extend([host] + command)
+        return args
+
+register_ssh_vendor('lsh', LSHSubprocessVendor())
 
 
 class PLinkSubprocessVendor(SubprocessVendor):

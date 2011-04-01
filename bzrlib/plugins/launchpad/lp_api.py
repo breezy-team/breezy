@@ -23,6 +23,7 @@
 
 import os
 import re
+import urlparse
 
 from bzrlib import (
     branch,
@@ -73,10 +74,25 @@ def check_launchpadlib_compatibility():
             installed_version, installed_version)
 
 
+# The older versions of launchpadlib only provided service root constants for
+# edge and staging, whilst newer versions drop edge. Therefore service root
+# URIs for which we do not always have constants are derived from the staging
+# one, which does always exist.
+#
+# It is necessary to derive, rather than use hardcoded URIs because
+# launchpadlib <= 1.5.4 requires service root URIs that end in a path of
+# /beta/, whilst launchpadlib >= 1.5.5 requires service root URIs with no path
+# info.
+#
+# Once we have a hard dependency on launchpadlib >= 1.5.4 we can replace all of
+# bzr's local knowledge of individual Launchpad instances with use of the
+# launchpadlib.uris module.
 LAUNCHPAD_API_URLS = {
-    'production': 'https://api.launchpad.net/beta/',
+    'production': STAGING_SERVICE_ROOT.replace('api.staging.launchpad.net',
+        'api.launchpad.net'),
     'staging': STAGING_SERVICE_ROOT,
-    'dev': 'https://api.launchpad.dev/beta/',
+    'dev': STAGING_SERVICE_ROOT.replace('api.staging.launchpad.net',
+        'api.launchpad.dev'),
     }
 
 
@@ -97,6 +113,13 @@ def _get_api_url(service):
         return LAUNCHPAD_API_URLS[lp_instance]
     except KeyError:
         raise InvalidLaunchpadInstance(lp_instance)
+
+
+class NoLaunchpadBranch(errors.BzrError):
+    _fmt = 'No launchpad branch could be found for branch "%(url)s".'
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self, branch=branch, url=branch.base)
 
 
 def login(service, timeout=None, proxy_info=None):
@@ -185,7 +208,7 @@ class LaunchpadBranch(object):
                            'bazaar.staging.launchpad.net')
 
     @classmethod
-    def from_bzr(cls, launchpad, bzr_branch):
+    def from_bzr(cls, launchpad, bzr_branch, create_missing=True):
         """Find a Launchpad branch from a bzr branch."""
         check_update = True
         for url in cls.candidate_urls(bzr_branch):
@@ -196,6 +219,8 @@ class LaunchpadBranch(object):
             if lp_branch is not None:
                 break
         else:
+            if not create_missing:
+                raise NoLaunchpadBranch(bzr_branch)
             lp_branch = cls.create_now(launchpad, bzr_branch)
             check_update = False
         return cls(lp_branch, bzr_branch.base, bzr_branch, check_update)
@@ -278,3 +303,13 @@ def load_branch(launchpad, branch):
         if lp_branch:
             return lp_branch
     raise NotLaunchpadBranch(url)
+
+
+def canonical_url(object):
+    """Return the canonical URL for a branch."""
+    scheme, netloc, path, params, query, fragment = urlparse.urlparse(
+        str(object.self_link))
+    path = '/'.join(path.split('/')[2:])
+    netloc = netloc.replace('api.', 'code.')
+    return urlparse.urlunparse((scheme, netloc, path, params, query,
+                                fragment))
