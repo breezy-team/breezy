@@ -279,10 +279,7 @@ class Config(object):
         # We need to iterate until no more refs appear ({{foo}} will need two
         # iterations for example).
         while True:
-            try:
-                raw_chunks = self.option_ref_re.split(result)
-            except TypeError:
-                import pdb; pdb.set_trace()
+            raw_chunks = self.option_ref_re.split(result)
             if len(raw_chunks) == 1:
                 # Shorcut the trivial case: no refs
                 return result

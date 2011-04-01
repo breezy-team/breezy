@@ -62,8 +62,8 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 class MergeHooks(hooks.Hooks):
 
     def __init__(self):
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('merge_file_content',
+        hooks.Hooks.__init__(self, "bzrlib.merge", "Merger.hooks")
+        self.add_hook('merge_file_content',
             "Called with a bzrlib.merge.Merger object to create a per file "
             "merge object when starting a merge. "
             "Should return either None or a subclass of "
@@ -73,7 +73,7 @@ class MergeHooks(hooks.Hooks):
             "side has deleted the file and the other has changed it). "
             "See the AbstractPerFileMerger API docs for details on how it is "
             "used by merge.",
-            (2, 1), None))
+            (2, 1))
 
 
 class AbstractPerFileMerger(object):

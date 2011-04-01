@@ -59,12 +59,12 @@ class MergeDirectiveHooks(hooks.Hooks):
     """Hooks for MergeDirective classes."""
 
     def __init__(self):
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('merge_request_body',
+        hooks.Hooks.__init__(self, "bzrlib.merge_directive", "BaseMergeDirective.hooks")
+        self.add_hook('merge_request_body',
             "Called with a MergeRequestBodyParams when a body is needed for"
             " a merge request.  Callbacks must return a body.  If more"
             " than one callback is registered, the output of one callback is"
-            " provided to the next.", (1, 15, 0), False))
+            " provided to the next.", (1, 15, 0))
 
 
 class BaseMergeDirective(object):

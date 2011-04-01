@@ -451,18 +451,13 @@ class TestInterRepository(TestCaseWithInterRepository):
     def test_fetch_missing_revision_same_location_fails(self):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
-        try:
-            self.assertRaises(errors.NoSuchRevision, repo_b.fetch, repo_a, revision_id='XXX')
-        except errors.LockError, e:
-            check_old_format_lock_error(self.repository_format)
+        self.assertRaises(errors.NoSuchRevision,
+            repo_b.fetch, repo_a, revision_id='XXX')
 
     def test_fetch_same_location_trivial_works(self):
         repo_a = self.make_repository('.')
         repo_b = repository.Repository.open('.')
-        try:
-            repo_a.fetch(repo_b)
-        except errors.LockError, e:
-            check_old_format_lock_error(self.repository_format)
+        repo_a.fetch(repo_b)
 
     def test_fetch_missing_text_other_location_fails(self):
         source_tree = self.make_branch_and_tree('source')

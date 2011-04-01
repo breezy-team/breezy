@@ -754,41 +754,6 @@ class TestTestResult(tests.TestCase):
         # want to assume that thats *all* that would happen.
         self.overrideAttr(bzrlib.version, '_get_bzr_source_tree', lambda: None)
 
-    def test_assigned_benchmark_file_stores_date(self):
-        self._patch_get_bzr_source_tree()
-        output = StringIO()
-        result = bzrlib.tests.TextTestResult(self._log_file,
-                                        descriptions=0,
-                                        verbosity=1,
-                                        bench_history=output
-                                        )
-        output_string = output.getvalue()
-        # if you are wondering about the regexp please read the comment in
-        # test_bench_history (bzrlib.tests.test_selftest.TestRunner)
-        # XXX: what comment?  -- Andrew Bennetts
-        self.assertContainsRe(output_string, "--date [0-9.]+")
-
-    def test_benchhistory_records_test_times(self):
-        self._patch_get_bzr_source_tree()
-        result_stream = StringIO()
-        result = bzrlib.tests.TextTestResult(
-            self._log_file,
-            descriptions=0,
-            verbosity=1,
-            bench_history=result_stream
-            )
-
-        # we want profile a call and check that its test duration is recorded
-        # make a new test instance that when run will generate a benchmark
-        example_test_case = TestTestResult("_time_hello_world_encoding")
-        # execute the test, which should succeed and record times
-        example_test_case.run(result)
-        lines = result_stream.getvalue().splitlines()
-        self.assertEqual(2, len(lines))
-        self.assertContainsRe(lines[1],
-            " *[0-9]+ms bzrlib.tests.test_selftest.TestTestResult"
-            "._time_hello_world_encoding")
-
     def _time_hello_world_encoding(self):
         """Profile two sleep calls
 
@@ -1222,20 +1187,6 @@ class TestRunner(tests.TestCase):
             return None
         self.overrideAttr(bzrlib.version, '_get_bzr_source_tree',  new_get)
 
-    def test_bench_history(self):
-        # tests that the running the benchmark passes bench_history into
-        # the test result object. We can tell that happens if
-        # _get_bzr_source_tree is called.
-        self._patch_get_bzr_source_tree()
-        test = TestRunner('dummy_test')
-        output = StringIO()
-        runner = tests.TextTestRunner(stream=self._log_file,
-                                      bench_history=output)
-        result = self.run_test_runner(runner, test)
-        output_string = output.getvalue()
-        self.assertContainsRe(output_string, "--date [0-9.]+")
-        self.assertLength(1, self._get_source_tree_calls)
-
     def test_verbose_test_count(self):
         """A verbose test run reports the right test count at the start"""
         suite = TestUtil.TestSuite([
@@ -1486,12 +1437,12 @@ class TestTestCase(tests.TestCase):
         # Note this test won't fail with hooks that the core library doesn't
         # use - but it trigger with a plugin that adds hooks, so its still a
         # useful warning in that case.
-        self.assertEqual(bzrlib.branch.BranchHooks(),
-            bzrlib.branch.Branch.hooks)
-        self.assertEqual(bzrlib.smart.server.SmartServerHooks(),
+        self.assertEqual(bzrlib.branch.BranchHooks(), bzrlib.branch.Branch.hooks)
+        self.assertEqual(
+            bzrlib.smart.server.SmartServerHooks(),
             bzrlib.smart.server.SmartTCPServer.hooks)
-        self.assertEqual(bzrlib.commands.CommandHooks(),
-            bzrlib.commands.Command.hooks)
+        self.assertEqual(
+            bzrlib.commands.CommandHooks(), bzrlib.commands.Command.hooks)
 
     def test__gather_lsprof_in_benchmarks(self):
         """When _gather_lsprof_in_benchmarks is on, accumulate profile data.
