@@ -702,18 +702,22 @@ class TestRepository(per_repository.TestCaseWithRepository):
         builder.start_series()
         builder.build_snapshot('A', None, [
             ('add', ('', 'root-id', 'directory', None))])
-        b = builder.get_branch()
-        b.lock_read()
         builder.finish_series()
-        self.addCleanup(b.unlock)
-        if b.repository._format.supports_revision_signatures:
-            b.repository.add_signature_text('A', 'This might be a signature')
-            self.assertEqual('This might be a signature',
-                             b.repository.get_signature_text('A'))
-        else:
-            self.assertRaises(errors.UnsupportedOperation,
-                b.repository.add_signature_text, 'A',
-                'This might be a signature')
+        b = builder.get_branch()
+        b.lock_write()
+        b.repository.start_write_group()
+        try:
+            self.addCleanup(b.unlock)
+            if b.repository._format.supports_revision_signatures:
+                b.repository.add_signature_text('A', 'This might be a signature')
+                self.assertEqual('This might be a signature',
+                                 b.repository.get_signature_text('A'))
+            else:
+                self.assertRaises(errors.UnsupportedOperation,
+                    b.repository.add_signature_text, 'A',
+                    'This might be a signature')
+        finally:
+            b.repository.commit_write_group()
 
     def test_add_revision_inventory_sha1(self):
         inv = inventory.Inventory(revision_id='A')
