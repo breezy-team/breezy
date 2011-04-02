@@ -45,20 +45,17 @@ class TestGatherStats(TestCaseWithRepository):
             },
             stats)
         stats = tree.branch.repository.gather_stats(rev2, committers=True)
-        self.assertEqual({
-            'committers': 2,
-            'firstrev': (1170491381.0, 0),
-            'latestrev': (1171491381.0, 0),
-            'revisions': 3,
-            },
-            stats)
+        self.assertEquals(2, stats["committers"])
+        self.assertEquals((1170491381.0, 0), stats["firstrev"])
+        self.assertEquals((1171491381.0, 0), stats["latestrev"])
+        self.assertEquals(3, stats["revisions"])
 
     def test_gather_stats_empty_repo(self):
         """An empty repository still has revisions."""
         tree = self.make_branch_and_memory_tree('.')
         # now ask for global repository stats.
         stats = tree.branch.repository.gather_stats()
-        self.assertEqual({
-            'revisions': 0
-            },
-            stats)
+        self.assertEquals(0, stats['revisions'])
+        self.assertFalse("committers" in stats)
+        self.assertFalse("firstrev" in stats)
+        self.assertFalse("latestrev" in stats)
