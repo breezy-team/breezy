@@ -26,6 +26,9 @@ clean::
 check:: build-inplace 
 	BZR_PLUGINS_AT=git@$(shell pwd) $(DEBUGGER) $(PYTHON) $(PYTHON_OPTIONS) $(BZR) $(BZR_OPTIONS) selftest $(TEST_OPTIONS) $(TESTS)
 
+check-all::
+	$(MAKE) check TESTS="^bzrlib.plugins.git. Git"
+
 check-verbose::
 	$(MAKE) check TEST_OPTIONS=-v
 
