@@ -698,20 +698,22 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo._check_for_inconsistent_revision_parents()
 
     def test_add_signature_text(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
-        repo.start_write_group()
-        self.addCleanup(repo.abort_write_group)
-        inv = inventory.Inventory(revision_id='A')
-        inv.root.revision = 'A'
-        repo.add_inventory('A', inv, [])
-        repo.add_revision('A', _mod_revision.Revision(
-                'A', committer='A', timestamp=0,
-                inventory_sha1='', timezone=0, message='A'))
-        repo.add_signature_text('A', 'This might be a signature')
-        self.assertEqual('This might be a signature',
-                         repo.get_signature_text('A'))
+        builder = self.make_branch_builder('.')
+        builder.start_series()
+        builder.build_snapshot('A', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        b = builder.get_branch()
+        b.lock_read()
+        builder.finish_series()
+        self.addCleanup(b.unlock)
+        if b.repository._format.supports_revision_signatures:
+            b.repository.add_signature_text('A', 'This might be a signature')
+            self.assertEqual('This might be a signature',
+                             b.repository.get_signature_text('A'))
+        else:
+            self.assertRaises(errors.UnsupportedOperation,
+                b.repository.add_signature_text, 'A',
+                'This might be a signature')
 
     def test_add_revision_inventory_sha1(self):
         inv = inventory.Inventory(revision_id='A')

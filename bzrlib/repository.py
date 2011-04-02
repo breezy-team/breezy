@@ -3024,6 +3024,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_leaving_lock = None
     # Does this format support the full VersionedFiles interface?
     supports_full_versioned_files = None
+    # Does this format support signing revision signatures?
+    supports_revision_signatures = True
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
