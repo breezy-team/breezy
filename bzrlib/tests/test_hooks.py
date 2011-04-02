@@ -43,7 +43,7 @@ class TestHooks(tests.TestCase):
         doc = ("Invoked after changing the tip of a branch object. Called with"
             "a bzrlib.branch.PostChangeBranchTipParams object")
         hook = HookPoint("post_tip_change", doc, (0, 15), None)
-        hooks.create_hook(hook)
+        self.applyDeprecated(deprecated_in((2, 4)), hooks.create_hook, hook)
         self.assertEqual(hook, hooks['post_tip_change'])
 
     def test_create_hook_name_collision_errors(self):
@@ -52,8 +52,9 @@ class TestHooks(tests.TestCase):
             "a bzrlib.branch.PostChangeBranchTipParams object")
         hook = HookPoint("post_tip_change", doc, (0, 15), None)
         hook2 = HookPoint("post_tip_change", None, None, None)
-        hooks.create_hook(hook)
-        self.assertRaises(errors.DuplicateKey, hooks.create_hook, hook2)
+        self.applyDeprecated(deprecated_in((2, 4)), hooks.create_hook, hook)
+        self.assertRaises(errors.DuplicateKey, self.applyDeprecated,
+            deprecated_in((2, 4, 0)), hooks.create_hook, hook2)
         self.assertEqual(hook, hooks['post_tip_change'])
 
     def test_docs(self):
@@ -62,16 +63,14 @@ class TestHooks(tests.TestCase):
             pass
         hooks = MyHooks("bzrlib.tests.test_hooks", "some_hooks")
         hooks['legacy'] = []
-        hook1 = HookPoint('post_tip_change',
+        hooks.add_hook('post_tip_change',
             "Invoked after the tip of a branch changes. Called with "
-            "a ChangeBranchTipParams object.", (1, 4), None)
-        hook2 = HookPoint('pre_tip_change',
+            "a ChangeBranchTipParams object.", (1, 4))
+        hooks.add_hook('pre_tip_change',
             "Invoked before the tip of a branch changes. Called with "
             "a ChangeBranchTipParams object. Hooks should raise "
             "TipChangeRejected to signal that a tip change is not permitted.",
             (1, 6), None)
-        hooks.create_hook(hook1)
-        hooks.create_hook(hook2)
         self.assertEqualDiff(
             "MyHooks\n"
             "-------\n"

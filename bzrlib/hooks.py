@@ -148,7 +148,7 @@ class Hooks(dict):
                               deprecated=deprecated, callbacks=callbacks)
         self[name] = hookpoint
 
-    @symbol_versioning.deprecated_function(symbol_versioning.deprecated_in((2, 4)))
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def create_hook(self, hook):
         """Create a hook which can have callbacks registered for it.
 

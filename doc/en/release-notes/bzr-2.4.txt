@@ -59,6 +59,12 @@ API Changes
 * ``Hooks.create_hook`` is now deprecated in favour of ``Hooks.add_hook``.
   (Jelmer Vernooij)
 
+* If you call `bzrlib.initialize` but forget to enter the resulting object
+  as a context manager, bzrlib will now be initialized anyhow.
+  (Previously simple programs calling bzrlib might find the library was
+  mysteriously silent.)
+  (Martin Pool)
+
 * New method ``Hooks.uninstall_named_hook``. (Jelmer Vernooij, #301472)
 
 Internals
