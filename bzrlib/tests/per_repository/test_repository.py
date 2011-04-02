@@ -442,7 +442,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        try:
+            repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        except errors.UnsupportedOperation:
+            self.assertFalse(repo._format.supports_revision_signatures)
+            raise TestNotApplicable("signatures not supported by repository format")
         repo.commit_write_group()
         repo.unlock()
         old_signature = repo.get_signature_text('A')
@@ -594,7 +598,12 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = tree.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('rev_id', gpg.LoopbackGPGStrategy(None))
+        try:
+            repo.sign_revision('rev_id', gpg.LoopbackGPGStrategy(None))
+        except errors.UnsupportedOperation:
+            signature_texts = []
+        else:
+            signature_texts = ['rev_id']
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
@@ -609,7 +618,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         expected_item_keys = [
             ('file', 'file1', ['rev_id']),
             ('inventory', None, ['rev_id']),
-            ('signatures', None, ['rev_id']),
+            ('signatures', None, signature_texts),
             ('revisions', None, ['rev_id'])]
         item_keys = list(repo.item_keys_introduced_by(['rev_id']))
         item_keys = [
