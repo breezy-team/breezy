@@ -65,6 +65,8 @@ API Changes
   mysteriously silent.)
   (Martin Pool)
 
+* New method ``Hooks.uninstall_named_hook``. (Jelmer Vernooij, #301472)
+
 Internals
 *********
 
