@@ -293,6 +293,7 @@ class GitRepositoryFormat(repository.RepositoryFormat):
     supports_funky_characters = True
     supports_external_lookups = False
     supports_full_versioned_files = False
+    supports_revision_signatures = False
 
     @property
     def _matchingbzrdir(self):
