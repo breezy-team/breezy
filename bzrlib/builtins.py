@@ -3304,7 +3304,9 @@ class cmd_commit(Command):
                         exclude=tree.safe_relpath_files(exclude))
         except PointlessCommit:
             raise errors.BzrCommandError("No changes to commit."
-                              " Use --unchanged to commit anyhow.")
+                              " Please add the files to committ"
+                              " (with --add) or use --unchanged"
+                              " to force an empty committ")
         except ConflictsInTree:
             raise errors.BzrCommandError('Conflicts detected in working '
                 'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
