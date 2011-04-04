@@ -2072,8 +2072,7 @@ class ConfigObjStore(Store):
         return conf
 
     def _create_from_string(self, str_or_unicode, save):
-        # We just keep record the content waiting for load() to be called when
-        # needed
+        # We just keep the content waiting for load() to be called when needed
         self._content = StringIO(str_or_unicode.encode('utf-8'))
         # Some tests use in-memory configs, some other always need the config
         # file to exist on disk.

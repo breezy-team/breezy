@@ -1893,16 +1893,25 @@ class TestStore(tests.TestCaseWithTransport):
 
     # FIXME: parametrize against all valid (store, transport) combinations
 
+    def get_store(self, content=None, name=None):
+        if name is None:
+            name = 'foo.conf'
+        if content is None:
+            store = config.ConfigObjStore(self.get_transport(), name)
+        else:
+            store = config.ConfigObjStore.from_string(
+                content, self.get_transport(), name)
+        return store
+
     def test_delayed_load(self):
         self.build_tree_contents([('foo.conf', '')])
-        store = config.ConfigObjStore(self.get_transport(), 'foo.conf')
+        store = self.get_store(None, 'foo.conf')
         self.assertEquals(False, store.loaded)
         store.load()
         self.assertEquals(True, store.loaded)
 
     def test_from_string_delayed_load(self):
-        store = config.ConfigObjStore.from_string('',
-            self.get_transport(), 'foo.conf')
+        store = self.get_store('')
         self.assertEquals(False, store.loaded)
         store.load()
         self.assertEquals(True, store.loaded)
@@ -1910,8 +1919,7 @@ class TestStore(tests.TestCaseWithTransport):
         self.failIfExists('foo.conf')
 
     def test_invalid_content(self):
-        self.build_tree_contents([('foo.conf', 'this is invalid !')])
-        store = config.ConfigObjStore(self.get_transport(), 'foo.conf')
+        store = self.get_store('this is invalid !', 'foo.conf')
         self.assertEquals(False, store.loaded)
         exc = self.assertRaises(errors.ParseConfigError, store.load)
         self.assertEndsWith(exc.filename, 'foo.conf')
