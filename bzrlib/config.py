@@ -2029,6 +2029,79 @@ class MutableSection(ReadOnlySection):
             self.orig[name] = self.get(name, None)
         del self.options[name]
 
+class Store(object):
+    """Abstract interface to persistent storage for configuration options."""
+
+    def __init__(self):
+        self.loaded = False
+
+    def load(self):
+        raise NotImplementedError(self.load)
+
+
+class ConfigObjStore(Store):
+
+    def __init__(self, transport, file_name):
+        """A config Store using ConfigObj for storage.
+
+        :param transport: The transport object where the config file is located.
+
+        :param file_name: The config file basename in the transport directory.
+        """
+        super(ConfigObjStore, self).__init__()
+        self.transport = transport
+        self.file_name = file_name
+        # No transient content is known initially
+        self._content = None
+
+    @classmethod
+    def from_string(cls, str_or_unicode, transport, file_name, save=False):
+        """Create a config store from a string.
+
+        :param str_or_unicode: A string representing the file content. This will
+            be utf-8 encoded internally.
+
+        :param transport: The transport object where the config file is located.
+
+        :param file_name: The configuration file basename.
+
+        :param _save: Whether the file should be saved upon creation.
+        """
+        conf = cls(transport=transport, file_name=file_name)
+        conf._create_from_string(str_or_unicode, save)
+        return conf
+
+    def _create_from_string(self, str_or_unicode, save):
+        # We just keep record the content waiting for load() to be called when
+        # needed
+        self._content = StringIO(str_or_unicode.encode('utf-8'))
+        # Some tests use in-memory configs, some other always need the config
+        # file to exist on disk.
+        if save:
+            self.save()
+
+    def load(self):
+        """Load the store from the associated file."""
+        if self.loaded:
+            return
+        if self._content is not None:
+            co_input = self._content
+        else:
+            # The config files are always stored utf8-encoded
+            co_input =  StringIO(self.transport.get_bytes(self.file_name))
+        try:
+            self._config_obj = ConfigObj(co_input, encoding='utf-8')
+        except configobj.ConfigObjError, e:
+            # FIXME: external_url should really accepts an optional relpath
+            # parameter (bug #750169) :-/ -- vila 2011-04-04
+            # The following will do in the interim but maybe we don't want to
+            # expose a path here but rather a config ID and its associated
+            # object (hand wawing).
+            file_path = os.path.join(self.transport.external_url(),
+                                     self.file_name)
+            raise errors.ParseConfigError(e.errors, file_path)
+        self.loaded = True
+
 
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.

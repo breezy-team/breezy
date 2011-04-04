@@ -1889,6 +1889,36 @@ class TestConfigMutableSection(tests.TestCase):
         self.assertEquals(config._Created, section.orig['foo'])
 
 
+class TestStore(tests.TestCaseWithTransport):
+
+    # FIXME: parametrize against all valid (store, transport) combinations
+
+    def test_delayed_load(self):
+        self.build_tree_contents([('foo.conf', '')])
+        store = config.ConfigObjStore(self.get_transport(), 'foo.conf')
+        self.assertEquals(False, store.loaded)
+        store.load()
+        self.assertEquals(True, store.loaded)
+
+    def test_from_string_delayed_load(self):
+        store = config.ConfigObjStore.from_string('',
+            self.get_transport(), 'foo.conf')
+        self.assertEquals(False, store.loaded)
+        store.load()
+        self.assertEquals(True, store.loaded)
+        # We use from_string and don't save, so the file shouldn't be created
+        self.failIfExists('foo.conf')
+
+    def test_invalid_content(self):
+        self.build_tree_contents([('foo.conf', 'this is invalid !')])
+        store = config.ConfigObjStore(self.get_transport(), 'foo.conf')
+        self.assertEquals(False, store.loaded)
+        exc = self.assertRaises(errors.ParseConfigError, store.load)
+        self.assertEndsWith(exc.filename, 'foo.conf')
+        # And the load failed
+        self.assertEquals(False, store.loaded)
+
+
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):
