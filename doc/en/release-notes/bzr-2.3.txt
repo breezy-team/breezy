@@ -45,10 +45,6 @@ Bug Fixes
   normally not require running ``bzr whoami`` first.
   (Martin Pool, #616878)
 
-* When reporting a crash without apport, don't print the full list of
-   plugins because it's often too long.
-   (Martin Pool, #716389)
-
 * ``bzr push`` into a repository (that doesn't have a branch), will no
   longer copy all revisions in the repository. Only the ones in the
   ancestry of the source branch, like it does in all other cases.
@@ -61,6 +57,18 @@ Bug Fixes
 * Fix "Unable to obtain lock" error when pushing to a bound branch if tags
   had changed.  Bazaar was attempting to open and lock the master branch
   twice in this case.  (Andrew Bennetts, #733350)
+
+* ``TreeTransform`` now calls ``_observed_sha1`` for content that it
+  creates. This means that ``merge`` and ``checkout`` should be able to
+  cache the sha values, and avoid re-reading the files on the next ``bzr
+  status`` that gets run. Further, on Windows we now properly suppress
+  ``st_dev`` and ``st_ino`` so that commit also avoids re-doing the work.
+  (John Arbash Meinel, #740932)
+
+* When reporting a crash without apport, don't print the full list of
+  plugins because it's often too long.
+  (Martin Pool, #716389)
+
 
 Documentation
 *************

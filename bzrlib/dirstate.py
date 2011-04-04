@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -263,6 +263,17 @@ else:
         #      st.st_dev, st.st_ino, st.st_mode)
         # Similar to the _encode(_pack('>LL'))
         # return '%X.%X' % (int(st.st_mtime), st.st_mode)
+
+
+def _unpack_stat(packed_stat):
+    """Turn a packed_stat back into the stat fields.
+
+    This is meant as a debugging tool, should not be used in real code.
+    """
+    (st_size, st_mtime, st_ctime, st_dev, st_ino,
+     st_mode) = struct.unpack('>LLLLLL', binascii.a2b_base64(packed_stat))
+    return dict(st_size=st_size, st_mtime=st_mtime, st_ctime=st_ctime,
+                st_dev=st_dev, st_ino=st_ino, st_mode=st_mode)
 
 
 class SHA1Provider(object):
