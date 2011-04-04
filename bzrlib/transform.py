@@ -2611,7 +2611,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                     contents = filtered_output_bytes(contents, filters,
                         ContentFilterContext(tree_path, tree))
                 try:
-                    tt.create_file(contents, trans_id)
+                    tt.create_file(contents, trans_id, sha1=text_sha1)
                 finally:
                     try:
                         contents.close()

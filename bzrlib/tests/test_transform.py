@@ -1941,6 +1941,18 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.addCleanup(target.unlock)
         self.assertEqual([], list(target.iter_changes(revision_tree)))
 
+    def test_build_tree_accelerator_tree_observes_sha1(self):
+        source = self.create_ab_tree()
+        sha1 = osutils.sha_string('A')
+        target = self.make_branch_and_tree('target')
+        target.lock_write()
+        self.addCleanup(target.unlock)
+        state = target.current_dirstate()
+        state._cutoff_time = time.time() + 60
+        build_tree(source.basis_tree(), target, source)
+        entry = state._get_entry(0, path_utf8='file1')
+        self.assertEqual(sha1, entry[1][0][1])
+
     def test_build_tree_accelerator_tree_missing_file(self):
         source = self.create_ab_tree()
         os.unlink('source/file1')
