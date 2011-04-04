@@ -2055,7 +2055,7 @@ class ConfigObjStore(Store):
         self._content = None
 
     @classmethod
-    def from_string(cls, str_or_unicode, transport, file_name, save=False):
+    def from_string(cls, str_or_unicode, transport, file_name):
         """Create a config store from a string.
 
         :param str_or_unicode: A string representing the file content. This will
@@ -2064,20 +2064,14 @@ class ConfigObjStore(Store):
         :param transport: The transport object where the config file is located.
 
         :param file_name: The configuration file basename.
-
-        :param _save: Whether the file should be saved upon creation.
         """
         conf = cls(transport=transport, file_name=file_name)
-        conf._create_from_string(str_or_unicode, save)
+        conf._create_from_string(str_or_unicode)
         return conf
 
-    def _create_from_string(self, str_or_unicode, save):
+    def _create_from_string(self, str_or_unicode):
         # We just keep the content waiting for load() to be called when needed
         self._content = StringIO(str_or_unicode.encode('utf-8'))
-        # Some tests use in-memory configs, some other always need the config
-        # file to exist on disk.
-        if save:
-            self.save()
 
     def load(self):
         """Load the store from the associated file."""
@@ -2100,6 +2094,11 @@ class ConfigObjStore(Store):
                                      self.file_name)
             raise errors.ParseConfigError(e.errors, file_path)
         self.loaded = True
+
+    def save(self):
+        out = StringIO()
+        self._config_obj.write(out)
+        self.transport.put_bytes(self.file_name, out.getvalue())
 
 
 class cmd_config(commands.Command):

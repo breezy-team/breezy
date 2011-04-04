@@ -1926,6 +1926,22 @@ class TestStore(tests.TestCaseWithTransport):
         # And the load failed
         self.assertEquals(False, store.loaded)
 
+    def test_save_empty_succeeds(self):
+        store = self.get_store('', 'foo.conf')
+        store.load()
+        self.failIfExists('foo.conf')
+        store.save()
+        self.failUnlessExists('foo.conf')
+
+    def test_save_with_content_succeeds(self):
+        store = self.get_store('foo=bar\n', 'foo.conf')
+        store.load()
+        self.failIfExists('foo.conf')
+        store.save()
+        self.failUnlessExists('foo.conf')
+        # FIXME: Far too ConfigObj specific
+        self.assertFileEqual('foo = bar\n', 'foo.conf')
+
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
