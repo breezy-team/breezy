@@ -19,7 +19,6 @@ import errno
 from stat import S_ISREG, S_IEXEC
 import time
 
-import bzrlib
 from bzrlib import (
     errors,
     lazy_import,
@@ -1251,16 +1250,19 @@ class DiskTreeTransform(TreeTransformBase):
             descendants.update(self._limbo_descendants(descendant))
         return descendants
 
-    def create_file(self, contents, trans_id, mode_id=None):
+    def create_file(self, contents, trans_id, mode_id=None, sha1=None):
         """Schedule creation of a new file.
 
-        See also new_file.
+        :seealso: new_file.
 
-        Contents is an iterator of strings, all of which will be written
-        to the target destination.
-
-        New file takes the permissions of any existing file with that id,
-        unless mode_id is specified.
+        :param contents: an iterator of strings, all of which will be written
+            to the target destination.
+        :param trans_id: TreeTransform handle
+        :param mode_id: If not None, force the mode of the target file to match
+            the mode of the object referenced by mode_id.
+            Otherwise, we will try to preserve mode bits of an existing file.
+        :param sha1: If the sha1 of this content is already known, pass it in.
+            We can use it to prevent future sha1 computations.
         """
         name = self._limbo_name(trans_id)
         f = open(name, 'wb')
@@ -1273,18 +1275,7 @@ class DiskTreeTransform(TreeTransformBase):
                 f.close()
                 os.unlink(name)
                 raise
-            if contents.__class__ is list:
-                sha_digest = osutils.sha_strings(contents)
-                f.writelines(contents)
-            else:
-                sha_value = osutils.sha()
-                def observe_sha1(contents):
-                    sha_value_update = sha_value.update
-                    for content in contents:
-                        sha_value_update(content)
-                        yield content
-                f.writelines(observe_sha1(contents))
-                sha_digest = sha_value.hexdigest()
+            f.writelines(contents)
         finally:
             f.close()
         self._set_mtime(name)
@@ -1292,7 +1283,8 @@ class DiskTreeTransform(TreeTransformBase):
         # It is unfortunate we have to use lstat instead of fstat, but we just
         # used utime and chmod on the file, so we need the accurate final
         # details.
-        self._observed_sha1s[trans_id] = (sha_digest, osutils.lstat(name))
+        if sha1 is not None:
+            self._observed_sha1s[trans_id] = (sha1, osutils.lstat(name))
 
     def _read_file_chunks(self, trans_id):
         cur_file = open(self._limbo_name(trans_id), 'rb')
@@ -1855,6 +1847,10 @@ class TreeTransform(DiskTreeTransform):
                         modified_paths.append(full_path)
                 if trans_id in self._new_executability:
                     self._set_executability(path, trans_id)
+                if trans_id in self._observed_sha1s:
+                    o_sha1, o_st_val = self._observed_sha1s[trans_id]
+                    st = osutils.lstat(full_path)
+                    self._observed_sha1s[trans_id] = (o_sha1, st)
         finally:
             child_pb.finished()
         self._new_contents.clear()
@@ -2547,7 +2543,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     executable = tree.is_executable(file_id, tree_path)
                     if executable:
                         tt.set_executability(executable, trans_id)
-                    trans_data = (trans_id, tree_path)
+                    trans_data = (trans_id, tree_path, entry.text_sha1)
                     deferred_contents.append((file_id, trans_data))
                 else:
                     file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
@@ -2598,10 +2594,11 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         unchanged = dict(unchanged)
         new_desired_files = []
         count = 0
-        for file_id, (trans_id, tree_path) in desired_files:
+        for file_id, (trans_id, tree_path, text_sha1) in desired_files:
             accelerator_path = unchanged.get(file_id)
             if accelerator_path is None:
-                new_desired_files.append((file_id, (trans_id, tree_path)))
+                new_desired_files.append((file_id,
+                    (trans_id, tree_path, text_sha1)))
                 continue
             pb.update('Adding file contents', count + offset, total)
             if hardlink:
@@ -2623,7 +2620,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                         pass
             count += 1
         offset += count
-    for count, ((trans_id, tree_path), contents) in enumerate(
+    for count, ((trans_id, tree_path, text_sha1), contents) in enumerate(
             tree.iter_files_bytes(new_desired_files)):
         if wt.supports_content_filtering():
             filters = wt._content_filter_stack(tree_path)

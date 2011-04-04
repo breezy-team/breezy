@@ -161,6 +161,48 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.finalize()
         transform.finalize()
 
+    def test_create_file_caches_sha1(self):
+        trans, root = self.get_transform()
+        self.wt.lock_tree_write()
+        self.addCleanup(self.wt.unlock)
+        content = ['just some content\n']
+        sha1 = osutils.sha_strings(content)
+        trans_id = trans.create_path('file1', root)
+        # Roll back the clock
+        transform._creation_mtime = creation_mtime = time.time() - 20.0
+        trans.create_file(content, trans_id, sha1=sha1)
+        st_val = osutils.lstat(trans._limbo_name(trans_id))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, st_val)
+
+    def test__apply_insertions_updates_sha1(self):
+        trans, root = self.get_transform()
+        self.wt.lock_tree_write()
+        self.addCleanup(self.wt.unlock)
+        content = ['just some content\n']
+        sha1 = osutils.sha_strings(content)
+        trans_id = trans.create_path('file1', root)
+        # Roll back the clock
+        transform._creation_mtime = creation_mtime = time.time() - 20.0
+        trans.create_file(content, trans_id, sha1=sha1)
+        st_val = osutils.lstat(trans._limbo_name(trans_id))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, st_val)
+        creation_mtime += 10.0
+        # We fake a time difference from when the file was created until now it
+        # is being renamed by using os.utime. Note that the change we actually
+        # want to see is the real ctime change from 'os.rename()', but as long
+        # as we observe a new stat value, we should be fine.
+        os.utime(trans._limbo_name(trans_id), (creation_mtime, creation_mtime))
+        trans.apply()
+        new_st_val = osutils.lstat(self.wt.abspath('file1'))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, new_st_val)
+        self.assertNotEqual(st_val.st_mtime, new_st_val.st_mtime)
+
     def test_create_files_same_timestamp(self):
         transform, root = self.get_transform()
         self.wt.lock_tree_write()
