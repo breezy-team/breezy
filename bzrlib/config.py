@@ -279,10 +279,7 @@ class Config(object):
         # We need to iterate until no more refs appear ({{foo}} will need two
         # iterations for example).
         while True:
-            try:
-                raw_chunks = self.option_ref_re.split(result)
-            except TypeError:
-                import pdb; pdb.set_trace()
+            raw_chunks = self.option_ref_re.split(result)
             if len(raw_chunks) == 1:
                 # Shorcut the trivial case: no refs
                 return result
@@ -1989,6 +1986,48 @@ class TransportConfig(object):
         configobj.write(out_file)
         out_file.seek(0)
         self._transport.put_file(self._filename, out_file)
+
+
+# FIXME: This is not lazy yet -- vila 2011-04-01
+class ReadOnlySection(object):
+    """A section defines a dict of options.
+
+    This is merely a read-only dict which can add some knowledge about the
+    options.
+    """
+
+    def __init__(self, section_id, options):
+        self.id = section_id
+        # We re-use the dict-like object received
+        self.options = options
+
+    def get(self, name, default=None):
+        return self.options.get(name, default)
+
+
+_Created = object()
+"""Was the option created during the MutableSection lifetime"""
+
+
+class MutableSection(ReadOnlySection):
+    """A section allowing changes and keeping track of the original values."""
+
+    def __init__(self, section_id, options):
+        super(MutableSection, self).__init__(section_id, options)
+        self.orig = {}
+
+    def set(self, name, value):
+        if name not in self.options:
+            # This is a new option
+            self.orig[name] = _Created
+        elif name not in self.orig:
+            self.orig[name] = self.get(name, None)
+        self.options[name] = value
+
+    def remove(self, name):
+        if name not in self.orig:
+            self.orig[name] = self.get(name, None)
+        del self.options[name]
 
 
 class ConfigStack(object):

@@ -1817,6 +1817,78 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
+class TestConfigReadOnlySection(tests.TestCase):
+
+    # FIXME: Parametrize so that all sections produced by Stores run these
+    # tests -- vila 2011-04-01
+
+    def test_get_a_value(self):
+        a_dict = dict(foo='bar')
+        section = config.ReadOnlySection('myID', a_dict)
+        self.assertEquals('bar', section.get('foo'))
+
+    def test_get_unkown_option(self):
+        a_dict = dict()
+        section = config.ReadOnlySection('myID', a_dict)
+        self.assertEquals('out of thin air',
+                          section.get('foo', 'out of thin air'))
+
+    def test_options_is_shared(self):
+        a_dict = dict()
+        section = config.ReadOnlySection('myID', a_dict)
+        self.assertIs(a_dict, section.options)
+
+
+class TestConfigMutableSection(tests.TestCase):
+
+    # FIXME: Parametrize so that all sections (includind os.envrion and the
+    # ones produced by Stores) run these tests -- vila 2011-04-01
+
+    def test_set(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'new_value')
+        self.assertEquals('new_value', section.get('foo'))
+        # The change appears in the shared section
+        self.assertEquals('new_value', a_dict.get('foo'))
+        # We keep track of the change
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_set_preserve_original_once(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'first_value')
+        section.set('foo', 'second_value')
+        # We keep track of the original value
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_remove(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.remove('foo')
+        # We get None for unknown options via the default value
+        self.assertEquals(None, section.get('foo'))
+        # Or we just get the default value
+        self.assertEquals('unknown', section.get('foo', 'unknown'))
+        self.assertFalse('foo' in section.options)
+        # We keep track of the deletion
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_remove_new_option(self):
+        a_dict = dict()
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'bar')
+        section.remove('foo')
+        self.assertFalse('foo' in section.options)
+        # The option didn't exist initially so it we need to keep track of it
+        # with a special value
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals(config._Created, section.orig['foo'])
+
+
 class TestConfigStackGet(tests.TestCase):
 
     # FIXME: This should be parametrized for all known ConfigStack or dedicated

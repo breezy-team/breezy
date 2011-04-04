@@ -42,6 +42,8 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+ * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
+
 Documentation
 *************
 
@@ -53,6 +55,15 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``Hooks.create_hook`` is now deprecated in favour of ``Hooks.add_hook``.
+  (Jelmer Vernooij)
+
+* If you call `bzrlib.initialize` but forget to enter the resulting object
+  as a context manager, bzrlib will now be initialized anyhow.
+  (Previously simple programs calling bzrlib might find the library was
+  mysteriously silent.)
+  (Martin Pool)
 
 Internals
 *********
