@@ -345,13 +345,12 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
 
 def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, trees_cache):
-    def lookup_parent_revid(sha):
-        candidates = target_git_object_retriever.lookup_git_sha(sha)
-        # FIXME: What about other entries?
-        return candidates[0][1][0]
     o = lookup_object(head)
+    # Note that this uses mapping.revision_id_foreign_to_bzr. If the parents
+    # were bzr roundtripped revisions they would be specified in the
+    # roundtrip data.
     rev, roundtrip_revid, verifiers = mapping.import_commit(
-        o, lookup_parent_revid)
+        o, mapping.revision_id_foreign_to_bzr)
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
     # path; this may involve adding them more than once.
