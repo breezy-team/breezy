@@ -434,7 +434,7 @@ def import_git_objects(repo, mapping, object_iter,
             continue
         if isinstance(o, Commit):
             rev, roundtrip_revid, verifiers = mapping.import_commit(o,
-                lambda x: None)
+                mapping.revision_id_foreign_to_bzr)
             if (repo.has_revision(rev.revision_id) or
                 (roundtrip_revid and repo.has_revision(roundtrip_revid))):
                 continue
