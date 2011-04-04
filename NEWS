@@ -1,4 +1,4 @@
-0.5.5	UNRELEASED
+0.6.0	UNRELEASED
 
  BUG FIXES
 
@@ -18,6 +18,9 @@
 
   * Fix fetching from remote git repositories during merge.
     (Jelmer Vernooij, #741760)
+
+  * Properly raise RootMissing if no root is specified to an empty
+    tree in the commit builder. (Jelmer Vernooij, #731360)
 
  API COMPLETENESS
 
