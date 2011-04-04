@@ -306,7 +306,8 @@ class DictGitShaMap(GitShaMap):
         return self._by_fileid[revision][fileid]
 
     def lookup_git_sha(self, sha):
-        return self._by_sha[sha].values()
+        for entry in self._by_sha[sha].itervalues():
+            yield entry
 
     def lookup_tree_id(self, fileid, revision):
         return self._by_fileid[revision][fileid]
@@ -618,15 +619,18 @@ class TdbGitShaMap(GitShaMap):
         """
         if len(sha) == 40:
             sha = hex_to_sha(sha)
-        for data in self.db["git\0" + sha].splitlines():
+        value = self.db["git\0" + sha]
+        for data in value.splitlines():
             data = data.split("\0")
             if data[0] == "commit":
                 if len(data) == 3:
                     yield (data[0], (data[1], data[2], {}))
                 else:
                     yield (data[0], (data[1], data[2], {"testament3-sha1": data[3]}))
-            else:
+            elif data[0] in ("tree", "blob"):
                 yield (data[0], tuple(data[1:]))
+            else:
+                raise AssertionError("unknown type %r" % data[0])
 
     def missing_revisions(self, revids):
         ret = set()
@@ -849,12 +853,12 @@ class IndexGitShaMap(GitShaMap):
             except StopIteration:
                 raise KeyError
 
-    def _iter_keys_prefix(self, prefix):
+    def _iter_entries_prefix(self, prefix):
         for entry in self._index.iter_entries_prefix([prefix]):
-            yield entry[1]
+            yield (entry[1], entry[2])
         if self._builder is not None:
             for entry in self._builder.iter_entries_prefix([prefix]):
-                yield entry[1]
+                yield (entry[1], entry[2])
 
     def lookup_commit(self, revid):
         return self._get_entry(("commit", revid, "X"))[:40]
@@ -878,16 +882,20 @@ class IndexGitShaMap(GitShaMap):
     def lookup_git_sha(self, sha):
         if len(sha) == 20:
             sha = sha_to_hex(sha)
-        # FIXME: Support multiple entries
-        data = self._get_entry(("git", sha, None)).split(" ", 3)
-        if data[0] == "commit":
-            return [("commit", (data[1], data[2], {"testament3-sha1": data[3]}))]
-        else:
-            return [(data[0], tuple(data[1:]))]
+        found = False
+        for key, value in self._iter_entries_prefix(("git", sha, None)):
+            found = True
+            data = value.split(" ", 3)
+            if data[0] == "commit":
+                yield ("commit", (data[1], data[2], {"testament3-sha1": data[3]}))
+            else:
+                yield (data[0], tuple(data[1:]))
+        if not found:
+            raise KeyError(sha)
 
     def revids(self):
         """List the revision ids known."""
-        for key in self._iter_keys_prefix(("commit", None, None)):
+        for key, value in self._iter_entries_prefix(("commit", None, None)):
             yield key[1]
 
     def missing_revisions(self, revids):
@@ -900,7 +908,7 @@ class IndexGitShaMap(GitShaMap):
 
     def sha1s(self):
         """List the SHA1s."""
-        for key in self._iter_keys_prefix(("git", None, None)):
+        for key, value in self._iter_entries_prefix(("git", None, None)):
             yield key[1]
 
 

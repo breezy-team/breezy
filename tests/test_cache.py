@@ -86,8 +86,8 @@ class TestGitShaMap:
         self.assertEquals(c.id, self.map.lookup_commit("myrevid"))
 
     def test_lookup_notfound(self):
-        self.assertRaises(KeyError,
-            self.map.lookup_git_sha, "5686645d49063c73d35436192dfc9a160c672301")
+        self.assertRaises(KeyError, list,
+            self.map.lookup_git_sha("5686645d49063c73d35436192dfc9a160c672301"))
 
     def test_blob(self):
         self.map.start_write_group()
