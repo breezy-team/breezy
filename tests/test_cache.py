@@ -78,16 +78,16 @@ class TestGitShaMap:
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals(
-            ("commit", ("myrevid",
+            [("commit", ("myrevid",
                 "cc9462f7f8263ef5adfbeff2fb936bb36b504cba",
                 {"testament3-sha1": "cc9462f7f8263ef5adf8eff2fb936bb36b504cba"},
-                )),
-            self.map.lookup_git_sha(c.id))
+                ))],
+            list(self.map.lookup_git_sha(c.id)))
         self.assertEquals(c.id, self.map.lookup_commit("myrevid"))
 
     def test_lookup_notfound(self):
-        self.assertRaises(KeyError,
-            self.map.lookup_git_sha, "5686645d49063c73d35436192dfc9a160c672301")
+        self.assertRaises(KeyError, list,
+            self.map.lookup_git_sha("5686645d49063c73d35436192dfc9a160c672301"))
 
     def test_blob(self):
         self.map.start_write_group()
@@ -101,8 +101,8 @@ class TestGitShaMap:
         updater.finish()
         self.map.commit_write_group()
         self.assertEquals(
-            ("blob", ("myfileid", "myrevid")),
-            self.map.lookup_git_sha(b.id))
+            [("blob", ("myfileid", "myrevid"))],
+            list(self.map.lookup_git_sha(b.id)))
         self.assertEquals(b.id,
             self.map.lookup_blob_id("myfileid", "myrevid"))
 
@@ -118,8 +118,8 @@ class TestGitShaMap:
         updater.add_object(t, ie, "")
         updater.finish()
         self.map.commit_write_group()
-        self.assertEquals(("tree", ("fileid", "myrevid")),
-            self.map.lookup_git_sha(t.id))
+        self.assertEquals([("tree", ("fileid", "myrevid"))],
+            list(self.map.lookup_git_sha(t.id)))
         # It's possible for a backend to not implement lookup_tree
         try:
             self.assertEquals(t.id,

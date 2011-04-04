@@ -346,8 +346,11 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
 def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, trees_cache):
     o = lookup_object(head)
-    rev, roundtrip_revid, verifiers = mapping.import_commit(o,
-            lambda x: target_git_object_retriever.lookup_git_sha(x)[1][0])
+    # Note that this uses mapping.revision_id_foreign_to_bzr. If the parents
+    # were bzr roundtripped revisions they would be specified in the
+    # roundtrip data.
+    rev, roundtrip_revid, verifiers = mapping.import_commit(
+        o, mapping.revision_id_foreign_to_bzr)
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
     # path; this may involve adding them more than once.
@@ -431,7 +434,7 @@ def import_git_objects(repo, mapping, object_iter,
             continue
         if isinstance(o, Commit):
             rev, roundtrip_revid, verifiers = mapping.import_commit(o,
-                lambda x: None)
+                mapping.revision_id_foreign_to_bzr)
             if (repo.has_revision(rev.revision_id) or
                 (roundtrip_revid and repo.has_revision(roundtrip_revid))):
                 continue

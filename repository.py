@@ -116,7 +116,7 @@ class LocalGitRepository(GitRepository):
             if not isinstance(o, Commit):
                 continue
             rev, roundtrip_revid, verifiers = mapping.import_commit(o,
-                self.lookup_foreign_revision_id)
+                mapping.revision_id_foreign_to_bzr)
             yield o.id, rev.revision_id, roundtrip_revid
 
     def all_revision_ids(self):
@@ -181,7 +181,7 @@ class LocalGitRepository(GitRepository):
         while isinstance(commit, Tag):
             commit = self._git[commit.object[1]]
         rev, roundtrip_revid, verifiers = mapping.import_commit(commit,
-            lambda x: None)
+            mapping.revision_id_foreign_to_bzr)
         # FIXME: check testament before doing this?
         if roundtrip_revid:
             return roundtrip_revid

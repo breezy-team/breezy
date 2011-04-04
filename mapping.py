@@ -318,7 +318,6 @@ class BzrGitMapping(foreign.VcsMapping):
             raise AssertionError("Commit object can't be None")
         rev = ForeignRevision(commit.id, self,
                 self.revision_id_foreign_to_bzr(commit.id))
-        rev.parent_ids = tuple([lookup_parent_revid(p) for p in commit.parents])
         rev.git_metadata = None
         def decode_using_encoding(rev, commit, encoding):
             rev.committer = str(commit.committer).decode(encoding)
@@ -349,6 +348,7 @@ class BzrGitMapping(foreign.VcsMapping):
             rev.properties['commit-timezone-neg-utc'] = ""
         rev.timestamp = commit.commit_time
         rev.timezone = commit.commit_timezone
+        rev.parent_ids = None
         if rev.git_metadata is not None:
             md = rev.git_metadata
             roundtrip_revid = md.revision_id
@@ -359,6 +359,8 @@ class BzrGitMapping(foreign.VcsMapping):
         else:
             roundtrip_revid = None
             verifiers = {}
+        if rev.parent_ids is None:
+            rev.parent_ids = tuple([lookup_parent_revid(p) for p in commit.parents])
         return rev, roundtrip_revid, verifiers
 
     def get_fileid_map(self, lookup_object, tree_sha):
