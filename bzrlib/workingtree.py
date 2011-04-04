@@ -526,7 +526,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         return self.get_file_with_stat(file_id, path, filtered=filtered)[0]
 
     def get_file_with_stat(self, file_id, path=None, filtered=True,
-        _fstat=os.fstat):
+                           _fstat=osutils.fstat):
         """See Tree.get_file_with_stat."""
         if path is None:
             path = self.id2path(file_id)

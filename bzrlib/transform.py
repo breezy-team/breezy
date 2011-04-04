@@ -105,6 +105,8 @@ class TreeTransformBase(object):
         self._new_parent = {}
         # mapping of trans_id with new contents -> new file_kind
         self._new_contents = {}
+        # mapping of trans_id => (sha1 of content, stat_value)
+        self._observed_sha1s = {}
         # Set of trans_ids whose contents will be removed
         self._removed_contents = set()
         # Mapping of trans_id -> new execute-bit value
@@ -1271,12 +1273,26 @@ class DiskTreeTransform(TreeTransformBase):
                 f.close()
                 os.unlink(name)
                 raise
-
-            f.writelines(contents)
+            if contents.__class__ is list:
+                sha_digest = osutils.sha_strings(contents)
+                f.writelines(contents)
+            else:
+                sha_value = osutils.sha()
+                def observe_sha1(contents):
+                    sha_value_update = sha_value.update
+                    for content in contents:
+                        sha_value_update(content)
+                        yield content
+                f.writelines(observe_sha1(contents))
+                sha_digest = sha_value.hexdigest()
         finally:
             f.close()
         self._set_mtime(name)
         self._set_mode(trans_id, mode_id, S_ISREG)
+        # It is unfortunate we have to use lstat instead of fstat, but we just
+        # used utime and chmod on the file, so we need the accurate final
+        # details.
+        self._observed_sha1s[trans_id] = (sha_digest, osutils.lstat(name))
 
     def _read_file_chunks(self, trans_id):
         cur_file = open(self._limbo_name(trans_id), 'rb')
@@ -1341,6 +1357,8 @@ class DiskTreeTransform(TreeTransformBase):
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""
         del self._new_contents[trans_id]
+        if trans_id in self._observed_sha1s:
+            del self._observed_sha1s[trans_id]
         children = self._limbo_children.get(trans_id)
         # if this is a limbo directory with children, move them before removing
         # the directory
@@ -1702,6 +1720,7 @@ class TreeTransform(DiskTreeTransform):
         finally:
             child_pb.finished()
         self._tree.apply_inventory_delta(inventory_delta)
+        self._apply_observed_sha1s()
         self._done = True
         self.finalize()
         return _TransformResults(modified_paths, self.rename_count)
@@ -1827,6 +1846,9 @@ class TreeTransform(DiskTreeTransform):
                             raise
                     else:
                         self.rename_count += 1
+                    # TODO: if trans_id in self._observed_sha1s, we should
+                    #       re-stat the final target, since ctime will be
+                    #       updated by the change.
                 if (trans_id in self._new_contents or
                     self.path_changed(trans_id)):
                     if trans_id in self._new_contents:
@@ -1837,6 +1859,29 @@ class TreeTransform(DiskTreeTransform):
             child_pb.finished()
         self._new_contents.clear()
         return modified_paths
+
+    def _apply_observed_sha1s(self):
+        """After we have finished renaming everything, update observed sha1s
+
+        This has to be done after self._tree.apply_inventory_delta, otherwise
+        it doesn't know anything about the files we are updating. Also, we want
+        to do this as late as possible, so that most entries end up cached.
+        """
+        # TODO: this doesn't update the stat information for directories. So
+        #       the first 'bzr status' will still need to rewrite
+        #       .bzr/checkout/dirstate. However, we at least don't need to
+        #       re-read all of the files.
+        # TODO: If the operation took a while, we could do a time.sleep(3) here
+        #       to allow the clock to tick over and ensure we won't have any
+        #       problems. (we could observe start time, and finish time, and if
+        #       it is less than eg 10% overhead, add a sleep call.)
+        paths = FinalPaths(self)
+        for trans_id, observed in self._observed_sha1s.iteritems():
+            path = paths.get_path(trans_id)
+            # We could get the file_id, but dirstate prefers to use the path
+            # anyway, and it is 'cheaper' to determine.
+            # file_id = self._new_id[trans_id]
+            self._tree._observed_sha1(None, path, observed)
 
 
 class TransformPreview(DiskTreeTransform):

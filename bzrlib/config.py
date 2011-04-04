@@ -63,6 +63,7 @@ up=pull
 """
 
 import os
+import string
 import sys
 
 from bzrlib import commands
@@ -441,21 +442,21 @@ class Config(object):
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If no username can be found, errors.NoWhoami exception is raised.
-
-        TODO: Check it's reasonably well-formed.
         """
         v = os.environ.get('BZR_EMAIL')
         if v:
             return v.decode(osutils.get_user_encoding())
-
         v = self._get_user_id()
         if v:
             return v
-
         v = os.environ.get('EMAIL')
         if v:
             return v.decode(osutils.get_user_encoding())
-
+        name, email = _auto_user_id()
+        if name and email:
+            return '%s <%s>' % (name, email)
+        elif email:
+            return email
         raise errors.NoWhoami()
 
     def ensure_username(self):
@@ -1405,6 +1406,86 @@ def xdg_cache_dir():
         return e
     else:
         return os.path.expanduser('~/.cache')
+
+
+def _get_default_mail_domain():
+    """If possible, return the assumed default email domain.
+
+    :returns: string mail domain, or None.
+    """
+    if sys.platform == 'win32':
+        # No implementation yet; patches welcome
+        return None
+    try:
+        f = open('/etc/mailname')
+    except (IOError, OSError), e:
+        return None
+    try:
+        domain = f.read().strip()
+        return domain
+    finally:
+        f.close()
+
+
+def _auto_user_id():
+    """Calculate automatic user identification.
+
+    :returns: (realname, email), either of which may be None if they can't be
+    determined.
+
+    Only used when none is set in the environment or the id file.
+
+    This only returns an email address if we can be fairly sure the 
+    address is reasonable, ie if /etc/mailname is set on unix.
+
+    This doesn't use the FQDN as the default domain because that may be 
+    slow, and it doesn't use the hostname alone because that's not normally 
+    a reasonable address.
+    """
+    if sys.platform == 'win32':
+        # No implementation to reliably determine Windows default mail
+        # address; please add one.
+        return None, None
+
+    default_mail_domain = _get_default_mail_domain()
+    if not default_mail_domain:
+        return None, None
+
+    import pwd
+    uid = os.getuid()
+    try:
+        w = pwd.getpwuid(uid)
+    except KeyError:
+        mutter('no passwd entry for uid %d?' % uid)
+        return None, None
+
+    # we try utf-8 first, because on many variants (like Linux),
+    # /etc/passwd "should" be in utf-8, and because it's unlikely to give
+    # false positives.  (many users will have their user encoding set to
+    # latin-1, which cannot raise UnicodeError.)
+    try:
+        gecos = w.pw_gecos.decode('utf-8')
+        encoding = 'utf-8'
+    except UnicodeError:
+        try:
+            encoding = osutils.get_user_encoding()
+            gecos = w.pw_gecos.decode(encoding)
+        except UnicodeError, e:
+            mutter("cannot decode passwd entry %s" % w)
+            return None, None
+    try:
+        username = w.pw_name.decode(encoding)
+    except UnicodeError, e:
+        mutter("cannot decode passwd entry %s" % w)
+        return None, None
+
+    comma = gecos.find(',')
+    if comma == -1:
+        realname = gecos
+    else:
+        realname = gecos[:comma]
+
+    return realname, (username + '@' + default_mail_domain)
 
 
 def parse_username(username):

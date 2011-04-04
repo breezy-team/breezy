@@ -39,14 +39,36 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Bazaar now infers the default user email address on Unix from the local
+  account name plus the contents of ``/etc/mailname`` if that file exists.
+  In particular, this means that committing as root through etckeeper will
+  normally not require running ``bzr whoami`` first.
+  (Martin Pool, #616878)
+
 * ``bzr push`` into a repository (that doesn't have a branch), will no
   longer copy all revisions in the repository. Only the ones in the
   ancestry of the source branch, like it does in all other cases.
   (John Arbash Meinel, #465517)
 
+* Fix ``UnboundLocalError: local variable 'lock_url' in wait_lock`` error,
+  especially while trying to save configuration from QBzr.
+  (Martin Pool, #733136)
+
 * Fix "Unable to obtain lock" error when pushing to a bound branch if tags
   had changed.  Bazaar was attempting to open and lock the master branch
   twice in this case.  (Andrew Bennetts, #733350)
+
+* ``TreeTransform`` now calls ``_observed_sha1`` for content that it
+  creates. This means that ``merge`` and ``checkout`` should be able to
+  cache the sha values, and avoid re-reading the files on the next ``bzr
+  status`` that gets run. Further, on Windows we now properly suppress
+  ``st_dev`` and ``st_ino`` so that commit also avoids re-doing the work.
+  (John Arbash Meinel, #740932)
+
+* When reporting a crash without apport, don't print the full list of
+  plugins because it's often too long.
+  (Martin Pool, #716389)
+
 
 Documentation
 *************
@@ -78,7 +100,6 @@ Testing
   has been added in the interim
   (<http://psf.upfronthosting.co.za/roundup/tracker/issue8194> should be fixed
   in python > 2.7.1).  (Vincent Ladeuil, #654733)
-
 
 bzr 2.3.1
 #########
