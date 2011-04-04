@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 
 %:
-	dh --with python2 --buildsystem=python_distutils $*
+	dh --with python2 $*
 
 ifneq (,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
 CONCURRENCY = BZR_CONCURRENCY=$(patsubst parallel=%,%,$(filter parallel=%,$(DEB_BUILD_OPTIONS)))
