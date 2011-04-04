@@ -1987,15 +1987,15 @@ foo_in_qux=quux
                                    'qux': {'foo_in_qux': 'quux'}}),
                           sections[3])
 
-    def test_set_in_default_section(self):
+    def test_set_option_in_default_section(self):
         store = self.get_store('foo.conf', '')
-        store.set('foo', 'bar')
+        store.set_option('foo', 'bar')
         store.save()
         self.assertFileEqual('foo = bar\n', 'foo.conf')
 
-    def test_set_in_named_section(self):
+    def test_set_option_in_named_section(self):
         store = self.get_store('foo.conf', '')
-        store.set('foo', 'bar', 'baz')
+        store.set_option('foo', 'bar', 'baz')
         store.save()
         self.assertFileEqual('[baz]\nfoo = bar\n', 'foo.conf')
 

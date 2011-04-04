@@ -2048,6 +2048,9 @@ class Store(object):
         """
         raise NotImplementedError(self.get_sections)
 
+    def set_option(self, name, value, section_name=None):
+        raise NotImplementedError(self.set_option)
+
 
 class ConfigObjStore(Store):
 
@@ -2109,6 +2112,8 @@ class ConfigObjStore(Store):
         out = StringIO()
         self._config_obj.write(out)
         self.transport.put_bytes(self.file_name, out.getvalue())
+        # We don't need the transient content anymore
+        self._content = None
 
     def get_sections(self):
         """Get the configobj section in the file order.
@@ -2123,7 +2128,7 @@ class ConfigObjStore(Store):
         for section_name in cobj.sections:
             yield section_name, dict(cobj[section_name])
 
-    def set(self, name, value, section_name=None):
+    def set_option(self, name, value, section_name=None):
         # We need a loaded store
         self.load()
         if section_name is None:
