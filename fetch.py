@@ -345,9 +345,13 @@ def verify_commit_reconstruction(target_git_object_retriever, lookup_object,
 
 def import_git_commit(repo, mapping, head, lookup_object,
                       target_git_object_retriever, trees_cache):
+    def lookup_parent_revid(sha):
+        candidates = target_git_object_retriever.lookup_git_sha(sha)
+        # FIXME: What about other entries?
+        return candidates[0][1][0]
     o = lookup_object(head)
-    rev, roundtrip_revid, verifiers = mapping.import_commit(o,
-            lambda x: target_git_object_retriever.lookup_git_sha(x)[1][0])
+    rev, roundtrip_revid, verifiers = mapping.import_commit(
+        o, lookup_parent_revid)
     # We have to do this here, since we have to walk the tree and
     # we need to make sure to import the blobs / trees with the right
     # path; this may involve adding them more than once.
