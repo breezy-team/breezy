@@ -117,6 +117,9 @@ class GitDir(ControlDir):
     def cloning_metadir(self, stacked=False):
         return format_registry.make_bzrdir("default")
 
+    def checkout_metadir(self, stacked=False):
+        return format_registry.make_bzrdir("default")
+
     def _branch_name_to_ref(self, name):
         raise NotImplementedError(self._branch_name_to_ref)
 
