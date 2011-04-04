@@ -2626,7 +2626,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
             filters = wt._content_filter_stack(tree_path)
             contents = filtered_output_bytes(contents, filters,
                 ContentFilterContext(tree_path, tree))
-        tt.create_file(contents, trans_id)
+        tt.create_file(contents, trans_id, sha1=text_sha1)
         pb.update('Adding file contents', count + offset, total)
 
 
