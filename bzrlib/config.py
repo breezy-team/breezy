@@ -2123,6 +2123,15 @@ class ConfigObjStore(Store):
         for section_name in cobj.sections:
             yield section_name, dict(cobj[section_name])
 
+    def set(self, name, value, section_name=None):
+        # We need a loaded store
+        self.load()
+        if section_name is None:
+            section = self._config_obj
+        else:
+            section = self._config_obj.setdefault(section_name, {})
+        section[name] = value
+
 
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.

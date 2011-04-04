@@ -1960,6 +1960,8 @@ class TestStore(tests.TestCaseWithTransport):
         self.assertEquals(('baz', {'foo': 'bar'}), sections[0])
 
     def test_get_embedded_sections(self):
+        # A more complicated example (which also shows that section names and
+        # option names share the same name space...)
         store = self.get_store('foo.conf', '''
 foo=bar
 l=1,2
@@ -1984,6 +1986,18 @@ foo_in_qux=quux
         self.assertEquals(('baz', {'foo_in_baz': 'barbaz',
                                    'qux': {'foo_in_qux': 'quux'}}),
                           sections[3])
+
+    def test_set_in_default_section(self):
+        store = self.get_store('foo.conf', '')
+        store.set('foo', 'bar')
+        store.save()
+        self.assertFileEqual('foo = bar\n', 'foo.conf')
+
+    def test_set_in_named_section(self):
+        store = self.get_store('foo.conf', '')
+        store.set('foo', 'bar', 'baz')
+        store.save()
+        self.assertFileEqual('[baz]\nfoo = bar\n', 'foo.conf')
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
