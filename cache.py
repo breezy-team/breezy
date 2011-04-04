@@ -100,7 +100,7 @@ class GitShaMap(object):
     def lookup_git_sha(self, sha):
         """Lookup a Git sha in the database.
         :param sha: Git object sha
-        :return: (type, type_data) with type_data:
+        :return: list with (type, type_data) tuples with type_data:
             commit: revid, tree_sha, verifiers
             blob: fileid, revid
             tree: fileid, revid
@@ -272,6 +272,7 @@ class DictCacheUpdater(CacheUpdater):
         if obj.type_name == "commit":
             self._commit = obj
             assert type(ie) is dict
+            key = self.revid
             type_data = (self.revid, self._commit.tree, ie)
             self.cache.idmap._by_revid[self.revid] = obj.id
         elif obj.type_name in ("blob", "tree"):
@@ -280,11 +281,12 @@ class DictCacheUpdater(CacheUpdater):
                     revision = ie.revision
                 else:
                     revision = self.revid
-                type_data = (ie.file_id, revision)
+                key = type_data = (ie.file_id, revision)
                 self.cache.idmap._by_fileid.setdefault(type_data[1], {})[type_data[0]] = obj.id
         else:
             raise AssertionError
-        self.cache.idmap._by_sha[obj.id] = (obj.type_name, type_data)
+        entry = (obj.type_name, type_data)
+        self.cache.idmap._by_sha.setdefault(obj.id, {})[key] = entry
 
     def finish(self):
         if self._commit is None:
@@ -304,7 +306,7 @@ class DictGitShaMap(GitShaMap):
         return self._by_fileid[revision][fileid]
 
     def lookup_git_sha(self, sha):
-        return self._by_sha[sha]
+        return self._by_sha[sha].values()
 
     def lookup_tree_id(self, fileid, revision):
         return self._by_fileid[revision][fileid]
@@ -313,9 +315,10 @@ class DictGitShaMap(GitShaMap):
         return self._by_revid[revid]
 
     def revids(self):
-        for key, (type, type_data) in self._by_sha.iteritems():
-            if type == "commit":
-                yield type_data[0]
+        for key, entries in self._by_sha.iteritems():
+            for (type, type_data) in entries.values():
+                if type == "commit":
+                    yield type_data[0]
 
     def sha1s(self):
         return self._by_sha.iterkeys()
@@ -452,16 +455,21 @@ class SqliteGitShaMap(GitShaMap):
             tree: fileid, revid
             blob: fileid, revid
         """
-        row = self.db.execute("select revid, tree_sha, testament3_sha1 from commits where sha1 = ?", (sha,)).fetchone()
-        if row is not None:
-            return ("commit", (row[0], row[1], {"testament3-sha1": row[2]}))
-        row = self.db.execute("select fileid, revid from blobs where sha1 = ?", (sha,)).fetchone()
-        if row is not None:
-            return ("blob", row)
-        row = self.db.execute("select fileid, revid from trees where sha1 = ?", (sha,)).fetchone()
-        if row is not None:
-            return ("tree", row)
-        raise KeyError(sha)
+        found = False
+        cursor = self.db.execute("select revid, tree_sha, testament3_sha1 from commits where sha1 = ?", (sha,))
+        for row in cursor.fetchall():
+            found = True
+            yield ("commit", (row[0], row[1], {"testament3-sha1": row[2]}))
+        cursor = self.db.execute("select fileid, revid from blobs where sha1 = ?", (sha,))
+        for row in cursor.fetchall():
+            found = True
+            yield ("blob", row)
+        cursor = self.db.execute("select fileid, revid from trees where sha1 = ?", (sha,))
+        for row in cursor.fetchall():
+            found = True
+            yield ("tree", row)
+        if not found:
+            raise KeyError(sha)
 
     def revids(self):
         """List the revision ids known."""
@@ -503,7 +511,17 @@ class TdbCacheUpdater(CacheUpdater):
             type_data = (ie.file_id, self.revid)
         else:
             raise AssertionError
-        self.db["git\0" + sha] = "\0".join((obj.type_name, ) + type_data)
+        entry = "\0".join((obj.type_name, ) + type_data) + "\n"
+        key = "git\0" + sha
+        try:
+            oldval = self.db[key]
+        except KeyError:
+            self.db[key] = entry
+        else:
+            if oldval[-1] == "\n":
+                self.db[key] = "".join([oldval, "\n", entry])
+            else:
+                self.db[key] = "".join([oldval, entry])
 
     def finish(self):
         if self._commit is None:
@@ -600,14 +618,15 @@ class TdbGitShaMap(GitShaMap):
         """
         if len(sha) == 40:
             sha = hex_to_sha(sha)
-        data = self.db["git\0" + sha].split("\0")
-        if data[0] == "commit":
-            if len(data) == 3:
-                return (data[0], (data[1], data[2], {}))
+        for data in self.db["git\0" + sha].splitlines():
+            data = data.split("\0")
+            if data[0] == "commit":
+                if len(data) == 3:
+                    yield (data[0], (data[1], data[2], {}))
+                else:
+                    yield (data[0], (data[1], data[2], {"testament3-sha1": data[3]}))
             else:
-                return (data[0], (data[1], data[2], {"testament3-sha1": data[3]}))
-        else:
-            return (data[0], tuple(data[1:]))
+                yield (data[0], tuple(data[1:]))
 
     def missing_revisions(self, revids):
         ret = set()
@@ -859,11 +878,12 @@ class IndexGitShaMap(GitShaMap):
     def lookup_git_sha(self, sha):
         if len(sha) == 20:
             sha = sha_to_hex(sha)
-        data = self._get_entry(("git", sha, "X")).split(" ", 3)
+        # FIXME: Support multiple entries
+        data = self._get_entry(("git", sha, None)).split(" ", 3)
         if data[0] == "commit":
-            return ("commit", (data[1], data[2], {"testament3-sha1": data[3]}))
+            return [("commit", (data[1], data[2], {"testament3-sha1": data[3]}))]
         else:
-            return (data[0], tuple(data[1:]))
+            return [(data[0], tuple(data[1:]))]
 
     def revids(self):
         """List the revision ids known."""

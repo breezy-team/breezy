@@ -520,15 +520,20 @@ class BazaarObjectStore(BaseObjectStore):
     def __contains__(self, sha):
         # See if sha is in map
         try:
-            (type, type_data) = self.lookup_git_sha(sha)
-            if type == "commit":
-                return self.repository.has_revision(type_data[0])
-            elif type == "blob":
-                return self.repository.texts.has_key(type_data)
-            elif type == "tree":
-                return self.repository.has_revision(type_data[1])
+            for (type, type_data) in self.lookup_git_sha(sha):
+                if type == "commit":
+                    if self.repository.has_revision(type_data[0]):
+                        return True
+                elif type == "blob":
+                    if self.repository.texts.has_key(type_data):
+                        return True
+                elif type == "tree":
+                    if self.repository.has_revision(type_data[1]):
+                        return True
+                else:
+                    raise AssertionError("Unknown object type '%s'" % type)
             else:
-                raise AssertionError("Unknown object type '%s'" % type)
+                return False
         except KeyError:
             return False
 
@@ -561,39 +566,41 @@ class BazaarObjectStore(BaseObjectStore):
                 return self._cache.content_cache[sha]
             except KeyError:
                 pass
-        (type, type_data) = self.lookup_git_sha(sha)
-        # convert object to git object
-        if type == "commit":
-            (revid, tree_sha, verifiers) = type_data
-            try:
-                rev = self.repository.get_revision(revid)
-            except errors.NoSuchRevision:
-                trace.mutter('entry for %s %s in shamap: %r, but not found in '
-                             'repository', type, sha, type_data)
-                raise KeyError(sha)
-            commit = self._reconstruct_commit(rev, tree_sha, roundtrip=True,
-                verifiers=verifiers)
-            _check_expected_sha(sha, commit)
-            return commit
-        elif type == "blob":
-            (fileid, revision) = type_data
-            return self._reconstruct_blobs([(fileid, revision, sha)]).next()
-        elif type == "tree":
-            (fileid, revid) = type_data
-            try:
-                tree = self.tree_cache.revision_tree(revid)
-                rev = self.repository.get_revision(revid)
-            except errors.NoSuchRevision:
-                trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
-                raise KeyError(sha)
-            unusual_modes = extract_unusual_modes(rev)
-            try:
-                return self._reconstruct_tree(fileid, revid, tree.inventory,
-                    unusual_modes, expected_sha=sha)
-            except errors.NoSuchRevision:
-                raise KeyError(sha)
+        for (type, type_data) in self.lookup_git_sha(sha):
+            # convert object to git object
+            if type == "commit":
+                (revid, tree_sha, verifiers) = type_data
+                try:
+                    rev = self.repository.get_revision(revid)
+                except errors.NoSuchRevision:
+                    trace.mutter('entry for %s %s in shamap: %r, but not found in '
+                                 'repository', type, sha, type_data)
+                    raise KeyError(sha)
+                commit = self._reconstruct_commit(rev, tree_sha, roundtrip=True,
+                    verifiers=verifiers)
+                _check_expected_sha(sha, commit)
+                return commit
+            elif type == "blob":
+                (fileid, revision) = type_data
+                return self._reconstruct_blobs([(fileid, revision, sha)]).next()
+            elif type == "tree":
+                (fileid, revid) = type_data
+                try:
+                    tree = self.tree_cache.revision_tree(revid)
+                    rev = self.repository.get_revision(revid)
+                except errors.NoSuchRevision:
+                    trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
+                    raise KeyError(sha)
+                unusual_modes = extract_unusual_modes(rev)
+                try:
+                    return self._reconstruct_tree(fileid, revid,
+                        tree.inventory, unusual_modes, expected_sha=sha)
+                except errors.NoSuchRevision:
+                    raise KeyError(sha)
+            else:
+                raise AssertionError("Unknown object type '%s'" % type)
         else:
-            raise AssertionError("Unknown object type '%s'" % type)
+            raise KeyError(sha)
 
     def generate_lossy_pack_contents(self, have, want, progress=None,
             get_tagged=None):
