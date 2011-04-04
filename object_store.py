@@ -544,7 +544,7 @@ class BazaarObjectStore(BaseObjectStore):
                 ret[sha] = ("commit", (NULL_REVISION, None, {}))
                 continue
             try:
-                ret[sha] = self._cache.idmap.lookup_git_sha(sha)
+                ret[sha] = list(self._cache.idmap.lookup_git_sha(sha))
             except KeyError:
                 if update_map:
                     # if not, see if there are any unconverted revisions and add
@@ -552,7 +552,7 @@ class BazaarObjectStore(BaseObjectStore):
                     self._update_sha_map()
                     update_map = False
                     try:
-                        ret[sha] = self._cache.idmap.lookup_git_sha(sha)
+                        ret[sha] = list(self._cache.idmap.lookup_git_sha(sha))
                     except KeyError:
                         pass
         return ret

@@ -519,7 +519,7 @@ class TdbCacheUpdater(CacheUpdater):
         except KeyError:
             self.db[key] = entry
         else:
-            if oldval[-1] == "\n":
+            if oldval[-1] != "\n":
                 self.db[key] = "".join([oldval, "\n", entry])
             else:
                 self.db[key] = "".join([oldval, entry])
