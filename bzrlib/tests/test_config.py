@@ -1893,7 +1893,7 @@ class TestStore(tests.TestCaseWithTransport):
 
     # FIXME: parametrize against all valid (store, transport) combinations
 
-    def get_store(self, content=None, name=None):
+    def get_store(self, name=None, content=None):
         if name is None:
             name = 'foo.conf'
         if content is None:
@@ -1905,13 +1905,13 @@ class TestStore(tests.TestCaseWithTransport):
 
     def test_delayed_load(self):
         self.build_tree_contents([('foo.conf', '')])
-        store = self.get_store(None, 'foo.conf')
+        store = self.get_store('foo.conf')
         self.assertEquals(False, store.loaded)
         store.load()
         self.assertEquals(True, store.loaded)
 
     def test_from_string_delayed_load(self):
-        store = self.get_store('')
+        store = self.get_store('foo.conf', '')
         self.assertEquals(False, store.loaded)
         store.load()
         self.assertEquals(True, store.loaded)
@@ -1919,7 +1919,7 @@ class TestStore(tests.TestCaseWithTransport):
         self.failIfExists('foo.conf')
 
     def test_invalid_content(self):
-        store = self.get_store('this is invalid !', 'foo.conf')
+        store = self.get_store('foo.conf', 'this is invalid !')
         self.assertEquals(False, store.loaded)
         exc = self.assertRaises(errors.ParseConfigError, store.load)
         self.assertEndsWith(exc.filename, 'foo.conf')
@@ -1927,20 +1927,63 @@ class TestStore(tests.TestCaseWithTransport):
         self.assertEquals(False, store.loaded)
 
     def test_save_empty_succeeds(self):
-        store = self.get_store('', 'foo.conf')
+        store = self.get_store('foo.conf', '')
         store.load()
         self.failIfExists('foo.conf')
         store.save()
         self.failUnlessExists('foo.conf')
 
     def test_save_with_content_succeeds(self):
-        store = self.get_store('foo=bar\n', 'foo.conf')
+        store = self.get_store('foo.conf', 'foo=bar\n')
         store.load()
         self.failIfExists('foo.conf')
         store.save()
         self.failUnlessExists('foo.conf')
         # FIXME: Far too ConfigObj specific
         self.assertFileEqual('foo = bar\n', 'foo.conf')
+
+    def test_get_no_sections_for_empty(self):
+        store = self.get_store('foo.conf', '')
+        store.load()
+        self.assertEquals([], list(store.get_sections()))
+
+    def test_get_default_section(self):
+        store = self.get_store('foo.conf', 'foo=bar')
+        sections = list(store.get_sections())
+        self.assertLength(1, sections)
+        self.assertEquals((None, {'foo': 'bar'}), sections[0])
+
+    def test_get_named_section(self):
+        store = self.get_store('foo.conf', '[baz]\nfoo=bar')
+        sections = list(store.get_sections())
+        self.assertLength(1, sections)
+        self.assertEquals(('baz', {'foo': 'bar'}), sections[0])
+
+    def test_get_embedded_sections(self):
+        store = self.get_store('foo.conf', '''
+foo=bar
+l=1,2
+[DEFAULT]
+foo_in_DEFAULT=foo_DEFAULT
+[bar]
+foo_in_bar=barbar
+[baz]
+foo_in_baz=barbaz
+[[qux]]
+foo_in_qux=quux
+''')
+        sections = list(store.get_sections())
+        self.assertLength(4, sections)
+        # The default section has no name.
+        # List values are provided as lists
+        self.assertEquals((None, {'foo': 'bar', 'l': ['1', '2']}), sections[0])
+        self.assertEquals(('DEFAULT', {'foo_in_DEFAULT': 'foo_DEFAULT'}),
+                          sections[1])
+        self.assertEquals(('bar', {'foo_in_bar': 'barbar'}), sections[2])
+        # sub sections are provided as embedded dicts.
+        self.assertEquals(('baz', {'foo_in_baz': 'barbaz',
+                                   'qux': {'foo_in_qux': 'quux'}}),
+                          sections[3])
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):

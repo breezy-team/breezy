@@ -2038,6 +2038,16 @@ class Store(object):
     def load(self):
         raise NotImplementedError(self.load)
 
+    def save(self):
+        raise NotImplementedError(self.load)
+
+    def get_sections(self):
+        """Returns an ordered iterable of existing sections.
+
+        :returns: An iterable of (name, dict).
+        """
+        raise NotImplementedError(self.get_sections)
+
 
 class ConfigObjStore(Store):
 
@@ -2099,6 +2109,19 @@ class ConfigObjStore(Store):
         out = StringIO()
         self._config_obj.write(out)
         self.transport.put_bytes(self.file_name, out.getvalue())
+
+    def get_sections(self):
+        """Get the configobj section in the file order.
+
+        :returns: An iterable of (name, dict).
+        """
+        # We need a loaded store
+        self.load()
+        cobj = self._config_obj
+        if cobj.scalars:
+            yield None, dict([(k, cobj[k]) for k in cobj.scalars])
+        for section_name in cobj.sections:
+            yield section_name, dict(cobj[section_name])
 
 
 class cmd_config(commands.Command):
