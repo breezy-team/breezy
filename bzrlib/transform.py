@@ -1867,6 +1867,14 @@ class TreeTransform(DiskTreeTransform):
         it doesn't know anything about the files we are updating. Also, we want
         to do this as late as possible, so that most entries end up cached.
         """
+        # TODO: this doesn't update the stat information for directories. So
+        #       the first 'bzr status' will still need to rewrite
+        #       .bzr/checkout/dirstate. However, we at least don't need to
+        #       re-read all of the files.
+        # TODO: If the operation took a while, we could do a time.sleep(3) here
+        #       to allow the clock to tick over and ensure we won't have any
+        #       problems. (we could observe start time, and finish time, and if
+        #       it is less than eg 10% overhead, add a sleep call.)
         paths = FinalPaths(self)
         for trans_id, observed in self._observed_sha1s.iteritems():
             path = paths.get_path(trans_id)

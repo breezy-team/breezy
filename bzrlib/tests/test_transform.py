@@ -2083,17 +2083,20 @@ class TestBuildTree(tests.TestCaseWithTransport):
         # tree
         entry1 = state._get_entry(0, path_utf8='file1')
         self.assertEqual(entry1_sha, entry1[1][0][1])
-        entry1_packed_stat = entry1[1][0][-1]
+        # The 'size' field must also be set.
+        self.assertEqual(25, entry1[1][0][2])
+        entry1_state = entry1[1][0]
         entry2 = state._get_entry(0, path_utf8='dir/file2')
         self.assertEqual(entry2_sha, entry2[1][0][1])
-        entry2_packed_stat = entry2[1][0][-1]
+        self.assertEqual(29, entry2[1][0][2])
+        entry2_state = entry2[1][0]
         # Now, make sure that we don't have to re-read the content. The
         # packed_stat should match exactly.
         self.assertEqual(entry1_sha, target.get_file_sha1('file1-id', 'file1'))
         self.assertEqual(entry2_sha,
                          target.get_file_sha1('file2-id', 'dir/file2'))
-        self.assertEqual(entry1_packed_stat, entry1[1][0][-1])
-        self.assertEqual(entry2_packed_stat, entry2[1][0][-1])
+        self.assertEqual(entry1_state, entry1[1][0])
+        self.assertEqual(entry2_state, entry2[1][0])
 
 
 class TestCommitTransform(tests.TestCaseWithTransport):
