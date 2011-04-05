@@ -20,11 +20,16 @@ Directory services are utilities that provide a mapping from URL-like strings
 to true URLs.  Examples include lp:urls and per-user location aliases.
 """
 
-from bzrlib import errors, registry
+from bzrlib import (
+    errors,
+    registry,
+    )
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib.branch import Branch
-from bzrlib import urlutils
+from bzrlib import (
+    branch as _mod_branch,
+    urlutils,
+    )
 """)
 
 
@@ -68,7 +73,7 @@ class AliasDirectory(object):
     """
 
     def look_up(self, name, url):
-        branch = Branch.open_containing('.')[0]
+        branch = _mod_branch.Branch.open_containing('.')[0]
         lookups = {
             'parent': branch.get_parent,
             'submit': branch.get_submit_branch,
