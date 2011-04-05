@@ -44,7 +44,6 @@ from bzrlib.knit import (
     KnitPlainFactory,
     KnitVersionedFiles,
     _KnitGraphIndex,
-    _DirectPackAccess,
     )
 """)
 from bzrlib import (
@@ -583,7 +582,7 @@ class AggregateIndex(object):
         self._reload_func = reload_func
         self.index_to_pack = {}
         self.combined_index = CombinedGraphIndex([], reload_func=reload_func)
-        self.data_access = _DirectPackAccess(self.index_to_pack,
+        self.data_access = pack._DirectPackAccess(self.index_to_pack,
                                              reload_func=reload_func,
                                              flush_func=flush_func)
         self.add_callback = None
@@ -1303,7 +1302,7 @@ class ReconcilePacker(Packer):
             self.new_pack.text_index,
             ('blank', ), 1,
             add_nodes_callback=self.new_pack.text_index.add_nodes)
-        data_access = _DirectPackAccess(
+        data_access = pack._DirectPackAccess(
                 {self.new_pack.text_index:self.new_pack.access_tuple()})
         data_access.set_writer(self.new_pack._writer, self.new_pack.text_index,
             self.new_pack.access_tuple())
