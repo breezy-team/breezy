@@ -661,35 +661,6 @@ class Packer(object):
         # _copy_inventory_texts
         self._text_filter = None
 
-    def _pack_map_and_index_list(self, index_attribute):
-        """Convert a list of packs to an index pack map and index list.
-
-        :param index_attribute: The attribute that the desired index is found
-            on.
-        :return: A tuple (map, list) where map contains the dict from
-            index:pack_tuple, and list contains the indices in the preferred
-            access order.
-        """
-        indices = []
-        pack_map = {}
-        for pack_obj in self.packs:
-            index = getattr(pack_obj, index_attribute)
-            indices.append(index)
-            pack_map[index] = pack_obj
-        return pack_map, indices
-
-    def _index_contents(self, indices, key_filter=None):
-        """Get an iterable of the index contents from a pack_map.
-
-        :param indices: The list of indices to query
-        :param key_filter: An optional filter to limit the keys returned.
-        """
-        all_index = CombinedGraphIndex(indices)
-        if key_filter is None:
-            return all_index.iter_all_entries()
-        else:
-            return all_index.iter_entries(key_filter)
-
     def pack(self, pb=None):
         """Create a new pack by reading data from other packs.
 
@@ -743,40 +714,6 @@ class Packer(object):
         new_pack.signature_index.set_optimize(combine_backing_indices=False)
         return new_pack
 
-    def _update_pack_order(self, entries, index_to_pack_map):
-        """Determine how we want our packs to be ordered.
-
-        This changes the sort order of the self.packs list so that packs unused
-        by 'entries' will be at the end of the list, so that future requests
-        can avoid probing them.  Used packs will be at the front of the
-        self.packs list, in the order of their first use in 'entries'.
-
-        :param entries: A list of (index, ...) tuples
-        :param index_to_pack_map: A mapping from index objects to pack objects.
-        """
-        packs = []
-        seen_indexes = set()
-        for entry in entries:
-            index = entry[0]
-            if index not in seen_indexes:
-                packs.append(index_to_pack_map[index])
-                seen_indexes.add(index)
-        if len(packs) == len(self.packs):
-            if 'pack' in debug.debug_flags:
-                mutter('Not changing pack list, all packs used.')
-            return
-        seen_packs = set(packs)
-        for pack in self.packs:
-            if pack not in seen_packs:
-                packs.append(pack)
-                seen_packs.add(pack)
-        if 'pack' in debug.debug_flags:
-            old_names = [p.access_tuple()[1] for p in self.packs]
-            new_names = [p.access_tuple()[1] for p in packs]
-            mutter('Reordering packs\nfrom: %s\n  to: %s',
-                   old_names, new_names)
-        self.packs = packs
-
     def _copy_revision_texts(self):
         """Copy revision data to the new pack."""
         raise NotImplementedError(self._copy_revision_texts)
@@ -796,43 +733,6 @@ class Packer(object):
     def _create_pack_from_packs(self):
         raise NotImplementedError(self._create_pack_from_packs)
 
-    def _least_readv_node_readv(self, nodes):
-        """Generate request groups for nodes using the least readv's.
-
-        :param nodes: An iterable of graph index nodes.
-        :return: Total node count and an iterator of the data needed to perform
-            readvs to obtain the data for nodes. Each item yielded by the
-            iterator is a tuple with:
-            index, readv_vector, node_vector. readv_vector is a list ready to
-            hand to the transport readv method, and node_vector is a list of
-            (key, eol_flag, references) for the node retrieved by the
-            matching readv_vector.
-        """
-        # group by pack so we do one readv per pack
-        nodes = sorted(nodes)
-        total = len(nodes)
-        request_groups = {}
-        for index, key, value, references in nodes:
-            if index not in request_groups:
-                request_groups[index] = []
-            request_groups[index].append((key, value, references))
-        result = []
-        for index, items in request_groups.iteritems():
-            pack_readv_requests = []
-            for key, value, references in items:
-                # ---- KnitGraphIndex.get_position
-                bits = value[1:].split(' ')
-                offset, length = int(bits[0]), int(bits[1])
-                pack_readv_requests.append(
-                    ((offset, length), (key, value[0], references)))
-            # linear scan up the pack to maximum range combining.
-            pack_readv_requests.sort()
-            # split out the readv and the node data.
-            pack_readv = [readv for readv, node in pack_readv_requests]
-            node_vector = [node for readv, node in pack_readv_requests]
-            result.append((index, pack_readv, node_vector))
-        return total, result
-
     def _log_copied_texts(self):
         if 'pack' in debug.debug_flags:
             mutter('%s: create_pack: file texts copied: %s%s %d items t+%6.3fs',
@@ -840,15 +740,6 @@ class Packer(object):
                 self.new_pack.random_name,
                 self.new_pack.text_index.key_count(),
                 time.time() - self.new_pack.start_time)
-
-    def _revision_node_readv(self, revision_nodes):
-        """Return the total revisions and the readv's to issue.
-
-        :param revision_nodes: The revision index contents for the packs being
-            incorporated into the new pack.
-        :return: As per _least_readv_node_readv.
-        """
-        return self._least_readv_node_readv(revision_nodes)
 
     def _use_pack(self, new_pack):
         """Return True if new_pack should be used.
@@ -859,58 +750,16 @@ class Packer(object):
         return new_pack.data_inserted()
 
 
-class OptimisingPacker(Packer):
-    """A packer which spends more time to create better disk layouts."""
-
-    def _revision_node_readv(self, revision_nodes):
-        """Return the total revisions and the readv's to issue.
-
-        This sort places revisions in topological order with the ancestors
-        after the children.
-
-        :param revision_nodes: The revision index contents for the packs being
-            incorporated into the new pack.
-        :return: As per _least_readv_node_readv.
-        """
-        # build an ancestors dict
-        ancestors = {}
-        by_key = {}
-        for index, key, value, references in revision_nodes:
-            ancestors[key] = references[0]
-            by_key[key] = (index, value, references)
-        order = tsort.topo_sort(ancestors)
-        total = len(order)
-        # Single IO is pathological, but it will work as a starting point.
-        requests = []
-        for key in reversed(order):
-            index, value, references = by_key[key]
-            # ---- KnitGraphIndex.get_position
-            bits = value[1:].split(' ')
-            offset, length = int(bits[0]), int(bits[1])
-            requests.append(
-                (index, [(offset, length)], [(key, value[0], references)]))
-        # TODO: combine requests in the same index that are in ascending order.
-        return total, requests
-
-    def open_pack(self):
-        """Open a pack for the pack we are creating."""
-        new_pack = super(OptimisingPacker, self).open_pack()
-        # Turn on the optimization flags for all the index builders.
-        new_pack.revision_index.set_optimize(for_size=True)
-        new_pack.inventory_index.set_optimize(for_size=True)
-        new_pack.text_index.set_optimize(for_size=True)
-        new_pack.signature_index.set_optimize(for_size=True)
-        return new_pack
-
-
 class RepositoryPackCollection(object):
     """Management of packs within a repository.
 
     :ivar _names: map of {pack_name: (index_size,)}
     """
 
-    pack_factory = NewPack
-    resumed_pack_factory = ResumedPack
+    pack_factory = None
+    resumed_pack_factory = None
+    normal_packer_class = None
+    optimising_packer_class = None
 
     def __init__(self, repo, transport, index_transport, upload_transport,
                  pack_transport, index_builder_class, index_class,
@@ -1057,24 +906,23 @@ class RepositoryPackCollection(object):
             'containing %d revisions. Packing %d files into %d affecting %d'
             ' revisions', self, total_packs, total_revisions, num_old_packs,
             num_new_packs, num_revs_affected)
-        result = self._execute_pack_operations(pack_operations,
+        result = self._execute_pack_operations(pack_operations, packer_class=self.normal_packer_class,
                                       reload_func=self._restart_autopack)
         mutter('Auto-packing repository %s completed', self)
         return result
 
-    def _execute_pack_operations(self, pack_operations, _packer_class=Packer,
-                                 reload_func=None):
+    def _execute_pack_operations(self, pack_operations, packer_class, reload_func=None):
         """Execute a series of pack operations.
 
         :param pack_operations: A list of [revision_count, packs_to_combine].
-        :param _packer_class: The class of packer to use (default: Packer).
+        :param _packer_class: The class of packer to use
         :return: The new pack names.
         """
         for revision_count, packs in pack_operations:
             # we may have no-ops from the setup logic
             if len(packs) == 0:
                 continue
-            packer = _packer_class(self, packs, '.autopack',
+            packer = packer_class(self, packs, '.autopack',
                                    reload_func=reload_func)
             try:
                 packer.pack()
@@ -1147,7 +995,8 @@ class RepositoryPackCollection(object):
                 # or this pack was included in the hint.
                 pack_operations[-1][0] += pack.get_revision_count()
                 pack_operations[-1][1].append(pack)
-        self._execute_pack_operations(pack_operations, OptimisingPacker,
+        self._execute_pack_operations(pack_operations,
+            packer_class=self.optimising_packer_class,
             reload_func=self._restart_pack_operations)
 
     def plan_autopack_combinations(self, existing_packs, pack_distribution):
