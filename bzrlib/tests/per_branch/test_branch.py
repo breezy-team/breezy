@@ -476,6 +476,14 @@ class TestBranch(per_branch.TestCaseWithBranch):
         must_fetch, should_fetch = tree.branch.heads_to_fetch()
         self.assertTrue('rev2' in must_fetch)
 
+    def test_heads_to_fetch_stop_revision(self):
+        tree = self.make_branch_and_tree('a')
+        tree.commit('first commit', rev_id='rev1')
+        tree.commit('second commit', rev_id='rev2')
+        must_fetch, should_fetch = tree.branch.heads_to_fetch('rev1')
+        self.assertTrue('rev1' in must_fetch)
+        self.assertFalse('rev2' in must_fetch)
+
     def test_heads_to_fetch_not_null_revision(self):
         # NULL_REVISION does not appear in the result of heads_to_fetch, even
         # for an empty branch.

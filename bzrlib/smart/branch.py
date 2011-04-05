@@ -144,14 +144,14 @@ class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
 
 class SmartServerBranchHeadsToFetch(SmartServerBranchRequest):
 
-    def do_with_branch(self, branch):
+    def do_with_branch(self, branch, stop_revision):
         """Return the heads-to-fetch for a Branch as two bencoded lists.
         
         See Branch.heads_to_fetch.
 
         New in 2.4.
         """
-        must_fetch, if_present_fetch = branch.heads_to_fetch()
+        must_fetch, if_present_fetch = branch.heads_to_fetch(stop_revision)
         return SuccessfulSmartServerResponse(
             (list(must_fetch), list(if_present_fetch)))
 

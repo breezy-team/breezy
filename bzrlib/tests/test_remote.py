@@ -1203,7 +1203,7 @@ class TestBranchHeadsToFetch(RemoteBranchTestCase):
             'Branch.get_stacked_on_url', ('quack/',),
             'error', ('NotStacked',))
         client.add_expected_call(
-            'Branch.heads_to_fetch', ('quack/',),
+            'Branch.heads_to_fetch', ('quack/', None),
             'success', (['tip'], ['tagged-1', 'tagged-2']))
         transport.mkdir('quack')
         transport = transport.clone('quack')

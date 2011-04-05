@@ -1517,18 +1517,22 @@ class Branch(controldir.ControlComponent):
         else:
             raise AssertionError("invalid heads: %r" % (heads,))
 
-    def heads_to_fetch(self):
+    def heads_to_fetch(self, stop_revision=None):
         """Return the heads that must and that should be fetched to copy this
         branch into another repo.
+
+        :param stop_revision: Last branch revision to fetch, if not tip.
 
         :returns: a 2-tuple of (must_fetch, if_present_fetch).  must_fetch is a
             set of heads that must be fetched.  if_present_fetch is a set of
             heads that must be fetched if present, but no error is necessary if
             they are not present.
         """
-        # For bzr native formats must_fetch is just the tip, and if_present_fetch
-        # are the tags.
-        must_fetch = set([self.last_revision()])
+        # For bzr native formats must_fetch is just the tip, and
+        # if_present_fetch are the tags.
+        if stop_revision is None:
+            stop_revision = self.last_revision()
+        must_fetch = set([stop_revision])
         try:
             if_present_fetch = set(self.tags.get_reverse_tag_dict())
         except errors.TagsNotSupported:
@@ -3362,20 +3366,13 @@ class GenericInterBranch(InterBranch):
             return (0, [])
         self.source.lock_read()
         try:
-            if stop_revision is None:
-                stop_revision = self.source.last_revision()
-                stop_revision = _mod_revision.ensure_null(stop_revision)
-            if fetch_tags:
-                fetch_spec_factory = fetch.FetchSpecFactory()
-                fetch_spec_factory.source_branch = self.source
-                fetch_spec_factory.source_branch_stop_revision_id = stop_revision
-                fetch_spec_factory.source_repo = self.source.repository
-                fetch_spec_factory.target_repo = self.target.repository
-                fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
-                fetch_spec = fetch_spec_factory.make_fetch_spec()
-            else:
-                fetch_spec = _mod_graph.NotInOtherForRevs(self.target.repository,
-                    self.source.repository, revision_ids=[stop_revision]).execute()
+            fetch_spec_factory = fetch.FetchSpecFactory()
+            fetch_spec_factory.source_branch = self.source
+            fetch_spec_factory.source_branch_stop_revision_id = stop_revision
+            fetch_spec_factory.source_repo = self.source.repository
+            fetch_spec_factory.target_repo = self.target.repository
+            fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+            fetch_spec = fetch_spec_factory.make_fetch_spec()
             return self.target.repository.fetch(self.source.repository,
                 fetch_spec=fetch_spec)
         finally:
