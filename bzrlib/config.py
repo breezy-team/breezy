@@ -2048,8 +2048,12 @@ class Store(object):
         """
         raise NotImplementedError(self.get_sections)
 
-    def set_option(self, name, value, section_name=None):
-        raise NotImplementedError(self.set_option)
+    def get_mutable_section(self, section_name=None):
+        """Returns the specified mutable section.
+
+        :param section_name: The section identifier
+        """
+        raise NotImplementedError(self.get_mutable_section)
 
 
 class ConfigObjStore(Store):
@@ -2128,14 +2132,14 @@ class ConfigObjStore(Store):
         for section_name in cobj.sections:
             yield ReadOnlySection(section_name, cobj[section_name])
 
-    def set_option(self, name, value, section_name=None):
+    def get_mutable_section(self, section_name=None):
         # We need a loaded store
         self.load()
         if section_name is None:
             section = self._config_obj
         else:
             section = self._config_obj.setdefault(section_name, {})
-        section[name] = value
+        return MutableSection(section_name, section)
 
 
 class cmd_config(commands.Command):

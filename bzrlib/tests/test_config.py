@@ -2000,13 +2000,15 @@ foo_in_qux=quux
 
     def test_set_option_in_default_section(self):
         store = self.get_store('foo.conf', '')
-        store.set_option('foo', 'bar')
+        section = store.get_mutable_section(None)
+        section.set('foo', 'bar')
         store.save()
         self.assertFileEqual('foo = bar\n', 'foo.conf')
 
     def test_set_option_in_named_section(self):
         store = self.get_store('foo.conf', '')
-        store.set_option('foo', 'bar', 'baz')
+        section = store.get_mutable_section('baz')
+        section.set('foo', 'bar')
         store.save()
         self.assertFileEqual('[baz]\nfoo = bar\n', 'foo.conf')
 
