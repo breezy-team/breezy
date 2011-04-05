@@ -171,6 +171,20 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.finalize()
         transform.finalize()
 
+    def test_apply_informs_tree_of_observed_sha1(self):
+        trans, root, contents, sha1 = self.get_transform_for_sha1_test()
+        trans_id = trans.new_file('file1', root, contents, file_id='file1-id',
+                                  sha1=sha1)
+        calls = []
+        orig = self.wt._observed_sha1
+        def _observed_sha1(*args):
+            calls.append(args)
+            orig(*args)
+        self.wt._observed_sha1 = _observed_sha1
+        trans.apply()
+        self.assertEqual([(None, 'file1', trans._observed_sha1s[trans_id])],
+                         calls)
+
     def test_create_file_caches_sha1(self):
         trans, root, contents, sha1 = self.get_transform_for_sha1_test()
         trans_id = trans.create_path('file1', root)
