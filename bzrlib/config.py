@@ -2125,9 +2125,9 @@ class ConfigObjStore(Store):
         self.load()
         cobj = self._config_obj
         if cobj.scalars:
-            yield None, dict([(k, cobj[k]) for k in cobj.scalars])
+            yield ReadOnlySection(None, cobj)
         for section_name in cobj.sections:
-            yield section_name, dict(cobj[section_name])
+            yield ReadOnlySection(section_name, cobj[section_name])
 
     def set_option(self, name, value, section_name=None):
         # We need a loaded store

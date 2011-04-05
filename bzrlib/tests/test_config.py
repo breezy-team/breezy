@@ -1947,21 +1947,30 @@ class TestStore(tests.TestCaseWithTransport):
         store.load()
         self.assertEquals([], list(store.get_sections()))
 
+    def assertSectionContent(self, expected, section):
+        """Assert that some options have the proper values in a section."""
+        expected_name, expected_options = expected
+        self.assertEquals(expected_name, section.id)
+        self.assertEquals(
+            expected_options,
+            dict([(k, section.get(k)) for k in expected_options.keys()]))
+
     def test_get_default_section(self):
         store = self.get_store('foo.conf', 'foo=bar')
         sections = list(store.get_sections())
         self.assertLength(1, sections)
-        self.assertEquals((None, {'foo': 'bar'}), sections[0])
+        self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
 
     def test_get_named_section(self):
         store = self.get_store('foo.conf', '[baz]\nfoo=bar')
         sections = list(store.get_sections())
         self.assertLength(1, sections)
-        self.assertEquals(('baz', {'foo': 'bar'}), sections[0])
+        self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
 
     def test_get_embedded_sections(self):
         # A more complicated example (which also shows that section names and
         # option names share the same name space...)
+        # FIXME: This is really specific to ConfigObjStore -- vila 2011-04-05
         store = self.get_store('foo.conf', '''
 foo=bar
 l=1,2
@@ -1978,14 +1987,16 @@ foo_in_qux=quux
         self.assertLength(4, sections)
         # The default section has no name.
         # List values are provided as lists
-        self.assertEquals((None, {'foo': 'bar', 'l': ['1', '2']}), sections[0])
-        self.assertEquals(('DEFAULT', {'foo_in_DEFAULT': 'foo_DEFAULT'}),
-                          sections[1])
-        self.assertEquals(('bar', {'foo_in_bar': 'barbar'}), sections[2])
+        self.assertSectionContent((None, {'foo': 'bar', 'l': ['1', '2']}),
+                                  sections[0])
+        self.assertSectionContent(
+            ('DEFAULT', {'foo_in_DEFAULT': 'foo_DEFAULT'}), sections[1])
+        self.assertSectionContent(
+            ('bar', {'foo_in_bar': 'barbar'}), sections[2])
         # sub sections are provided as embedded dicts.
-        self.assertEquals(('baz', {'foo_in_baz': 'barbaz',
-                                   'qux': {'foo_in_qux': 'quux'}}),
-                          sections[3])
+        self.assertSectionContent(
+            ('baz', {'foo_in_baz': 'barbaz', 'qux': {'foo_in_qux': 'quux'}}),
+            sections[3])
 
     def test_set_option_in_default_section(self):
         store = self.get_store('foo.conf', '')
