@@ -17,13 +17,9 @@
 
 """Test operations that check the repository for corruption"""
 
-import os
-
 from bzrlib import (
-    check,
     config as _mod_config,
     errors,
-    inventory,
     revision as _mod_revision,
     )
 from bzrlib.tests import TestNotApplicable

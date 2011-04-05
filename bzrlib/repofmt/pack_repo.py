@@ -50,11 +50,11 @@ from bzrlib import (
     lockdir,
     )
 
-from bzrlib.decorators import needs_write_lock, only_raises
+from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.lock import LogicalLockResult
-from bzrlib.repofmt.knitrepo import KnitRepository
 from bzrlib.repository import (
     CommitBuilder,
+    MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
     RepositoryWriteLockResult,
@@ -2060,7 +2060,7 @@ class RepositoryPackCollection(object):
             self._resume_pack(token)
 
 
-class PackRepository(KnitRepository):
+class PackRepository(MetaDirRepository):
     """Repository with knit objects stored inside pack containers.
 
     The layering for a KnitPackRepository is:
@@ -2084,6 +2084,25 @@ class PackRepository(KnitRepository):
     ===================================================
 
     """
+
+    # These attributes are inherited from the Repository base class. Setting
+    # them to None ensures that if the constructor is changed to not initialize
+    # them, or a subclass fails to call the constructor, that an error will
+    # occur rather than the system working but generating incorrect data.
+    _commit_builder_class = None
+    _serializer = None
+
+    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+        _serializer):
+        MetaDirRepository.__init__(self, _format, a_bzrdir, control_files)
+        self._commit_builder_class = _commit_builder_class
+        self._serializer = _serializer
+        self._reconcile_fixes_text_parents = True
+
+    @needs_read_lock
+    def _all_revision_ids(self):
+        """See Repository.all_revision_ids()."""
+        return [key[0] for key in self.revisions.keys()]
 
     def _abort_write_group(self):
         self.revisions._index._key_dependencies.clear()
