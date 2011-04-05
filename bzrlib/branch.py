@@ -42,7 +42,6 @@ from bzrlib import (
         urlutils,
         )
 from bzrlib.config import BranchConfig, TransportConfig
-from bzrlib.repofmt.knitpack_repo import RepositoryFormatKnitPack5RichRoot
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
@@ -2148,11 +2147,6 @@ class BzrBranchFormat8(BranchFormatMetadir):
                       ]
         return self._initialize_helper(a_bzrdir, utf8_files, name, repository)
 
-    def __init__(self):
-        super(BzrBranchFormat8, self).__init__()
-        self._matchingbzrdir.repository_format = \
-            RepositoryFormatKnitPack5RichRoot()
-
     def make_tags(self, branch):
         """See bzrlib.branch.BranchFormat.make_tags()."""
         return BasicTags(branch)
@@ -2199,6 +2193,10 @@ class BzrBranchFormat7(BranchFormatMetadir):
 
     def supports_stacking(self):
         return True
+
+    def make_tags(self, branch):
+        """See bzrlib.branch.BranchFormat.make_tags()."""
+        return BasicTags(branch)
 
     supports_reference_locations = False
 
