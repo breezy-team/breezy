@@ -543,14 +543,25 @@ class KnitPackStreamSource(StreamSource):
         yield self._get_text_stream()
 
 
-class KnitReconcilePacker(Packer):
+class KnitPacker(Packer):
+    """Packer that works with knit packs."""
+
+    def __init__(self, pack_collection, packs, suffix, revision_ids=None,
+                 reload_func=None):
+        super(KnitPacker, self).__init__(pack_collection, packs, suffix,
+                                          revision_ids=revision_ids,
+                                          reload_func=reload_func)
+
+
+class KnitReconcilePacker(KnitPacker):
     """A packer which regenerates indices etc as it copies.
 
     This is used by ``bzr reconcile`` to cause parent text pointers to be
     regenerated.
     """
 
-    def _extra_init(self):
+    def __init__(self, *args, **kwargs):
+        super(KnitReconcilePacker, self).__init__(*args, **kwargs)
         self._data_changed = False
 
     def _process_inventory_lines(self, inv_lines):

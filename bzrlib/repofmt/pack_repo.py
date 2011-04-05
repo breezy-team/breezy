@@ -662,10 +662,6 @@ class Packer(object):
         # What text keys to copy. None for 'all texts'. This is set by
         # _copy_inventory_texts
         self._text_filter = None
-        self._extra_init()
-
-    def _extra_init(self):
-        """A template hook to allow extending the constructor trivially."""
 
     def _pack_map_and_index_list(self, index_attribute):
         """Convert a list of packs to an index pack map and index list.
@@ -2073,7 +2069,7 @@ class PackRepository(KnitRepository):
     ===================================================
     Tuple based apis below, string based, and key based apis above
     ---------------------------------------------------
-    KnitVersionedFiles
+    VersionedFiles
       Provides .texts, .revisions etc
       This adapts the N-tuple keys to physical knit records which only have a
       single string identifier (for historical reasons), which in older formats
