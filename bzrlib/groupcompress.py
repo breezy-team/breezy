@@ -1474,7 +1474,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             the defined order, regardless of source.
         """
         if ordering == 'topological':
-            present_keys = tsort.tsort.topo_sort(parent_map)
+            present_keys = tsort.topo_sort(parent_map)
         else:
             # ordering == 'groupcompress'
             # XXX: This only optimizes for the target ordering. We may need
