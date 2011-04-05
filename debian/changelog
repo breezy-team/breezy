@@ -1,15 +1,29 @@
-bzr (2.4.0~beta1-1) experimental; urgency=low
+bzr (2.4.0~beta1-1) UNRELEASED; urgency=low
 
+  [ Jelmer Vernooij ]
   * New upstream release.
    + Drop patches merged upstream: 01_test_locale, 04_cpu_count,
    05_kfreebsd_tests, 06_format_gc_chk_sha1_record
    + Fixes directory modes in zip files. LP: #207253
+  * Add python-medusa, python-lzma and python-meliae as build
+    dependencies (used by the test suite).
 
- -- Jelmer Vernooij <jelmer@debian.org>  Thu, 31 Mar 2011 12:03:48 +0200
+  [ John Ferlito ]
+  * Remove John Ferlito from Uploaders.
+
+  [ Jelmer Vernooij ]
+  * Prefer cython as build dependency.
+  * Remove generated C files during clean.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 05 Apr 2011 14:38:50 +0200
 
 bzr (2.3.1-1) unstable; urgency=low
 
   * New upstream release.
+   + Build depend on python-configobj >= 4.7.2+ds-2 which has a fix for bug
+     #618349 which breaks the Bazaar testsuite.
+  * Switch to dh_python2.
+  * Switch to debhelper 7, drop cdbs.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 13 Mar 2011 15:08:21 +0100
 

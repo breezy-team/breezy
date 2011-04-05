@@ -24,6 +24,7 @@ override_dh_auto_clean:
 	dh_auto_clean
 	$(MAKE) clean-docs
 	rm -rf debian/bzrhome
+	rm -f bzrlib/*_pyx.c
 
 override_dh_auto_install:
 	dh_auto_install --buildsystem=python_distutils -- --install-data=/usr/share
