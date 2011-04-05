@@ -44,7 +44,6 @@ from bzrlib import lazy_import
 lazy_import.lazy_import(globals(), """
 from bzrlib import (
     errors,
-    versionedfile,
     )
 """)
 from bzrlib import (

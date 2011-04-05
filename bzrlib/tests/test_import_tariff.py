@@ -96,12 +96,14 @@ class TestImportTariffs(TestCaseWithTransport):
         # 'st' in a default format working tree shouldn't need many modules
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'], [
+            'bzrlib.atomicfile',
             'bzrlib.bugtracker',
             'bzrlib.bundle.commands',
             'bzrlib.cmd_version_info',
             'bzrlib.externalcommand',
             'bzrlib.filters',
-            'bzrlib.foreign',
+            # foreign branch plugins import the foreign_vcs_registry from 
+            # bzrlib.foreign so it can't be blacklisted
             'bzrlib.gpg',
             'bzrlib.info',
             'bzrlib.merge3',
@@ -125,9 +127,11 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.xml5',
             'bzrlib.xml6',
             'bzrlib.xml7',
+            'getpass',
             'kerberos',
             'smtplib',
             'tarfile',
+            'tempfile',
             ])
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff

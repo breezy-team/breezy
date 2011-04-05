@@ -49,11 +49,8 @@ class TestReconcile(TestCaseWithRepository):
     def checkNoBackupInventory(self, aBzrDir):
         """Check that there is no backup inventory in aBzrDir."""
         repo = aBzrDir.open_repository()
-        # Remote repository, and possibly others, do not have
-        # _transport.
-        if getattr(repo, '_transport', None) is not None:
-            for path in repo._transport.list_dir('.'):
-                self.assertFalse('inventory.backup' in path)
+        for path in repo.control_transport.list_dir('.'):
+            self.assertFalse('inventory.backup' in path)
 
 
 class TestsNeedingReweave(TestReconcile):
@@ -197,7 +194,7 @@ class TestsNeedingReweave(TestReconcile):
     def check_missing_was_removed(self, repo):
         if repo._reconcile_backsup_inventory:
             backed_up = False
-            for path in repo._transport.list_dir('.'):
+            for path in repo.control_transport.list_dir('.'):
                 if 'inventory.backup' in path:
                     backed_up = True
             self.assertTrue(backed_up)

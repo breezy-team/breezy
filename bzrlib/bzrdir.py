@@ -29,10 +29,9 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from stat import S_ISDIR
-
 import bzrlib
 from bzrlib import (
+    branch as _mod_branch,
     cleanup,
     config,
     controldir,
@@ -49,7 +48,6 @@ from bzrlib import (
     transport as _mod_transport,
     ui,
     urlutils,
-    versionedfile,
     win32utils,
     workingtree,
     workingtree_4,
@@ -1082,15 +1080,15 @@ class BzrDirHooks(hooks.Hooks):
 
     def __init__(self):
         """Create the default hooks."""
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('pre_open',
+        hooks.Hooks.__init__(self, "bzrlib.bzrdir", "BzrDir.hooks")
+        self.add_hook('pre_open',
             "Invoked before attempting to open a BzrDir with the transport "
-            "that the open will use.", (1, 14), None))
-        self.create_hook(hooks.HookPoint('post_repo_init',
+            "that the open will use.", (1, 14))
+        self.add_hook('post_repo_init',
             "Invoked after a repository has been initialized. "
             "post_repo_init is called with a "
             "bzrlib.bzrdir.RepoInitHookParams.",
-            (2, 2), None))
+            (2, 2))
 
 # install the default hooks
 BzrDir.hooks = BzrDirHooks()
@@ -1860,7 +1858,6 @@ class ConvertMetaToMeta(controldir.Converter):
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups/some sort of registry.
             # Avoid circular imports
-            from bzrlib import branch as _mod_branch
             old = branch._format.__class__
             new = self.target_format.get_branch_format().__class__
             while old != new:

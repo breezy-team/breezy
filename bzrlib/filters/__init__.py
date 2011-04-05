@@ -39,7 +39,6 @@ where:
 Note that context is currently only supported for write converters.
 """
 
-
 from cStringIO import StringIO
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
