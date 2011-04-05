@@ -44,10 +44,11 @@ Bug Fixes
 
  * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
-* ``TreeTransform.create_file`` can trigger calls to ``_observed_sha1``
-  for content that it creates. This means that ``merge`` and ``checkout``
-  should be able to cache the sha values, and avoid re-reading the files
-  on the next ``bzr status`` that gets run. (John Arbash Meinel, #740932)
+* ``TreeTransform.create_file/new_file`` can now take an optional ``sha1``
+  parameter. If supplied, when the transform is applied, it will then call
+  ``self._tree._observed_sha1`` for those files. This lets us update the
+  hash-cache for content that we create, preventing us from re-reading the
+  content in the next ``bzr status``.  (John Arbash Meinel, #740932)
 
 Documentation
 *************
