@@ -2000,6 +2000,18 @@ foo_in_qux=quux
         self.assertFileEqual('[baz]\nfoo = bar\n', 'foo.conf')
 
 
+class TestConfigObjStore(tests.TestCaseWithTransport):
+
+    def test_global_store(self):
+        store = config.GlobalStore()
+
+    def test_location_store(self):
+        store = config.LocationStore()
+
+    def test_branch_store(self):
+        b = self.make_branch('.')
+        store = config.BranchStore(b)
+
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):

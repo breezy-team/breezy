@@ -2029,6 +2029,7 @@ class MutableSection(ReadOnlySection):
             self.orig[name] = self.get(name, None)
         del self.options[name]
 
+
 class Store(object):
     """Abstract interface to persistent storage for configuration options."""
 
@@ -2136,6 +2137,32 @@ class ConfigObjStore(Store):
         else:
             section = self._config_obj.setdefault(section_name, {})
         section[name] = value
+
+
+# FIXME: global, bazaar, shouldn't that be 'user' instead or even
+# 'user_defaults' as opposed to 'user_overrides', 'system_defaults'
+# (/etc/bzr/bazaar.conf) and 'system_overrides' ? -- vila 2011-04-05
+class GlobalStore(ConfigObjStore):
+
+    def __init__(self, possible_transports=None):
+        t = transport.get_transport(config_dir(),
+                                    possible_transports=possible_transports)
+        super(GlobalStore, self).__init__(t, 'bazaar.conf')
+
+
+class LocationStore(ConfigObjStore):
+
+    def __init__(self, possible_transports=None):
+        t = transport.get_transport(config_dir(),
+                                    possible_transports=possible_transports)
+        super(LocationStore, self).__init__(transport, 'locations.conf')
+
+
+class BranchStore(ConfigObjStore):
+
+    def __init__(self, branch):
+        super(BranchStore, self).__init__(branch.control_transport,
+                                          'branch.conf')
 
 
 class cmd_config(commands.Command):
