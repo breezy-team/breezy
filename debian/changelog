@@ -1,12 +1,17 @@
 bzr (2.3.1-2) UNRELEASED; urgency=low
 
+  [ Jelmer Vernooij ]
   * Add python-medusa, python-lzma and python-meliae as build
     dependencies (used by the test suite).
 
   [ John Ferlito ]
   * Remove John Ferlito from Uploaders.
 
- -- Jelmer Vernooij <jelmer@debian.org>  Tue, 22 Mar 2011 18:44:00 +0100
+  [ Jelmer Vernooij ]
+  * Prefer cython as build dependency.
+  * Remove generated C files during clean.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Tue, 05 Apr 2011 14:38:50 +0200
 
 bzr (2.3.1-1) unstable; urgency=low
 
