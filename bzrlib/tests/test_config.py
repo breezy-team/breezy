@@ -2063,6 +2063,15 @@ class TestConfigStackSet(tests.TestCaseWithTransport):
         # Did we get it back ?
         self.assertEquals('baz', conf.get('foo'))
 
+    def test_set_creates_a_new_section(self):
+        store = config.ConfigObjStore.from_string(
+            '', self.get_transport(), 'test.conf')
+        conf = config.ConfigStack(list(store.get_sections()), store)
+        conf.set('foo', 'baz')
+        self.expectFailure(
+            'Newly created sections were not known at stack build time',
+            self.assertEquals, 'baz', conf.get('foo'))
+
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
