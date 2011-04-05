@@ -339,6 +339,11 @@ Most of these are in ``bzrlib/doc/api``.  More additions are welcome.
 
   __ http://docs.python.org/lib/module-doctest.html
 
+There is an `assertDoctestExampleMatches` method in
+`bzrlib.tests.TestCase` that allows you to match against doctest-style
+string templates (including ``...`` to skip sections) from regular Python
+tests.
+
 
 Shell-like tests
 ----------------
