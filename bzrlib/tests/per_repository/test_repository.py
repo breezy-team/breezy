@@ -37,7 +37,7 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.repofmt import (
-    pack_repo,
+    knitpack_repo,
     )
 from bzrlib.tests import (
     per_repository,
@@ -860,7 +860,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
                 "pre metadir branches do not upgrade on push "
                 "with stacking policy")
         if isinstance(repo._format,
-                      pack_repo.RepositoryFormatKnitPack5RichRootBroken):
+                      knitpack_repo.RepositoryFormatKnitPack5RichRootBroken):
             raise tests.TestNotApplicable("unsupported format")
         # Make a source branch in 'repo' in an unstackable branch format
         bzrdir_format = self.repository_format._matchingbzrdir
