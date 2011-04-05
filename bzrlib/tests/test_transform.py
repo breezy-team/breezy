@@ -161,48 +161,6 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         transform.finalize()
         transform.finalize()
 
-    def test_create_file_caches_sha1(self):
-        trans, root = self.get_transform()
-        self.wt.lock_tree_write()
-        self.addCleanup(self.wt.unlock)
-        content = ['just some content\n']
-        sha1 = osutils.sha_strings(content)
-        trans_id = trans.create_path('file1', root)
-        # Roll back the clock
-        transform._creation_mtime = creation_mtime = time.time() - 20.0
-        trans.create_file(content, trans_id, sha1=sha1)
-        st_val = osutils.lstat(trans._limbo_name(trans_id))
-        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
-        self.assertEqual(o_sha1, sha1)
-        self.assertEqualStat(o_st_val, st_val)
-
-    def test__apply_insertions_updates_sha1(self):
-        trans, root = self.get_transform()
-        self.wt.lock_tree_write()
-        self.addCleanup(self.wt.unlock)
-        content = ['just some content\n']
-        sha1 = osutils.sha_strings(content)
-        trans_id = trans.create_path('file1', root)
-        # Roll back the clock
-        transform._creation_mtime = creation_mtime = time.time() - 20.0
-        trans.create_file(content, trans_id, sha1=sha1)
-        st_val = osutils.lstat(trans._limbo_name(trans_id))
-        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
-        self.assertEqual(o_sha1, sha1)
-        self.assertEqualStat(o_st_val, st_val)
-        creation_mtime += 10.0
-        # We fake a time difference from when the file was created until now it
-        # is being renamed by using os.utime. Note that the change we actually
-        # want to see is the real ctime change from 'os.rename()', but as long
-        # as we observe a new stat value, we should be fine.
-        os.utime(trans._limbo_name(trans_id), (creation_mtime, creation_mtime))
-        trans.apply()
-        new_st_val = osutils.lstat(self.wt.abspath('file1'))
-        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
-        self.assertEqual(o_sha1, sha1)
-        self.assertEqualStat(o_st_val, new_st_val)
-        self.assertNotEqual(st_val.st_mtime, new_st_val.st_mtime)
-
     def test_create_files_same_timestamp(self):
         transform, root = self.get_transform()
         self.wt.lock_tree_write()
@@ -1941,18 +1899,6 @@ class TestBuildTree(tests.TestCaseWithTransport):
         self.addCleanup(target.unlock)
         self.assertEqual([], list(target.iter_changes(revision_tree)))
 
-    def test_build_tree_accelerator_tree_observes_sha1(self):
-        source = self.create_ab_tree()
-        sha1 = osutils.sha_string('A')
-        target = self.make_branch_and_tree('target')
-        target.lock_write()
-        self.addCleanup(target.unlock)
-        state = target.current_dirstate()
-        state._cutoff_time = time.time() + 60
-        build_tree(source.basis_tree(), target, source)
-        entry = state._get_entry(0, path_utf8='file1')
-        self.assertEqual(sha1, entry[1][0][1])
-
     def test_build_tree_accelerator_tree_missing_file(self):
         source = self.create_ab_tree()
         os.unlink('source/file1')
@@ -2115,42 +2061,6 @@ class TestBuildTree(tests.TestCaseWithTransport):
         build_tree(source.basis_tree(), target, source, delta_from_tree=True)
         self.assertEqual('file.moved', target.id2path('lower-id'))
         self.assertEqual('FILE', target.id2path('upper-id'))
-
-    def test_build_tree_observes_sha(self):
-        source = self.make_branch_and_tree('source')
-        self.build_tree(['source/file1', 'source/dir/', 'source/dir/file2'])
-        source.add(['file1', 'dir', 'dir/file2'],
-                   ['file1-id', 'dir-id', 'file2-id'])
-        source.commit('new files')
-        target = self.make_branch_and_tree('target')
-        target.lock_write()
-        self.addCleanup(target.unlock)
-        # We make use of the fact that DirState caches its cutoff time. So we
-        # set the 'safe' time to one minute in the future.
-        state = target.current_dirstate()
-        state._cutoff_time = time.time() + 60
-        build_tree(source.basis_tree(), target)
-        entry1_sha = osutils.sha_file_by_name('source/file1')
-        entry2_sha = osutils.sha_file_by_name('source/dir/file2')
-        # entry[1] is the state information, entry[1][0] is the state of the
-        # working tree, entry[1][0][1] is the sha value for the current working
-        # tree
-        entry1 = state._get_entry(0, path_utf8='file1')
-        self.assertEqual(entry1_sha, entry1[1][0][1])
-        # The 'size' field must also be set.
-        self.assertEqual(25, entry1[1][0][2])
-        entry1_state = entry1[1][0]
-        entry2 = state._get_entry(0, path_utf8='dir/file2')
-        self.assertEqual(entry2_sha, entry2[1][0][1])
-        self.assertEqual(29, entry2[1][0][2])
-        entry2_state = entry2[1][0]
-        # Now, make sure that we don't have to re-read the content. The
-        # packed_stat should match exactly.
-        self.assertEqual(entry1_sha, target.get_file_sha1('file1-id', 'file1'))
-        self.assertEqual(entry2_sha,
-                         target.get_file_sha1('file2-id', 'dir/file2'))
-        self.assertEqual(entry1_state, entry1[1][0])
-        self.assertEqual(entry2_state, entry2[1][0])
 
 
 class TestCommitTransform(tests.TestCaseWithTransport):
