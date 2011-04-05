@@ -2030,6 +2030,141 @@ class MutableSection(ReadOnlySection):
         del self.options[name]
 
 
+class Store(object):
+    """Abstract interface to persistent storage for configuration options."""
+
+    def __init__(self):
+        self.loaded = False
+
+    def load(self):
+        raise NotImplementedError(self.load)
+
+    def save(self):
+        raise NotImplementedError(self.load)
+
+    def get_sections(self):
+        """Returns an ordered iterable of existing sections.
+
+        :returns: An iterable of (name, dict).
+        """
+        raise NotImplementedError(self.get_sections)
+
+    def set_option(self, name, value, section_name=None):
+        raise NotImplementedError(self.set_option)
+
+
+class ConfigObjStore(Store):
+
+    def __init__(self, transport, file_name):
+        """A config Store using ConfigObj for storage.
+
+        :param transport: The transport object where the config file is located.
+
+        :param file_name: The config file basename in the transport directory.
+        """
+        super(ConfigObjStore, self).__init__()
+        self.transport = transport
+        self.file_name = file_name
+        # No transient content is known initially
+        self._content = None
+
+    @classmethod
+    def from_string(cls, str_or_unicode, transport, file_name):
+        """Create a config store from a string.
+
+        :param str_or_unicode: A string representing the file content. This will
+            be utf-8 encoded internally.
+
+        :param transport: The transport object where the config file is located.
+
+        :param file_name: The configuration file basename.
+        """
+        conf = cls(transport=transport, file_name=file_name)
+        conf._create_from_string(str_or_unicode)
+        return conf
+
+    def _create_from_string(self, str_or_unicode):
+        # We just keep the content waiting for load() to be called when needed
+        self._content = StringIO(str_or_unicode.encode('utf-8'))
+
+    def load(self):
+        """Load the store from the associated file."""
+        if self.loaded:
+            return
+        if self._content is not None:
+            co_input = self._content
+        else:
+            # The config files are always stored utf8-encoded
+            co_input =  StringIO(self.transport.get_bytes(self.file_name))
+        try:
+            self._config_obj = ConfigObj(co_input, encoding='utf-8')
+        except configobj.ConfigObjError, e:
+            # FIXME: external_url should really accepts an optional relpath
+            # parameter (bug #750169) :-/ -- vila 2011-04-04
+            # The following will do in the interim but maybe we don't want to
+            # expose a path here but rather a config ID and its associated
+            # object (hand wawing).
+            file_path = os.path.join(self.transport.external_url(),
+                                     self.file_name)
+            raise errors.ParseConfigError(e.errors, file_path)
+        self.loaded = True
+
+    def save(self):
+        out = StringIO()
+        self._config_obj.write(out)
+        self.transport.put_bytes(self.file_name, out.getvalue())
+        # We don't need the transient content anymore
+        self._content = None
+
+    def get_sections(self):
+        """Get the configobj section in the file order.
+
+        :returns: An iterable of (name, dict).
+        """
+        # We need a loaded store
+        self.load()
+        cobj = self._config_obj
+        if cobj.scalars:
+            yield None, dict([(k, cobj[k]) for k in cobj.scalars])
+        for section_name in cobj.sections:
+            yield section_name, dict(cobj[section_name])
+
+    def set_option(self, name, value, section_name=None):
+        # We need a loaded store
+        self.load()
+        if section_name is None:
+            section = self._config_obj
+        else:
+            section = self._config_obj.setdefault(section_name, {})
+        section[name] = value
+
+
+# FIXME: global, bazaar, shouldn't that be 'user' instead or even
+# 'user_defaults' as opposed to 'user_overrides', 'system_defaults'
+# (/etc/bzr/bazaar.conf) and 'system_overrides' ? -- vila 2011-04-05
+class GlobalStore(ConfigObjStore):
+
+    def __init__(self, possible_transports=None):
+        t = transport.get_transport(config_dir(),
+                                    possible_transports=possible_transports)
+        super(GlobalStore, self).__init__(t, 'bazaar.conf')
+
+
+class LocationStore(ConfigObjStore):
+
+    def __init__(self, possible_transports=None):
+        t = transport.get_transport(config_dir(),
+                                    possible_transports=possible_transports)
+        super(LocationStore, self).__init__(transport, 'locations.conf')
+
+
+class BranchStore(ConfigObjStore):
+
+    def __init__(self, branch):
+        super(BranchStore, self).__init__(branch.control_transport,
+                                          'branch.conf')
+
+
 class ConfigStack(object):
     """A stack of configurations where an option can be defined"""
 
