@@ -1918,6 +1918,10 @@ class TestStore(tests.TestCaseWithTransport):
         # We use from_string and don't save, so the file shouldn't be created
         self.failIfExists('foo.conf')
 
+    def test_loading_unknown_file_fails(self):
+        store = config.ConfigObjStore(self.get_transport(), 'I-do-not-exist')
+        self.assertRaises(errors.NoSuchFile, store.load)
+
     def test_invalid_content(self):
         store = self.get_store('foo.conf', 'this is invalid !')
         self.assertEquals(False, store.loaded)
@@ -1997,6 +2001,13 @@ foo_in_qux=quux
         self.assertSectionContent(
             ('baz', {'foo_in_baz': 'barbaz', 'qux': {'foo_in_qux': 'quux'}}),
             sections[3])
+
+    def test_set_option_in_empty_file(self):
+        store = self.get_store('foo.conf')
+        section = store.get_mutable_section(None)
+        section.set('foo', 'bar')
+        store.save()
+        self.assertFileEqual('foo = bar\n', 'foo.conf')
 
     def test_set_option_in_default_section(self):
         store = self.get_store('foo.conf', '')
