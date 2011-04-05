@@ -44,13 +44,6 @@ Bug Fixes
 
  * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
-* ``TreeTransform`` now calls ``_observed_sha1`` for content that it
-  creates. This means that ``merge`` and ``checkout`` should be able to
-  cache the sha values, and avoid re-reading the files on the next ``bzr
-  status`` that gets run. Further, on Windows we now properly suppress
-  ``st_dev`` and ``st_ino`` so that commit also avoids re-doing the work.
-  (John Arbash Meinel, #740932)
-
 Documentation
 *************
 
@@ -79,6 +72,11 @@ Internals
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* Added ``osutils.lstat`` and ``osutils.fstat``. These are just the ``os``
+  functions on Linux, but they are wrapped on Windows so that fstat
+  matches lstat results across all python versions.
+  (John Arbash Meinel)
 
 Testing
 *******
