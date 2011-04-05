@@ -2168,21 +2168,26 @@ class BranchStore(ConfigObjStore):
 class ConfigStack(object):
     """A stack of configurations where an option can be defined"""
 
-    def __init__(self, config_list):
+    def __init__(self, config_list, store=None):
         self.list = config_list
         for c in self.list:
             # Sanity check
             if not hasattr(c, 'get'):
                 raise AssertionError("%r does not provide a 'get' method"
                                      % (c,))
+        self.store = store
 
     def get(self, name):
         """Return the value from the first definition found in the list"""
+        value = None
         for c in self.list:
             value = c.get(name)
             if value is not None:
                 break
         return value
+
+    def set(self, name, value):
+        self.store.set_option(name, value)
 
 
 class cmd_config(commands.Command):

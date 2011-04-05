@@ -2049,6 +2049,21 @@ class TestConfigStackGet(tests.TestCase):
         self.assertEquals('baz', conf_stack.get('foo'))
 
 
+class TestConfigStackSet(tests.TestCaseWithTransport):
+
+    # FIXME: This should be parametrized for all known ConfigStack or dedicated
+    # paramerized tests created to avoid bloating -- vila 2011-04-05
+
+    def test_simple_set(self):
+        store = config.ConfigObjStore.from_string(
+            'foo=bar', self.get_transport(), 'test.conf')
+        conf = config.ConfigStack(list(store.get_sections()), store)
+        self.assertEquals('bar', conf.get('foo'))
+        conf.set('foo', 'baz')
+        # Did we get it back ?
+        self.assertEquals('baz', conf.get('foo'))
+
+
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):
