@@ -755,7 +755,7 @@ class TreeTransformBase(object):
         return trans_id
 
     def new_file(self, name, parent_id, contents, file_id=None,
-                 executable=None):
+                 executable=None, sha1=None):
         """Convenience method to create files.
 
         name is the name of the file to create.
@@ -768,7 +768,7 @@ class TreeTransformBase(object):
         trans_id = self._new_entry(name, parent_id, file_id)
         # TODO: rather than scheduling a set_executable call,
         # have create_file create the file with the right mode.
-        self.create_file(contents, trans_id)
+        self.create_file(contents, trans_id, sha1=sha1)
         if executable is not None:
             self.set_executability(executable, trans_id)
         return trans_id

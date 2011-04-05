@@ -203,6 +203,21 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.assertEqualStat(o_st_val, new_st_val)
         self.assertNotEqual(st_val.st_mtime, new_st_val.st_mtime)
 
+    def test_new_file_caches_sha1(self):
+        trans, root = self.get_transform()
+        self.wt.lock_tree_write()
+        self.addCleanup(self.wt.unlock)
+        content = ['just some content\n']
+        sha1 = osutils.sha_strings(content)
+        # Roll back the clock
+        transform._creation_mtime = creation_mtime = time.time() - 20.0
+        trans_id = trans.new_file('file1', root, content, file_id='file1-id',
+                                  sha1=sha1)
+        st_val = osutils.lstat(trans._limbo_name(trans_id))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, st_val)
+
     def test_create_files_same_timestamp(self):
         transform, root = self.get_transform()
         self.wt.lock_tree_write()
