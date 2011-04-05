@@ -799,7 +799,7 @@ def make_pack_factory(graph, delta, keylength):
         writer.begin()
         index = _KnitGraphIndex(graph_index, lambda:True, parents=parents,
             deltas=delta, add_callback=graph_index.add_nodes)
-        access = pack._DirectPackAccess({})
+        access = pack_repo._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = KnitVersionedFiles(index, access,
             max_delta_chain=max_delta_chain)
