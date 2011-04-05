@@ -365,7 +365,7 @@ class DirStateWorkingTree(WorkingTree3):
         state = self.current_dirstate()
         if stat_value is None:
             try:
-                stat_value = os.lstat(file_abspath)
+                stat_value = osutils.lstat(file_abspath)
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     return None
@@ -474,7 +474,7 @@ class DirStateWorkingTree(WorkingTree3):
             self._must_be_locked()
             if not path:
                 path = self.id2path(file_id)
-            mode = os.lstat(self.abspath(path)).st_mode
+            mode = osutils.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def all_file_ids(self):

@@ -231,6 +231,25 @@ class TestIsInside(tests.TestCase):
             self.assertFalse(osutils.is_inside_or_parent_of_any(dirs, fn))
 
 
+class TestLstat(tests.TestCaseInTempDir):
+
+    def test_lstat_matches_fstat(self):
+        # On Windows, lstat and fstat don't always agree, primarily in the
+        # 'st_ino' and 'st_dev' fields. So we force them to be '0' in our
+        # custom implementation.
+        if sys.platform == 'win32':
+            # We only have special lstat/fstat if we have the extension.
+            # Without it, we may end up re-reading content when we don't have
+            # to, but otherwise it doesn't effect correctness.
+            self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
+        f = open('test-file.txt', 'wb')
+        self.addCleanup(f.close)
+        f.write('some content\n')
+        f.flush()
+        self.assertEqualStat(osutils.fstat(f.fileno()),
+                             osutils.lstat('test-file.txt'))
+
+
 class TestRmTree(tests.TestCaseInTempDir):
 
     def test_rmtree(self):
