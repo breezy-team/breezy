@@ -78,6 +78,11 @@ Internals
   matches lstat results across all python versions.
   (John Arbash Meinel)
 
+* ``WorkingTree._observed_sha1`` also updates the 'size' column. It
+  happened to be updated as a side-effect of commit, but if we start using
+  the function elsewhere we might as well do it directly.
+  (John Arbash Meinel)
+
 Testing
 *******
 
