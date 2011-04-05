@@ -451,6 +451,17 @@ def plugins():
     return result
 
 
+def format_concise_plugin_list():
+    """Return a string holding a concise list of plugins and their version.
+    """
+    items = []
+    for name, a_plugin in sorted(plugins().items()):
+        items.append("%s[%s]" %
+            (name, a_plugin.__version__))
+    return ', '.join(items)
+
+
+
 class PluginsHelpIndex(object):
     """A help index that returns help topics for plugins."""
 
