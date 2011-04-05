@@ -3242,42 +3242,42 @@ format_registry.register_lazy(
 # NOTE: These are experimental in 0.92. Stable in 1.0 and above
 format_registry.register_lazy(
     'Bazaar pack repository format 1 (needs bzr 0.92)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack1',
     )
 format_registry.register_lazy(
     'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack3',
     )
 format_registry.register_lazy(
     'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack4',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack5',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack5RichRoot',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack5RichRootBroken',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack6',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack6RichRoot',
     )
 format_registry.register_lazy(
@@ -3291,7 +3291,7 @@ format_registry.register_lazy(
 format_registry.register_lazy(
     ("Bazaar development format 2 with subtree support "
         "(needs bzr.dev from before 1.8)\n"),
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
     )
 format_registry.register_lazy(

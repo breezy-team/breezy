@@ -42,7 +42,7 @@ from bzrlib import (
         urlutils,
         )
 from bzrlib.config import BranchConfig, TransportConfig
-from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5RichRoot
+from bzrlib.repofmt.knitpack_repo import RepositoryFormatKnitPack5RichRoot
 from bzrlib.tag import (
     BasicTags,
     DisabledTags,
@@ -1645,35 +1645,6 @@ class BranchFormat(controldir.ControlComponentFormat):
         for hook in hooks:
             hook(params)
 
-    def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
-                           repository=None):
-        """Initialize a branch in a bzrdir, with specified files
-
-        :param a_bzrdir: The bzrdir to initialize the branch in
-        :param utf8_files: The files to create as a list of
-            (filename, content) tuples
-        :param name: Name of colocated branch to create, if any
-        :return: a branch in this format
-        """
-        mutter('creating branch %r in %s', self, a_bzrdir.user_url)
-        branch_transport = a_bzrdir.get_branch_transport(self, name=name)
-        control_files = lockable_files.LockableFiles(branch_transport,
-            'lock', lockdir.LockDir)
-        control_files.create_lock()
-        control_files.lock_write()
-        try:
-            utf8_files += [('format', self.get_format_string())]
-            for (filename, content) in utf8_files:
-                branch_transport.put_bytes(
-                    filename, content,
-                    mode=a_bzrdir._get_file_mode())
-        finally:
-            control_files.unlock()
-        branch = self.open(a_bzrdir, name, _found=True,
-                found_repository=repository)
-        self._run_post_branch_init_hooks(a_bzrdir, name, branch)
-        return branch
-
     def initialize(self, a_bzrdir, name=None, repository=None):
         """Create a branch of this format in a_bzrdir.
         
@@ -2010,6 +1981,35 @@ class BranchFormatMetadir(BranchFormat):
         """What class to instantiate on open calls."""
         raise NotImplementedError(self._branch_class)
 
+    def _initialize_helper(self, a_bzrdir, utf8_files, name=None,
+                           repository=None):
+        """Initialize a branch in a bzrdir, with specified files
+
+        :param a_bzrdir: The bzrdir to initialize the branch in
+        :param utf8_files: The files to create as a list of
+            (filename, content) tuples
+        :param name: Name of colocated branch to create, if any
+        :return: a branch in this format
+        """
+        mutter('creating branch %r in %s', self, a_bzrdir.user_url)
+        branch_transport = a_bzrdir.get_branch_transport(self, name=name)
+        control_files = lockable_files.LockableFiles(branch_transport,
+            'lock', lockdir.LockDir)
+        control_files.create_lock()
+        control_files.lock_write()
+        try:
+            utf8_files += [('format', self.get_format_string())]
+            for (filename, content) in utf8_files:
+                branch_transport.put_bytes(
+                    filename, content,
+                    mode=a_bzrdir._get_file_mode())
+        finally:
+            control_files.unlock()
+        branch = self.open(a_bzrdir, name, _found=True,
+                found_repository=repository)
+        self._run_post_branch_init_hooks(a_bzrdir, name, branch)
+        return branch
+
     def network_name(self):
         """A simple byte string uniquely identifying this format for RPC calls.
 
@@ -2166,7 +2166,7 @@ class BzrBranchFormat8(BranchFormatMetadir):
     supports_reference_locations = True
 
 
-class BzrBranchFormat7(BzrBranchFormat8):
+class BzrBranchFormat7(BranchFormatMetadir):
     """Branch format with last-revision, tags, and a stacked location pointer.
 
     The stacked location pointer is passed down to the repository and requires
@@ -2195,6 +2195,9 @@ class BzrBranchFormat7(BzrBranchFormat8):
         return "Branch format 7"
 
     def supports_set_append_revisions_only(self):
+        return True
+
+    def supports_stacking(self):
         return True
 
     supports_reference_locations = False
