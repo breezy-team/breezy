@@ -96,6 +96,7 @@ class TestImportTariffs(TestCaseWithTransport):
         # 'st' in a default format working tree shouldn't need many modules
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'], [
+            'bzrlib.annotate',
             'bzrlib.atomicfile',
             'bzrlib.bugtracker',
             'bzrlib.bundle.commands',
