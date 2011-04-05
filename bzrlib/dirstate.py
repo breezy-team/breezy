@@ -1745,8 +1745,8 @@ class DirState(object):
                 self._sha_cutoff_time()
             if (stat_value.st_mtime < self._cutoff_time
                 and stat_value.st_ctime < self._cutoff_time):
-                entry[1][0] = ('f', sha1, stat_value.st_size, entry[1][0][3],
-                               packed_stat)
+                entry[1][0] = ('f', sha1, entry[1][0][2], entry[1][0][3],
+                    packed_stat)
                 self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def _sha_cutoff_time(self):
