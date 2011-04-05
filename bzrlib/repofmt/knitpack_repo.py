@@ -26,6 +26,7 @@ from bzrlib import (
     xml7,
     )
 from bzrlib.knit import (
+    _KnitGraphIndex,
     KnitPlainFactory,
     KnitVersionedFiles,
     )
@@ -38,12 +39,16 @@ from bzrlib.index import (
     GraphIndex,
     InMemoryGraphIndex,
     )
+from bzrlib.repofmt.knitrepo import (
+    KnitRepository,
+    )
 from bzrlib.repofmt.pack_repo import (
     RepositoryFormatPack,
     Packer,
     PackCommitBuilder,
     PackRepository,
     PackRootCommitBuilder,
+    RepositoryPackCollection,
     )
 from bzrlib.repository import (
     StreamSource,
@@ -51,6 +56,59 @@ from bzrlib.repository import (
 
 
 class KnitPackRepository(PackRepository):
+
+    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
+        _serializer):
+        KnitRepository.__init__(self, _format, a_bzrdir, control_files,
+            _commit_builder_class, _serializer)
+        if self._format.supports_chks:
+            raise AssertionError("chk not supported")
+        index_transport = self._transport.clone('indices')
+        self._pack_collection = RepositoryPackCollection(self, self._transport,
+            index_transport,
+            self._transport.clone('upload'),
+            self._transport.clone('packs'),
+            _format.index_builder_class,
+            _format.index_class,
+            use_chk_index=self._format.supports_chks,
+            )
+        self.inventories = KnitVersionedFiles(
+            _KnitGraphIndex(self._pack_collection.inventory_index.combined_index,
+                add_callback=self._pack_collection.inventory_index.add_callback,
+                deltas=True, parents=True, is_locked=self.is_locked),
+            data_access=self._pack_collection.inventory_index.data_access,
+            max_delta_chain=200)
+        self.revisions = KnitVersionedFiles(
+            _KnitGraphIndex(self._pack_collection.revision_index.combined_index,
+                add_callback=self._pack_collection.revision_index.add_callback,
+                deltas=False, parents=True, is_locked=self.is_locked,
+                track_external_parent_refs=True),
+            data_access=self._pack_collection.revision_index.data_access,
+            max_delta_chain=0)
+        self.signatures = KnitVersionedFiles(
+            _KnitGraphIndex(self._pack_collection.signature_index.combined_index,
+                add_callback=self._pack_collection.signature_index.add_callback,
+                deltas=False, parents=False, is_locked=self.is_locked),
+            data_access=self._pack_collection.signature_index.data_access,
+            max_delta_chain=0)
+        self.texts = KnitVersionedFiles(
+            _KnitGraphIndex(self._pack_collection.text_index.combined_index,
+                add_callback=self._pack_collection.text_index.add_callback,
+                deltas=True, parents=True, is_locked=self.is_locked),
+            data_access=self._pack_collection.text_index.data_access,
+            max_delta_chain=200)
+        self.chk_bytes = None
+        # True when the repository object is 'write locked' (as opposed to the
+        # physical lock only taken out around changes to the pack-names list.)
+        # Another way to represent this would be a decorator around the control
+        # files object that presents logical locks as physical ones - if this
+        # gets ugly consider that alternative design. RBC 20071011
+        self._write_lock_count = 0
+        self._transaction = None
+        # for tests
+        self._reconcile_does_inventory_gc = True
+        self._reconcile_fixes_text_parents = True
+        self._reconcile_backsup_inventory = False
 
     def _get_source(self, to_format):
         if to_format.network_name() == self._format.network_name():
