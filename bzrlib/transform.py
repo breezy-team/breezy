@@ -1359,9 +1359,8 @@ class DiskTreeTransform(TreeTransformBase):
         if orphan_policy is None:
             orphan_policy = default_policy
         if orphan_policy not in orphaning_registry:
-            trace.warning(
-                '%s (from %s) is not a known policy, defaulting to %s'
-                  % (orphan_policy, conf_var_name, default_policy))
+            trace.warning('%s (from %s) is not a known policy, defaulting '
+                'to %s' % (orphan_policy, conf_var_name, default_policy))
             orphan_policy = default_policy
         handle_orphan = orphaning_registry.get(orphan_policy)
         handle_orphan(self, trans_id, parent_id)

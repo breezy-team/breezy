@@ -21,7 +21,7 @@ import cStringIO
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bisect import bisect_right
+import bisect
 import math
 import tempfile
 import zlib
@@ -1051,7 +1051,7 @@ class BTreeGraphIndex(object):
         # iter_steps = len(in_keys) + len(fixed_keys)
         # bisect_steps = len(in_keys) * math.log(len(fixed_keys), 2)
         if len(in_keys) == 1: # Bisect will always be faster for M = 1
-            return [(bisect_right(fixed_keys, in_keys[0]), in_keys)]
+            return [(bisect.bisect_right(fixed_keys, in_keys[0]), in_keys)]
         # elif bisect_steps < iter_steps:
         #     offsets = {}
         #     for key in in_keys:

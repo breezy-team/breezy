@@ -41,6 +41,7 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     revisiontree,
+    trace,
     transform,
     views,
     )
@@ -58,7 +59,6 @@ from bzrlib.osutils import (
     realpath,
     safe_unicode,
     )
-from bzrlib.trace import mutter, mutter_callsite
 from bzrlib.transport.local import LocalTransport
 from bzrlib.tree import InterTree
 from bzrlib.tree import Tree
@@ -81,7 +81,7 @@ class DirStateWorkingTree(WorkingTree3):
         self._format = _format
         self.bzrdir = _bzrdir
         basedir = safe_unicode(basedir)
-        mutter("opening working tree %r", basedir)
+        trace.mutter("opening working tree %r", basedir)
         self._branch = branch
         self.basedir = realpath(basedir)
         # if branch is at our basedir and is a format 6 or less
@@ -389,7 +389,7 @@ class DirStateWorkingTree(WorkingTree3):
     def _get_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
         if 'evil' in debug.debug_flags:
-            mutter_callsite(2,
+            trace.mutter_callsite(2,
                 "accessing .inventory forces a size of tree translation.")
         if self._inventory is not None:
             return self._inventory
