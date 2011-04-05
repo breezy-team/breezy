@@ -1517,11 +1517,12 @@ class Branch(controldir.ControlComponent):
         else:
             raise AssertionError("invalid heads: %r" % (heads,))
 
-    def heads_to_fetch(self, stop_revision=None):
+    def heads_to_fetch(self, stop_revision=None, include_tags=True):
         """Return the heads that must and that should be fetched to copy this
         branch into another repo.
 
         :param stop_revision: Last branch revision to fetch, if not tip.
+        :param include_tags: Whether to include tags
 
         :returns: a 2-tuple of (must_fetch, if_present_fetch).  must_fetch is a
             set of heads that must be fetched.  if_present_fetch is a set of
@@ -1533,9 +1534,12 @@ class Branch(controldir.ControlComponent):
         if stop_revision is None:
             stop_revision = self.last_revision()
         must_fetch = set([stop_revision])
-        try:
-            if_present_fetch = set(self.tags.get_reverse_tag_dict())
-        except errors.TagsNotSupported:
+        if include_tags:
+            try:
+                if_present_fetch = set(self.tags.get_reverse_tag_dict())
+            except errors.TagsNotSupported:
+                if_present_fetch = set()
+        else:
             if_present_fetch = set()
         must_fetch.discard(_mod_revision.NULL_REVISION)
         if_present_fetch.discard(_mod_revision.NULL_REVISION)
@@ -3372,6 +3376,7 @@ class GenericInterBranch(InterBranch):
             fetch_spec_factory.source_repo = self.source.repository
             fetch_spec_factory.target_repo = self.target.repository
             fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+            fetch_spec_factory.include_tags = fetch_tags
             fetch_spec = fetch_spec_factory.make_fetch_spec()
             return self.target.repository.fetch(self.source.repository,
                 fetch_spec=fetch_spec)
