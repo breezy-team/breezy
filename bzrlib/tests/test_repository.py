@@ -57,6 +57,7 @@ from bzrlib import (
 from bzrlib.repofmt import (
     groupcompress_repo,
     knitrepo,
+    knitpack_repo,
     pack_repo,
     )
 
@@ -747,25 +748,25 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         source = self.make_repository('source', format='pack-0.92')
         target = self.make_repository('target', format='pack-0.92')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_rich_root_pack(self):
         source = self.make_repository('source', format='rich-root-pack')
         target = self.make_repository('target', format='rich-root-pack')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_19(self):
         source = self.make_repository('source', format='1.9')
         target = self.make_repository('target', format='1.9')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_19_rich_root(self):
         source = self.make_repository('source', format='1.9-rich-root')
         target = self.make_repository('target', format='1.9-rich-root')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_remote_exact_pack_19(self):
         trans = self.make_smart_server('target')
@@ -774,7 +775,7 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         target = self.make_repository('target', format='1.9')
         target = repository.Repository.open(trans.base)
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_stream_source_to_non_exact(self):
         source = self.make_repository('source', format='pack-0.92')
