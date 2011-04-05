@@ -1444,7 +1444,7 @@ class TestPacker(TestCaseWithTransport):
         # Because of how they were built, they correspond to
         # ['D', 'C', 'B', 'A']
         packs = b.repository._pack_collection.packs
-        packer = pack_repo.Packer(b.repository._pack_collection,
+        packer = knitpack_repo.KnitPacker(b.repository._pack_collection,
                                   packs, 'testing',
                                   revision_ids=['B', 'C'])
         # Now, when we are copying the B & C revisions, their pack files should
