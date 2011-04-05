@@ -25,9 +25,12 @@ from bzrlib import (
     bzrdir,
     debug,
     errors,
+    knit,
+    osutils,
     pack,
     revision as _mod_revision,
     trace,
+    tsort,
     ui,
     xml5,
     xml6,
@@ -44,14 +47,18 @@ from bzrlib import (
     btree_index,
     )
 from bzrlib.index import (
+    CombinedGraphIndex,
     GraphIndex,
+    GraphIndexPrefixAdapter,
     InMemoryGraphIndex,
     )
 from bzrlib.repofmt.knitrepo import (
     KnitRepository,
     )
 from bzrlib.repofmt.pack_repo import (
+    NewPack,
     RepositoryFormatPack,
+    ResumedPack,
     Packer,
     PackCommitBuilder,
     PackRepository,
@@ -63,7 +70,7 @@ from bzrlib.repository import (
     )
 
 
-class KnitPackRepository(PackRepository):
+class KnitPackRepository(PackRepository,KnitRepository):
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
@@ -72,7 +79,8 @@ class KnitPackRepository(PackRepository):
         if self._format.supports_chks:
             raise AssertionError("chk not supported")
         index_transport = self._transport.clone('indices')
-        self._pack_collection = RepositoryPackCollection(self, self._transport,
+        self._pack_collection = KnitRepositoryPackCollection(self,
+            self._transport,
             index_transport,
             self._transport.clone('upload'),
             self._transport.clone('packs'),
@@ -560,6 +568,35 @@ class KnitPacker(Packer):
                                           revision_ids=revision_ids,
                                           reload_func=reload_func)
 
+    def _pack_map_and_index_list(self, index_attribute):
+        """Convert a list of packs to an index pack map and index list.
+
+        :param index_attribute: The attribute that the desired index is found
+            on.
+        :return: A tuple (map, list) where map contains the dict from
+            index:pack_tuple, and list contains the indices in the preferred
+            access order.
+        """
+        indices = []
+        pack_map = {}
+        for pack_obj in self.packs:
+            index = getattr(pack_obj, index_attribute)
+            indices.append(index)
+            pack_map[index] = pack_obj
+        return pack_map, indices
+
+    def _index_contents(self, indices, key_filter=None):
+        """Get an iterable of the index contents from a pack_map.
+
+        :param indices: The list of indices to query
+        :param key_filter: An optional filter to limit the keys returned.
+        """
+        all_index = CombinedGraphIndex(indices)
+        if key_filter is None:
+            return all_index.iter_all_entries()
+        else:
+            return all_index.iter_entries(key_filter)
+
     def _copy_nodes(self, nodes, index_map, writer, write_index,
         output_lines=None):
         """Copy knit nodes between packs with no graph references.
@@ -725,6 +762,40 @@ class KnitPacker(Packer):
                 self.new_pack.inventory_index.key_count(),
                 time.time() - self.new_pack.start_time)
 
+    def _update_pack_order(self, entries, index_to_pack_map):
+        """Determine how we want our packs to be ordered.
+
+        This changes the sort order of the self.packs list so that packs unused
+        by 'entries' will be at the end of the list, so that future requests
+        can avoid probing them.  Used packs will be at the front of the
+        self.packs list, in the order of their first use in 'entries'.
+
+        :param entries: A list of (index, ...) tuples
+        :param index_to_pack_map: A mapping from index objects to pack objects.
+        """
+        packs = []
+        seen_indexes = set()
+        for entry in entries:
+            index = entry[0]
+            if index not in seen_indexes:
+                packs.append(index_to_pack_map[index])
+                seen_indexes.add(index)
+        if len(packs) == len(self.packs):
+            if 'pack' in debug.debug_flags:
+                trace.mutter('Not changing pack list, all packs used.')
+            return
+        seen_packs = set(packs)
+        for pack in self.packs:
+            if pack not in seen_packs:
+                packs.append(pack)
+                seen_packs.add(pack)
+        if 'pack' in debug.debug_flags:
+            old_names = [p.access_tuple()[1] for p in self.packs]
+            new_names = [p.access_tuple()[1] for p in packs]
+            trace.mutter('Reordering packs\nfrom: %s\n  to: %s',
+                   old_names, new_names)
+        self.packs = packs
+
     def _copy_revision_texts(self):
         # select revisions
         if self.revision_ids:
@@ -861,6 +932,52 @@ class KnitPacker(Packer):
         self._pack_collection.allocate(new_pack)
         return new_pack
 
+    def _least_readv_node_readv(self, nodes):
+        """Generate request groups for nodes using the least readv's.
+
+        :param nodes: An iterable of graph index nodes.
+        :return: Total node count and an iterator of the data needed to perform
+            readvs to obtain the data for nodes. Each item yielded by the
+            iterator is a tuple with:
+            index, readv_vector, node_vector. readv_vector is a list ready to
+            hand to the transport readv method, and node_vector is a list of
+            (key, eol_flag, references) for the node retrieved by the
+            matching readv_vector.
+        """
+        # group by pack so we do one readv per pack
+        nodes = sorted(nodes)
+        total = len(nodes)
+        request_groups = {}
+        for index, key, value, references in nodes:
+            if index not in request_groups:
+                request_groups[index] = []
+            request_groups[index].append((key, value, references))
+        result = []
+        for index, items in request_groups.iteritems():
+            pack_readv_requests = []
+            for key, value, references in items:
+                # ---- KnitGraphIndex.get_position
+                bits = value[1:].split(' ')
+                offset, length = int(bits[0]), int(bits[1])
+                pack_readv_requests.append(
+                    ((offset, length), (key, value[0], references)))
+            # linear scan up the pack to maximum range combining.
+            pack_readv_requests.sort()
+            # split out the readv and the node data.
+            pack_readv = [readv for readv, node in pack_readv_requests]
+            node_vector = [node for readv, node in pack_readv_requests]
+            result.append((index, pack_readv, node_vector))
+        return total, result
+
+    def _revision_node_readv(self, revision_nodes):
+        """Return the total revisions and the readv's to issue.
+
+        :param revision_nodes: The revision index contents for the packs being
+            incorporated into the new pack.
+        :return: As per _least_readv_node_readv.
+        """
+        return self._least_readv_node_readv(revision_nodes)
+
 
 class KnitReconcilePacker(KnitPacker):
     """A packer which regenerates indices etc as it copies.
@@ -957,7 +1074,7 @@ class KnitReconcilePacker(KnitPacker):
             self.new_pack.text_index,
             ('blank', ), 1,
             add_nodes_callback=self.new_pack.text_index.add_nodes)
-        data_access = pack._DirectPackAccess(
+        data_access = knit._DirectPackAccess(
                 {self.new_pack.text_index:self.new_pack.access_tuple()})
         data_access.set_writer(self.new_pack._writer, self.new_pack.text_index,
             self.new_pack.access_tuple())
@@ -1002,6 +1119,59 @@ class KnitReconcilePacker(KnitPacker):
         if new_inventory_keys != original_inventory_keys:
             self._data_changed = True
         return new_pack.data_inserted() and self._data_changed
+
+
+class OptimisingKnitPacker(KnitPacker):
+    """A packer which spends more time to create better disk layouts."""
+
+    def _revision_node_readv(self, revision_nodes):
+        """Return the total revisions and the readv's to issue.
+
+        This sort places revisions in topological order with the ancestors
+        after the children.
+
+        :param revision_nodes: The revision index contents for the packs being
+            incorporated into the new pack.
+        :return: As per _least_readv_node_readv.
+        """
+        # build an ancestors dict
+        ancestors = {}
+        by_key = {}
+        for index, key, value, references in revision_nodes:
+            ancestors[key] = references[0]
+            by_key[key] = (index, value, references)
+        order = tsort.topo_sort(ancestors)
+        total = len(order)
+        # Single IO is pathological, but it will work as a starting point.
+        requests = []
+        for key in reversed(order):
+            index, value, references = by_key[key]
+            # ---- KnitGraphIndex.get_position
+            bits = value[1:].split(' ')
+            offset, length = int(bits[0]), int(bits[1])
+            requests.append(
+                (index, [(offset, length)], [(key, value[0], references)]))
+        # TODO: combine requests in the same index that are in ascending order.
+        return total, requests
+
+    def open_pack(self):
+        """Open a pack for the pack we are creating."""
+        new_pack = super(OptimisingKnitPacker, self).open_pack()
+        # Turn on the optimization flags for all the index builders.
+        new_pack.revision_index.set_optimize(for_size=True)
+        new_pack.inventory_index.set_optimize(for_size=True)
+        new_pack.text_index.set_optimize(for_size=True)
+        new_pack.signature_index.set_optimize(for_size=True)
+        return new_pack
+
+
+class KnitRepositoryPackCollection(RepositoryPackCollection):
+    """A knit pack collection."""
+
+    pack_factory = NewPack
+    resumed_pack_factory = ResumedPack
+    normal_packer_class = KnitPacker
+    optimising_packer_class = OptimisingKnitPacker
 
 
 
