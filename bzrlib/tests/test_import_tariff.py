@@ -117,6 +117,8 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.sign_my_commits',
             'bzrlib.smart',
             'bzrlib.smart.client',
+            'bzrlib.smart.medium',
+            'bzrlib.smart.server',
             'bzrlib.transform',
             'bzrlib.version_info_formats.format_rio',
             'bzrlib.plugins.weave_fmt.branch',
