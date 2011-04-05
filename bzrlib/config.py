@@ -2049,8 +2049,12 @@ class Store(object):
         """
         raise NotImplementedError(self.get_sections)
 
-    def set_option(self, name, value, section_name=None):
-        raise NotImplementedError(self.set_option)
+    def get_mutable_section(self, section_name=None):
+        """Returns the specified mutable section.
+
+        :param section_name: The section identifier
+        """
+        raise NotImplementedError(self.get_mutable_section)
 
 
 class ConfigObjStore(Store):
@@ -2087,16 +2091,27 @@ class ConfigObjStore(Store):
         # We just keep the content waiting for load() to be called when needed
         self._content = StringIO(str_or_unicode.encode('utf-8'))
 
-    def load(self):
-        """Load the store from the associated file."""
+    def load(self, allow_no_such_file=False):
+        """Load the store from the associated file.
+
+        :param allow_no_such_file: Swallow the NoSuchFile exception if True.
+            This allows delayed loading when creating the first option ever.
+        """
         if self.loaded:
             return
         if self._content is not None:
             co_input = self._content
         else:
-            # The config files are always stored utf8-encoded
-            co_input =  StringIO(self.transport.get_bytes(self.file_name))
+            try:
+                content = self.transport.get_bytes(self.file_name)
+            except errors.NoSuchFile:
+                if allow_no_such_file:
+                    content = ''
+                else:
+                    raise
+            co_input =  StringIO(content)
         try:
+            # The config files are always stored utf8-encoded
             self._config_obj = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             # FIXME: external_url should really accepts an optional relpath
@@ -2129,14 +2144,14 @@ class ConfigObjStore(Store):
         for section_name in cobj.sections:
             yield ReadOnlySection(section_name, cobj[section_name])
 
-    def set_option(self, name, value, section_name=None):
+    def get_mutable_section(self, section_name=None):
         # We need a loaded store
-        self.load()
+        self.load(allow_no_such_file=True)
         if section_name is None:
             section = self._config_obj
         else:
             section = self._config_obj.setdefault(section_name, {})
-        section[name] = value
+        return MutableSection(section_name, section)
 
 
 # FIXME: global, bazaar, shouldn't that be 'user' instead or even
