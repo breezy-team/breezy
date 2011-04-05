@@ -23,6 +23,7 @@ from bzrlib import (
     errors,
     lazy_import,
     registry,
+    trace,
     tree,
     )
 lazy_import.lazy_import(globals(), """
@@ -61,7 +62,6 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
     )
-from bzrlib.trace import warning
 
 
 ROOT_PARENT = "root-parent"
@@ -1359,8 +1359,9 @@ class DiskTreeTransform(TreeTransformBase):
         if orphan_policy is None:
             orphan_policy = default_policy
         if orphan_policy not in orphaning_registry:
-            warning('%s (from %s) is not a known policy, defaulting to %s'
-                          % (orphan_policy, conf_var_name, default_policy))
+            trace.warning(
+                '%s (from %s) is not a known policy, defaulting to %s'
+                  % (orphan_policy, conf_var_name, default_policy))
             orphan_policy = default_policy
         handle_orphan = orphaning_registry.get(orphan_policy)
         handle_orphan(self, trans_id, parent_id)
@@ -1409,7 +1410,7 @@ def move_orphan(tt, orphan_id, parent_id):
     actual_name = tt.final_name(orphan_id)
     new_name = tt._available_backup_name(actual_name, od_id)
     tt.adjust_path(new_name, od_id, orphan_id)
-    warning('%s has been orphaned in %s'
+    trace.warning('%s has been orphaned in %s'
                   % (joinpath(parent_path, actual_name), orphan_dir_basename))
 
 
@@ -2521,7 +2522,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
             precomputed_delta = None
         conflicts = cook_conflicts(raw_conflicts, tt)
         for conflict in conflicts:
-            warning(conflict)
+            trace.warning(conflict)
         try:
             wt.add_conflicts(conflicts)
         except errors.UnsupportedOperation:
@@ -2762,7 +2763,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
                 unversioned_filter=working_tree.is_ignored)
             delta.report_changes(tt.iter_changes(), change_reporter)
         for conflict in conflicts:
-            warning(conflict)
+            trace.warning(conflict)
         pp.next_phase()
         tt.apply()
         working_tree.set_merge_modified(merge_modified)
