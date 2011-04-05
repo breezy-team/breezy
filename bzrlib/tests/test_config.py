@@ -2023,13 +2023,11 @@ class TestConfigObjStore(tests.TestCaseWithTransport):
         b = self.make_branch('.')
         store = config.BranchStore(b)
 
+
 class TestConfigStackGet(tests.TestCase):
 
     # FIXME: This should be parametrized for all known ConfigStack or dedicated
     # paramerized tests created to avoid bloating -- vila 2011-03-31
-
-    def test_compatibility(self):
-        self.assertRaises(AssertionError, config.ConfigStack, [object()])
 
     def test_single_config_get(self):
         conf = dict(foo='bar')
@@ -2066,11 +2064,9 @@ class TestConfigStackSet(tests.TestCaseWithTransport):
     def test_set_creates_a_new_section(self):
         store = config.ConfigObjStore.from_string(
             '', self.get_transport(), 'test.conf')
-        conf = config.ConfigStack(list(store.get_sections()), store)
+        conf = config.ConfigStack([store.get_sections], store)
         conf.set('foo', 'baz')
-        self.expectFailure(
-            'Newly created sections were not known at stack build time',
-            self.assertEquals, 'baz', conf.get('foo'))
+        self.assertEquals, 'baz', conf.get('foo')
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
