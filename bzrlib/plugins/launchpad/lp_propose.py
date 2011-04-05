@@ -24,11 +24,11 @@ import webbrowser
 
 from bzrlib import (
     msgeditor,
-)
+    )
 from bzrlib.plugins.launchpad import (
     lp_api,
     lp_registration,
-)
+    )
 """)
 
 
