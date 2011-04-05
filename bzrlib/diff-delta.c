@@ -29,6 +29,7 @@
 
 #define RABIN_SHIFT 23
 #define RABIN_WINDOW 16
+#define MAX_NUM_ENTRIES 10000
 
 /* The hash map is sized to put 4 entries per bucket, this gives us ~even room
  * for more data. Tweaking this number above 4 doesn't seem to help much,
@@ -379,7 +380,7 @@ create_delta_index(const struct source_info *src,
                    struct delta_index **fresh)
 {
     unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
-    unsigned int total_num_entries;
+    unsigned int total_num_entries, stride;
     const unsigned char *data, *buffer;
     struct delta_index *index;
     struct unpacked_index_entry *entry, **hash;
@@ -393,7 +394,16 @@ create_delta_index(const struct source_info *src,
     /* Determine index hash size.  Note that indexing skips the
        first byte to allow for optimizing the Rabin's polynomial
        initialization in create_delta(). */
+    stride = RABIN_WINDOW;
     num_entries = (src->size - 1)  / RABIN_WINDOW;
+    if (num_entries > MAX_NUM_ENTRIES) {
+        /* Limit the max number of matching entries. This reduces the 'best'
+         * possible match, but means we don't consume all of ram.
+         */
+        // fprintf(stderr, "limiting num_entries to %d\n", MAX_NUM_ENTRIES);
+        num_entries = MAX_NUM_ENTRIES;
+        stride = (src->size) / num_entries;
+    }
     if (old != NULL)
         total_num_entries = num_entries + old->num_entries;
     else
@@ -428,9 +438,9 @@ create_delta_index(const struct source_info *src,
 
     /* then populate the index for the new data */
     prev_val = ~0;
-    for (data = buffer + num_entries * RABIN_WINDOW - RABIN_WINDOW;
+    for (data = buffer + num_entries * stride - RABIN_WINDOW;
          data >= buffer;
-         data -= RABIN_WINDOW) {
+         data -= stride) {
         unsigned int val = 0;
         for (i = 1; i <= RABIN_WINDOW; i++)
             val = ((val << 8) | data[i]) ^ T[val >> RABIN_SHIFT];
