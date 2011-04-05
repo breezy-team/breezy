@@ -20,6 +20,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     bzrdir,
+    revision as _mod_revision,
     xml5,
     xml6,
     xml7,

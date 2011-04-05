@@ -49,7 +49,6 @@ from bzrlib import (
     errors,
     lockable_files,
     lockdir,
-    revision as _mod_revision,
     )
 
 from bzrlib.decorators import needs_write_lock, only_raises
