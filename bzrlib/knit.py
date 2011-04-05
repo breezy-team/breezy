@@ -63,15 +63,12 @@ lazy_import(globals(), """
 import gzip
 
 from bzrlib import (
-    annotate,
     debug,
     diff,
     graph as _mod_graph,
     index as _mod_index,
-    lru_cache,
     pack,
     patiencediff,
-    progress,
     static_tuple,
     trace,
     tsort,
@@ -80,6 +77,7 @@ from bzrlib import (
     )
 """)
 from bzrlib import (
+    annotate,
     errors,
     osutils,
     )

@@ -20,10 +20,9 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    config,
+    bzrdir as _mod_bzrdir,
     gpg,
     )
-from bzrlib.bzrdir import BzrDir
 """)
 from bzrlib.commands import Command
 from bzrlib.option import Option
@@ -50,10 +49,10 @@ class cmd_sign_my_commits(Command):
 
     def run(self, location=None, committer=None, dry_run=False):
         if location is None:
-            bzrdir = BzrDir.open_containing('.')[0]
+            bzrdir = _mod_bzrdir.BzrDir.open_containing('.')[0]
         else:
             # Passed in locations should be exact
-            bzrdir = BzrDir.open(location)
+            bzrdir = _mod_bzrdir.BzrDir.open(location)
         branch = bzrdir.open_branch()
         repo = branch.repository
         branch_config = branch.get_config()

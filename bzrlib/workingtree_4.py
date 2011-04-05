@@ -31,7 +31,6 @@ lazy_import(globals(), """
 import errno
 import stat
 
-import bzrlib
 from bzrlib import (
     bzrdir,
     cache_utf8,
@@ -42,12 +41,9 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     revisiontree,
-    trace,
     transform,
     views,
     )
-import bzrlib.branch
-import bzrlib.ui
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -62,7 +58,7 @@ from bzrlib.osutils import (
     realpath,
     safe_unicode,
     )
-from bzrlib.trace import mutter
+from bzrlib.trace import mutter, mutter_callsite
 from bzrlib.transport.local import LocalTransport
 from bzrlib.tree import InterTree
 from bzrlib.tree import Tree
@@ -393,7 +389,7 @@ class DirStateWorkingTree(WorkingTree3):
     def _get_inventory(self):
         """Get the inventory for the tree. This is only valid within a lock."""
         if 'evil' in debug.debug_flags:
-            trace.mutter_callsite(2,
+            mutter_callsite(2,
                 "accessing .inventory forces a size of tree translation.")
         if self._inventory is not None:
             return self._inventory

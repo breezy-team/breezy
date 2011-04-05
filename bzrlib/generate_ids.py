@@ -19,7 +19,6 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import time
-import unicodedata
 
 from bzrlib import (
     config,

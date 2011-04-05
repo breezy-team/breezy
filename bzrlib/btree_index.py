@@ -18,10 +18,14 @@
 """B+Tree indices"""
 
 import cStringIO
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bisect import bisect_right
 import math
 import tempfile
 import zlib
+""")
 
 from bzrlib import (
     chunk_writer,

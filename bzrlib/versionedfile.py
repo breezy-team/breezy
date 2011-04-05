@@ -28,6 +28,7 @@ import urllib
 
 from bzrlib import (
     annotate,
+    bencode,
     errors,
     graph as _mod_graph,
     groupcompress,
@@ -37,14 +38,10 @@ from bzrlib import (
     multiparent,
     tsort,
     revision,
-    ui,
     )
-from bzrlib.graph import DictParentsProvider, Graph, StackedParentsProvider
-from bzrlib.transport.memory import MemoryTransport
 """)
 from bzrlib.registry import Registry
 from bzrlib.textmerge import TextMerge
-from bzrlib import bencode
 
 
 adapter_registry = Registry()
@@ -1451,7 +1448,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         # line data for locally held keys.
         self._lines = {}
         # key lookup providers
-        self._providers = [DictParentsProvider(self._parents)]
+        self._providers = [_mod_graph.DictParentsProvider(self._parents)]
 
     def plan_merge(self, ver_a, ver_b, base=None):
         """See VersionedFile.plan_merge"""
@@ -1464,7 +1461,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
 
     def plan_lca_merge(self, ver_a, ver_b, base=None):
         from bzrlib.merge import _PlanLCAMerge
-        graph = Graph(self)
+        graph = _mod_graph.Graph(self)
         new_plan = _PlanLCAMerge(ver_a, ver_b, self, (self._file_id,), graph).plan_merge()
         if base is None:
             return new_plan
@@ -1522,7 +1519,8 @@ class _PlanMergeVersionedFile(VersionedFiles):
             result[revision.NULL_REVISION] = ()
         self._providers = self._providers[:1] + self.fallback_versionedfiles
         result.update(
-            StackedParentsProvider(self._providers).get_parent_map(keys))
+            _mod_graph.StackedParentsProvider(
+                self._providers).get_parent_map(keys))
         for key, parents in result.iteritems():
             if parents == ():
                 result[key] = (revision.NULL_REVISION,)

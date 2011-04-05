@@ -124,9 +124,11 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.xml5',
             'bzrlib.xml6',
             'bzrlib.xml7',
+            'getpass',
             'kerberos',
             'smtplib',
             'tarfile',
+            'tempfile',
             ])
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff

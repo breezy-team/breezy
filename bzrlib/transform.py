@@ -19,7 +19,6 @@ import errno
 from stat import S_ISREG, S_IEXEC
 import time
 
-import bzrlib
 from bzrlib import (
     errors,
     lazy_import,
@@ -38,7 +37,6 @@ from bzrlib import (
     multiparent,
     osutils,
     revision as _mod_revision,
-    trace,
     ui,
     urlutils,
     )
@@ -48,7 +46,6 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
-from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (
     delete_any,
     file_kind,
@@ -629,7 +626,7 @@ class TreeTransformBase(object):
             if kind is None:
                 conflicts.append(('versioning no contents', trans_id))
                 continue
-            if not InventoryEntry.versionable_kind(kind):
+            if not inventory.InventoryEntry.versionable_kind(kind):
                 conflicts.append(('versioning bad kind', trans_id, kind))
         return conflicts
 
@@ -1362,7 +1359,7 @@ class DiskTreeTransform(TreeTransformBase):
         if orphan_policy is None:
             orphan_policy = default_policy
         if orphan_policy not in orphaning_registry:
-            trace.warning('%s (from %s) is not a known policy, defaulting to %s'
+            warning('%s (from %s) is not a known policy, defaulting to %s'
                           % (orphan_policy, conf_var_name, default_policy))
             orphan_policy = default_policy
         handle_orphan = orphaning_registry.get(orphan_policy)
@@ -1412,7 +1409,7 @@ def move_orphan(tt, orphan_id, parent_id):
     actual_name = tt.final_name(orphan_id)
     new_name = tt._available_backup_name(actual_name, od_id)
     tt.adjust_path(new_name, od_id, orphan_id)
-    trace.warning('%s has been orphaned in %s'
+    warning('%s has been orphaned in %s'
                   % (joinpath(parent_path, actual_name), orphan_dir_basename))
 
 

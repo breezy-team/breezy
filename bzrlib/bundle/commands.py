@@ -20,7 +20,6 @@ This should have commands for both generating a changeset,
 and for applying a changeset.
 """
 
-import sys
 from cStringIO import StringIO
 
 from bzrlib.lazy_import import lazy_import
@@ -36,8 +35,6 @@ from bzrlib import (
 """)
 
 from bzrlib.commands import Command
-from bzrlib.option import Option
-from bzrlib.trace import note
 
 
 class cmd_bundle_info(Command):
