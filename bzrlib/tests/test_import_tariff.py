@@ -105,6 +105,7 @@ class TestImportTariffs(TestCaseWithTransport):
             # bzrlib.foreign so it can't be blacklisted
             'bzrlib.gpg',
             'bzrlib.info',
+            'bzrlib.knit',
             'bzrlib.merge3',
             'bzrlib.merge_directive',
             'bzrlib.msgeditor',

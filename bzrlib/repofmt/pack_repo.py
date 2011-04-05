@@ -37,9 +37,6 @@ from bzrlib.index import (
     CombinedGraphIndex,
     GraphIndexPrefixAdapter,
     )
-from bzrlib.knit import (
-    _DirectPackAccess,
-    )
 """)
 from bzrlib import (
     btree_index,
@@ -570,7 +567,7 @@ class AggregateIndex(object):
         self._reload_func = reload_func
         self.index_to_pack = {}
         self.combined_index = CombinedGraphIndex([], reload_func=reload_func)
-        self.data_access = _DirectPackAccess(self.index_to_pack,
+        self.data_access = pack._DirectPackAccess(self.index_to_pack,
                                              reload_func=reload_func,
                                              flush_func=flush_func)
         self.add_callback = None

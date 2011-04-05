@@ -28,7 +28,6 @@ from bzrlib import (
     debug,
     errors,
     graph as _mod_graph,
-    knit,
     osutils,
     pack,
     static_tuple,
@@ -38,6 +37,7 @@ from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
+    _KeyRefs,
     adapter_registry,
     AbsentContentFactory,
     ChunkedContentFactory,
@@ -1046,7 +1046,7 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
         index = _GCGraphIndex(graph_index, lambda:True, parents=parents,
             add_callback=graph_index.add_nodes,
             inconsistency_fatal=inconsistency_fatal)
-        access = knit._DirectPackAccess({})
+        access = pack._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
         result.stream = stream
@@ -1921,7 +1921,7 @@ class _GCGraphIndex(object):
         # repeated over and over, this creates a surplus of ints
         self._int_cache = {}
         if track_external_parent_refs:
-            self._key_dependencies = knit._KeyRefs(
+            self._key_dependencies = _KeyRefs(
                 track_new_keys=track_new_keys)
         else:
             self._key_dependencies = None

@@ -26,9 +26,8 @@ from bzrlib import (
     errors,
     index as _mod_index,
     inventory,
-    knit,
     osutils,
-    pack,
+    pack as _mod_pack,
     revision as _mod_revision,
     trace,
     ui,
@@ -154,7 +153,7 @@ class GCPack(NewPack):
         # expose this on self, for the occasion when clients want to add data.
         self._write_data = _write_data
         # a pack writer object to serialise pack records.
-        self._writer = pack.ContainerWriter(self._write_data)
+        self._writer = _mod_pack.ContainerWriter(self._write_data)
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
         self._state = 'open'
@@ -354,7 +353,7 @@ class GCCHKPacker(Packer):
         """Build a VersionedFiles instance on top of this group of packs."""
         index_name = index_name + '_index'
         index_to_pack = {}
-        access = knit._DirectPackAccess(index_to_pack,
+        access = _mod_pack._DirectPackAccess(index_to_pack,
                                         reload_func=self._reload_func)
         if for_write:
             # Use new_pack
