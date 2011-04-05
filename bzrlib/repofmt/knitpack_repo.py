@@ -25,6 +25,7 @@ from bzrlib import (
     bzrdir,
     debug,
     errors,
+    knit,
     osutils,
     pack,
     revision as _mod_revision,
@@ -1073,7 +1074,7 @@ class KnitReconcilePacker(KnitPacker):
             self.new_pack.text_index,
             ('blank', ), 1,
             add_nodes_callback=self.new_pack.text_index.add_nodes)
-        data_access = _DirectPackAccess(
+        data_access = knit._DirectPackAccess(
                 {self.new_pack.text_index:self.new_pack.access_tuple()})
         data_access.set_writer(self.new_pack._writer, self.new_pack.text_index,
             self.new_pack.access_tuple())
