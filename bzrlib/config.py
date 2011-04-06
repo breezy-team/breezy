@@ -2194,7 +2194,7 @@ class LockableConfigObjStore(ConfigObjStore):
 # FIXME: global, bazaar, shouldn't that be 'user' instead or even
 # 'user_defaults' as opposed to 'user_overrides', 'system_defaults'
 # (/etc/bzr/bazaar.conf) and 'system_overrides' ? -- vila 2011-04-05
-class GlobalStore(ConfigObjStore):
+class GlobalStore(LockableConfigObjStore):
 
     def __init__(self, possible_transports=None):
         t = transport.get_transport(config_dir(),
@@ -2202,7 +2202,7 @@ class GlobalStore(ConfigObjStore):
         super(GlobalStore, self).__init__(t, 'bazaar.conf')
 
 
-class LocationStore(ConfigObjStore):
+class LocationStore(LockableConfigObjStore):
 
     def __init__(self, possible_transports=None):
         t = transport.get_transport(config_dir(),
