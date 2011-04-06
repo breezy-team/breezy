@@ -44,7 +44,7 @@ from bzrlib.trace import (
 def _format_exception():
     """Format an exception as it would normally be displayed to the user"""
     buf = StringIO()
-    report_exception("", buf)
+    report_exception(sys.exc_info, buf)
     return buf.getvalue()
 
 
