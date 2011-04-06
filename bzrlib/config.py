@@ -2183,19 +2183,27 @@ class BranchStore(ConfigObjStore):
 class ConfigStack(object):
     """A stack of configurations where an option can be defined"""
 
-    def __init__(self, sections, mutable_section=None):
+    def __init__(self, sections, get_mutable_section=None):
         """Creates a stack of sections with an optional store for changes.
 
         :param sections: A list of ReadOnlySection or callables that returns an
             iterable of ReadOnlySection.
 
-        :param mutable_section: A MutableSection where changes are recorded.
+        :param get_mutable_section: A callable that returns a MutableSection
+            where changes are recorded.
         """
         self.sections = sections
-        self.mutable_section = mutable_section
+        self.get_mutable_section = get_mutable_section
 
     def get(self, name):
-        """Return the value from the first definition found in the sections"""
+        """Return the value from the first definition found in the sections.
+
+        This is where we guarantee that sections coming from Store lazily load
+        them: the loading is delayed until we need to either check that an
+        option exists or get its value, which in turn may require to discover
+        in which sections it can be defined. Both of these (section and option
+        existence) require loading the store (even partially).
+        """
         for section_or_callable in self.sections:
             # Each section can expand to multiple ones when a callable is used
             if callable(section_or_callable):
@@ -2210,7 +2218,13 @@ class ConfigStack(object):
         return None
 
     def set(self, name, value):
-        self.mutable_section.set(name, value)
+        """Set a new value for the option.
+
+        This where we guarantee that the mutable section is lazily loaded: this
+        means we won't load the correspoding store before setting a value.
+        """
+        section = self.get_mutable_section()
+        section.set(name, value)
 
 
 class cmd_config(commands.Command):

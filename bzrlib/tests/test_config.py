@@ -2069,7 +2069,7 @@ class TestConfigStackSet(tests.TestCaseWithTransport):
         store = config.ConfigObjStore.from_string(
             'foo=bar', self.get_transport(), 'test.conf')
         conf = config.ConfigStack(
-            [store.get_sections], store.get_mutable_section(None))
+            [store.get_sections], store.get_mutable_section)
         self.assertEquals('bar', conf.get('foo'))
         conf.set('foo', 'baz')
         # Did we get it back ?
@@ -2079,7 +2079,7 @@ class TestConfigStackSet(tests.TestCaseWithTransport):
         store = config.ConfigObjStore.from_string(
             '', self.get_transport(), 'test.conf')
         conf = config.ConfigStack(
-            [store.get_sections], store.get_mutable_section(None))
+            [store.get_sections], store.get_mutable_section)
         conf.set('foo', 'baz')
         self.assertEquals, 'baz', conf.get('foo')
 
