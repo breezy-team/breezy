@@ -848,7 +848,7 @@ class LockableConfig(IniBasedConfig):
         # LockableConfig for other kind of transports, we will need to reuse
         # whatever connection is already established -- vila 20100929
         self.transport = transport.get_transport(self.dir)
-        self._lock = lockdir.LockDir(self.transport, 'lock')
+        self._lock = lockdir.LockDir(self.transport, self.lock_name)
 
     def _create_from_string(self, unicode_bytes, save):
         super(LockableConfig, self)._create_from_string(unicode_bytes, False)
@@ -2150,6 +2150,44 @@ class ConfigObjStore(Store):
         else:
             section = self._config_obj.setdefault(section_name, {})
         return MutableSection(section_name, section)
+
+
+class LockableConfigObjStore(ConfigObjStore):
+    """A ConfigObjStore using locks on save to ensure store integrity."""
+
+    def __init__(self, transport, file_name, lock_dir_name=None):
+        """A config Store using ConfigObj for storage.
+
+        :param transport: The transport object where the config file is located.
+
+        :param file_name: The config file basename in the transport directory.
+        """
+        if lock_dir_name is None:
+            lock_dir_name = 'lock'
+        self.lock_dir_name = lock_dir_name
+        super(LockableConfigObjStore, self).__init__(transport, file_name)
+        self._lock = lockdir.LockDir(self.transport, self.lock_dir_name)
+
+    def lock_write(self, token=None):
+        """Takes a write lock in the directory containing the config file.
+
+        If the directory doesn't exist it is created.
+        """
+        # FIXME: This doesn't check the ownership of the created directories as
+        # ensure_config_dir_exists does. It should if the transport is local
+        # -- vila 2011-04-06
+        self.transport.create_prefix()
+        return self._lock.lock_write(token)
+
+    def unlock(self):
+        self._lock.unlock()
+
+    def break_lock(self):
+        self._lock.break_lock()
+
+    @needs_write_lock
+    def save(self):
+        super(LockableConfigObjStore, self).save()
 
 
 class cmd_config(commands.Command):

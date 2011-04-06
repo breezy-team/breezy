@@ -831,7 +831,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         def c1_write_config_file():
             before_writing.set()
             c1_orig()
-            # The lock is held we wait for the main thread to decide when to
+            # The lock is held. We wait for the main thread to decide when to
             # continue
             after_writing.wait()
         c1._write_config_file = c1_write_config_file
@@ -864,7 +864,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
        c1_orig = c1._write_config_file
        def c1_write_config_file():
            ready_to_write.set()
-           # The lock is held we wait for the main thread to decide when to
+           # The lock is held. We wait for the main thread to decide when to
            # continue
            do_writing.wait()
            c1_orig()
@@ -2064,6 +2064,19 @@ foo_in_qux=quux
         self.assertSectionContent(
             ('baz', {'foo_in_baz': 'barbaz', 'qux': {'foo_in_qux': 'quux'}}),
             sections[3])
+
+
+class TestLockableConfigObjStore(TestStore):
+
+    def test_create_store_in_created_dir(self):
+        t = self.get_transport('dir/subdir')
+        store = config.LockableConfigObjStore(t, 'foo.conf')
+        store.get_mutable_section(None).set('foo', 'bar')
+        store.save()
+
+    # FIXME: We should adapt the tests in TestLockableConfig about concurrent
+    # writes, for now, I'll just rely on using the same code (copied, but
+    # pretty trivial) -- vila 20110-04-06
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
