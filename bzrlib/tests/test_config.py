@@ -1889,7 +1889,7 @@ class TestConfigMutableSection(tests.TestCase):
         self.assertEquals(config._Created, section.orig['foo'])
 
 
-class TestStore(tests.TestCaseWithTransport):
+class TestReadonlyStore(tests.TestCaseWithTransport):
 
     # FIXME: parametrize against all valid (store, transport) combinations
 
@@ -1897,7 +1897,7 @@ class TestStore(tests.TestCaseWithTransport):
         if name is None:
             name = 'foo.conf'
         if content is None:
-            store = config.ConfigObjStore(self.get_transport(), name)
+            store = config.ConfigObjStore(self.get_readonly_transport(), name)
         else:
             store = config.ConfigObjStore.from_string(
                 content, self.get_transport(), name)
@@ -2001,6 +2001,21 @@ foo_in_qux=quux
         self.assertSectionContent(
             ('baz', {'foo_in_baz': 'barbaz', 'qux': {'foo_in_qux': 'quux'}}),
             sections[3])
+
+
+class TestMutableStore(tests.TestCaseWithTransport):
+
+    # FIXME: parametrize against all valid (store, transport) combinations
+
+    def get_store(self, name=None, content=None):
+        if name is None:
+            name = 'foo.conf'
+        if content is None:
+            store = config.ConfigObjStore(self.get_transport(), name)
+        else:
+            store = config.ConfigObjStore.from_string(
+                content, self.get_transport(), name)
+        return store
 
     def test_set_option_in_empty_file(self):
         store = self.get_store('foo.conf')
