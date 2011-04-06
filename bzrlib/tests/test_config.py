@@ -2024,7 +2024,8 @@ class TestConfigObjStore(TestStore):
     def test_get_embedded_sections(self):
         # A more complicated example (which also shows that section names and
         # option names share the same name space...)
-        # FIXME: This is really specific to ConfigObjStore -- vila 2011-04-05
+        # FIXME: This should be fixed by forbidding dicts as values ?
+        # -- vila 2011-04-05
         store = config.ConfigObjStore.from_string('''
 foo=bar
 l=1,2
