@@ -2183,12 +2183,19 @@ class BranchStore(ConfigObjStore):
 class ConfigStack(object):
     """A stack of configurations where an option can be defined"""
 
-    def __init__(self, sections, store=None):
+    def __init__(self, sections, mutable_section=None):
+        """Creates a stack of sections with an optional store for changes.
+
+        :param sections: A list of ReadOnlySection or callables that returns an
+            iterable of ReadOnlySection.
+
+        :param mutable_section: A MutableSection where changes are recorded.
+        """
         self.sections = sections
-        self.store = store
+        self.mutable_section = mutable_section
 
     def get(self, name):
-        """Return the value from the first definition found in the list"""
+        """Return the value from the first definition found in the sections"""
         value = None
         for s in self.sections:
             if callable(s):
@@ -2203,7 +2210,7 @@ class ConfigStack(object):
         return value
 
     def set(self, name, value):
-        self.store.set_option(name, value)
+        self.mutable_section.set(name, value)
 
 
 class cmd_config(commands.Command):

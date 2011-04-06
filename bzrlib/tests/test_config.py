@@ -2068,7 +2068,8 @@ class TestConfigStackSet(tests.TestCaseWithTransport):
     def test_simple_set(self):
         store = config.ConfigObjStore.from_string(
             'foo=bar', self.get_transport(), 'test.conf')
-        conf = config.ConfigStack(list(store.get_sections()), store)
+        conf = config.ConfigStack(
+            [store.get_sections], store.get_mutable_section(None))
         self.assertEquals('bar', conf.get('foo'))
         conf.set('foo', 'baz')
         # Did we get it back ?
@@ -2077,7 +2078,8 @@ class TestConfigStackSet(tests.TestCaseWithTransport):
     def test_set_creates_a_new_section(self):
         store = config.ConfigObjStore.from_string(
             '', self.get_transport(), 'test.conf')
-        conf = config.ConfigStack([store.get_sections], store)
+        conf = config.ConfigStack(
+            [store.get_sections], store.get_mutable_section(None))
         conf.set('foo', 'baz')
         self.assertEquals, 'baz', conf.get('foo')
 
