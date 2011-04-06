@@ -2116,7 +2116,7 @@ class ConfigObjStore(Store):
             # parameter (bug #750169) :-/ -- vila 2011-04-04
             # The following will do in the interim but maybe we don't want to
             # expose a path here but rather a config ID and its associated
-            # object (hand wawing).
+            # object </hand wawe>.
             file_path = os.path.join(self.transport.external_url(),
                                      self.file_name)
             raise errors.ParseConfigError(e.errors, file_path)
