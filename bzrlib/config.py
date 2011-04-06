@@ -2196,18 +2196,18 @@ class ConfigStack(object):
 
     def get(self, name):
         """Return the value from the first definition found in the sections"""
-        value = None
-        for s in self.sections:
-            if callable(s):
-                for s in s():
-                    value = s.get(name)
-                    if value is not None:
-                        break
+        for section_or_callable in self.sections:
+            # Each section can expand to multiple ones when a callable is used
+            if callable(section_or_callable):
+                sections = section_or_callable()
             else:
-                value = s.get(name)
-            if value is not None:
-                break
-        return value
+                sections = [section_or_callable]
+            for section in sections:
+                value = section.get(name)
+                if value is not None:
+                    return value
+        # No definition was found
+        return None
 
     def set(self, name, value):
         self.mutable_section.set(name, value)
