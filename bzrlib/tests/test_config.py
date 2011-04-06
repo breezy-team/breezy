@@ -1890,6 +1890,19 @@ class TestConfigMutableSection(tests.TestCase):
 
 
 def get_ConfigObjStore(transport, file_name, content=None):
+    """Build a ConfigObjStore.
+
+    :param transport: The transport where the store lives.
+
+    :param file_name: The name of the store.
+
+    :param content: A provided content to inject into the built store.
+
+    If provided, the content is added to the store but without saving it on
+    disk. It should be a string or a unicode string in the ConfigObj syntax.
+    While this poses a constraint on other store implementations, it keeps a
+    simple syntax usable by test writers.
+    """
     if content is None:
         store = config.ConfigObjStore(transport, file_name)
     else:
@@ -1927,9 +1940,8 @@ class TestReadonlyStore(TestStore):
         store = self.get_store('foo.conf', '')
         self.assertEquals(False, store.loaded)
         store.load()
+        # We loaded the store from the provided content
         self.assertEquals(True, store.loaded)
-        # We use from_string and don't save, so the file shouldn't be created
-        self.failIfExists('foo.conf')
 
     def test_get_no_sections_for_empty(self):
         store = self.get_store('foo.conf', '')
