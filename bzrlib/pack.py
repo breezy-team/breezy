@@ -527,5 +527,3 @@ def iter_records_from_file(source_file):
         if parser.finished:
             break
 
-
-
