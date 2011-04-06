@@ -60,6 +60,11 @@ Documentation
 * Added a section about using a shared SSH account on a server for bzr+ssh
   access.  (Russell Smith)
 
+* The documentation now recommends using SSH rather than SFTP in the
+  tutorials and the examples, because that will generally be much faster
+  and better in cases where it can be used.  SFTP is still available and
+  mentioned as an alternative.  (Martin Pool, #636712)
+
 API Changes
 ***********
 

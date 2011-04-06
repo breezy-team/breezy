@@ -14,7 +14,7 @@ Note that central shared branches typically only want to
 store history, not working copies of files, so their enclosing
 repository is usually creating using the ``no-trees`` option, e.g.::
 
-  bzr init-repo --no-trees sftp://centralhost/srv/bzr/PROJECT
+  bzr init-repo --no-trees bzr+ssh://centralhost/srv/bzr/PROJECT
 
 You can think of this step as similar to setting up a new cvsroot or
 Subversion repository. However, Bazaar gives you more flexibility
@@ -42,14 +42,14 @@ Here is an example of the first way::
   bzr add                (populate repository; start version control)
   bzr commit -m "Initial import"
                          (publish to central repository)
-  bzr push sftp://centralhost/srv/bzr/PROJECT/trunk
+  bzr push bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
 
 Here is an example of the second way::
 
   bzr init-repo PROJECT  (prepare local repository)
   cd PROJECT
-  bzr init sftp://centralhost/srv/bzr/PROJECT/trunk
-  bzr checkout sftp://centralhost/srv/bzr/PROJECT/trunk
+  bzr init bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
+  bzr checkout bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
   cd trunk
   cp -ar ~/PROJECT .     (copy files in using OS-specific tools)
   bzr add                (populate repository; start version control)
