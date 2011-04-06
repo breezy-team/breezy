@@ -44,6 +44,11 @@ Bug Fixes
 
  * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
+* Standalone bzr.exe installation on Windows: user can put additional python 
+  libraries into ``site-packages`` subdirectory of the installation directory,
+  this might be required for "installing" extra dependencies for some plugins.
+  (Alexander Belchenko, #743256)
+
 Documentation
 *************
 
