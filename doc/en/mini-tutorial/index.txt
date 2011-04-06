@@ -145,7 +145,7 @@ Publishing your branch on Launchpad
 
 Launchpad is a suite of development and hosting tools for
 software projects. You can use it to publish your branch.  (You can 
-also publish branches onto your own server: see :ref:`publishing_a_branch`.)
+also publish branches onto your own server or other hosting services.)
 
 If you don't have a Launchpad account, follow the `account signup guide`_
 and `register an SSH key`_ in your new Launchpad account.
