@@ -2059,6 +2059,14 @@ class TestConfigStackGet(tests.TestCase):
         conf_stack = config.ConfigStack([conf1, conf2])
         self.assertEquals('baz', conf_stack.get('foo'))
 
+    def test_get_for_empty_stack(self):
+        conf_stack = config.ConfigStack()
+        self.assertEquals(None, conf_stack.get('foo'))
+
+    def test_get_for_empty_section_callable(self):
+        conf_stack = config.ConfigStack([lambda : []])
+        self.assertEquals(None, conf_stack.get('foo'))
+
 
 class TestConfigStackSet(tests.TestCaseWithTransport):
 

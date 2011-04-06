@@ -2182,7 +2182,7 @@ class BranchStore(ConfigObjStore):
 class ConfigStack(object):
     """A stack of configurations where an option can be defined"""
 
-    def __init__(self, sections, get_mutable_section=None):
+    def __init__(self, sections=None, get_mutable_section=None):
         """Creates a stack of sections with an optional store for changes.
 
         :param sections: A list of ReadOnlySection or callables that returns an
@@ -2191,18 +2191,23 @@ class ConfigStack(object):
         :param get_mutable_section: A callable that returns a MutableSection
             where changes are recorded.
         """
+        if sections is None:
+            sections = []
         self.sections = sections
         self.get_mutable_section = get_mutable_section
 
     def get(self, name):
-        """Return the value from the first definition found in the sections.
+        """Return the *first* option value found in the sections.
 
-        This is where we guarantee that sections coming from Store lazily load
-        them: the loading is delayed until we need to either check that an
+        This is where we guarantee that sections coming from Store are loaded
+        lazily: the loading is delayed until we need to either check that an
         option exists or get its value, which in turn may require to discover
         in which sections it can be defined. Both of these (section and option
         existence) require loading the store (even partially).
         """
+        # Ensuring lazy loading is achieved by delaying section matching until
+        # it can be avoided anymore by using callables to describe (possibly
+        # empty) section lists.
         for section_or_callable in self.sections:
             # Each section can expand to multiple ones when a callable is used
             if callable(section_or_callable):
