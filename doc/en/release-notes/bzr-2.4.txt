@@ -42,6 +42,11 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+ * ``bzrlib.log._DEFAULT_REQUEST_PARAMS`` is no longer accidentally
+   mutated by ``bzrlib.log._apply_log_request_defaults``.  In practice
+   these default values aren't relied on very often so this probably
+   wasn't causing any trouble.  (Andrew Bennetts)
+
  * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
 * Standalone bzr.exe installation on Windows: user can put additional python 

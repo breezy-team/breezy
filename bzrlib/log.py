@@ -297,7 +297,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
 
 def _apply_log_request_defaults(rqst):
     """Apply default values to a request dictionary."""
-    result = _DEFAULT_REQUEST_PARAMS
+    result = _DEFAULT_REQUEST_PARAMS.copy()
     if rqst:
         result.update(rqst)
     return result
