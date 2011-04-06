@@ -2219,11 +2219,22 @@ class ConfigStack(object):
     def set(self, name, value):
         """Set a new value for the option.
 
-        This where we guarantee that the mutable section is lazily loaded: this
-        means we won't load the correspoding store before setting a value.
+        This is where we guarantee that the mutable section is lazily loaded:
+        this means we won't load the corresponding store before setting a value.
         """
         section = self.get_mutable_section()
         section.set(name, value)
+
+    def remove(self, name):
+        """Remove an existing option.
+
+        This is where we guarantee that the mutable section is lazily loaded:
+        this means we won't load the correspoding store before trying to delete
+        an option. In practice the store will often be loaded but this allows
+        catching some programming errors.
+        """
+        section = self.get_mutable_section()
+        section.remove(name)
 
 
 class cmd_config(commands.Command):

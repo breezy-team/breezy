@@ -2084,6 +2084,28 @@ class TestConfigStackSet(tests.TestCaseWithTransport):
         self.assertEquals, 'baz', conf.get('foo')
 
 
+class TestConfigStackRemove(tests.TestCaseWithTransport):
+
+    # FIXME: This should be parametrized for all known ConfigStack or dedicated
+    # paramerized tests created to avoid bloating -- vila 2011-04-06
+
+    def test_remove_existing(self):
+        store = config.ConfigObjStore.from_string(
+            'foo=bar', self.get_transport(), 'test.conf')
+        conf = config.ConfigStack(
+            [store.get_sections], store.get_mutable_section)
+        self.assertEquals('bar', conf.get('foo'))
+        conf.remove('foo')
+        # Did we get it back ?
+        self.assertEquals(None, conf.get('foo'))
+
+    def test_remove_unknown(self):
+        store = config.ConfigObjStore(self.get_transport(), 'test.conf')
+        conf = config.ConfigStack(
+            [store.get_sections], store.get_mutable_section)
+        self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
+
+
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):
