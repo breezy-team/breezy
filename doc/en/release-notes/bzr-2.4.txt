@@ -42,17 +42,23 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
- * ``bzrlib.log._DEFAULT_REQUEST_PARAMS`` is no longer accidentally
-   mutated by ``bzrlib.log._apply_log_request_defaults``.  In practice
-   these default values aren't relied on very often so this probably
-   wasn't causing any trouble.  (Andrew Bennetts)
+* ``bzrlib.log._DEFAULT_REQUEST_PARAMS`` is no longer accidentally
+  mutated by ``bzrlib.log._apply_log_request_defaults``.  In practice
+  these default values aren't relied on very often so this probably
+  wasn't causing any trouble.  (Andrew Bennetts)
 
- * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
+* Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
 * Standalone bzr.exe installation on Windows: user can put additional python 
   libraries into ``site-packages`` subdirectory of the installation directory,
   this might be required for "installing" extra dependencies for some plugins.
   (Alexander Belchenko, #743256)
+
+* ``TreeTransform.create_file/new_file`` can now take an optional ``sha1``
+  parameter. If supplied, when the transform is applied, it will then call
+  ``self._tree._observed_sha1`` for those files. This lets us update the
+  hash-cache for content that we create, preventing us from re-reading the
+  content in the next ``bzr status``.  (John Arbash Meinel, #740932)
 
 Documentation
 *************
