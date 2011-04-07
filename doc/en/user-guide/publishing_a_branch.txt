@@ -1,3 +1,5 @@
+.. _publishing_a_branch:
+
 Publishing a branch
 ===================
 

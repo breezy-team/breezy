@@ -597,38 +597,40 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
 
     def get_tree_with_cachable_file_foo(self):
         tree = self.make_branch_and_tree('.')
-        self.build_tree(['foo'])
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        self.build_tree_contents([('foo', 'a bit of content for foo\n')])
         tree.add(['foo'], ['foo-id'])
-        # a 4 second old timestamp is always hashable - sucks to delay
-        # the test suite, but not testing this is worse.
-        time.sleep(4)
+        tree.current_dirstate()._cutoff_time = time.time() + 60
         return tree
 
     def test_commit_updates_hash_cache(self):
         tree = self.get_tree_with_cachable_file_foo()
         revid = tree.commit('a commit')
         # tree's dirstate should now have a valid stat entry for foo.
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
         entry = tree._get_entry(path='foo')
         expected_sha1 = osutils.sha_file_by_name('foo')
         self.assertEqual(expected_sha1, entry[1][0][1])
+        self.assertEqual(len('a bit of content for foo\n'), entry[1][0][2])
 
     def test_observed_sha1_cachable(self):
         tree = self.get_tree_with_cachable_file_foo()
         expected_sha1 = osutils.sha_file_by_name('foo')
         statvalue = os.lstat("foo")
-        tree.lock_write()
-        try:
-            tree._observed_sha1("foo-id", "foo", (expected_sha1, statvalue))
-            self.assertEqual(expected_sha1,
-                tree._get_entry(path="foo")[1][0][1])
-        finally:
-            tree.unlock()
+        tree._observed_sha1("foo-id", "foo", (expected_sha1, statvalue))
+        entry = tree._get_entry(path="foo")
+        entry_state = entry[1][0]
+        self.assertEqual(expected_sha1, entry_state[1])
+        self.assertEqual(statvalue.st_size, entry_state[2])
+        tree.unlock()
+        tree.lock_read()
         tree = tree.bzrdir.open_workingtree()
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        self.assertEqual(expected_sha1, tree._get_entry(path="foo")[1][0][1])
+        entry = tree._get_entry(path="foo")
+        entry_state = entry[1][0]
+        self.assertEqual(expected_sha1, entry_state[1])
+        self.assertEqual(statvalue.st_size, entry_state[2])
 
     def test_observed_sha1_new_file(self):
         tree = self.make_branch_and_tree('.')

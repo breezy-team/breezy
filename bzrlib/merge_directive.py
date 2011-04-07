@@ -23,6 +23,7 @@ lazy_import.lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
     diff,
+    email_message,
     errors,
     gpg,
     hooks,
@@ -36,7 +37,6 @@ from bzrlib import (
 from bzrlib.bundle import (
     serializer as bundle_serializer,
     )
-from bzrlib.email_message import EmailMessage
 """)
 
 
@@ -266,7 +266,8 @@ class BaseMergeDirective(object):
             body = self.to_signed(branch)
         else:
             body = ''.join(self.to_lines())
-        message = EmailMessage(mail_from, mail_to, subject, body)
+        message = email_message.EmailMessage(mail_from, mail_to, subject,
+            body)
         return message
 
     def install_revisions(self, target_repo):

@@ -27,10 +27,8 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 import errno
 import threading
-from warnings import warn
 
 import bzrlib
 from bzrlib import (
@@ -42,7 +40,6 @@ from bzrlib import (
     osutils,
     trace,
     ui,
-    win32utils,
     )
 """)
 

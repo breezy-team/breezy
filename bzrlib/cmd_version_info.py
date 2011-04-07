@@ -22,7 +22,6 @@ lazy_import(globals(), """
 from bzrlib import (
     branch,
     errors,
-    ui,
     version_info_formats,
     workingtree,
     )
