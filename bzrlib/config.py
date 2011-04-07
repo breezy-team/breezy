@@ -2449,6 +2449,38 @@ class ConfigStack(object):
         section.remove(name)
 
 
+class GlobalStack(ConfigStack):
+
+    def __init__(self):
+        # Get a GlobalStore
+        gstore = GlobalStore()
+        super(GlobalStack, self).__init__([gstore.get_sections],
+                                          gstore.get_mutable_section)
+
+
+class LocationStack(ConfigStack):
+
+    def __init__(self, location):
+        lstore = LocationStore()
+        matcher = LocationMatcher(lstore, location)
+        gstore = GlobalStore()
+        super(LocationStack, self).__init__(
+            [matcher.get_sections, gstore.get_sections],
+            lstore.get_mutable_section)
+
+
+class BranchStack(ConfigStack):
+
+    def __init__(self, branch):
+        bstore = BranchStore(branch)
+        lstore = LocationStore()
+        matcher = LocationMatcher(lstore, branch.base)
+        gstore = GlobalStore()
+        super(BranchStack, self).__init__(
+            [matcher.get_sections, bstore.get_sections, gstore.get_sections],
+            bstore.get_mutable_section)
+
+
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
 

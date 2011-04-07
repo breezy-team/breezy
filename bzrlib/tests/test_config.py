@@ -2165,7 +2165,6 @@ section=/foo/bar
                           [section.extra_path for section in sections])
 
 
-
 class TestConfigStackGet(tests.TestCase):
 
     # FIXME: This should be parametrized for all known ConfigStack or dedicated
@@ -2241,6 +2240,21 @@ class TestConfigStackRemove(tests.TestCaseWithTransport):
         conf = config.ConfigStack(
             [store.get_sections], store.get_mutable_section)
         self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
+
+
+class TestConcreteStacks(tests.TestCaseWithTransport):
+
+    # basic smoke tests
+
+    def test_global_stack(self):
+        stack = config.GlobalStack()
+
+    def test_location_store(self):
+        stack = config.LocationStack('.')
+
+    def test_branch_store(self):
+        b = self.make_branch('.')
+        stack = config.BranchStack(b)
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
