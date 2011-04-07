@@ -25,18 +25,16 @@ from bzrlib import (
     conflicts as _mod_conflicts,
     debug,
     delta,
+    errors,
     filters,
     osutils,
     revision as _mod_revision,
     rules,
     )
 from bzrlib.decorators import needs_read_lock
-from bzrlib.errors import BzrError, NoSuchId
-from bzrlib import errors
 from bzrlib.inventory import InventoryFile
 from bzrlib.inter import InterObject
 from bzrlib.osutils import fingerprint_file
-from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import note
 
 
@@ -415,7 +413,7 @@ class Tree(object):
                         elif child_base.lower() == lelt:
                             cur_id = child
                             new_path = osutils.pathjoin(cur_path, child_base)
-                    except NoSuchId:
+                    except errors.NoSuchId:
                         # before a change is committed we can see this error...
                         continue
                 if new_path:
@@ -529,13 +527,16 @@ class Tree(object):
 
         if ie.text_size is not None:
             if ie.text_size != fp['size']:
-                raise BzrError("mismatched size for file %r in %r" % (ie.file_id, self._store),
+                raise errors.BzrError(
+                        "mismatched size for file %r in %r" %
+                        (ie.file_id, self._store),
                         ["inventory expects %d bytes" % ie.text_size,
                          "file is actually %d bytes" % fp['size'],
                          "store is probably damaged/corrupt"])
 
         if ie.text_sha1 != fp['sha1']:
-            raise BzrError("wrong SHA-1 for file %r in %r" % (ie.file_id, self._store),
+            raise errors.BzrError("wrong SHA-1 for file %r in %r" %
+                    (ie.file_id, self._store),
                     ["inventory expects %s" % ie.text_sha1,
                      "file is actually %s" % fp['sha1'],
                      "store is probably damaged/corrupt"])

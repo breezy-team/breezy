@@ -25,10 +25,8 @@ lazy_import(globals(), """
 import errno
 import subprocess
 import tempfile
-import time
 
 from bzrlib import (
-    branch as _mod_branch,
     bzrdir,
     cmdline,
     cleanup,

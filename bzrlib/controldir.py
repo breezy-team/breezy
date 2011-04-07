@@ -31,13 +31,9 @@ from bzrlib import (
     revision as _mod_revision,
     transport as _mod_transport,
     ui,
-    urlutils,
     )
 from bzrlib.push import (
     PushResult,
-    )
-from bzrlib.transport import (
-    local,
     )
 
 """)

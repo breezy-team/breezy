@@ -38,7 +38,6 @@ import weakref
 from bzrlib import (
     debug,
     errors,
-    symbol_versioning,
     trace,
     ui,
     urlutils,

@@ -749,11 +749,6 @@ class TestTestResult(tests.TestCase):
         self.check_timing(ShortDelayTestCase('test_short_delay'),
                           r"^ +[0-9]+ms$")
 
-    def _patch_get_bzr_source_tree(self):
-        # Reading from the actual source tree breaks isolation, but we don't
-        # want to assume that thats *all* that would happen.
-        self.overrideAttr(bzrlib.version, '_get_bzr_source_tree', lambda: None)
-
     def _time_hello_world_encoding(self):
         """Profile two sleep calls
 
@@ -1177,15 +1172,6 @@ class TestRunner(tests.TestCase):
             "Missing feature 'Feature2' skipped 1 tests.",
             ],
             lines[-3:])
-
-    def _patch_get_bzr_source_tree(self):
-        # Reading from the actual source tree breaks isolation, but we don't
-        # want to assume that thats *all* that would happen.
-        self._get_source_tree_calls = []
-        def new_get():
-            self._get_source_tree_calls.append("called")
-            return None
-        self.overrideAttr(bzrlib.version, '_get_bzr_source_tree',  new_get)
 
     def test_verbose_test_count(self):
         """A verbose test run reports the right test count at the start"""

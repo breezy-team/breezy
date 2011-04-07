@@ -46,8 +46,8 @@ from bzrlib import (
 """)
 
 from bzrlib.symbol_versioning import (
-        DEPRECATED_PARAMETER,
-        )
+    DEPRECATED_PARAMETER,
+    )
 from bzrlib.trace import (
     mutter,
     )
