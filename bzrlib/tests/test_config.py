@@ -1967,6 +1967,7 @@ class TestMutableStore(TestStore):
     scenarios = [('configobj', {'_get_store': get_ConfigObjStore})]
 
     def get_store(self, file_name, content=None):
+        # Overriden to get a writable transport
         return self._get_store(
             self.get_transport(), file_name, content=content)
 
@@ -2076,8 +2077,14 @@ class TestLockableConfigObjStore(TestStore):
         store.save()
 
     # FIXME: We should adapt the tests in TestLockableConfig about concurrent
-    # writes, for now, I'll just rely on using the same code (copied, but
-    # pretty trivial) -- vila 20110-04-06
+    # writes. Since this requires a clearer rewrite, I'll just rely on using
+    # the same code in LockableConfigObjStore (copied from LockableConfig, but
+    # trivial enough, the main difference is that we add @needs_write_lock on
+    # save() instead of set_user_option() and remove_user_option()). The intent
+    # is to ensure that we always get a valid content for the store even when
+    # concurrent accesses occur, read/write, write/write. It may be worth
+    # looking into removing the lock dir when it;s not needed anymore and look
+    # at possible fallouts for concurrent lockers -- vila 20110-04-06
 
 
 class TestConfigObjStore(tests.TestCaseWithTransport):
@@ -2091,6 +2098,72 @@ class TestConfigObjStore(tests.TestCaseWithTransport):
     def test_branch_store(self):
         b = self.make_branch('.')
         store = config.BranchStore(b)
+
+
+class TestSectionMatcher(TestStore):
+
+    scenarios = [('location', {'matcher': config.LocationMatcher})]
+
+    def get_store(self, file_name, content=None):
+        return get_ConfigObjStore(
+            self.get_readonly_transport(), file_name, content=content)
+
+    def test_no_matches_for_empty_stores(self):
+        store = self.get_store('foo.conf', '')
+        matcher = self.matcher(store, '/bar')
+        self.assertEquals([], list(matcher.get_sections()))
+
+    def test_build_doesnt_load_store(self):
+        store = self.get_store('foo.conf', '')
+        matcher = self.matcher(store, '/bar')
+        self.assertFalse(store.loaded)
+
+
+class TestLocationSection(tests.TestCase):
+
+    def get_section(self, options, extra_path):
+        section = config.ReadOnlySection('foo', options)
+        # We don't care about the length so we use '0'
+        return config.LocationSection(section, 0, extra_path)
+
+    def test_simple_option(self):
+        section = self.get_section({'foo': 'bar'}, '')
+        self.assertEquals('bar', section.get('foo'))
+
+    def test_option_with_extra_path(self):
+        section = self.get_section({'foo': 'bar', 'foo:policy': 'appendpath'},
+                                   'baz')
+        self.assertEquals('bar/baz', section.get('foo'))
+
+    def test_invalid_policy(self):
+        section = self.get_section({'foo': 'bar', 'foo:policy': 'die'},
+                                   'baz')
+        # invalid policies are ignored
+        self.assertEquals('bar', section.get('foo'))
+
+
+class TestLocationMatcher(TestStore):
+
+    def test_more_specific_sections_first(self):
+        store = config.ConfigObjStore.from_string(
+            '''
+[/foo]
+section=/foo
+[/foo/bar]
+section=/foo/bar
+''',
+            self.get_readonly_transport(), 'foo.conf', )
+        self.assertEquals(['/foo', '/foo/bar'],
+                          [section.id for section in store.get_sections()])
+        matcher = config.LocationMatcher(store, '/foo/bar/baz')
+        sections = list(matcher.get_sections())
+        self.assertEquals([3, 2],
+                          [section.length for section in sections])
+        self.assertEquals(['/foo/bar', '/foo'],
+                          [section.id for section in sections])
+        self.assertEquals(['baz', 'bar/baz'],
+                          [section.extra_path for section in sections])
+
 
 
 class TestConfigStackGet(tests.TestCase):
@@ -2176,7 +2249,6 @@ class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
         super(TestConfigGetOptions, self).setUp()
         create_configs(self)
 
-    # One variable in none of the above
     def test_no_variable(self):
         # Using branch should query branch, locations and bazaar
         self.assertOptions([], self.branch_config)

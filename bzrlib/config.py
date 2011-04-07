@@ -967,6 +967,49 @@ class GlobalConfig(LockableConfig):
         super(LockableConfig, self).remove_user_option(option_name,
                                                        section_name)
 
+def _match_section_by_parts(section, location):
+    location_parts = location.rstrip('/').split('/')
+
+    # location is a local path if possible, so we need
+    # to convert 'file://' urls to local paths if necessary.
+
+    # FIXME: I don't think the above comment is still up to date,
+    # LocationConfig is always instantiated with an url -- vila 2011-04-07
+
+    # This also avoids having file:///path be a more exact
+    # match than '/path'.
+
+    # FIXME: Not sure about the above either, but since the path components are
+    # compared in sync, adding two empty components (//) is likely to trick the
+    # comparison and also trick the check on the number of components, so we
+    # *should* take only the relevant part of the url. On the other hand, this
+    # means 'file://' urls *can't* be used in sections -- vila 2011-04-07
+
+    if section.startswith('file://'):
+        section_path = urlutils.local_path_from_url(section)
+    else:
+        section_path = section
+    section_parts = section_path.rstrip('/').split('/')
+
+    matched = True
+    if len(section_parts) > len(location_parts):
+        # More path components in the section, they can't match
+        matched = False
+    else:
+        # Rely on zip truncating in length to the length of the shortest
+        # argument sequence.
+        names = zip(location_parts, section_parts)
+        for name in names:
+            if not fnmatch.fnmatch(name[0], name[1]):
+                matched = False
+                break
+    if not matched:
+        return None
+    else:
+        # build the path difference between the section and the location
+        relpath = '/'.join(location_parts[len(section_parts):])
+        return len(section_parts), relpath
+
 
 class LocationConfig(LockableConfig):
     """A configuration object that gives the policy for a location."""
@@ -1002,36 +1045,14 @@ class LocationConfig(LockableConfig):
     def _get_matching_sections(self):
         """Return an ordered list of section names matching this location."""
         sections = self._get_parser()
-        location_names = self.location.split('/')
-        if self.location.endswith('/'):
-            del location_names[-1]
-        matches=[]
+
+        matches = []
         for section in sections:
-            # location is a local path if possible, so we need
-            # to convert 'file://' urls to local paths if necessary.
-            # This also avoids having file:///path be a more exact
-            # match than '/path'.
-            if section.startswith('file://'):
-                section_path = urlutils.local_path_from_url(section)
-            else:
-                section_path = section
-            section_names = section_path.split('/')
-            if section.endswith('/'):
-                del section_names[-1]
-            names = zip(location_names, section_names)
-            matched = True
-            for name in names:
-                if not fnmatch.fnmatch(name[0], name[1]):
-                    matched = False
-                    break
-            if not matched:
+            match = _match_section_by_parts(section, self.location)
+            if match is None:
                 continue
-            # so, for the common prefix they matched.
-            # if section is longer, no match.
-            if len(section_names) > len(location_names):
-                continue
-            matches.append((len(section_names), section,
-                            '/'.join(location_names[len(section_names):])))
+            nb_parts, relpath = match
+            matches.append((nb_parts, section, relpath))
         # put the longest (aka more specific) locations first
         matches.sort(reverse=True)
         sections = []
@@ -2295,6 +2316,74 @@ class BranchStore(ConfigObjStore):
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
                                           'branch.conf')
+
+class SectionMatcher(object):
+    """Select sections into a given Store.
+
+    This intended to be used to postpone getting an iterable of sections from a
+    store.
+    """
+
+    def __init__(self, store):
+        self.store = store
+
+    def get_sections(self):
+        # This is where we requires loading the store so we can see all defined
+        # sections.
+        sections = self.store.get_sections()
+        # Walk the revisions in the order provided
+        for s in sections:
+            if self.match(s):
+                yield s
+
+    def match(self, secion):
+        raise NotImplementedError(self.match)
+
+
+class LocationSection(ReadOnlySection):
+
+    def __init__(self, section, length, extra_path):
+        super(LocationSection, self).__init__(section.id, section.options)
+        self.length = length
+        self.extra_path = extra_path
+
+    def get(self, name, default=None):
+        value = super(LocationSection, self).get(name, default)
+        if value is not None:
+            policy_name = self.get(name + ':policy', None)
+            policy = _policy_value.get(policy_name, POLICY_NONE)
+            if policy == POLICY_APPENDPATH:
+                value = urlutils.join(value, self.extra_path)
+        return value
+
+
+class LocationMatcher(SectionMatcher):
+
+    def __init__(self, store, location):
+        super(LocationMatcher, self).__init__(store)
+        self.location = location
+
+    def get_sections(self):
+        # Override the default implementation as we want to change the order
+        sections = []
+        for section in self.store.get_sections():
+            match = _match_section_by_parts(section.id, self.location)
+            if match is not None:
+                length, extra_path = match
+                sections.append(LocationSection(section, length, extra_path))
+        # We want the longest (aka more specific) locations first
+        sections = sorted(sections, key=lambda section: section.length,
+                          reverse=True)
+        # Sections mentioning 'ignore_parents' restrict the selection
+        for section in sections:
+            # FIXME: We really want to use as_bool below -- vila 2011-04-07
+            ignore = section.get('ignore_parents', None)
+            if ignore is not None:
+                ignore = ui.bool_from_string(ignore)
+            if ignore:
+                break
+            # Finally, we have a valid section
+            yield section
 
 
 class ConfigStack(object):
