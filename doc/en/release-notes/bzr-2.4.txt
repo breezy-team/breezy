@@ -67,6 +67,10 @@ API Changes
 
 * New method ``Hooks.uninstall_named_hook``. (Jelmer Vernooij, #301472)
 
+* The various knit pack repository format classes have been moved
+  from ``bzrlib.repofmt.pack_repo`` to
+  ``bzrlib.repofmt.knitpack_repo``. (Jelmer Vernooij)
+
 Internals
 *********
 
