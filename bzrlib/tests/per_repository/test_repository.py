@@ -442,7 +442,11 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        try:
+            repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        except errors.UnsupportedOperation:
+            self.assertFalse(repo._format.supports_revision_signatures)
+            raise TestNotApplicable("signatures not supported by repository format")
         repo.commit_write_group()
         repo.unlock()
         old_signature = repo.get_signature_text('A')
@@ -594,7 +598,12 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = tree.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('rev_id', gpg.LoopbackGPGStrategy(None))
+        try:
+            repo.sign_revision('rev_id', gpg.LoopbackGPGStrategy(None))
+        except errors.UnsupportedOperation:
+            signature_texts = []
+        else:
+            signature_texts = ['rev_id']
         repo.commit_write_group()
         repo.unlock()
         repo.lock_read()
@@ -609,7 +618,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         expected_item_keys = [
             ('file', 'file1', ['rev_id']),
             ('inventory', None, ['rev_id']),
-            ('signatures', None, ['rev_id']),
+            ('signatures', None, signature_texts),
             ('revisions', None, ['rev_id'])]
         item_keys = list(repo.item_keys_introduced_by(['rev_id']))
         item_keys = [
@@ -698,20 +707,24 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo._check_for_inconsistent_revision_parents()
 
     def test_add_signature_text(self):
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        self.addCleanup(repo.unlock)
-        repo.start_write_group()
-        self.addCleanup(repo.abort_write_group)
-        inv = inventory.Inventory(revision_id='A')
-        inv.root.revision = 'A'
-        repo.add_inventory('A', inv, [])
-        repo.add_revision('A', _mod_revision.Revision(
-                'A', committer='A', timestamp=0,
-                inventory_sha1='', timezone=0, message='A'))
-        repo.add_signature_text('A', 'This might be a signature')
-        self.assertEqual('This might be a signature',
-                         repo.get_signature_text('A'))
+        builder = self.make_branch_builder('.')
+        builder.start_series()
+        builder.build_snapshot('A', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        builder.finish_series()
+        b = builder.get_branch()
+        b.lock_write()
+        self.addCleanup(b.unlock)
+        b.repository.start_write_group()
+        self.addCleanup(b.repository.abort_write_group)
+        if b.repository._format.supports_revision_signatures:
+            b.repository.add_signature_text('A', 'This might be a signature')
+            self.assertEqual('This might be a signature',
+                             b.repository.get_signature_text('A'))
+        else:
+            self.assertRaises(errors.UnsupportedOperation,
+                b.repository.add_signature_text, 'A',
+                'This might be a signature')
 
     def test_add_revision_inventory_sha1(self):
         inv = inventory.Inventory(revision_id='A')
