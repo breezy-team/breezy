@@ -2098,6 +2098,21 @@ class TestConfigObjStore(tests.TestCaseWithTransport):
         b = self.make_branch('.')
         store = config.BranchStore(b)
 
+
+class TestSectionMatcher(TestStore):
+
+    scenarios = [('location', {'matcher': config.LocationMatcher})]
+
+    def get_store(self, file_name, content=None):
+        return get_ConfigObjStore(
+            self.get_readonly_transport(), file_name, content=content)
+
+    def test_no_matches_for_empty_stores(self):
+        store = self.get_store('foo.conf', '')
+        matcher = self.matcher(store)
+        self.assertEquals([], list(matcher.get_sections()))
+
+
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):

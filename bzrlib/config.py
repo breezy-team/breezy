@@ -2296,6 +2296,37 @@ class BranchStore(ConfigObjStore):
         super(BranchStore, self).__init__(branch.control_transport,
                                           'branch.conf')
 
+class SectionMatcher(object):
+    """Select sections into a given Store.
+
+    This intended to be used to postpone getting an iterable of sections from a
+    store.
+    """
+
+    def __init__(self, store):
+        self.store = store
+
+    def get_sections(self):
+        # This is where we requires loading the store so we can see all defined
+        # sections.
+        sections = self.store.get_sections()
+        for s in sections:
+            if self.match(s):
+                yield s
+
+    def match(self, secion):
+        raise NotImplementedError(self.match)
+
+
+class LocationMatcher(SectionMatcher):
+
+    def __init__(self, store, location=None):
+        super(LocationMatcher, self).__init__(store)
+        self.location = location
+
+    def match(self):
+        return True
+
 
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
