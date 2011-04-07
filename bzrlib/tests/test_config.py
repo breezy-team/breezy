@@ -2087,7 +2087,7 @@ class TestLockableConfigObjStore(TestStore):
     # at possible fallouts for concurrent lockers -- vila 20110-04-06
 
 
-class TestConfigObjStore(tests.TestCaseWithTransport):
+class TestConcreteConfigObjStores(tests.TestCaseWithTransport):
 
     def test_global_store(self):
         store = config.GlobalStore()
