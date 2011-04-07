@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -70,11 +70,9 @@ from bzrlib import (
     diff,
     errors,
     foreign,
-    osutils,
     repository as _mod_repository,
     revision as _mod_revision,
     revisionspec,
-    trace,
     tsort,
     )
 """)
@@ -85,6 +83,7 @@ from bzrlib import (
 from bzrlib.osutils import (
     format_date,
     format_date_with_offset_in_original_timezone,
+    get_diff_header_encoding,
     get_terminal_encoding,
     terminal_width,
     )
@@ -298,7 +297,7 @@ def make_log_request_dict(direction='reverse', specific_fileids=None,
 
 def _apply_log_request_defaults(rqst):
     """Apply default values to a request dictionary."""
-    result = _DEFAULT_REQUEST_PARAMS
+    result = _DEFAULT_REQUEST_PARAMS.copy()
     if rqst:
         result.update(rqst)
     return result
@@ -432,7 +431,7 @@ class _DefaultLogGenerator(LogGenerator):
         else:
             specific_files = None
         s = StringIO()
-        path_encoding = osutils.get_diff_header_encoding()
+        path_encoding = get_diff_header_encoding()
         diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
             new_label='', path_encoding=path_encoding)
         return s.getvalue()

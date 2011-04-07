@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@ from bzrlib import (
     osutils,
     pack,
     transactions,
+    tsort,
     ui,
     xml5,
     xml6,
@@ -45,7 +46,6 @@ from bzrlib.knit import (
     _KnitGraphIndex,
     _DirectPackAccess,
     )
-from bzrlib import tsort
 """)
 from bzrlib import (
     bzrdir,

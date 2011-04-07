@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd.
+# Copyright (C) 2005-2011 Canonical Ltd.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,10 +25,8 @@ lazy_import(globals(), """
 import errno
 import subprocess
 import tempfile
-import time
 
 from bzrlib import (
-    branch as _mod_branch,
     bzrdir,
     cmdline,
     cleanup,
