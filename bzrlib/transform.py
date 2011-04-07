@@ -19,11 +19,11 @@ import errno
 from stat import S_ISREG, S_IEXEC
 import time
 
-import bzrlib
 from bzrlib import (
     errors,
     lazy_import,
     registry,
+    trace,
     tree,
     )
 lazy_import.lazy_import(globals(), """
@@ -38,7 +38,6 @@ from bzrlib import (
     multiparent,
     osutils,
     revision as _mod_revision,
-    trace,
     ui,
     urlutils,
     )
@@ -48,7 +47,6 @@ from bzrlib.errors import (DuplicateKey, MalformedTransform, NoSuchFile,
                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
                            UnableCreateSymlink)
 from bzrlib.filters import filtered_output_bytes, ContentFilterContext
-from bzrlib.inventory import InventoryEntry
 from bzrlib.osutils import (
     delete_any,
     file_kind,
@@ -64,7 +62,6 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     deprecated_method,
     )
-from bzrlib.trace import warning
 
 
 ROOT_PARENT = "root-parent"
@@ -629,7 +626,7 @@ class TreeTransformBase(object):
             if kind is None:
                 conflicts.append(('versioning no contents', trans_id))
                 continue
-            if not InventoryEntry.versionable_kind(kind):
+            if not inventory.InventoryEntry.versionable_kind(kind):
                 conflicts.append(('versioning bad kind', trans_id, kind))
         return conflicts
 
@@ -1362,8 +1359,8 @@ class DiskTreeTransform(TreeTransformBase):
         if orphan_policy is None:
             orphan_policy = default_policy
         if orphan_policy not in orphaning_registry:
-            trace.warning('%s (from %s) is not a known policy, defaulting to %s'
-                          % (orphan_policy, conf_var_name, default_policy))
+            trace.warning('%s (from %s) is not a known policy, defaulting '
+                'to %s' % (orphan_policy, conf_var_name, default_policy))
             orphan_policy = default_policy
         handle_orphan = orphaning_registry.get(orphan_policy)
         handle_orphan(self, trans_id, parent_id)
@@ -2524,7 +2521,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
             precomputed_delta = None
         conflicts = cook_conflicts(raw_conflicts, tt)
         for conflict in conflicts:
-            warning(conflict)
+            trace.warning(conflict)
         try:
             wt.add_conflicts(conflicts)
         except errors.UnsupportedOperation:
@@ -2765,7 +2762,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
                 unversioned_filter=working_tree.is_ignored)
             delta.report_changes(tt.iter_changes(), change_reporter)
         for conflict in conflicts:
-            warning(conflict)
+            trace.warning(conflict)
         pp.next_phase()
         tt.apply()
         working_tree.set_merge_modified(merge_modified)

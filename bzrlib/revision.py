@@ -20,7 +20,6 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib import deprecated_graph
 from bzrlib import bugtracker
 """)
 from bzrlib import (

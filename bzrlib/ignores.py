@@ -21,6 +21,8 @@ import os
 from cStringIO import StringIO
 
 import bzrlib
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     atomicfile,
     config,
@@ -28,6 +30,7 @@ from bzrlib import (
     )
 
 from trace import warning
+""")
 
 # ~/.bazaar/ignore will be filled out using
 # this ignore list, if it does not exist

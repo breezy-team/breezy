@@ -22,10 +22,7 @@ examples.
 """
 
 import bzrlib
-from bzrlib.lazy_import import lazy_import
-lazy_import(globals(), """
 from bzrlib.errors import IncompatibleAPI
-""")
 
 
 def get_current_api_version(object_with_api):

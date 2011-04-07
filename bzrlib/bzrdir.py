@@ -29,10 +29,9 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from stat import S_ISDIR
-
 import bzrlib
 from bzrlib import (
+    branch as _mod_branch,
     cleanup,
     config,
     controldir,
@@ -49,7 +48,6 @@ from bzrlib import (
     transport as _mod_transport,
     ui,
     urlutils,
-    versionedfile,
     win32utils,
     workingtree,
     workingtree_4,
@@ -1860,7 +1858,6 @@ class ConvertMetaToMeta(controldir.Converter):
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups/some sort of registry.
             # Avoid circular imports
-            from bzrlib import branch as _mod_branch
             old = branch._format.__class__
             new = self.target_format.get_branch_format().__class__
             while old != new:
