@@ -2039,7 +2039,7 @@ class Store(object):
         raise NotImplementedError(self.load)
 
     def save(self):
-        raise NotImplementedError(self.load)
+        raise NotImplementedError(self.save)
 
     def get_sections(self):
         """Returns an ordered iterable of existing sections.
