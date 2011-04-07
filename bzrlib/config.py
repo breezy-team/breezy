@@ -967,7 +967,9 @@ class GlobalConfig(LockableConfig):
         super(LockableConfig, self).remove_user_option(option_name,
                                                        section_name)
 
-def _match_section_by_parts(section, location, location_parts):
+def _match_section_by_parts(section, location):
+    location_parts = location.rstrip('/').split('/')
+
     # location is a local path if possible, so we need
     # to convert 'file://' urls to local paths if necessary.
 
@@ -1043,12 +1045,10 @@ class LocationConfig(LockableConfig):
     def _get_matching_sections(self):
         """Return an ordered list of section names matching this location."""
         sections = self._get_parser()
-        location_parts = self.location.rstrip('/').split('/')
 
         matches = []
         for section in sections:
-            match = _match_section_by_parts(section, self.location,
-                                            location_parts)
+            match = _match_section_by_parts(section, self.location)
             if match is None:
                 continue
             nb_parts, relpath = match
