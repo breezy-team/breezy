@@ -42,7 +42,17 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+ * ``bzrlib.log._DEFAULT_REQUEST_PARAMS`` is no longer accidentally
+   mutated by ``bzrlib.log._apply_log_request_defaults``.  In practice
+   these default values aren't relied on very often so this probably
+   wasn't causing any trouble.  (Andrew Bennetts)
+
  * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
+
+* Standalone bzr.exe installation on Windows: user can put additional python 
+  libraries into ``site-packages`` subdirectory of the installation directory,
+  this might be required for "installing" extra dependencies for some plugins.
+  (Alexander Belchenko, #743256)
 
 Documentation
 *************
@@ -65,11 +75,23 @@ API Changes
   mysteriously silent.)
   (Martin Pool)
 
+* New method ``Hooks.uninstall_named_hook``. (Jelmer Vernooij, #301472)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* Added ``osutils.lstat`` and ``osutils.fstat``. These are just the ``os``
+  functions on Linux, but they are wrapped on Windows so that fstat
+  matches lstat results across all python versions.
+  (John Arbash Meinel)
+
+* ``WorkingTree._observed_sha1`` also updates the 'size' column. It
+  happened to be updated as a side-effect of commit, but if we start using
+  the function elsewhere we might as well do it directly.
+  (John Arbash Meinel)
 
 Testing
 *******

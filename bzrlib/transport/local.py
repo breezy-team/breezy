@@ -20,7 +20,7 @@ This is a fairly thin wrapper on regular file IO.
 """
 
 import os
-from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
+from stat import ST_MODE, S_ISDIR, S_IMODE
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -33,9 +33,7 @@ from bzrlib import (
     osutils,
     urlutils,
     symbol_versioning,
-    transport,
     )
-from bzrlib.trace import mutter
 from bzrlib.transport import LateReadError
 """)
 

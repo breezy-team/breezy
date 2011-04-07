@@ -18,20 +18,20 @@
 """Text UI, write output to the console.
 """
 
-import codecs
-import getpass
 import os
 import sys
 import time
-import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import codecs
+import getpass
+import warnings
+
 from bzrlib import (
     debug,
     progress,
     osutils,
-    symbol_versioning,
     trace,
     )
 
