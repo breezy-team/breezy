@@ -2076,8 +2076,14 @@ class TestLockableConfigObjStore(TestStore):
         store.save()
 
     # FIXME: We should adapt the tests in TestLockableConfig about concurrent
-    # writes, for now, I'll just rely on using the same code (copied, but
-    # pretty trivial) -- vila 20110-04-06
+    # writes. Since this requires a clearer rewrite, I'll just rely on using
+    # the same code in LockableConfigObjStore (copied from LockableConfig, but
+    # trivial enough, the main difference is that we add @needs_write_lock on
+    # save() instead of set_user_option() and remove_user_option()). The intent
+    # is to ensure that we always get a valid content for the store even when
+    # concurrent accesses occur, read/write, write/write. It may be worth
+    # looking into removing the lock dir when it;s not needed anymore and look
+    # at possible fallouts for concurrent lockers -- vila 20110-04-06
 
 
 class TestConfigObjStore(tests.TestCaseWithTransport):
