@@ -2331,6 +2331,7 @@ class SectionMatcher(object):
         # This is where we requires loading the store so we can see all defined
         # sections.
         sections = self.store.get_sections()
+        # Walk the revisions in the order provided
         for s in sections:
             if self.match(s):
                 yield s
@@ -2339,14 +2340,50 @@ class SectionMatcher(object):
         raise NotImplementedError(self.match)
 
 
+class LocationSection(ReadOnlySection):
+
+    def __init__(self, section, length, extra_path):
+        super(LocationSection, self).__init__(section.id, section.options)
+        self.length = length
+        self.extra_path = extra_path
+
+    def get(self, name, default=None):
+        value = super(LocationSection, self).get(name, default)
+        if value is not None:
+            policy_name = self.get(name + ':policy', None)
+            policy = _policy_value.get(policy_name, POLICY_NONE)
+            if policy == POLICY_APPENDPATH:
+                value = urlutils.join(value, self.extra_path)
+        return value
+
+
 class LocationMatcher(SectionMatcher):
 
-    def __init__(self, store, location=None):
+    def __init__(self, store, location):
         super(LocationMatcher, self).__init__(store)
         self.location = location
 
-    def match(self):
-        return True
+    def get_sections(self):
+        # Override the default implementation as we want to change the order
+        sections = []
+        for section in self.store.get_sections():
+            match = _match_section_by_parts(section.id, self.location)
+            if match is not None:
+                length, extra_path = match
+                sections.append(LocationSection(section, length, extra_path))
+        # We want the longest (aka more specific) locations first
+        sections = sorted(sections, key=lambda section: section.length,
+                          reverse=True)
+        # Sections mentioning 'ignore_parents' restrict the selection
+        for section in sections:
+            # FIXME: We really want to use as_bool below -- vila 2011-04-07
+            ignore = section.get('ignore_parents', None)
+            if ignore is not None:
+                ignore = ui.bool_from_string(ignore)
+            if ignore:
+                break
+            # Finally, we have a valid section
+            yield section
 
 
 class cmd_config(commands.Command):
