@@ -40,7 +40,6 @@ from bzrlib.index import (
 from bzrlib.knit import (
     KnitPlainFactory,
     KnitVersionedFiles,
-    _KnitGraphIndex,
     _DirectPackAccess,
     )
 """)
@@ -663,10 +662,6 @@ class Packer(object):
         # What text keys to copy. None for 'all texts'. This is set by
         # _copy_inventory_texts
         self._text_filter = None
-        self._extra_init()
-
-    def _extra_init(self):
-        """A template hook to allow extending the constructor trivially."""
 
     def _pack_map_and_index_list(self, index_attribute):
         """Convert a list of packs to an index pack map and index list.
@@ -2074,7 +2069,7 @@ class PackRepository(KnitRepository):
     ===================================================
     Tuple based apis below, string based, and key based apis above
     ---------------------------------------------------
-    KnitVersionedFiles
+    VersionedFiles
       Provides .texts, .revisions etc
       This adapts the N-tuple keys to physical knit records which only have a
       single string identifier (for historical reasons), which in older formats
@@ -2089,68 +2084,6 @@ class PackRepository(KnitRepository):
     ===================================================
 
     """
-
-    def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
-        _serializer):
-        KnitRepository.__init__(self, _format, a_bzrdir, control_files,
-            _commit_builder_class, _serializer)
-        index_transport = self._transport.clone('indices')
-        self._pack_collection = RepositoryPackCollection(self, self._transport,
-            index_transport,
-            self._transport.clone('upload'),
-            self._transport.clone('packs'),
-            _format.index_builder_class,
-            _format.index_class,
-            use_chk_index=self._format.supports_chks,
-            )
-        self.inventories = KnitVersionedFiles(
-            _KnitGraphIndex(self._pack_collection.inventory_index.combined_index,
-                add_callback=self._pack_collection.inventory_index.add_callback,
-                deltas=True, parents=True, is_locked=self.is_locked),
-            data_access=self._pack_collection.inventory_index.data_access,
-            max_delta_chain=200)
-        self.revisions = KnitVersionedFiles(
-            _KnitGraphIndex(self._pack_collection.revision_index.combined_index,
-                add_callback=self._pack_collection.revision_index.add_callback,
-                deltas=False, parents=True, is_locked=self.is_locked,
-                track_external_parent_refs=True),
-            data_access=self._pack_collection.revision_index.data_access,
-            max_delta_chain=0)
-        self.signatures = KnitVersionedFiles(
-            _KnitGraphIndex(self._pack_collection.signature_index.combined_index,
-                add_callback=self._pack_collection.signature_index.add_callback,
-                deltas=False, parents=False, is_locked=self.is_locked),
-            data_access=self._pack_collection.signature_index.data_access,
-            max_delta_chain=0)
-        self.texts = KnitVersionedFiles(
-            _KnitGraphIndex(self._pack_collection.text_index.combined_index,
-                add_callback=self._pack_collection.text_index.add_callback,
-                deltas=True, parents=True, is_locked=self.is_locked),
-            data_access=self._pack_collection.text_index.data_access,
-            max_delta_chain=200)
-        if _format.supports_chks:
-            # No graph, no compression:- references from chks are between
-            # different objects not temporal versions of the same; and without
-            # some sort of temporal structure knit compression will just fail.
-            self.chk_bytes = KnitVersionedFiles(
-                _KnitGraphIndex(self._pack_collection.chk_index.combined_index,
-                    add_callback=self._pack_collection.chk_index.add_callback,
-                    deltas=False, parents=False, is_locked=self.is_locked),
-                data_access=self._pack_collection.chk_index.data_access,
-                max_delta_chain=0)
-        else:
-            self.chk_bytes = None
-        # True when the repository object is 'write locked' (as opposed to the
-        # physical lock only taken out around changes to the pack-names list.)
-        # Another way to represent this would be a decorator around the control
-        # files object that presents logical locks as physical ones - if this
-        # gets ugly consider that alternative design. RBC 20071011
-        self._write_lock_count = 0
-        self._transaction = None
-        # for tests
-        self._reconcile_does_inventory_gc = True
-        self._reconcile_fixes_text_parents = True
-        self._reconcile_backsup_inventory = False
 
     def _abort_write_group(self):
         self.revisions._index._key_dependencies.clear()
