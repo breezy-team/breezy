@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ lazy_import.lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
     diff,
+    email_message,
     errors,
     gpg,
     hooks,
@@ -36,7 +37,6 @@ from bzrlib import (
 from bzrlib.bundle import (
     serializer as bundle_serializer,
     )
-from bzrlib.email_message import EmailMessage
 """)
 
 
@@ -59,12 +59,12 @@ class MergeDirectiveHooks(hooks.Hooks):
     """Hooks for MergeDirective classes."""
 
     def __init__(self):
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('merge_request_body',
+        hooks.Hooks.__init__(self, "bzrlib.merge_directive", "BaseMergeDirective.hooks")
+        self.add_hook('merge_request_body',
             "Called with a MergeRequestBodyParams when a body is needed for"
             " a merge request.  Callbacks must return a body.  If more"
             " than one callback is registered, the output of one callback is"
-            " provided to the next.", (1, 15, 0), False))
+            " provided to the next.", (1, 15, 0))
 
 
 class BaseMergeDirective(object):
@@ -266,7 +266,8 @@ class BaseMergeDirective(object):
             body = self.to_signed(branch)
         else:
             body = ''.join(self.to_lines())
-        message = EmailMessage(mail_from, mail_to, subject, body)
+        message = email_message.EmailMessage(mail_from, mail_to, subject,
+            body)
         return message
 
     def install_revisions(self, target_repo):

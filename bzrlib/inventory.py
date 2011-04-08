@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,7 +31,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
 import copy
-import os
 import re
 import tarfile
 
@@ -43,11 +42,11 @@ from bzrlib import (
     )
 """)
 
-from bzrlib.errors import (
-    BzrCheckError,
-    BzrError,
+from bzrlib import (
+    lazy_regex,
+    trace,
     )
-from bzrlib.trace import mutter
+
 from bzrlib.static_tuple import StaticTuple
 
 
@@ -224,7 +223,7 @@ class InventoryEntry(object):
 
     def kind_character(self):
         """Return a short kind indicator useful for appending to names."""
-        raise BzrError('unknown kind %r' % self.kind)
+        raise errors.BzrError('unknown kind %r' % self.kind)
 
     known_kinds = ('file', 'directory', 'symlink')
 
@@ -250,8 +249,9 @@ class InventoryEntry(object):
         """
         if self.parent_id is not None:
             if not inv.has_id(self.parent_id):
-                raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
-                        % (self.parent_id, rev_id))
+                raise errors.BzrCheckError(
+                    'missing parent {%s} in inventory for revision {%s}' % (
+                        self.parent_id, rev_id))
         checker._add_entry_to_text_key_references(inv, self)
         self._check(checker, rev_id)
 
@@ -539,7 +539,7 @@ class InventoryLink(InventoryEntry):
         # FIXME: which _modified field should we use ? RBC 20051003
         text_modified = (self.symlink_target != old_entry.symlink_target)
         if text_modified:
-            mutter("    symlink target changed")
+            trace.mutter("    symlink target changed")
         meta_modified = False
         return text_modified, meta_modified
 
@@ -718,6 +718,14 @@ class CommonInventory(object):
                 # if we finished all children, pop it off the stack
                 stack.pop()
 
+    def _preload_cache(self):
+        """Populate any caches, we are about to access all items.
+        
+        The default implementation does nothing, because CommonInventory doesn't
+        have a cache.
+        """
+        pass
+    
     def iter_entries_by_dir(self, from_dir=None, specific_file_ids=None,
         yield_parents=False):
         """Iterate over the entries in a directory first order.
@@ -736,6 +744,11 @@ class CommonInventory(object):
             specific_file_ids = set(specific_file_ids)
         # TODO? Perhaps this should return the from_dir so that the root is
         # yielded? or maybe an option?
+        if from_dir is None and specific_file_ids is None:
+            # They are iterating from the root, and have not specified any
+            # specific entries to look at. All current callers fully consume the
+            # iterator, so we can safely assume we are accessing all entries
+            self._preload_cache()
         if from_dir is None:
             if self.root is None:
                 return
@@ -1169,8 +1182,9 @@ class Inventory(CommonInventory):
     def _add_child(self, entry):
         """Add an entry to the inventory, without adding it to its parent"""
         if entry.file_id in self._byid:
-            raise BzrError("inventory already contains entry with id {%s}" %
-                           entry.file_id)
+            raise errors.BzrError(
+                "inventory already contains entry with id {%s}" %
+                entry.file_id)
         self._byid[entry.file_id] = entry
         for child in getattr(entry, 'children', {}).itervalues():
             self._add_child(child)
@@ -1340,15 +1354,17 @@ class Inventory(CommonInventory):
         """
         new_name = ensure_normalized_name(new_name)
         if not is_valid_name(new_name):
-            raise BzrError("not an acceptable filename: %r" % new_name)
+            raise errors.BzrError("not an acceptable filename: %r" % new_name)
 
         new_parent = self._byid[new_parent_id]
         if new_name in new_parent.children:
-            raise BzrError("%r already exists in %r" % (new_name, self.id2path(new_parent_id)))
+            raise errors.BzrError("%r already exists in %r" %
+                (new_name, self.id2path(new_parent_id)))
 
         new_parent_idpath = self.get_idpath(new_parent_id)
         if file_id in new_parent_idpath:
-            raise BzrError("cannot move directory %r into a subdirectory of itself, %r"
+            raise errors.BzrError(
+                "cannot move directory %r into a subdirectory of itself, %r"
                     % (self.id2path(file_id), self.id2path(new_parent_id)))
 
         file_ie = self._byid[file_id]
@@ -1390,6 +1406,7 @@ class CHKInventory(CommonInventory):
     def __init__(self, search_key_name):
         CommonInventory.__init__(self)
         self._fileid_to_entry_cache = {}
+        self._fully_cached = False
         self._path_to_fileid_cache = {}
         self._search_key_name = search_key_name
         self.root_id = None
@@ -1956,7 +1973,7 @@ class CHKInventory(CommonInventory):
 
     def iter_just_entries(self):
         """Iterate over all entries.
-        
+
         Unlike iter_entries(), just the entries are returned (not (path, ie))
         and the order of entries is undefined.
 
@@ -1969,6 +1986,59 @@ class CHKInventory(CommonInventory):
                 ie = self._bytes_to_entry(entry)
                 self._fileid_to_entry_cache[file_id] = ie
             yield ie
+
+    def _preload_cache(self):
+        """Make sure all file-ids are in _fileid_to_entry_cache"""
+        if self._fully_cached:
+            return # No need to do it again
+        # The optimal sort order is to use iteritems() directly
+        cache = self._fileid_to_entry_cache
+        for key, entry in self.id_to_entry.iteritems():
+            file_id = key[0]
+            if file_id not in cache:
+                ie = self._bytes_to_entry(entry)
+                cache[file_id] = ie
+            else:
+                ie = cache[file_id]
+        last_parent_id = last_parent_ie = None
+        pid_items = self.parent_id_basename_to_file_id.iteritems()
+        for key, child_file_id in pid_items:
+            if key == ('', ''): # This is the root
+                if child_file_id != self.root_id:
+                    raise ValueError('Data inconsistency detected.'
+                        ' We expected data with key ("","") to match'
+                        ' the root id, but %s != %s'
+                        % (child_file_id, self.root_id))
+                continue
+            parent_id, basename = key
+            ie = cache[child_file_id]
+            if parent_id == last_parent_id:
+                parent_ie = last_parent_ie
+            else:
+                parent_ie = cache[parent_id]
+            if parent_ie.kind != 'directory':
+                raise ValueError('Data inconsistency detected.'
+                    ' An entry in the parent_id_basename_to_file_id map'
+                    ' has parent_id {%s} but the kind of that object'
+                    ' is %r not "directory"' % (parent_id, parent_ie.kind))
+            if parent_ie._children is None:
+                parent_ie._children = {}
+            basename = basename.decode('utf-8')
+            if basename in parent_ie._children:
+                existing_ie = parent_ie._children[basename]
+                if existing_ie != ie:
+                    raise ValueError('Data inconsistency detected.'
+                        ' Two entries with basename %r were found'
+                        ' in the parent entry {%s}'
+                        % (basename, parent_id))
+            if basename != ie.name:
+                raise ValueError('Data inconsistency detected.'
+                    ' In the parent_id_basename_to_file_id map, file_id'
+                    ' {%s} is listed as having basename %r, but in the'
+                    ' id_to_entry map it is %r'
+                    % (child_file_id, basename, ie.name))
+            parent_ie._children[basename] = ie
+        self._fully_cached = True
 
     def iter_changes(self, basis):
         """Generate a Tree.iter_changes change list between this and basis.
@@ -2232,13 +2302,9 @@ def ensure_normalized_name(name):
     return name
 
 
-_NAME_RE = None
+_NAME_RE = lazy_regex.lazy_compile(r'^[^/\\]+$')
 
 def is_valid_name(name):
-    global _NAME_RE
-    if _NAME_RE is None:
-        _NAME_RE = re.compile(r'^[^/\\]+$')
-
     return bool(_NAME_RE.match(name))
 
 

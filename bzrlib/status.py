@@ -379,23 +379,23 @@ class StatusHooks(_mod_hooks.Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        _mod_hooks.Hooks.__init__(self)
-        self.create_hook(_mod_hooks.HookPoint('post_status',
+        _mod_hooks.Hooks.__init__(self, "bzrlib.status", "hooks")
+        self.add_hook('post_status',
             "Called with argument StatusHookParams after Bazaar has "
             "displayed the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
             "line options specified by the user for the status command. "
             "to_file is the output stream for writing.",
-            (2, 3), None))
-        self.create_hook(_mod_hooks.HookPoint('pre_status',
+            (2, 3))
+        self.add_hook('pre_status',
             "Called with argument StatusHookParams before Bazaar "
             "displays the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
             "line options specified by the user for the status command. "
             "to_file is the output stream for writing.",
-            (2, 3), None))
+            (2, 3))
 
 
 class StatusHookParams(object):

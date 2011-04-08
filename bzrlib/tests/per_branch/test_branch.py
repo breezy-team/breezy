@@ -25,16 +25,13 @@ from bzrlib import (
     gpg,
     merge,
     urlutils,
-    transactions,
     transport,
     remote,
     repository,
     revision,
     tests,
     )
-from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import (
-    http_server,
     per_branch,
     )
 from bzrlib.tests.http_server import HttpServer
@@ -735,6 +732,66 @@ class TestBound(per_branch.TestCaseWithBranch):
             tree_b.branch.bind(tree_a.branch)
         except errors.UpgradeRequired:
             raise tests.TestNotApplicable('Format does not support binding')
+
+    def test_unbind_clears_cached_master_branch(self):
+        """b.unbind clears any cached value of b.get_master_branch."""
+        master = self.make_branch('master')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.unbind()
+        self.assertEqual(None, branch.get_master_branch())
+
+    def test_unlocked_does_not_cache_master_branch(self):
+        """Unlocked branches do not cache the result of get_master_branch."""
+        master = self.make_branch('master')
+        branch1 = self.make_branch('branch')
+        try:
+            branch1.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        # Open branch1 again
+        branch2 = branch1.bzrdir.open_branch()
+        self.assertNotEqual(None, branch1.get_master_branch())
+        # Unbind the branch via branch2.  branch1 isn't locked so will
+        # immediately return the new value for get_master_branch.
+        branch2.unbind()
+        self.assertEqual(None, branch1.get_master_branch())
+
+    def test_bind_clears_cached_master_branch(self):
+        """b.bind clears any cached value of b.get_master_branch."""
+        master1 = self.make_branch('master1')
+        master2 = self.make_branch('master2')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master1)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.bind(master2)
+        self.assertEqual('.', urlutils.relative_url(self.get_url('master2'),
+                branch.get_master_branch().base))
+
+    def test_set_bound_location_clears_cached_master_branch(self):
+        """b.set_bound_location clears any cached value of b.get_master_branch.
+        """
+        master1 = self.make_branch('master1')
+        master2 = self.make_branch('master2')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master1)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.set_bound_location(self.get_url('master2'))
+        self.assertEqual('.', urlutils.relative_url(self.get_url('master2'),
+                branch.get_master_branch().base))
 
 
 class TestStrict(per_branch.TestCaseWithBranch):

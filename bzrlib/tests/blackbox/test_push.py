@@ -204,6 +204,22 @@ class TestPush(tests.TestCaseWithTransport):
             % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
         self.failUnlessExists('to-two')
 
+    def test_push_repository_no_branch_doesnt_fetch_all_revs(self):
+        # See https://bugs.launchpad.net/bzr/+bug/465517
+        target_repo = self.make_repository('target')
+        source = self.make_branch_builder('source')
+        source.start_series()
+        source.build_snapshot('A', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        source.build_snapshot('B', ['A'], [])
+        source.build_snapshot('C', ['A'], [])
+        source.finish_series()
+        self.run_bzr('push target -d source')
+        self.addCleanup(target_repo.lock_read().unlock)
+        # We should have pushed 'C', but not 'B', since it isn't in the
+        # ancestry
+        self.assertEqual([('A',), ('C',)], sorted(target_repo.revisions.keys()))
+
     def test_push_smart_non_stacked_streaming_acceptance(self):
         self.setup_smart_server_with_call_log()
         t = self.make_branch_and_tree('from')

@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,10 +18,14 @@
 """B+Tree indices"""
 
 import cStringIO
-from bisect import bisect_right
+
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import bisect
 import math
 import tempfile
 import zlib
+""")
 
 from bzrlib import (
     chunk_writer,
@@ -1047,7 +1051,7 @@ class BTreeGraphIndex(object):
         # iter_steps = len(in_keys) + len(fixed_keys)
         # bisect_steps = len(in_keys) * math.log(len(fixed_keys), 2)
         if len(in_keys) == 1: # Bisect will always be faster for M = 1
-            return [(bisect_right(fixed_keys, in_keys[0]), in_keys)]
+            return [(bisect.bisect_right(fixed_keys, in_keys[0]), in_keys)]
         # elif bisect_steps < iter_steps:
         #     offsets = {}
         #     for key in in_keys:

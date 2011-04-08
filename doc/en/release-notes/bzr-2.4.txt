@@ -26,16 +26,48 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Resolve ``lp:FOO`` urls locally rather than doing an XMLRPC request if
+  the user has done ``bzr launchpad-login``. The bzr+ssh URLs were already
+  being handed off to the remote server anyway (xmlrpc has been mapping
+  ``lp:bzr`` to ``bzr+ssh://bazaar.launchpad.net/+branch/bzr``, rather
+  than ``bzr+ssh://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev`` for a few
+  months now.) By doing it ourselves, we can cut out substantial startup
+  time. From Netherlands to London it was taking 368ms to do the XMLRPC
+  call as much as 2s from Sydney. You can test the local logic by using
+  ``-Dlaunchpad``.  (John Arbash Meinel, #397739)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzrlib.log._DEFAULT_REQUEST_PARAMS`` is no longer accidentally
+  mutated by ``bzrlib.log._apply_log_request_defaults``.  In practice
+  these default values aren't relied on very often so this probably
+  wasn't causing any trouble.  (Andrew Bennetts)
+
+* ``bzr log`` now works on revisions which are not in the current branch.
+  (Matt Giuca, #241998)
+
+* Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
+
+* Standalone bzr.exe installation on Windows: user can put additional python 
+  libraries into ``site-packages`` subdirectory of the installation directory,
+  this might be required for "installing" extra dependencies for some plugins.
+  (Alexander Belchenko, #743256)
+
+* ``TreeTransform.create_file/new_file`` can now take an optional ``sha1``
+  parameter. If supplied, when the transform is applied, it will then call
+  ``self._tree._observed_sha1`` for those files. This lets us update the
+  hash-cache for content that we create, preventing us from re-reading the
+  content in the next ``bzr status``.  (John Arbash Meinel, #740932)
+
 Documentation
 *************
 
-.. Improved or updated documentation.
+* Added a section about using a shared SSH account on a server for bzr+ssh
+  access.  (Russell Smith)
 
 API Changes
 ***********
@@ -43,11 +75,36 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Hooks.create_hook`` is now deprecated in favour of ``Hooks.add_hook``.
+  (Jelmer Vernooij)
+
+* If you call `bzrlib.initialize` but forget to enter the resulting object
+  as a context manager, bzrlib will now be initialized anyhow.
+  (Previously simple programs calling bzrlib might find the library was
+  mysteriously silent.)
+  (Martin Pool)
+
+* New method ``Hooks.uninstall_named_hook``. (Jelmer Vernooij, #301472)
+
+* The ``revno`` parameter of ``log.LogRevision`` may now be None,
+  representing a revision which is not in the current branch.
+  (Matt Giuca, #241998)
+
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* Added ``osutils.lstat`` and ``osutils.fstat``. These are just the ``os``
+  functions on Linux, but they are wrapped on Windows so that fstat
+  matches lstat results across all python versions.
+  (John Arbash Meinel)
+
+* ``WorkingTree._observed_sha1`` also updates the 'size' column. It
+  happened to be updated as a side-effect of commit, but if we start using
+  the function elsewhere we might as well do it directly.
+  (John Arbash Meinel)
 
 Testing
 *******
@@ -121,6 +178,13 @@ Improvements
 
 * ``bzr export`` can now create ``.tar.xz`` and ``.tar.lzma`` files.
   (Jelmer Vernooij, #551714)
+
+* Getting all entries from ``CHKInventory.iter_entries_by_dir()`` has been
+  sped up dramatically for large trees. Iterating by dir is not the best
+  way to load data from a CHK inventory, so it preloads all the items in
+  the correct order. (With the gcc-tree, this changes it (re)reading 8GB
+  of CHK data, down to just 150MB.) This has noticeable affects for things
+  like building checkouts, etc.  (John Arbash Meinel, #737234)
 
 
 Bug Fixes
@@ -196,13 +260,10 @@ Bug Fixes
 * On Python 2.6 and higher, use multiprocessing.cpu_count() to retrieve the
   number of available processors. (Jelmer Vernooij, #693140)
 
-* ``bzr log`` now works on revisions which are not in the current branch.
-  (Matt Giuca, #241998)
-
 API Changes
 ***********
 
-* Added ``Branch.heads_to_fetch`` method.  Implementions of the Branch API
+* Added ``Branch.heads_to_fetch`` method.  Implementations of the Branch API
   must now inherit or implement this method.  (Andrew Bennetts, #721328)
   
 * Added ``bzrlib.mergetools`` module with helper functions for working with
@@ -226,9 +287,17 @@ API Changes
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
 
+* Because it was too specific to BzrDir implementations,
+  ``ControlDir.sprout`` no longer has a default implementation; it now
+  raises ``NotImplementedError``. (Jelmer Vernooij, #717937)
+
 * ``ControlDirFormat.register_format`` has been removed. Instead,
   ``Prober`` implementations should now implement a ``known_formats``
   method. (Jelmer Vernooij)
+
+* ControlDirFormats can now provide a ``check_status`` method and
+  raise a custom exception or warning when an unsupported or deprecated
+  format is being opened.  (Jelmer Vernooij, #731311)
 
 * ``bzrlib.revionspec.dwim_revspecs`` is deprecated.
   Use ``bzrlib.revisionspec.RevisionSpec_dwim.append_possible_revspec`` and
@@ -278,18 +347,18 @@ API Changes
   (``bzrlib.working_tree.format_registry``) rather than using the class
   methods on ``WorkingTreeFormat``. (Jelmer Vernooij, #714730)
 
-* The ``revno`` parameter of ``log.LogRevision`` may now be None,
-  representing a revision which is not in the current branch.
-  (Matt Giuca, #241998)
-
 Internals
 *********
 
 * ``CatchingExceptionThread`` (formerly ThreadWithException) has been moved
   out of the ``bzrlib.tests`` hierarchy to make it clearer that it can be used
   outside of tests. This class makes it easier to track exceptions in threads
-  by cacthing them so they can be re-raised in the controlling thread. It's
+  by catching them so they can be re-raised in the controlling thread. It's
   available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
+
+* Correctly propogate malloc failures from diff-delta.c code as MemoryError
+  so OOM conditions during groupcompress are clearly reported. This entailed a
+  change to several function signatures. (Martin [gz], #633336)
 
 * ``HookPoint.lazy_hook`` and ``Hooks.install_named_lazy_hook`` can install 
   hooks for which the callable is loaded lazily.  (Jelmer Vernooij)
