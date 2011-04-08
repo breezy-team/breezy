@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@ This is a fairly thin wrapper on regular file IO.
 """
 
 import os
-from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
+from stat import ST_MODE, S_ISDIR, S_IMODE
 import sys
 
 from bzrlib.lazy_import import lazy_import
@@ -33,9 +33,7 @@ from bzrlib import (
     osutils,
     urlutils,
     symbol_versioning,
-    transport,
     )
-from bzrlib.trace import mutter
 from bzrlib.transport import LateReadError
 """)
 

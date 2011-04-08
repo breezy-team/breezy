@@ -29,10 +29,9 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from stat import S_ISDIR
-
 import bzrlib
 from bzrlib import (
+    branch as _mod_branch,
     cleanup,
     config,
     controldir,
@@ -49,12 +48,11 @@ from bzrlib import (
     transport as _mod_transport,
     ui,
     urlutils,
-    versionedfile,
     win32utils,
     workingtree,
     workingtree_4,
     )
-from bzrlib.repofmt import pack_repo
+from bzrlib.repofmt import knitpack_repo
 from bzrlib.transport import (
     do_catching_redirections,
     local,
@@ -1708,9 +1706,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
                     # stack_on is inaccessible, JFDI.
                     # TODO: bad monkey, hard-coded formats...
                     if self.repository_format.rich_root_data:
-                        new_repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
+                        new_repo_format = knitpack_repo.RepositoryFormatKnitPack5RichRoot()
                     else:
-                        new_repo_format = pack_repo.RepositoryFormatKnitPack5()
+                        new_repo_format = knitpack_repo.RepositoryFormatKnitPack5()
             else:
                 # If the target already supports stacking, then we know the
                 # project is already able to use stacking, so auto-upgrade
@@ -1860,7 +1858,6 @@ class ConvertMetaToMeta(controldir.Converter):
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups/some sort of registry.
             # Avoid circular imports
-            from bzrlib import branch as _mod_branch
             old = branch._format.__class__
             new = self.target_format.get_branch_format().__class__
             while old != new:
@@ -2157,7 +2154,7 @@ register_metadir(controldir.format_registry, 'dirstate-with-subtree',
     hidden=True,
     )
 register_metadir(controldir.format_registry, 'pack-0.92',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack1',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-tags format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
@@ -2166,7 +2163,7 @@ register_metadir(controldir.format_registry, 'pack-0.92',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
 register_metadir(controldir.format_registry, 'pack-0.92-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack3',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-with-subtree format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
@@ -2177,7 +2174,7 @@ register_metadir(controldir.format_registry, 'pack-0.92-subtree',
     experimental=True,
     )
 register_metadir(controldir.format_registry, 'rich-root-pack',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack4',
     help='New in 1.0: A variant of pack-0.92 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat6',
@@ -2185,7 +2182,7 @@ register_metadir(controldir.format_registry, 'rich-root-pack',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.6',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack5',
     help='A format that allows a branch to indicate that there is another '
          '(stacked) repository that should be used to access data that is '
          'not present locally.',
@@ -2194,7 +2191,7 @@ register_metadir(controldir.format_registry, '1.6',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.6.1-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack5RichRoot',
     help='A variant of 1.6 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
@@ -2202,7 +2199,7 @@ register_metadir(controldir.format_registry, '1.6.1-rich-root',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.9',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6',
     help='A repository format using B+tree indexes. These indexes '
          'are smaller in size, have smarter caching and provide faster '
          'performance for most operations.',
@@ -2211,7 +2208,7 @@ register_metadir(controldir.format_registry, '1.9',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.9-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of 1.9 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
@@ -2219,13 +2216,13 @@ register_metadir(controldir.format_registry, '1.9-rich-root',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.14',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6',
     help='A working-tree format that supports content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     )
 register_metadir(controldir.format_registry, '1.14-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of 1.14 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
@@ -2249,7 +2246,7 @@ register_metadir(controldir.format_registry, 'development-subtree',
                  # chk based subtree format.
     )
 register_metadir(controldir.format_registry, 'development5-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatPackDevelopment2Subtree',
     help='Development format, subtree variant. Can convert data to and '
         'from pack-0.92-subtree (and anything compatible with '
         'pack-0.92-subtree) format repositories. Repositories and branches in '

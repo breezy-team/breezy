@@ -31,13 +31,13 @@ lazy_import(globals(), """
 import errno
 import stat
 
-import bzrlib
 from bzrlib import (
     bzrdir,
     cache_utf8,
     debug,
     dirstate,
     errors,
+    filters as _mod_filters,
     generate_ids,
     osutils,
     revision as _mod_revision,
@@ -46,12 +46,9 @@ from bzrlib import (
     transform,
     views,
     )
-import bzrlib.branch
-import bzrlib.ui
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.filters import filtered_input_file, internal_size_sha_file_byname
 from bzrlib.inventory import Inventory, ROOT_ID, entry_factory
 from bzrlib.lock import LogicalLockResult
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -62,7 +59,6 @@ from bzrlib.osutils import (
     realpath,
     safe_unicode,
     )
-from bzrlib.trace import mutter
 from bzrlib.transport.local import LocalTransport
 from bzrlib.tree import InterTree
 from bzrlib.tree import Tree
@@ -85,7 +81,7 @@ class DirStateWorkingTree(WorkingTree3):
         self._format = _format
         self.bzrdir = _bzrdir
         basedir = safe_unicode(basedir)
-        mutter("opening working tree %r", basedir)
+        trace.mutter("opening working tree %r", basedir)
         self._branch = branch
         self.basedir = realpath(basedir)
         # if branch is at our basedir and is a format 6 or less
@@ -1324,7 +1320,7 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
         """See dirstate.SHA1Provider.sha1()."""
         filters = self.tree._content_filter_stack(
             self.tree.relpath(osutils.safe_unicode(abspath)))
-        return internal_size_sha_file_byname(abspath, filters)[1]
+        return _mod_filters.internal_size_sha_file_byname(abspath, filters)[1]
 
     def stat_and_sha1(self, abspath):
         """See dirstate.SHA1Provider.stat_and_sha1()."""
@@ -1334,7 +1330,7 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
         try:
             statvalue = os.fstat(file_obj.fileno())
             if filters:
-                file_obj = filtered_input_file(file_obj, filters)
+                file_obj = _mod_filters.filtered_input_file(file_obj, filters)
             sha1 = osutils.size_sha_file(file_obj)[1]
         finally:
             file_obj.close()

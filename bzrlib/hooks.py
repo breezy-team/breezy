@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,8 +16,8 @@
 
 
 """Support for plugin hooking logic."""
+
 from bzrlib import (
-    pyutils,
     registry,
     symbol_versioning,
     )
@@ -26,10 +26,10 @@ lazy_import(globals(), """
 import textwrap
 
 from bzrlib import (
-        _format_version_tuple,
-        errors,
-        )
-from bzrlib.help_topics import help_as_plain_text
+    _format_version_tuple,
+    errors,
+    pyutils,
+    )
 """)
 
 

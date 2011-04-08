@@ -65,7 +65,7 @@ from bzrlib.transport import (
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.nosmart import NoSmartTransportDecorator
 from bzrlib.transport.readonly import ReadonlyTransportDecorator
-from bzrlib.repofmt import knitrepo, pack_repo
+from bzrlib.repofmt import knitrepo, knitpack_repo
 
 
 class TestDefaultFormat(TestCase):
@@ -501,7 +501,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
     def test_default_stacking_with_stackable_branch_unstackable_repo(self):
         # Make stackable source branch with an unstackable repo format.
         source_bzrdir = self.make_bzrdir('source')
-        pack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
+        knitpack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
         source_branch = bzrlib.branch.BzrBranchFormat7().initialize(
             source_bzrdir)
         # Make a directory with a default stacking policy

@@ -44,13 +44,13 @@ import operator
 import stat
 import re
 
-import bzrlib
 from bzrlib import (
     branch,
     bzrdir,
     conflicts as _mod_conflicts,
     controldir,
     errors,
+    filters as _mod_filters,
     generate_ids,
     globbing,
     graph as _mod_graph,
@@ -58,10 +58,9 @@ from bzrlib import (
     ignores,
     inventory,
     merge,
-    registry,
     revision as _mod_revision,
     revisiontree,
-    trace,
+    rio as _mod_rio,
     transform,
     transport,
     ui,
@@ -94,11 +93,9 @@ from bzrlib.osutils import (
     splitpath,
     supports_executable,
     )
-from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 from bzrlib.revision import CURRENT_REVISION
-from bzrlib.rio import RioReader, rio_file, Stanza
 from bzrlib.symbol_versioning import (
     deprecated_passed,
     DEPRECATED_PARAMETER,
@@ -534,7 +531,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
-            file_obj = filtered_input_file(file_obj, filters)
+            file_obj = _mod_filters.filtered_input_file(file_obj, filters)
         return (file_obj, stat_value)
 
     def get_file_text(self, file_id, path=None, filtered=True):
@@ -549,7 +546,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         f = file(path, 'rb')
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(filename)
-            return filtered_input_file(f, filters)
+            return _mod_filters.filtered_input_file(f, filters)
         else:
             return f
 
@@ -891,7 +888,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             if revision_id in heads and revision_id not in new_revision_ids:
                 new_revision_ids.append(revision_id)
         if new_revision_ids != revision_ids:
-            trace.mutter('requested to set revision_ids = %s,'
+            mutter('requested to set revision_ids = %s,'
                          ' but filtered to %s', revision_ids, new_revision_ids)
         return new_revision_ids
 
@@ -963,7 +960,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def set_merge_modified(self, modified_hashes):
         def iter_stanzas():
             for file_id, hash in modified_hashes.iteritems():
-                yield Stanza(file_id=file_id.decode('utf8'), hash=hash)
+                yield _mod_rio.Stanza(file_id=file_id.decode('utf8'),
+                    hash=hash)
         self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
 
     def _sha_from_stat(self, path, stat_result):
@@ -978,7 +976,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
 
     def _put_rio(self, filename, stanzas, header):
         self._must_be_locked()
-        my_file = rio_file(stanzas, header)
+        my_file = _mod_rio.rio_file(stanzas, header)
         self._transport.put_file(filename, my_file,
             mode=self.bzrdir._get_file_mode())
 
@@ -1048,7 +1046,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                     raise errors.MergeModifiedFormatError()
             except StopIteration:
                 raise errors.MergeModifiedFormatError()
-            for s in RioReader(hashfile):
+            for s in _mod_rio.RioReader(hashfile):
                 # RioReader reads in Unicode, so convert file_ids back to utf8
                 file_id = osutils.safe_file_id(s.get("file_id"), warn=False)
                 if file_id not in self.inventory:
@@ -2354,7 +2352,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
                                              show_base=show_base)
             if nb_conflicts:
                 self.add_parent_tree((old_tip, other_tree))
-                trace.note('Rerun update after fixing the conflicts.')
+                note('Rerun update after fixing the conflicts.')
                 return nb_conflicts
 
         if last_rev != _mod_revision.ensure_null(revision):
@@ -2754,7 +2752,8 @@ class WorkingTree3(WorkingTree):
                     raise errors.ConflictFormatError()
             except StopIteration:
                 raise errors.ConflictFormatError()
-            return _mod_conflicts.ConflictList.from_stanzas(RioReader(confile))
+            reader = _mod_rio.RioReader(confile)
+            return _mod_conflicts.ConflictList.from_stanzas(reader)
         finally:
             confile.close()
 
