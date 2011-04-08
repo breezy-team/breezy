@@ -42,3 +42,9 @@ identified by a unicode string.
 Depending on the object it is associated with (or not) a ``Store`` also needs
 to implement a locking mechanism. ``LockableConfigObjStore`` implements such a
 mechanism for ``ConfigObj`` based stores.
+
+Classes are provided for the usual Bazaar configuration files and could be
+used as examples to define new ones if needed. The associated tests provides a
+basis for new classes which only need to register themselves in the right
+places to inherit from the existing basic tests and add their own specific
+ones.
