@@ -41,7 +41,6 @@ from bzrlib.plugins.builddeb.errors import (MissingChangelogError,
                 AddChangelogError,
                 InconsistentSourceFormatError,
                 NoPreviousUpload,
-                UnknownDistribution,
                 )
 from bzrlib.plugins.builddeb.tests import SourcePackageBuilder
 from bzrlib.plugins.builddeb.util import (
@@ -741,7 +740,7 @@ class FindPreviousUploadTests(TestCase):
     def test_find_previous_upload_unknown(self):
         cl = self.make_changelog([("0.1-1", "lucid"),
                 ("0.1-2", "dunno")])
-        self.assertRaises(UnknownDistribution, _find_previous_upload, cl)
+        self.assertRaises(NoPreviousUpload, _find_previous_upload, cl)
 
     def test_find_previous_upload_missing(self):
         cl = self.make_changelog([("0.1-1", "unstable"),
