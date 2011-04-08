@@ -95,6 +95,10 @@ API Changes
   representing a revision which is not in the current branch.
   (Matt Giuca, #241998)
 
+* The various knit pack repository format classes have been moved
+  from ``bzrlib.repofmt.pack_repo`` to
+  ``bzrlib.repofmt.knitpack_repo``. (Jelmer Vernooij)
+
 Internals
 *********
 

@@ -27,7 +27,7 @@ from bzrlib import (
     repository,
     remote,
     )
-from bzrlib.repofmt.pack_repo import (
+from bzrlib.repofmt.knitpack_repo import (
     RepositoryFormatKnitPack5,
     )
 from bzrlib.repofmt.groupcompress_repo import (

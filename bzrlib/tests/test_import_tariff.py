@@ -111,6 +111,7 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.msgeditor',
             'bzrlib.patiencediff',
             'bzrlib.remote',
+            'bzrlib.repofmt.knitpack_repo',
             'bzrlib.rules',
             'bzrlib.sign_my_commits',
             'bzrlib.smart',
