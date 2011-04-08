@@ -2372,14 +2372,23 @@ class LocationMatcher(SectionMatcher):
 
     def get_sections(self):
         # Override the default implementation as we want to change the order
-        sections = []
-        for section in self.store.get_sections():
-            match = _match_section_by_parts(section.id, self.location)
-            if match is not None:
-                length, extra_path = match
-                sections.append(LocationSection(section, length, extra_path))
+
+        # The following is a bit hackish but ensures compatibility with
+        # LocationConfig by reusing the same code
+        sections = list(self.store.get_sections())
+        filtered_sections = _filter_for_location_by_parts(
+            [s.id for s in sections], self.location)
+        iter_sections = iter(sections)
+        matching_sections = []
+        for length, section_id, extra_path in filtered_sections:
+            # a section id is unique for a given store so it's safe to iterate
+            # again
+            section = iter_sections.next()
+            if section_id == section.id:
+                matching_sections.append(
+                    LocationSection(section, length, extra_path))
         # We want the longest (aka more specific) locations first
-        sections = sorted(sections, key=lambda section: section.length,
+        sections = sorted(matching_sections, key=lambda section: section.length,
                           reverse=True)
         # Sections mentioning 'ignore_parents' restrict the selection
         for section in sections:
