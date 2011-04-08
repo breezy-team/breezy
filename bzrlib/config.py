@@ -2112,7 +2112,7 @@ class ReadOnlySection(object):
         return self.options.get(name, default)
 
 
-_Created = object()
+_NewlyCreatedOption = object()
 """Was the option created during the MutableSection lifetime"""
 
 
@@ -2126,7 +2126,7 @@ class MutableSection(ReadOnlySection):
     def set(self, name, value):
         if name not in self.options:
             # This is a new option
-            self.orig[name] = _Created
+            self.orig[name] = _NewlyCreatedOption
         elif name not in self.orig:
             self.orig[name] = self.get(name, None)
         self.options[name] = value

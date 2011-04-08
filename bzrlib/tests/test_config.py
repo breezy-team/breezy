@@ -1887,7 +1887,7 @@ class TestConfigMutableSection(tests.TestCase):
         # The option didn't exist initially so it we need to keep track of it
         # with a special value
         self.assertTrue('foo' in section.orig)
-        self.assertEquals(config._Created, section.orig['foo'])
+        self.assertEquals(config._NewlyCreatedOption, section.orig['foo'])
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
