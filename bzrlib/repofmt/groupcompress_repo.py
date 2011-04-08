@@ -838,9 +838,8 @@ class CHKInventoryRepository(PackRepository):
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
         """Overridden to change pack collection class."""
-        PackRepository.__init__(self, _format, a_bzrdir, control_files,
+        super(CHKInventoryRepository, self).__init__(_format, a_bzrdir, control_files,
             _commit_builder_class, _serializer)
-        # and now replace everything it did :)
         index_transport = self._transport.clone('indices')
         self._pack_collection = GCRepositoryPackCollection(self,
             self._transport, index_transport,
