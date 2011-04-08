@@ -17,17 +17,18 @@
 
 """Tests for the commit CLI of bzr."""
 
+import doctest
 import os
 import re
 import sys
 
+from testtools.matchers import DocTestMatches
+
 from bzrlib import (
-    bzrdir,
     config,
     osutils,
     ignores,
     msgeditor,
-    osutils,
     tests,
     )
 from bzrlib.bzrdir import BzrDir
@@ -48,8 +49,18 @@ class TestCommit(TestCaseWithTransport):
         self.build_tree(['hello.txt'])
         out,err = self.run_bzr('commit -m empty', retcode=3)
         self.assertEqual('', out)
-        self.assertContainsRe(err, 'bzr: ERROR: No changes to commit\.'
-                                  ' Use --unchanged to commit anyhow.\n')
+        # Two ugly bits here.
+        # 1) We really don't want 'aborting commit write group' anymore.
+        # 2) bzr: ERROR: is a really long line, so we wrap it with '\'
+        self.assertThat(
+            err,
+            DocTestMatches("""\
+Committing to: ...
+aborting commit write group: PointlessCommit(No changes to commit)
+bzr: ERROR: No changes to commit.\
+ Please 'bzr add' the files you want to commit,\
+ or use --unchanged to force an empty commit.
+""", flags=doctest.ELLIPSIS|doctest.REPORT_UDIFF))
 
     def test_commit_success(self):
         """Successful commit should not leave behind a bzr-commit-* file"""

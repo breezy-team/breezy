@@ -26,6 +26,12 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* When building a new WorkingTree (such as during ``bzr co`` or
+  ``bzr branch``) we now properly store the stat and hash of files that
+  are old enough. This saves a fair amount of time on the first
+  ``bzr status`` (on a 500MB tree, it saves about 30+s).
+  (John Arbash Meinel, #740932)
+
 * Resolve ``lp:FOO`` urls locally rather than doing an XMLRPC request if
   the user has done ``bzr launchpad-login``. The bzr+ssh URLs were already
   being handed off to the remote server anyway (xmlrpc has been mapping
@@ -47,6 +53,9 @@ Bug Fixes
   these default values aren't relied on very often so this probably
   wasn't causing any trouble.  (Andrew Bennetts)
 
+* ``bzr log`` now works on revisions which are not in the current branch.
+  (Matt Giuca, #241998)
+
 * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
 * Standalone bzr.exe installation on Windows: user can put additional python 
@@ -65,6 +74,11 @@ Documentation
 
 * Added a section about using a shared SSH account on a server for bzr+ssh
   access.  (Russell Smith)
+
+* The documentation now recommends using SSH rather than SFTP in the
+  tutorials and the examples, because that will generally be much faster
+  and better in cases where it can be used.  SFTP is still available and
+  mentioned as an alternative.  (Martin Pool, #636712)
 
 API Changes
 ***********
@@ -86,6 +100,14 @@ API Changes
 * ``revision_graph_can_have_wrong_parents`` is now an attribute
   on ``RepositoryFormat`` rather than a method on ``Repository``.
   (Jelmer Vernooij)
+
+* The ``revno`` parameter of ``log.LogRevision`` may now be None,
+  representing a revision which is not in the current branch.
+  (Matt Giuca, #241998)
+
+* The various knit pack repository format classes have been moved
+  from ``bzrlib.repofmt.pack_repo`` to
+  ``bzrlib.repofmt.knitpack_repo``. (Jelmer Vernooij)
 
 Internals
 *********
