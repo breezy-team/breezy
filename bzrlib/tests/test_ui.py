@@ -232,7 +232,7 @@ class TestTextUIFactory(tests.TestCase):
 
     def test_text_ui_show_user_warning(self):
         from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
-        from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack5
+        from bzrlib.repofmt.knitpack_repo import RepositoryFormatKnitPack5
         err = StringIO()
         out = StringIO()
         ui = tests.TextUIFactory(stdin=None, stdout=out, stderr=err)

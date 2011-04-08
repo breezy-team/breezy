@@ -3271,6 +3271,145 @@ class _KnitKeyAccess(object):
                 yield data
 
 
+class _DirectPackAccess(object):
+    """Access to data in one or more packs with less translation."""
+
+    def __init__(self, index_to_packs, reload_func=None, flush_func=None):
+        """Create a _DirectPackAccess object.
+
+        :param index_to_packs: A dict mapping index objects to the transport
+            and file names for obtaining data.
+        :param reload_func: A function to call if we determine that the pack
+            files have moved and we need to reload our caches. See
+            bzrlib.repo_fmt.pack_repo.AggregateIndex for more details.
+        """
+        self._container_writer = None
+        self._write_index = None
+        self._indices = index_to_packs
+        self._reload_func = reload_func
+        self._flush_func = flush_func
+
+    def add_raw_records(self, key_sizes, raw_data):
+        """Add raw knit bytes to a storage area.
+
+        The data is spooled to the container writer in one bytes-record per
+        raw data item.
+
+        :param sizes: An iterable of tuples containing the key and size of each
+            raw data segment.
+        :param raw_data: A bytestring containing the data.
+        :return: A list of memos to retrieve the record later. Each memo is an
+            opaque index memo. For _DirectPackAccess the memo is (index, pos,
+            length), where the index field is the write_index object supplied
+            to the PackAccess object.
+        """
+        if type(raw_data) is not str:
+            raise AssertionError(
+                'data must be plain bytes was %s' % type(raw_data))
+        result = []
+        offset = 0
+        for key, size in key_sizes:
+            p_offset, p_length = self._container_writer.add_bytes_record(
+                raw_data[offset:offset+size], [])
+            offset += size
+            result.append((self._write_index, p_offset, p_length))
+        return result
+
+    def flush(self):
+        """Flush pending writes on this access object.
+
+        This will flush any buffered writes to a NewPack.
+        """
+        if self._flush_func is not None:
+            self._flush_func()
+            
+    def get_raw_records(self, memos_for_retrieval):
+        """Get the raw bytes for a records.
+
+        :param memos_for_retrieval: An iterable containing the (index, pos,
+            length) memo for retrieving the bytes. The Pack access method
+            looks up the pack to use for a given record in its index_to_pack
+            map.
+        :return: An iterator over the bytes of the records.
+        """
+        # first pass, group into same-index requests
+        request_lists = []
+        current_index = None
+        for (index, offset, length) in memos_for_retrieval:
+            if current_index == index:
+                current_list.append((offset, length))
+            else:
+                if current_index is not None:
+                    request_lists.append((current_index, current_list))
+                current_index = index
+                current_list = [(offset, length)]
+        # handle the last entry
+        if current_index is not None:
+            request_lists.append((current_index, current_list))
+        for index, offsets in request_lists:
+            try:
+                transport, path = self._indices[index]
+            except KeyError:
+                # A KeyError here indicates that someone has triggered an index
+                # reload, and this index has gone missing, we need to start
+                # over.
+                if self._reload_func is None:
+                    # If we don't have a _reload_func there is nothing that can
+                    # be done
+                    raise
+                raise errors.RetryWithNewPacks(index,
+                                               reload_occurred=True,
+                                               exc_info=sys.exc_info())
+            try:
+                reader = pack.make_readv_reader(transport, path, offsets)
+                for names, read_func in reader.iter_records():
+                    yield read_func(None)
+            except errors.NoSuchFile:
+                # A NoSuchFile error indicates that a pack file has gone
+                # missing on disk, we need to trigger a reload, and start over.
+                if self._reload_func is None:
+                    raise
+                raise errors.RetryWithNewPacks(transport.abspath(path),
+                                               reload_occurred=False,
+                                               exc_info=sys.exc_info())
+
+    def set_writer(self, writer, index, transport_packname):
+        """Set a writer to use for adding data."""
+        if index is not None:
+            self._indices[index] = transport_packname
+        self._container_writer = writer
+        self._write_index = index
+
+    def reload_or_raise(self, retry_exc):
+        """Try calling the reload function, or re-raise the original exception.
+
+        This should be called after _DirectPackAccess raises a
+        RetryWithNewPacks exception. This function will handle the common logic
+        of determining when the error is fatal versus being temporary.
+        It will also make sure that the original exception is raised, rather
+        than the RetryWithNewPacks exception.
+
+        If this function returns, then the calling function should retry
+        whatever operation was being performed. Otherwise an exception will
+        be raised.
+
+        :param retry_exc: A RetryWithNewPacks exception.
+        """
+        is_error = False
+        if self._reload_func is None:
+            is_error = True
+        elif not self._reload_func():
+            # The reload claimed that nothing changed
+            if not retry_exc.reload_occurred:
+                # If there wasn't an earlier reload, then we really were
+                # expecting to find changes. We didn't find them, so this is a
+                # hard error
+                is_error = True
+        if is_error:
+            exc_class, exc_value, exc_traceback = retry_exc.exc_info
+            raise exc_class, exc_value, exc_traceback
+
+
 def annotate_knit(knit, revision_id):
     """Annotate a knit with no cached annotations.
 

@@ -160,7 +160,7 @@ class ContainerWriter(object):
 
 class ReadVFile(object):
     """Adapt a readv result iterator to a file like protocol.
-
+    
     The readv result must support the iterator protocol returning (offset,
     data_bytes) pairs.
     """
@@ -526,6 +526,4 @@ def iter_records_from_file(source_file):
             yield record
         if parser.finished:
             break
-
-
 

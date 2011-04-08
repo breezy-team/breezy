@@ -40,6 +40,7 @@ from bzrlib.knit import (
     KnitVersionedFiles,
     PlainKnitContent,
     _VFContentMapGenerator,
+    _DirectPackAccess,
     _KndxIndex,
     _KnitGraphIndex,
     _KnitKeyAccess,
@@ -529,7 +530,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         # Note that the 'filename' has been changed to 'different-packname'
         access = pack_repo._DirectPackAccess(
-            {'foo':(transport, 'different-packname')})
+            {'foo': (transport, 'different-packname')})
         e = self.assertListRaises(errors.NoSuchFile,
                                   access.get_raw_records, memos)
 
@@ -540,7 +541,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
                                 [transport.get_bytes('packname')])
         reload_called, reload_func = self.make_reload_func()
         access = pack_repo._DirectPackAccess(
-            {'foo':(failing_transport, 'packname')},
+            {'foo': (failing_transport, 'packname')},
             reload_func=reload_func)
         # Asking for a single record will not trigger the Mock failure
         self.assertEqual(['1234567890'],
