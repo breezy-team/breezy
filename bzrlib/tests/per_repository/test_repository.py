@@ -699,7 +699,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         """
         repo = self.make_repository('.')
         # This should work, not raise NotImplementedError:
-        if not repo.revision_graph_can_have_wrong_parents():
+        if not repo._format.revision_graph_can_have_wrong_parents:
             return
         repo.lock_read()
         self.addCleanup(repo.unlock)

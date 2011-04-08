@@ -2282,6 +2282,7 @@ class RepositoryFormatPack(MetaDirRepositoryFormat):
     fast_deltas = False
     supports_full_versioned_files = True
     supports_funky_characters = True
+    revision_graph_can_have_wrong_parents = True
 
     def initialize(self, a_bzrdir, shared=False):
         """Create a pack based repository.
