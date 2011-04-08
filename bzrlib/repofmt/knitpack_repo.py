@@ -20,11 +20,16 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     bzrdir,
+    knit,
+    osutils,
+    revision as _mod_revision,
+    tsort,
     xml5,
     xml6,
     xml7,
     )
 from bzrlib.knit import (
+    _KnitGraphIndex,
     KnitPlainFactory,
     KnitVersionedFiles,
     )
@@ -35,10 +40,12 @@ from bzrlib import (
     )
 from bzrlib.index import (
     GraphIndex,
+    GraphIndexPrefixAdapter,
     InMemoryGraphIndex,
     )
 from bzrlib.repofmt.pack_repo import (
     RepositoryFormatPack,
+    Packer,
     PackCommitBuilder,
     PackRepository,
     PackRootCommitBuilder,
@@ -54,6 +61,10 @@ class KnitPackRepository(PackRepository):
         if to_format.network_name() == self._format.network_name():
             return KnitPackStreamSource(self, to_format)
         return PackRepository._get_source(self, to_format)
+
+    def _reconcile_pack(self, collection, packs, extension, revs, pb):
+        packer = KnitReconcilePacker(collection, packs, extension, revs)
+        return packer.pack(pb)
 
 
 class RepositoryFormatKnitPack1(RepositoryFormatPack):
@@ -477,4 +488,147 @@ class KnitPackStreamSource(StreamSource):
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
         yield self._get_filtered_inv_stream(revision_ids)
         yield self._get_text_stream()
+
+
+class KnitReconcilePacker(Packer):
+    """A packer which regenerates indices etc as it copies.
+
+    This is used by ``bzr reconcile`` to cause parent text pointers to be
+    regenerated.
+    """
+
+    def _extra_init(self):
+        self._data_changed = False
+
+    def _process_inventory_lines(self, inv_lines):
+        """Generate a text key reference map rather for reconciling with."""
+        repo = self._pack_collection.repo
+        refs = repo._serializer._find_text_key_references(inv_lines)
+        self._text_refs = refs
+        # during reconcile we:
+        #  - convert unreferenced texts to full texts
+        #  - correct texts which reference a text not copied to be full texts
+        #  - copy all others as-is but with corrected parents.
+        #  - so at this point we don't know enough to decide what becomes a full
+        #    text.
+        self._text_filter = None
+
+    def _copy_text_texts(self):
+        """generate what texts we should have and then copy."""
+        self.pb.update("Copying content texts", 3)
+        # we have three major tasks here:
+        # 1) generate the ideal index
+        repo = self._pack_collection.repo
+        ancestors = dict([(key[0], tuple(ref[0] for ref in refs[0])) for
+            _1, key, _2, refs in
+            self.new_pack.revision_index.iter_all_entries()])
+        ideal_index = repo._generate_text_key_index(self._text_refs, ancestors)
+        # 2) generate a text_nodes list that contains all the deltas that can
+        #    be used as-is, with corrected parents.
+        ok_nodes = []
+        bad_texts = []
+        discarded_nodes = []
+        NULL_REVISION = _mod_revision.NULL_REVISION
+        text_index_map, text_nodes = self._get_text_nodes()
+        for node in text_nodes:
+            # 0 - index
+            # 1 - key
+            # 2 - value
+            # 3 - refs
+            try:
+                ideal_parents = tuple(ideal_index[node[1]])
+            except KeyError:
+                discarded_nodes.append(node)
+                self._data_changed = True
+            else:
+                if ideal_parents == (NULL_REVISION,):
+                    ideal_parents = ()
+                if ideal_parents == node[3][0]:
+                    # no change needed.
+                    ok_nodes.append(node)
+                elif ideal_parents[0:1] == node[3][0][0:1]:
+                    # the left most parent is the same, or there are no parents
+                    # today. Either way, we can preserve the representation as
+                    # long as we change the refs to be inserted.
+                    self._data_changed = True
+                    ok_nodes.append((node[0], node[1], node[2],
+                        (ideal_parents, node[3][1])))
+                    self._data_changed = True
+                else:
+                    # Reinsert this text completely
+                    bad_texts.append((node[1], ideal_parents))
+                    self._data_changed = True
+        # we're finished with some data.
+        del ideal_index
+        del text_nodes
+        # 3) bulk copy the ok data
+        total_items, readv_group_iter = self._least_readv_node_readv(ok_nodes)
+        list(self._copy_nodes_graph(text_index_map, self.new_pack._writer,
+            self.new_pack.text_index, readv_group_iter, total_items))
+        # 4) adhoc copy all the other texts.
+        # We have to topologically insert all texts otherwise we can fail to
+        # reconcile when parts of a single delta chain are preserved intact,
+        # and other parts are not. E.g. Discarded->d1->d2->d3. d1 will be
+        # reinserted, and if d3 has incorrect parents it will also be
+        # reinserted. If we insert d3 first, d2 is present (as it was bulk
+        # copied), so we will try to delta, but d2 is not currently able to be
+        # extracted because its basis d1 is not present. Topologically sorting
+        # addresses this. The following generates a sort for all the texts that
+        # are being inserted without having to reference the entire text key
+        # space (we only topo sort the revisions, which is smaller).
+        topo_order = tsort.topo_sort(ancestors)
+        rev_order = dict(zip(topo_order, range(len(topo_order))))
+        bad_texts.sort(key=lambda key:rev_order.get(key[0][1], 0))
+        transaction = repo.get_transaction()
+        file_id_index = GraphIndexPrefixAdapter(
+            self.new_pack.text_index,
+            ('blank', ), 1,
+            add_nodes_callback=self.new_pack.text_index.add_nodes)
+        data_access = knit._DirectPackAccess(
+                {self.new_pack.text_index:self.new_pack.access_tuple()})
+        data_access.set_writer(self.new_pack._writer, self.new_pack.text_index,
+            self.new_pack.access_tuple())
+        output_texts = KnitVersionedFiles(
+            _KnitGraphIndex(self.new_pack.text_index,
+                add_callback=self.new_pack.text_index.add_nodes,
+                deltas=True, parents=True, is_locked=repo.is_locked),
+            data_access=data_access, max_delta_chain=200)
+        for key, parent_keys in bad_texts:
+            # We refer to the new pack to delta data being output.
+            # A possible improvement would be to catch errors on short reads
+            # and only flush then.
+            self.new_pack.flush()
+            parents = []
+            for parent_key in parent_keys:
+                if parent_key[0] != key[0]:
+                    # Graph parents must match the fileid
+                    raise errors.BzrError('Mismatched key parent %r:%r' %
+                        (key, parent_keys))
+                parents.append(parent_key[1])
+            text_lines = osutils.split_lines(repo.texts.get_record_stream(
+                [key], 'unordered', True).next().get_bytes_as('fulltext'))
+            output_texts.add_lines(key, parent_keys, text_lines,
+                random_id=True, check_content=False)
+        # 5) check that nothing inserted has a reference outside the keyspace.
+        missing_text_keys = self.new_pack.text_index._external_references()
+        if missing_text_keys:
+            raise errors.BzrCheckError('Reference to missing compression parents %r'
+                % (missing_text_keys,))
+        self._log_copied_texts()
+
+    def _use_pack(self, new_pack):
+        """Override _use_pack to check for reconcile having changed content."""
+        # XXX: we might be better checking this at the copy time.
+        original_inventory_keys = set()
+        inv_index = self._pack_collection.inventory_index.combined_index
+        for entry in inv_index.iter_all_entries():
+            original_inventory_keys.add(entry[1])
+        new_inventory_keys = set()
+        for entry in new_pack.inventory_index.iter_all_entries():
+            new_inventory_keys.add(entry[1])
+        if new_inventory_keys != original_inventory_keys:
+            self._data_changed = True
+        return new_pack.data_inserted() and self._data_changed
+
+
 
