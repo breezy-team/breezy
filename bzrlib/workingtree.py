@@ -50,6 +50,7 @@ from bzrlib import (
     conflicts as _mod_conflicts,
     controldir,
     errors,
+    filters as _mod_filters,
     generate_ids,
     globbing,
     graph as _mod_graph,
@@ -92,7 +93,6 @@ from bzrlib.osutils import (
     splitpath,
     supports_executable,
     )
-from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 from bzrlib.revision import CURRENT_REVISION
@@ -531,7 +531,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
-            file_obj = filtered_input_file(file_obj, filters)
+            file_obj = _mod_filters.filtered_input_file(file_obj, filters)
         return (file_obj, stat_value)
 
     def get_file_text(self, file_id, path=None, filtered=True):
@@ -546,7 +546,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         f = file(path, 'rb')
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(filename)
-            return filtered_input_file(f, filters)
+            return _mod_filters.filtered_input_file(f, filters)
         else:
             return f
 
