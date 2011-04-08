@@ -2112,7 +2112,7 @@ class ReadOnlySection(object):
         return self.options.get(name, default)
 
 
-_Created = object()
+_NewlyCreatedOption = object()
 """Was the option created during the MutableSection lifetime"""
 
 
@@ -2126,7 +2126,7 @@ class MutableSection(ReadOnlySection):
     def set(self, name, value):
         if name not in self.options:
             # This is a new option
-            self.orig[name] = _Created
+            self.orig[name] = _NewlyCreatedOption
         elif name not in self.orig:
             self.orig[name] = self.get(name, None)
         self.options[name] = value
@@ -2261,6 +2261,12 @@ class ConfigObjStore(Store):
         return MutableSection(section_name, section)
 
 
+# Note that LockableConfigObjStore inherits from ConfigObjStore because we need
+# unlockable stores for use with objects that can already ensure the locking
+# (think branches). If different stores (not based on ConfigObj) are created,
+# they may face the same issue.
+
+
 class LockableConfigObjStore(ConfigObjStore):
     """A ConfigObjStore using locks on save to ensure store integrity."""
 
@@ -2335,7 +2341,7 @@ class SectionMatcher(object):
         self.store = store
 
     def get_sections(self):
-        # This is where we requires loading the store so we can see all defined
+        # This is where we require loading the store so we can see all defined
         # sections.
         sections = self.store.get_sections()
         # Walk the revisions in the order provided
