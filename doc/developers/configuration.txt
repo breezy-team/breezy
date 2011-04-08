@@ -1,0 +1,44 @@
+Configuring Bazaar
+==================
+
+A configuration option has:
+
+- a name: a valid python identifier (even if it's not used as an
+  identifier in python itself)
+
+- a value: a unicode string
+
+Sections
+--------
+
+Options are grouped into sections which share some properties with the well
+known dict objects:
+
+- the key is the name,
+- you can get, set and remove an option,
+- the value is a unicode string.
+
+MutableSection are needed to set or remove an option, ReadOnlySection should
+be used otherwise.
+
+Stores
+------
+
+Options can persistent in which case they are saved into Stores.
+
+``config.Store`` defines the abstract interface that all stores should
+implement.
+
+This object doesn't provide a direct access to the options, it only provides
+access to Sections. This is deliberate to ensure that sections can be properly
+shared by reusing the same underlying objects. Accessing options should be
+done via the ``Section`` objects.
+
+A ``Store`` can contain one or more sections, each section is uniquely
+identified by a unicode string.
+
+``config.ConfigObjStore`` is an implementation that use ``ConfigObj``.
+
+Depending on the object it is associated with (or not) a ``Store`` also needs
+to implement a locking mechanism. ``LockableConfigObjStore`` implements such a
+mechanism for ``ConfigObj`` based stores.
