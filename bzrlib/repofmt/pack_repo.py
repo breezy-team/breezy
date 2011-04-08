@@ -61,7 +61,6 @@ from bzrlib.repository import (
     RepositoryFormat,
     RepositoryWriteLockResult,
     RootCommitBuilder,
-    StreamSource,
     )
 from bzrlib.trace import (
     mutter,
@@ -2208,7 +2207,7 @@ class RepositoryPackCollection(object):
             self._resume_pack(token)
 
 
-class KnitPackRepository(KnitRepository):
+class PackRepository(KnitRepository):
     """Repository with knit objects stored inside pack containers.
 
     The layering for a KnitPackRepository is:
@@ -2298,11 +2297,6 @@ class KnitPackRepository(KnitRepository):
     def _abort_write_group(self):
         self.revisions._index._key_dependencies.clear()
         self._pack_collection._abort_write_group()
-
-    def _get_source(self, to_format):
-        if to_format.network_name() == self._format.network_name():
-            return KnitPackStreamSource(self, to_format)
-        return super(KnitPackRepository, self)._get_source(to_format)
 
     def _make_parents_provider(self):
         return graph.CachingParentsProvider(self)
@@ -2439,79 +2433,6 @@ class KnitPackRepository(KnitRepository):
         if not self.is_locked():
             for repo in self._fallback_repositories:
                 repo.unlock()
-
-
-class KnitPackStreamSource(StreamSource):
-    """A StreamSource used to transfer data between same-format KnitPack repos.
-
-    This source assumes:
-        1) Same serialization format for all objects
-        2) Same root information
-        3) XML format inventories
-        4) Atomic inserts (so we can stream inventory texts before text
-           content)
-        5) No chk_bytes
-    """
-
-    def __init__(self, from_repository, to_format):
-        super(KnitPackStreamSource, self).__init__(from_repository, to_format)
-        self._text_keys = None
-        self._text_fetch_order = 'unordered'
-
-    def _get_filtered_inv_stream(self, revision_ids):
-        from_repo = self.from_repository
-        parent_ids = from_repo._find_parent_ids_of_revisions(revision_ids)
-        parent_keys = [(p,) for p in parent_ids]
-        find_text_keys = from_repo._serializer._find_text_key_references
-        parent_text_keys = set(find_text_keys(
-            from_repo._inventory_xml_lines_for_keys(parent_keys)))
-        content_text_keys = set()
-        knit = KnitVersionedFiles(None, None)
-        factory = KnitPlainFactory()
-        def find_text_keys_from_content(record):
-            if record.storage_kind not in ('knit-delta-gz', 'knit-ft-gz'):
-                raise ValueError("Unknown content storage kind for"
-                    " inventory text: %s" % (record.storage_kind,))
-            # It's a knit record, it has a _raw_record field (even if it was
-            # reconstituted from a network stream).
-            raw_data = record._raw_record
-            # read the entire thing
-            revision_id = record.key[-1]
-            content, _ = knit._parse_record(revision_id, raw_data)
-            if record.storage_kind == 'knit-delta-gz':
-                line_iterator = factory.get_linedelta_content(content)
-            elif record.storage_kind == 'knit-ft-gz':
-                line_iterator = factory.get_fulltext_content(content)
-            content_text_keys.update(find_text_keys(
-                [(line, revision_id) for line in line_iterator]))
-        revision_keys = [(r,) for r in revision_ids]
-        def _filtered_inv_stream():
-            source_vf = from_repo.inventories
-            stream = source_vf.get_record_stream(revision_keys,
-                                                 'unordered', False)
-            for record in stream:
-                if record.storage_kind == 'absent':
-                    raise errors.NoSuchRevision(from_repo, record.key)
-                find_text_keys_from_content(record)
-                yield record
-            self._text_keys = content_text_keys - parent_text_keys
-        return ('inventories', _filtered_inv_stream())
-
-    def _get_text_stream(self):
-        # Note: We know we don't have to handle adding root keys, because both
-        # the source and target are the identical network name.
-        text_stream = self.from_repository.texts.get_record_stream(
-                        self._text_keys, self._text_fetch_order, False)
-        return ('texts', text_stream)
-
-    def get_stream(self, search):
-        revision_ids = search.get_keys()
-        for stream_info in self._fetch_revision_texts(revision_ids):
-            yield stream_info
-        self._revision_keys = [(rev_id,) for rev_id in revision_ids]
-        yield self._get_filtered_inv_stream(revision_ids)
-        yield self._get_text_stream()
-
 
 
 class RepositoryFormatPack(MetaDirRepositoryFormat):
