@@ -967,48 +967,61 @@ class GlobalConfig(LockableConfig):
         super(LockableConfig, self).remove_user_option(option_name,
                                                        section_name)
 
-def _match_section_by_parts(section, location):
+def _filter_for_location_by_parts(sections, location):
+    """Keep only the sessions matching the specified location.
+
+    :param sections: An iterable of section names.
+
+    :param location: An url or a local path to match against.
+
+    :returns: A list of (nb_parts, section, extra_path) where nb is the number
+        of path components in the section name, section is the section name and
+        extra_path is the difference between location and the section name.
+    """
     location_parts = location.rstrip('/').split('/')
 
-    # location is a local path if possible, so we need
-    # to convert 'file://' urls to local paths if necessary.
+    matches = []
+    for section in sections:
+        # location is a local path if possible, so we need
+        # to convert 'file://' urls to local paths if necessary.
 
-    # FIXME: I don't think the above comment is still up to date,
-    # LocationConfig is always instantiated with an url -- vila 2011-04-07
+        # FIXME: I don't think the above comment is still up to date,
+        # LocationConfig is always instantiated with an url -- vila 2011-04-07
 
-    # This also avoids having file:///path be a more exact
-    # match than '/path'.
+        # This also avoids having file:///path be a more exact
+        # match than '/path'.
 
-    # FIXME: Not sure about the above either, but since the path components are
-    # compared in sync, adding two empty components (//) is likely to trick the
-    # comparison and also trick the check on the number of components, so we
-    # *should* take only the relevant part of the url. On the other hand, this
-    # means 'file://' urls *can't* be used in sections -- vila 2011-04-07
+        # FIXME: Not sure about the above either, but since the path components
+        # are compared in sync, adding two empty components (//) is likely to
+        # trick the comparison and also trick the check on the number of
+        # components, so we *should* take only the relevant part of the url. On
+        # the other hand, this means 'file://' urls *can't* be used in sections
+        # so more work is probably needed -- vila 2011-04-07
 
-    if section.startswith('file://'):
-        section_path = urlutils.local_path_from_url(section)
-    else:
-        section_path = section
-    section_parts = section_path.rstrip('/').split('/')
+        if section.startswith('file://'):
+            section_path = urlutils.local_path_from_url(section)
+        else:
+            section_path = section
+        section_parts = section_path.rstrip('/').split('/')
 
-    matched = True
-    if len(section_parts) > len(location_parts):
-        # More path components in the section, they can't match
-        matched = False
-    else:
-        # Rely on zip truncating in length to the length of the shortest
-        # argument sequence.
-        names = zip(location_parts, section_parts)
-        for name in names:
-            if not fnmatch.fnmatch(name[0], name[1]):
-                matched = False
-                break
-    if not matched:
-        return None
-    else:
+        matched = True
+        if len(section_parts) > len(location_parts):
+            # More path components in the section, they can't match
+            matched = False
+        else:
+            # Rely on zip truncating in length to the length of the shortest
+            # argument sequence.
+            names = zip(location_parts, section_parts)
+            for name in names:
+                if not fnmatch.fnmatch(name[0], name[1]):
+                    matched = False
+                    break
+        if not matched:
+            continue
         # build the path difference between the section and the location
-        relpath = '/'.join(location_parts[len(section_parts):])
-        return len(section_parts), relpath
+        extra_path = '/'.join(location_parts[len(section_parts):])
+        matches.append((len(section_parts), section, extra_path))
+    return matches
 
 
 class LocationConfig(LockableConfig):
@@ -1046,13 +1059,7 @@ class LocationConfig(LockableConfig):
         """Return an ordered list of section names matching this location."""
         sections = self._get_parser()
 
-        matches = []
-        for section in sections:
-            match = _match_section_by_parts(section, self.location)
-            if match is None:
-                continue
-            nb_parts, relpath = match
-            matches.append((nb_parts, section, relpath))
+        matches = _filter_for_location_by_parts(sections, self.location)
         # put the longest (aka more specific) locations first
         matches.sort(reverse=True)
         sections = []
@@ -2365,14 +2372,23 @@ class LocationMatcher(SectionMatcher):
 
     def get_sections(self):
         # Override the default implementation as we want to change the order
-        sections = []
-        for section in self.store.get_sections():
-            match = _match_section_by_parts(section.id, self.location)
-            if match is not None:
-                length, extra_path = match
-                sections.append(LocationSection(section, length, extra_path))
+
+        # The following is a bit hackish but ensures compatibility with
+        # LocationConfig by reusing the same code
+        sections = list(self.store.get_sections())
+        filtered_sections = _filter_for_location_by_parts(
+            [s.id for s in sections], self.location)
+        iter_sections = iter(sections)
+        matching_sections = []
+        for length, section_id, extra_path in filtered_sections:
+            # a section id is unique for a given store so it's safe to iterate
+            # again
+            section = iter_sections.next()
+            if section_id == section.id:
+                matching_sections.append(
+                    LocationSection(section, length, extra_path))
         # We want the longest (aka more specific) locations first
-        sections = sorted(sections, key=lambda section: section.length,
+        sections = sorted(matching_sections, key=lambda section: section.length,
                           reverse=True)
         # Sections mentioning 'ignore_parents' restrict the selection
         for section in sections:
