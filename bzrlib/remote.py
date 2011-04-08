@@ -729,6 +729,7 @@ class RemoteRepositoryFormat(_mod_repository.RepositoryFormat):
         self._custom_format = None
         self._network_name = None
         self._creating_bzrdir = None
+        self._revision_graph_can_have_wrong_parents = None
         self._supports_chks = None
         self._supports_external_lookups = None
         self._supports_tree_reference = None
@@ -781,6 +782,14 @@ class RemoteRepositoryFormat(_mod_repository.RepositoryFormat):
             self._supports_tree_reference = \
                 self._custom_format.supports_tree_reference
         return self._supports_tree_reference
+
+    @property
+    def revision_graph_can_have_wrong_parents(self):
+        if self._revision_graph_can_have_wrong_parents is None:
+            self._ensure_real()
+            self._revision_graph_can_have_wrong_parents = \
+                self._custom_format.revision_graph_can_have_wrong_parents
+        return self._revision_graph_can_have_wrong_parents
 
     def _vfs_initialize(self, a_bzrdir, shared):
         """Helper for common code in initialize."""
@@ -1985,11 +1994,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         self._ensure_real()
         return self._real_repository.item_keys_introduced_by(revision_ids,
             _files_pb=_files_pb)
-
-    def revision_graph_can_have_wrong_parents(self):
-        # The answer depends on the remote repo format.
-        self._ensure_real()
-        return self._real_repository.revision_graph_can_have_wrong_parents()
 
     def _find_inconsistent_revision_parents(self, revisions_iterator=None):
         self._ensure_real()

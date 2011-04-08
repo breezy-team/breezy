@@ -263,11 +263,6 @@ class KnitRepository(MetaDirRepository):
             raise errors.BzrCheckError(
                 "Revision knit has inconsistent parents.")
 
-    def revision_graph_can_have_wrong_parents(self):
-        # The revision.kndx could potentially claim a revision has a different
-        # parent to the revision text.
-        return True
-
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
     """Bzr repository knit format (generalized).
@@ -306,6 +301,9 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     fast_deltas = False
     supports_funky_characters = True
     supports_full_versioned_files = True
+    # The revision.kndx could potentially claim a revision has a different
+    # parent to the revision text.
+    revision_graph_can_have_wrong_parents = True
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
