@@ -2341,7 +2341,7 @@ class SectionMatcher(object):
         self.store = store
 
     def get_sections(self):
-        # This is where we requires loading the store so we can see all defined
+        # This is where we require loading the store so we can see all defined
         # sections.
         sections = self.store.get_sections()
         # Walk the revisions in the order provided

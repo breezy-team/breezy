@@ -48,3 +48,21 @@ used as examples to define new ones if needed. The associated tests provides a
 basis for new classes which only need to register themselves in the right
 places to inherit from the existing basic tests and add their own specific
 ones.
+
+Filtering sections
+------------------
+
+For some contexts, only some sections from a given store will apply. Defining
+which is what the ``SectionMatcher`` are about.
+
+The main constraint here is that a ``SectionMatcher`` should delay the loading
+of the associated store as long as possible. The constructor should collect
+all data needed for the selection and uses it while processing the sections in
+``get_sections``.
+
+Only ``ReadOnlySection`` objects are manipulated here but a ``SectionMatcher``
+can return dedicated ``Section`` to provide additional context (the
+``LocationSection`` add an ``extra_path`` attribute to implement the
+``appendpath`` policy for example).
+
+.. FIXME: Replace the appendpath example if/when it's deprecated ;)
