@@ -66,3 +66,31 @@ can return dedicated ``Section`` to provide additional context (the
 ``appendpath`` policy for example).
 
 .. FIXME: Replace the appendpath example if/when it's deprecated ;)
+
+Stacks
+------
+
+An option can take different values depending on the context it is used. Such
+a context can involve configuration files, options from the command line,
+default values in bzrlib and then some.
+
+Such a context is implemented by creating a list of ``Section`` stacked upon
+each other. A ``Stack`` can then be asked for an option value and returns the
+first definition found.
+
+This provides a great flexibility to decide priorities between sections when
+the stack is defined without to worry about them in the code itself.
+
+A stack also defines a mutable section (which can be None) to handle
+modifications.
+
+Many sections (or even stores) are aimed at providing default values for an
+option but these sections shouldn't be modified lightly as modifying an option
+used for different contexts will indeed be seen by all these contexts.
+
+Default values in configuration files are defined by users, developers
+shouldn't have to modify them, as such, no mechanism nor heuristics are used
+to find which section (or sections) should be modified, a ``Stack`` defines a
+mutable section when there is no ambiguity, if there is one, then the *user*
+should be able to decide and this case a new ``Stack`` can be created cheaply.
+
