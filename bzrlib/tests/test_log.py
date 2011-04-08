@@ -1540,6 +1540,7 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
         kwargs = {
             'committer': 'Joe Foo <joe@foo.com>',
             'timestamp': 1132617600, # Mon 2005-11-22 00:00:00 +0000
+            'timezone': 0, # UTC
         }
         tree.commit('commit 1a', rev_id='1a', **kwargs)
         tree.commit('commit 2a', rev_id='2a', **kwargs)
@@ -1553,6 +1554,7 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
         kwargs = {
             'committer': 'Joe Foo <joe@foo.com>',
             'timestamp': 1132617600, # Mon 2005-11-22 00:00:00 +0000
+            'timezone': 0, # UTC
         }
         tree.commit('commit 2b', rev_id='2b', **kwargs)
         tree.commit('commit 3b', rev_id='3b', **kwargs)
@@ -1591,21 +1593,21 @@ class TestRevisionNotInBranch(TestCaseForLogFormatter):
 revision-id: 3a
 committer: Joe Foo <joe@foo.com>
 branch nick: tree
-timestamp: Tue 2005-11-22 11:00:00 +1100
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   commit 3a
 ------------------------------------------------------------
 revision-id: 2a
 committer: Joe Foo <joe@foo.com>
 branch nick: tree
-timestamp: Tue 2005-11-22 11:00:00 +1100
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   commit 2a
 ------------------------------------------------------------
 revno: 1
 committer: Joe Foo <joe@foo.com>
 branch nick: tree
-timestamp: Tue 2005-11-22 11:00:00 +1100
+timestamp: Tue 2005-11-22 00:00:00 +0000
 message:
   commit 1a
 """,
