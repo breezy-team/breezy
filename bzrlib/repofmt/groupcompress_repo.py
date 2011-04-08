@@ -26,8 +26,9 @@ from bzrlib import (
     errors,
     index as _mod_index,
     inventory,
+    knit,
     osutils,
-    pack as _mod_pack,
+    pack,
     revision as _mod_revision,
     trace,
     ui,
@@ -154,7 +155,7 @@ class GCPack(NewPack):
         # expose this on self, for the occasion when clients want to add data.
         self._write_data = _write_data
         # a pack writer object to serialise pack records.
-        self._writer = _mod_pack.ContainerWriter(self._write_data)
+        self._writer = pack.ContainerWriter(self._write_data)
         self._writer.begin()
         # what state is the pack in? (open, finished, aborted)
         self._state = 'open'
@@ -355,7 +356,7 @@ class GCCHKPacker(Packer):
         index_name = index_name + '_index'
         index_to_pack = {}
         access = _DirectPackAccess(index_to_pack,
-                                        reload_func=self._reload_func)
+                                   reload_func=self._reload_func)
         if for_write:
             # Use new_pack
             if self.new_pack is None:
@@ -799,8 +800,8 @@ class CHKInventoryRepository(PackRepository):
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
         """Overridden to change pack collection class."""
-        super(CHKInventoryRepository, self).__init__(_format, a_bzrdir, control_files,
-            _commit_builder_class, _serializer)
+        super(CHKInventoryRepository, self).__init__(_format, a_bzrdir,
+            control_files, _commit_builder_class, _serializer)
         index_transport = self._transport.clone('indices')
         self._pack_collection = GCRepositoryPackCollection(self,
             self._transport, index_transport,
@@ -1139,9 +1140,6 @@ class CHKInventoryRepository(PackRepository):
         if inconsistencies:
             raise errors.BzrCheckError(
                 "Revision index has inconsistent parents.")
-
-    def revision_graph_can_have_wrong_parents(self):
-        return True
 
 
 class GroupCHKStreamSource(StreamSource):

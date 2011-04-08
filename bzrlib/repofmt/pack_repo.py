@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,7 +45,11 @@ from bzrlib import (
     lockdir,
     )
 
-from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
+from bzrlib.decorators import (
+    needs_read_lock,
+    needs_write_lock,
+    only_raises,
+    )
 from bzrlib.lock import LogicalLockResult
 from bzrlib.repository import (
     CommitBuilder,

@@ -102,6 +102,7 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.bundle.commands',
             'bzrlib.cmd_version_info',
             'bzrlib.externalcommand',
+            'bzrlib.filters',
             # foreign branch plugins import the foreign_vcs_registry from 
             # bzrlib.foreign so it can't be blacklisted
             'bzrlib.gpg',
@@ -114,6 +115,7 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.remote',
             'bzrlib.repofmt.knitrepo',
             'bzrlib.repofmt.knitpack_repo',
+            'bzrlib.rules',
             'bzrlib.sign_my_commits',
             'bzrlib.smart',
             'bzrlib.smart.client',
