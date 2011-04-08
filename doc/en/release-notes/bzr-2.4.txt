@@ -26,6 +26,12 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* When building a new WorkingTree (such as during ``bzr co`` or
+  ``bzr branch``) we now properly store the stat and hash of files that
+  are old enough. This saves a fair amount of time on the first
+  ``bzr status`` (on a 500MB tree, it saves about 30+s).
+  (John Arbash Meinel, #740932)
+
 * Resolve ``lp:FOO`` urls locally rather than doing an XMLRPC request if
   the user has done ``bzr launchpad-login``. The bzr+ssh URLs were already
   being handed off to the remote server anyway (xmlrpc has been mapping
