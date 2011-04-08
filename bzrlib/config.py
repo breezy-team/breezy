@@ -2260,6 +2260,12 @@ class ConfigObjStore(Store):
         return MutableSection(section_name, section)
 
 
+# Note that LockableConfigObjStore inherits from ConfigObjStore because we need
+# unlockable stores for use with objects that can already ensure the locking
+# (think branches). If different stores (not based on ConfigObj) are created,
+# they may face the same issue.
+
+
 class LockableConfigObjStore(ConfigObjStore):
     """A ConfigObjStore using locks on save to ensure store integrity."""
 
