@@ -47,6 +47,9 @@ Bug Fixes
   these default values aren't relied on very often so this probably
   wasn't causing any trouble.  (Andrew Bennetts)
 
+* ``bzr log`` now works on revisions which are not in the current branch.
+  (Matt Giuca, #241998)
+
 * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
 * Standalone bzr.exe installation on Windows: user can put additional python 
@@ -82,6 +85,10 @@ API Changes
   (Martin Pool)
 
 * New method ``Hooks.uninstall_named_hook``. (Jelmer Vernooij, #301472)
+
+* The ``revno`` parameter of ``log.LogRevision`` may now be None,
+  representing a revision which is not in the current branch.
+  (Matt Giuca, #241998)
 
 Internals
 *********
