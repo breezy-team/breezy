@@ -74,6 +74,8 @@ from bzrlib import (
     tuned_gzip,
     ui,
     )
+
+from bzrlib.repofmt import pack_repo
 """)
 from bzrlib import (
     annotate,
