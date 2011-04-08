@@ -99,6 +99,10 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertFormatAttribute('supports_leaving_lock',
             (True, False))
 
+    def test_attribute_format_revision_graph_can_have_wrong_parents(self):
+        self.assertFormatAttribute('revision_graph_can_have_wrong_parents',
+            (True, False))
+
     def test_format_is_deprecated(self):
         repo = self.make_repository('repo')
         self.assertSubset([repo._format.is_deprecated()], (True, False))

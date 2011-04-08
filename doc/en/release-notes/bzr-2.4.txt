@@ -83,6 +83,10 @@ API Changes
 
 * New method ``Hooks.uninstall_named_hook``. (Jelmer Vernooij, #301472)
 
+* ``revision_graph_can_have_wrong_parents`` is now an attribute
+  on ``RepositoryFormat`` rather than a method on ``Repository``.
+  (Jelmer Vernooij)
+
 Internals
 *********
 

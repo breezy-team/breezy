@@ -2765,17 +2765,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 except UnicodeDecodeError:
                     raise errors.NonAsciiRevisionId(method, self)
 
-    def revision_graph_can_have_wrong_parents(self):
-        """Is it possible for this repository to have a revision graph with
-        incorrect parents?
-
-        If True, then this repository must also implement
-        _find_inconsistent_revision_parents so that check and reconcile can
-        check for inconsistencies before proceeding with other checks that may
-        depend on the revision index being consistent.
-        """
-        raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
-
 
 def install_revision(repository, rev, revision_tree):
     """Install all revision data into a repository."""
@@ -3019,6 +3008,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_full_versioned_files = None
     # Does this format support signing revision signatures?
     supports_revision_signatures = True
+    # Can the revision graph have incorrect parents?
+    revision_graph_can_have_wrong_parents = None
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
