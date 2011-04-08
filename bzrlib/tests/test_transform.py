@@ -93,6 +93,16 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.addCleanup(transform.finalize)
         return transform, transform.root
 
+    def get_transform_for_sha1_test(self):
+        trans, root = self.get_transform()
+        self.wt.lock_tree_write()
+        self.addCleanup(self.wt.unlock)
+        contents = ['just some content\n']
+        sha1 = osutils.sha_strings(contents)
+        # Roll back the clock
+        trans._creation_mtime = time.time() - 20.0
+        return trans, root, contents, sha1
+
     def test_existing_limbo(self):
         transform, root = self.get_transform()
         limbo_name = transform._limbodir
@@ -160,6 +170,67 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         # is it safe to finalize repeatedly?
         transform.finalize()
         transform.finalize()
+
+    def test_apply_informs_tree_of_observed_sha1(self):
+        trans, root, contents, sha1 = self.get_transform_for_sha1_test()
+        trans_id = trans.new_file('file1', root, contents, file_id='file1-id',
+                                  sha1=sha1)
+        calls = []
+        orig = self.wt._observed_sha1
+        def _observed_sha1(*args):
+            calls.append(args)
+            orig(*args)
+        self.wt._observed_sha1 = _observed_sha1
+        trans.apply()
+        self.assertEqual([(None, 'file1', trans._observed_sha1s[trans_id])],
+                         calls)
+
+    def test_create_file_caches_sha1(self):
+        trans, root, contents, sha1 = self.get_transform_for_sha1_test()
+        trans_id = trans.create_path('file1', root)
+        trans.create_file(contents, trans_id, sha1=sha1)
+        st_val = osutils.lstat(trans._limbo_name(trans_id))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, st_val)
+
+    def test__apply_insertions_updates_sha1(self):
+        trans, root, contents, sha1 = self.get_transform_for_sha1_test()
+        trans_id = trans.create_path('file1', root)
+        trans.create_file(contents, trans_id, sha1=sha1)
+        st_val = osutils.lstat(trans._limbo_name(trans_id))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, st_val)
+        creation_mtime = trans._creation_mtime + 10.0
+        # We fake a time difference from when the file was created until now it
+        # is being renamed by using os.utime. Note that the change we actually
+        # want to see is the real ctime change from 'os.rename()', but as long
+        # as we observe a new stat value, we should be fine.
+        os.utime(trans._limbo_name(trans_id), (creation_mtime, creation_mtime))
+        trans.apply()
+        new_st_val = osutils.lstat(self.wt.abspath('file1'))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, new_st_val)
+        self.assertNotEqual(st_val.st_mtime, new_st_val.st_mtime)
+
+    def test_new_file_caches_sha1(self):
+        trans, root, contents, sha1 = self.get_transform_for_sha1_test()
+        trans_id = trans.new_file('file1', root, contents, file_id='file1-id',
+                                  sha1=sha1)
+        st_val = osutils.lstat(trans._limbo_name(trans_id))
+        o_sha1, o_st_val = trans._observed_sha1s[trans_id]
+        self.assertEqual(o_sha1, sha1)
+        self.assertEqualStat(o_st_val, st_val)
+
+    def test_cancel_creation_removes_observed_sha1(self):
+        trans, root, contents, sha1 = self.get_transform_for_sha1_test()
+        trans_id = trans.new_file('file1', root, contents, file_id='file1-id',
+                                  sha1=sha1)
+        self.assertTrue(trans_id in trans._observed_sha1s)
+        trans.cancel_creation(trans_id)
+        self.assertFalse(trans_id in trans._observed_sha1s)
 
     def test_create_files_same_timestamp(self):
         transform, root = self.get_transform()
