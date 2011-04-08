@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,24 +18,27 @@
 """
 
 import os
-from collections import deque
 
-import bzrlib
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import collections
+
 from bzrlib import (
     conflicts as _mod_conflicts,
     debug,
     delta,
     errors,
     filters,
+    inventory,
     osutils,
     revision as _mod_revision,
     rules,
+    trace,
     )
+""")
+
 from bzrlib.decorators import needs_read_lock
-from bzrlib.inventory import InventoryFile
 from bzrlib.inter import InterObject
-from bzrlib.osutils import fingerprint_file
-from bzrlib.trace import note
 
 
 class Tree(object):
@@ -522,7 +525,7 @@ class Tree(object):
     def _check_retrieved(self, ie, f):
         if not __debug__:
             return
-        fp = fingerprint_file(f)
+        fp = osutils.fingerprint_file(f)
         f.seek(0)
 
         if ie.text_size is not None:
@@ -669,7 +672,7 @@ class Tree(object):
         prefs = self.iter_search_rules([path], filter_pref_names).next()
         stk = filters._get_filter_stack_for(prefs)
         if 'filters' in debug.debug_flags:
-            note("*** %s content-filter: %s => %r" % (path,prefs,stk))
+            trace.note("*** %s content-filter: %s => %r" % (path,prefs,stk))
         return stk
 
     def _content_filter_stack_provider(self):
@@ -969,7 +972,7 @@ class InterTree(InterObject):
             # All files are unversioned, so just return an empty delta
             # _compare_trees would think we want a complete delta
             result = delta.TreeDelta()
-            fake_entry = InventoryFile('unused', 'unused', 'unused')
+            fake_entry = inventory.InventoryFile('unused', 'unused', 'unused')
             result.unversioned = [(path, None,
                 self.target._comparison_data(fake_entry, path)[0]) for path in
                 specific_files]
@@ -1040,9 +1043,9 @@ class InterTree(InterObject):
                                      self.target.extras()
                 if specific_files is None or
                     osutils.is_inside_any(specific_files, p)])
-            all_unversioned = deque(all_unversioned)
+            all_unversioned = collections.deque(all_unversioned)
         else:
-            all_unversioned = deque()
+            all_unversioned = collections.deque()
         to_paths = {}
         from_entries_by_dir = list(self.source.iter_entries_by_dir(
             specific_file_ids=specific_file_ids))
@@ -1054,7 +1057,7 @@ class InterTree(InterObject):
         # the unversioned path lookup only occurs on real trees - where there
         # can be extras. So the fake_entry is solely used to look up
         # executable it values when execute is not supported.
-        fake_entry = InventoryFile('unused', 'unused', 'unused')
+        fake_entry = inventory.InventoryFile('unused', 'unused', 'unused')
         for target_path, target_entry in to_entries_by_dir:
             while (all_unversioned and
                 all_unversioned[0][0] < target_path.split('/')):
