@@ -676,7 +676,7 @@ class InterGitBranch(branch.GenericInterBranch):
     """InterBranch implementation that pulls between Git branches."""
 
 
-class InterGitLocalRemoteBranch(InterGitBranch):
+class InterLocalGitRemoteGitBranch(InterGitBranch):
     """InterBranch that copies from a local to a remote git branch."""
 
     @staticmethod
@@ -709,7 +709,7 @@ class InterGitLocalRemoteBranch(InterGitBranch):
         return result
 
 
-class InterGitRemoteLocalBranch(InterGitBranch):
+class InterGitLocalGitBranch(InterGitBranch):
     """InterBranch that copies from a remote to a local git branch."""
 
     @staticmethod
@@ -719,8 +719,7 @@ class InterGitRemoteLocalBranch(InterGitBranch):
 
     @classmethod
     def is_compatible(self, source, target):
-        from bzrlib.plugins.git.remote import RemoteGitBranch
-        return (isinstance(source, RemoteGitBranch) and
+        return (isinstance(source, GitBranch) and
                 isinstance(target, LocalGitBranch))
 
     def _basic_push(self, overwrite=False, stop_revision=None):
@@ -857,7 +856,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         return result
 
 
-branch.InterBranch.register_optimiser(InterGitRemoteLocalBranch)
+branch.InterBranch.register_optimiser(InterGitLocalGitBranch)
 branch.InterBranch.register_optimiser(InterFromGitBranch)
 branch.InterBranch.register_optimiser(InterToGitBranch)
-branch.InterBranch.register_optimiser(InterGitLocalRemoteBranch)
+branch.InterBranch.register_optimiser(InterLocalGitRemoteGitBranch)

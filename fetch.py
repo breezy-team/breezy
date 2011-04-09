@@ -19,6 +19,7 @@ from dulwich.objects import (
     Tag,
     Tree,
     S_ISGITLINK,
+    ZERO_SHA,
     )
 from dulwich.object_store import (
     tree_lookup_path,
@@ -563,6 +564,7 @@ class InterGitNonGitRepository(InterGitRepository):
             mapping, pb)
         if pack_hint is not None and self.target._format.pack_compresses:
             self.target.pack(hint=pack_hint)
+        assert isinstance(remote_refs, dict)
         return remote_refs
 
 
@@ -721,12 +723,14 @@ class InterGitGitRepository(InterGitRepository):
                 raise AssertionError("Unsupported search result type %s" % recipe[0])
             args = [mapping.revision_id_bzr_to_foreign(revid)[0] for revid in heads]
         if branches is not None:
-            determine_wants = lambda x: [x[y] for y in branches if not x[y] in r.object_store]
+            determine_wants = lambda x: [x[y] for y in branches if not x[y] in r.object_store and x[y] != ZERO_SHA]
         elif fetch_spec is None and revision_id is None:
             determine_wants = self.determine_wants_all
         else:
-            determine_wants = lambda x: [y for y in args if not y in r.object_store]
-        self.fetch_objects(determine_wants, mapping)
+            determine_wants = lambda x: [y for y in args if not y in r.object_store and y != ZERO_SHA]
+        wants_recorder = DetermineWantsRecorder(determine_wants)
+        self.fetch_objects(wants_recorder, mapping)
+        return wants_recorder.remote_refs
 
     @staticmethod
     def is_compatible(source, target):
