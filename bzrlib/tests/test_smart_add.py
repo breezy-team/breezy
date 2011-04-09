@@ -152,7 +152,7 @@ class TestAddActions(tests.TestCase):
         self.run_action("adding path\n")
 
     def run_action(self, output):
-        from bzrlib.mutabletree import _FastPath
+        from bzrlib.workingtree import _FastPath
         inv = inventory.Inventory()
         stdout = StringIO()
         action = add.AddAction(to_file=stdout, should_print=bool(output))

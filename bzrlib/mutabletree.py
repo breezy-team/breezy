@@ -54,7 +54,7 @@ def needs_tree_write_lock(unbound):
     return tree_write_locked
 
 
-class MutableTree(tree.Tree):
+class MutableTree(tree.InventoryTree):
     """A MutableTree is a specialisation of Tree which is able to be mutated.
 
     Generally speaking these mutations are only possible within a lock_write
