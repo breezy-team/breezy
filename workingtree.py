@@ -277,10 +277,11 @@ class InterIndexGitTree(tree.InterTree):
     def iter_changes(self, include_unchanged=False, specific_files=None,
         pb=None, extra_trees=[], require_versioned=True, want_unversioned=False):
         changes = self._index.changes_from_tree(
-            self.source._repository._git.object_store, self.source.tree, 
+            self.source._repository._git.object_store, self.source.tree,
             want_unchanged=include_unchanged)
         # FIXME: Handle want_unversioned
-        return changes_from_git_changes(changes, self.target.mapping, 
+        return changes_from_git_changes(changes, self.target.mapping,
             specific_file=specific_files)
+
 
 tree.InterTree.register_optimiser(InterIndexGitTree)

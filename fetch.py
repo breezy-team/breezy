@@ -385,8 +385,8 @@ def import_git_commit(repo, mapping, head, lookup_object,
               inv_delta, rev.revision_id, rev.parent_ids, base_inv)
     # Check verifiers
     testament = StrictTestament3(rev, inv)
-    calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
     if roundtrip_revid is not None:
+        calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
         original_revid = rev.revision_id
         rev.revision_id = roundtrip_revid
         if calculated_verifiers != verifiers:
@@ -394,6 +394,8 @@ def import_git_commit(repo, mapping, head, lookup_object,
                          calculated_verifiers["testament3-sha1"],
                          rev.revision_id, verifiers["testament3-sha1"])
             rev.revision_id = original_revid
+    else:
+        calculated_verifiers = {}
     store_updater.add_object(o, calculated_verifiers, None)
     store_updater.finish()
     ret_tree = RevisionTree(repo, inv, rev.revision_id)

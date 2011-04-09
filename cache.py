@@ -338,7 +338,7 @@ class SqliteCacheUpdater(CacheUpdater):
     def add_object(self, obj, ie, path):
         if obj.type_name == "commit":
             self._commit = obj
-            self._testament3_sha1 = ie["testament3-sha1"]
+            self._testament3_sha1 = ie.get("testament3-sha1")
             assert type(ie) is dict
         elif obj.type_name == "tree":
             if ie is not None:
@@ -460,7 +460,11 @@ class SqliteGitShaMap(GitShaMap):
         cursor = self.db.execute("select revid, tree_sha, testament3_sha1 from commits where sha1 = ?", (sha,))
         for row in cursor.fetchall():
             found = True
-            yield ("commit", (row[0], row[1], {"testament3-sha1": row[2]}))
+            if row[2] is not None:
+                verifiers = {"testament3-sha1": row[2]}
+            else:
+                verifiers = {}
+            yield ("commit", (row[0], row[1], verifiers))
         cursor = self.db.execute("select fileid, revid from blobs where sha1 = ?", (sha,))
         for row in cursor.fetchall():
             found = True
@@ -499,7 +503,11 @@ class TdbCacheUpdater(CacheUpdater):
         if obj.type_name == "commit":
             self.db["commit\0" + self.revid] = "\0".join((sha, obj.tree))
             assert type(ie) is dict, "was %r" % ie
-            type_data = (self.revid, obj.tree, ie["testament3-sha1"])
+            type_data = (self.revid, obj.tree)
+            try:
+                type_data += (ie["testament3-sha1"],)
+            except KeyError:
+                pass
             self._commit = obj
         elif obj.type_name == "blob":
             if ie is None:
@@ -867,7 +875,11 @@ class IndexGitShaMap(GitShaMap):
         if hexsha is not None:
             self._name.update(hexsha)
             if type == "commit":
-                td = (type_data[0], type_data[1], type_data[2]["testament3-sha1"])
+                td = (type_data[0], type_data[1])
+                try:
+                    td += (type_data[2]["testament3-sha1"],)
+                except KeyError:
+                    pass
             else:
                 td = type_data
             self._add_node(("git", hexsha, "X"), " ".join((type,) + td))
@@ -887,7 +899,11 @@ class IndexGitShaMap(GitShaMap):
             found = True
             data = value.split(" ", 3)
             if data[0] == "commit":
-                yield ("commit", (data[1], data[2], {"testament3-sha1": data[3]}))
+                if data[3]:
+                    verifiers = {"testament3-sha1": data[3]}
+                else:
+                    verifiers = {}
+                yield ("commit", (data[1], data[2], verifiers))
             else:
                 yield (data[0], tuple(data[1:]))
         if not found:
