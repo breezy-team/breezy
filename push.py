@@ -190,12 +190,11 @@ class InterToLocalGitRepository(InterToGitRepository):
             pb.finished()
         for sha1 in stop_sha1s:
             try:
-                (kind, (revid, tree_sha, verifiers)) = self.source_store.lookup_git_sha(sha1)
+                for (kind, (revid, tree_sha, verifiers)) in self.source_store.lookup_git_sha(sha1):
+                    missing.append(revid)
+                    revid_sha_map[revid] = sha1
             except KeyError:
                 continue
-            else:
-                missing.append(revid)
-                revid_sha_map[revid] = sha1
         return graph.iter_topo_order(missing)
 
     def _get_target_bzr_refs(self):
