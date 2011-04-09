@@ -206,15 +206,10 @@ class InterToLocalGitRepository(InterToGitRepository):
         bzr_refs = {}
         refs = self.target._git.get_refs()
         for k, v in refs.iteritems():
-            try:
-                (kind, type_data) = self.source_store.lookup_git_sha(v)
-            except KeyError:
-                revid = None
-            else:
+            revid = None
+            for (kind, type_data) in self.source_store.lookup_git_sha(v):
                 if kind == "commit":
                     revid = type_data[0]
-                else:
-                    revid = None
             bzr_refs[k] = (v, revid)
         return bzr_refs
 

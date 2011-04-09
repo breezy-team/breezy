@@ -541,7 +541,7 @@ class BazaarObjectStore(BaseObjectStore):
         ret = {}
         for sha in shas:
             if sha == ZERO_SHA:
-                ret[sha] = ("commit", (NULL_REVISION, None, {}))
+                ret[sha] = [("commit", (NULL_REVISION, None, {}))]
                 continue
             try:
                 ret[sha] = list(self._cache.idmap.lookup_git_sha(sha))
@@ -566,30 +566,30 @@ class BazaarObjectStore(BaseObjectStore):
                 return self._cache.content_cache[sha]
             except KeyError:
                 pass
-        for (type, type_data) in self.lookup_git_sha(sha):
+        for (kind, type_data) in self.lookup_git_sha(sha):
             # convert object to git object
-            if type == "commit":
+            if kind == "commit":
                 (revid, tree_sha, verifiers) = type_data
                 try:
                     rev = self.repository.get_revision(revid)
                 except errors.NoSuchRevision:
-                    trace.mutter('entry for %s %s in shamap: %r, but not found in '
-                                 'repository', type, sha, type_data)
+                    trace.mutter('entry for %s %s in shamap: %r, but not '
+                                 'found in repository', kind, sha, type_data)
                     raise KeyError(sha)
                 commit = self._reconstruct_commit(rev, tree_sha, roundtrip=True,
                     verifiers=verifiers)
                 _check_expected_sha(sha, commit)
                 return commit
-            elif type == "blob":
+            elif kind == "blob":
                 (fileid, revision) = type_data
                 return self._reconstruct_blobs([(fileid, revision, sha)]).next()
-            elif type == "tree":
+            elif kind == "tree":
                 (fileid, revid) = type_data
                 try:
                     tree = self.tree_cache.revision_tree(revid)
                     rev = self.repository.get_revision(revid)
                 except errors.NoSuchRevision:
-                    trace.mutter('entry for %s %s in shamap: %r, but not found in repository', type, sha, type_data)
+                    trace.mutter('entry for %s %s in shamap: %r, but not found in repository', kind, sha, type_data)
                     raise KeyError(sha)
                 unusual_modes = extract_unusual_modes(rev)
                 try:
@@ -598,7 +598,7 @@ class BazaarObjectStore(BaseObjectStore):
                 except errors.NoSuchRevision:
                     raise KeyError(sha)
             else:
-                raise AssertionError("Unknown object type '%s'" % type)
+                raise AssertionError("Unknown object type '%s'" % kind)
         else:
             raise KeyError(sha)
 
