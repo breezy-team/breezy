@@ -30,8 +30,8 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
-    InventoryWorkingTree,
     WorkingTreeFormat,
+    WorkingTree,
     )
 
 
@@ -133,7 +133,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         return wt
 
 
-class WorkingTree2(InventoryWorkingTree):
+class WorkingTree2(WorkingTree):
     """This is the Format 2 working tree.
 
     This was the first weave based working tree.
