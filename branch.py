@@ -272,6 +272,7 @@ class GitReadLock(object):
 class GitWriteLock(object):
 
     def __init__(self, unlock):
+        self.branch_token = None
         self.unlock = unlock
 
 
