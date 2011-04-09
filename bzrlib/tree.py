@@ -324,6 +324,15 @@ class Tree(object):
     def get_file_by_path(self, path):
         return self.get_file(self._inventory.path2id(path), path)
 
+    def is_executable(self, file_id, path=None):
+        """Check if a file is executable.
+
+        :param file_id: The handle for this file.
+        :param path: The path that this file can be found at.
+            These must point to the same object.
+        """
+        raise NotImplementedError(self.is_executable)
+
     def iter_files_bytes(self, desired_files):
         """Iterate through file contents.
 
