@@ -22,6 +22,8 @@
   * Properly raise RootMissing if no root is specified to an empty
     tree in the commit builder. (Jelmer Vernooij, #731360)
 
+  * Return proper conflict list from WorkingTree.conflicts. (Jelmer Vernooij, #741397)
+
  API COMPLETENESS
 
   * Implement LocalGitControlDir.clone_on_transport. (Jelmer Vernooij, #721899)
