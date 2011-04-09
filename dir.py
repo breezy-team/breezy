@@ -21,6 +21,7 @@ from bzrlib import (
     errors as bzr_errors,
     lockable_files,
     trace,
+    osutils,
     urlutils,
     version_info as bzrlib_version,
     )
@@ -131,6 +132,9 @@ class GitDir(ControlDir):
 
     def get_config(self):
         return GitDirConfig()
+
+    def _available_backup_name(self, base):
+        return osutils.available_backup_name(base, self.root_transport.has)
 
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
