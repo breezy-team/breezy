@@ -133,6 +133,7 @@ class GitCommitBuilder(CommitBuilder):
         return ((path, sha, mode) for (path, (mode, sha)) in self._blobs.iteritems())
 
     def commit(self, message):
+        self._validate_unicode_text(message, 'commit message')
         c = Commit()
         c.parents = [self.repository.lookup_bzr_revision_id(revid)[0] for revid in self.parents]
         c.tree = commit_tree(self.store, self._iterblobs())
