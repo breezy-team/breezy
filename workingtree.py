@@ -34,6 +34,7 @@ import stat
 
 from bzrlib import (
     errors,
+    conflicts as _mod_conflicts,
     ignores,
     lockable_files,
     lockdir,
@@ -101,7 +102,6 @@ class GitWorkingTree(workingtree.WorkingTree):
                 relpath = os.path.join(dirpath[len(self.basedir):].strip("/"), filename)
                 if not relpath in self.index:
                     yield relpath
-
 
     def unlock(self):
         # non-implementation specific cleanup
@@ -210,7 +210,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     @needs_read_lock
     def conflicts(self):
         # FIXME:
-        return []
+        return _mod_conflicts.ConflictList()
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
