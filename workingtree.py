@@ -88,6 +88,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._format = GitWorkingTreeFormat()
         self.index = index
         self.views = self._make_views()
+        self._rules_searcher = None
         self._detect_case_handling()
 
     def extras(self):
