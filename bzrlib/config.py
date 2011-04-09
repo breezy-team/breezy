@@ -967,20 +967,20 @@ class GlobalConfig(LockableConfig):
         super(LockableConfig, self).remove_user_option(option_name,
                                                        section_name)
 
-def _filter_for_location_by_parts(sections, location):
+def _iter_for_location_by_parts(sections, location):
     """Keep only the sessions matching the specified location.
 
     :param sections: An iterable of section names.
 
     :param location: An url or a local path to match against.
 
-    :returns: A list of (nb_parts, section, extra_path) where nb is the number
-        of path components in the section name, section is the section name and
-        extra_path is the difference between location and the section name.
+    :returns: An iterator of (section, extra_path, nb_parts) where nb is the
+        number of path components in the section name, section is the section
+        name and extra_path is the difference between location and the section
+        name.
     """
     location_parts = location.rstrip('/').split('/')
 
-    matches = []
     for section in sections:
         # location is a local path if possible, so we need
         # to convert 'file://' urls to local paths if necessary.
@@ -1020,8 +1020,7 @@ def _filter_for_location_by_parts(sections, location):
             continue
         # build the path difference between the section and the location
         extra_path = '/'.join(location_parts[len(section_parts):])
-        matches.append((len(section_parts), section, extra_path))
-    return matches
+        yield section, extra_path, len(section_parts)
 
 
 class LocationConfig(LockableConfig):
@@ -1057,21 +1056,20 @@ class LocationConfig(LockableConfig):
 
     def _get_matching_sections(self):
         """Return an ordered list of section names matching this location."""
-        sections = self._get_parser()
-
-        matches = _filter_for_location_by_parts(sections, self.location)
+        matches = list(_iter_for_location_by_parts(self._get_parser(),
+                                                   self.location))
         # put the longest (aka more specific) locations first
-        matches.sort(reverse=True)
-        sections = []
-        for (length, section, extra_path) in matches:
-            sections.append((section, extra_path))
+        matches.sort(
+            key=lambda (section, extra_path, length): (length, section),
+            reverse=True)
+        for (section, extra_path, length) in matches:
+            yield section, extra_path
             # should we stop looking for parent configs here?
             try:
                 if self._get_parser()[section].as_bool('ignore_parents'):
                     break
             except KeyError:
                 pass
-        return sections
 
     def _get_sections(self, name=None):
         """See IniBasedConfig._get_sections()."""
@@ -2382,11 +2380,11 @@ class LocationMatcher(SectionMatcher):
         # The following is a bit hackish but ensures compatibility with
         # LocationConfig by reusing the same code
         sections = list(self.store.get_sections())
-        filtered_sections = _filter_for_location_by_parts(
+        filtered_sections = _iter_for_location_by_parts(
             [s.id for s in sections], self.location)
         iter_sections = iter(sections)
         matching_sections = []
-        for length, section_id, extra_path in filtered_sections:
+        for section_id, extra_path, length in filtered_sections:
             # a section id is unique for a given store so it's safe to iterate
             # again
             section = iter_sections.next()
@@ -2394,7 +2392,8 @@ class LocationMatcher(SectionMatcher):
                 matching_sections.append(
                     LocationSection(section, length, extra_path))
         # We want the longest (aka more specific) locations first
-        sections = sorted(matching_sections, key=lambda section: section.length,
+        sections = sorted(matching_sections,
+                          key=lambda section: (section.length, section.id),
                           reverse=True)
         # Sections mentioning 'ignore_parents' restrict the selection
         for section in sections:
