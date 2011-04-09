@@ -2380,11 +2380,11 @@ class LocationMatcher(SectionMatcher):
         # The following is a bit hackish but ensures compatibility with
         # LocationConfig by reusing the same code
         sections = list(self.store.get_sections())
-        filtered_sections = _filter_for_location_by_parts(
+        filtered_sections = _iter_for_location_by_parts(
             [s.id for s in sections], self.location)
         iter_sections = iter(sections)
         matching_sections = []
-        for length, section_id, extra_path in filtered_sections:
+        for section_id, extra_path, length in filtered_sections:
             # a section id is unique for a given store so it's safe to iterate
             # again
             section = iter_sections.next()
@@ -2392,7 +2392,8 @@ class LocationMatcher(SectionMatcher):
                 matching_sections.append(
                     LocationSection(section, length, extra_path))
         # We want the longest (aka more specific) locations first
-        sections = sorted(matching_sections, key=lambda section: section.length,
+        sections = sorted(matching_sections,
+                          key=lambda section: (section.length, section.id),
                           reverse=True)
         # Sections mentioning 'ignore_parents' restrict the selection
         for section in sections:
