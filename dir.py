@@ -185,6 +185,8 @@ class GitDir(ControlDir):
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
         create_prefix=False, use_existing_dir=True, no_tree=False):
         """See ControlDir.clone_on_transport."""
+        from bzrlib.repository import InterRepository
+        from bzrlib.plugins.git.mapping import default_mapping
         if no_tree:
             format = BareLocalGitControlDirFormat()
         else:
@@ -193,11 +195,13 @@ class GitDir(ControlDir):
         target_git_repo = target_repo._git
         source_repo = self.open_repository()
         source_git_repo = source_repo._git
+        interrepo = InterRepository.get(source_repo, target_repo)
         if revision_id is not None:
-            determine_wants = self.get_determine_wants_revids([revision_id], include_tags=True)
+            determine_wants = interrepo.get_determine_wants_revids([revision_id], include_tags=True)
         else:
-            determine_wants = target_git_repo.object_store.determine_wants_all
-        refs = source_git_repo.fetch(target_git_repo, determine_wants)
+            determine_wants = interrepo.determine_wants_all
+        (pack_hint, _, refs) = interrepo.fetch_objects(determine_wants,
+            mapping=default_mapping)
         for name, val in refs.iteritems():
             target_git_repo.refs[name] = val
         lockfiles = GitLockableFiles(transport, GitLock())
