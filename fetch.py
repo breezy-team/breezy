@@ -733,3 +733,10 @@ class InterGitGitRepository(InterGitRepository):
         """Be compatible with GitRepository."""
         return (isinstance(source, GitRepository) and
                 isinstance(target, GitRepository))
+
+    def get_determine_wants_revids(self, revids, include_tags=False):
+        wants = set()
+        for revid in set(revids):
+            git_sha, mapping = self.source.lookup_bzr_revision_id(revid)
+            wants.add(git_sha)
+        return self.get_determine_wants_heads(wants, include_tags=include_tags)
