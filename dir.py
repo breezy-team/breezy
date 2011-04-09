@@ -60,6 +60,12 @@ class GitLock(object):
     def break_lock(self):
         pass
 
+    def dont_leave_in_place(self):
+        raise NotImplementedError(self.dont_leave_in_place)
+
+    def leave_in_place(self):
+        raise NotImplementedError(self.leave_in_place)
+
 
 class GitLockableFiles(lockable_files.LockableFiles):
     """Git specific lockable files abstraction."""
