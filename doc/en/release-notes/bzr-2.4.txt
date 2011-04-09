@@ -109,6 +109,11 @@ API Changes
   from ``bzrlib.repofmt.pack_repo`` to
   ``bzrlib.repofmt.knitpack_repo``. (Jelmer Vernooij)
 
+* ``WorkingTree`` no longer provides an ``inventory``. Instead,
+  all inventory-related functionality is now on the subclass
+  ``InventoryWorkingTree`` that all native Bazaar working tree
+  implementations derive from. (Jelmer Vernooij)
+
 Internals
 *********
 
