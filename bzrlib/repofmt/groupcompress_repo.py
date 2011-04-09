@@ -44,6 +44,7 @@ from bzrlib.groupcompress import (
     GroupCompressVersionedFiles,
     )
 from bzrlib.repofmt.pack_repo import (
+    _DirectPackAccess,
     Pack,
     NewPack,
     PackRepository,
@@ -354,8 +355,8 @@ class GCCHKPacker(Packer):
         """Build a VersionedFiles instance on top of this group of packs."""
         index_name = index_name + '_index'
         index_to_pack = {}
-        access = knit._DirectPackAccess(index_to_pack,
-                                        reload_func=self._reload_func)
+        access = _DirectPackAccess(index_to_pack,
+                                   reload_func=self._reload_func)
         if for_write:
             # Use new_pack
             if self.new_pack is None:

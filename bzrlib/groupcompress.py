@@ -36,6 +36,7 @@ from bzrlib import (
     )
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
+from bzrlib.repofmt import pack_repo
 from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
     adapter_registry,
@@ -1046,7 +1047,7 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
         index = _GCGraphIndex(graph_index, lambda:True, parents=parents,
             add_callback=graph_index.add_nodes,
             inconsistency_fatal=inconsistency_fatal)
-        access = knit._DirectPackAccess({})
+        access = pack_repo._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
         result.stream = stream
