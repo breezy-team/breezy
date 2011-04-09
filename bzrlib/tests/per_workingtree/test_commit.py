@@ -15,7 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import os
 
 from bzrlib import (
@@ -27,17 +26,8 @@ from bzrlib import (
     osutils,
     revision as _mod_revision,
     ui,
-    uncommit,
-    workingtree,
     )
-from bzrlib.errors import (NotBranchError, NotVersionedError,
-                           UnsupportedOperation)
-from bzrlib.osutils import pathjoin, getcwd
-from bzrlib.tests import TestCase
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
-from bzrlib.trace import mutter
-from bzrlib.workingtree import (TreeEntry, TreeDirectory, TreeFile, TreeLink,
-                                WorkingTree)
 from bzrlib.tests.testui import ProgressRecordingUIFactory
 
 
