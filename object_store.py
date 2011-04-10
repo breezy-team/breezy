@@ -618,23 +618,21 @@ class BazaarObjectStore(BaseObjectStore):
         ret = self.lookup_git_shas(have + want)
         for commit_sha in have:
             try:
-                (type, (revid, tree_sha, verifiers)) = ret[commit_sha]
+                for (type, type_data) in ret[commit_sha]:
+                    assert type == "commit"
+                    processed.add(type_data[0])
             except KeyError:
                 pass
-            else:
-                assert type == "commit"
-                processed.add(revid)
         pending = set()
         for commit_sha in want:
             if commit_sha in have:
                 continue
             try:
-                (type, (revid, tree_sha, verifiers)) = ret[commit_sha]
+                for (type, type_data) in ret[commit_sha]:
+                    assert type == "commit"
+                    pending.add(type_data[0])
             except KeyError:
                 pass
-            else:
-                assert type == "commit"
-                pending.add(revid)
 
         graph = self.repository.get_graph()
         todo = _find_missing_bzr_revids(graph, pending, processed)

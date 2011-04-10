@@ -206,10 +206,12 @@ class InterToLocalGitRepository(InterToGitRepository):
         bzr_refs = {}
         refs = self.target._git.get_refs()
         for k, v in refs.iteritems():
-            revid = None
-            for (kind, type_data) in self.source_store.lookup_git_sha(v):
-                if kind == "commit":
-                    revid = type_data[0]
+            try:
+                for (kind, type_data) in self.source_store.lookup_git_sha(v):
+                    if kind == "commit":
+                        revid = type_data[0]
+            except KeyError:
+                revid = None
             bzr_refs[k] = (v, revid)
         return bzr_refs
 
@@ -236,7 +238,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                     except KeyError:
                         gitid = self.source_store._lookup_revision_sha1(revid)
                 self.target._git.refs[name] = gitid
-                new_refs[name] = (gitid, self.source_store.lookup_git_sha(gitid)[1][0])
+                new_refs[name] = (gitid, self.mapping.revision_id_foreign_to_bzr(gitid))
         finally:
             self.source.unlock()
         return revidmap, old_refs, new_refs
