@@ -208,8 +208,11 @@ class InterToLocalGitRepository(InterToGitRepository):
         for k, v in refs.iteritems():
             try:
                 for (kind, type_data) in self.source_store.lookup_git_sha(v):
-                    if kind == "commit":
+                    if kind == "commit" and self.source.has_revision(type_data[0]):
                         revid = type_data[0]
+                        break
+                else:
+                    revid = None
             except KeyError:
                 revid = None
             bzr_refs[k] = (v, revid)
@@ -230,29 +233,9 @@ class InterToLocalGitRepository(InterToGitRepository):
         try:
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
-            revidmap, gitidmap = self.dfetch(new_refs.values())
-            for name, (gitid, revid) in new_refs.iteritems():
-                if gitid is None:
-                    try:
-                        gitid = gitidmap[revid]
-                    except KeyError:
-                        gitid = self.source_store._lookup_revision_sha1(revid)
-                self.target._git.refs[name] = gitid
-                new_refs[name] = (gitid, self.mapping.revision_id_foreign_to_bzr(gitid))
-        finally:
-            self.source.unlock()
-        return revidmap, old_refs, new_refs
-
-    def _get_missing_objects_iterator(self, pb):
-        return MissingObjectsIterator(self.source_store, self.source, pb)
-
-    def dfetch(self, stop_revisions):
-        """Import the gist of the ancestry of a particular revision."""
-        gitidmap = {}
-        revidmap = {}
-        self.source.lock_read()
-        try:
-            todo = list(self.missing_revisions(stop_revisions))
+            gitidmap = {}
+            revidmap = {}
+            todo = list(self.missing_revisions(new_refs.values()))
             pb = ui.ui_factory.nested_progress_bar()
             try:
                 object_generator = self._get_missing_objects_iterator(pb)
@@ -264,9 +247,17 @@ class InterToLocalGitRepository(InterToGitRepository):
                 self.target_store.add_objects(object_generator)
             finally:
                 pb.finished()
+            for name, (gitid, revid) in new_refs.iteritems():
+                self.target_refs[name] = gitidmap[revid]
         finally:
             self.source.unlock()
-        return revidmap, gitidmap
+        return revidmap, old_refs, new_refs
+
+    def _get_missing_objects_iterator(self, pb):
+        return MissingObjectsIterator(self.source_store, self.source, pb)
+
+    def dfetch(self, stop_revisions):
+        """Import the gist of the ancestry of a particular revision."""
 
     def fetch(self, revision_id=None, pb=None, find_ghosts=False,
             fetch_spec=None, mapped_refs=None):
