@@ -242,13 +242,21 @@ class InterToLocalGitRepository(InterToGitRepository):
                 for old_bzr_revid, git_commit in object_generator.import_revisions(
                     todo, roundtrip=False):
                     new_bzr_revid = self.mapping.revision_id_foreign_to_bzr(git_commit)
+                    assert type(old_bzr_revid) is str
+                    assert type(new_bzr_revid) is str
+                    assert type(git_commit) is str
                     revidmap[old_bzr_revid] = new_bzr_revid
                     gitidmap[old_bzr_revid] = git_commit
                 self.target_store.add_objects(object_generator)
             finally:
                 pb.finished()
             for name, (gitid, revid) in new_refs.iteritems():
-                self.target_refs[name] = gitidmap[revid]
+                if gitid is None:
+                    try:
+                        gitid = gitidmap[revid]
+                    except KeyError:
+                        gitid = self.source_store._lookup_revision_sha1(revid)
+                self.target_refs[name] = gitid
         finally:
             self.source.unlock()
         return revidmap, old_refs, new_refs
