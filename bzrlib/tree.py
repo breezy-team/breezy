@@ -631,6 +631,9 @@ class InventoryTree(Tree):
 
     It is possible for trees to contain files that are not described
     in their inventory or vice versa; for this use `filenames()`.
+
+    Subclasses should set the _inventory attribute, which is considered
+    private to external API users.
     """
 
     def get_canonical_inventory_paths(self, paths):
