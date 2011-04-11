@@ -50,13 +50,6 @@ class Tree(object):
 
     * `RevisionTree` is a tree as recorded at some point in the past.
 
-    Trees contain an `Inventory` object, and also know how to retrieve
-    file texts mentioned in the inventory, either from a working
-    directory or from a store.
-
-    It is possible for trees to contain files that are not described
-    in their inventory or vice versa; for this use `filenames()`.
-
     Trees can be compared, etc, regardless of whether they are working
     trees or versioned trees.
     """
@@ -128,13 +121,13 @@ class Tree(object):
         raise NotImplementedError(self.has_filename)
 
     def has_id(self, file_id):
-        return self.inventory.has_id(file_id)
+        raise NotImplementedError(self.has_id)
 
     def __contains__(self, file_id):
         return self.has_id(file_id)
 
     def has_or_had_id(self, file_id):
-        return self.inventory.has_id(file_id)
+        raise NotImplementedError(self.has_or_had_id)
 
     def is_ignored(self, filename):
         """Check whether the filename is ignored by this tree.
@@ -145,7 +138,8 @@ class Tree(object):
         return False
 
     def __iter__(self):
-        return iter(self.inventory)
+        """Yield all file ids in this tree."""
+        raise NotImplementedError(self.__iter__)
 
     def all_file_ids(self):
         """Iterate through all file ids, including ids for missing files."""
@@ -156,9 +150,8 @@ class Tree(object):
 
         :raises NoSuchId:
         """
-        return self.inventory.id2path(file_id)
+        raise NotImplementedError(self.id2path)
 
-    @needs_read_lock
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         """Walk the tree in 'by_dir' order.
 
@@ -187,8 +180,7 @@ class Tree(object):
             down to specific_file_ids that have been requested. This has no
             impact if specific_file_ids is None.
         """
-        return self.inventory.iter_entries_by_dir(
-            specific_file_ids=specific_file_ids, yield_parents=yield_parents)
+        raise NotImplementedError(self.iter_entries_by_dir)
 
     def iter_references(self):
         if self.supports_tree_reference():
@@ -244,9 +236,6 @@ class Tree(object):
 
     def _file_size(self, entry, stat_value):
         raise NotImplementedError(self._file_size)
-
-    def _get_inventory(self):
-        return self._inventory
 
     def get_file(self, file_id, path=None):
         """Return a file object for the file file_id in the tree.
@@ -322,7 +311,7 @@ class Tree(object):
         raise NotImplementedError(self.get_file_size)
 
     def get_file_by_path(self, path):
-        return self.get_file(self._inventory.path2id(path), path)
+        raise NotImplementedError(self.get_file_by_path)
 
     def is_executable(self, file_id, path=None):
         """Check if a file is executable.
@@ -369,83 +358,6 @@ class Tree(object):
         """
         raise NotImplementedError(self.get_symlink_target)
 
-    def get_canonical_inventory_paths(self, paths):
-        """Like get_canonical_inventory_path() but works on multiple items.
-
-        :param paths: A sequence of paths relative to the root of the tree.
-        :return: A list of paths, with each item the corresponding input path
-        adjusted to account for existing elements that match case
-        insensitively.
-        """
-        return list(self._yield_canonical_inventory_paths(paths))
-
-    def get_canonical_inventory_path(self, path):
-        """Returns the first inventory item that case-insensitively matches path.
-
-        If a path matches exactly, it is returned. If no path matches exactly
-        but more than one path matches case-insensitively, it is implementation
-        defined which is returned.
-
-        If no path matches case-insensitively, the input path is returned, but
-        with as many path entries that do exist changed to their canonical
-        form.
-
-        If you need to resolve many names from the same tree, you should
-        use get_canonical_inventory_paths() to avoid O(N) behaviour.
-
-        :param path: A paths relative to the root of the tree.
-        :return: The input path adjusted to account for existing elements
-        that match case insensitively.
-        """
-        return self._yield_canonical_inventory_paths([path]).next()
-
-    def _yield_canonical_inventory_paths(self, paths):
-        for path in paths:
-            # First, if the path as specified exists exactly, just use it.
-            if self.path2id(path) is not None:
-                yield path
-                continue
-            # go walkin...
-            cur_id = self.get_root_id()
-            cur_path = ''
-            bit_iter = iter(path.split("/"))
-            for elt in bit_iter:
-                lelt = elt.lower()
-                new_path = None
-                for child in self.iter_children(cur_id):
-                    try:
-                        # XXX: it seem like if the child is known to be in the
-                        # tree, we shouldn't need to go from its id back to
-                        # its path -- mbp 2010-02-11
-                        #
-                        # XXX: it seems like we could be more efficient
-                        # by just directly looking up the original name and
-                        # only then searching all children; also by not
-                        # chopping paths so much. -- mbp 2010-02-11
-                        child_base = os.path.basename(self.id2path(child))
-                        if (child_base == elt):
-                            # if we found an exact match, we can stop now; if
-                            # we found an approximate match we need to keep
-                            # searching because there might be an exact match
-                            # later.  
-                            cur_id = child
-                            new_path = osutils.pathjoin(cur_path, child_base)
-                            break
-                        elif child_base.lower() == lelt:
-                            cur_id = child
-                            new_path = osutils.pathjoin(cur_path, child_base)
-                    except errors.NoSuchId:
-                        # before a change is committed we can see this error...
-                        continue
-                if new_path:
-                    cur_path = new_path
-                else:
-                    # got to the end of this directory and no entries matched.
-                    # Return what matched so far, plus the rest as specified.
-                    cur_path = osutils.pathjoin(cur_path, elt, *list(bit_iter))
-                    break
-            yield cur_path
-        # all done.
 
     def get_root_id(self):
         """Return the file_id for the root of this tree."""
@@ -513,6 +425,7 @@ class Tree(object):
     @staticmethod
     def _file_revision(revision_tree, file_id):
         """Determine the revision associated with a file in a given tree."""
+        # FIXME: Shouldn't this be a RevisionTree method?
         revision_tree.lock_read()
         try:
             return revision_tree.inventory[file_id].revision
@@ -537,9 +450,6 @@ class Tree(object):
             vf.fallback_versionedfiles.append(base_vf)
         return last_revision
 
-    inventory = property(_get_inventory,
-                         doc="Inventory of this Tree")
-
     def _check_retrieved(self, ie, f):
         if not __debug__:
             return
@@ -562,10 +472,9 @@ class Tree(object):
                      "file is actually %s" % fp['sha1'],
                      "store is probably damaged/corrupt"])
 
-    @needs_read_lock
     def path2id(self, path):
         """Return the id for path in this tree."""
-        return self._inventory.path2id(path)
+        raise NotImplementedError(self.path2id)
 
     def paths2ids(self, paths, trees=[], require_versioned=True):
         """Return all the ids that can be reached by walking from paths.
@@ -628,11 +537,7 @@ class Tree(object):
 
         :return: set of paths.
         """
-        # NB: we specifically *don't* call self.has_filename, because for
-        # WorkingTrees that can indicate files that exist on disk but that
-        # are not versioned.
-        pred = self.inventory.has_filename
-        return set((p for p in paths if not pred(p)))
+        raise NotImplementedError(self.filter_unversioned_files)
 
     def walkdirs(self, prefix=""):
         """Walk the contents of this tree from path down.
@@ -733,6 +638,156 @@ class Tree(object):
         """Get the RulesSearcher for this tree given the default one."""
         searcher = default_searcher
         return searcher
+
+
+class InventoryTree(Tree):
+    """A tree that relies on an inventory for its metadata.
+
+    Trees contain an `Inventory` object, and also know how to retrieve
+    file texts mentioned in the inventory, either from a working
+    directory or from a store.
+
+    It is possible for trees to contain files that are not described
+    in their inventory or vice versa; for this use `filenames()`.
+
+    Subclasses should set the _inventory attribute, which is considered
+    private to external API users.
+    """
+
+    def get_canonical_inventory_paths(self, paths):
+        """Like get_canonical_inventory_path() but works on multiple items.
+
+        :param paths: A sequence of paths relative to the root of the tree.
+        :return: A list of paths, with each item the corresponding input path
+        adjusted to account for existing elements that match case
+        insensitively.
+        """
+        return list(self._yield_canonical_inventory_paths(paths))
+
+    def get_canonical_inventory_path(self, path):
+        """Returns the first inventory item that case-insensitively matches path.
+
+        If a path matches exactly, it is returned. If no path matches exactly
+        but more than one path matches case-insensitively, it is implementation
+        defined which is returned.
+
+        If no path matches case-insensitively, the input path is returned, but
+        with as many path entries that do exist changed to their canonical
+        form.
+
+        If you need to resolve many names from the same tree, you should
+        use get_canonical_inventory_paths() to avoid O(N) behaviour.
+
+        :param path: A paths relative to the root of the tree.
+        :return: The input path adjusted to account for existing elements
+        that match case insensitively.
+        """
+        return self._yield_canonical_inventory_paths([path]).next()
+
+    def _yield_canonical_inventory_paths(self, paths):
+        for path in paths:
+            # First, if the path as specified exists exactly, just use it.
+            if self.path2id(path) is not None:
+                yield path
+                continue
+            # go walkin...
+            cur_id = self.get_root_id()
+            cur_path = ''
+            bit_iter = iter(path.split("/"))
+            for elt in bit_iter:
+                lelt = elt.lower()
+                new_path = None
+                for child in self.iter_children(cur_id):
+                    try:
+                        # XXX: it seem like if the child is known to be in the
+                        # tree, we shouldn't need to go from its id back to
+                        # its path -- mbp 2010-02-11
+                        #
+                        # XXX: it seems like we could be more efficient
+                        # by just directly looking up the original name and
+                        # only then searching all children; also by not
+                        # chopping paths so much. -- mbp 2010-02-11
+                        child_base = os.path.basename(self.id2path(child))
+                        if (child_base == elt):
+                            # if we found an exact match, we can stop now; if
+                            # we found an approximate match we need to keep
+                            # searching because there might be an exact match
+                            # later.  
+                            cur_id = child
+                            new_path = osutils.pathjoin(cur_path, child_base)
+                            break
+                        elif child_base.lower() == lelt:
+                            cur_id = child
+                            new_path = osutils.pathjoin(cur_path, child_base)
+                    except errors.NoSuchId:
+                        # before a change is committed we can see this error...
+                        continue
+                if new_path:
+                    cur_path = new_path
+                else:
+                    # got to the end of this directory and no entries matched.
+                    # Return what matched so far, plus the rest as specified.
+                    cur_path = osutils.pathjoin(cur_path, elt, *list(bit_iter))
+                    break
+            yield cur_path
+        # all done.
+
+    def _get_inventory(self):
+        return self._inventory
+
+    inventory = property(_get_inventory,
+                         doc="Inventory of this Tree")
+
+    @needs_read_lock
+    def path2id(self, path):
+        """Return the id for path in this tree."""
+        return self._inventory.path2id(path)
+
+    def id2path(self, file_id):
+        """Return the path for a file id.
+
+        :raises NoSuchId:
+        """
+        return self.inventory.id2path(file_id)
+
+    def has_id(self, file_id):
+        return self.inventory.has_id(file_id)
+
+    def has_or_had_id(self, file_id):
+        return self.inventory.has_id(file_id)
+
+    def __iter__(self):
+        return iter(self.inventory)
+
+    def filter_unversioned_files(self, paths):
+        """Filter out paths that are versioned.
+
+        :return: set of paths.
+        """
+        # NB: we specifically *don't* call self.has_filename, because for
+        # WorkingTrees that can indicate files that exist on disk but that
+        # are not versioned.
+        pred = self.inventory.has_filename
+        return set((p for p in paths if not pred(p)))
+
+    @needs_read_lock
+    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+        """Walk the tree in 'by_dir' order.
+
+        This will yield each entry in the tree as a (path, entry) tuple.
+        The order that they are yielded is:
+
+        See Tree.iter_entries_by_dir for details.
+
+        :param yield_parents: If True, yield the parents from the root leading
+            down to specific_file_ids that have been requested. This has no
+            impact if specific_file_ids is None.
+        """
+        return self.inventory.iter_entries_by_dir(
+            specific_file_ids=specific_file_ids, yield_parents=yield_parents)
+
+    def get_file_by_path(self, path):
+        return self.get_file(self._inventory.path2id(path), path)
 
 
 ######################################################################

@@ -26,6 +26,8 @@ from bzrlib import (
     errors,
     mutabletree,
     revision as _mod_revision,
+    revisiontree,
+    tree,
     )
 from bzrlib.decorators import needs_read_lock
 from bzrlib.osutils import sha_file
@@ -33,7 +35,7 @@ from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.transport.memory import MemoryTransport
 
 
-class MemoryTree(mutabletree.MutableTree):
+class MemoryTree(mutabletree.MutableTree, tree.InventoryTree):
     """A MemoryTree is a specialisation of MutableTree.
 
     It maintains nearly no state outside of read_lock and write_lock
