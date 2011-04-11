@@ -18,17 +18,10 @@
 """Black-box tests for bzr dpush."""
 
 
-import os
-
 from bzrlib import (
-    branch,
-    bzrdir,
-    foreign,
     tests,
-    workingtree,
     )
 from bzrlib.tests import (
-    blackbox,
     script,
     test_foreign,
     )
@@ -60,7 +53,9 @@ class TestDpush(tests.TestCaseWithTransport):
         source_tree = self.make_branch_and_tree("dc")
         output, error = self.run_bzr("dpush -d dc dp", retcode=3)
         self.assertEquals("", output)
-        self.assertContainsRe(error, 'in the same VCS, lossy push not necessary. Please use regular push.')
+        self.assertContainsRe(error,
+            'in the same VCS, lossy push not necessary. Please use regular '
+            'push.')
 
     def test_dpush(self):
         branch = self.make_dummy_builder('d').get_branch()
