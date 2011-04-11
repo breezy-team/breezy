@@ -72,6 +72,12 @@ bzr: ERROR: No changes to commit.\
         self.run_bzr(["commit", "--unchanged", "-m", u'foo\xb5'])
         self.assertEqual('', self.run_bzr('unknowns')[0])
 
+    def test_commit_lossy_native(self):
+        """A --lossy option to commit is supported."""
+        self.make_branch_and_tree('.')
+        self.run_bzr('commit --lossy --unchanged -m message')
+        self.assertEqual('', self.run_bzr('unknowns')[0])
+
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
         a_tree = self.make_branch_and_tree('a')
