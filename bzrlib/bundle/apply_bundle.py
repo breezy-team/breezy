@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 This contains functionality for installing bundles into repositories
 """
 
-import bzrlib.ui
+from bzrlib import ui
 from bzrlib.progress import ProgressPhase
 from bzrlib.merge import Merger
 from bzrlib.repository import install_revision
@@ -28,7 +28,7 @@ def install_bundle(repository, bundle_reader):
     custom_install = getattr(bundle_reader, 'install', None)
     if custom_install is not None:
         return custom_install(repository)
-    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    pb = ui.ui_factory.nested_progress_bar()
     repository.lock_write()
     try:
         real_revisions = bundle_reader.real_revisions
@@ -47,7 +47,7 @@ def install_bundle(repository, bundle_reader):
 def merge_bundle(reader, tree, check_clean, merge_type,
                     reprocess, show_base, change_reporter=None):
     """Merge a revision bundle into the current tree."""
-    pb = bzrlib.ui.ui_factory.nested_progress_bar()
+    pb = ui.ui_factory.nested_progress_bar()
     try:
         pp = ProgressPhase("Merge phase", 6, pb)
         pp.next_phase()

@@ -56,30 +56,29 @@ from cStringIO import StringIO
 from itertools import izip
 import operator
 import os
-import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import gzip
 
 from bzrlib import (
-    annotate,
     debug,
     diff,
     graph as _mod_graph,
     index as _mod_index,
-    lru_cache,
     pack,
     patiencediff,
-    progress,
     static_tuple,
     trace,
     tsort,
     tuned_gzip,
     ui,
     )
+
+from bzrlib.repofmt import pack_repo
 """)
 from bzrlib import (
+    annotate,
     errors,
     osutils,
     )
@@ -801,7 +800,7 @@ def make_pack_factory(graph, delta, keylength):
         writer.begin()
         index = _KnitGraphIndex(graph_index, lambda:True, parents=parents,
             deltas=delta, add_callback=graph_index.add_nodes)
-        access = _DirectPackAccess({})
+        access = pack_repo._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = KnitVersionedFiles(index, access,
             max_delta_chain=max_delta_chain)

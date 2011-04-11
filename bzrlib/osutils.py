@@ -392,6 +392,12 @@ splitext = os.path.splitext
 # These were already lazily imported into local scope
 # mkdtemp = tempfile.mkdtemp
 # rmtree = shutil.rmtree
+lstat = os.lstat
+fstat = os.fstat
+
+def wrap_stat(st):
+    return st
+
 
 MIN_ABS_PATHLENGTH = 1
 
@@ -407,6 +413,14 @@ if sys.platform == 'win32':
     getcwd = _win32_getcwd
     mkdtemp = _win32_mkdtemp
     rename = _win32_rename
+    try:
+        from bzrlib import _walkdirs_win32
+    except ImportError:
+        pass
+    else:
+        lstat = _walkdirs_win32.lstat
+        fstat = _walkdirs_win32.fstat
+        wrap_stat = _walkdirs_win32.wrap_stat
 
     MIN_ABS_PATHLENGTH = 3
 

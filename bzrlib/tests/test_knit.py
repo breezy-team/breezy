@@ -325,7 +325,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
             transport.append_bytes(packname, bytes)
         writer = pack.ContainerWriter(write_data)
         writer.begin()
-        access = _DirectPackAccess({})
+        access = pack_repo._DirectPackAccess({})
         access.set_writer(writer, index, (transport, packname))
         return access, writer
 
@@ -456,7 +456,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos.extend(access.add_raw_records([('key', 5)], 'alpha'))
         writer.end()
         transport = self.get_transport()
-        access = _DirectPackAccess({"FOO":(transport, 'packfile'),
+        access = pack_repo._DirectPackAccess({"FOO":(transport, 'packfile'),
             "FOOBAR":(transport, 'pack2'),
             "BAZ":(transport, 'pack3')})
         self.assertEqual(['1234567890', '12345', 'alpha'],
@@ -472,7 +472,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 
     def test_set_writer(self):
         """The writer should be settable post construction."""
-        access = _DirectPackAccess({})
+        access = pack_repo._DirectPackAccess({})
         transport = self.get_transport()
         packname = 'packfile'
         index = 'foo'
@@ -490,7 +490,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         reload_called, reload_func = self.make_reload_func()
         # Note that the index key has changed from 'foo' to 'bar'
-        access = _DirectPackAccess({'bar':(transport, 'packname')},
+        access = pack_repo._DirectPackAccess({'bar':(transport, 'packname')},
                                    reload_func=reload_func)
         e = self.assertListRaises(errors.RetryWithNewPacks,
                                   access.get_raw_records, memos)
@@ -505,7 +505,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos = self.make_pack_file()
         transport = self.get_transport()
         # Note that the index key has changed from 'foo' to 'bar'
-        access = _DirectPackAccess({'bar':(transport, 'packname')})
+        access = pack_repo._DirectPackAccess({'bar':(transport, 'packname')})
         e = self.assertListRaises(KeyError, access.get_raw_records, memos)
 
     def test_missing_file_raises_retry(self):
@@ -513,8 +513,9 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         transport = self.get_transport()
         reload_called, reload_func = self.make_reload_func()
         # Note that the 'filename' has been changed to 'different-packname'
-        access = _DirectPackAccess({'foo':(transport, 'different-packname')},
-                                   reload_func=reload_func)
+        access = pack_repo._DirectPackAccess(
+            {'foo':(transport, 'different-packname')},
+            reload_func=reload_func)
         e = self.assertListRaises(errors.RetryWithNewPacks,
                                   access.get_raw_records, memos)
         # The file has gone missing, so we assume we need to reload
@@ -528,7 +529,8 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos = self.make_pack_file()
         transport = self.get_transport()
         # Note that the 'filename' has been changed to 'different-packname'
-        access = _DirectPackAccess({'foo':(transport, 'different-packname')})
+        access = pack_repo._DirectPackAccess(
+            {'foo': (transport, 'different-packname')})
         e = self.assertListRaises(errors.NoSuchFile,
                                   access.get_raw_records, memos)
 
@@ -538,8 +540,9 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         failing_transport = MockReadvFailingTransport(
                                 [transport.get_bytes('packname')])
         reload_called, reload_func = self.make_reload_func()
-        access = _DirectPackAccess({'foo':(failing_transport, 'packname')},
-                                   reload_func=reload_func)
+        access = pack_repo._DirectPackAccess(
+            {'foo': (failing_transport, 'packname')},
+            reload_func=reload_func)
         # Asking for a single record will not trigger the Mock failure
         self.assertEqual(['1234567890'],
             list(access.get_raw_records(memos[:1])))
@@ -561,7 +564,8 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         failing_transport = MockReadvFailingTransport(
                                 [transport.get_bytes('packname')])
         reload_called, reload_func = self.make_reload_func()
-        access = _DirectPackAccess({'foo':(failing_transport, 'packname')})
+        access = pack_repo._DirectPackAccess(
+            {'foo':(failing_transport, 'packname')})
         # Asking for a single record will not trigger the Mock failure
         self.assertEqual(['1234567890'],
             list(access.get_raw_records(memos[:1])))
@@ -572,14 +576,14 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
                                   access.get_raw_records, memos)
 
     def test_reload_or_raise_no_reload(self):
-        access = _DirectPackAccess({}, reload_func=None)
+        access = pack_repo._DirectPackAccess({}, reload_func=None)
         retry_exc = self.make_retry_exception()
         # Without a reload_func, we will just re-raise the original exception
         self.assertRaises(_TestException, access.reload_or_raise, retry_exc)
 
     def test_reload_or_raise_reload_changed(self):
         reload_called, reload_func = self.make_reload_func(return_val=True)
-        access = _DirectPackAccess({}, reload_func=reload_func)
+        access = pack_repo._DirectPackAccess({}, reload_func=reload_func)
         retry_exc = self.make_retry_exception()
         access.reload_or_raise(retry_exc)
         self.assertEqual([1], reload_called)
@@ -589,7 +593,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
 
     def test_reload_or_raise_reload_no_change(self):
         reload_called, reload_func = self.make_reload_func(return_val=False)
-        access = _DirectPackAccess({}, reload_func=reload_func)
+        access = pack_repo._DirectPackAccess({}, reload_func=reload_func)
         retry_exc = self.make_retry_exception()
         # If reload_occurred is False, then we consider it an error to have
         # reload_func() return False (no changes).

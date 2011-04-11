@@ -25,16 +25,13 @@ from bzrlib import (
     gpg,
     merge,
     urlutils,
-    transactions,
     transport,
     remote,
     repository,
     revision,
     tests,
     )
-from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import (
-    http_server,
     per_branch,
     )
 from bzrlib.tests.http_server import HttpServer

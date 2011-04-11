@@ -44,15 +44,18 @@ from bzrlib.groupcompress import (
     GroupCompressVersionedFiles,
     )
 from bzrlib.repofmt.pack_repo import (
+    _DirectPackAccess,
     Pack,
     NewPack,
-    KnitPackRepository,
-    KnitPackStreamSource,
+    PackRepository,
     PackRootCommitBuilder,
     RepositoryPackCollection,
     RepositoryFormatPack,
     ResumedPack,
     Packer,
+    )
+from bzrlib.repository import (
+    StreamSource,
     )
 from bzrlib.static_tuple import StaticTuple
 
@@ -352,8 +355,8 @@ class GCCHKPacker(Packer):
         """Build a VersionedFiles instance on top of this group of packs."""
         index_name = index_name + '_index'
         index_to_pack = {}
-        access = knit._DirectPackAccess(index_to_pack,
-                                        reload_func=self._reload_func)
+        access = _DirectPackAccess(index_to_pack,
+                                   reload_func=self._reload_func)
         if for_write:
             # Use new_pack
             if self.new_pack is None:
@@ -829,15 +832,14 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
         return result
 
 
-class CHKInventoryRepository(KnitPackRepository):
-    """subclass of KnitPackRepository that uses CHK based inventories."""
+class CHKInventoryRepository(PackRepository):
+    """subclass of PackRepository that uses CHK based inventories."""
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
         """Overridden to change pack collection class."""
-        KnitPackRepository.__init__(self, _format, a_bzrdir, control_files,
+        super(CHKInventoryRepository, self).__init__(_format, a_bzrdir, control_files,
             _commit_builder_class, _serializer)
-        # and now replace everything it did :)
         index_transport = self._transport.clone('indices')
         self._pack_collection = GCRepositoryPackCollection(self,
             self._transport, index_transport,
@@ -1147,7 +1149,7 @@ class CHKInventoryRepository(KnitPackRepository):
         return super(CHKInventoryRepository, self)._get_source(to_format)
 
 
-class GroupCHKStreamSource(KnitPackStreamSource):
+class GroupCHKStreamSource(StreamSource):
     """Used when both the source and target repo are GroupCHK repos."""
 
     def __init__(self, from_repository, to_format):
@@ -1239,6 +1241,13 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             # Consumed
             self._chk_p_id_roots = None
         yield 'chk_bytes', _get_parent_id_basename_to_file_id_pages()
+
+    def _get_text_stream(self):
+        # Note: We know we don't have to handle adding root keys, because both
+        # the source and target are the identical network name.
+        text_stream = self.from_repository.texts.get_record_stream(
+                        self._text_keys, self._text_fetch_order, False)
+        return ('texts', text_stream)
 
     def get_stream(self, search):
         def wrap_and_count(pb, rc, stream):

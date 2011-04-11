@@ -30,6 +30,12 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* When building a new WorkingTree (such as during ``bzr co`` or
+  ``bzr branch``) we now properly store the stat and hash of files that
+  are old enough. This saves a fair amount of time on the first
+  ``bzr status`` (on a 500MB tree, it saves about 30+s).
+  (John Arbash Meinel, #740932)
+
 * Resolve ``lp:FOO`` urls locally rather than doing an XMLRPC request if
   the user has done ``bzr launchpad-login``. The bzr+ssh URLs were already
   being handed off to the remote server anyway (xmlrpc has been mapping
@@ -46,11 +52,37 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* ``bzrlib.log._DEFAULT_REQUEST_PARAMS`` is no longer accidentally
+  mutated by ``bzrlib.log._apply_log_request_defaults``.  In practice
+  these default values aren't relied on very often so this probably
+  wasn't causing any trouble.  (Andrew Bennetts)
+
+* ``bzr log`` now works on revisions which are not in the current branch.
+  (Matt Giuca, #241998)
+
+* Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
+
+* Standalone bzr.exe installation on Windows: user can put additional python 
+  libraries into ``site-packages`` subdirectory of the installation directory,
+  this might be required for "installing" extra dependencies for some plugins.
+  (Alexander Belchenko, #743256)
+
+* ``TreeTransform.create_file/new_file`` can now take an optional ``sha1``
+  parameter. If supplied, when the transform is applied, it will then call
+  ``self._tree._observed_sha1`` for those files. This lets us update the
+  hash-cache for content that we create, preventing us from re-reading the
+  content in the next ``bzr status``.  (John Arbash Meinel, #740932)
+
 Documentation
 *************
 
 * Added a section about using a shared SSH account on a server for bzr+ssh
   access.  (Russell Smith)
+
+* The documentation now recommends using SSH rather than SFTP in the
+  tutorials and the examples, because that will generally be much faster
+  and better in cases where it can be used.  SFTP is still available and
+  mentioned as an alternative.  (Martin Pool, #636712)
 
 API Changes
 ***********
@@ -60,12 +92,46 @@ API Changes
 
 * Commands now have an `invoked_as` attribute, showing the name under
   which they were called before alias expansion.
+  (Martin Pool)
+
+* ``Hooks.create_hook`` is now deprecated in favour of ``Hooks.add_hook``.
+  (Jelmer Vernooij)
+
+* If you call `bzrlib.initialize` but forget to enter the resulting object
+  as a context manager, bzrlib will now be initialized anyhow.
+  (Previously simple programs calling bzrlib might find the library was
+  mysteriously silent.)
+  (Martin Pool)
+
+* New method ``Hooks.uninstall_named_hook``. (Jelmer Vernooij, #301472)
+
+* ``revision_graph_can_have_wrong_parents`` is now an attribute
+  on ``RepositoryFormat`` rather than a method on ``Repository``.
+  (Jelmer Vernooij)
+
+* The ``revno`` parameter of ``log.LogRevision`` may now be None,
+  representing a revision which is not in the current branch.
+  (Matt Giuca, #241998)
+
+* The various knit pack repository format classes have been moved
+  from ``bzrlib.repofmt.pack_repo`` to
+  ``bzrlib.repofmt.knitpack_repo``. (Jelmer Vernooij)
 
 Internals
 *********
 
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
+
+* Added ``osutils.lstat`` and ``osutils.fstat``. These are just the ``os``
+  functions on Linux, but they are wrapped on Windows so that fstat
+  matches lstat results across all python versions.
+  (John Arbash Meinel)
+
+* ``WorkingTree._observed_sha1`` also updates the 'size' column. It
+  happened to be updated as a side-effect of commit, but if we start using
+  the function elsewhere we might as well do it directly.
+  (John Arbash Meinel)
 
 Testing
 *******
@@ -224,7 +290,7 @@ Bug Fixes
 API Changes
 ***********
 
-* Added ``Branch.heads_to_fetch`` method.  Implementions of the Branch API
+* Added ``Branch.heads_to_fetch`` method.  Implementations of the Branch API
   must now inherit or implement this method.  (Andrew Bennetts, #721328)
   
 * Added ``bzrlib.mergetools`` module with helper functions for working with
@@ -314,7 +380,7 @@ Internals
 * ``CatchingExceptionThread`` (formerly ThreadWithException) has been moved
   out of the ``bzrlib.tests`` hierarchy to make it clearer that it can be used
   outside of tests. This class makes it easier to track exceptions in threads
-  by cacthing them so they can be re-raised in the controlling thread. It's
+  by catching them so they can be re-raised in the controlling thread. It's
   available in the ``bzrlib.cethread`` module.  (Vincent Ladeuil)
 
 * Correctly propogate malloc failures from diff-delta.c code as MemoryError

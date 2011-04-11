@@ -16,14 +16,11 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import cStringIO
-import re
 import time
 
 from bzrlib import (
     bzrdir,
     check,
-    chk_map,
     config,
     controldir,
     debug,
@@ -32,16 +29,13 @@ from bzrlib import (
     generate_ids,
     gpg,
     graph,
-    inventory,
     inventory_delta,
     lockable_files,
     lockdir,
     lru_cache,
     osutils,
-    pyutils,
     revision as _mod_revision,
     static_tuple,
-    trace,
     tsort,
     versionedfile,
     )
@@ -104,7 +98,6 @@ class CommitBuilder(object):
 
         :param repository: Repository to commit to.
         :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
         :param timestamp: Optional timestamp recorded for commit.
         :param timezone: Optional timezone for timestamp.
         :param committer: Optional committer to set for commit.
@@ -2772,17 +2765,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 except UnicodeDecodeError:
                     raise errors.NonAsciiRevisionId(method, self)
 
-    def revision_graph_can_have_wrong_parents(self):
-        """Is it possible for this repository to have a revision graph with
-        incorrect parents?
-
-        If True, then this repository must also implement
-        _find_inconsistent_revision_parents so that check and reconcile can
-        check for inconsistencies before proceeding with other checks that may
-        depend on the revision index being consistent.
-        """
-        raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
-
 
 def install_revision(repository, rev, revision_tree):
     """Install all revision data into a repository."""
@@ -3024,6 +3006,10 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_leaving_lock = None
     # Does this format support the full VersionedFiles interface?
     supports_full_versioned_files = None
+    # Does this format support signing revision signatures?
+    supports_revision_signatures = True
+    # Can the revision graph have incorrect parents?
+    revision_graph_can_have_wrong_parents = None
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -3249,42 +3235,42 @@ format_registry.register_lazy(
 # NOTE: These are experimental in 0.92. Stable in 1.0 and above
 format_registry.register_lazy(
     'Bazaar pack repository format 1 (needs bzr 0.92)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack1',
     )
 format_registry.register_lazy(
     'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack3',
     )
 format_registry.register_lazy(
     'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack4',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack5',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack5RichRoot',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack5RichRootBroken',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack6',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack6RichRoot',
     )
 format_registry.register_lazy(
@@ -3298,7 +3284,7 @@ format_registry.register_lazy(
 format_registry.register_lazy(
     ("Bazaar development format 2 with subtree support "
         "(needs bzr.dev from before 1.8)\n"),
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
     )
 format_registry.register_lazy(
@@ -4173,7 +4159,7 @@ class StreamSink(object):
                 parse_result = deserialiser.parse_text_bytes(
                     inventory_delta_bytes)
             except inventory_delta.IncompatibleInventoryDelta, err:
-                trace.mutter("Incompatible delta: %s", err.msg)
+                mutter("Incompatible delta: %s", err.msg)
                 raise errors.IncompatibleRevision(self.target_repo._format)
             basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
             revision_id = new_id
