@@ -54,7 +54,7 @@ def needs_tree_write_lock(unbound):
     return tree_write_locked
 
 
-class MutableTree(tree.InventoryTree):
+class MutableTree(tree.Tree):
     """A MutableTree is a specialisation of Tree which is able to be mutated.
 
     Generally speaking these mutations are only possible within a lock_write
@@ -160,7 +160,7 @@ class MutableTree(tree.InventoryTree):
         if sub_tree_id == self.get_root_id():
             raise errors.BadReferenceTarget(self, sub_tree,
                                      'Trees have the same root id.')
-        if sub_tree_id in self.inventory:
+        if sub_tree_id in self:
             raise errors.BadReferenceTarget(self, sub_tree,
                                             'Root id already present in tree')
         self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
@@ -175,7 +175,6 @@ class MutableTree(tree.InventoryTree):
         """
         raise NotImplementedError(self._add)
 
-    @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
         """Apply changes to the inventory as an atomic operation.
 
@@ -184,10 +183,7 @@ class MutableTree(tree.InventoryTree):
         :return None:
         :seealso Inventory.apply_delta: For details on the changes parameter.
         """
-        self.flush()
-        inv = self.inventory
-        inv.apply_delta(changes)
-        self._write_inventory(inv)
+        raise NotImplementedError(self.apply_inventory_delta)
 
     @needs_write_lock
     def commit(self, message=None, revprops=None, *args,
@@ -345,12 +341,6 @@ class MutableTree(tree.InventoryTree):
         :return: None
         """
 
-    def _fix_case_of_inventory_path(self, path):
-        """If our tree isn't case sensitive, return the canonical path"""
-        if not self.case_sensitive:
-            path = self.get_canonical_inventory_path(path)
-        return path
-
     @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
         """Update the content of a file in the tree.
@@ -379,6 +369,75 @@ class MutableTree(tree.InventoryTree):
             parent tree - i.e. a ghost.
         """
         raise NotImplementedError(self.set_parent_trees)
+
+    def smart_add(self, file_list, recurse=True, action=None, save=True):
+        """Version file_list, optionally recursing into directories.
+
+        This is designed more towards DWIM for humans than API clarity.
+        For the specific behaviour see the help for cmd_add().
+
+        :param file_list: List of zero or more paths.  *NB: these are 
+            interpreted relative to the process cwd, not relative to the 
+            tree.*  (Add and most other tree methods use tree-relative
+            paths.)
+        :param action: A reporter to be called with the inventory, parent_ie,
+            path and kind of the path being added. It may return a file_id if
+            a specific one should be used.
+        :param save: Save the inventory after completing the adds. If False
+            this provides dry-run functionality by doing the add and not saving
+            the inventory.
+        :return: A tuple - files_added, ignored_files. files_added is the count
+            of added files, and ignored_files is a dict mapping files that were
+            ignored to the rule that caused them to be ignored.
+        """
+        raise NotImplementedError(self.smart_add)
+
+    def update_basis_by_delta(self, new_revid, delta):
+        """Update the parents of this tree after a commit.
+
+        This gives the tree one parent, with revision id new_revid. The
+        inventory delta is applied to the current basis tree to generate the
+        inventory for the parent new_revid, and all other parent trees are
+        discarded.
+
+        All the changes in the delta should be changes synchronising the basis
+        tree with some or all of the working tree, with a change to a directory
+        requiring that its contents have been recursively included. That is,
+        this is not a general purpose tree modification routine, but a helper
+        for commit which is not required to handle situations that do not arise
+        outside of commit.
+
+        See the inventory developers documentation for the theory behind
+        inventory deltas.
+
+        :param new_revid: The new revision id for the trees parent.
+        :param delta: An inventory delta (see apply_inventory_delta) describing
+            the changes from the current left most parent revision to new_revid.
+        """
+        raise NotImplementedError(self.update_basis_by_delta)
+
+
+class MutableInventoryTree(MutableTree,tree.InventoryTree):
+
+    @needs_tree_write_lock
+    def apply_inventory_delta(self, changes):
+        """Apply changes to the inventory as an atomic operation.
+
+        :param changes: An inventory delta to apply to the working tree's
+            inventory.
+        :return None:
+        :seealso Inventory.apply_delta: For details on the changes parameter.
+        """
+        self.flush()
+        inv = self.inventory
+        inv.apply_delta(changes)
+        self._write_inventory(inv)
+
+    def _fix_case_of_inventory_path(self, path):
+        """If our tree isn't case sensitive, return the canonical path"""
+        if not self.case_sensitive:
+            path = self.get_canonical_inventory_path(path)
+        return path
 
     @needs_tree_write_lock
     def smart_add(self, file_list, recurse=True, action=None, save=True):
@@ -640,6 +699,8 @@ class MutableTree(tree.InventoryTree):
         rev_tree = revisiontree.RevisionTree(self.branch.repository,
                                              inventory, new_revid)
         self.set_parent_trees([(new_revid, rev_tree)])
+
+
 
 
 class MutableTreeHooks(hooks.Hooks):

@@ -166,7 +166,7 @@ class TreeLink(TreeEntry):
         return ''
 
 
-class WorkingTree(bzrlib.mutabletree.MutableTree,
+class WorkingTree(bzrlib.mutabletree.MutableInventoryTree,
     controldir.ControlComponent):
     """Working copy tree.
 
