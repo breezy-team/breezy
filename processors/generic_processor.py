@@ -25,7 +25,10 @@ from bzrlib import (
     osutils,
     progress,
     )
-from bzrlib.repofmt import knitpack_repo
+try:
+    from bzrlib.repofmt.knitpack_repo import KnitPackRepository
+except ImportError:
+    from bzrlib.repofmt.pack_repo import KnitPackRepository
 from bzrlib.trace import (
     mutter,
     note,
@@ -173,7 +176,7 @@ class GenericProcessor(processor.ImportProcessor):
 
         # Disable autopacking if the repo format supports it.
         # THIS IS A HACK - there is no sanctioned way of doing this yet.
-        if isinstance(self.repo, knitpack_repo.KnitPackRepository):
+        if isinstance(self.repo, KnitPackRepository):
             self._original_max_pack_count = \
                 self.repo._pack_collection._max_pack_count
             def _max_pack_count_for_import(total_revisions):
