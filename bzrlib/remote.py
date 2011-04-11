@@ -1481,14 +1481,15 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
-                           revision_id=None):
+                           revision_id=None, lossy=False):
         # FIXME: It ought to be possible to call this without immediately
         # triggering _ensure_real.  For now it's the easiest thing to do.
         self._ensure_real()
         real_repo = self._real_repository
         builder = real_repo.get_commit_builder(branch, parents,
                 config, timestamp=timestamp, timezone=timezone,
-                committer=committer, revprops=revprops, revision_id=revision_id)
+                committer=committer, revprops=revprops,
+                revision_id=revision_id, lossy=lossy)
         return builder
 
     def add_fallback_repository(self, repository):

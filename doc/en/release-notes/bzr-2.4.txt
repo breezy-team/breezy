@@ -20,6 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* ``bzr commit`` now supports a ``--lossy`` argument that can be used
+  to discard any data that can not be natively represented when committing
+  to a foreign VCS. (Jelmer Vernooij, #587721)
+
 Improvements
 ************
 

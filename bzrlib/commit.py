@@ -229,7 +229,8 @@ class Commit(object):
                message_callback=None,
                recursive='down',
                exclude=None,
-               possible_master_transports=None):
+               possible_master_transports=None,
+               lossy=False):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
@@ -262,6 +263,8 @@ class Commit(object):
         :param exclude: None or a list of relative paths to exclude from the
             commit. Pending changes to excluded files will be ignored by the
             commit.
+        :param lossy: When committing to a foreign VCS, ignore any
+            data that can not be natively represented.
         """
         operation = OperationWithCleanups(self._commit)
         self.revprops = revprops or {}
@@ -283,12 +286,13 @@ class Commit(object):
                message_callback=message_callback,
                recursive=recursive,
                exclude=exclude,
-               possible_master_transports=possible_master_transports)
+               possible_master_transports=possible_master_transports,
+               lossy=lossy)
 
     def _commit(self, operation, message, timestamp, timezone, committer,
             specific_files, rev_id, allow_pointless, strict, verbose,
             working_tree, local, reporter, message_callback, recursive,
-            exclude, possible_master_transports):
+            exclude, possible_master_transports, lossy):
         mutter('preparing to commit')
 
         if working_tree is None:
@@ -401,7 +405,8 @@ class Commit(object):
         # Collect the changes
         self._set_progress_stage("Collecting changes", counter=True)
         self.builder = self.branch.get_commit_builder(self.parents,
-            self.config, timestamp, timezone, committer, self.revprops, rev_id)
+            self.config, timestamp, timezone, committer, self.revprops,
+            rev_id, lossy=lossy)
         if not self.builder.supports_record_entry_contents and self.exclude:
             self.builder.abort()
             raise errors.ExcludesUnsupported(self.branch.repository)
