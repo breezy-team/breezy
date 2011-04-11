@@ -639,10 +639,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """Return the id of this trees root"""
         return self._inventory.root.file_id
 
-    def _get_store_filename(self, file_id):
-        ## XXX: badly named; this is not in the store at all
-        return self.abspath(self.id2path(file_id))
-
     @needs_read_lock
     def clone(self, to_bzrdir, revision_id=None):
         """Duplicate this working tree into to_bzr, including all state.
