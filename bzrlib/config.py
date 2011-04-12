@@ -2138,8 +2138,8 @@ class MutableSection(ReadOnlySection):
 class Store(object):
     """Abstract interface to persistent storage for configuration options."""
 
-    readonly_section_class = None
-    mutable_section_class = None
+    readonly_section_class = ReadOnlySection
+    mutable_section_class = MutableSection
 
     @property
     def loaded(self):
@@ -2245,12 +2245,9 @@ class ConfigObjStore(Store):
         self.load()
         cobj = self._config_obj
         if cobj.scalars:
-
-# use self.readonly_section_kls
-
-            yield ReadOnlySection(None, cobj)
+            yield self.readonly_section_class(None, cobj)
         for section_name in cobj.sections:
-            yield ReadOnlySection(section_name, cobj[section_name])
+            yield self.readonly_section_class(section_name, cobj[section_name])
 
     def get_mutable_section(self, section_name=None):
         # We need a loaded store
@@ -2263,10 +2260,7 @@ class ConfigObjStore(Store):
             section = self._config_obj
         else:
             section = self._config_obj.setdefault(section_name, {})
-
-# use self.mutable_section_kls
-
-        return MutableSection(section_name, section)
+        return self.mutable_section_class(section_name, section)
 
 
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need
