@@ -506,7 +506,8 @@ class GitBranchPullResult(branch.PullResult):
         self._show_tag_conficts(to_file)
 
     def _lookup_revno(self, revid):
-        return _quick_lookup_revno(self.target_branch, self.source_branch, revid)
+        return _quick_lookup_revno(self.target_branch, self.source_branch,
+                revid)
 
     def _get_old_revno(self):
         if self._old_revno is not None:
@@ -532,7 +533,8 @@ class GitBranchPullResult(branch.PullResult):
 class GitBranchPushResult(branch.BranchPushResult):
 
     def _lookup_revno(self, revid):
-        return _quick_lookup_revno(self.source_branch, self.target_branch, revid)
+        return _quick_lookup_revno(self.source_branch, self.target_branch,
+            revid)
 
     @property
     def old_revno(self):
@@ -762,7 +764,7 @@ class InterGitLocalGitBranch(InterGitBranch):
 
 
 class InterToGitBranch(branch.GenericInterBranch):
-    """InterBranch implementation that pulls from Git into bzr."""
+    """InterBranch implementation that pulls into a Git branch."""
 
     def __init__(self, source, target):
         super(InterToGitBranch, self).__init__(source, target)
