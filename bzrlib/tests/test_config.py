@@ -1898,12 +1898,13 @@ def get_ConfigObjStore(transport, file_name, content=None):
     If provided, the content is added to the store but without saving it on
     disk. It should be a string or a unicode string in the ConfigObj syntax.
     While this poses a constraint on other store implementations, it keeps a
-    simple syntax usable by test writers.
+    simple syntax usable by test writers. Note that the other store
+    implementations can rely on ConfigObj to parse the content and get the
+    option definitions and values from it.
     """
-    if content is None:
-        store = config.ConfigObjStore(transport, file_name)
-    else:
-        store = config.ConfigObjStore.from_string(content, transport, file_name)
+    store = config.ConfigObjStore(transport, file_name)
+    if content is not None:
+        store._load_from_string(content)
     return store
 
 
@@ -1931,13 +1932,6 @@ class TestReadonlyStore(TestStore):
         store = self.get_store('foo.conf')
         self.assertEquals(False, store.loaded)
         store.load()
-        self.assertEquals(True, store.loaded)
-
-    def test_from_string_delayed_load(self):
-        store = self.get_store('foo.conf', '')
-        self.assertEquals(False, store.loaded)
-        store.load()
-        # We loaded the store from the provided content
         self.assertEquals(True, store.loaded)
 
     def test_get_no_sections_for_empty(self):
@@ -2022,10 +2016,11 @@ class TestConfigObjStore(TestStore):
         self.assertRaises(errors.NoSuchFile, store.load)
 
     def test_invalid_content(self):
-        store = config.ConfigObjStore.from_string(
-            'this is invalid !', self.get_transport(), 'foo.conf', )
+        store = config.ConfigObjStore(self.get_transport(), 'foo.conf', )
         self.assertEquals(False, store.loaded)
-        exc = self.assertRaises(errors.ParseConfigError, store.load)
+        exc = self.assertRaises(
+            errors.ParseConfigError, store._load_from_string,
+            'this is invalid !')
         self.assertEndsWith(exc.filename, 'foo.conf')
         # And the load failed
         self.assertEquals(False, store.loaded)
@@ -2035,7 +2030,8 @@ class TestConfigObjStore(TestStore):
         # option names share the same name space...)
         # FIXME: This should be fixed by forbidding dicts as values ?
         # -- vila 2011-04-05
-        store = config.ConfigObjStore.from_string('''
+        store = config.ConfigObjStore(self.get_transport(), 'foo.conf', )
+        store._load_from_string('''
 foo=bar
 l=1,2
 [DEFAULT]
@@ -2046,7 +2042,7 @@ foo_in_bar=barbar
 foo_in_baz=barbaz
 [[qux]]
 foo_in_qux=quux
-''', self.get_transport(), 'foo.conf')
+''')
         sections = list(store.get_sections())
         self.assertLength(4, sections)
         # The default section has no name.

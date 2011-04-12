@@ -2134,11 +2134,13 @@ class MutableSection(ReadOnlySection):
             self.orig[name] = self.get(name, None)
         del self.options[name]
 
+
 class Store(object):
     """Abstract interface to persistent storage for configuration options."""
 
-    def __init__(self):
-        self.loaded = False
+    @property
+    def loaded(self):
+        raise NotImplementedError(self.loaded)
 
     def load(self):
         raise NotImplementedError(self.load)
@@ -2173,27 +2175,11 @@ class ConfigObjStore(Store):
         super(ConfigObjStore, self).__init__()
         self.transport = transport
         self.file_name = file_name
-        # No transient content is known initially
-        self._content = None
+        self._config_obj = None
 
-    @classmethod
-    def from_string(cls, str_or_unicode, transport, file_name):
-        """Create a config store from a string.
-
-        :param str_or_unicode: A string representing the file content. This will
-            be utf-8 encoded internally.
-
-        :param transport: The transport object where the config file is located.
-
-        :param file_name: The configuration file basename.
-        """
-        conf = cls(transport=transport, file_name=file_name)
-        conf._create_from_string(str_or_unicode)
-        return conf
-
-    def _create_from_string(self, str_or_unicode):
-        # We just keep the content waiting for load() to be called when needed
-        self._content = StringIO(str_or_unicode.encode('utf-8'))
+    @property
+    def loaded(self):
+        return self._config_obj != None
 
     def load(self, allow_no_such_file=False):
         """Load the store from the associated file.
@@ -2203,21 +2189,32 @@ class ConfigObjStore(Store):
         """
         if self.loaded:
             return
-        if self._content is not None:
-            co_input = self._content
-        else:
-            try:
-                content = self.transport.get_bytes(self.file_name)
-            except errors.NoSuchFile:
-                if allow_no_such_file:
-                    content = ''
-                else:
-                    raise
-            co_input =  StringIO(content)
+        try:
+            content = self.transport.get_bytes(self.file_name)
+        except errors.NoSuchFile:
+            if allow_no_such_file:
+                content = ''
+            else:
+                raise
+        self._load_from_string(content)
+
+    def _load_from_string(self, str_or_unicode):
+        """Create a config store from a string.
+
+        :param str_or_unicode: A string representing the file content. This will
+            be utf-8 encoded internally.
+
+        This is for tests and should not be used in production unless a
+        convincing use case can be demonstrated :)
+        """
+        if self.loaded:
+            raise AssertionError('Already loaded: %r' % (self._config_obj,))
+        co_input = StringIO(str_or_unicode.encode('utf-8'))
         try:
             # The config files are always stored utf8-encoded
             self._config_obj = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError, e:
+            self._config_obj = None
             # FIXME: external_url should really accepts an optional relpath
             # parameter (bug #750169) :-/ -- vila 2011-04-04
             # The following will do in the interim but maybe we don't want to
@@ -2226,14 +2223,11 @@ class ConfigObjStore(Store):
             file_path = os.path.join(self.transport.external_url(),
                                      self.file_name)
             raise errors.ParseConfigError(e.errors, file_path)
-        self.loaded = True
 
     def save(self):
         out = StringIO()
         self._config_obj.write(out)
         self.transport.put_bytes(self.file_name, out.getvalue())
-        # We don't need the transient content anymore
-        self._content = None
 
     def get_sections(self):
         """Get the configobj section in the file order.
@@ -2244,6 +2238,9 @@ class ConfigObjStore(Store):
         self.load()
         cobj = self._config_obj
         if cobj.scalars:
+
+# use self.readonly_section_kls
+
             yield ReadOnlySection(None, cobj)
         for section_name in cobj.sections:
             yield ReadOnlySection(section_name, cobj[section_name])
@@ -2255,6 +2252,9 @@ class ConfigObjStore(Store):
             section = self._config_obj
         else:
             section = self._config_obj.setdefault(section_name, {})
+
+# use self.mutable_section_kls
+
         return MutableSection(section_name, section)
 
 
