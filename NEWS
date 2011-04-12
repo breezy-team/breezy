@@ -24,6 +24,8 @@
 
   * Return proper conflict list from WorkingTree.conflicts. (Jelmer Vernooij, #741397)
 
+  * Fix dpush of certain branches. (Jelmer Vernooij, #705807)
+
  API COMPLETENESS
 
   * Implement LocalGitControlDir.clone_on_transport. (Jelmer Vernooij, #721899)
