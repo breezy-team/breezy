@@ -1904,28 +1904,6 @@ class TestConfigMutableSection(tests.TestCase):
         self.assertEquals(config._NewlyCreatedOption, section.orig['foo'])
 
 
-def get_ConfigObjStore(transport, file_name, content=None):
-    """Build a ConfigObjStore.
-
-    :param transport: The transport where the store lives.
-
-    :param file_name: The name of the store.
-
-    :param content: A provided content to inject into the built store.
-
-    If provided, the content is added to the store but without saving it on
-    disk. It should be a string or a unicode string in the ConfigObj syntax.
-    While this poses a constraint on other store implementations, it keeps a
-    simple syntax usable by test writers. Note that the other store
-    implementations can rely on ConfigObj to parse the content and get the
-    option definitions and values from it.
-    """
-    store = config.ConfigObjStore(transport, file_name)
-    if content is not None:
-        store._load_from_string(content)
-    return store
-
-
 class TestStore(tests.TestCaseWithTransport):
 
     def assertSectionContent(self, expected, section):
@@ -2127,34 +2105,21 @@ class TestLockableConfigObjStore(TestStore):
     # at possible fallouts for concurrent lockers -- vila 20110-04-06
 
 
-class TestConcreteConfigObjStores(tests.TestCaseWithTransport):
-
-    def test_global_store(self):
-        store = config.GlobalStore()
-
-    def test_location_store(self):
-        store = config.LocationStore()
-
-    def test_branch_store(self):
-        b = self.make_branch('.')
-        store = config.BranchStore(b)
-
-
 class TestSectionMatcher(TestStore):
 
     scenarios = [('location', {'matcher': config.LocationMatcher})]
 
-    def get_store(self, file_name, content=None):
-        return get_ConfigObjStore(
-            self.get_readonly_transport(), file_name, content=content)
+    def get_store(self, file_name):
+        return config.ConfigObjStore(self.get_readonly_transport(), file_name)
 
     def test_no_matches_for_empty_stores(self):
-        store = self.get_store('foo.conf', '')
+        store = self.get_store('foo.conf')
+        store._load_from_string('')
         matcher = self.matcher(store, '/bar')
         self.assertEquals([], list(matcher.get_sections()))
 
     def test_build_doesnt_load_store(self):
-        store = self.get_store('foo.conf', '')
+        store = self.get_store('foo.conf')
         matcher = self.matcher(store, '/bar')
         self.assertFalse(store.loaded)
 
@@ -2184,15 +2149,17 @@ class TestLocationSection(tests.TestCase):
 
 class TestLocationMatcher(TestStore):
 
+    def get_store(self, file_name):
+        return config.ConfigObjStore(self.get_readonly_transport(), file_name)
+
     def test_more_specific_sections_first(self):
-        store = config.ConfigObjStore.from_string(
-            '''
+        store = self.get_store('foo.conf')
+        store._load_from_string('''
 [/foo]
 section=/foo
 [/foo/bar]
 section=/foo/bar
-''',
-            self.get_readonly_transport(), 'foo.conf', )
+''')
         self.assertEquals(['/foo', '/foo/bar'],
                           [section.id for section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/baz')
