@@ -2138,14 +2138,32 @@ class MutableSection(ReadOnlySection):
 class Store(object):
     """Abstract interface to persistent storage for configuration options."""
 
-    def __init__(self):
-        self.loaded = False
+    readonly_section_class = ReadOnlySection
+    mutable_section_class = MutableSection
+
+    @property
+    def loaded(self):
+        raise NotImplementedError(self.loaded)
 
     def load(self):
         raise NotImplementedError(self.load)
 
+    def _load_from_string(self, str_or_unicode):
+        """Create a store from a string in configobj syntax.
+
+        :param str_or_unicode: A string representing the file content. This will
+            be encoded to suit store needs internally.
+
+        This is for tests and should not be used in production unless a
+        convincing use case can be demonstrated :)
+        """
+        raise NotImplementedError(self._load_from_string)
+
     def save(self):
         raise NotImplementedError(self.save)
+
+    def external_url(self):
+        raise NotImplementedError(self.external_url)
 
     def get_sections(self):
         """Returns an ordered iterable of existing sections.
@@ -2174,67 +2192,53 @@ class ConfigObjStore(Store):
         super(ConfigObjStore, self).__init__()
         self.transport = transport
         self.file_name = file_name
-        # No transient content is known initially
-        self._content = None
+        self._config_obj = None
 
-    @classmethod
-    def from_string(cls, str_or_unicode, transport, file_name):
+    @property
+    def loaded(self):
+        return self._config_obj != None
+
+    def load(self):
+        """Load the store from the associated file."""
+        if self.loaded:
+            return
+        content = self.transport.get_bytes(self.file_name)
+        self._load_from_string(content)
+
+    def _load_from_string(self, str_or_unicode):
         """Create a config store from a string.
 
         :param str_or_unicode: A string representing the file content. This will
             be utf-8 encoded internally.
 
-        :param transport: The transport object where the config file is located.
-
-        :param file_name: The configuration file basename.
-        """
-        conf = cls(transport=transport, file_name=file_name)
-        conf._create_from_string(str_or_unicode)
-        return conf
-
-    def _create_from_string(self, str_or_unicode):
-        # We just keep the content waiting for load() to be called when needed
-        self._content = StringIO(str_or_unicode.encode('utf-8'))
-
-    def load(self, allow_no_such_file=False):
-        """Load the store from the associated file.
-
-        :param allow_no_such_file: Swallow the NoSuchFile exception if True.
-            This allows delayed loading when creating the first option ever.
+        This is for tests and should not be used in production unless a
+        convincing use case can be demonstrated :)
         """
         if self.loaded:
-            return
-        if self._content is not None:
-            co_input = self._content
-        else:
-            try:
-                content = self.transport.get_bytes(self.file_name)
-            except errors.NoSuchFile:
-                if allow_no_such_file:
-                    content = ''
-                else:
-                    raise
-            co_input =  StringIO(content)
+            raise AssertionError('Already loaded: %r' % (self._config_obj,))
+        co_input = StringIO(str_or_unicode.encode('utf-8'))
         try:
             # The config files are always stored utf8-encoded
             self._config_obj = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError, e:
-            # FIXME: external_url should really accepts an optional relpath
-            # parameter (bug #750169) :-/ -- vila 2011-04-04
-            # The following will do in the interim but maybe we don't want to
-            # expose a path here but rather a config ID and its associated
-            # object </hand wawe>.
-            file_path = os.path.join(self.transport.external_url(),
-                                     self.file_name)
-            raise errors.ParseConfigError(e.errors, file_path)
-        self.loaded = True
+            self._config_obj = None
+            raise errors.ParseConfigError(e.errors, self.external_url())
 
     def save(self):
+        if not self.loaded:
+            # Nothing to save
+            return
         out = StringIO()
         self._config_obj.write(out)
         self.transport.put_bytes(self.file_name, out.getvalue())
-        # We don't need the transient content anymore
-        self._content = None
+
+    def external_url(self):
+        # FIXME: external_url should really accepts an optional relpath
+        # parameter (bug #750169) :-/ -- vila 2011-04-04
+        # The following will do in the interim but maybe we don't want to
+        # expose a path here but rather a config ID and its associated
+        # object </hand wawe>.
+        return os.path.join(self.transport.external_url(), self.file_name)
 
     def get_sections(self):
         """Get the configobj section in the file order.
@@ -2245,18 +2249,22 @@ class ConfigObjStore(Store):
         self.load()
         cobj = self._config_obj
         if cobj.scalars:
-            yield ReadOnlySection(None, cobj)
+            yield self.readonly_section_class(None, cobj)
         for section_name in cobj.sections:
-            yield ReadOnlySection(section_name, cobj[section_name])
+            yield self.readonly_section_class(section_name, cobj[section_name])
 
     def get_mutable_section(self, section_name=None):
         # We need a loaded store
-        self.load(allow_no_such_file=True)
+        try:
+            self.load()
+        except errors.NoSuchFile:
+            # The file doesn't exist, let's pretend it was empty
+            self._load_from_string('')
         if section_name is None:
             section = self._config_obj
         else:
             section = self._config_obj.setdefault(section_name, {})
-        return MutableSection(section_name, section)
+        return self.mutable_section_class(section_name, section)
 
 
 # Note that LockableConfigObjStore inherits from ConfigObjStore because we need
@@ -2319,7 +2327,7 @@ class LocationStore(LockableConfigObjStore):
     def __init__(self, possible_transports=None):
         t = transport.get_transport(config_dir(),
                                     possible_transports=possible_transports)
-        super(LocationStore, self).__init__(transport, 'locations.conf')
+        super(LocationStore, self).__init__(t, 'locations.conf')
 
 
 class BranchStore(ConfigObjStore):
