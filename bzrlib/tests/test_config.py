@@ -1904,28 +1904,6 @@ class TestConfigMutableSection(tests.TestCase):
         self.assertEquals(config._NewlyCreatedOption, section.orig['foo'])
 
 
-def get_ConfigObjStore(transport, file_name, content=None):
-    """Build a ConfigObjStore.
-
-    :param transport: The transport where the store lives.
-
-    :param file_name: The name of the store.
-
-    :param content: A provided content to inject into the built store.
-
-    If provided, the content is added to the store but without saving it on
-    disk. It should be a string or a unicode string in the ConfigObj syntax.
-    While this poses a constraint on other store implementations, it keeps a
-    simple syntax usable by test writers. Note that the other store
-    implementations can rely on ConfigObj to parse the content and get the
-    option definitions and values from it.
-    """
-    store = config.ConfigObjStore(transport, file_name)
-    if content is not None:
-        store._load_from_string(content)
-    return store
-
-
 class TestStore(tests.TestCaseWithTransport):
 
     def assertSectionContent(self, expected, section):
@@ -2125,19 +2103,6 @@ class TestLockableConfigObjStore(TestStore):
     # concurrent accesses occur, read/write, write/write. It may be worth
     # looking into removing the lock dir when it;s not needed anymore and look
     # at possible fallouts for concurrent lockers -- vila 20110-04-06
-
-
-class TestConcreteConfigObjStores(tests.TestCaseWithTransport):
-
-    def test_global_store(self):
-        store = config.GlobalStore()
-
-    def test_location_store(self):
-        store = config.LocationStore()
-
-    def test_branch_store(self):
-        b = self.make_branch('.')
-        store = config.BranchStore(b)
 
 
 class TestSectionMatcher(TestStore):
