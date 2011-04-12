@@ -1826,19 +1826,19 @@ class TestConfigReadOnlySection(tests.TestCase):
 
     def test_get_unkown_option(self):
         a_dict = dict()
-        section = config.ReadOnlySection('myID', a_dict)
+        section = config.ReadOnlySection(None, a_dict)
         self.assertEquals('out of thin air',
                           section.get('foo', 'out of thin air'))
 
     def test_options_is_shared(self):
         a_dict = dict()
-        section = config.ReadOnlySection('myID', a_dict)
+        section = config.ReadOnlySection(None, a_dict)
         self.assertIs(a_dict, section.options)
 
 
 class TestConfigMutableSection(tests.TestCase):
 
-    # FIXME: Parametrize so that all sections (includind os.envrion and the
+    # FIXME: Parametrize so that all sections (includind os.environ and the
     # ones produced by Stores) run these tests -- vila 2011-04-01
 
     def test_set(self):
@@ -1898,12 +1898,13 @@ def get_ConfigObjStore(transport, file_name, content=None):
     If provided, the content is added to the store but without saving it on
     disk. It should be a string or a unicode string in the ConfigObj syntax.
     While this poses a constraint on other store implementations, it keeps a
-    simple syntax usable by test writers.
+    simple syntax usable by test writers. Note that the other store
+    implementations can rely on ConfigObj to parse the content and get the
+    option definitions and values from it.
     """
-    if content is None:
-        store = config.ConfigObjStore(transport, file_name)
-    else:
-        store = config.ConfigObjStore.from_string(content, transport, file_name)
+    store = config.ConfigObjStore(transport, file_name)
+    if content is not None:
+        store._load_from_string(content)
     return store
 
 
@@ -1933,13 +1934,6 @@ class TestReadonlyStore(TestStore):
         store.load()
         self.assertEquals(True, store.loaded)
 
-    def test_from_string_delayed_load(self):
-        store = self.get_store('foo.conf', '')
-        self.assertEquals(False, store.loaded)
-        store.load()
-        # We loaded the store from the provided content
-        self.assertEquals(True, store.loaded)
-
     def test_get_no_sections_for_empty(self):
         store = self.get_store('foo.conf', '')
         store.load()
@@ -1966,12 +1960,20 @@ class TestMutableStore(TestStore):
         return self._get_store(
             self.get_transport(), file_name, content=content)
 
-    def test_save_empty_succeeds(self):
-        store = self.get_store('foo.conf', '')
-        store.load()
+    def test_save_empty_creates_no_file(self):
+        store = self.get_store('foo.conf')
+        store.save()
         self.assertEquals(False, self.get_transport().has('foo.conf'))
+
+    def test_save_emptied_succeeds(self):
+        store = self.get_store('foo.conf', 'foo=bar\n')
+        section = store.get_mutable_section(None)
+        section.remove('foo')
         store.save()
         self.assertEquals(True, self.get_transport().has('foo.conf'))
+        modified_store = self.get_store('foo.conf')
+        sections = list(modified_store.get_sections())
+        self.assertLength(0, sections)
 
     def test_save_with_content_succeeds(self):
         store = self.get_store('foo.conf', 'foo=bar\n')
@@ -2022,10 +2024,11 @@ class TestConfigObjStore(TestStore):
         self.assertRaises(errors.NoSuchFile, store.load)
 
     def test_invalid_content(self):
-        store = config.ConfigObjStore.from_string(
-            'this is invalid !', self.get_transport(), 'foo.conf', )
+        store = config.ConfigObjStore(self.get_transport(), 'foo.conf', )
         self.assertEquals(False, store.loaded)
-        exc = self.assertRaises(errors.ParseConfigError, store.load)
+        exc = self.assertRaises(
+            errors.ParseConfigError, store._load_from_string,
+            'this is invalid !')
         self.assertEndsWith(exc.filename, 'foo.conf')
         # And the load failed
         self.assertEquals(False, store.loaded)
@@ -2035,7 +2038,8 @@ class TestConfigObjStore(TestStore):
         # option names share the same name space...)
         # FIXME: This should be fixed by forbidding dicts as values ?
         # -- vila 2011-04-05
-        store = config.ConfigObjStore.from_string('''
+        store = config.ConfigObjStore(self.get_transport(), 'foo.conf', )
+        store._load_from_string('''
 foo=bar
 l=1,2
 [DEFAULT]
@@ -2046,7 +2050,7 @@ foo_in_bar=barbar
 foo_in_baz=barbaz
 [[qux]]
 foo_in_qux=quux
-''', self.get_transport(), 'foo.conf')
+''')
         sections = list(store.get_sections())
         self.assertLength(4, sections)
         # The default section has no name.
