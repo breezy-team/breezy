@@ -2144,17 +2144,17 @@ class TestSectionMatcher(TestStore):
 
     scenarios = [('location', {'matcher': config.LocationMatcher})]
 
-    def get_store(self, file_name, content=None):
-        return get_ConfigObjStore(
-            self.get_readonly_transport(), file_name, content=content)
+    def get_store(self, file_name):
+        return config.ConfigObjStore(self.get_readonly_transport(), file_name)
 
     def test_no_matches_for_empty_stores(self):
-        store = self.get_store('foo.conf', '')
+        store = self.get_store('foo.conf')
+        store._load_from_string('')
         matcher = self.matcher(store, '/bar')
         self.assertEquals([], list(matcher.get_sections()))
 
     def test_build_doesnt_load_store(self):
-        store = self.get_store('foo.conf', '')
+        store = self.get_store('foo.conf')
         matcher = self.matcher(store, '/bar')
         self.assertFalse(store.loaded)
 
@@ -2184,15 +2184,17 @@ class TestLocationSection(tests.TestCase):
 
 class TestLocationMatcher(TestStore):
 
+    def get_store(self, file_name):
+        return config.ConfigObjStore(self.get_readonly_transport(), file_name)
+
     def test_more_specific_sections_first(self):
-        store = config.ConfigObjStore.from_string(
-            '''
+        store = self.get_store('foo.conf')
+        store._load_from_string('''
 [/foo]
 section=/foo
 [/foo/bar]
 section=/foo/bar
-''',
-            self.get_readonly_transport(), 'foo.conf', )
+''')
         self.assertEquals(['/foo', '/foo/bar'],
                           [section.id for section in store.get_sections()])
         matcher = config.LocationMatcher(store, '/foo/bar/baz')
