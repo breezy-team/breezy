@@ -1960,12 +1960,20 @@ class TestMutableStore(TestStore):
         return self._get_store(
             self.get_transport(), file_name, content=content)
 
-    def test_save_empty_succeeds(self):
-        store = self.get_store('foo.conf', '')
-        store.load()
+    def test_save_empty_creates_no_file(self):
+        store = self.get_store('foo.conf')
+        store.save()
         self.assertEquals(False, self.get_transport().has('foo.conf'))
+
+    def test_save_emptied_succeeds(self):
+        store = self.get_store('foo.conf', 'foo=bar\n')
+        section = store.get_mutable_section(None)
+        section.remove('foo')
         store.save()
         self.assertEquals(True, self.get_transport().has('foo.conf'))
+        modified_store = self.get_store('foo.conf')
+        sections = list(modified_store.get_sections())
+        self.assertLength(0, sections)
 
     def test_save_with_content_succeeds(self):
         store = self.get_store('foo.conf', 'foo=bar\n')

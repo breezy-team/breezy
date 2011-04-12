@@ -2181,21 +2181,11 @@ class ConfigObjStore(Store):
     def loaded(self):
         return self._config_obj != None
 
-    def load(self, allow_no_such_file=False):
-        """Load the store from the associated file.
-
-        :param allow_no_such_file: Swallow the NoSuchFile exception if True.
-            This allows delayed loading when creating the first option ever.
-        """
+    def load(self):
+        """Load the store from the associated file."""
         if self.loaded:
             return
-        try:
-            content = self.transport.get_bytes(self.file_name)
-        except errors.NoSuchFile:
-            if allow_no_such_file:
-                content = ''
-            else:
-                raise
+        content = self.transport.get_bytes(self.file_name)
         self._load_from_string(content)
 
     def _load_from_string(self, str_or_unicode):
@@ -2225,6 +2215,9 @@ class ConfigObjStore(Store):
             raise errors.ParseConfigError(e.errors, file_path)
 
     def save(self):
+        if not self.loaded:
+            # Nothing to save
+            return
         out = StringIO()
         self._config_obj.write(out)
         self.transport.put_bytes(self.file_name, out.getvalue())
@@ -2247,7 +2240,11 @@ class ConfigObjStore(Store):
 
     def get_mutable_section(self, section_name=None):
         # We need a loaded store
-        self.load(allow_no_such_file=True)
+        try:
+            self.load()
+        except errors.NoSuchFile:
+            # The file doesn't exist, let's pretend it was empty
+            self._load_from_string('')
         if section_name is None:
             section = self._config_obj
         else:
