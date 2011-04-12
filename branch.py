@@ -788,6 +788,8 @@ class InterToGitBranch(branch.GenericInterBranch):
     def _get_new_refs(self, stop_revision=None):
         if stop_revision is None:
             (stop_revno, stop_revision) = self.source.last_revision_info()
+        else:
+            stop_revno = self.source.revision_id_to_revno(stop_revision)
         assert type(stop_revision) is str
         main_ref = self.target.ref or "refs/heads/master"
         refs = { main_ref: (None, stop_revision) }
