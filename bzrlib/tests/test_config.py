@@ -2210,8 +2210,8 @@ class TestConfigStackSet(tests.TestCaseWithTransport):
     # paramerized tests created to avoid bloating -- vila 2011-04-05
 
     def test_simple_set(self):
-        store = config.ConfigObjStore.from_string(
-            'foo=bar', self.get_transport(), 'test.conf')
+        store = config.ConfigObjStore(self.get_transport(), 'test.conf')
+        store._load_from_string('foo=bar')
         conf = config.ConfigStack(
             [store.get_sections], store.get_mutable_section)
         self.assertEquals('bar', conf.get('foo'))
@@ -2220,8 +2220,7 @@ class TestConfigStackSet(tests.TestCaseWithTransport):
         self.assertEquals('baz', conf.get('foo'))
 
     def test_set_creates_a_new_section(self):
-        store = config.ConfigObjStore.from_string(
-            '', self.get_transport(), 'test.conf')
+        store = config.ConfigObjStore(self.get_transport(), 'test.conf')
         conf = config.ConfigStack(
             [store.get_sections], store.get_mutable_section)
         conf.set('foo', 'baz')
@@ -2234,8 +2233,8 @@ class TestConfigStackRemove(tests.TestCaseWithTransport):
     # paramerized tests created to avoid bloating -- vila 2011-04-06
 
     def test_remove_existing(self):
-        store = config.ConfigObjStore.from_string(
-            'foo=bar', self.get_transport(), 'test.conf')
+        store = config.ConfigObjStore(self.get_transport(), 'test.conf')
+        store._load_from_string('foo=bar')
         conf = config.ConfigStack(
             [store.get_sections], store.get_mutable_section)
         self.assertEquals('bar', conf.get('foo'))
