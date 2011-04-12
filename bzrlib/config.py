@@ -2138,12 +2138,26 @@ class MutableSection(ReadOnlySection):
 class Store(object):
     """Abstract interface to persistent storage for configuration options."""
 
+    readonly_section_class = None
+    mutable_section_class = None
+
     @property
     def loaded(self):
         raise NotImplementedError(self.loaded)
 
     def load(self):
         raise NotImplementedError(self.load)
+
+    def _load_from_string(self, str_or_unicode):
+        """Create a store from a string in configobj syntax.
+
+        :param str_or_unicode: A string representing the file content. This will
+            be encoded to suit store needs internally.
+
+        This is for tests and should not be used in production unless a
+        convincing use case can be demonstrated :)
+        """
+        raise NotImplementedError(self._load_from_string)
 
     def save(self):
         raise NotImplementedError(self.save)

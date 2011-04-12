@@ -1951,6 +1951,10 @@ class TestReadonlyStore(TestStore):
         self.assertLength(1, sections)
         self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
 
+    def test_load_from_string_fails_for_non_empty_store(self):
+        store = self.get_store('foo.conf', 'foo=bar')
+        self.assertRaises(AssertionError, store._load_from_string, 'bar=baz')
+
 
 class TestMutableStore(TestStore):
 
