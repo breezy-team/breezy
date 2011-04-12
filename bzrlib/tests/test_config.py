@@ -36,6 +36,7 @@ from bzrlib import (
     mergetools,
     ui,
     urlutils,
+    registry,
     tests,
     trace,
     transport,
@@ -61,6 +62,23 @@ def lockable_config_scenarios():
 
 
 load_tests = scenarios.load_tests_apply_scenarios
+
+# We need adpaters that can build a config store in a test context. Test
+# classes, based on TestCaseWithTransport, can use the registry to parametrize
+# themselves. The builder will receive a test instance and should return a
+# ready-to-use store.  Plugins that defines new stores can also register
+# themselves here to be tested against the tests defined below.
+test_store_builder_registry = registry.Registry()
+test_store_builder_registry.register(
+    'configobj', lambda test: config.ConfigObjStore(test.get_transport(),
+                                                    'configobj.conf'))
+test_store_builder_registry.register(
+    'bazaar', lambda test: config.GlobalStore())
+test_store_builder_registry.register(
+    'location', lambda test: config.LocationStore())
+test_store_builder_registry.register(
+    'branch', lambda test: config.BranchStore(test.branch))
+
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -1921,101 +1939,120 @@ class TestStore(tests.TestCaseWithTransport):
 
 class TestReadonlyStore(TestStore):
 
-    scenarios = [('configobj', {'_get_store': get_ConfigObjStore})]
+    scenarios = [(key, {'get_store': builder})
+                 for key, builder in test_store_builder_registry.iteritems()]
 
-    def get_store(self, file_name, content=None):
-        return self._get_store(
-            self.get_readonly_transport(), file_name, content=content)
+    def setUp(self):
+        super(TestReadonlyStore, self).setUp()
+        self.branch = self.make_branch('branch')
 
-    def test_delayed_load(self):
-        self.build_tree_contents([('foo.conf', '')])
-        store = self.get_store('foo.conf')
+    def test_building_delays_load(self):
+        store = self.get_store(self)
         self.assertEquals(False, store.loaded)
-        store.load()
+        store._load_from_string('')
         self.assertEquals(True, store.loaded)
 
     def test_get_no_sections_for_empty(self):
-        store = self.get_store('foo.conf', '')
-        store.load()
+        store = self.get_store(self)
+        store._load_from_string('')
         self.assertEquals([], list(store.get_sections()))
 
     def test_get_default_section(self):
-        store = self.get_store('foo.conf', 'foo=bar')
+        store = self.get_store(self)
+        store._load_from_string('foo=bar')
         sections = list(store.get_sections())
         self.assertLength(1, sections)
         self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
 
     def test_get_named_section(self):
-        store = self.get_store('foo.conf', '[baz]\nfoo=bar')
+        store = self.get_store(self)
+        store._load_from_string('[baz]\nfoo=bar')
         sections = list(store.get_sections())
         self.assertLength(1, sections)
         self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
 
     def test_load_from_string_fails_for_non_empty_store(self):
-        store = self.get_store('foo.conf', 'foo=bar')
+        store = self.get_store(self)
+        store._load_from_string('foo=bar')
         self.assertRaises(AssertionError, store._load_from_string, 'bar=baz')
 
 
 class TestMutableStore(TestStore):
 
-    scenarios = [('configobj', {'_get_store': get_ConfigObjStore})]
+    scenarios = [(key, {'store_id': key, 'get_store': builder})
+                 for key, builder in test_store_builder_registry.iteritems()]
 
-    def get_store(self, file_name, content=None):
-        return self._get_store(
-            self.get_transport(), file_name, content=content)
+    def setUp(self):
+        super(TestMutableStore, self).setUp()
+        self.transport = self.get_transport()
+        self.branch = self.make_branch('branch')
+
+    def has_store(self, store):
+        store_basename = urlutils.relative_url(self.transport.external_url(),
+                                               store.external_url())
+        return self.transport.has(store_basename)
 
     def test_save_empty_creates_no_file(self):
-        store = self.get_store('foo.conf')
+        if self.store_id == 'branch':
+            raise tests.TestNotApplicable(
+                'branch.conf is *always* created when a branch is initialized')
+        store = self.get_store(self)
         store.save()
-        self.assertEquals(False, self.get_transport().has('foo.conf'))
+        self.assertEquals(False, self.has_store(store))
 
     def test_save_emptied_succeeds(self):
-        store = self.get_store('foo.conf', 'foo=bar\n')
+        store = self.get_store(self)
+        store._load_from_string('foo=bar\n')
         section = store.get_mutable_section(None)
         section.remove('foo')
         store.save()
-        self.assertEquals(True, self.get_transport().has('foo.conf'))
-        modified_store = self.get_store('foo.conf')
+        self.assertEquals(True, self.has_store(store))
+        modified_store = self.get_store(self)
         sections = list(modified_store.get_sections())
         self.assertLength(0, sections)
 
     def test_save_with_content_succeeds(self):
-        store = self.get_store('foo.conf', 'foo=bar\n')
-        store.load()
-        self.assertEquals(False, self.get_transport().has('foo.conf'))
+        if self.store_id == 'branch':
+            raise tests.TestNotApplicable(
+                'branch.conf is *always* created when a branch is initialized')
+        store = self.get_store(self)
+        store._load_from_string('foo=bar\n')
+        self.assertEquals(False, self.has_store(store))
         store.save()
-        self.assertEquals(True, self.get_transport().has('foo.conf'))
-        modified_store = self.get_store('foo.conf')
+        self.assertEquals(True, self.has_store(store))
+        modified_store = self.get_store(self)
         sections = list(modified_store.get_sections())
         self.assertLength(1, sections)
         self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
 
     def test_set_option_in_empty_store(self):
-        store = self.get_store('foo.conf')
+        store = self.get_store(self)
         section = store.get_mutable_section(None)
         section.set('foo', 'bar')
         store.save()
-        modified_store = self.get_store('foo.conf')
+        modified_store = self.get_store(self)
         sections = list(modified_store.get_sections())
         self.assertLength(1, sections)
         self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
 
     def test_set_option_in_default_section(self):
-        store = self.get_store('foo.conf', '')
+        store = self.get_store(self)
+        store._load_from_string('')
         section = store.get_mutable_section(None)
         section.set('foo', 'bar')
         store.save()
-        modified_store = self.get_store('foo.conf')
+        modified_store = self.get_store(self)
         sections = list(modified_store.get_sections())
         self.assertLength(1, sections)
         self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
 
     def test_set_option_in_named_section(self):
-        store = self.get_store('foo.conf', '')
+        store = self.get_store(self)
+        store._load_from_string('')
         section = store.get_mutable_section('baz')
         section.set('foo', 'bar')
         store.save()
-        modified_store = self.get_store('foo.conf')
+        modified_store = self.get_store(self)
         sections = list(modified_store.get_sections())
         self.assertLength(1, sections)
         self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])

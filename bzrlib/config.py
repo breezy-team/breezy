@@ -2162,6 +2162,9 @@ class Store(object):
     def save(self):
         raise NotImplementedError(self.save)
 
+    def external_url(self):
+        raise NotImplementedError(self.external_url)
+
     def get_sections(self):
         """Returns an ordered iterable of existing sections.
 
@@ -2219,14 +2222,7 @@ class ConfigObjStore(Store):
             self._config_obj = ConfigObj(co_input, encoding='utf-8')
         except configobj.ConfigObjError, e:
             self._config_obj = None
-            # FIXME: external_url should really accepts an optional relpath
-            # parameter (bug #750169) :-/ -- vila 2011-04-04
-            # The following will do in the interim but maybe we don't want to
-            # expose a path here but rather a config ID and its associated
-            # object </hand wawe>.
-            file_path = os.path.join(self.transport.external_url(),
-                                     self.file_name)
-            raise errors.ParseConfigError(e.errors, file_path)
+            raise errors.ParseConfigError(e.errors, self.external_url())
 
     def save(self):
         if not self.loaded:
@@ -2235,6 +2231,14 @@ class ConfigObjStore(Store):
         out = StringIO()
         self._config_obj.write(out)
         self.transport.put_bytes(self.file_name, out.getvalue())
+
+    def external_url(self):
+        # FIXME: external_url should really accepts an optional relpath
+        # parameter (bug #750169) :-/ -- vila 2011-04-04
+        # The following will do in the interim but maybe we don't want to
+        # expose a path here but rather a config ID and its associated
+        # object </hand wawe>.
+        return os.path.join(self.transport.external_url(), self.file_name)
 
     def get_sections(self):
         """Get the configobj section in the file order.
@@ -2323,7 +2327,7 @@ class LocationStore(LockableConfigObjStore):
     def __init__(self, possible_transports=None):
         t = transport.get_transport(config_dir(),
                                     possible_transports=possible_transports)
-        super(LocationStore, self).__init__(transport, 'locations.conf')
+        super(LocationStore, self).__init__(t, 'locations.conf')
 
 
 class BranchStore(ConfigObjStore):
