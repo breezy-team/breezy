@@ -1134,8 +1134,12 @@ class Merge3Merger(object):
                     # to go already.
                     continue
             # Move the item into the root
-            self.tt.adjust_path(self.tt.final_name(trans_id),
-                                self.tt.root, trans_id)
+            try:
+                final_name = self.tt.final_name(trans_id)
+            except errors.NoFinalPath:
+                # This file is not present anymore, ignore it.
+                continue
+            self.tt.adjust_path(final_name, self.tt.root, trans_id)
         if other_root_is_present:
             self.tt.cancel_creation(other_root)
             self.tt.cancel_versioning(other_root)
