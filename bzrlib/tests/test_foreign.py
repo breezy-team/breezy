@@ -26,10 +26,13 @@ from bzrlib import (
     foreign,
     lockable_files,
     lockdir,
+    repository,
     revision,
     tests,
     trace,
     )
+
+from bzrlib.repofmt import groupcompress_repo
 
 # This is the dummy foreign revision control system, used 
 # mainly here in the testsuite to test the foreign VCS infrastructure.
@@ -92,10 +95,40 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         self._base = a_bzrdir.transport.base
         self._ignore_fallbacks = False
         self.bzrdir = a_bzrdir
-        foreign.ForeignBranch.__init__(self, 
+        foreign.ForeignBranch.__init__(self,
             DummyForeignVcsMapping(DummyForeignVcs()))
-        branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir, 
+        branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir,
             *args, **kwargs)
+
+
+class DummyForeignCommitBuilder(repository.RootCommitBuilder):
+
+    def _generate_revision_if_needed(self):
+        mapping = DummyForeignVcsMapping(DummyForeignVcs())
+        if self._lossy:
+            self._new_revision_id = mapping.revision_id_foreign_to_bzr(
+                (str(self._timestamp), str(self._timezone), "UNKNOWN"))
+            self.random_revid = False
+        else:
+            self._new_revision_id = None
+            self.random_revid = True
+
+
+class DummyForeignVcsRepository(groupcompress_repo.CHKInventoryRepository,
+    foreign.ForeignRepository):
+    """Dummy foreign vcs repository."""
+
+
+class DummyForeignVcsRepositoryFormat(groupcompress_repo.RepositoryFormat2a):
+
+    repository_class = DummyForeignVcsRepository
+    _commit_builder_class = DummyForeignCommitBuilder
+
+    def get_format_string(self):
+        return "Dummy Foreign Vcs Repository"
+
+    def get_format_description(self):
+        return "Dummy Foreign Vcs Repository"
 
 
 class InterToDummyVcsBranch(branch.GenericInterBranch,
@@ -208,6 +241,10 @@ class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
     def get_branch_format(self):
         return DummyForeignVcsBranchFormat()
 
+    @property
+    def repository_format(self):
+        return DummyForeignVcsRepositoryFormat()
+
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
         # Since we don't have a .bzr directory, inherit the
@@ -265,6 +302,9 @@ def register_dummy_foreign_for_test(testcase):
     controldir.ControlDirFormat.register_prober(DummyForeignProber)
     testcase.addCleanup(controldir.ControlDirFormat.unregister_prober,
         DummyForeignProber)
+    repository.format_registry.register(DummyForeignVcsRepositoryFormat())
+    testcase.addCleanup(repository.format_registry.remove,
+            DummyForeignVcsRepositoryFormat())
     # We need to register the optimiser to make the dummy appears really
     # different from a regular bzr repository.
     branch.InterBranch.register_optimiser(InterToDummyVcsBranch)
@@ -303,8 +343,9 @@ class ForeignVcsRegistryTests(tests.TestCase):
         reg = foreign.ForeignVcsRegistry()
         vcs = DummyForeignVcs()
         reg.register("dummy", vcs, "Dummy VCS")
-        self.assertEquals((("some", "foreign", "revid"), DummyForeignVcsMapping(vcs)),
-                          reg.parse_revision_id("dummy-v1:some-foreign-revid"))
+        self.assertEquals((
+            ("some", "foreign", "revid"), DummyForeignVcsMapping(vcs)),
+            reg.parse_revision_id("dummy-v1:some-foreign-revid"))
 
 
 class ForeignRevisionTests(tests.TestCase):

@@ -404,6 +404,7 @@ class Commit(object):
 
         # Collect the changes
         self._set_progress_stage("Collecting changes", counter=True)
+        self._lossy = lossy
         self.builder = self.branch.get_commit_builder(self.parents,
             self.config, timestamp, timezone, committer, self.revprops,
             rev_id, lossy=lossy)
