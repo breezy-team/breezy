@@ -26,10 +26,13 @@ from bzrlib import (
     foreign,
     lockable_files,
     lockdir,
+    repository,
     revision,
     tests,
     trace,
     )
+
+from bzrlib.repofmt import groupcompress_repo
 
 # This is the dummy foreign revision control system, used 
 # mainly here in the testsuite to test the foreign VCS infrastructure.
@@ -96,6 +99,31 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
             DummyForeignVcsMapping(DummyForeignVcs()))
         branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir, 
             *args, **kwargs)
+
+
+class DummyForeignCommitBuilder(repository.RootCommitBuilder):
+
+    def _generate_revision_if_needed(self):
+        self._new_revision_id = self.target.mapping.revision_id_foreign_to_bzr(
+            (str(self._timestamp), str(self._timezone),
+                str(self.target.revno())))
+
+
+class DummyForeignVcsRepositoryFormat(groupcompress_repo.RepositoryFormat2a):
+
+    def get_format_string(self):
+        return "Dummy Foreign Vcs Repository"
+
+    def get_format_description(self):
+        return "Dummy Foreign Vcs Repository"
+
+
+class DummyForeignVcsRepository(groupcompress_repo.CHKInventoryRepository,
+    foreign.ForeignRepository):
+
+    def __init__(self, _format, a_bzrdir, control_files):
+        super(DummyForeignVcsRepository, self).__init__(_format, a_bzrdir,
+            control_files, DummyForeignCommitBuilder, _format._serializer)
 
 
 class InterToDummyVcsBranch(branch.GenericInterBranch,
@@ -208,6 +236,10 @@ class DummyForeignVcsDirFormat(bzrdir.BzrDirMetaFormat1):
     def get_branch_format(self):
         return DummyForeignVcsBranchFormat()
 
+    @property
+    def repository_format(self):
+        return DummyForeignVcsRepositoryFormat()
+
     def initialize_on_transport(self, transport):
         """Initialize a new bzrdir in the base directory of a Transport."""
         # Since we don't have a .bzr directory, inherit the
@@ -244,6 +276,12 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
         return self._format.get_branch_format().open(self, _found=True)
+
+    def open_repository(self, unsupported=False):
+        return DummyForeignVcsRepository(DummyForeignVcsRepositoryFormat(),
+            self, self._control_files)
+
+    find_repository = open_repository
 
     def cloning_metadir(self, stacked=False):
         """Produce a metadir suitable for cloning with."""
