@@ -166,7 +166,7 @@ class TreeLink(TreeEntry):
         return ''
 
 
-class WorkingTree(bzrlib.mutabletree.MutableTree,
+class WorkingTree(bzrlib.mutabletree.MutableInventoryTree,
     controldir.ControlComponent):
     """Working copy tree.
 
@@ -638,10 +638,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def get_root_id(self):
         """Return the id of this trees root"""
         return self._inventory.root.file_id
-
-    def _get_store_filename(self, file_id):
-        ## XXX: badly named; this is not in the store at all
-        return self.abspath(self.id2path(file_id))
 
     @needs_read_lock
     def clone(self, to_bzrdir, revision_id=None):

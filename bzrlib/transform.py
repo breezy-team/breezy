@@ -1932,7 +1932,7 @@ class TransformPreview(DiskTreeTransform):
         raise NotImplementedError(self.new_orphan)
 
 
-class _PreviewTree(tree.Tree):
+class _PreviewTree(tree.InventoryTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
     def __init__(self, transform):
