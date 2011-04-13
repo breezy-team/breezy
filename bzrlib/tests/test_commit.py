@@ -128,6 +128,23 @@ class TestCommit(TestCaseWithTransport):
             timestamp=1302659388, timezone=0)
         self.assertEquals('dummy-v1:1302659388.0-0-UNKNOWN', revid)
 
+    def test_commit_bound_lossy_foreign(self):
+        """Attempt a lossy commit to a bzr branch bound to a foreign branch."""
+        test_foreign.register_dummy_foreign_for_test(self)
+        foreign_branch = self.make_branch('foreign',
+            format=test_foreign.DummyForeignVcsDirFormat())
+        wt = foreign_branch.create_checkout("local")
+        b = wt.branch
+        file('local/hello', 'w').write('hello world')
+        wt.add('hello')
+        revid = wt.commit(message='add hello', lossy=True,
+            timestamp=1302659388, timezone=0)
+        self.assertEquals('dummy-v1:1302659388.0-0-0', revid)
+        self.assertEquals('dummy-v1:1302659388.0-0-0',
+            foreign_branch.last_revision())
+        self.assertEquals('dummy-v1:1302659388.0-0-0',
+            wt.branch.last_revision())
+
     def test_missing_commit(self):
         """Test a commit with a missing file"""
         wt = self.make_branch_and_tree('.')
