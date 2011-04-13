@@ -277,6 +277,11 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
         self._control_files = lockable_files.LockableFiles(self.transport,
             "lock", lockable_files.TransportLock)
 
+    def create_workingtree(self):
+        # dirstate requires a ".bzr" entry to exist
+        self.root_transport.put_bytes(".bzr", "foo")
+        return super(DummyForeignVcsDir, self).create_workingtree()
+
     def open_branch(self, name=None, unsupported=False, ignore_fallbacks=True):
         if name is not None:
             raise errors.NoColocatedBranchSupport(self)
