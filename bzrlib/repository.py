@@ -107,6 +107,7 @@ class CommitBuilder(object):
             represented, when pushing to a foreign VCS 
         """
         self._config = config
+        self._lossy = lossy
 
         if committer is None:
             self._committer = self._config.username()
@@ -145,7 +146,6 @@ class CommitBuilder(object):
         self._recording_deletes = False
         # memo'd check for no-op commits.
         self._any_changes = False
-        self._lossy = lossy
 
     def any_changes(self):
         """Return True if any entries were changed.

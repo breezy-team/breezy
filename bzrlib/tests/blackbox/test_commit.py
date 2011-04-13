@@ -80,10 +80,12 @@ bzr: ERROR: No changes to commit.\
         self.assertEqual('', self.run_bzr('unknowns')[0])
 
     def test_commit_lossy_foreign(self):
-        self.make_branch_and_tree(
-            '.', format=test_foreign.DummyForeignVcsDirFormat())
+        test_foreign.register_dummy_foreign_for_test(self)
+        self.make_branch_and_tree('.',
+            format=test_foreign.DummyForeignVcsDirFormat())
         self.run_bzr('commit --lossy --unchanged -m message')
-        self.assertEqual('1 aaa', self.run_bzr('revision-info')[0])
+        output = self.run_bzr('revision-info')[0]
+        self.assertTrue(output.startswith('1 dummy-'))
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
