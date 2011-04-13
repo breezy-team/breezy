@@ -118,6 +118,20 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         finally:
             tree.unlock()
 
+    def test_commit_lossy(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([], lossy=True)
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
+            rev_id = builder.commit('foo bar blah')
+        finally:
+            tree.unlock()
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual('foo bar blah', rev.message)
+
     def test_commit_message(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
