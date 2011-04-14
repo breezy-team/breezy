@@ -2842,6 +2842,11 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                  backups, merge_modified, basis_tree=None):
     if basis_tree is not None:
         basis_tree.lock_read()
+    # We ask the working_tree for its changes relative to the target, rather
+    # than the target changes relative to the working tree. Because WT4 has an
+    # optimizer to compare itself to a target, but no optimizer for the
+    # reverse.
+    # change_list = working_tree.iter_changes(target_tree,
     change_list = target_tree.iter_changes(working_tree,
         specific_files=specific_files, pb=pb)
     if target_tree.get_root_id() is None:
@@ -2852,13 +2857,19 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
         deferred_files = []
         for id_num, (file_id, path, changed_content, versioned, parent, name,
                 kind, executable) in enumerate(change_list):
-            if skip_root and file_id[0] is not None and parent[0] is None:
+            wt_path, target_path = path
+            wt_versioned, target_versioned = versioned
+            wt_parent, target_parent = parent
+            wt_name, target_name = name
+            wt_kind, target_kind = kind
+            wt_executable, target_executable = executable
+            if skip_root and wt_parent is None:
                 continue
             trans_id = tt.trans_id_file_id(file_id)
             mode_id = None
             if changed_content:
                 keep_content = False
-                if kind[0] == 'file' and (backups or kind[1] is None):
+                if wt_kind == 'file' and (backups or target_kind is None):
                     wt_sha1 = working_tree.get_file_sha1(file_id)
                     if merge_modified.get(file_id) != wt_sha1:
                         # acquire the basis tree lazily to prevent the
@@ -2870,17 +2881,17 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         if file_id in basis_tree:
                             if wt_sha1 != basis_tree.get_file_sha1(file_id):
                                 keep_content = True
-                        elif kind[1] is None and not versioned[1]:
+                        elif target_kind is None and not target_versioned:
                             keep_content = True
-                if kind[0] is not None:
+                if wt_kind is not None:
                     if not keep_content:
                         tt.delete_contents(trans_id)
-                    elif kind[1] is not None:
-                        parent_trans_id = tt.trans_id_file_id(parent[0])
+                    elif target_kind is not None:
+                        parent_trans_id = tt.trans_id_file_id(wt_parent)
                         backup_name = tt._available_backup_name(
-                            name[0], parent_trans_id)
+                            wt_name, parent_trans_id)
                         tt.adjust_path(backup_name, parent_trans_id, trans_id)
-                        new_trans_id = tt.create_path(name[0], parent_trans_id)
+                        new_trans_id = tt.create_path(wt_name, parent_trans_id)
                         if versioned == (True, True):
                             tt.unversion_file(trans_id)
                             tt.version_file(file_id, new_trans_id)
@@ -2888,16 +2899,16 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         # contents
                         mode_id = trans_id
                         trans_id = new_trans_id
-                if kind[1] in ('directory', 'tree-reference'):
+                if target_kind in ('directory', 'tree-reference'):
                     tt.create_directory(trans_id)
-                    if kind[1] == 'tree-reference':
+                    if target_kind == 'tree-reference':
                         revision = target_tree.get_reference_revision(file_id,
-                                                                      path[1])
+                                                                      target_path)
                         tt.set_tree_reference(revision, trans_id)
-                elif kind[1] == 'symlink':
+                elif target_kind == 'symlink':
                     tt.create_symlink(target_tree.get_symlink_target(file_id),
                                       trans_id)
-                elif kind[1] == 'file':
+                elif target_kind == 'file':
                     deferred_files.append((file_id, (trans_id, mode_id)))
                     if basis_tree is None:
                         basis_tree = working_tree.basis_tree()
@@ -2911,26 +2922,26 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         merge_modified[file_id] = new_sha1
 
                     # preserve the execute bit when backing up
-                    if keep_content and executable[0] == executable[1]:
-                        tt.set_executability(executable[1], trans_id)
-                elif kind[1] is not None:
-                    raise AssertionError(kind[1])
+                    if keep_content and wt_executable == target_executable:
+                        tt.set_executability(target_executable, trans_id)
+                elif target_kind is not None:
+                    raise AssertionError(target_kind)
             if versioned == (False, True):
                 tt.version_file(file_id, trans_id)
             if versioned == (True, False):
                 tt.unversion_file(trans_id)
-            if (name[1] is not None and
-                (name[0] != name[1] or parent[0] != parent[1])):
-                if name[1] == '' and parent[1] is None:
+            if (target_name is not None and
+                (wt_name != target_name or wt_parent != target_parent)):
+                if target_name == '' and target_parent is None:
                     parent_trans = ROOT_PARENT
                 else:
-                    parent_trans = tt.trans_id_file_id(parent[1])
-                if parent[0] is None and versioned[0]:
-                    tt.adjust_root_path(name[1], parent_trans)
+                    parent_trans = tt.trans_id_file_id(target_parent)
+                if wt_parent is None and wt_versioned:
+                    tt.adjust_root_path(target_name, parent_trans)
                 else:
-                    tt.adjust_path(name[1], parent_trans, trans_id)
-            if executable[0] != executable[1] and kind[1] == "file":
-                tt.set_executability(executable[1], trans_id)
+                    tt.adjust_path(target_name, parent_trans, trans_id)
+            if wt_executable != target_executable and target_kind == "file":
+                tt.set_executability(target_executable, trans_id)
         if working_tree.supports_content_filtering():
             for index, ((trans_id, mode_id), bytes) in enumerate(
                 target_tree.iter_files_bytes(deferred_files)):
