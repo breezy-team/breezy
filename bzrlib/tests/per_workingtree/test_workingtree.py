@@ -398,12 +398,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.set_parent_ids(['B'])
         tree = wt.basis_tree()
         tree.lock_read()
-        self.failUnless(tree.has_filename('bar'))
+        self.assertTrue(tree.has_filename('bar'))
         tree.unlock()
         wt.set_parent_ids(['A'])
         tree = wt.basis_tree()
         tree.lock_read()
-        self.failUnless(tree.has_filename('foo'))
+        self.assertTrue(tree.has_filename('foo'))
         tree.unlock()
 
     def test_clone_tree_revision(self):
@@ -738,7 +738,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_format_description(self):
         tree = self.make_branch_and_tree('tree')
         text = tree._format.get_format_description()
-        self.failUnless(len(text))
+        self.assertTrue(len(text))
 
     def test_branch_attribute_is_not_settable(self):
         # the branch attribute is an aspect of the working tree, not a

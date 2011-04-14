@@ -100,7 +100,7 @@ Using shared repository: %s
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)
         self.assertEqual('', out)
-        self.failUnless(err.startswith('bzr: ERROR: Already a branch:'))
+        self.assertTrue(err.startswith('bzr: ERROR: Already a branch:'))
 
     def test_init_branch_quiet(self):
         out, err = self.run_bzr('init -q')

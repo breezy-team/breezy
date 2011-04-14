@@ -177,7 +177,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             dir.create_repository()
             format.initialize(dir)
             found_format = _mod_branch.BranchFormat.find_format(dir)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(_mod_branch.BzrBranchFormat5(), "bar")
 
     def test_find_format_factory(self):
