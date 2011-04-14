@@ -2846,8 +2846,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
     # than the target changes relative to the working tree. Because WT4 has an
     # optimizer to compare itself to a target, but no optimizer for the
     # reverse.
-    change_list = target_tree.iter_changes(working_tree,
-    # change_list = working_tree.iter_changes(target_tree,
+    change_list = working_tree.iter_changes(target_tree,
         specific_files=specific_files, pb=pb)
     if target_tree.get_root_id() is None:
         skip_root = True
@@ -2857,18 +2856,12 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
         deferred_files = []
         for id_num, (file_id, path, changed_content, versioned, parent, name,
                 kind, executable) in enumerate(change_list):
-            # target_path, wt_path = path
-            # target_versioned, wt_versioned = versioned
-            # target_parent, wt_parent = parent
-            # target_name, wt_name = name
-            # target_kind, wt_kind = kind
-            # target_executable, wt_executable = executable
-            wt_path, target_path = path
-            wt_versioned, target_versioned = versioned
-            wt_parent, target_parent = parent
-            wt_name, target_name = name
-            wt_kind, target_kind = kind
-            wt_executable, target_executable = executable
+            target_path, wt_path = path
+            target_versioned, wt_versioned = versioned
+            target_parent, wt_parent = parent
+            target_name, wt_name = name
+            target_kind, wt_kind = kind
+            target_executable, wt_executable = executable
             if skip_root and wt_parent is None:
                 continue
             trans_id = tt.trans_id_file_id(file_id)
