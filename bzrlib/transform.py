@@ -2846,8 +2846,8 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
     # than the target changes relative to the working tree. Because WT4 has an
     # optimizer to compare itself to a target, but no optimizer for the
     # reverse.
-    # change_list = working_tree.iter_changes(target_tree,
     change_list = target_tree.iter_changes(working_tree,
+    # change_list = working_tree.iter_changes(target_tree,
         specific_files=specific_files, pb=pb)
     if target_tree.get_root_id() is None:
         skip_root = True
@@ -2857,6 +2857,12 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
         deferred_files = []
         for id_num, (file_id, path, changed_content, versioned, parent, name,
                 kind, executable) in enumerate(change_list):
+            # target_path, wt_path = path
+            # target_versioned, wt_versioned = versioned
+            # target_parent, wt_parent = parent
+            # target_name, wt_name = name
+            # target_kind, wt_kind = kind
+            # target_executable, wt_executable = executable
             wt_path, target_path = path
             wt_versioned, target_versioned = versioned
             wt_parent, target_parent = parent
@@ -2892,7 +2898,7 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                             wt_name, parent_trans_id)
                         tt.adjust_path(backup_name, parent_trans_id, trans_id)
                         new_trans_id = tt.create_path(wt_name, parent_trans_id)
-                        if versioned == (True, True):
+                        if wt_versioned and target_versioned:
                             tt.unversion_file(trans_id)
                             tt.version_file(file_id, new_trans_id)
                         # New contents should have the same unix perms as old
@@ -2926,9 +2932,9 @@ def _alter_files(working_tree, target_tree, tt, pb, specific_files,
                         tt.set_executability(target_executable, trans_id)
                 elif target_kind is not None:
                     raise AssertionError(target_kind)
-            if versioned == (False, True):
+            if not wt_versioned and target_versioned:
                 tt.version_file(file_id, trans_id)
-            if versioned == (True, False):
+            if wt_versioned and not target_versioned:
                 tt.unversion_file(trans_id)
             if (target_name is not None and
                 (wt_name != target_name or wt_parent != target_parent)):
