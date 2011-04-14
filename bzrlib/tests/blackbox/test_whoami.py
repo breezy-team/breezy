@@ -92,10 +92,13 @@ class TestWhoami(TestCaseWithTransport):
                           'recommended.\n', display)
 
     def test_whoami_not_set(self):
-        """Ensure whoami error if username is not set.
+        """Ensure whoami error if username is not set and not inferred.
         """
         self.overrideEnv('EMAIL', None)
         self.overrideEnv('BZR_EMAIL', None)
+        # Also, make sure that it's not inferred from mailname.
+        self.overrideAttr(config, '_auto_user_id',
+            lambda: (None, None))
         out, err = self.run_bzr(['whoami'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
 

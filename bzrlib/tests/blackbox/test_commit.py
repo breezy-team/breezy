@@ -23,6 +23,7 @@ import sys
 
 from bzrlib import (
     bzrdir,
+    config,
     osutils,
     ignores,
     msgeditor,
@@ -758,6 +759,9 @@ altered in u2
         self.run_bzr(['add'])
         self.overrideEnv('EMAIL', None)
         self.overrideEnv('BZR_EMAIL', None)
+        # Also, make sure that it's not inferred from mailname.
+        self.overrideAttr(config, '_auto_user_id',
+            lambda: (None, None))
         out, err = self.run_bzr(['commit', '-m', 'initial'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
 
