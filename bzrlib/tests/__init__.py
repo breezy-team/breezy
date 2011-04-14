@@ -4162,7 +4162,7 @@ class ModuleAvailableFeature(Feature):
         try:
             self._module = __import__(self.module_name, {}, {}, [''])
             return True
-        except (ImportWarning, ImportError):
+        except ImportError:
             return False
 
     @property
