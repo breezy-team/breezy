@@ -92,6 +92,46 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._rules_searcher = None
         self._detect_case_handling()
 
+    def _index_add_entry(self, path, file_id, kind):
+        if kind == "directory":
+            # Git indexes don't contain directories
+            return
+        if kind == "file":
+            blob = Blob()
+            try:
+                file, stat_val = self.get_file_with_stat(file_id, path)
+            except (errors.NoSuchFile, IOError):
+                # TODO: Rather than come up with something here, use the old index
+                file = StringIO()
+                from posix import stat_result
+                stat_val = stat_result((stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+            blob.set_raw_string(file.read())
+        elif kind == "symlink":
+            blob = Blob()
+            try:
+                stat_val = os.lstat(self.abspath(path))
+            except (errors.NoSuchFile, OSError):
+                # TODO: Rather than come up with something here, use the 
+                # old index
+                from posix import stat_result
+                stat_val = stat_result((stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+            blob.set_raw_string(self.get_symlink_target(file_id).encode("utf-8"))
+        else:
+            raise AssertionError("unknown kind '%s'" % kind)
+        # Add object to the repository if it didn't exist yet
+        if not blob.id in self.repository._git.object_store:
+            self.repository._git.object_store.add_object(blob)
+        # Add an entry to the index or update the existing entry
+        flags = 0 # FIXME
+        self.index[path.encode("utf-8")] = (stat_val.st_ctime,
+                stat_val.st_mtime, stat_val.st_dev, stat_val.st_ino,
+                stat_val.st_mode, stat_val.st_uid, stat_val.st_gid,
+                stat_val.st_size, blob.id, flags)
+
+    def _add(self, files, ids, kinds):
+        for (path, file_id, kind) in zip(files, ids, kinds):
+            self._index_add_entry(path, file_id, kind)
+
     def get_root_id(self):
         return self.mapping.generate_file_id("")
 
@@ -119,37 +159,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _rewrite_index(self):
         self.index.clear()
         for path, entry in self._inventory.iter_entries():
-            if entry.kind == "directory":
-                # Git indexes don't contain directories
-                continue
-            if entry.kind == "file":
-                blob = Blob()
-                try:
-                    file, stat_val = self.get_file_with_stat(entry.file_id, path)
-                except (errors.NoSuchFile, IOError):
-                    # TODO: Rather than come up with something here, use the old index
-                    file = StringIO()
-                    from posix import stat_result
-                    stat_val = stat_result((stat.S_IFREG | 0644, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-                blob.set_raw_string(file.read())
-            elif entry.kind == "symlink":
-                blob = Blob()
-                try:
-                    stat_val = os.lstat(self.abspath(path))
-                except (errors.NoSuchFile, OSError):
-                    # TODO: Rather than come up with something here, use the 
-                    # old index
-                    from posix import stat_result
-                    stat_val = stat_result((stat.S_IFLNK, 0, 0, 0, 0, 0, 0, 0, 0, 0))
-                blob.set_raw_string(self.get_symlink_target(entry.file_id).encode("utf-8"))
-            else:
-                raise AssertionError("unknown kind '%s'" % entry.kind)
-            # Add object to the repository if it didn't exist yet
-            if not blob.id in self.repository._git.object_store:
-                self.repository._git.object_store.add_object(blob)
-            # Add an entry to the index or update the existing entry
-            flags = 0 # FIXME
-            self.index[path.encode("utf-8")] = (stat_val.st_ctime, stat_val.st_mtime, stat_val.st_dev, stat_val.st_ino, stat_val.st_mode, stat_val.st_uid, stat_val.st_gid, stat_val.st_size, blob.id, flags)
+            self._index_add_entry(path, entry.file_id, entry.kind)
 
     def flush(self):
         # TODO: Maybe this should only write on dirty ?
@@ -157,15 +167,18 @@ class GitWorkingTree(workingtree.WorkingTree):
             raise errors.NotWriteLocked(self)
         self._rewrite_index()
         self.index.write()
-        self._inventory_is_modified = False
 
     def __iter__(self):
-        # FIXME: Custom implementation that doesn't require working tree
-        return iter(self._bzr_inventory)
+        for path in self.index:
+            yield self._fileid_map.lookup_file_id(path)
 
     def id2path(self, file_id):
-        # FIXME
-        return self._bzr_inventory.id2path(file_id)
+        if type(file_id) != str:
+            raise AssertionError
+        path = self._fileid_map.lookup_path(file_id)
+        if path in self.index:
+            return path
+        raise errors.NoSuchId(None, file_id)
 
     def get_ignore_list(self):
         ignoreset = getattr(self, '_ignoreset', None)
@@ -188,7 +201,6 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._change_last_revision(revid)
 
     def _reset_data(self):
-        self._inventory_is_modified = False
         try:
             head = self.repository._git.head()
         except KeyError, name:
@@ -196,18 +208,18 @@ class GitWorkingTree(workingtree.WorkingTree):
         basis_inv = self.repository.get_inventory(self.branch.lookup_foreign_revision_id(head))
         store = self.repository._git.object_store
         if head == ZERO_SHA:
-            fileid_map = GitFileIdMap({}, self.mapping)
+            self._fileid_map = GitFileIdMap({}, self.mapping)
             basis_inv = None
         else:
-            fileid_map = self.mapping.get_fileid_map(store.__getitem__,
+            self._fileid_map = self.mapping.get_fileid_map(store.__getitem__,
                 store[head].tree)
-        result = GitIndexInventory(basis_inv, fileid_map, self.index, store)
+        result = GitIndexInventory(basis_inv, self._fileid_map, self.index, store)
         self._bzr_inventory = result
 
     @needs_read_lock
     def get_file_sha1(self, file_id, path=None, stat_value=None):
         if not path:
-            path = self._inventory.id2path(file_id)
+            path = self.id2path(file_id)
         try:
             return osutils.sha_file_by_name(self.abspath(path).encode(osutils._fs_enc))
         except OSError, (num, msg):
