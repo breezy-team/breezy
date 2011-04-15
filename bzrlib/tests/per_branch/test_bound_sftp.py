@@ -292,22 +292,22 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         wt_other.add('c')
         wt_other.commit('adding c', rev_id='r@d-2')
 
-        self.failIf(wt_child.branch.repository.has_revision('r@d-2'))
-        self.failIf(b_base.repository.has_revision('r@d-2'))
+        self.assertFalse(wt_child.branch.repository.has_revision('r@d-2'))
+        self.assertFalse(b_base.repository.has_revision('r@d-2'))
 
         wt_child.merge_from_branch(wt_other.branch)
 
         self.failUnlessExists('child/c')
         self.assertEqual(['r@d-2'], wt_child.get_parent_ids()[1:])
-        self.failUnless(wt_child.branch.repository.has_revision('r@d-2'))
-        self.failIf(b_base.repository.has_revision('r@d-2'))
+        self.assertTrue(wt_child.branch.repository.has_revision('r@d-2'))
+        self.assertFalse(b_base.repository.has_revision('r@d-2'))
 
         # Commit should succeed, and cause merged revisions to
         # be pushed into base
         wt_child.commit('merge other', rev_id='r@c-2')
         self.assertEqual(['r@b-1', 'r@c-2'], wt_child.branch.revision_history())
         self.assertEqual(['r@b-1', 'r@c-2'], b_base.revision_history())
-        self.failUnless(b_base.repository.has_revision('r@d-2'))
+        self.assertTrue(b_base.repository.has_revision('r@d-2'))
 
     def test_commit_fails(self):
         b_base, wt_child = self.create_branches()

@@ -161,12 +161,12 @@ class TestNonAscii(tests.TestCaseWithTransport):
     def test_cat_revision(self):
         committer = self.info['committer']
         txt = self.run_bzr_decode('cat-revision -r 1')
-        self.failUnless(committer in txt,
+        self.assertTrue(committer in txt,
                         'failed to find %r in %r' % (committer, txt))
 
         msg = self.info['message']
         txt = self.run_bzr_decode('cat-revision -r 2')
-        self.failUnless(msg in txt, 'failed to find %r in %r' % (msg, txt))
+        self.assertTrue(msg in txt, 'failed to find %r in %r' % (msg, txt))
 
     def test_mkdir(self):
         txt = self.run_bzr_decode(['mkdir', self.info['directory']])
@@ -386,7 +386,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.assertEqual(fname+'\n', txt)
 
         txt = self.run_bzr_decode('deleted --show-ids')
-        self.failUnless(txt.startswith(fname))
+        self.assertTrue(txt.startswith(fname))
 
         # Deleted should fail if cannot decode
         # Because it is giving the exact paths
@@ -421,7 +421,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         self.wt.bzrdir.sprout(url)
 
         txt = self.run_bzr_decode('root', working_dir=dirname)
-        self.failUnless(txt.endswith(dirname+'\n'))
+        self.assertTrue(txt.endswith(dirname+'\n'))
 
         txt = self.run_bzr_decode('root', encoding='ascii', fail=True,
                                   working_dir=dirname)

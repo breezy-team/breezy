@@ -85,7 +85,7 @@ class TestRemerge(TestCaseWithTransport):
                            'remerge --merge-type weave', retcode=1)
 
         self.failUnlessExists('hello.OTHER')
-        self.failUnless('hello.BASE')
+        self.assertTrue('hello.BASE')
         self.assertFalse('|||||||' in conflict_text)
         self.assertFalse('hi world' in conflict_text)
 

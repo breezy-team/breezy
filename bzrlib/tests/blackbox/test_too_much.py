@@ -133,9 +133,9 @@ class TestCommands(TestCaseWithTransport):
 
         os.chdir('../a')
         out = self.run_bzr('pull --verbose ../b')[0]
-        self.failIfEqual(out.find('Added Revisions:'), -1)
-        self.failIfEqual(out.find('message:\n  added b'), -1)
-        self.failIfEqual(out.find('added b'), -1)
+        self.assertNotEqual(out.find('Added Revisions:'), -1)
+        self.assertNotEqual(out.find('message:\n  added b'), -1)
+        self.assertNotEqual(out.find('added b'), -1)
 
         # Check that --overwrite --verbose prints out the removed entries
         self.run_bzr('commit -m foo --unchanged')
@@ -145,17 +145,17 @@ class TestCommands(TestCaseWithTransport):
         out = self.run_bzr('pull --overwrite --verbose ../a')[0]
 
         remove_loc = out.find('Removed Revisions:')
-        self.failIfEqual(remove_loc, -1)
+        self.assertNotEqual(remove_loc, -1)
         added_loc = out.find('Added Revisions:')
-        self.failIfEqual(added_loc, -1)
+        self.assertNotEqual(added_loc, -1)
 
         removed_message = out.find('message:\n  baz')
-        self.failIfEqual(removed_message, -1)
-        self.failUnless(remove_loc < removed_message < added_loc)
+        self.assertNotEqual(removed_message, -1)
+        self.assertTrue(remove_loc < removed_message < added_loc)
 
         added_message = out.find('message:\n  foo')
-        self.failIfEqual(added_message, -1)
-        self.failUnless(added_loc < added_message)
+        self.assertNotEqual(added_message, -1)
+        self.assertTrue(added_loc < added_message)
 
     def test_locations(self):
         """Using and remembering different locations"""

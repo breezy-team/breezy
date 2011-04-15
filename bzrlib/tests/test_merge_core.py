@@ -584,7 +584,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         wtb.commit('changed file', allow_pointless=False)
         wtb.merge_from_branch(wta.branch, wta.branch.last_revision(),
                               wta.branch.get_rev_id(1))
-        self.failIf(os.path.lexists('b/file'))
+        self.assertFalse(os.path.lexists('b/file'))
 
     def test_merge_metadata_vs_deletion(self):
         """Conflict deletion vs metadata change"""
@@ -619,7 +619,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertEqual(0, a_wt.merge_from_branch(b_wt.branch,
             b_wt.branch.last_revision(), b_wt.branch.get_rev_id(1)))
         self.failUnlessExists('a/un')
-        self.failUnless('a/deux')
+        self.assertTrue('a/deux')
         self.assertFalse(os.path.exists('a/tmp'))
         self.assertEqual(file('a/un').read(),'DEUX')
         self.assertEqual(file('a/deux').read(),'UN')
