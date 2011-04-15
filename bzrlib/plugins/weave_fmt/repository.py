@@ -497,6 +497,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     supports_chks = False
     supports_funky_characters = False
     supports_full_versioned_files = True
+    revision_graph_can_have_wrong_parents = False
 
     _fetch_order = 'topological'
     _fetch_reconcile = True

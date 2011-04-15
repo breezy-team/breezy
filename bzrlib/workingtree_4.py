@@ -60,12 +60,19 @@ from bzrlib.osutils import (
     safe_unicode,
     )
 from bzrlib.transport.local import LocalTransport
-from bzrlib.tree import InterTree
-from bzrlib.tree import Tree
-from bzrlib.workingtree import WorkingTree, WorkingTree3, WorkingTreeFormat3
+from bzrlib.tree import (
+    InterTree,
+    InventoryTree,
+    )
+from bzrlib.workingtree import (
+    WorkingTree,
+    WorkingTree3,
+    WorkingTreeFormat3,
+    )
 
 
 class DirStateWorkingTree(WorkingTree3):
+
     def __init__(self, basedir,
                  branch,
                  _control_files=None,
@@ -1250,7 +1257,7 @@ class DirStateWorkingTree(WorkingTree3):
     def rename_one(self, from_rel, to_rel, after=False):
         """See WorkingTree.rename_one"""
         self.flush()
-        WorkingTree.rename_one(self, from_rel, to_rel, after)
+        super(DirStateWorkingTree, self).rename_one(from_rel, to_rel, after)
 
     @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
@@ -1604,7 +1611,7 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
         return True
 
 
-class DirStateRevisionTree(Tree):
+class DirStateRevisionTree(InventoryTree):
     """A revision tree pulling the inventory from a dirstate.
     
     Note that this is one of the historical (ie revision) trees cached in the
