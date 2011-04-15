@@ -40,7 +40,7 @@ check: docs check-nodocs
 
 check-nodocs: extensions
 	# Generate a stream for PQM to watch.
-	$(PYTHON) -Werror -O ./bzr selftest --subunit $(tests) | tee selftest.log
+	$(PYTHON) -Werror -Wignore::ImportWarning -O ./bzr selftest --subunit $(tests) | tee selftest.log
 	# Check that there were no errors reported.
 	subunit-stats < selftest.log
 
