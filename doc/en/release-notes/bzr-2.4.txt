@@ -63,6 +63,12 @@ Bug Fixes
   this might be required for "installing" extra dependencies for some plugins.
   (Alexander Belchenko, #743256)
 
+* ``transform.revert()`` has been updated to use
+  ``wt.iter_changes(basis_tree)`` rather than
+  ``basis_tree.iter_changes(wt)``. This allows the optimized code path to
+  kick in, improving ``bzr revert`` times significantly (33s to 4s on
+  large trees, 0.7s to 0.3s on small trees.) (John Arbash Meinel, #759096)
+
 * ``TreeTransform.create_file/new_file`` can now take an optional ``sha1``
   parameter. If supplied, when the transform is applied, it will then call
   ``self._tree._observed_sha1`` for those files. This lets us update the

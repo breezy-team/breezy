@@ -48,6 +48,23 @@ to automate merging of changes to ``ChangeLog`` files in GNU's change log
 format.  Refer to ``bzr help changelog_merge`` for documentation on how to
 enable it and what it can do.
 
+Faster operations on Large Trees
+********************************
+
+Many bzr commands used to run into pathological behavior on large trees
+(>10k files), reading the inventory data random order causing cache
+thrashing. Various other tweaks have been applied with feedback from large
+trees. A possibly incomplete list is as follows for running commands on a
+70k file tree::
+
+    bzr-2.3 bzr-2.4 action
+    3m39s   1m03s   bzr co --lightweight
+      38s      6s   bzr revert
+    4m47s     27s   bzr merge
+    4m58s     32s   bzr up
+    
+
+
 Further information
 *******************
 
