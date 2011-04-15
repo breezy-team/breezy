@@ -42,7 +42,7 @@ check-nodocs: extensions
 	set -e
 	# Generate a stream for PQM to watch.
 	-$(RM) -f selftest.log
-	$(PYTHON) -Werror -O ./bzr selftest --subunit $(tests) | tee selftest.log
+	$(PYTHON) -Werror -Wignore::ImportWarning -O ./bzr selftest --subunit $(tests) | tee selftest.log
 	# An empty log file should catch errors in the $(PYTHON)
 	# command above (the '|' swallow any errors since 'make'
 	# sees the 'tee' exit code for the whole line
