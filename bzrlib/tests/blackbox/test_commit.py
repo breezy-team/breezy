@@ -321,26 +321,6 @@ bzr: ERROR: No changes to commit.\
         tree.add('foo.c')
         self.run_bzr('commit -m ""', retcode=3)
 
-    def test_unsupported_encoding_commit_message(self):
-        if sys.platform == 'win32':
-            raise tests.TestNotApplicable('Win32 parses arguments directly'
-                ' as Unicode, so we can\'t pass invalid non-ascii')
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('foo.c', 'int main() {}')])
-        tree.add('foo.c')
-        # LANG env variable has no effect on Windows
-        # but some characters anyway cannot be represented
-        # in default user encoding
-        char = probe_bad_non_ascii(osutils.get_user_encoding())
-        if char is None:
-            raise TestSkipped('Cannot find suitable non-ascii character'
-                'for user_encoding (%s)' % osutils.get_user_encoding())
-        out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
-                                          retcode=1,
-                                          env_changes={'LANG': 'C'})
-        self.assertContainsRe(err, r'bzrlib.errors.BzrError: Parameter.*is '
-                                    'unsupported by the current encoding.')
-
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
         # inside a branch, or not.
