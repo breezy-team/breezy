@@ -27,8 +27,13 @@ Improvements
    or memory usage, or better results.
 
 * ``bzr merge`` in large trees is now significantly faster. On a 70k entry
-  tree, the time went from ~3min down to 30s.
-  (John Arbash Meinel, #759091)
+  tree, the time went from ~3min down to 30s. This also effects ``bzr pull``
+  and ``bzr update`` since they use the same merge logic to update the
+  WorkingTree.  (John Arbash Meinel, #759091)
+
+* ``bzr revert`` now properly uses ``bzr status``'s optimized
+  ``iter_changes``. This can be a significant performance difference (33s
+  to 5s on large trees). (John Arbash Meinel, #759096)
 
 * Resolve ``lp:FOO`` urls locally rather than doing an XMLRPC request if
   the user has done ``bzr launchpad-login``. The bzr+ssh URLs were already
