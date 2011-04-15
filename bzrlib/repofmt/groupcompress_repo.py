@@ -44,6 +44,7 @@ from bzrlib.groupcompress import (
     GroupCompressVersionedFiles,
     )
 from bzrlib.repofmt.pack_repo import (
+    _DirectPackAccess,
     Pack,
     NewPack,
     PackRepository,
@@ -354,8 +355,8 @@ class GCCHKPacker(Packer):
         """Build a VersionedFiles instance on top of this group of packs."""
         index_name = index_name + '_index'
         index_to_pack = {}
-        access = knit._DirectPackAccess(index_to_pack,
-                                        reload_func=self._reload_func)
+        access = _DirectPackAccess(index_to_pack,
+                                   reload_func=self._reload_func)
         if for_write:
             # Use new_pack
             if self.new_pack is None:
@@ -1108,40 +1109,6 @@ class CHKInventoryRepository(PackRepository):
             # CHK2 <-> 2a transfers will work.
             return GroupCHKStreamSource(self, to_format)
         return super(CHKInventoryRepository, self)._get_source(to_format)
-
-    def _find_inconsistent_revision_parents(self, revisions_iterator=None):
-        """Find revisions with different parent lists in the revision object
-        and in the index graph.
-
-        :param revisions_iterator: None, or an iterator of (revid,
-            Revision-or-None). This iterator controls the revisions checked.
-        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
-            parents-in-revision).
-        """
-        if not self.is_locked():
-            raise AssertionError()
-        vf = self.revisions
-        if revisions_iterator is None:
-            revisions_iterator = self._iter_revisions(None)
-        for revid, revision in revisions_iterator:
-            if revision is None:
-                pass
-            parent_map = vf.get_parent_map([(revid,)])
-            parents_according_to_index = tuple(parent[-1] for parent in
-                parent_map[(revid,)])
-            parents_according_to_revision = tuple(revision.parent_ids)
-            if parents_according_to_index != parents_according_to_revision:
-                yield (revid, parents_according_to_index,
-                    parents_according_to_revision)
-
-    def _check_for_inconsistent_revision_parents(self):
-        inconsistencies = list(self._find_inconsistent_revision_parents())
-        if inconsistencies:
-            raise errors.BzrCheckError(
-                "Revision index has inconsistent parents.")
-
-    def revision_graph_can_have_wrong_parents(self):
-        return True
 
 
 class GroupCHKStreamSource(StreamSource):

@@ -50,6 +50,7 @@ from bzrlib import (
     conflicts as _mod_conflicts,
     controldir,
     errors,
+    filters as _mod_filters,
     generate_ids,
     globbing,
     graph as _mod_graph,
@@ -92,7 +93,6 @@ from bzrlib.osutils import (
     splitpath,
     supports_executable,
     )
-from bzrlib.filters import filtered_input_file
 from bzrlib.trace import mutter, note
 from bzrlib.transport.local import LocalTransport
 from bzrlib.revision import CURRENT_REVISION
@@ -166,7 +166,7 @@ class TreeLink(TreeEntry):
         return ''
 
 
-class WorkingTree(bzrlib.mutabletree.MutableTree,
+class WorkingTree(bzrlib.mutabletree.MutableInventoryTree,
     controldir.ControlComponent):
     """Working copy tree.
 
@@ -523,7 +523,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         return self.get_file_with_stat(file_id, path, filtered=filtered)[0]
 
     def get_file_with_stat(self, file_id, path=None, filtered=True,
-        _fstat=os.fstat):
+                           _fstat=osutils.fstat):
         """See Tree.get_file_with_stat."""
         if path is None:
             path = self.id2path(file_id)
@@ -531,7 +531,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         stat_value = _fstat(file_obj.fileno())
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(path)
-            file_obj = filtered_input_file(file_obj, filters)
+            file_obj = _mod_filters.filtered_input_file(file_obj, filters)
         return (file_obj, stat_value)
 
     def get_file_text(self, file_id, path=None, filtered=True):
@@ -546,7 +546,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         f = file(path, 'rb')
         if filtered and self.supports_content_filtering():
             filters = self._content_filter_stack(filename)
-            return filtered_input_file(f, filters)
+            return _mod_filters.filtered_input_file(f, filters)
         else:
             return f
 
@@ -638,10 +638,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def get_root_id(self):
         """Return the id of this trees root"""
         return self._inventory.root.file_id
-
-    def _get_store_filename(self, file_id):
-        ## XXX: badly named; this is not in the store at all
-        return self.abspath(self.id2path(file_id))
 
     @needs_read_lock
     def clone(self, to_bzrdir, revision_id=None):

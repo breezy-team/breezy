@@ -188,11 +188,6 @@ class AllInOneRepository(Repository):
         """Returns the policy for making working trees on new branches."""
         return True
 
-    def revision_graph_can_have_wrong_parents(self):
-        # XXX: This is an old format that we don't support full checking on, so
-        # just claim that checking for this inconsistency is not required.
-        return False
-
 
 class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
     """A subclass of MetaDirRepository to set weave specific policy."""
@@ -263,9 +258,6 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
         return self.inventories.add_lines((revision_id,), final_parents, lines,
             check_content=check_content)[0]
 
-    def revision_graph_can_have_wrong_parents(self):
-        return False
-
 
 class PreSplitOutRepositoryFormat(RepositoryFormat):
     """Base class for the pre split out repository formats."""
@@ -280,6 +272,9 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     fast_deltas = False
     supports_leaving_lock = False
     supports_full_versioned_files = True
+    # XXX: This is an old format that we don't support full checking on, so
+    # just claim that checking for this inconsistency is not required.
+    revision_graph_can_have_wrong_parents = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -502,6 +497,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     supports_chks = False
     supports_funky_characters = False
     supports_full_versioned_files = True
+    revision_graph_can_have_wrong_parents = False
 
     _fetch_order = 'topological'
     _fetch_reconcile = True

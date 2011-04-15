@@ -2788,7 +2788,7 @@ class cmd_ignore(Command):
             bzr ignore "RE:(?!debian/).*"
         
         Ignore everything except the "local" toplevel directory,
-        but always ignore "*~" autosave files, even under local/::
+        but always ignore autosave files ending in ~, even under local/::
         
             bzr ignore "*"
             bzr ignore "!./local"
@@ -3106,32 +3106,7 @@ class cmd_commit(Command):
       to trigger updates to external systems like bug trackers. The --fixes
       option can be used to record the association between a revision and
       one or more bugs. See ``bzr help bugs`` for details.
-
-      A selective commit may fail in some cases where the committed
-      tree would be invalid. Consider::
-  
-        bzr init foo
-        mkdir foo/bar
-        bzr add foo/bar
-        bzr commit foo -m "committing foo"
-        bzr mv foo/bar foo/baz
-        mkdir foo/bar
-        bzr add foo/bar
-        bzr commit foo/bar -m "committing bar but not baz"
-  
-      In the example above, the last commit will fail by design. This gives
-      the user the opportunity to decide whether they want to commit the
-      rename at the same time, separately first, or not at all. (As a general
-      rule, when in doubt, Bazaar has a policy of Doing the Safe Thing.)
     """
-    # TODO: Run hooks on tree to-be-committed, and after commit.
-
-    # TODO: Strict commit that fails if there are deleted files.
-    #       (what does "deleted files" mean ??)
-
-    # TODO: Give better message for -s, --summary, used by tla people
-
-    # XXX: verbose currently does nothing
 
     _see_also = ['add', 'bugs', 'hooks', 'uncommit']
     takes_args = ['selected*']
@@ -3212,12 +3187,6 @@ class cmd_commit(Command):
             except ValueError, e:
                 raise errors.BzrCommandError(
                     "Could not parse --commit-time: " + str(e))
-
-        # TODO: Need a blackbox test for invoking the external editor; may be
-        # slightly problematic to run this cross-platform.
-
-        # TODO: do more checks that the commit will succeed before
-        # spending the user's valuable time typing a commit message.
 
         properties = {}
 
@@ -3304,7 +3273,8 @@ class cmd_commit(Command):
                         exclude=tree.safe_relpath_files(exclude))
         except PointlessCommit:
             raise errors.BzrCommandError("No changes to commit."
-                              " Use --unchanged to commit anyhow.")
+                " Please 'bzr add' the files you want to commit, or use"
+                " --unchanged to force an empty commit.")
         except ConflictsInTree:
             raise errors.BzrCommandError('Conflicts detected in working '
                 'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'

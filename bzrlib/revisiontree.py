@@ -25,7 +25,7 @@ from bzrlib import (
     )
 
 
-class RevisionTree(tree.Tree):
+class RevisionTree(tree.InventoryTree):
     """Tree viewing a previous revision.
 
     File text can be retrieved from the text store.

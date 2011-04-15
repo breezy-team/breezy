@@ -172,7 +172,7 @@ class Check(object):
         # - we can fill out existence flags at this point
         # - we can read the revision inventory sha at this point
         # - we can check properties and serialisers etc.
-        if not self.repository.revision_graph_can_have_wrong_parents():
+        if not self.repository._format.revision_graph_can_have_wrong_parents:
             # The check against the index isn't needed.
             self.revs_with_bad_parents_in_index = None
             for thing in revision_iterator:

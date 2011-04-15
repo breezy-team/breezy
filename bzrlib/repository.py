@@ -2765,16 +2765,36 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 except UnicodeDecodeError:
                     raise errors.NonAsciiRevisionId(method, self)
 
-    def revision_graph_can_have_wrong_parents(self):
-        """Is it possible for this repository to have a revision graph with
-        incorrect parents?
+    def _find_inconsistent_revision_parents(self, revisions_iterator=None):
+        """Find revisions with different parent lists in the revision object
+        and in the index graph.
 
-        If True, then this repository must also implement
-        _find_inconsistent_revision_parents so that check and reconcile can
-        check for inconsistencies before proceeding with other checks that may
-        depend on the revision index being consistent.
+        :param revisions_iterator: None, or an iterator of (revid,
+            Revision-or-None). This iterator controls the revisions checked.
+        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
+            parents-in-revision).
         """
-        raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
+        if not self.is_locked():
+            raise AssertionError()
+        vf = self.revisions
+        if revisions_iterator is None:
+            revisions_iterator = self._iter_revisions(None)
+        for revid, revision in revisions_iterator:
+            if revision is None:
+                pass
+            parent_map = vf.get_parent_map([(revid,)])
+            parents_according_to_index = tuple(parent[-1] for parent in
+                parent_map[(revid,)])
+            parents_according_to_revision = tuple(revision.parent_ids)
+            if parents_according_to_index != parents_according_to_revision:
+                yield (revid, parents_according_to_index,
+                    parents_according_to_revision)
+
+    def _check_for_inconsistent_revision_parents(self):
+        inconsistencies = list(self._find_inconsistent_revision_parents())
+        if inconsistencies:
+            raise errors.BzrCheckError(
+                "Revision knit has inconsistent parents.")
 
 
 def install_revision(repository, rev, revision_tree):
@@ -3017,6 +3037,10 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_leaving_lock = None
     # Does this format support the full VersionedFiles interface?
     supports_full_versioned_files = None
+    # Does this format support signing revision signatures?
+    supports_revision_signatures = True
+    # Can the revision graph have incorrect parents?
+    revision_graph_can_have_wrong_parents = None
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
