@@ -53,7 +53,7 @@ class TestExceptionReporting(TestCase):
         can run without worrying about the locale the test suite is using.
         """
         if os.name != "posix":
-            self.skip("Test specific to systems beholden to C locales")
+            raise tests.TestNotApplicable("Needs system beholden to C locales")
         out, err = self.run_bzr_subprocess(["\xa0"],
             env_changes={"LANG": "C"},
             universal_newlines=True,

@@ -96,8 +96,8 @@ def get_unicode_argv():
         user_encoding = get_user_encoding()
         return [a.decode(user_encoding) for a in sys.argv[1:]]
     except UnicodeDecodeError:
-        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
-                                                            "encoding." % a))
+        raise errors.BzrError("Parameter %r encoding is unsupported by the "
+            "application locale." % (a,))
 
 
 def make_readonly(filename):
