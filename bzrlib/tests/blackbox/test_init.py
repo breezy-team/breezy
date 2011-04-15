@@ -154,7 +154,7 @@ Using shared repository: %s
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
                             'init ../new/tree', working_dir='tree')
         self.run_bzr('init ../new/tree --create-prefix', working_dir='tree')
-        self.failUnlessExists('new/tree/.bzr')
+        self.assertPathExists('new/tree/.bzr')
 
     def test_init_default_format_option(self):
         """bzr init should read default format from option default_format"""

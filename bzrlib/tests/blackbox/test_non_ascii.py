@@ -222,8 +222,8 @@ class TestNonAscii(tests.TestCaseWithTransport):
 
         txt = self.run_bzr_decode(['mv', 'a', fname2])
         self.assertEqual(u'a => %s\n' % fname2, txt)
-        self.failIfExists('a')
-        self.failUnlessExists(fname2)
+        self.assertPathDoesNotExist('a')
+        self.assertPathExists(fname2)
 
         # After 'mv' we need to re-open the working tree
         self.wt = self.wt.bzrdir.open_workingtree()
@@ -240,7 +240,7 @@ class TestNonAscii(tests.TestCaseWithTransport):
         # The rename should still succeed
         newpath = u'%s/%s' % (dirname, fname2)
         txt = self.run_bzr_decode(['mv', newpath, 'a'], encoding='ascii')
-        self.failUnlessExists('a')
+        self.assertPathExists('a')
         self.assertEqual(newpath.encode('ascii', 'replace') + ' => a\n', txt)
 
     def test_branch(self):

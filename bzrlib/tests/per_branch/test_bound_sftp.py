@@ -94,8 +94,8 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
         # this line is more of a working tree test line, but - what the hey,
         # it has work to do.
         b_child.bzrdir.open_workingtree().update()
-        self.failUnlessExists('child/a')
-        self.failUnlessExists('child/b')
+        self.assertPathExists('child/a')
+        self.assertPathExists('child/b')
 
         b_child.unbind()
         self.assertEqual(None, b_child.get_bound_location())
@@ -297,7 +297,7 @@ class BoundSFTPBranch(tests.TestCaseWithTransport):
 
         wt_child.merge_from_branch(wt_other.branch)
 
-        self.failUnlessExists('child/c')
+        self.assertPathExists('child/c')
         self.assertEqual(['r@d-2'], wt_child.get_parent_ids()[1:])
         self.assertTrue(wt_child.branch.repository.has_revision('r@d-2'))
         self.assertFalse(b_base.repository.has_revision('r@d-2'))
