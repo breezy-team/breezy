@@ -283,6 +283,15 @@ class Tree(object):
         """
         return osutils.split_lines(self.get_file_text(file_id, path))
 
+    def get_file_sha1(self, file_id, path=None):
+        """Return the SHA1 file for a file.
+
+        :param file_id: The handle for this file.
+        :param path: The path that this file can be found at.
+            These must point to the same object.
+        """
+        raise NotImplementedError(self.get_file_sha1)
+
     def get_file_mtime(self, file_id, path=None):
         """Return the modification time for a file.
 
@@ -303,6 +312,15 @@ class Tree(object):
 
     def get_file_by_path(self, path):
         raise NotImplementedError(self.get_file_by_path)
+
+    def is_executable(self, file_id, path=None):
+        """Check if a file is executable.
+
+        :param file_id: The handle for this file.
+        :param path: The path that this file can be found at.
+            These must point to the same object.
+        """
+        raise NotImplementedError(self.is_executable)
 
     def iter_files_bytes(self, desired_files):
         """Iterate through file contents.
@@ -631,6 +649,9 @@ class InventoryTree(Tree):
 
     It is possible for trees to contain files that are not described
     in their inventory or vice versa; for this use `filenames()`.
+
+    Subclasses should set the _inventory attribute, which is considered
+    private to external API users.
     """
 
     def get_canonical_inventory_paths(self, paths):

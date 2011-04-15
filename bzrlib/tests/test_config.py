@@ -1264,55 +1264,52 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
         self.failUnless(isinstance(global_config, config.GlobalConfig))
         self.failUnless(global_config is my_config._get_global_config())
 
+    def assertLocationMatching(self, expected):
+        self.assertEqual(expected,
+                         list(self.my_location_config._get_matching_sections()))
+
     def test__get_matching_sections_no_match(self):
         self.get_branch_config('/')
-        self.assertEqual([], self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([])
 
     def test__get_matching_sections_exact(self):
         self.get_branch_config('http://www.example.com')
-        self.assertEqual([('http://www.example.com', '')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('http://www.example.com', '')])
 
     def test__get_matching_sections_suffix_does_not(self):
         self.get_branch_config('http://www.example.com-com')
-        self.assertEqual([], self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([])
 
     def test__get_matching_sections_subdir_recursive(self):
         self.get_branch_config('http://www.example.com/com')
-        self.assertEqual([('http://www.example.com', 'com')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('http://www.example.com', 'com')])
 
     def test__get_matching_sections_ignoreparent(self):
         self.get_branch_config('http://www.example.com/ignoreparent')
-        self.assertEqual([('http://www.example.com/ignoreparent', '')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('http://www.example.com/ignoreparent',
+                                      '')])
 
     def test__get_matching_sections_ignoreparent_subdir(self):
         self.get_branch_config(
             'http://www.example.com/ignoreparent/childbranch')
-        self.assertEqual([('http://www.example.com/ignoreparent',
-                           'childbranch')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('http://www.example.com/ignoreparent',
+                                      'childbranch')])
 
     def test__get_matching_sections_subdir_trailing_slash(self):
         self.get_branch_config('/b')
-        self.assertEqual([('/b/', '')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('/b/', '')])
 
     def test__get_matching_sections_subdir_child(self):
         self.get_branch_config('/a/foo')
-        self.assertEqual([('/a/*', ''), ('/a/', 'foo')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('/a/*', ''), ('/a/', 'foo')])
 
     def test__get_matching_sections_subdir_child_child(self):
         self.get_branch_config('/a/foo/bar')
-        self.assertEqual([('/a/*', 'bar'), ('/a/', 'foo/bar')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('/a/*', 'bar'), ('/a/', 'foo/bar')])
 
     def test__get_matching_sections_trailing_slash_with_children(self):
         self.get_branch_config('/a/')
-        self.assertEqual([('/a/', '')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('/a/', '')])
 
     def test__get_matching_sections_explicit_over_glob(self):
         # XXX: 2006-09-08 jamesh
@@ -1320,8 +1317,7 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
         # was a config section for '/a/?', it would get precedence
         # over '/a/c'.
         self.get_branch_config('/a/c')
-        self.assertEqual([('/a/c', ''), ('/a/*', ''), ('/a/', 'c')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('/a/c', ''), ('/a/*', ''), ('/a/', 'c')])
 
     def test__get_option_policy_normal(self):
         self.get_branch_config('http://www.example.com')

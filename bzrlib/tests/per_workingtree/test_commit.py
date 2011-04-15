@@ -25,6 +25,7 @@ from bzrlib import (
     mutabletree,
     osutils,
     revision as _mod_revision,
+    tests,
     ui,
     )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
@@ -146,8 +147,12 @@ class TestCommit(TestCaseWithWorkingTree):
         wt2 = wt.bzrdir.sprout('to').open_workingtree()
         wt2.commit('change_right')
         wt.merge_from_branch(wt2.branch)
-        self.assertRaises(errors.CannotCommitSelectedFileMerge,
-            wt.commit, 'test', exclude=['foo'])
+        try:
+            self.assertRaises(errors.CannotCommitSelectedFileMerge,
+                wt.commit, 'test', exclude=['foo'])
+        except errors.ExcludesUnsupported:
+            raise tests.TestNotApplicable("excludes not supported by this "
+                "repository format")
 
     def test_commit_exclude_exclude_changed_is_pointless(self):
         tree = self.make_branch_and_tree('.')
@@ -155,14 +160,22 @@ class TestCommit(TestCaseWithWorkingTree):
         tree.smart_add(['.'])
         tree.commit('setup test')
         self.build_tree_contents([('a', 'new contents for "a"\n')])
-        self.assertRaises(errors.PointlessCommit, tree.commit, 'test',
-            exclude=['a'], allow_pointless=False)
+        try:
+            self.assertRaises(errors.PointlessCommit, tree.commit, 'test',
+                exclude=['a'], allow_pointless=False)
+        except errors.ExcludesUnsupported:
+            raise tests.TestNotApplicable("excludes not supported by this "
+                "repository format")
 
     def test_commit_exclude_excludes_modified_files(self):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b', 'c'])
         tree.smart_add(['.'])
-        tree.commit('test', exclude=['b', 'c'])
+        try:
+            tree.commit('test', exclude=['b', 'c'])
+        except errors.ExcludesUnsupported:
+            raise tests.TestNotApplicable("excludes not supported by this "
+                "repository format")
         # If b was excluded it will still be 'added' in status.
         tree.lock_read()
         self.addCleanup(tree.unlock)
@@ -175,7 +188,11 @@ class TestCommit(TestCaseWithWorkingTree):
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a/', 'a/b'])
         tree.smart_add(['.'])
-        tree.commit('test', specific_files=['a'], exclude=['a/b'])
+        try:
+            tree.commit('test', specific_files=['a'], exclude=['a/b'])
+        except errors.ExcludesUnsupported:
+            raise tests.TestNotApplicable("excludes not supported by this "
+                "repository format")
         # If a/b was excluded it will still be 'added' in status.
         tree.lock_read()
         self.addCleanup(tree.unlock)
