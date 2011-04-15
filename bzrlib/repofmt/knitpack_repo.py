@@ -59,7 +59,7 @@ from bzrlib.repository import (
     )
 
 
-class KnitPackRepository(PackRepository,KnitRepository):
+class KnitPackRepository(PackRepository, KnitRepository):
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
