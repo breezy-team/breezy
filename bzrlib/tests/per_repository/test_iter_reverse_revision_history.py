@@ -18,7 +18,6 @@
 
 from bzrlib import (
     errors,
-    osutils,
     tests,
     )
 from bzrlib.tests.per_repository import TestCaseWithRepository

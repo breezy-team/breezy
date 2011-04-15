@@ -71,7 +71,7 @@ from bzrlib.repository import (
     )
 
 
-class KnitPackRepository(PackRepository,KnitRepository):
+class KnitPackRepository(PackRepository, KnitRepository):
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
@@ -87,7 +87,7 @@ class KnitPackRepository(PackRepository,KnitRepository):
             self._transport.clone('packs'),
             _format.index_builder_class,
             _format.index_class,
-            use_chk_index=self._format.supports_chks,
+            use_chk_index=False,
             )
         self.inventories = KnitVersionedFiles(
             _KnitGraphIndex(self._pack_collection.inventory_index.combined_index,
@@ -855,28 +855,6 @@ class KnitPacker(Packer):
             self.new_pack.text_index, readv_group_iter, total_items))
         self._log_copied_texts()
 
-    def _copy_chks(self, refs=None):
-        # XXX: Todo, recursive follow-pointers facility when fetching some
-        # revisions only.
-        chk_index_map, chk_indices = self._pack_map_and_index_list(
-            'chk_index')
-        chk_nodes = self._index_contents(chk_indices, refs)
-        new_refs = set()
-        # TODO: This isn't strictly tasteful as we are accessing some private
-        #       variables (_serializer). Perhaps a better way would be to have
-        #       Repository._deserialise_chk_node()
-        search_key_func = chk_map.search_key_registry.get(
-            self._pack_collection.repo._serializer.search_key_name)
-        def accumlate_refs(lines):
-            # XXX: move to a generic location
-            # Yay mismatch:
-            bytes = ''.join(lines)
-            node = chk_map._deserialise(bytes, ("unknown",), search_key_func)
-            new_refs.update(node.refs())
-        self._copy_nodes(chk_nodes, chk_index_map, self.new_pack._writer,
-            self.new_pack.chk_index, output_lines=accumlate_refs)
-        return new_refs
-
     def _create_pack_from_packs(self):
         self.pb.update("Opening pack", 0, 5)
         self.new_pack = self.open_pack()
@@ -913,17 +891,6 @@ class KnitPacker(Packer):
                 time.ctime(), self._pack_collection._upload_transport.base, new_pack.random_name,
                 new_pack.signature_index.key_count(),
                 time.time() - new_pack.start_time)
-        # copy chk contents
-        # NB XXX: how to check CHK references are present? perhaps by yielding
-        # the items? How should that interact with stacked repos?
-        if new_pack.chk_index is not None:
-            self._copy_chks()
-            if 'pack' in debug.debug_flags:
-                trace.mutter('%s: create_pack: chk content copied: %s%s %d items t+%6.3fs',
-                    time.ctime(), self._pack_collection._upload_transport.base,
-                    new_pack.random_name,
-                    new_pack.chk_index.key_count(),
-                    time.time() - new_pack.start_time)
         new_pack._check_references()
         if not self._use_pack(new_pack):
             new_pack.abort()

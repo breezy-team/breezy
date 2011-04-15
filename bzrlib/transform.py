@@ -1932,7 +1932,7 @@ class TransformPreview(DiskTreeTransform):
         raise NotImplementedError(self.new_orphan)
 
 
-class _PreviewTree(tree.Tree):
+class _PreviewTree(tree.InventoryTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
     def __init__(self, transform):
@@ -2541,7 +2541,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     executable = tree.is_executable(file_id, tree_path)
                     if executable:
                         tt.set_executability(executable, trans_id)
-                    trans_data = (trans_id, tree_path)
+                    trans_data = (trans_id, tree_path, entry.text_sha1)
                     deferred_contents.append((file_id, trans_data))
                 else:
                     file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
@@ -2592,10 +2592,11 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         unchanged = dict(unchanged)
         new_desired_files = []
         count = 0
-        for file_id, (trans_id, tree_path) in desired_files:
+        for file_id, (trans_id, tree_path, text_sha1) in desired_files:
             accelerator_path = unchanged.get(file_id)
             if accelerator_path is None:
-                new_desired_files.append((file_id, (trans_id, tree_path)))
+                new_desired_files.append((file_id,
+                    (trans_id, tree_path, text_sha1)))
                 continue
             pb.update('Adding file contents', count + offset, total)
             if hardlink:
@@ -2608,7 +2609,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                     contents = filtered_output_bytes(contents, filters,
                         ContentFilterContext(tree_path, tree))
                 try:
-                    tt.create_file(contents, trans_id)
+                    tt.create_file(contents, trans_id, sha1=text_sha1)
                 finally:
                     try:
                         contents.close()
@@ -2617,13 +2618,13 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                         pass
             count += 1
         offset += count
-    for count, ((trans_id, tree_path), contents) in enumerate(
+    for count, ((trans_id, tree_path, text_sha1), contents) in enumerate(
             tree.iter_files_bytes(new_desired_files)):
         if wt.supports_content_filtering():
             filters = wt._content_filter_stack(tree_path)
             contents = filtered_output_bytes(contents, filters,
                 ContentFilterContext(tree_path, tree))
-        tt.create_file(contents, trans_id)
+        tt.create_file(contents, trans_id, sha1=text_sha1)
         pb.update('Adding file contents', count + offset, total)
 
 
@@ -3038,7 +3039,8 @@ def conflict_pass(tt, conflicts, path_tree=None):
                         file_id = tt.final_file_id(trans_id)
                         if file_id is None:
                             file_id = tt.inactive_file_id(trans_id)
-                        entry = path_tree.inventory[file_id]
+                        _, entry = path_tree.iter_entries_by_dir(
+                            [file_id]).next()
                         # special-case the other tree root (move its
                         # children to current root)
                         if entry.parent_id is None:

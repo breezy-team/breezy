@@ -911,7 +911,7 @@ class Merge3Merger(object):
         """
         result = []
         iterator = self.other_tree.iter_changes(self.base_tree,
-                include_unchanged=True, specific_files=self.interesting_files,
+                specific_files=self.interesting_files,
                 extra_trees=[self.this_tree])
         this_entries = dict((e.file_id, e) for p, e in
                             self.this_tree.iter_entries_by_dir(
@@ -1126,7 +1126,7 @@ class Merge3Merger(object):
         # 'other_tree.inventory.root' is not present in this tree. We are
         # calling adjust_path for children which *want* to be present with a
         # correct place to go.
-        for thing, child in self.other_tree.inventory.root.children.iteritems():
+        for _, child in self.other_tree.inventory.root.children.iteritems():
             trans_id = self.tt.trans_id_file_id(child.file_id)
             if not other_root_is_present:
                 if self.tt.final_kind(trans_id) is not None:
@@ -1134,8 +1134,12 @@ class Merge3Merger(object):
                     # to go already.
                     continue
             # Move the item into the root
-            self.tt.adjust_path(self.tt.final_name(trans_id),
-                                self.tt.root, trans_id)
+            try:
+                final_name = self.tt.final_name(trans_id)
+            except errors.NoFinalPath:
+                # This file is not present anymore, ignore it.
+                continue
+            self.tt.adjust_path(final_name, self.tt.root, trans_id)
         if other_root_is_present:
             self.tt.cancel_creation(other_root)
             self.tt.cancel_versioning(other_root)

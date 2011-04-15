@@ -58,6 +58,11 @@ Bug Fixes
   had changed.  Bazaar was attempting to open and lock the master branch
   twice in this case.  (Andrew Bennetts, #733350)
 
+* Standalone bzr.exe installation on Windows: user can put additional python 
+  libraries into ``site-packages`` subdirectory of the installation directory,
+  this might be required for "installing" extra dependencies for some plugins.
+  (Alexander Belchenko, #743256)
+
 * When reporting a crash without apport, don't print the full list of
   plugins because it's often too long.
   (Martin Pool, #716389)
