@@ -92,6 +92,9 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._rules_searcher = None
         self._detect_case_handling()
 
+    def get_root_id(self):
+        return self.mapping.generate_file_id("")
+
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
         """
@@ -156,6 +159,14 @@ class GitWorkingTree(workingtree.WorkingTree):
         self.index.write()
         self._inventory_is_modified = False
 
+    def __iter__(self):
+        # FIXME: Custom implementation that doesn't require working tree
+        return iter(self._bzr_inventory)
+
+    def id2path(self, file_id):
+        # FIXME
+        return self._bzr_inventory.id2path(file_id)
+
     def get_ignore_list(self):
         ignoreset = getattr(self, '_ignoreset', None)
         if ignoreset is not None:
@@ -191,7 +202,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             fileid_map = self.mapping.get_fileid_map(store.__getitem__,
                 store[head].tree)
         result = GitIndexInventory(basis_inv, fileid_map, self.index, store)
-        self._set_inventory(result, dirty=False)
+        self._bzr_inventory = result
 
     @needs_read_lock
     def get_file_sha1(self, file_id, path=None, stat_value=None):
