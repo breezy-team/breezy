@@ -105,6 +105,11 @@ API Changes
   on ``RepositoryFormat`` rather than a method on ``Repository``.
   (Jelmer Vernooij)
 
+* ``TestCase.failUnlessExists`` and ``failIfExists`` are deprecated in
+  favour of ``assertPathExists`` and ``assertPathDoesNotExist`` 
+  respectively.
+  (Martin Pool)
+
 * The ``revno`` parameter of ``log.LogRevision`` may now be None,
   representing a revision which is not in the current branch.
   (Matt Giuca, #241998)
