@@ -148,7 +148,7 @@ class AllInOneRepository(Repository):
                            revision_id=None, lossy=False):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
         result = CommitBuilder(self, parents, config, timestamp, timezone,
-                              committer, revprops, revision_id, lossy=False)
+                              committer, revprops, revision_id, lossy=lossy)
         self.start_write_group()
         return result
 
@@ -234,10 +234,10 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
-                           revision_id=None):
+                           revision_id=None, lossy=False):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
         result = CommitBuilder(self, parents, config, timestamp, timezone,
-                              committer, revprops, revision_id)
+                              committer, revprops, revision_id, lossy=lossy)
         self.start_write_group()
         return result
 
