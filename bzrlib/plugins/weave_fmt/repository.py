@@ -145,10 +145,10 @@ class AllInOneRepository(Repository):
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
-                           revision_id=None):
+                           revision_id=None, lossy=False):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
         result = CommitBuilder(self, parents, config, timestamp, timezone,
-                              committer, revprops, revision_id)
+                              committer, revprops, revision_id, lossy=False)
         self.start_write_group()
         return result
 
