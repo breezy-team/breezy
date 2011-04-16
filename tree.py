@@ -17,6 +17,9 @@
 
 """Git Trees."""
 
+from dulwich.object_store import tree_lookup_path
+import stat
+
 from bzrlib import (
     delta,
     errors,
@@ -24,9 +27,6 @@ from bzrlib import (
     tree,
     )
 
-from bzrlib.plugins.git.inventory import (
-    GitInventory,
-    )
 from bzrlib.plugins.git.mapping import (
     mode_is_executable,
     mode_kind,
@@ -39,17 +39,21 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def __init__(self, repository, revision_id):
         self._revision_id = revision_id
         self._repository = repository
-        store = repository._git.object_store
+        self.store = repository._git.object_store
         assert isinstance(revision_id, str)
         git_id, self.mapping = repository.lookup_bzr_revision_id(revision_id)
         try:
-            commit = store[git_id]
+            commit = self.store[git_id]
         except KeyError, r:
             raise errors.NoSuchRevision(repository, revision_id)
         self.tree = commit.tree
-        fileid_map = self.mapping.get_fileid_map(store.__getitem__, self.tree)
-        self._inventory = GitInventory(self.tree, self.mapping, fileid_map,
-            store, revision_id)
+        self.fileid_map = self.mapping.get_fileid_map(self.store.__getitem__, self.tree)
+
+    def id2path(self, file_id):
+        return self.fileid_map.lookup_path(file_id)
+
+    def path2id(self, path):
+        return self.fileid_map.lookup_file_id(path.encode('utf-8'))
 
     def get_revision_id(self):
         """See RevisionTree.get_revision_id."""
@@ -57,13 +61,13 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def get_file_text(self, file_id, path=None):
         """See RevisionTree.get_file_text."""
-        if path is not None:
-            entry = self._inventory._get_ie(path)
+        if path is None:
+            path = self.id2path(file_id)
+        (mode, hexsha)= tree_lookup_path(self.store.__getitem__, self.tree, path)
+        if stat.S_ISREG(mode):
+            return self.store[hexsha].data
         else:
-            entry = self._inventory[file_id]
-        if entry.kind in ('directory', 'tree-reference'):
             return ""
-        return entry.object.data
 
 
 def tree_delta_from_git_changes(changes, mapping,
