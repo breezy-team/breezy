@@ -59,11 +59,11 @@ from bzrlib.repository import (
     )
 
 
-class KnitPackRepository(PackRepository):
+class KnitPackRepository(PackRepository, KnitRepository):
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
-        KnitRepository.__init__(self, _format, a_bzrdir, control_files,
+        PackRepository.__init__(self, _format, a_bzrdir, control_files,
             _commit_builder_class, _serializer)
         if self._format.supports_chks:
             raise AssertionError("chk not supported")

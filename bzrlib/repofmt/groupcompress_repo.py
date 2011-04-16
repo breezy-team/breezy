@@ -606,10 +606,10 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
     def __init__(self, *args, **kwargs):
         super(GCCHKCanonicalizingPacker, self).__init__(*args, **kwargs)
         self._data_changed = False
-    
+
     def _exhaust_stream(self, source_vf, keys, message, vf_to_stream, pb_offset):
         """Create and exhaust a stream, but don't insert it.
-        
+
         This is useful to get the side-effects of generating a stream.
         """
         self.pb.update('scanning %s' % (message,), pb_offset)
