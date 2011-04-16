@@ -137,7 +137,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
             format.initialize(dir)
             t = transport.get_transport(url)
             found_format = repository.RepositoryFormat.find_format(dir)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(repository.format_registry.get_default(), "bar")
 
     def test_find_format_no_repository(self):

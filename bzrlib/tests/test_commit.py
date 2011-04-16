@@ -28,7 +28,11 @@ from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
 from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed,
                            LockContention)
-from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
+from bzrlib.tests import (
+    SymlinkFeature,
+    TestCaseWithTransport,
+    test_foreign,
+    )
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -102,6 +106,27 @@ class TestCommit(TestCaseWithTransport):
         text = tree2.get_file_text(file_id)
         tree2.unlock()
         self.assertEqual('version 2', text)
+
+    def test_commit_lossy_native(self):
+        """Attempt a lossy commit to a native branch."""
+        wt = self.make_branch_and_tree('.')
+        b = wt.branch
+        file('hello', 'w').write('hello world')
+        wt.add('hello')
+        revid = wt.commit(message='add hello', rev_id='revid', lossy=True)
+        self.assertEquals('revid', revid)
+
+    def test_commit_lossy_foreign(self):
+        """Attempt a lossy commit to a foreign branch."""
+        test_foreign.register_dummy_foreign_for_test(self)
+        wt = self.make_branch_and_tree('.',
+            format=test_foreign.DummyForeignVcsDirFormat())
+        b = wt.branch
+        file('hello', 'w').write('hello world')
+        wt.add('hello')
+        revid = wt.commit(message='add hello', lossy=True,
+            timestamp=1302659388, timezone=0)
+        self.assertEquals('dummy-v1:1302659388.0-0-UNKNOWN', revid)
 
     def test_missing_commit(self):
         """Test a commit with a missing file"""
@@ -349,7 +374,6 @@ class TestCommit(TestCaseWithTransport):
     def test_strict_commit_without_unknowns(self):
         """Try and commit with no unknown files and strict = True,
         should work."""
-        from bzrlib.errors import StrictCommitFailed
         wt = self.make_branch_and_tree('.')
         b = wt.branch
         file('hello', 'w').write('hello world')
@@ -381,7 +405,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.has_signature_for_revision_id('A'))
+        self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
@@ -405,9 +429,8 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.has_signature_for_revision_id('A'))
+        self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
-            from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.DisabledGPGStrategy
             config = MustSignConfig(branch)
@@ -419,7 +442,7 @@ class TestCommit(TestCaseWithTransport):
                               working_tree=wt)
             branch = Branch.open(self.get_url('.'))
             self.assertEqual(branch.revision_history(), ['A'])
-            self.failIf(branch.repository.has_revision('B'))
+            self.assertFalse(branch.repository.has_revision('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 

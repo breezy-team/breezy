@@ -699,7 +699,7 @@ class Branch(controldir.ControlComponent):
 
     def get_commit_builder(self, parents, config=None, timestamp=None,
                            timezone=None, committer=None, revprops=None,
-                           revision_id=None):
+                           revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this branch.
 
         :param parents: Revision ids of the parents of the new revision.
@@ -709,13 +709,16 @@ class Branch(controldir.ControlComponent):
         :param committer: Optional committer to set for commit.
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
+        :param lossy: Whether to discard data that can not be natively
+            represented, when pushing to a foreign VCS 
         """
 
         if config is None:
             config = self.get_config()
 
         return self.repository.get_commit_builder(self, parents, config,
-            timestamp, timezone, committer, revprops, revision_id)
+            timestamp, timezone, committer, revprops, revision_id,
+            lossy)
 
     def get_master_branch(self, possible_transports=None):
         """Return the branch we are bound to.

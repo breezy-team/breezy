@@ -20,6 +20,10 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* ``bzr commit`` now supports a ``--lossy`` argument that can be used
+  to discard any data that can not be natively represented when committing
+  to a foreign VCS. (Jelmer Vernooij, #587721)
+
 Improvements
 ************
 
@@ -119,6 +123,11 @@ API Changes
   on ``RepositoryFormat`` rather than a method on ``Repository``.
   (Jelmer Vernooij)
 
+* ``TestCase.failUnlessExists`` and ``failIfExists`` are deprecated in
+  favour of ``assertPathExists`` and ``assertPathDoesNotExist`` 
+  respectively.
+  (Martin Pool)
+
 * The ``revno`` parameter of ``log.LogRevision`` may now be None,
   representing a revision which is not in the current branch.
   (Matt Giuca, #241998)
@@ -126,6 +135,11 @@ API Changes
 * The various knit pack repository format classes have been moved
   from ``bzrlib.repofmt.pack_repo`` to
   ``bzrlib.repofmt.knitpack_repo``. (Jelmer Vernooij)
+
+* ``WorkingTree`` no longer provides an ``inventory``. Instead,
+  all inventory-related functionality is now on the subclass
+  ``InventoryWorkingTree`` that all native Bazaar working tree
+  implementations derive from. (Jelmer Vernooij)
 
 Internals
 *********
@@ -149,6 +163,10 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* Stop using `failIf`, `failUnless`, `failIfEqual`, etc, that give
+  `PendingDeprecationWarnings` on Python2.7. 
+  (Martin Pool, #760435)
 
 
 bzr 2.4b1
