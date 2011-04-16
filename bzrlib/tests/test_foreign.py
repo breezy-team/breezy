@@ -100,6 +100,22 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         branch.BzrBranch6.__init__(self, _format, _control_files, a_bzrdir,
             *args, **kwargs)
 
+    def _get_checkout_format(self):
+        """Return the most suitable metadir for a checkout of this branch.
+        Weaves are used if this branch's repository uses weaves.
+        """
+        return self.bzrdir.checkout_metadir()
+
+    def import_last_revision_info_and_tags(self, source, revno, revid,
+                                           lossy=False):
+        interbranch = InterToDummyVcsBranch(source, self)
+        if lossy:
+            result = interbranch.lossy_push(revid)
+            revid = result.revidmap[revid]
+        else:
+            interbranch.push(revid)
+        return (revno, revid)
+
 
 class DummyForeignCommitBuilder(repository.RootCommitBuilder):
 
@@ -108,6 +124,8 @@ class DummyForeignCommitBuilder(repository.RootCommitBuilder):
         if self._lossy:
             self._new_revision_id = mapping.revision_id_foreign_to_bzr(
                 (str(self._timestamp), str(self._timezone), "UNKNOWN"))
+            self.random_revid = False
+        elif self._new_revision_id is not None:
             self.random_revid = False
         else:
             self._new_revision_id = self._gen_revision_id()
@@ -150,7 +168,10 @@ class InterToDummyVcsBranch(branch.GenericInterBranch,
         try:
             # This just handles simple cases, but that's good enough for tests
             my_history = self.target.revision_history()
-            their_history = self.source.revision_history()
+            if stop_revision is None:
+                stop_revision = self.source.last_revision()
+            their_history = list(self.source.repository.iter_reverse_revision_history(stop_revision))
+            their_history.reverse()
             if their_history[:min(len(my_history), len(their_history))] != my_history:
                 raise errors.DivergedBranches(self.target, self.source)
             todo = their_history[len(my_history):]
@@ -206,7 +227,8 @@ class DummyForeignVcsBranchFormat(branch.BzrBranchFormat6):
         super(DummyForeignVcsBranchFormat, self).__init__()
         self._matchingbzrdir = DummyForeignVcsDirFormat()
 
-    def open(self, a_bzrdir, name=None, _found=False, found_repository=None):
+    def open(self, a_bzrdir, name=None, _found=False, ignore_fallbacks=False,
+            found_repository=None):
         if not _found:
             raise NotImplementedError
         try:
@@ -291,6 +313,9 @@ class DummyForeignVcsDir(bzrdir.BzrDirMeta1):
         """Produce a metadir suitable for cloning with."""
         return bzrdir.format_registry.make_bzrdir("default")
 
+    def checkout_metadir(self):
+        return self.cloning_metadir()
+
     def sprout(self, url, revision_id=None, force_new_repo=False,
                recurse='down', possible_transports=None,
                accelerator_tree=None, hardlink=False, stacked=False,
@@ -310,6 +335,9 @@ def register_dummy_foreign_for_test(testcase):
     repository.format_registry.register(DummyForeignVcsRepositoryFormat())
     testcase.addCleanup(repository.format_registry.remove,
             DummyForeignVcsRepositoryFormat())
+    branch.format_registry.register(DummyForeignVcsBranchFormat())
+    testcase.addCleanup(branch.format_registry.remove,
+            DummyForeignVcsBranchFormat())
     # We need to register the optimiser to make the dummy appears really
     # different from a regular bzr repository.
     branch.InterBranch.register_optimiser(InterToDummyVcsBranch)
