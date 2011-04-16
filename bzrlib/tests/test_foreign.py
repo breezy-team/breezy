@@ -110,7 +110,7 @@ class DummyForeignCommitBuilder(repository.RootCommitBuilder):
                 (str(self._timestamp), str(self._timezone), "UNKNOWN"))
             self.random_revid = False
         else:
-            self._new_revision_id = None
+            self._new_revision_id = self._gen_revision_id()
             self.random_revid = True
 
 
