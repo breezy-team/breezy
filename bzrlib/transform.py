@@ -3039,7 +3039,8 @@ def conflict_pass(tt, conflicts, path_tree=None):
                         file_id = tt.final_file_id(trans_id)
                         if file_id is None:
                             file_id = tt.inactive_file_id(trans_id)
-                        entry = path_tree.inventory[file_id]
+                        _, entry = path_tree.iter_entries_by_dir(
+                            [file_id]).next()
                         # special-case the other tree root (move its
                         # children to current root)
                         if entry.parent_id is None:

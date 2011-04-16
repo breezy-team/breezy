@@ -405,7 +405,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.has_signature_for_revision_id('A'))
+        self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
@@ -429,7 +429,7 @@ class TestCommit(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         branch = wt.branch
         wt.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.has_signature_for_revision_id('A'))
+        self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
             # monkey patch gpg signing mechanism
             bzrlib.gpg.GPGStrategy = bzrlib.gpg.DisabledGPGStrategy
@@ -442,7 +442,7 @@ class TestCommit(TestCaseWithTransport):
                               working_tree=wt)
             branch = Branch.open(self.get_url('.'))
             self.assertEqual(branch.revision_history(), ['A'])
-            self.failIf(branch.repository.has_revision('B'))
+            self.assertFalse(branch.repository.has_revision('B'))
         finally:
             bzrlib.gpg.GPGStrategy = oldstrategy
 

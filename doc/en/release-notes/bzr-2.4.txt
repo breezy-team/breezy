@@ -30,11 +30,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* When building a new WorkingTree (such as during ``bzr co`` or
-  ``bzr branch``) we now properly store the stat and hash of files that
-  are old enough. This saves a fair amount of time on the first
-  ``bzr status`` (on a 500MB tree, it saves about 30+s).
-  (John Arbash Meinel, #740932)
+* ``bzr merge`` in large trees is now significantly faster. On a 70k entry
+  tree, the time went from ~3min down to 30s.
+  (John Arbash Meinel, #759091)
 
 * Resolve ``lp:FOO`` urls locally rather than doing an XMLRPC request if
   the user has done ``bzr launchpad-login``. The bzr+ssh URLs were already
@@ -45,6 +43,13 @@ Improvements
   time. From Netherlands to London it was taking 368ms to do the XMLRPC
   call as much as 2s from Sydney. You can test the local logic by using
   ``-Dlaunchpad``.  (John Arbash Meinel, #397739)
+
+* When building a new WorkingTree (such as during ``bzr co`` or
+  ``bzr branch``) we now properly store the stat and hash of files that
+  are old enough. This saves a fair amount of time on the first
+  ``bzr status`` (on a 500MB tree, it saves about 30+s).
+  (John Arbash Meinel, #740932)
+
 
 Bug Fixes
 *********
@@ -61,6 +66,15 @@ Bug Fixes
   (Matt Giuca, #241998)
 
 * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
+
+* ``bzrlib.merge.Merge`` now calls ``iter_changes`` without
+  ``include_unversioned=True``. This makes it significantly faster in many
+  cases, because it only looks at modified files, rather than building
+  information about all files. This can cause failures in other
+  TreeTransform code, because it had been expecting to know the names of
+  things which had not changed (such as parent directories). All cases we
+  know about so far have been fixed, but there may be fallout for edge
+  cases that we are missing. (John Arbash Meinel, #759091)
 
 * Standalone bzr.exe installation on Windows: user can put additional python 
   libraries into ``site-packages`` subdirectory of the installation directory,
@@ -109,6 +123,11 @@ API Changes
   on ``RepositoryFormat`` rather than a method on ``Repository``.
   (Jelmer Vernooij)
 
+* ``TestCase.failUnlessExists`` and ``failIfExists`` are deprecated in
+  favour of ``assertPathExists`` and ``assertPathDoesNotExist`` 
+  respectively.
+  (Martin Pool)
+
 * The ``revno`` parameter of ``log.LogRevision`` may now be None,
   representing a revision which is not in the current branch.
   (Matt Giuca, #241998)
@@ -116,6 +135,11 @@ API Changes
 * The various knit pack repository format classes have been moved
   from ``bzrlib.repofmt.pack_repo`` to
   ``bzrlib.repofmt.knitpack_repo``. (Jelmer Vernooij)
+
+* ``WorkingTree`` no longer provides an ``inventory``. Instead,
+  all inventory-related functionality is now on the subclass
+  ``InventoryWorkingTree`` that all native Bazaar working tree
+  implementations derive from. (Jelmer Vernooij)
 
 Internals
 *********
@@ -139,6 +163,10 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* Stop using `failIf`, `failUnless`, `failIfEqual`, etc, that give
+  `PendingDeprecationWarnings` on Python2.7. 
+  (Martin Pool, #760435)
 
 
 bzr 2.4b1

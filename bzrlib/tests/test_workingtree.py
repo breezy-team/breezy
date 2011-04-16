@@ -156,7 +156,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             format.initialize(dir)
             t = transport.get_transport(url)
             found_format = workingtree.WorkingTreeFormat.find_format(dir)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(workingtree.WorkingTreeFormat3(), "bar")
 
     def test_find_format_no_tree(self):
@@ -373,7 +373,7 @@ class TestAutoResolve(TestCaseWithTransport):
         self.build_tree_contents([('other/hello', 'hELLO')])
         other.commit('Case switch')
         this = base.bzrdir.sprout('this').open_workingtree()
-        self.failUnlessExists('this/hello')
+        self.assertPathExists('this/hello')
         self.build_tree_contents([('this/hello', 'Hello World')])
         this.commit('Add World')
         this.merge_from_branch(other.branch)
@@ -400,7 +400,7 @@ class TestAutoResolve(TestCaseWithTransport):
         self.assertEqual([], this.conflicts())
         self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          resolved)
-        self.failIfExists('this/hello.BASE')
+        self.assertPathDoesNotExist('this/hello.BASE')
 
     def test_auto_resolve_dir(self):
         tree = self.make_branch_and_tree('tree')
