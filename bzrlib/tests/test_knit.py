@@ -40,14 +40,16 @@ from bzrlib.knit import (
     KnitVersionedFiles,
     PlainKnitContent,
     _VFContentMapGenerator,
-    _DirectPackAccess,
     _KndxIndex,
     _KnitGraphIndex,
     _KnitKeyAccess,
     make_file_factory,
     )
 from bzrlib.patiencediff import PatienceSequenceMatcher
-from bzrlib.repofmt import knitpack_repo
+from bzrlib.repofmt import (
+    knitpack_repo,
+    pack_repo,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithMemoryTransport,
