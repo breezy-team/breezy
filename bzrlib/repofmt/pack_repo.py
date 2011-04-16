@@ -80,10 +80,10 @@ class PackCommitBuilder(CommitBuilder):
 
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
-                 revision_id=None):
+                 revision_id=None, lossy=False):
         CommitBuilder.__init__(self, repository, parents, config,
             timestamp=timestamp, timezone=timezone, committer=committer,
-            revprops=revprops, revision_id=revision_id)
+            revprops=revprops, revision_id=revision_id, lossy=lossy)
         self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
 
@@ -101,10 +101,10 @@ class PackRootCommitBuilder(RootCommitBuilder):
 
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
-                 revision_id=None):
+                 revision_id=None, lossy=False):
         CommitBuilder.__init__(self, repository, parents, config,
             timestamp=timestamp, timezone=timezone, committer=committer,
-            revprops=revprops, revision_id=revision_id)
+            revprops=revprops, revision_id=revision_id, lossy=lossy)
         self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
 

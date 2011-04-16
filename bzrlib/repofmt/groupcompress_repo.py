@@ -26,7 +26,6 @@ from bzrlib import (
     errors,
     index as _mod_index,
     inventory,
-    knit,
     osutils,
     pack,
     revision as _mod_revision,

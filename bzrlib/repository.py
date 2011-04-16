@@ -93,7 +93,7 @@ class CommitBuilder(object):
 
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
-                 revision_id=None):
+                 revision_id=None, lossy=False):
         """Initiate a CommitBuilder.
 
         :param repository: Repository to commit to.
@@ -103,8 +103,11 @@ class CommitBuilder(object):
         :param committer: Optional committer to set for commit.
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
+        :param lossy: Whether to discard data that can not be natively
+            represented, when pushing to a foreign VCS 
         """
         self._config = config
+        self._lossy = lossy
 
         if committer is None:
             self._committer = self._config.username()
@@ -1782,7 +1785,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
-                           revision_id=None):
+                           revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this repository.
 
         :param branch: Branch to commit to.
@@ -1793,13 +1796,16 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param committer: Optional committer to set for commit.
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
+        :param lossy: Whether to discard data that can not be natively
+            represented, when pushing to a foreign VCS
         """
         if self._fallback_repositories and not self._format.supports_chks:
             raise errors.BzrError("Cannot commit directly to a stacked branch"
                 " in pre-2a formats. See "
                 "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
         result = self._commit_builder_class(self, parents, config,
-            timestamp, timezone, committer, revprops, revision_id)
+            timestamp, timezone, committer, revprops, revision_id,
+            lossy)
         self.start_write_group()
         return result
 

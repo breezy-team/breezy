@@ -3144,6 +3144,10 @@ class cmd_commit(Command):
              Option('show-diff', short_name='p',
                     help='When no message is supplied, show the diff along'
                     ' with the status summary in the message editor.'),
+             Option('lossy', 
+                    help='When committing to a foreign version control '
+                    'system do not push data that can not be natively '
+                    'represented.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -3168,7 +3172,8 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None, show_diff=False, exclude=None, commit_time=None):
+            author=None, show_diff=False, exclude=None, commit_time=None,
+            lossy=False):
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -3270,7 +3275,8 @@ class cmd_commit(Command):
                         reporter=None, verbose=verbose, revprops=properties,
                         authors=author, timestamp=commit_stamp,
                         timezone=offset,
-                        exclude=tree.safe_relpath_files(exclude))
+                        exclude=tree.safe_relpath_files(exclude),
+                        lossy=lossy)
         except PointlessCommit:
             raise errors.BzrCommandError("No changes to commit."
                 " Please 'bzr add' the files you want to commit, or use"
