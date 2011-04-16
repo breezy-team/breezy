@@ -179,7 +179,7 @@ class TestBranch(TestCaseWithTransport):
         source.add('file1')
         source.commit('added file')
         out, err = self.run_bzr('branch source target --files-from source')
-        self.failUnlessExists('target/file1')
+        self.assertPathExists('target/file1')
 
     def test_branch_files_from_hardlink(self):
         self.requireFeature(HardlinkFeature)
@@ -208,8 +208,8 @@ class TestBranch(TestCaseWithTransport):
     def test_branch_no_tree(self):
         self.example_branch('source')
         self.run_bzr('branch --no-tree source target')
-        self.failIfExists('target/hello')
-        self.failIfExists('target/goodbye')
+        self.assertPathDoesNotExist('target/hello')
+        self.assertPathDoesNotExist('target/goodbye')
 
     def test_branch_into_existing_dir(self):
         self.example_branch('a')
@@ -225,8 +225,8 @@ class TestBranch(TestCaseWithTransport):
         # force operation
         self.run_bzr('branch a b --use-existing-dir')
         # check conflicts
-        self.failUnlessExists('b/hello.moved')
-        self.failIfExists('b/godbye.moved')
+        self.assertPathExists('b/hello.moved')
+        self.assertPathDoesNotExist('b/godbye.moved')
         # we can't branch into branch
         out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
         self.assertEqual('', out)

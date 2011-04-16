@@ -165,7 +165,7 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
         s = self.get_store(u'.', compressed=False)
         cs.add(StringIO('hello there'), 'a')
 
-        self.failUnlessExists('a.gz')
+        self.assertPathExists('a.gz')
         self.assertFalse(os.path.lexists('a'))
 
         self.assertEquals(gzip.GzipFile('a.gz').read(), 'hello there')
@@ -178,7 +178,7 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
         self.assertRaises(BzrError, s.add, StringIO('goodbye'), 'a')
 
         s.add(StringIO('goodbye'), 'b')
-        self.failUnlessExists('b')
+        self.assertPathExists('b')
         self.assertFalse(os.path.lexists('b.gz'))
         self.assertEquals(open('b').read(), 'goodbye')
 

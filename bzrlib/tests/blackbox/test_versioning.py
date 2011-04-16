@@ -39,7 +39,7 @@ class TestMkdir(TestCaseWithTransport):
         # here locally.
         shared_repo = self.make_repository('.')
         self.run_bzr(['mkdir', 'abc'], retcode=3)
-        self.failIfExists('abc')
+        self.assertPathDoesNotExist('abc')
 
 
 class TestVersioning(TestCaseInTempDir):

@@ -108,12 +108,12 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
         bzr_log = 'my.bzr.log'
         self.overrideEnv('BZR_LOG', bzr_log)
         default_log = os.path.join(os.environ['BZR_HOME'], '.bzr.log')
-        self.failIfExists([default_log, bzr_log])
+        self.assertPathDoesNotExist([default_log, bzr_log])
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(out, r"(?m)^  Bazaar log file: " + bzr_log)
-        self.failIfExists(default_log)
-        self.failUnlessExists(bzr_log)
+        self.assertPathDoesNotExist(default_log)
+        self.assertPathExists(bzr_log)
 
     def test_dev_null(self):
         # This test uses a subprocess to cause the log opening logic to
@@ -124,8 +124,8 @@ class TestVersionBzrLogLocation(TestCaseInTempDir):
             bzr_log = '/dev/null'
         self.overrideEnv('BZR_LOG', bzr_log)
         default_log = os.path.join(os.environ['BZR_HOME'], '.bzr.log')
-        self.failIfExists(default_log)
+        self.assertPathDoesNotExist(default_log)
         out = self.run_bzr_subprocess('version')[0]
         self.assertTrue(len(out) > 0)
         self.assertContainsRe(out, r"(?m)^  Bazaar log file: " + bzr_log)
-        self.failIfExists(default_log)
+        self.assertPathDoesNotExist(default_log)

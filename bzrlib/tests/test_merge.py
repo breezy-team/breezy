@@ -90,8 +90,8 @@ class TestMerge(TestCaseWithTransport):
         os.chdir('branch2')
         self.run_bzr('merge ../branch1/baz', retcode=3)
         self.run_bzr('merge ../branch1/foo')
-        self.failUnlessExists('foo')
-        self.failIfExists('bar')
+        self.assertPathExists('foo')
+        self.assertPathDoesNotExist('bar')
         wt2 = WorkingTree.open('.') # opens branch2
         self.assertEqual([tip], wt2.get_parent_ids())
 

@@ -72,7 +72,7 @@ class SFTPLockTests(TestCaseWithSFTPServer):
         t = self.get_transport()
 
         l = t.lock_write('bogus')
-        self.failUnlessExists('bogus.write-lock')
+        self.assertPathExists('bogus.write-lock')
 
         # Don't wait for the lock, locking an already locked
         # file should raise an assert

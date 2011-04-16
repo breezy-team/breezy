@@ -106,7 +106,7 @@ class TestTreeShape(tests.TestCaseInTempDir):
 
         filename = u'hell\u00d8'
         self.build_tree_contents([(filename, 'contents of hello')])
-        self.failUnlessExists(filename)
+        self.assertPathExists(filename)
 
 
 class TestClassesAvailable(tests.TestCase):
@@ -510,6 +510,25 @@ class TestTestCaseInTempDir(tests.TestCaseInTempDir):
         self.assertRaises(AssertionError, self.assertEqualStat,
             os.lstat("foo"), os.lstat("longname"))
 
+    def test_failUnlessExists(self):
+        """Deprecated failUnlessExists and failIfExists"""
+        self.applyDeprecated(
+            deprecated_in((2, 4)),
+            self.failUnlessExists, '.')
+        self.build_tree(['foo/', 'foo/bar'])
+        self.applyDeprecated(
+            deprecated_in((2, 4)),
+            self.failUnlessExists, 'foo/bar')
+        self.applyDeprecated(
+            deprecated_in((2, 4)),
+            self.failIfExists, 'foo/foo')
+
+    def test_assertPathExists(self):
+        self.assertPathExists('.')
+        self.build_tree(['foo/', 'foo/bar'])
+        self.assertPathExists('foo/bar')
+        self.assertPathDoesNotExist('foo/foo')
+
 
 class TestTestCaseWithMemoryTransport(tests.TestCaseWithMemoryTransport):
 
@@ -662,7 +681,7 @@ class TestTestCaseWithTransport(tests.TestCaseWithTransport):
     def test_make_branch_builder(self):
         builder = self.make_branch_builder('dir')
         rev_id = builder.build_commit()
-        self.failUnlessExists('dir')
+        self.assertPathExists('dir')
         a_dir = bzrdir.BzrDir.open('dir')
         self.assertRaises(errors.NoWorkingTree, a_dir.open_workingtree)
         a_branch = a_dir.open_branch()
@@ -684,7 +703,7 @@ class TestTestCaseTransports(tests.TestCaseWithTransport):
         self.assertIsInstance(result_bzrdir.transport,
                               memory.MemoryTransport)
         # should not be on disk, should only be in memory
-        self.failIfExists('subdir')
+        self.assertPathDoesNotExist('subdir')
 
 
 class TestChrootedTest(tests.ChrootedTestCase):

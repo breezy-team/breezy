@@ -797,7 +797,7 @@ class ChrootedTests(TestCaseWithTransport):
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
-        self.failUnlessExists('tree2/subtree/file')
+        self.assertPathExists('tree2/subtree/file')
         self.assertEqual('tree-reference', tree2.kind('subtree-root'))
 
     def test_cloning_metadir(self):
@@ -837,8 +837,8 @@ class ChrootedTests(TestCaseWithTransport):
         # #634470.  -- vila 20100909
         self.assertRaises(errors.NotBranchError,
                           tree.bzrdir.sprout, 'repo/tree2')
-#        self.failUnlessExists('repo/tree2/subtree')
-#        self.failIfExists('repo/tree2/subtree/file')
+#        self.assertPathExists('repo/tree2/subtree')
+#        self.assertPathDoesNotExist('repo/tree2/subtree/file')
 
     def make_foo_bar_baz(self):
         foo = bzrdir.BzrDir.create_branch_convenience('foo').bzrdir
