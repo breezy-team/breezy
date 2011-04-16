@@ -51,9 +51,6 @@ from bzrlib.decorators import (
 from bzrlib.plugins.git.dir import (
     LocalGitDir,
     )
-from bzrlib.plugins.git.inventory import (
-    GitIndexInventory,
-    )
 from bzrlib.plugins.git.tree import (
     changes_from_git_changes,
     tree_delta_from_git_changes,
@@ -205,16 +202,12 @@ class GitWorkingTree(workingtree.WorkingTree):
             head = self.repository._git.head()
         except KeyError, name:
             raise errors.NotBranchError("branch %s at %s" % (name, self.repository.base))
-        basis_inv = self.repository.get_inventory(self.branch.lookup_foreign_revision_id(head))
         store = self.repository._git.object_store
         if head == ZERO_SHA:
             self._fileid_map = GitFileIdMap({}, self.mapping)
-            basis_inv = None
         else:
             self._fileid_map = self.mapping.get_fileid_map(store.__getitem__,
                 store[head].tree)
-        result = GitIndexInventory(basis_inv, self._fileid_map, self.index, store)
-        self._bzr_inventory = result
 
     @needs_read_lock
     def get_file_sha1(self, file_id, path=None, stat_value=None):
