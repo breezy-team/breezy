@@ -33,7 +33,7 @@ class TestAtomicFile(TestCaseInTempDir):
 
     def test_commit(self):
         f = atomicfile.AtomicFile('test')
-        self.failIfExists('test')
+        self.assertPathDoesNotExist('test')
         f.write('foo\n')
         f.commit()
 

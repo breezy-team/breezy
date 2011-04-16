@@ -128,7 +128,7 @@ class DummyForeignCommitBuilder(repository.RootCommitBuilder):
         elif self._new_revision_id is not None:
             self.random_revid = False
         else:
-            self._new_revision_id = None
+            self._new_revision_id = self._gen_revision_id()
             self.random_revid = True
 
 
