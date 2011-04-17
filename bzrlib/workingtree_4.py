@@ -1636,7 +1636,7 @@ class DirStateRevisionTree(InventoryTree):
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        text_key = (file_id, self.inventory[file_id].revision)
+        text_key = (file_id, self.get_file_revision(file_id))
         annotations = self._repository.texts.annotate(text_key)
         return [(key[-1], line) for (key, line) in annotations]
 
@@ -1805,6 +1805,10 @@ class DirStateRevisionTree(InventoryTree):
         if parent_details[0] == 'f':
             return parent_details[1]
         return None
+
+    @needs_read_lock
+    def get_file_revision(self, file_id):
+        return self.inventory[file_id].revision
 
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))

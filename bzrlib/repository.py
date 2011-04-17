@@ -2865,7 +2865,7 @@ def _install_revision(repository, rev, revision_tree, signature,
         for revision, tree in parent_trees.iteritems():
             if ie.file_id not in tree:
                 continue
-            parent_id = tree.inventory[ie.file_id].revision
+            parent_id = tree.get_file_revision(ie.file_id)
             if parent_id in text_parents:
                 continue
             text_parents.append((ie.file_id, parent_id))

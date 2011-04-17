@@ -458,16 +458,13 @@ class Merger(object):
     @deprecated_method(deprecated_in((2, 1, 0)))
     def file_revisions(self, file_id):
         self.ensure_revision_trees()
-        def get_id(tree, file_id):
-            revision_id = tree.inventory[file_id].revision
-            return revision_id
         if self.this_rev_id is None:
             if self.this_basis_tree.get_file_sha1(file_id) != \
                 self.this_tree.get_file_sha1(file_id):
                 raise errors.WorkingTreeNotRevision(self.this_tree)
 
         trees = (self.this_basis_tree, self.other_tree)
-        return [get_id(tree, file_id) for tree in trees]
+        return [tree.get_file_revision(file_id) for tree in trees]
 
     @deprecated_method(deprecated_in((2, 1, 0)))
     def check_basis(self, check_clean, require_commits=True):

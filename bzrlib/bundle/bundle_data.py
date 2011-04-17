@@ -661,7 +661,7 @@ class BundleTree(Tree):
         path = self.id2path(file_id)
         if path in self._last_changed:
             return self._last_changed[path]
-        return self.base_tree.inventory[file_id].revision
+        return self.base_tree.get_file_revision(file_id)
 
     def get_size_and_sha1(self, file_id):
         """Return the size and sha1 hash of the given file id.
