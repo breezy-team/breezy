@@ -182,6 +182,17 @@ class Tree(object):
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        """List all files in this tree.
+
+        :param include_root: Whether to include the entry for the tree root
+        :param from_dir: Directory under which to list files
+        :param recursive: Whether to list files recursively
+        :return: iterator over tuples of (path, versioned, kind, file_id,
+            inventory entry)
+        """
+        raise NotImplementedError(self.list_files)
+
     def iter_references(self):
         if self.supports_tree_reference():
             for path, entry in self.iter_entries_by_dir():
