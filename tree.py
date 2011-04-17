@@ -19,6 +19,7 @@
 
 from dulwich.object_store import tree_lookup_path
 import stat
+import posixpath
 
 from bzrlib import (
     delta,
@@ -54,6 +55,44 @@ class GitRevisionTree(revisiontree.RevisionTree):
 
     def path2id(self, path):
         return self.fileid_map.lookup_file_id(path.encode('utf-8'))
+
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        # FIXME: Yield ie's
+        if from_dir is None:
+            from_dir = ""
+        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, from_dir)
+        root_kind = mode_kind(mode)
+        if include_root:
+            yield from_dir, "V", root_kind, self.path2id(from_dir), None
+        todo = set()
+        if root_kind == 'directory':
+            todo.add((from_dir, hexsha))
+        while todo:
+            (path, hexsha) = todo.pop()
+            tree = self.store[hexsha]
+            for name, mode, hexsha in tree.iteritems():
+                child_path = posixpath.join(path, name)
+                kind = mode_kind(mode)
+                yield child_path, "V", kind, self.path2id(path), None
+                if recursive and kind == 'directory':
+                    todo.add((child_path, hexsha))
+
+    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+        # FIXME: Support specific_file_ids
+        #FIXME: yield actual inventory entries
+        if specific_file_ids is not None:
+            raise NotImplementedError(self.iter_entries_by_dir)
+        todo = set([("", self.tree)])
+        while todo:
+            path, tree_sha = todo.pop()
+            yield path, None
+            tree = self.store[tree_sha]
+            for name, mode, hexsha  in tree.iteritems():
+                child_path = posixpath.join(path, name)
+                if stat.S_ISDIR(mode):
+                    todo.add((child_path, hexsha))
+                else:
+                    yield child_path, None
 
     def get_revision_id(self):
         """See RevisionTree.get_revision_id."""
