@@ -2183,8 +2183,8 @@ class InventoryWorkingTree(WorkingTree,
                     # dont use the repository revision_tree api because we want
                     # to supply the inventory.
                     if inv.revision_id == revision_id:
-                        return revisiontree.RevisionTree(self.branch.repository,
-                            inv, revision_id)
+                        return revisiontree.InventoryRevisionTree(
+                            self.branch.repository, inv, revision_id)
                 except errors.BadInventoryFormat:
                     pass
         # raise if there was no inventory, or if we read the wrong inventory.

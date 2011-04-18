@@ -41,7 +41,7 @@ from bzrlib import (
     )
 from bzrlib.bundle import serializer
 from bzrlib.recordcounter import RecordCounter
-from bzrlib.revisiontree import RevisionTree
+from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
@@ -236,16 +236,16 @@ class CommitBuilder(object):
     def revision_tree(self):
         """Return the tree that was just committed.
 
-        After calling commit() this can be called to get a RevisionTree
-        representing the newly committed tree. This is preferred to
-        calling Repository.revision_tree() because that may require
-        deserializing the inventory, while we already have a copy in
+        After calling commit() this can be called to get a
+        InventoryRevisionTree representing the newly committed tree. This is
+        preferred to calling Repository.revision_tree() because that may
+        require deserializing the inventory, while we already have a copy in
         memory.
         """
         if self.new_inventory is None:
             self.new_inventory = self.repository.get_inventory(
                 self._new_revision_id)
-        return RevisionTree(self.repository, self.new_inventory,
+        return InventoryRevisionTree(self.repository, self.new_inventory,
             self._new_revision_id)
 
     def finish_inventory(self):
@@ -2513,11 +2513,11 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id == _mod_revision.NULL_REVISION:
-            return RevisionTree(self, Inventory(root_id=None),
-                                _mod_revision.NULL_REVISION)
+            return InventoryRevisionTree(self,
+                Inventory(root_id=None), _mod_revision.NULL_REVISION)
         else:
             inv = self.get_inventory(revision_id)
-            return RevisionTree(self, inv, revision_id)
+            return InventoryRevisionTree(self, inv, revision_id)
 
     def revision_trees(self, revision_ids):
         """Return Trees for revisions in this repository.
@@ -2527,7 +2527,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
         inventories = self.iter_inventories(revision_ids)
         for inv in inventories:
-            yield RevisionTree(self, inv, inv.revision_id)
+            yield InventoryRevisionTree(self, inv, inv.revision_id)
 
     def _filtered_revision_trees(self, revision_ids, file_ids):
         """Return Tree for a revision on this branch with only some files.
@@ -2543,7 +2543,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             # Should we introduce a FilteredRevisionTree class rather
             # than pre-filter the inventory here?
             filtered_inv = inv.filter(file_ids)
-            yield RevisionTree(self, filtered_inv, filtered_inv.revision_id)
+            yield InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
 
     @needs_read_lock
     def get_ancestry(self, revision_id, topo_sorted=True):

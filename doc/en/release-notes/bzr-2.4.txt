@@ -117,6 +117,10 @@ API Changes
   a new ``InventoryTree`` class. Tree instances no longer
   necessarily provide an ``inventory`` attribute. (Jelmer Vernooij)
 
+* Inventory-specific functionality has been split out of ``RevisionTree``
+  into a new ``InventoryRevisionTree`` class. RevisionTree instances no
+  longer necessarily provide an ``inventory`` attribute. (Jelmer Vernooij)
+
 * New method ``Hooks.uninstall_named_hook``. (Jelmer Vernooij, #301472)
 
 * ``revision_graph_can_have_wrong_parents`` is now an attribute
