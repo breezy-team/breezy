@@ -142,13 +142,6 @@ class UnknownVersion(BzrError):
         BzrError.__init__(self, version=version)
 
 
-class UnknownDistribution(BzrError):
-    _fmt = "Unknown distribution: %(distribution)s."
-
-    def __init__(self, distribution):
-        BzrError.__init__(self, distribution=distribution)
-
-
 class VersionNotSpecified(BzrError):
     _fmt = "You did not specify a package version."
 

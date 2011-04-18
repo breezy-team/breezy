@@ -71,7 +71,6 @@ from bzrlib.plugins.builddeb.errors import (
     NoPreviousUpload,
     PristineTarError,
     UnableToFindPreviousUpload,
-    UnknownDistribution,
     UnparseableChangelog,
     )
 
@@ -607,7 +606,10 @@ def _find_previous_upload(cl):
             match_targets += tuple([current_target.split("-", 1)[0]
                 + t for t in UBUNTU_POCKETS])
     else:
-        raise UnknownDistribution(current_target)
+        # If we do not recognize the current target in order to apply special
+        # rules to it, then just assume that only previous uploads to exactly
+        # the same target count.
+        match_targets = (current_target,)
     previous_version = None
     for block in cl._blocks[1:]:
         if block.distributions.split(" ")[0] in match_targets:

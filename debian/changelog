@@ -1,9 +1,14 @@
 bzr-builddeb (2.7.3) UNRELEASED; urgency=low
 
+  [ Jelmer Vernooij ]
   * Avoid opening upstream branch when it is not necessary. LP: #730589
   * Retrieve the upstream branch URL from Launchpad in 'bzr merge-upstream'
     if --launchpad is specified. LP: #726460
   * Fix merge of bz2 upstream tarballs. LP: #737012
+
+  [ Max Bowsher ]
+  * Do not error if the top changelog entry is not a recognized Debian or
+  Ubuntu upload target.
 
  -- Jelmer Vernooij <jelmer@debian.org>  Mon, 18 Apr 2011 23:17:34 +0200
 
