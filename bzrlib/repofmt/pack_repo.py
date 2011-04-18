@@ -915,11 +915,12 @@ class RepositoryPackCollection(object):
         mutter('Auto-packing repository %s completed', self)
         return result
 
-    def _execute_pack_operations(self, pack_operations, packer_class, reload_func=None):
+    def _execute_pack_operations(self, pack_operations, packer_class,
+            reload_func=None):
         """Execute a series of pack operations.
 
         :param pack_operations: A list of [revision_count, packs_to_combine].
-        :param _packer_class: The class of packer to use
+        :param packer_class: The class of packer to use
         :return: The new pack names.
         """
         for revision_count, packs in pack_operations:
@@ -929,7 +930,7 @@ class RepositoryPackCollection(object):
             packer = packer_class(self, packs, '.autopack',
                                    reload_func=reload_func)
             try:
-                packer.pack()
+                result = packer.pack()
             except errors.RetryWithNewPacks:
                 # An exception is propagating out of this context, make sure
                 # this packer has cleaned up. Packer() doesn't set its new_pack
@@ -938,6 +939,8 @@ class RepositoryPackCollection(object):
                 if packer.new_pack is not None:
                     packer.new_pack.abort()
                 raise
+            if result is None:
+                return
             for pack in packs:
                 self._remove_pack_from_memory(pack)
         # record the newly available packs and stop advertising the old
