@@ -223,6 +223,10 @@ Improvements
   of CHK data, down to just 150MB.) This has noticeable affects for things
   like building checkouts, etc.  (John Arbash Meinel, #737234)
 
+* ``WT.inventory`` and ``WT.iter_entries_by_dir()`` was not correctly
+  reporting subdirectories that were tree references (in formats that
+  supported them). (John Arbash Meinel, #764677)
+
 
 Bug Fixes
 *********

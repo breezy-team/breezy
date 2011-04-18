@@ -19,7 +19,7 @@
 
 import os
 
-from bzrlib import inventory
+from bzrlib import inventory, tests
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -151,3 +151,19 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         wt.apply_inventory_delta([('', None, root_id, None),
             (None, '', 'root-id',
              inventory.InventoryDirectory('root-id', '', None))])
+
+
+class TestTreeReference(TestCaseWithWorkingTree):
+
+    def test_tree_reference_matches_inv(self):
+        base = self.make_branch_and_tree('base')
+        subdir = self.make_branch_and_tree('base/subdir')
+        if not base._directory_is_tree_reference('subdir'):
+            raise tests.TestNotApplicable("wt doesn't support nested trees")
+        base.add(['subdir'], ['subdir-id'])
+        self.addCleanup(base.lock_read().unlock)
+        ie = base.inventory['subdir-id']
+        self.assertEqual('tree-reference', ie.kind)
+        path, ie = base.iter_entries_by_dir(['subdir-id']).next()
+        self.assertEqual('subdir', path)
+        self.assertEqual('tree-reference', ie.kind)
