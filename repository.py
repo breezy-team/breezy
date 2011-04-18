@@ -22,8 +22,11 @@ from bzrlib import (
     inventory,
     repository,
     revision,
-    revisiontree,
     )
+try:
+    from bzrlib.revisiontree import InventoryRevisionTree
+except ImportError: # bzr < 2.4
+    from bzrlib.revisiontree import RevisionTree as InventoryRevisionTree
 from bzrlib.foreign import (
     ForeignRepository,
     )
@@ -256,7 +259,7 @@ class LocalGitRepository(GitRepository):
         if revision_id == revision.NULL_REVISION:
             inv = inventory.Inventory(root_id=None)
             inv.revision_id = revision_id
-            return revisiontree.RevisionTree(self, inv, revision_id)
+            return InventoryRevisionTree(self, inv, revision_id)
         return GitRevisionTree(self, revision_id)
 
     def get_inventory(self, revision_id):
