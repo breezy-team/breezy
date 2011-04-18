@@ -57,6 +57,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Arguments that can't be decoded to unicode in the current posix locale give
+  a clearer error message without a traceback. (Martin [gz], #745712)
+
 * ``bzrlib.log._DEFAULT_REQUEST_PARAMS`` is no longer accidentally
   mutated by ``bzrlib.log._apply_log_request_defaults``.  In practice
   these default values aren't relied on very often so this probably
