@@ -54,9 +54,10 @@ from bzrlib.repository import (
 from bzrlib.revision import (
     NULL_REVISION,
     )
-from bzrlib.revisiontree import (
-    RevisionTree,
-    )
+try:
+    from bzrlib.revisiontree import InventoryRevisionTree
+except ImportError: # bzr < 2.4
+    from bzrlib.revisiontree import RevisionTree as InventoryRevisionTree
 from bzrlib.testament import (
     StrictTestament3,
     )
@@ -398,7 +399,7 @@ def import_git_commit(repo, mapping, head, lookup_object,
         calculated_verifiers = {}
     store_updater.add_object(o, calculated_verifiers, None)
     store_updater.finish()
-    ret_tree = RevisionTree(repo, inv, rev.revision_id)
+    ret_tree = InventoryRevisionTree(repo, inv, rev.revision_id)
     trees_cache.add(ret_tree)
     repo.add_revision(rev.revision_id, rev)
     if "verify" in debug.debug_flags:
