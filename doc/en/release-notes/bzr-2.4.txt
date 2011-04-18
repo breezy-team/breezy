@@ -130,6 +130,9 @@ API Changes
   on ``RepositoryFormat`` rather than a method on ``Repository``.
   (Jelmer Vernooij)
 
+* ``Testament`` now takes a ``tree`` rather than an
+  ``inventory``. (Jelmer Vernooij, #762608)
+
 * ``TestCase.failUnlessExists`` and ``failIfExists`` are deprecated in
   favour of ``assertPathExists`` and ``assertPathDoesNotExist`` 
   respectively.
