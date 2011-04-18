@@ -696,7 +696,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
         inventory = basis.inventory._get_mutable_inventory()
         basis.unlock()
         inventory.apply_delta(delta)
-        rev_tree = revisiontree.RevisionTree(self.branch.repository,
+        rev_tree = revisiontree.InventoryRevisionTree(self.branch.repository,
                                              inventory, new_revid)
         self.set_parent_trees([(new_revid, rev_tree)])
 

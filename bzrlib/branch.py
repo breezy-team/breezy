@@ -1028,7 +1028,8 @@ class Branch(controldir.ControlComponent):
             self.repository.fetch(source_repo, revision_id=revid)
         self.set_last_revision_info(revno, revid)
 
-    def import_last_revision_info_and_tags(self, source, revno, revid):
+    def import_last_revision_info_and_tags(self, source, revno, revid,
+                                           lossy=False):
         """Set the last revision info, importing from another repo if necessary.
 
         This is used by the bound branch code to upload a revision to
@@ -1038,6 +1039,10 @@ class Branch(controldir.ControlComponent):
         :param source: Source branch to optionally fetch from
         :param revno: Revision number of the new tip
         :param revid: Revision id of the new tip
+        :param lossy: Whether to discard metadata that can not be
+            natively represented
+        :return: Tuple with the new revision number and revision id
+            (should only be different from the arguments when lossy=True)
         """
         if not self.repository.has_same_location(source.repository):
             try:
@@ -1049,6 +1054,7 @@ class Branch(controldir.ControlComponent):
                 if_present_ids=tags_to_fetch).execute()
             self.repository.fetch(source.repository, fetch_spec=fetch_spec)
         self.set_last_revision_info(revno, revid)
+        return (revno, revid)
 
     def revision_id_to_revno(self, revision_id):
         """Given a revision id, return its revno"""

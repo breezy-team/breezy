@@ -1031,7 +1031,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         Specify the number of processes that can be run concurrently (selftest).
     """
     trace.mutter("bazaar version: " + bzrlib.__version__)
-    argv = list(argv)
+    argv = _specified_or_unicode_argv(argv)
     trace.mutter("bzr arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
@@ -1177,7 +1177,7 @@ def _specified_or_unicode_argv(argv):
         new_argv = []
         try:
             # ensure all arguments are unicode strings
-            for a in argv[1:]:
+            for a in argv:
                 if isinstance(a, unicode):
                     new_argv.append(a)
                 else:
@@ -1199,7 +1199,8 @@ def main(argv=None):
 
     :return: exit code of bzr command.
     """
-    argv = _specified_or_unicode_argv(argv)
+    if argv is not None:
+        argv = argv[1:]
     _register_builtin_commands()
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)
