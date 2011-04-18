@@ -206,7 +206,7 @@ class BundleInfo(object):
 
         inv = bundle_tree.inventory
         self._validate_inventory(inv, revision_id)
-        self._validate_revision(inv, revision_id)
+        self._validate_revision(bundle_tree, revision_id)
 
         return bundle_tree
 
@@ -286,7 +286,7 @@ class BundleInfo(object):
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
-    def _validate_revision(self, inventory, revision_id):
+    def _validate_revision(self, tree, revision_id):
         """Make sure all revision entries match their checksum."""
 
         # This is a mapping from each revision id to its sha hash
@@ -298,7 +298,7 @@ class BundleInfo(object):
             raise AssertionError()
         if not (rev.revision_id == revision_id):
             raise AssertionError()
-        sha1 = self._testament_sha1(rev, inventory)
+        sha1 = self._testament_sha1(rev, tree)
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:

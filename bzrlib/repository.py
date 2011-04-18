@@ -1163,7 +1163,9 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         if config is not None and config.signature_needed():
             if inv is None:
                 inv = self.get_inventory(revision_id)
-            plaintext = Testament(rev, inv).as_short_text()
+            tree = InventoryRevisionTree(self, inv, revision_id)
+            testament = Testament(rev, tree)
+            plaintext = testament.as_short_text()
             self.store_revision_signature(
                 gpg.GPGStrategy(config), plaintext, revision_id)
         # check inventory present
