@@ -223,6 +223,15 @@ class GitWorkingTree(workingtree.WorkingTree):
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
 
+    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+        # FIXME: Yield actual inventory entries
+        # FIXME: Support specific_file_ids
+        # FIXME: Is return order correct?
+        if specific_file_ids is not None:
+            raise NotImplementedError(self.iter_entries_by_dir)
+        for filename in self.index:
+            yield filename, None
+
     @needs_read_lock
     def conflicts(self):
         # FIXME:

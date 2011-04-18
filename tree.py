@@ -61,7 +61,10 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if from_dir is None:
             from_dir = ""
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, from_dir)
-        root_kind = mode_kind(mode)
+        if mode is None: # Root
+            root_kind = "directory"
+        else:
+            root_kind = mode_kind(mode)
         if include_root:
             yield from_dir, "V", root_kind, self.path2id(from_dir), None
         todo = set()
