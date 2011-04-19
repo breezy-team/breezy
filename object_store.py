@@ -95,7 +95,6 @@ class LRUTreeCache(object):
                 todo.append(revid)
             else:
                 assert tree.get_revision_id() == revid
-                assert tree.inventory.revision_id == revid
                 trees[revid] = tree
         for tree in self.repository.revision_trees(todo):
             trees[tree.get_revision_id()] = tree

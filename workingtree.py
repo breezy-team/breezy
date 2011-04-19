@@ -185,16 +185,10 @@ class GitWorkingTree(workingtree.WorkingTree):
         finally:
             self.branch.unlock()
 
-    def _rewrite_index(self):
-        self.index.clear()
-        for path, entry in self._inventory.iter_entries():
-            self._index_add_entry(path, entry.file_id, entry.kind)
-
     def flush(self):
         # TODO: Maybe this should only write on dirty ?
         if self._control_files._lock_mode != 'w':
             raise errors.NotWriteLocked(self)
-        self._rewrite_index()
         self.index.write()
 
     def __iter__(self):

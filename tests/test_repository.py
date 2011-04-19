@@ -24,7 +24,6 @@ import os
 
 from bzrlib import (
     errors,
-    inventory,
     revision,
     )
 from bzrlib.repository import (
@@ -177,7 +176,6 @@ class TestGitRepository(tests.TestCaseWithTransport):
         repo = self.git_repo
         tree = repo.revision_tree(revision.NULL_REVISION)
         self.assertEqual(tree.get_revision_id(), revision.NULL_REVISION)
-        self.assertIsNullInventory(tree.inventory)
 
     def test_get_parent_map_null(self):
         self.assertEquals({revision.NULL_REVISION: ()}, 
