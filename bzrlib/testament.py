@@ -76,6 +76,7 @@ from bzrlib.osutils import (
     contains_linebreaks,
     sha,
     )
+from bzrlib.tree import Tree
 
 
 class Testament(object):
@@ -114,6 +115,9 @@ class Testament(object):
         self.timestamp = rev.timestamp
         self.message = rev.message
         self.parent_ids = rev.parent_ids[:]
+        if not isinstance(tree, Tree):
+            raise TypeError("As of bzr 2.4 Testament.__init__() takes a "
+                "Revision and a Tree.")
         self.tree = tree
         self.revprops = copy(rev.properties)
         if contains_whitespace(self.revision_id):
