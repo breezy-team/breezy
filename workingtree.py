@@ -226,6 +226,22 @@ class GitWorkingTree(workingtree.WorkingTree):
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
 
+    def _get_dir_ie(self, path, parent_id):
+        file_id = self._fileid_map.lookup_file_id(path)
+        return inventory.InventoryDirectory(file_id,
+            posixpath.dirname(path).strip("/"), parent_id)
+
+    def _add_missing_parent_ids(self, path, dir_ids):
+        if path in dir_ids:
+            return []
+        parent = posixpath.dirname(path).strip("/")
+        ret = self._add_missing_parent_ids(parent, dir_ids)
+        parent_id = dir_ids[parent]
+        ie = self._get_dir_ie(path, parent_id)
+        dir_ids[path] = ie.file_id
+        ret.append((path, ie))
+        return ret
+
     def _get_file_ie(self, path, value, parent_id):
         assert isinstance(path, str)
         assert isinstance(value, tuple) and len(value) == 10
@@ -246,19 +262,56 @@ class GitWorkingTree(workingtree.WorkingTree):
         ie.revision = None
         return ie
 
+    def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
+        mode = stat_result.st_mode
+        return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+
+    if not osutils.supports_executable():
+        def is_executable(self, file_id, path=None):
+            basis_tree = self.basis_tree()
+            if file_id in basis_tree:
+                return basis_tree.is_executable(file_id)
+            # Default to not executable
+            return False
+    else:
+        def is_executable(self, file_id, path=None):
+            if not path:
+                path = self.id2path(file_id)
+            mode = os.lstat(self.abspath(path)).st_mode
+            return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+
+        _is_executable_from_path_and_stat = \
+            _is_executable_from_path_and_stat_from_stat
+
     def list_files(self, include_root=False, from_dir=None, recursive=True):
-        # FIXME
-        raise NotImplementedError(self.list_files)
+        # FIXME: Yield non-versioned files
+        # FIXME: support from_dir
+        # FIXME: Support recursive
+        dir_ids = {}
+        root_ie = self._get_dir_ie("", None)
+        if include_root and not from_dir:
+            yield "", "V", root_ie.kind, root_ie.file_id, root_ie
+        dir_ids[""] = root_ie.file_id
+        for path, value in self.index.iteritems():
+            parent = posixpath.dirname(path).strip("/")
+            for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
+                yield dir_path, "V", dir_ie.kind, dir_ie.file_id, dir_ie
+            ie = self._get_file_ie(path, value, dir_ids[parent])
+            yield path, "V", ie.kind, ie.file_id, ie
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         # FIXME: Support specific_file_ids
         # FIXME: Is return order correct?
         if specific_file_ids is not None:
             raise NotImplementedError(self.iter_entries_by_dir)
-        dir_ies = {}
+        root_ie = self._get_dir_ie("", None)
+        yield "", root_ie
+        dir_ids = {"": root_ie.file_id}
         for path, value in self.index.iteritems():
-            # FIXME: Yield directories
-            parent_id = self.fileid_map.lookup_file_id(posixpath.dirname(path))
+            parent = posixpath.dirname(path).strip("/")
+            for (dir_path, dir_ie) in self._add_missing_parent_ids(parent, dir_ids):
+                yield dir_path, dir_ie
+            parent_id = self.fileid_map.lookup_file_id(parent)
             yield path, self._get_file_ie(path, value, parent_id)
 
     @needs_read_lock
