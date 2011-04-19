@@ -1,4 +1,4 @@
-bzr-builddeb (2.7.3) UNRELEASED; urgency=low
+bzr-builddeb (2.7.3) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Avoid opening upstream branch when it is not necessary. LP: #730589
