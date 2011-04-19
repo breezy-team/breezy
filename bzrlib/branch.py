@@ -2502,15 +2502,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """See Branch.print_file."""
         return self.repository.print_file(file, revision_id)
 
-    def _write_revision_history(self, history):
-        """Factored out of set_revision_history.
-
-        This performs the actual writing to disk.
-        It is intended to be called by BzrBranch5.set_revision_history."""
-        self._transport.put_bytes(
-            'revision-history', '\n'.join(history),
-            mode=self.bzrdir._get_file_mode())
-
     @deprecated_method(deprecated_in((2, 4, 0)))
     @needs_write_lock
     def set_revision_history(self, rev_history):
@@ -2590,13 +2581,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
             raise AssertionError('%d != %d' % (len(history), revno))
         self._set_revision_history(history)
 
-    def _gen_revision_history(self):
-        history = self._transport.get_bytes('revision-history').split('\n')
-        if history[-1:] == ['']:
-            # There shouldn't be a trailing newline, but just in case.
-            history.pop()
-        return history
-
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
         other_branch=None):
@@ -2662,7 +2646,26 @@ class BzrBranch(Branch, _RelockDebugMixin):
                 mode=self.bzrdir._get_file_mode())
 
 
-class BzrBranch5(BzrBranch):
+class FullHistoryBzrBranch(BzrBranch):
+
+    def _write_revision_history(self, history):
+        """Factored out of set_revision_history.
+
+        This performs the actual writing to disk.
+        It is intended to be called by BzrBranch5.set_revision_history."""
+        self._transport.put_bytes(
+            'revision-history', '\n'.join(history),
+            mode=self.bzrdir._get_file_mode())
+
+    def _gen_revision_history(self):
+        history = self._transport.get_bytes('revision-history').split('\n')
+        if history[-1:] == ['']:
+            # There shouldn't be a trailing newline, but just in case.
+            history.pop()
+        return history
+
+
+class BzrBranch5(FullHistoryBzrBranch):
     """A format 5 branch. This supports new features over plain branches.
 
     It has support for a master_branch which is the data for bound branches.

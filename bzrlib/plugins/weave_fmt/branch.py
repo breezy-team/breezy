@@ -25,11 +25,11 @@ from bzrlib.trace import mutter
 
 from bzrlib.branch import (
     BranchFormat,
-    BzrBranch,
+    FullHistoryBzrBranch,
     )
 
 
-class PreSplitOutBzrBranch(BzrBranch):
+class BzrBranch4(FullHistoryBzrBranch):
 
     def _get_checkout_format(self):
         """Return the most suitable metadir for a checkout of this branch.
@@ -115,7 +115,7 @@ class BzrBranchFormat4(BranchFormat):
             raise NotImplementedError
         if found_repository is None:
             found_repository = a_bzrdir.open_repository()
-        return PreSplitOutBzrBranch(_format=self,
+        return BzrBranch4(_format=self,
                          _control_files=a_bzrdir._control_files,
                          a_bzrdir=a_bzrdir,
                          name=name,
