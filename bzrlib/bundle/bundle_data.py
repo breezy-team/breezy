@@ -25,20 +25,22 @@ from bzrlib import (
     osutils,
     timestamp,
     )
-import bzrlib.errors
 from bzrlib.bundle import apply_bundle
-from bzrlib.errors import (TestamentMismatch, BzrError,
-                           MalformedHeader, MalformedPatches, NotABundle)
-from bzrlib.inventory import (Inventory, InventoryEntry,
-                              InventoryDirectory, InventoryFile,
-                              InventoryLink)
-from bzrlib.osutils import sha_file, sha_string, pathjoin
+from bzrlib.errors import (
+    TestamentMismatch,
+    BzrError,
+    )
+from bzrlib.inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    )
+from bzrlib.osutils import sha_string, pathjoin
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.testament import StrictTestament
 from bzrlib.trace import mutter, warning
-import bzrlib.transport
 from bzrlib.tree import Tree
-import bzrlib.urlutils
 from bzrlib.xml5 import serializer_v5
 
 
@@ -462,6 +464,7 @@ class BundleInfo(object):
 
 
 class BundleTree(Tree):
+
     def __init__(self, base_tree, revision_id):
         self.base_tree = base_tree
         self._renamed = {} # Mapping from old_path => new_path
@@ -738,6 +741,23 @@ class BundleTree(Tree):
     def __iter__(self):
         for path, entry in self.inventory.iter_entries():
             yield entry.file_id
+
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        # The only files returned by this are those from the version
+        inv = self.inventory
+        if from_dir is None:
+            from_dir_id = None
+        else:
+            from_dir_id = inv.path2id(from_dir)
+            if from_dir_id is None:
+                # Directory not versioned
+                return
+        entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
+        if inv.root is not None and not include_root and from_dir is None:
+            # skip the root for compatability with the current apis.
+            entries.next()
+        for path, entry in entries:
+            yield path, 'V', entry.kind, entry.file_id, entry
 
     def sorted_path_id(self):
         paths = []
