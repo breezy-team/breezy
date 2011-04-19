@@ -24,6 +24,8 @@ import posixpath
 from bzrlib import (
     delta,
     errors,
+    inventory,
+    osutils,
     revisiontree,
     tree,
     )
@@ -57,45 +59,72 @@ class GitRevisionTree(revisiontree.RevisionTree):
         return self.fileid_map.lookup_file_id(path.encode('utf-8'))
 
     def list_files(self, include_root=False, from_dir=None, recursive=True):
-        # FIXME: Yield ie's
         if from_dir is None:
             from_dir = ""
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, from_dir)
         if mode is None: # Root
-            root_kind = "directory"
+            root_ie = self._get_dir_ie("", None)
         else:
-            root_kind = mode_kind(mode)
-        if include_root:
-            yield from_dir, "V", root_kind, self.path2id(from_dir), None
+            parent_path = posixpath.dirname(from_dir.encode("utf-8"))
+            parent_id = self.fileid_map.lookup_file_id(parent_path)
+            if mode_kind(mode) == 'directory':
+                root_ie = self._get_dir_ie(from_dir.encode("utf-8"), parent_id)
+            else:
+                root_ie = self._get_file_ie(from_dir.encode("utf-8"),
+                    posixpath.basename(from_dir), mode, hexsha)
+        if from_dir != "" or include_root:
+            yield (from_dir, "V", root_ie.kind, root_ie.file_id, root_ie)
         todo = set()
-        if root_kind == 'directory':
-            todo.add((from_dir, hexsha))
+        if root_ie.kind == 'directory':
+            todo.add((from_dir.encode("utf-8"), hexsha, root_ie.file_id))
         while todo:
-            (path, hexsha) = todo.pop()
+            (path, hexsha, parent_id) = todo.pop()
             tree = self.store[hexsha]
             for name, mode, hexsha in tree.iteritems():
                 child_path = posixpath.join(path, name)
-                kind = mode_kind(mode)
-                yield child_path, "V", kind, self.path2id(path), None
-                if recursive and kind == 'directory':
-                    todo.add((child_path, hexsha))
+                if stat.S_ISDIR(mode):
+                    ie = self._get_dir_ie(child_path, parent_id)
+                    if recursive:
+                        todo.add((child_path, hexsha, ie.file_id))
+                else:
+                    ie = self._get_file_ie(child_path, name, mode, hexsha, parent_id)
+                yield child_path, "V", ie.kind, ie.file_id, ie
+
+    def _get_file_ie(self, path, name, mode, hexsha, parent_id):
+        kind = mode_kind(mode)
+        file_id = self.fileid_map.lookup_file_id(path)
+        ie = inventory.entry_factory[kind](file_id, name.decode("utf-8"), parent_id)
+        if kind == 'symlink':
+            ie.symlink_target = self.store[hexsha].data
+        else:
+            data = self.store[hexsha].data
+            ie.text_sha1 = osutils.sha_string(data)
+            ie.text_size = len(data)
+            ie.executable = mode_is_executable(mode)
+        return ie
+
+    def _get_dir_ie(self, path, parent_id):
+        file_id = self.fileid_map.lookup_file_id(path)
+        return inventory.InventoryDirectory(file_id,
+            posixpath.basename(path).decode("utf-8"), parent_id)
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         # FIXME: Support specific_file_ids
         #FIXME: yield actual inventory entries
         if specific_file_ids is not None:
             raise NotImplementedError(self.iter_entries_by_dir)
-        todo = set([("", self.tree)])
+        todo = set([("", self.tree, None)])
         while todo:
-            path, tree_sha = todo.pop()
-            yield path, None
+            path, tree_sha, parent_id = todo.pop()
+            ie = self._get_dir_ie(path, parent_id)
+            yield path, ie
             tree = self.store[tree_sha]
             for name, mode, hexsha  in tree.iteritems():
                 child_path = posixpath.join(path, name)
                 if stat.S_ISDIR(mode):
-                    todo.add((child_path, hexsha))
+                    todo.add((child_path, hexsha, ie.file_id))
                 else:
-                    yield child_path, None
+                    yield child_path, self._get_file_ie(path, name, mode, hexsha, ie.file_id)
 
     def get_revision_id(self):
         """See RevisionTree.get_revision_id."""
@@ -110,6 +139,11 @@ class GitRevisionTree(revisiontree.RevisionTree):
             return self.store[hexsha].data
         else:
             return ""
+
+    def _comparison_data(self, entry, path):
+        if entry is None:
+            return None, False, None
+        return entry.kind, entry.executable, None
 
 
 def tree_delta_from_git_changes(changes, mapping,

@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Jelmer Vernooij <jelmer@samba.org>
+# Copyright (C) 2008-2011 Jelmer Vernooij <jelmer@samba.org>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,12 +30,14 @@ from dulwich.objects import (
     ZERO_SHA,
     )
 import os
+import posixpath
 import stat
 
 from bzrlib import (
     errors,
     conflicts as _mod_conflicts,
     ignores,
+    inventory,
     lockable_files,
     lockdir,
     osutils,
@@ -57,6 +59,7 @@ from bzrlib.plugins.git.tree import (
     )
 from bzrlib.plugins.git.mapping import (
     GitFileIdMap,
+    mode_kind,
     )
 
 IGNORE_FILENAME = ".gitignore"
@@ -223,14 +226,40 @@ class GitWorkingTree(workingtree.WorkingTree):
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
 
+    def _get_file_ie(self, path, value, parent_id):
+        assert isinstance(path, str)
+        assert isinstance(value, tuple) and len(value) == 10
+        (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
+        file_id = self._fileid_map.lookup_file_id(path)
+        if type(file_id) != str:
+            raise AssertionError
+        kind = mode_kind(mode)
+        ie = inventory.entry_factory[kind](file_id,
+            posixpath.basename(path.decode("utf-8")), parent_id)
+        if kind == 'symlink':
+            ie.symlink_target = self.get_symlink_target(file_id, path)
+        else:
+            data = self.get_file_text(file_id, path)
+            ie.text_sha1 = osutils.sha_string(data)
+            ie.text_size = len(data)
+            ie.executable = self.is_executable(file_id, path)
+        ie.revision = None
+        return ie
+
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        # FIXME
+        raise NotImplementedError(self.list_files)
+
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
-        # FIXME: Yield actual inventory entries
         # FIXME: Support specific_file_ids
         # FIXME: Is return order correct?
         if specific_file_ids is not None:
             raise NotImplementedError(self.iter_entries_by_dir)
-        for filename in self.index:
-            yield filename, None
+        dir_ies = {}
+        for path, value in self.index.iteritems():
+            # FIXME: Yield directories
+            parent_id = self.fileid_map.lookup_file_id(posixpath.dirname(path))
+            yield path, self._get_file_ie(path, value, parent_id)
 
     @needs_read_lock
     def conflicts(self):
