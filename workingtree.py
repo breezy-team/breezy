@@ -25,6 +25,9 @@ import errno
 from dulwich.index import (
     Index,
     )
+from dulwich.object_store import (
+    tree_lookup_path,
+    )
 from dulwich.objects import (
     Blob,
     ZERO_SHA,
@@ -91,6 +94,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         self.views = self._make_views()
         self._rules_searcher = None
         self._detect_case_handling()
+        self._reset_data()
+        self._fileid_map = self._basis_fileid_map.copy()
 
     def _index_add_entry(self, path, file_id, kind):
         if kind == "directory":
@@ -200,6 +205,28 @@ class GitWorkingTree(workingtree.WorkingTree):
         for path in self.index:
             yield self.path2id(path)
 
+    def has_or_had_id(self, file_id):
+        if self.has_id(file_id):
+            return True
+        if self.had_id(file_id):
+            return True
+        return False
+
+    def had_id(self, file_id):
+        path = self._basis_fileid_map.lookup_file_id(file_id)
+        try:
+            head = self.repository._git.head()
+        except KeyError:
+            # Assume no if basis is not accessible
+            return False
+        root_tree = self.store[head].tree
+        try:
+            tree_lookup_path(self.store.__getitem__, root_tree, path)
+        except KeyError:
+            return False
+        else:
+            return True
+
     def has_id(self, file_id):
         try:
             self.id2path(file_id)
@@ -251,9 +278,9 @@ class GitWorkingTree(workingtree.WorkingTree):
             raise errors.NotBranchError("branch %s at %s" % (name, self.repository.base))
         store = self.repository._git.object_store
         if head == ZERO_SHA:
-            self._fileid_map = GitFileIdMap({}, self.mapping)
+            self._basis_fileid_map = GitFileIdMap({}, self.mapping)
         else:
-            self._fileid_map = self.mapping.get_fileid_map(store.__getitem__,
+            self._basis_fileid_map = self.mapping.get_fileid_map(store.__getitem__,
                 store[head].tree)
 
     @needs_read_lock
@@ -367,7 +394,7 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def update_basis_by_delta(self, new_revid, delta):
         # The index just contains content, which won't have changed.
-        return
+        self._reset_data()
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):

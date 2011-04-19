@@ -605,3 +605,6 @@ class GitFileIdMap(object):
         else:
             assert type(path) is str
             return path
+
+    def copy(self):
+        return self.__class__(dict(self.file_ids), self.mapping)
