@@ -136,6 +136,11 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _add(self, files, ids, kinds):
         for (path, file_id, kind) in zip(files, ids, kinds):
             self._index_add_entry(path, file_id, kind)
+            if file_id is not None:
+                self._fileid_map.set_file_id(path, file_id)
+
+    def _set_root_id(self, file_id):
+        self._fileid_map.set_file_id("", file_id)
 
     def move(self, from_paths, to_dir=None, after=False):
         rename_tuples = []
