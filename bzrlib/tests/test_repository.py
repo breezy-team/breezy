@@ -1444,7 +1444,7 @@ class TestPacker(TestCaseWithTransport):
         # Because of how they were built, they correspond to
         # ['D', 'C', 'B', 'A']
         packs = b.repository._pack_collection.packs
-        packer = pack_repo.Packer(b.repository._pack_collection,
+        packer = knitpack_repo.KnitPacker(b.repository._pack_collection,
                                   packs, 'testing',
                                   revision_ids=['B', 'C'])
         # Now, when we are copying the B & C revisions, their pack files should
@@ -1464,7 +1464,7 @@ class TestOptimisingPacker(TestCaseWithTransport):
         return repo._pack_collection
 
     def test_open_pack_will_optimise(self):
-        packer = pack_repo.OptimisingPacker(self.get_pack_collection(),
+        packer = knitpack_repo.OptimisingKnitPacker(self.get_pack_collection(),
                                             [], '.test')
         new_pack = packer.open_pack()
         self.addCleanup(new_pack.abort) # ensure cleanup

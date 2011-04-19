@@ -703,6 +703,8 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 
     pack_factory = GCPack
     resumed_pack_factory = ResumedGCPack
+    normal_packer_class = GCCHKPacker
+    optimising_packer_class = GCCHKPacker
 
     def _check_new_inventories(self):
         """Detect missing inventories or chk root entries for the new revisions
@@ -789,46 +791,6 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
             problems.append("missing text keys: %r"
                 % (sorted(missing_text_keys),))
         return problems
-
-    def _execute_pack_operations(self, pack_operations,
-                                 _packer_class=GCCHKPacker,
-                                 reload_func=None):
-        """Execute a series of pack operations.
-
-        :param pack_operations: A list of [revision_count, packs_to_combine].
-        :param _packer_class: The class of packer to use (default: Packer).
-        :return: None.
-        """
-        # XXX: Copied across from RepositoryPackCollection simply because we
-        #      want to override the _packer_class ... :(
-        for revision_count, packs in pack_operations:
-            # we may have no-ops from the setup logic
-            if len(packs) == 0:
-                continue
-            packer = GCCHKPacker(self, packs, '.autopack',
-                                 reload_func=reload_func)
-            try:
-                result = packer.pack()
-            except errors.RetryWithNewPacks:
-                # An exception is propagating out of this context, make sure
-                # this packer has cleaned up. Packer() doesn't set its new_pack
-                # state into the RepositoryPackCollection object, so we only
-                # have access to it directly here.
-                if packer.new_pack is not None:
-                    packer.new_pack.abort()
-                raise
-            if result is None:
-                return
-            for pack in packs:
-                self._remove_pack_from_memory(pack)
-        # record the newly available packs and stop advertising the old
-        # packs
-        to_be_obsoleted = []
-        for _, packs in pack_operations:
-            to_be_obsoleted.extend(packs)
-        result = self._save_pack_names(clear_obsolete_packs=True,
-                                       obsolete_packs=to_be_obsoleted)
-        return result
 
 
 class CHKInventoryRepository(PackRepository):
