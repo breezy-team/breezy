@@ -195,6 +195,14 @@ class GitWorkingTree(workingtree.WorkingTree):
         for path in self.index:
             yield self.path2id(path)
 
+    def has_id(self, file_id):
+        try:
+            self.id2path(file_id)
+        except errors.NoSuchId:
+            return False
+        else:
+            return True
+
     def id2path(self, file_id):
         if type(file_id) != str:
             raise AssertionError
@@ -214,6 +222,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         if self.has_filename(IGNORE_FILENAME):
             f = self.get_file_byname(IGNORE_FILENAME)
             try:
+                # FIXME: Parse git file format, rather than assuming it's
+                # the same as for bzr's native formats.
                 ignore_globs.update(ignores.parse_ignore_file(f))
             finally:
                 f.close()
