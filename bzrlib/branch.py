@@ -751,8 +751,28 @@ class Branch(controldir.ControlComponent):
         """Print `file` to stdout."""
         raise NotImplementedError(self.print_file)
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
+    @needs_write_lock
     def set_revision_history(self, rev_history):
-        raise NotImplementedError(self.set_revision_history)
+        """See Branch.set_revision_history."""
+        if len(rev_history) == 0:
+            revid = _mod_revision.NULL_REVISION
+        else:
+            revid = rev_history[-1]
+        self.set_last_revision_info(len(rev_history), revid)
+        self._cache_revision_history(rev_history)
+
+    @needs_write_lock
+    def set_last_revision_info(self, revno, revision_id):
+        revision_id = _mod_revision.ensure_null(revision_id)
+        old_revno, old_revid = self.last_revision_info()
+        if self._get_append_revisions_only():
+            self._check_history_violation(revision_id)
+        self._run_pre_change_branch_tip_hooks(revno, revision_id)
+        self._write_last_revision_info(revno, revision_id)
+        self._clear_cached_state()
+        self._last_revision_info_cache = revno, revision_id
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     @needs_write_lock
     def set_parent(self, url):
@@ -988,16 +1008,11 @@ class Branch(controldir.ControlComponent):
         :return: A tuple (revno, revision_id).
         """
         if self._last_revision_info_cache is None:
-            self._last_revision_info_cache = self._last_revision_info()
+            self._last_revision_info_cache = self._read_last_revision_info()
         return self._last_revision_info_cache
 
-    def _last_revision_info(self):
-        rh = self.revision_history()
-        revno = len(rh)
-        if revno:
-            return (revno, rh[-1])
-        else:
-            return (0, _mod_revision.NULL_REVISION)
+    def _read_last_revision_info(self):
+        raise NotImplementedError(self._last_revision_info)
 
     def update_revisions(self, other, stop_revision=None, overwrite=False,
                          graph=None, fetch_tags=True):
@@ -2502,64 +2517,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         """See Branch.print_file."""
         return self.repository.print_file(file, revision_id)
 
-    @deprecated_method(deprecated_in((2, 4, 0)))
-    @needs_write_lock
-    def set_revision_history(self, rev_history):
-        """See Branch.set_revision_history."""
-        self._set_revision_history(rev_history)
-
-    def _set_revision_history(self, rev_history):
-        if 'evil' in debug.debug_flags:
-            mutter_callsite(3, "set_revision_history scales with history.")
-        check_not_reserved_id = _mod_revision.check_not_reserved_id
-        for rev_id in rev_history:
-            check_not_reserved_id(rev_id)
-        if Branch.hooks['post_change_branch_tip']:
-            # Don't calculate the last_revision_info() if there are no hooks
-            # that will use it.
-            old_revno, old_revid = self.last_revision_info()
-        if len(rev_history) == 0:
-            revid = _mod_revision.NULL_REVISION
-        else:
-            revid = rev_history[-1]
-        self._run_pre_change_branch_tip_hooks(len(rev_history), revid)
-        self._write_revision_history(rev_history)
-        self._clear_cached_state()
-        self._cache_revision_history(rev_history)
-        for hook in Branch.hooks['set_rh']:
-            hook(self, rev_history)
-        if Branch.hooks['post_change_branch_tip']:
-            self._run_post_change_branch_tip_hooks(old_revno, old_revid)
-
-    def _synchronize_history(self, destination, revision_id):
-        """Synchronize last revision and revision history between branches.
-
-        This version is most efficient when the destination is also a
-        BzrBranch5, but works for BzrBranch6 as long as the revision
-        history is the true lefthand parent history, and all of the revisions
-        are in the destination's repository.  If not, set_revision_history
-        will fail.
-
-        :param destination: The branch to copy the history into
-        :param revision_id: The revision-id to truncate history at.  May
-          be None to copy complete history.
-        """
-        if not isinstance(destination._format, BzrBranchFormat5):
-            super(BzrBranch, self)._synchronize_history(
-                destination, revision_id)
-            return
-        if revision_id == _mod_revision.NULL_REVISION:
-            new_history = []
-        else:
-            new_history = self.revision_history()
-        if revision_id is not None and new_history != []:
-            try:
-                new_history = new_history[:new_history.index(revision_id) + 1]
-            except ValueError:
-                rev = self.repository.get_revision(revision_id)
-                new_history = rev.get_history(self.repository)[1:]
-        destination._set_revision_history(new_history)
-
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
         """Set the last revision of this branch.
@@ -2572,14 +2529,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
-        revision_id = _mod_revision.ensure_null(revision_id)
-        # this old format stores the full history, but this api doesn't
-        # provide it, so we must generate, and might as well check it's
-        # correct
-        history = self._lefthand_history(revision_id)
-        if len(history) != revno:
-            raise AssertionError('%d != %d' % (len(history), revno))
-        self._set_revision_history(history)
+        raise NotImplementedError(self.set_last_revision_info)
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
@@ -2645,31 +2595,36 @@ class BzrBranch(Branch, _RelockDebugMixin):
             self._transport.put_bytes('parent', url + '\n',
                 mode=self.bzrdir._get_file_mode())
 
+    @needs_write_lock
+    def unbind(self):
+        """If bound, unbind"""
+        return self.set_bound_location(None)
 
-class FullHistoryBzrBranch(BzrBranch):
+    @needs_write_lock
+    def bind(self, other):
+        """Bind this branch to the branch other.
 
-    def _write_revision_history(self, history):
-        """Factored out of set_revision_history.
+        This does not push or pull data between the branches, though it does
+        check for divergence to raise an error when the branches are not
+        either the same, or one a prefix of the other. That behaviour may not
+        be useful, so that check may be removed in future.
 
-        This performs the actual writing to disk.
-        It is intended to be called by BzrBranch5.set_revision_history."""
-        self._transport.put_bytes(
-            'revision-history', '\n'.join(history),
-            mode=self.bzrdir._get_file_mode())
+        :param other: The branch to bind to
+        :type other: Branch
+        """
+        # TODO: jam 20051230 Consider checking if the target is bound
+        #       It is debatable whether you should be able to bind to
+        #       a branch which is itself bound.
+        #       Committing is obviously forbidden,
+        #       but binding itself may not be.
+        #       Since we *have* to check at commit time, we don't
+        #       *need* to check here
 
-    def _gen_revision_history(self):
-        history = self._transport.get_bytes('revision-history').split('\n')
-        if history[-1:] == ['']:
-            # There shouldn't be a trailing newline, but just in case.
-            history.pop()
-        return history
-
-
-class BzrBranch5(FullHistoryBzrBranch):
-    """A format 5 branch. This supports new features over plain branches.
-
-    It has support for a master_branch which is the data for bound branches.
-    """
+        # we want to raise diverged if:
+        # last_rev is not in the other_last_rev history, AND
+        # other_last_rev is not in our history, and do it without pulling
+        # history around
+        self.set_bound_location(other.base)
 
     def get_bound_location(self):
         try:
@@ -2717,37 +2672,6 @@ class BzrBranch5(FullHistoryBzrBranch):
             return True
 
     @needs_write_lock
-    def bind(self, other):
-        """Bind this branch to the branch other.
-
-        This does not push or pull data between the branches, though it does
-        check for divergence to raise an error when the branches are not
-        either the same, or one a prefix of the other. That behaviour may not
-        be useful, so that check may be removed in future.
-
-        :param other: The branch to bind to
-        :type other: Branch
-        """
-        # TODO: jam 20051230 Consider checking if the target is bound
-        #       It is debatable whether you should be able to bind to
-        #       a branch which is itself bound.
-        #       Committing is obviously forbidden,
-        #       but binding itself may not be.
-        #       Since we *have* to check at commit time, we don't
-        #       *need* to check here
-
-        # we want to raise diverged if:
-        # last_rev is not in the other_last_rev history, AND
-        # other_last_rev is not in our history, and do it without pulling
-        # history around
-        self.set_bound_location(other.base)
-
-    @needs_write_lock
-    def unbind(self):
-        """If bound, unbind"""
-        return self.set_bound_location(None)
-
-    @needs_write_lock
     def update(self, possible_transports=None):
         """Synchronise this branch with the master branch if any.
 
@@ -2764,8 +2688,119 @@ class BzrBranch5(FullHistoryBzrBranch):
             return old_tip
         return None
 
+    def _read_last_revision_info(self):
+        revision_string = self._transport.get_bytes('last-revision')
+        revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
+        revision_id = cache_utf8.get_cached_utf8(revision_id)
+        revno = int(revno)
+        return revno, revision_id
 
-class BzrBranch8(BzrBranch5):
+    def _write_last_revision_info(self, revno, revision_id):
+        """Simply write out the revision id, with no checks.
+
+        Use set_last_revision_info to perform this safely.
+
+        Does not update the revision_history cache.
+        """
+        revision_id = _mod_revision.ensure_null(revision_id)
+        out_string = '%d %s\n' % (revno, revision_id)
+        self._transport.put_bytes('last-revision', out_string,
+            mode=self.bzrdir._get_file_mode())
+
+
+class FullHistoryBzrBranch(BzrBranch):
+    """Bzr branch which contains the full revision history."""
+
+    @needs_write_lock
+    def set_last_revision_info(self, revno, revision_id):
+        revision_id = _mod_revision.ensure_null(revision_id)
+        # this old format stores the full history, but this api doesn't
+        # provide it, so we must generate, and might as well check it's
+        # correct
+        history = self._lefthand_history(revision_id)
+        if len(history) != revno:
+            raise AssertionError('%d != %d' % (len(history), revno))
+        self._set_revision_history(history)
+
+    def _read_last_revision_info(self):
+        rh = self.revision_history()
+        revno = len(rh)
+        if revno:
+            return (revno, rh[-1])
+        else:
+            return (0, _mod_revision.NULL_REVISION)
+
+    @deprecated_method(deprecated_in((2, 4, 0)))
+    @needs_write_lock
+    def set_revision_history(self, rev_history):
+        """See Branch.set_revision_history."""
+        self._set_revision_history(rev_history)
+
+    def _set_revision_history(self, rev_history):
+        if 'evil' in debug.debug_flags:
+            mutter_callsite(3, "set_revision_history scales with history.")
+        check_not_reserved_id = _mod_revision.check_not_reserved_id
+        for rev_id in rev_history:
+            check_not_reserved_id(rev_id)
+        if Branch.hooks['post_change_branch_tip']:
+            # Don't calculate the last_revision_info() if there are no hooks
+            # that will use it.
+            old_revno, old_revid = self.last_revision_info()
+        if len(rev_history) == 0:
+            revid = _mod_revision.NULL_REVISION
+        else:
+            revid = rev_history[-1]
+        self._run_pre_change_branch_tip_hooks(len(rev_history), revid)
+        self._write_revision_history(rev_history)
+        self._clear_cached_state()
+        self._cache_revision_history(rev_history)
+        for hook in Branch.hooks['set_rh']:
+            hook(self, rev_history)
+        if Branch.hooks['post_change_branch_tip']:
+            self._run_post_change_branch_tip_hooks(old_revno, old_revid)
+
+    def _write_revision_history(self, history):
+        """Factored out of set_revision_history.
+
+        This performs the actual writing to disk.
+        It is intended to be called by set_revision_history."""
+        self._transport.put_bytes(
+            'revision-history', '\n'.join(history),
+            mode=self.bzrdir._get_file_mode())
+
+    def _gen_revision_history(self):
+        history = self._transport.get_bytes('revision-history').split('\n')
+        if history[-1:] == ['']:
+            # There shouldn't be a trailing newline, but just in case.
+            history.pop()
+        return history
+
+    def _synchronize_history(self, destination, revision_id):
+        if not isinstance(destination._format, FullHistoryBzrBranch):
+            super(BzrBranch, self)._synchronize_history(
+                destination, revision_id)
+            return
+        if revision_id == _mod_revision.NULL_REVISION:
+            new_history = []
+        else:
+            new_history = self.revision_history()
+        if revision_id is not None and new_history != []:
+            try:
+                new_history = new_history[:new_history.index(revision_id) + 1]
+            except ValueError:
+                rev = self.repository.get_revision(revision_id)
+                new_history = rev.get_history(self.repository)[1:]
+        destination._set_revision_history(new_history)
+
+
+class BzrBranch5(FullHistoryBzrBranch):
+    """A format 5 branch. This supports new features over plain branches.
+
+    It has support for a master_branch which is the data for bound branches.
+    """
+
+
+class BzrBranch8(BzrBranch):
     """A branch that stores tree-reference locations."""
 
     def _open_hook(self):
@@ -2796,51 +2831,6 @@ class BzrBranch8(BzrBranch5):
         super(BzrBranch8, self)._clear_cached_state()
         self._last_revision_info_cache = None
         self._reference_info = None
-
-    def _last_revision_info(self):
-        revision_string = self._transport.get_bytes('last-revision')
-        revno, revision_id = revision_string.rstrip('\n').split(' ', 1)
-        revision_id = cache_utf8.get_cached_utf8(revision_id)
-        revno = int(revno)
-        return revno, revision_id
-
-    def _write_last_revision_info(self, revno, revision_id):
-        """Simply write out the revision id, with no checks.
-
-        Use set_last_revision_info to perform this safely.
-
-        Does not update the revision_history cache.
-        Intended to be called by set_last_revision_info and
-        _write_revision_history.
-        """
-        revision_id = _mod_revision.ensure_null(revision_id)
-        out_string = '%d %s\n' % (revno, revision_id)
-        self._transport.put_bytes('last-revision', out_string,
-            mode=self.bzrdir._get_file_mode())
-
-    @needs_write_lock
-    def set_last_revision_info(self, revno, revision_id):
-        revision_id = _mod_revision.ensure_null(revision_id)
-        old_revno, old_revid = self.last_revision_info()
-        if self._get_append_revisions_only():
-            self._check_history_violation(revision_id)
-        self._run_pre_change_branch_tip_hooks(revno, revision_id)
-        self._write_last_revision_info(revno, revision_id)
-        self._clear_cached_state()
-        self._last_revision_info_cache = revno, revision_id
-        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
-
-    def _synchronize_history(self, destination, revision_id):
-        """Synchronize last revision and revision history between branches.
-
-        :see: Branch._synchronize_history
-        """
-        # XXX: The base Branch has a fast implementation of this method based
-        # on set_last_revision_info, but BzrBranch/BzrBranch5 have a slower one
-        # that uses set_revision_history.  This class inherits from BzrBranch5,
-        # but wants the fast implementation, so it calls
-        # Branch._synchronize_history directly.
-        Branch._synchronize_history(self, destination, revision_id)
 
     def _check_history_violation(self, revision_id):
         last_revision = _mod_revision.ensure_null(self.last_revision())
