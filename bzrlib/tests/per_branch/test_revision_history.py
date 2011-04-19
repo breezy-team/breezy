@@ -18,6 +18,7 @@
 
 from bzrlib import (
     branch,
+    errors,
     revision as _mod_revision,
     )
 from bzrlib.symbol_versioning import deprecated_in
