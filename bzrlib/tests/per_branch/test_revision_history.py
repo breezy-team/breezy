@@ -18,9 +18,9 @@
 
 from bzrlib import (
     branch,
-    errors,
     revision as _mod_revision,
     )
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import per_branch
 
 
@@ -112,7 +112,8 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
         # Lock the branch, set the revision history, then repeatedly call
         # revision_history.
         branch.lock_write()
-        branch.set_revision_history([])
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch.set_revision_history, [])
         try:
             branch.revision_history()
             self.assertEqual([], calls)
@@ -124,7 +125,8 @@ class TestRevisionHistoryCaching(per_branch.TestCaseWithBranch):
         cause the revision history to be cached.
         """
         branch, calls = self.get_instrumented_branch()
-        branch.set_revision_history([])
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch.set_revision_history, [])
         branch.revision_history()
         self.assertEqual(['_gen_revision_history'], calls)
 

@@ -28,6 +28,7 @@ from bzrlib import (
     merge,
     osutils,
     revision as _mod_revision,
+    symbol_versioning,
     tests,
     treebuilder,
     )
@@ -503,7 +504,8 @@ class BundleTester(object):
                 old.unlock()
         if not _mod_revision.is_null(rev_id):
             rh = self.b1.revision_history()
-            tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
+            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+                tree.branch.set_revision_history, rh[:rh.index(rev_id)+1])
             tree.update()
             delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),

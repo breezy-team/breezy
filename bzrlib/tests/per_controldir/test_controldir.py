@@ -194,7 +194,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.build_tree(['foo'], transport=tree.bzrdir.root_transport)
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        tree.bzrdir.open_branch().set_revision_history([])
+        tree.bzrdir.open_branch().generate_revision_history(
+            bzrlib.revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         # Copy the content (i.e. revisions) from the 'commit_tree' branch's
@@ -222,7 +223,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        tree.branch.bzrdir.open_branch().set_revision_history([])
+        tree.branch.bzrdir.open_branch().generate_revision_history(
+            bzrlib.revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         tree.branch.repository.copy_content_into(shared_repo)
@@ -249,7 +251,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        tree.branch.bzrdir.open_branch().set_revision_history([])
+        tree.branch.bzrdir.open_branch().generate_revision_history(
+            bzrlib.revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
@@ -447,7 +450,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        tree.bzrdir.open_branch().set_revision_history([])
+        tree.bzrdir.open_branch().generate_revision_history(
+            bzrlib.revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
@@ -470,7 +474,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        tree.bzrdir.open_branch().set_revision_history([])
+        tree.bzrdir.open_branch().generate_revision_history(
+            bzrlib.revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         tree.branch.repository.copy_content_into(shared_repo)
@@ -490,7 +495,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        tree.bzrdir.open_branch().set_revision_history([])
+        tree.bzrdir.open_branch().generate_revision_history(
+            bzrlib.revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         tree.branch.repository.copy_content_into(shared_repo)
@@ -517,7 +523,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        tree.bzrdir.open_branch().set_revision_history([])
+        tree.bzrdir.open_branch().generate_revision_history(
+            bzrlib.revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')
@@ -540,7 +547,8 @@ class TestControlDir(TestCaseWithControlDir):
         self.build_tree(['commit_tree/foo'])
         tree.add('foo')
         tree.commit('revision 1', rev_id='1')
-        tree.bzrdir.open_branch().set_revision_history([])
+        br = tree.bzrdir.open_branch()
+        br.set_last_revision_info(0, bzrlib.revision.NULL_REVISION)
         tree.set_parent_trees([])
         tree.commit('revision 2', rev_id='2')
         source = self.make_repository('source')

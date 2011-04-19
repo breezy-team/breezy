@@ -42,7 +42,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
 
     def test_convert_branch5_branch6(self):
         b = self.make_branch('branch', format='knit')
-        b.set_revision_history(['AB', 'CD'])
+        b.generate_revision_history('CD')
         b.set_parent('file:///EF')
         b.set_bound_location('file:///GH')
         b.set_push_location('file:///IJ')
