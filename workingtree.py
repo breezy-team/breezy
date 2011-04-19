@@ -128,12 +128,21 @@ class GitWorkingTree(workingtree.WorkingTree):
                 stat_val.st_mode, stat_val.st_uid, stat_val.st_gid,
                 stat_val.st_size, blob.id, flags)
 
+    def unversion(self, file_ids):
+        for file_id in file_ids:
+            path = self.id2path(file_id)
+            del self.index[path.encode("utf-8")]
+
     def _add(self, files, ids, kinds):
         for (path, file_id, kind) in zip(files, ids, kinds):
             self._index_add_entry(path, file_id, kind)
 
     def get_root_id(self):
-        return self.mapping.generate_file_id("")
+        return self.path2id("")
+
+    @needs_read_lock
+    def path2id(self, path):
+        return self._fileid_map.lookup_file_id(path.encode("utf-8"))
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -170,7 +179,7 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def __iter__(self):
         for path in self.index:
-            yield self._fileid_map.lookup_file_id(path)
+            yield self.path2id(path)
 
     def id2path(self, file_id):
         if type(file_id) != str:
@@ -227,7 +236,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         return self.repository.revision_tree(revid)
 
     def _get_dir_ie(self, path, parent_id):
-        file_id = self._fileid_map.lookup_file_id(path)
+        file_id = self.path2id(path)
         return inventory.InventoryDirectory(file_id,
             posixpath.basename(path).strip("/"), parent_id)
 
@@ -243,15 +252,15 @@ class GitWorkingTree(workingtree.WorkingTree):
         return ret
 
     def _get_file_ie(self, path, value, parent_id):
-        assert isinstance(path, str)
+        assert isinstance(path, unicode)
         assert isinstance(value, tuple) and len(value) == 10
         (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
-        file_id = self._fileid_map.lookup_file_id(path)
+        file_id = self.path2id(path)
         if type(file_id) != str:
             raise AssertionError
         kind = mode_kind(mode)
         ie = inventory.entry_factory[kind](file_id,
-            posixpath.basename(path.decode("utf-8")), parent_id)
+            posixpath.basename(path), parent_id)
         if kind == 'symlink':
             ie.symlink_target = self.get_symlink_target(file_id)
         else:
@@ -288,11 +297,12 @@ class GitWorkingTree(workingtree.WorkingTree):
         # FIXME: support from_dir
         # FIXME: Support recursive
         dir_ids = {}
-        root_ie = self._get_dir_ie("", None)
+        root_ie = self._get_dir_ie(u"", None)
         if include_root and not from_dir:
             yield "", "V", root_ie.kind, root_ie.file_id, root_ie
-        dir_ids[""] = root_ie.file_id
+        dir_ids[u""] = root_ie.file_id
         for path, value in self.index.iteritems():
+            path = path.decode("utf-8")
             parent = posixpath.dirname(path).strip("/")
             for dir_path, dir_ie in self._add_missing_parent_ids(parent, dir_ids):
                 yield dir_path, "V", dir_ie.kind, dir_ie.file_id, dir_ie
@@ -304,14 +314,15 @@ class GitWorkingTree(workingtree.WorkingTree):
         # FIXME: Is return order correct?
         if specific_file_ids is not None:
             raise NotImplementedError(self.iter_entries_by_dir)
-        root_ie = self._get_dir_ie("", None)
-        yield "", root_ie
-        dir_ids = {"": root_ie.file_id}
+        root_ie = self._get_dir_ie(u"", None)
+        yield u"", root_ie
+        dir_ids = {u"": root_ie.file_id}
         for path, value in self.index.iteritems():
+            path = path.decode("utf-8")
             parent = posixpath.dirname(path).strip("/")
             for (dir_path, dir_ie) in self._add_missing_parent_ids(parent, dir_ids):
                 yield dir_path, dir_ie
-            parent_id = self.fileid_map.lookup_file_id(parent)
+            parent_id = self.path2id(parent)
             yield path, self._get_file_ie(path, value, parent_id)
 
     @needs_read_lock
