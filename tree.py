@@ -58,10 +58,20 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def path2id(self, path):
         return self.fileid_map.lookup_file_id(path.encode('utf-8'))
 
+    def has_filename(self, path):
+        try:
+            tree_lookup_path(self.store.__getitem__, self.tree,
+                path.encode("utf-8"))
+        except KeyError:
+            return False
+        else:
+            return True
+
     def list_files(self, include_root=False, from_dir=None, recursive=True):
         if from_dir is None:
-            from_dir = ""
-        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, from_dir)
+            from_dir = u""
+        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree,
+            from_dir.encode("utf-8"))
         if mode is None: # Root
             root_ie = self._get_dir_ie("", None)
         else:
