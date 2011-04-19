@@ -2919,6 +2919,12 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             raise errors.UnexpectedSmartServerResponse(response)
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
+    @needs_write_lock
+    def set_revision_history(self, rev_history):
+        """See Branch.set_revision_history."""
+        self._set_revision_history(rev_history)
+
     @needs_write_lock
     def _set_revision_history(self, rev_history):
         # Send just the tip revision of the history; the server will generate
