@@ -3153,7 +3153,7 @@ class cmd_commit(Command):
                     help='When no message is supplied, show the diff along'
                     ' with the status summary in the message editor.'),
              ]
-    aliases = ['ci']
+    aliases = ['ci', 'checkin']
 
     def _iter_bug_fix_urls(self, fixes, branch):
         # Configure the properties for bug fixing attributes.
