@@ -75,6 +75,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         self.basedir = bzrdir.root_transport.local_abspath('.')
         self.bzrdir = bzrdir
         self.repository = repo
+        self.store = self.repository._git.object_store
         self.mapping = self.repository.get_mapping()
         self._branch = branch
         self._transport = bzrdir.transport
@@ -124,8 +125,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         else:
             raise AssertionError("unknown kind '%s'" % kind)
         # Add object to the repository if it didn't exist yet
-        if not blob.id in self.repository._git.object_store:
-            self.repository._git.object_store.add_object(blob)
+        if not blob.id in self.store:
+            self.store.add_object(blob)
         # Add an entry to the index or update the existing entry
         flags = 0 # FIXME
         self.index[path.encode("utf-8")] = (stat_val.st_ctime,
@@ -227,6 +228,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         except KeyError:
             # Assume no if basis is not accessible
             return False
+        if head == ZERO_SHA:
+            return False
         root_tree = self.store[head].tree
         try:
             tree_lookup_path(self.store.__getitem__, root_tree, path)
@@ -284,12 +287,11 @@ class GitWorkingTree(workingtree.WorkingTree):
             head = self.repository._git.head()
         except KeyError, name:
             raise errors.NotBranchError("branch %s at %s" % (name, self.repository.base))
-        store = self.repository._git.object_store
         if head == ZERO_SHA:
             self._basis_fileid_map = GitFileIdMap({}, self.mapping)
         else:
-            self._basis_fileid_map = self.mapping.get_fileid_map(store.__getitem__,
-                store[head].tree)
+            self._basis_fileid_map = self.mapping.get_fileid_map(self.store.__getitem__,
+                self.store[head].tree)
 
     @needs_read_lock
     def get_file_sha1(self, file_id, path=None, stat_value=None):
@@ -344,6 +346,16 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _is_executable_from_path_and_stat_from_stat(self, path, stat_result):
         mode = stat_result.st_mode
         return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
+
+    def stored_kind(self, file_id, path=None):
+        if path is None:
+            path = self.id2path(file_id)
+        head = self.repository._git.head()
+        if head == ZERO_SHA:
+            raise errors.NoSuchId(self, file_id)
+        root_tree = self.store[head].tree
+        (mode, hexsha) = tree_lookup_path(self.store.__getitem__, root_tree, path)
+        return mode_kind(mode)
 
     if not osutils.supports_executable():
         def is_executable(self, file_id, path=None):
@@ -443,10 +455,10 @@ class InterIndexGitTree(tree.InterTree):
                 extra_trees=None, require_versioned=False, include_root=False,
                 want_unversioned=False):
         changes = self._index.changes_from_tree(
-            self.source._repository._git.object_store, self.source.tree, 
+            self.source.store, self.source.tree, 
             want_unchanged=want_unchanged)
         source_fileid_map = self.source.mapping.get_fileid_map(
-            self.source._repository._git.object_store.__getitem__,
+            self.source.store.__getitem__,
             self.source.tree)
         if self.target.mapping.BZR_FILE_IDS_FILE is not None:
             file_id = self.target.path2id(
@@ -469,7 +481,7 @@ class InterIndexGitTree(tree.InterTree):
     def iter_changes(self, include_unchanged=False, specific_files=None,
         pb=None, extra_trees=[], require_versioned=True, want_unversioned=False):
         changes = self._index.changes_from_tree(
-            self.source._repository._git.object_store, self.source.tree,
+            self.source.store, self.source.tree,
             want_unchanged=include_unchanged)
         # FIXME: Handle want_unversioned
         return changes_from_git_changes(changes, self.target.mapping,
