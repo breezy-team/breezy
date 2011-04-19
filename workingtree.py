@@ -211,6 +211,12 @@ class GitWorkingTree(workingtree.WorkingTree):
             return path
         raise errors.NoSuchId(None, file_id)
 
+    def get_file_mtime(self, file_id, path=None):
+        """See Tree.get_file_mtime."""
+        if not path:
+            path = self.id2path(file_id)
+        return os.lstat(self.abspath(path)).st_mtime
+
     def get_ignore_list(self):
         ignoreset = getattr(self, '_ignoreset', None)
         if ignoreset is not None:
