@@ -63,13 +63,13 @@ up=pull
 """
 
 import os
+import string
 import sys
 
 from bzrlib import commands
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import errno
 import fnmatch
 import re
 from cStringIO import StringIO
@@ -279,10 +279,7 @@ class Config(object):
         # We need to iterate until no more refs appear ({{foo}} will need two
         # iterations for example).
         while True:
-            try:
-                raw_chunks = self.option_ref_re.split(result)
-            except TypeError:
-                import pdb; pdb.set_trace()
+            raw_chunks = self.option_ref_re.split(result)
             if len(raw_chunks) == 1:
                 # Shorcut the trivial case: no refs
                 return result
@@ -444,21 +441,21 @@ class Config(object):
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If no username can be found, errors.NoWhoami exception is raised.
-
-        TODO: Check it's reasonably well-formed.
         """
         v = os.environ.get('BZR_EMAIL')
         if v:
             return v.decode(osutils.get_user_encoding())
-
         v = self._get_user_id()
         if v:
             return v
-
         v = os.environ.get('EMAIL')
         if v:
             return v.decode(osutils.get_user_encoding())
-
+        name, email = _auto_user_id()
+        if name and email:
+            return '%s <%s>' % (name, email)
+        elif email:
+            return email
         raise errors.NoWhoami()
 
     def ensure_username(self):
@@ -970,6 +967,61 @@ class GlobalConfig(LockableConfig):
         super(LockableConfig, self).remove_user_option(option_name,
                                                        section_name)
 
+def _iter_for_location_by_parts(sections, location):
+    """Keep only the sessions matching the specified location.
+
+    :param sections: An iterable of section names.
+
+    :param location: An url or a local path to match against.
+
+    :returns: An iterator of (section, extra_path, nb_parts) where nb is the
+        number of path components in the section name, section is the section
+        name and extra_path is the difference between location and the section
+        name.
+    """
+    location_parts = location.rstrip('/').split('/')
+
+    for section in sections:
+        # location is a local path if possible, so we need
+        # to convert 'file://' urls to local paths if necessary.
+
+        # FIXME: I don't think the above comment is still up to date,
+        # LocationConfig is always instantiated with an url -- vila 2011-04-07
+
+        # This also avoids having file:///path be a more exact
+        # match than '/path'.
+
+        # FIXME: Not sure about the above either, but since the path components
+        # are compared in sync, adding two empty components (//) is likely to
+        # trick the comparison and also trick the check on the number of
+        # components, so we *should* take only the relevant part of the url. On
+        # the other hand, this means 'file://' urls *can't* be used in sections
+        # so more work is probably needed -- vila 2011-04-07
+
+        if section.startswith('file://'):
+            section_path = urlutils.local_path_from_url(section)
+        else:
+            section_path = section
+        section_parts = section_path.rstrip('/').split('/')
+
+        matched = True
+        if len(section_parts) > len(location_parts):
+            # More path components in the section, they can't match
+            matched = False
+        else:
+            # Rely on zip truncating in length to the length of the shortest
+            # argument sequence.
+            names = zip(location_parts, section_parts)
+            for name in names:
+                if not fnmatch.fnmatch(name[0], name[1]):
+                    matched = False
+                    break
+        if not matched:
+            continue
+        # build the path difference between the section and the location
+        extra_path = '/'.join(location_parts[len(section_parts):])
+        yield section, extra_path, len(section_parts)
+
 
 class LocationConfig(LockableConfig):
     """A configuration object that gives the policy for a location."""
@@ -1004,49 +1056,20 @@ class LocationConfig(LockableConfig):
 
     def _get_matching_sections(self):
         """Return an ordered list of section names matching this location."""
-        sections = self._get_parser()
-        location_names = self.location.split('/')
-        if self.location.endswith('/'):
-            del location_names[-1]
-        matches=[]
-        for section in sections:
-            # location is a local path if possible, so we need
-            # to convert 'file://' urls to local paths if necessary.
-            # This also avoids having file:///path be a more exact
-            # match than '/path'.
-            if section.startswith('file://'):
-                section_path = urlutils.local_path_from_url(section)
-            else:
-                section_path = section
-            section_names = section_path.split('/')
-            if section.endswith('/'):
-                del section_names[-1]
-            names = zip(location_names, section_names)
-            matched = True
-            for name in names:
-                if not fnmatch.fnmatch(name[0], name[1]):
-                    matched = False
-                    break
-            if not matched:
-                continue
-            # so, for the common prefix they matched.
-            # if section is longer, no match.
-            if len(section_names) > len(location_names):
-                continue
-            matches.append((len(section_names), section,
-                            '/'.join(location_names[len(section_names):])))
+        matches = list(_iter_for_location_by_parts(self._get_parser(),
+                                                   self.location))
         # put the longest (aka more specific) locations first
-        matches.sort(reverse=True)
-        sections = []
-        for (length, section, extra_path) in matches:
-            sections.append((section, extra_path))
+        matches.sort(
+            key=lambda (section, extra_path, length): (length, section),
+            reverse=True)
+        for (section, extra_path, length) in matches:
+            yield section, extra_path
             # should we stop looking for parent configs here?
             try:
                 if self._get_parser()[section].as_bool('ignore_parents'):
                     break
             except KeyError:
                 pass
-        return sections
 
     def _get_sections(self, name=None):
         """See IniBasedConfig._get_sections()."""
@@ -1408,6 +1431,86 @@ def xdg_cache_dir():
         return e
     else:
         return os.path.expanduser('~/.cache')
+
+
+def _get_default_mail_domain():
+    """If possible, return the assumed default email domain.
+
+    :returns: string mail domain, or None.
+    """
+    if sys.platform == 'win32':
+        # No implementation yet; patches welcome
+        return None
+    try:
+        f = open('/etc/mailname')
+    except (IOError, OSError), e:
+        return None
+    try:
+        domain = f.read().strip()
+        return domain
+    finally:
+        f.close()
+
+
+def _auto_user_id():
+    """Calculate automatic user identification.
+
+    :returns: (realname, email), either of which may be None if they can't be
+    determined.
+
+    Only used when none is set in the environment or the id file.
+
+    This only returns an email address if we can be fairly sure the 
+    address is reasonable, ie if /etc/mailname is set on unix.
+
+    This doesn't use the FQDN as the default domain because that may be 
+    slow, and it doesn't use the hostname alone because that's not normally 
+    a reasonable address.
+    """
+    if sys.platform == 'win32':
+        # No implementation to reliably determine Windows default mail
+        # address; please add one.
+        return None, None
+
+    default_mail_domain = _get_default_mail_domain()
+    if not default_mail_domain:
+        return None, None
+
+    import pwd
+    uid = os.getuid()
+    try:
+        w = pwd.getpwuid(uid)
+    except KeyError:
+        mutter('no passwd entry for uid %d?' % uid)
+        return None, None
+
+    # we try utf-8 first, because on many variants (like Linux),
+    # /etc/passwd "should" be in utf-8, and because it's unlikely to give
+    # false positives.  (many users will have their user encoding set to
+    # latin-1, which cannot raise UnicodeError.)
+    try:
+        gecos = w.pw_gecos.decode('utf-8')
+        encoding = 'utf-8'
+    except UnicodeError:
+        try:
+            encoding = osutils.get_user_encoding()
+            gecos = w.pw_gecos.decode(encoding)
+        except UnicodeError, e:
+            mutter("cannot decode passwd entry %s" % w)
+            return None, None
+    try:
+        username = w.pw_name.decode(encoding)
+    except UnicodeError, e:
+        mutter("cannot decode passwd entry %s" % w)
+        return None, None
+
+    comma = gecos.find(',')
+    if comma == -1:
+        realname = gecos
+    else:
+        realname = gecos[:comma]
+
+    return realname, (username + '@' + default_mail_domain)
 
 
 def parse_username(username):

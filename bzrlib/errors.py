@@ -1140,6 +1140,15 @@ class CannotCommitSelectedFileMerge(BzrError):
         BzrError.__init__(self, files=files, files_str=files_str)
 
 
+class ExcludesUnsupported(BzrError):
+
+    _fmt = ('Excluding paths during commit is not supported by '
+            'repository at %(repository)r.')
+
+    def __init__(self, repository):
+        BzrError.__init__(self, repository=repository)
+
+
 class BadCommitMessageEncoding(BzrError):
 
     _fmt = 'The specified commit message contains characters unsupported by '\

@@ -103,18 +103,18 @@ load_tests = load_tests_apply_scenarios
 class TestContainsWhitespace(tests.TestCase):
 
     def test_contains_whitespace(self):
-        self.failUnless(osutils.contains_whitespace(u' '))
-        self.failUnless(osutils.contains_whitespace(u'hello there'))
-        self.failUnless(osutils.contains_whitespace(u'hellothere\n'))
-        self.failUnless(osutils.contains_whitespace(u'hello\nthere'))
-        self.failUnless(osutils.contains_whitespace(u'hello\rthere'))
-        self.failUnless(osutils.contains_whitespace(u'hello\tthere'))
+        self.assertTrue(osutils.contains_whitespace(u' '))
+        self.assertTrue(osutils.contains_whitespace(u'hello there'))
+        self.assertTrue(osutils.contains_whitespace(u'hellothere\n'))
+        self.assertTrue(osutils.contains_whitespace(u'hello\nthere'))
+        self.assertTrue(osutils.contains_whitespace(u'hello\rthere'))
+        self.assertTrue(osutils.contains_whitespace(u'hello\tthere'))
 
         # \xa0 is "Non-breaking-space" which on some python locales thinks it
         # is whitespace, but we do not.
-        self.failIf(osutils.contains_whitespace(u''))
-        self.failIf(osutils.contains_whitespace(u'hellothere'))
-        self.failIf(osutils.contains_whitespace(u'hello\xa0there'))
+        self.assertFalse(osutils.contains_whitespace(u''))
+        self.assertFalse(osutils.contains_whitespace(u'hellothere'))
+        self.assertFalse(osutils.contains_whitespace(u'hello\xa0there'))
 
 
 class TestRename(tests.TestCaseInTempDir):
@@ -134,8 +134,8 @@ class TestRename(tests.TestCaseInTempDir):
         # This should work everywhere
         self.create_file('a', 'something in a\n')
         self._fancy_rename('a', 'b')
-        self.failIfExists('a')
-        self.failUnlessExists('b')
+        self.assertPathDoesNotExist('a')
+        self.assertPathExists('b')
         self.check_file_contents('b', 'something in a\n')
 
         self.create_file('a', 'new something in a\n')
@@ -148,7 +148,7 @@ class TestRename(tests.TestCaseInTempDir):
         self.create_file('target', 'data in target\n')
         self.assertRaises((IOError, OSError), self._fancy_rename,
                           'missingsource', 'target')
-        self.failUnlessExists('target')
+        self.assertPathExists('target')
         self.check_file_contents('target', 'data in target\n')
 
     def test_fancy_rename_fails_if_source_and_target_missing(self):
@@ -159,8 +159,8 @@ class TestRename(tests.TestCaseInTempDir):
         # Rename should be semi-atomic on all platforms
         self.create_file('a', 'something in a\n')
         osutils.rename('a', 'b')
-        self.failIfExists('a')
-        self.failUnlessExists('b')
+        self.assertPathDoesNotExist('a')
+        self.assertPathExists('b')
         self.check_file_contents('b', 'something in a\n')
 
         self.create_file('a', 'new something in a\n')
@@ -231,6 +231,25 @@ class TestIsInside(tests.TestCase):
             self.assertFalse(osutils.is_inside_or_parent_of_any(dirs, fn))
 
 
+class TestLstat(tests.TestCaseInTempDir):
+
+    def test_lstat_matches_fstat(self):
+        # On Windows, lstat and fstat don't always agree, primarily in the
+        # 'st_ino' and 'st_dev' fields. So we force them to be '0' in our
+        # custom implementation.
+        if sys.platform == 'win32':
+            # We only have special lstat/fstat if we have the extension.
+            # Without it, we may end up re-reading content when we don't have
+            # to, but otherwise it doesn't effect correctness.
+            self.requireFeature(test__walkdirs_win32.win32_readdir_feature)
+        f = open('test-file.txt', 'wb')
+        self.addCleanup(f.close)
+        f.write('some content\n')
+        f.flush()
+        self.assertEqualStat(osutils.fstat(f.fileno()),
+                             osutils.lstat('test-file.txt'))
+
+
 class TestRmTree(tests.TestCaseInTempDir):
 
     def test_rmtree(self):
@@ -248,8 +267,8 @@ class TestRmTree(tests.TestCaseInTempDir):
 
         osutils.rmtree('dir')
 
-        self.failIfExists('dir/file')
-        self.failIfExists('dir')
+        self.assertPathDoesNotExist('dir/file')
+        self.assertPathDoesNotExist('dir')
 
 
 class TestDeleteAny(tests.TestCaseInTempDir):
@@ -469,13 +488,13 @@ class TestCanonicalRelPath(tests.TestCaseInTempDir):
         f = file('MixedCaseName', 'w')
         f.close()
         actual = osutils.canonical_relpath(self.test_base_dir, 'mixedcasename')
-        self.failUnlessEqual('work/MixedCaseName', actual)
+        self.assertEqual('work/MixedCaseName', actual)
 
     def test_canonical_relpath_missing_tail(self):
         os.mkdir('MixedCaseParent')
         actual = osutils.canonical_relpath(self.test_base_dir,
                                            'mixedcaseparent/nochild')
-        self.failUnlessEqual('work/MixedCaseParent/nochild', actual)
+        self.assertEqual('work/MixedCaseParent/nochild', actual)
 
 
 class Test_CICPCanonicalRelpath(tests.TestCaseWithTransport):
@@ -905,8 +924,8 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         b.close()
 
         osutils._win32_rename('b', 'a')
-        self.failUnlessExists('a')
-        self.failIfExists('b')
+        self.assertPathExists('a')
+        self.assertPathDoesNotExist('b')
         self.assertFileEqual('baz\n', 'a')
 
     def test_rename_missing_file(self):
@@ -1595,7 +1614,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
                           ('d', 'source/b', 'target/b'),
                           ('f', 'source/b/c', 'target/b/c'),
                          ], processed_files)
-        self.failIfExists('target')
+        self.assertPathDoesNotExist('target')
         if osutils.has_symlinks():
             self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 
@@ -1647,7 +1666,7 @@ class TestSetUnsetEnv(tests.TestCase):
         old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', None)
         self.assertEqual('foo', old)
         self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'))
-        self.failIf('BZR_TEST_ENV_VAR' in os.environ)
+        self.assertFalse('BZR_TEST_ENV_VAR' in os.environ)
 
 
 class TestSizeShaFile(tests.TestCaseInTempDir):

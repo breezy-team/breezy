@@ -17,13 +17,9 @@
 
 """Test operations that check the repository for corruption"""
 
-import os
-
 from bzrlib import (
-    check,
     config as _mod_config,
     errors,
-    inventory,
     revision as _mod_revision,
     )
 from bzrlib.tests import TestNotApplicable
@@ -74,7 +70,7 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
         no broken revisions.
         """
         repo = self.make_repository('empty-repo')
-        if not repo.revision_graph_can_have_wrong_parents():
+        if not repo._format.revision_graph_can_have_wrong_parents:
             raise TestNotApplicable(
                 '%r cannot have corrupt revision index.' % repo)
         repo.lock_read()

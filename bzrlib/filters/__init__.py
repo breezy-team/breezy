@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,7 +38,6 @@ where:
 
 Note that context is currently only supported for write converters.
 """
-
 
 from cStringIO import StringIO
 from bzrlib.lazy_import import lazy_import

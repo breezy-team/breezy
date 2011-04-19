@@ -56,7 +56,7 @@ from bzrlib.remote import (
     RemoteRepository,
     RemoteRepositoryFormat,
     )
-from bzrlib.repofmt import groupcompress_repo, pack_repo
+from bzrlib.repofmt import groupcompress_repo, knitpack_repo
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import medium, request
 from bzrlib.smart.client import _SmartClient
@@ -1967,7 +1967,7 @@ class TestRepositoryFormat(TestRemoteRepository):
         true_format = RemoteRepositoryFormat()
         true_format._network_name = true_name
         self.assertEqual(True, true_format.fast_deltas)
-        false_name = pack_repo.RepositoryFormatKnitPack1().network_name()
+        false_name = knitpack_repo.RepositoryFormatKnitPack1().network_name()
         false_format = RemoteRepositoryFormat()
         false_format._network_name = false_name
         self.assertEqual(False, false_format.fast_deltas)

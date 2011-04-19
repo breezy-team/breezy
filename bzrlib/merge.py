@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
+    cleanup,
     conflicts as _mod_conflicts,
     debug,
     generate_ids,
@@ -37,7 +38,6 @@ from bzrlib import (
     versionedfile,
     workingtree,
     )
-from bzrlib.cleanup import OperationWithCleanups
 """)
 from bzrlib import (
     decorators,
@@ -53,7 +53,7 @@ from bzrlib.symbol_versioning import (
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
     from_tree.lock_tree_write()
-    operation = OperationWithCleanups(merge_inner)
+    operation = cleanup.OperationWithCleanups(merge_inner)
     operation.add_cleanup(from_tree.unlock)
     operation.run_simple(from_tree.branch, to_tree, from_tree,
         ignore_zero=True, interesting_ids=interesting_ids, this_tree=from_tree)
@@ -62,8 +62,8 @@ def transform_tree(from_tree, to_tree, interesting_ids=None):
 class MergeHooks(hooks.Hooks):
 
     def __init__(self):
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('merge_file_content',
+        hooks.Hooks.__init__(self, "bzrlib.merge", "Merger.hooks")
+        self.add_hook('merge_file_content',
             "Called with a bzrlib.merge.Merger object to create a per file "
             "merge object when starting a merge. "
             "Should return either None or a subclass of "
@@ -73,7 +73,7 @@ class MergeHooks(hooks.Hooks):
             "side has deleted the file and the other has changed it). "
             "See the AbstractPerFileMerger API docs for details on how it is "
             "used by merge.",
-            (2, 1), None))
+            (2, 1))
 
 
 class AbstractPerFileMerger(object):
@@ -458,16 +458,13 @@ class Merger(object):
     @deprecated_method(deprecated_in((2, 1, 0)))
     def file_revisions(self, file_id):
         self.ensure_revision_trees()
-        def get_id(tree, file_id):
-            revision_id = tree.inventory[file_id].revision
-            return revision_id
         if self.this_rev_id is None:
             if self.this_basis_tree.get_file_sha1(file_id) != \
                 self.this_tree.get_file_sha1(file_id):
                 raise errors.WorkingTreeNotRevision(self.this_tree)
 
         trees = (self.this_basis_tree, self.other_tree)
-        return [get_id(tree, file_id) for tree in trees]
+        return [tree.get_file_revision(file_id) for tree in trees]
 
     @deprecated_method(deprecated_in((2, 1, 0)))
     def check_basis(self, check_clean, require_commits=True):
@@ -501,7 +498,8 @@ class Merger(object):
     def _add_parent(self):
         new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
         new_parent_trees = []
-        operation = OperationWithCleanups(self.this_tree.set_parent_trees)
+        operation = cleanup.OperationWithCleanups(
+            self.this_tree.set_parent_trees)
         for revision_id in new_parents:
             try:
                 tree = self.revision_tree(revision_id)
@@ -708,7 +706,7 @@ class Merger(object):
         return merge
 
     def do_merge(self):
-        operation = OperationWithCleanups(self._do_merge_to)
+        operation = cleanup.OperationWithCleanups(self._do_merge_to)
         self.this_tree.lock_tree_write()
         operation.add_cleanup(self.this_tree.unlock)
         if self.base_tree is not None:
@@ -820,7 +818,7 @@ class Merge3Merger(object):
             warnings.warn("pb argument to Merge3Merger is deprecated")
 
     def do_merge(self):
-        operation = OperationWithCleanups(self._do_merge)
+        operation = cleanup.OperationWithCleanups(self._do_merge)
         self.this_tree.lock_tree_write()
         operation.add_cleanup(self.this_tree.unlock)
         self.base_tree.lock_read()
@@ -841,7 +839,7 @@ class Merge3Merger(object):
             pass
 
     def make_preview_transform(self):
-        operation = OperationWithCleanups(self._make_preview_transform)
+        operation = cleanup.OperationWithCleanups(self._make_preview_transform)
         self.base_tree.lock_read()
         operation.add_cleanup(self.base_tree.unlock)
         self.other_tree.lock_read()
@@ -910,7 +908,7 @@ class Merge3Merger(object):
         """
         result = []
         iterator = self.other_tree.iter_changes(self.base_tree,
-                include_unchanged=True, specific_files=self.interesting_files,
+                specific_files=self.interesting_files,
                 extra_trees=[self.this_tree])
         this_entries = dict((e.file_id, e) for p, e in
                             self.this_tree.iter_entries_by_dir(
@@ -1125,7 +1123,7 @@ class Merge3Merger(object):
         # 'other_tree.inventory.root' is not present in this tree. We are
         # calling adjust_path for children which *want* to be present with a
         # correct place to go.
-        for thing, child in self.other_tree.inventory.root.children.iteritems():
+        for _, child in self.other_tree.inventory.root.children.iteritems():
             trans_id = self.tt.trans_id_file_id(child.file_id)
             if not other_root_is_present:
                 if self.tt.final_kind(trans_id) is not None:
@@ -1133,8 +1131,12 @@ class Merge3Merger(object):
                     # to go already.
                     continue
             # Move the item into the root
-            self.tt.adjust_path(self.tt.final_name(trans_id),
-                                self.tt.root, trans_id)
+            try:
+                final_name = self.tt.final_name(trans_id)
+            except errors.NoFinalPath:
+                # This file is not present anymore, ignore it.
+                continue
+            self.tt.adjust_path(final_name, self.tt.root, trans_id)
         if other_root_is_present:
             self.tt.cancel_creation(other_root)
             self.tt.cancel_versioning(other_root)

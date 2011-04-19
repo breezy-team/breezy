@@ -203,7 +203,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         os.unlink('hello.txt')
         tree.remove('hello.txt')
         tree.revert(['hello.txt'])
-        self.failUnlessExists('hello.txt')
+        self.assertPathExists('hello.txt')
 
     def test_versioned_files_not_unknown(self):
         tree = self.make_branch_and_tree('.')
@@ -398,12 +398,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.set_parent_ids(['B'])
         tree = wt.basis_tree()
         tree.lock_read()
-        self.failUnless(tree.has_filename('bar'))
+        self.assertTrue(tree.has_filename('bar'))
         tree.unlock()
         wt.set_parent_ids(['A'])
         tree = wt.basis_tree()
         tree.lock_read()
-        self.failUnless(tree.has_filename('foo'))
+        self.assertTrue(tree.has_filename('foo'))
         tree.unlock()
 
     def test_clone_tree_revision(self):
@@ -464,7 +464,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.commit('A', rev_id='A')
         # and update old_tree
         self.assertEqual(0, old_tree.update())
-        self.failUnlessExists('checkout/file')
+        self.assertPathExists('checkout/file')
         self.assertEqual(['A'], old_tree.get_parent_ids())
 
     def test_update_sets_root_id(self):
@@ -485,7 +485,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.commit('A', rev_id='A')
         # and update checkout
         self.assertEqual(0, checkout.update())
-        self.failUnlessExists('checkout/file')
+        self.assertPathExists('checkout/file')
         self.assertEqual(wt.get_root_id(), checkout.get_root_id())
         self.assertNotEqual(None, wt.get_root_id())
 
@@ -566,10 +566,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             a.close()
         this.revert()
         self.assertFileEqual('a test\n', 'b1/a')
-        self.failUnlessExists('b1/b.~1~')
-        self.failIfExists('b1/c')
-        self.failIfExists('b1/a.~1~')
-        self.failUnlessExists('b1/d')
+        self.assertPathExists('b1/b.~1~')
+        self.assertPathDoesNotExist('b1/c')
+        self.assertPathDoesNotExist('b1/a.~1~')
+        self.assertPathExists('b1/d')
 
     def test_update_updates_bound_branch_no_local_commits(self):
         # doing an update in a tree updates the branch its bound to too.
@@ -738,7 +738,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_format_description(self):
         tree = self.make_branch_and_tree('tree')
         text = tree._format.get_format_description()
-        self.failUnless(len(text))
+        self.assertTrue(len(text))
 
     def test_branch_attribute_is_not_settable(self):
         # the branch attribute is an aspect of the working tree, not a
@@ -1070,9 +1070,9 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         self.assertEqual(0, wt.update(revision='1'))
         self.assertEqual('1', wt.last_revision())
         self.assertEqual(tip, wt.branch.last_revision())
-        self.failUnlessExists('checkout/file1')
-        self.failIfExists('checkout/file4')
-        self.failIfExists('checkout/file5')
+        self.assertPathExists('checkout/file1')
+        self.assertPathDoesNotExist('checkout/file4')
+        self.assertPathDoesNotExist('checkout/file5')
 
 
 class TestIllegalPaths(TestCaseWithWorkingTree):

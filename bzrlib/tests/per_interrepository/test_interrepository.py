@@ -32,31 +32,6 @@ from bzrlib.tests.per_interrepository import (
     )
 
 
-def check_old_format_lock_error(repository_format):
-    """Potentially ignore LockError on old formats.
-
-    On win32, with the old OS locks, we get a failure of double-lock when
-    we open a object in 2 objects and try to lock both.
-
-    On new formats, LockError would be invalid, but for old formats
-    this was not supported on Win32.
-    """
-    if sys.platform != 'win32':
-        raise
-
-    description = repository_format.get_format_description()
-    if description in ("Repository format 4",
-                       "Weave repository format 5",
-                       "Weave repository format 6"):
-        # jam 20060701
-        # win32 OS locks are not re-entrant. So one process cannot
-        # open the same repository twice and lock them both.
-        raise TestSkipped('%s on win32 cannot open the same'
-                          ' repository twice in different objects'
-                          % description)
-    raise
-
-
 def check_repo_format_for_funky_id_on_win32(repo):
     if not repo._format.supports_funky_characters and sys.platform == 'win32':
         raise TestSkipped("funky chars not allowed on this platform in repository"

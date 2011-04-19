@@ -14,47 +14,60 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for bzrlib.export."""
+
+from cStringIO import StringIO
 import os
+import tarfile
 import time
+import zipfile
 
 from bzrlib import (
     errors,
     export,
     tests,
     )
+from bzrlib.export import get_root_name
+from bzrlib.export.tar_exporter import export_tarball
+from bzrlib.tests import features
 
 
-class TestExport(tests.TestCaseWithTransport):
+class TestDirExport(tests.TestCaseWithTransport):
 
-    def test_dir_export_missing_file(self):
+    def test_missing_file(self):
         self.build_tree(['a/', 'a/b', 'a/c'])
         wt = self.make_branch_and_tree('.')
         wt.add(['a', 'a/b', 'a/c'])
         os.unlink('a/c')
         export.export(wt, 'target', format="dir")
-        self.failUnlessExists('target/a/b')
-        self.failIfExists('target/a/c')
+        self.assertPathExists('target/a/b')
+        self.assertPathDoesNotExist('target/a/c')
 
-    def test_dir_export_symlink(self):
+    def test_empty(self):
+        wt = self.make_branch_and_tree('.')
+        export.export(wt, 'target', format="dir")
+        self.assertEquals([], os.listdir("target"))
+
+    def test_symlink(self):
         self.requireFeature(tests.SymlinkFeature)
         wt = self.make_branch_and_tree('.')
         os.symlink('source', 'link')
         wt.add(['link'])
         export.export(wt, 'target', format="dir")
-        self.failUnlessExists('target/link')
+        self.assertPathExists('target/link')
 
-    def test_dir_export_to_existing_empty_dir_success(self):
+    def test_to_existing_empty_dir_success(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         wt = self.make_branch_and_tree('source')
         wt.add(['a', 'b', 'b/c'])
         wt.commit('1')
         self.build_tree(['target/'])
         export.export(wt, 'target', format="dir")
-        self.failUnlessExists('target/a')
-        self.failUnlessExists('target/b')
-        self.failUnlessExists('target/b/c')
+        self.assertPathExists('target/a')
+        self.assertPathExists('target/b')
+        self.assertPathExists('target/b/c')
 
-    def test_dir_export_to_existing_nonempty_dir_fail(self):
+    def test_to_existing_nonempty_dir_fail(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         wt = self.make_branch_and_tree('source')
         wt.add(['a', 'b', 'b/c'])
@@ -62,17 +75,17 @@ class TestExport(tests.TestCaseWithTransport):
         self.build_tree(['target/', 'target/foo'])
         self.assertRaises(errors.BzrError, export.export, wt, 'target', format="dir")
 
-    def test_dir_export_existing_single_file(self):
+    def test_existing_single_file(self):
         self.build_tree(['dir1/', 'dir1/dir2/', 'dir1/first', 'dir1/dir2/second'])
         wtree = self.make_branch_and_tree('dir1')
         wtree.add(['dir2', 'first', 'dir2/second'])
         wtree.commit('1')
         export.export(wtree, 'target1', format='dir', subdir='first')
-        self.failUnlessExists('target1/first')
+        self.assertPathExists('target1/first')
         export.export(wtree, 'target2', format='dir', subdir='dir2/second')
-        self.failUnlessExists('target2/second')
-        
-    def test_dir_export_files_same_timestamp(self):
+        self.assertPathExists('target2/second')
+
+    def test_files_same_timestamp(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
         builder.build_snapshot(None, None, [
@@ -99,7 +112,7 @@ class TestExport(tests.TestCaseWithTransport):
         # All files must be given the same mtime.
         self.assertEqual(st_a.st_mtime, st_b.st_mtime)
 
-    def test_dir_export_files_per_file_timestamps(self):
+    def test_files_per_file_timestamps(self):
         builder = self.make_branch_builder('source')
         builder.start_series()
         # Earliest allowable date on FAT32 filesystems is 1980-01-01
@@ -121,3 +134,124 @@ class TestExport(tests.TestCaseWithTransport):
         t = self.get_transport('target')
         self.assertEqual(a_time, t.stat('a').st_mtime)
         self.assertEqual(b_time, t.stat('b').st_mtime)
+
+
+class TarExporterTests(tests.TestCaseWithTransport):
+
+    def test_xz(self):
+        self.requireFeature(features.lzma)
+        import lzma
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1")
+        export.export(wt, 'target.tar.xz', format="txz")
+        tf = tarfile.open(fileobj=lzma.LZMAFile('target.tar.xz'))
+        self.assertEquals(["target/a"], tf.getnames())
+
+    def test_lzma(self):
+        self.requireFeature(features.lzma)
+        import lzma
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1")
+        export.export(wt, 'target.tar.lzma', format="tlzma")
+        tf = tarfile.open(fileobj=lzma.LZMAFile('target.tar.lzma'))
+        self.assertEquals(["target/a"], tf.getnames())
+
+    def test_tgz(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1")
+        export.export(wt, 'target.tar.gz', format="tgz")
+        tf = tarfile.open('target.tar.gz')
+        self.assertEquals(["target/a"], tf.getnames())
+
+    def test_tgz_ignores_dest_path(self):
+        # The target path should not be a part of the target file.
+        # (bug #102234)
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1")
+        os.mkdir("testdir1")
+        os.mkdir("testdir2")
+        export.export(wt, 'testdir1/target.tar.gz', format="tgz",
+            per_file_timestamps=True)
+        export.export(wt, 'testdir2/target.tar.gz', format="tgz",
+            per_file_timestamps=True)
+        file1 = open('testdir1/target.tar.gz', 'r')
+        self.addCleanup(file1.close)
+        file2 = open('testdir1/target.tar.gz', 'r')
+        self.addCleanup(file2.close)
+        content1 = file1.read()
+        content2 = file2.read()
+        self.assertEqualDiff(content1, content2)
+        # the gzip module doesn't have a way to read back to the original
+        # filename, but it's stored as-is in the tarfile.
+        self.assertFalse("testdir1" in content1)
+        self.assertFalse("target.tar.gz" in content1)
+        self.assertTrue("target.tar" in content1)
+
+    def test_tbz2(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1")
+        export.export(wt, 'target.tar.bz2', format="tbz2")
+        tf = tarfile.open('target.tar.bz2')
+        self.assertEquals(["target/a"], tf.getnames())
+
+    def test_xz_stdout(self):
+        wt = self.make_branch_and_tree('.')
+        self.assertRaises(errors.BzrError, export.export, wt, '-',
+            format="txz")
+
+    def test_export_tarball(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(["a"])
+        wt.commit("1", timestamp=42)
+        target = StringIO()
+        ball = tarfile.open(None, "w|", target)
+        wt.lock_read()
+        try:
+            export_tarball(wt, ball, "bar")
+        finally:
+            wt.unlock()
+        self.assertEquals(["bar/a"], ball.getnames())
+        ball.close()
+
+
+class ZipExporterTests(tests.TestCaseWithTransport):
+
+    def test_per_file_timestamps(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([('har', 'foo')])
+        tree.add('har')
+        # Earliest allowable date on FAT32 filesystems is 1980-01-01
+        timestamp = 347151600
+        tree.commit('setup', timestamp=timestamp)
+        export.export(tree.basis_tree(), 'test.zip', format='zip',
+            per_file_timestamps=True)
+        zfile = zipfile.ZipFile('test.zip')
+        info = zfile.getinfo("test/har")
+        self.assertEquals(time.localtime(timestamp)[:6], info.date_time)
+
+
+class RootNameTests(tests.TestCase):
+
+    def test_root_name(self):
+        self.assertEquals('mytest', get_root_name('../mytest.tar'))
+        self.assertEquals('mytar', get_root_name('mytar.tar'))
+        self.assertEquals('mytar', get_root_name('mytar.tar.bz2'))
+        self.assertEquals('tar.tar.tar', get_root_name('tar.tar.tar.tgz'))
+        self.assertEquals('bzr-0.0.5', get_root_name('bzr-0.0.5.tar.gz'))
+        self.assertEquals('bzr-0.0.5', get_root_name('bzr-0.0.5.zip'))
+        self.assertEquals('bzr-0.0.5', get_root_name('bzr-0.0.5'))
+        self.assertEquals('mytar', get_root_name('a/long/path/mytar.tgz'))
+        self.assertEquals('other',
+            get_root_name('../parent/../dir/other.tbz2'))
+        self.assertEquals('', get_root_name('-'))

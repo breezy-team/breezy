@@ -1205,6 +1205,8 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
+
+    The synonyms 'clone' and 'get' for this command are deprecated.
     """
 
     _see_also = ['checkout']
@@ -1240,6 +1242,12 @@ class cmd_branch(Command):
             files_from=None):
         from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
+        if self.invoked_as in ['get', 'clone']:
+            ui.ui_factory.show_user_warning(
+                'deprecated_command',
+                deprecated_name=self.invoked_as,
+                recommended_name='branch',
+                deprecated_in_version='2.4')
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
         if not (hardlink or files_from):
@@ -2788,7 +2796,7 @@ class cmd_ignore(Command):
             bzr ignore "RE:(?!debian/).*"
         
         Ignore everything except the "local" toplevel directory,
-        but always ignore "*~" autosave files, even under local/::
+        but always ignore autosave files ending in ~, even under local/::
         
             bzr ignore "*"
             bzr ignore "!./local"
@@ -2922,6 +2930,7 @@ class cmd_export(Command):
          zip                          .zip
       =================       =========================
     """
+    encoding = 'exact'
     takes_args = ['dest', 'branch_or_subdir?']
     takes_options = ['directory',
         Option('format',
@@ -3105,32 +3114,7 @@ class cmd_commit(Command):
       to trigger updates to external systems like bug trackers. The --fixes
       option can be used to record the association between a revision and
       one or more bugs. See ``bzr help bugs`` for details.
-
-      A selective commit may fail in some cases where the committed
-      tree would be invalid. Consider::
-  
-        bzr init foo
-        mkdir foo/bar
-        bzr add foo/bar
-        bzr commit foo -m "committing foo"
-        bzr mv foo/bar foo/baz
-        mkdir foo/bar
-        bzr add foo/bar
-        bzr commit foo/bar -m "committing bar but not baz"
-  
-      In the example above, the last commit will fail by design. This gives
-      the user the opportunity to decide whether they want to commit the
-      rename at the same time, separately first, or not at all. (As a general
-      rule, when in doubt, Bazaar has a policy of Doing the Safe Thing.)
     """
-    # TODO: Run hooks on tree to-be-committed, and after commit.
-
-    # TODO: Strict commit that fails if there are deleted files.
-    #       (what does "deleted files" mean ??)
-
-    # TODO: Give better message for -s, --summary, used by tla people
-
-    # XXX: verbose currently does nothing
 
     _see_also = ['add', 'bugs', 'hooks', 'uncommit']
     takes_args = ['selected*']
@@ -3168,6 +3152,10 @@ class cmd_commit(Command):
              Option('show-diff', short_name='p',
                     help='When no message is supplied, show the diff along'
                     ' with the status summary in the message editor.'),
+             Option('lossy', 
+                    help='When committing to a foreign version control '
+                    'system do not push data that can not be natively '
+                    'represented.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -3192,7 +3180,8 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None, show_diff=False, exclude=None, commit_time=None):
+            author=None, show_diff=False, exclude=None, commit_time=None,
+            lossy=False):
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -3211,12 +3200,6 @@ class cmd_commit(Command):
             except ValueError, e:
                 raise errors.BzrCommandError(
                     "Could not parse --commit-time: " + str(e))
-
-        # TODO: Need a blackbox test for invoking the external editor; may be
-        # slightly problematic to run this cross-platform.
-
-        # TODO: do more checks that the commit will succeed before
-        # spending the user's valuable time typing a commit message.
 
         properties = {}
 
@@ -3300,10 +3283,12 @@ class cmd_commit(Command):
                         reporter=None, verbose=verbose, revprops=properties,
                         authors=author, timestamp=commit_stamp,
                         timezone=offset,
-                        exclude=tree.safe_relpath_files(exclude))
+                        exclude=tree.safe_relpath_files(exclude),
+                        lossy=lossy)
         except PointlessCommit:
             raise errors.BzrCommandError("No changes to commit."
-                              " Use --unchanged to commit anyhow.")
+                " Please 'bzr add' the files you want to commit, or use"
+                " --unchanged to force an empty commit.")
         except ConflictsInTree:
             raise errors.BzrCommandError('Conflicts detected in working '
                 'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
@@ -4729,7 +4714,7 @@ class cmd_annotate(Command):
             annotate_file_tree(wt, file_id, self.outf, long, all,
                 show_ids=show_ids)
         else:
-            file_version = tree.inventory[file_id].revision
+            file_version = tree.get_file_revision(file_id)
             annotate_file(branch, file_version, file_id, long, all, self.outf,
                           show_ids=show_ids)
 
