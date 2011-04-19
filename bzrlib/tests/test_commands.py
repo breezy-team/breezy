@@ -93,13 +93,10 @@ class TestCommands(tests.TestCase):
 
 class TestInvokedAs(tests.TestCase):
 
-    def setUp(self):
-        super(TestCommandDeprecation, self).setUp()
-        commands.install_bzr_command_hooks()
-        commands._register_builtin_commands()
-
     def test_invoked_as(self):
         """The command object knows the actual name used to invoke it."""
+        commands.install_bzr_command_hooks()
+        commands._register_builtin_commands()
         # get one from the real get_cmd_object.
         c = commands.get_cmd_object('ci')
         self.assertIsInstance(c, builtins.cmd_commit)
