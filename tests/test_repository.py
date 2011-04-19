@@ -130,38 +130,6 @@ class TestGitRepositoryFeatures(tests.TestCaseInTempDir):
         self.assertEquals(tree.get_revision_id(), revid)
         self.assertEquals("text\n", tree.get_file_text(tree.path2id("data")))
 
-    def test_get_inventory(self):
-        # GitRepository.get_inventory gives a GitInventory object with
-        # plausible entries for typical cases.
-
-        commit_id = self.simple_commit()
-
-        # Get the corresponding Inventory object.
-        revid = default_mapping.revision_id_foreign_to_bzr(commit_id)
-        repo = Repository.open('.')
-        inv = repo.get_inventory(revid)
-        self.assertIsInstance(inv, inventory.Inventory)
-        printed_inv = '\n'.join(
-            repr((path, entry.executable, entry))
-            for path, entry in inv.iter_entries())
-        self.assertEqualDiff(
-            printed_inv,
-            "('', False, GitInventoryDirectory('TREE_ROOT', u'', parent_id=None,"
-            " revision='"+default_mapping.revision_id_foreign_to_bzr("69c39cfa65962f3cf16b9b3eb08a15954e9d8590")+"'))\n"
-            "(u'data', False, GitInventoryFile('data', u'data',"
-            " parent_id='TREE_ROOT',"
-            " sha1='aa785adca3fcdfe1884ae840e13c6d294a2414e8', len=5, revision="+default_mapping.revid_prefix+":69c39cfa65962f3cf16b9b3eb08a15954e9d8590))\n"
-            "(u'executable', True, GitInventoryFile('executable', u'executable',"
-            " parent_id='TREE_ROOT',"
-            " sha1='040f06fd774092478d450774f5ba30c5da78acc8', len=7, revision="+default_mapping.revid_prefix+":69c39cfa65962f3cf16b9b3eb08a15954e9d8590))\n"
-            "(u'link', False, GitInventoryLink('link', u'link',"
-            " parent_id='TREE_ROOT', revision='"+default_mapping.revision_id_foreign_to_bzr("69c39cfa65962f3cf16b9b3eb08a15954e9d8590")+"'))\n"
-            "(u'subdir', False, GitInventoryDirectory('subdir', u'subdir',"
-            " parent_id='TREE_ROOT', revision='"+default_mapping.revision_id_foreign_to_bzr("69c39cfa65962f3cf16b9b3eb08a15954e9d8590")+"'))\n"
-            "(u'subdir/subfile', False, GitInventoryFile('subdir/subfile',"
-            " u'subfile', parent_id='subdir',"
-            " sha1='67b75c3e49f31fcadddbf9df6a1d8be8c3e44290', len=12, revision="+default_mapping.revid_prefix+":69c39cfa65962f3cf16b9b3eb08a15954e9d8590))")
-
 
 class TestGitRepository(tests.TestCaseWithTransport):
 
@@ -203,12 +171,6 @@ class TestGitRepository(tests.TestCaseWithTransport):
         self.assertEqual(inv.root, None)
         self.assertEqual(inv.revision_id, revision.NULL_REVISION)
         self.assertEqual(list(inv.iter_entries()), [])
-
-    def test_get_inventory_none(self):
-        # GitRepository.get_inventory(None) returns the null inventory.
-        repo = self.git_repo
-        inv = repo.get_inventory(revision.NULL_REVISION)
-        self.assertIsNullInventory(inv)
 
     def test_revision_tree_none(self):
         # GitRepository.revision_tree(None) returns the null tree.

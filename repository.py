@@ -263,8 +263,7 @@ class LocalGitRepository(GitRepository):
         return GitRevisionTree(self, revision_id)
 
     def get_inventory(self, revision_id):
-        assert revision_id != None
-        return self.revision_tree(revision_id).inventory
+        raise NotImplementedError(self.get_inventory)
 
     def set_make_working_trees(self, trees):
         raise NotImplementedError(self.set_make_working_trees)
