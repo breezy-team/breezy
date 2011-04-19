@@ -273,6 +273,8 @@ def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     # Allow plugins to extend commands
     for hook in Command.hooks['extend_command']:
         hook(cmd)
+    if getattr(cmd, 'invoked_as', None) is None:
+        cmd.invoked_as = cmd_name
     return cmd
 
 
@@ -394,7 +396,13 @@ class Command(object):
             sys.stdout is forced to be a binary stream, and line-endings
             will not mangled.
 
+    :ivar invoked_as:
+        A string indicating the real name under which this command was
+        invoked, before expansion of aliases. 
+        (This may be None if the command was constructed and run in-process.)
+
     :cvar hooks: An instance of CommandHooks.
+
     :ivar __doc__: The help shown by 'bzr help command' for this command.
         This is set by assigning explicitly to __doc__ so that -OO can
         be used::
@@ -406,6 +414,7 @@ class Command(object):
     takes_args = []
     takes_options = []
     encoding_type = 'strict'
+    invoked_as = None
 
     hidden = False
 
@@ -749,6 +758,10 @@ class Command(object):
         return getdoc(self)
 
     def name(self):
+        """Return the canonical name for this command.
+
+        The name under which it was actually invoked is available in invoked_as.
+        """
         return _unsquish_command_name(self.__class__.__name__)
 
     def plugin_name(self):

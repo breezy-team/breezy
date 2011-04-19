@@ -1205,6 +1205,8 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
+
+    The synonyms 'clone' and 'get' for this command are deprecated.
     """
 
     _see_also = ['checkout']
@@ -1240,6 +1242,12 @@ class cmd_branch(Command):
             files_from=None):
         from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
+        if self.invoked_as in ['get', 'clone']:
+            ui.ui_factory.show_user_warning(
+                'deprecated_command',
+                deprecated_name=self.invoked_as,
+                recommended_name='branch',
+                deprecated_in_version='2.4')
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
         if not (hardlink or files_from):

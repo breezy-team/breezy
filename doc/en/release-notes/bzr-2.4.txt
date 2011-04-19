@@ -15,6 +15,10 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* Two command synonyms for ``bzr branch`` have been deprecated, to avoid
+  confusion and to allow the names to later be reused.  The removed names
+  are: ``get`` and ``clone``.   (Martin Pool, #506265)
+
 New Features
 ************
 
@@ -106,6 +110,10 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* Commands now have an `invoked_as` attribute, showing the name under
+  which they were called before alias expansion.
+  (Martin Pool)
 
 * ``Hooks.create_hook`` is now deprecated in favour of ``Hooks.add_hook``.
   (Jelmer Vernooij)
