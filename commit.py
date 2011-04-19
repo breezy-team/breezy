@@ -150,3 +150,6 @@ class GitCommitBuilder(CommitBuilder):
         self._new_revision_id = self.repository.get_mapping().revision_id_foreign_to_bzr(c.id)
         self.repository.commit_write_group()
         return self._new_revision_id
+
+    def revision_tree(self):
+        return self.repository.revision_tree(self._new_revision_id)
