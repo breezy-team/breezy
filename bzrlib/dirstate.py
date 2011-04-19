@@ -3205,6 +3205,7 @@ def py_update_entry(state, entry, abspath, stat_value,
     # If we have gotten this far, that means that we need to actually
     # process this entry.
     link_or_sha1 = None
+    worth_saving = True
     if minikind == 'f':
         executable = state._is_executable(stat_value.st_mode,
                                          saved_executable)
@@ -3226,6 +3227,7 @@ def py_update_entry(state, entry, abspath, stat_value,
         else:
             entry[1][0] = ('f', '', stat_value.st_size,
                            executable, DirState.NULLSTAT)
+            worth_saving = False
     elif minikind == 'd':
         link_or_sha1 = None
         entry[1][0] = ('d', '', 0, False, packed_stat)
@@ -3237,6 +3239,8 @@ def py_update_entry(state, entry, abspath, stat_value,
                 state._get_block_entry_index(entry[0][0], entry[0][1], 0)
             state._ensure_block(block_index, entry_index,
                                osutils.pathjoin(entry[0][0], entry[0][1]))
+        else:
+            worth_saving = False
     elif minikind == 'l':
         link_or_sha1 = state._read_link(abspath, saved_link_or_sha1)
         if state._cutoff_time is None:
@@ -3248,7 +3252,8 @@ def py_update_entry(state, entry, abspath, stat_value,
         else:
             entry[1][0] = ('l', '', stat_value.st_size,
                            False, DirState.NULLSTAT)
-    state._dirblock_state = DirState.IN_MEMORY_MODIFIED
+    if worth_saving:
+        state._dirblock_state = DirState.IN_MEMORY_MODIFIED
     return link_or_sha1
 
 

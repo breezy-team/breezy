@@ -871,10 +871,12 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
                                           stat_value=stat_value)
         self.assertEqual(None, link_or_sha1)
 
-        # The dirblock entry should not have cached the file's sha1 (too new)
+        # The dirblock entry should not have computed or cached the file's
+        # sha1, but it did update the files' st_size. However, this is not
+        # worth writing a dirstate file for, so we leave the state UNMODIFIED
         self.assertEqual(('f', '', 14, False, dirstate.DirState.NULLSTAT),
                          entry[1][0])
-        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
         mode = stat_value.st_mode
         self.assertEqual([('is_exec', mode, False)], state._log)
@@ -883,9 +885,8 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
 
-        # If we do it again right away, we don't know if the file has changed
-        # so we will re-read the file. Roll the clock back so the file is
-        # guaranteed to look too new.
+        # Roll the clock back so the file is guaranteed to look too new. We
+        # should still not compute the sha1.
         state.adjust_time(-10)
         del state._log[:]
 
@@ -893,7 +894,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
                                           stat_value=stat_value)
         self.assertEqual([('is_exec', mode, False)], state._log)
         self.assertEqual(None, link_or_sha1)
-        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
         self.assertEqual(('f', '', 14, False, dirstate.DirState.NULLSTAT),
                          entry[1][0])
@@ -909,6 +910,8 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual([('is_exec', mode, False)], state._log)
         self.assertEqual(('f', '', 14, False, dirstate.DirState.NULLSTAT),
                          entry[1][0])
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
 
         # If the file is no longer new, and the clock has been moved forward
         # sufficiently, it will cache the sha.
@@ -1005,12 +1008,25 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.build_tree(['a/'])
         state.adjust_time(+20)
         self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+        # a/ used to be a file, but is now a directory, worth saving
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
+        # No changes to a/ means not worth saving.
         self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        # Change the last-modified time for the directory
+        t = time.time() - 100.0
+        os.utime('a', (t, t))
+        saved_packed_stat = entry[1][0][-1]
+        self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+        # We *do* go ahead and update the information in the dirblocks, but we
+        # don't bother setting IN_MEMORY_MODIFIED because it is trivial to
+        # recompute.
+        self.assertNotEqual(saved_packed_stat, entry[1][0][-1])
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
 
