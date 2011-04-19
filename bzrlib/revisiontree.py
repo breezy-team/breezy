@@ -56,6 +56,10 @@ class RevisionTree(tree.Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
+    def get_file_revision(self, file_id, path=None):
+        """Return the revision id in which a file was last changed."""
+        raise NotImplementedError(self.get_file_revision)
+
     def get_file_text(self, file_id, path=None):
         _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
         return ''.join(content)
@@ -107,6 +111,10 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
         if ie.kind == "file":
             return ie.text_sha1
         return None
+
+    def get_file_revision(self, file_id, path=None):
+        ie = self._inventory[file_id]
+        return ie.revision
 
     def is_executable(self, file_id, path=None):
         ie = self._inventory[file_id]
@@ -208,7 +216,7 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
         """See Tree.iter_files_bytes.
 
         This version is implemented on top of Repository.extract_files_bytes"""
-        repo_desired_files = [(f, self.inventory[f].revision, i)
+        repo_desired_files = [(f, self.get_file_revision(f), i)
                               for f, i in desired_files]
         try:
             for result in self._repository.iter_files_bytes(repo_desired_files):
@@ -219,7 +227,7 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
     def annotate_iter(self, file_id,
                       default_revision=revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        text_key = (file_id, self.inventory[file_id].revision)
+        text_key = (file_id, self.get_file_revision(file_id))
         annotator = self._repository.texts.get_annotator()
         annotations = annotator.annotate_flat(text_key)
         return [(key[-1], line) for key, line in annotations]

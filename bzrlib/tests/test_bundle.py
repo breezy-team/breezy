@@ -142,6 +142,9 @@ class MockTree(object):
         result.seek(0,0)
         return result
 
+    def get_file_revision(self, file_id):
+        return self.inventory[file_id].revision
+
     def contents_stats(self, file_id):
         if file_id not in self.contents:
             return None, None

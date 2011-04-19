@@ -1967,7 +1967,7 @@ class _PreviewTree(tree.InventoryTree):
                 yield self._get_repository().revision_tree(revision_id)
 
     def _get_file_revision(self, file_id, vf, tree_revision):
-        parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
+        parent_keys = [(file_id, t.get_file_revision(file_id)) for t in
                        self._iter_parent_trees()]
         vf.add_lines((file_id, tree_revision), parent_keys,
                      self.get_file_lines(file_id))

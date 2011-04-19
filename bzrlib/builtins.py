@@ -4714,7 +4714,7 @@ class cmd_annotate(Command):
             annotate_file_tree(wt, file_id, self.outf, long, all,
                 show_ids=show_ids)
         else:
-            file_version = tree.inventory[file_id].revision
+            file_version = tree.get_file_revision(file_id)
             annotate_file(branch, file_version, file_id, long, all, self.outf,
                           show_ids=show_ids)
 
