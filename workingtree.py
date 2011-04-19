@@ -137,6 +137,26 @@ class GitWorkingTree(workingtree.WorkingTree):
         for (path, file_id, kind) in zip(files, ids, kinds):
             self._index_add_entry(path, file_id, kind)
 
+    def move(self, from_paths, to_dir=None, after=False):
+        rename_tuples = []
+        to_abs = self.abspath(to_dir)
+        if not os.path.isdir(to_abs):
+            raise errors.BzrMoveFailedError('', to_dir,
+                errors.NotADirectory(to_abs))
+
+        for from_rel in from_paths:
+            from_tail = os.path.split(from_rel)[-1]
+            to_rel = os.path.join(to_dir, from_tail)
+            self.rename_one(from_rel, to_rel, after=after)
+            rename_tuples.append((from_rel, to_rel))
+        return rename_tuples
+
+    def rename_one(self, from_rel, to_rel, after=False):
+        if not after:
+            os.rename(self.abspath(from_rel), self.abspath(to_rel))
+        self.index[to_rel] = self.index[from_rel]
+        del self.index[from_rel]
+
     def get_root_id(self):
         return self.path2id("")
 
@@ -329,6 +349,10 @@ class GitWorkingTree(workingtree.WorkingTree):
     def conflicts(self):
         # FIXME:
         return _mod_conflicts.ConflictList()
+
+    def update_basis_by_delta(self, new_revid, delta):
+        # FIXME
+        raise NotImplementedError(self.update_basis_by_delta)
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
