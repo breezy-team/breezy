@@ -333,7 +333,9 @@ class GitBranch(ForeignBranch):
             newhead, self.mapping = self.mapping.revision_id_bzr_to_foreign(revid)
         self._set_head(newhead)
 
-    def lock_write(self):
+    def lock_write(self, token=None):
+        if token is not None:
+            raise errors.TokenLockingNotSupported(self)
         self.control_files.lock_write()
         return GitWriteLock(self.unlock)
 
