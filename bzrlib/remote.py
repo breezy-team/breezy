@@ -3009,7 +3009,8 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         # XXX: These should be returned by the set_last_revision_info verb
         old_revno, old_revid = self.last_revision_info()
         self._run_pre_change_branch_tip_hooks(revno, revision_id)
-        revision_id = _mod_revision.ensure_null(revision_id)
+        if not revision_id or not isinstance(revision_id, basestring):
+            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         try:
             response = self._call('Branch.set_last_revision_info',
                 self._remote_path(), self._lock_token, self._repo_lock_token,
