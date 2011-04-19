@@ -58,6 +58,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
     def path2id(self, path):
         return self.fileid_map.lookup_file_id(path.encode('utf-8'))
 
+    def get_root_id(self):
+        return self.path2id("")
+
     def has_filename(self, path):
         try:
             tree_lookup_path(self.store.__getitem__, self.tree,
