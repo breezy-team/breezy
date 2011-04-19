@@ -1377,7 +1377,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
 class TestBranchSetLastRevision(RemoteBranchTestCase):
 
     def test_set_empty(self):
-        # set_last_revision_info(0, 'null:') is translated to calling
+        # _set_last_revision_info('null:') is translated to calling
         # Branch.set_last_revision(path, '') on the wire.
         transport = MemoryTransport()
         transport.mkdir('branch')
@@ -1405,7 +1405,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         # unnecessarily invokes _ensure_real upon a call to lock_write.
         branch._ensure_real = lambda: None
         branch.lock_write()
-        result = branch.set_last_revision_info(0, NULL_REVISION)
+        result = branch._set_last_revision(NULL_REVISION)
         branch.unlock()
         self.assertEqual(None, result)
         self.assertFinished(client)
@@ -1443,7 +1443,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         branch._ensure_real = lambda: None
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
-        result = branch.set_last_revision_info(2, 'rev-id2')
+        result = branch._set_last_revision('rev-id2')
         branch.unlock()
         self.assertEqual(None, result)
         self.assertFinished(client)
@@ -1479,7 +1479,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         branch = self.make_remote_branch(transport, client)
         branch.lock_write()
         self.assertRaises(
-            errors.NoSuchRevision, branch.generate_revision_history, 'rev-id')
+            errors.NoSuchRevision, branch._set_last_revision, 'rev-id')
         branch.unlock()
         self.assertFinished(client)
 
@@ -1519,7 +1519,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         # set_last_revision_info causes a TipChangeRejected exception.
         err = self.assertRaises(
             errors.TipChangeRejected,
-            branch.set_last_revision_info, 1, 'rev-id')
+            branch._set_last_revision, 'rev-id')
         # The UTF-8 message from the response has been decoded into a unicode
         # object.
         self.assertIsInstance(err.msg, unicode)
