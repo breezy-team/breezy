@@ -229,7 +229,7 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _get_dir_ie(self, path, parent_id):
         file_id = self._fileid_map.lookup_file_id(path)
         return inventory.InventoryDirectory(file_id,
-            posixpath.dirname(path).strip("/"), parent_id)
+            posixpath.basename(path).strip("/"), parent_id)
 
     def _add_missing_parent_ids(self, path, dir_ids):
         if path in dir_ids:
@@ -253,7 +253,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         ie = inventory.entry_factory[kind](file_id,
             posixpath.basename(path.decode("utf-8")), parent_id)
         if kind == 'symlink':
-            ie.symlink_target = self.get_symlink_target(file_id, path)
+            ie.symlink_target = self.get_symlink_target(file_id)
         else:
             data = self.get_file_text(file_id, path)
             ie.text_sha1 = osutils.sha_string(data)
