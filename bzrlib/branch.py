@@ -2577,7 +2577,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
-        revision_id = _mod_revision.ensure_null(revision_id)
+        if not revision_id or not isinstance(revision_id, basestring):
+            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         # this old format stores the full history, but this api doesn't
         # provide it, so we must generate, and might as well check it's
         # correct
@@ -2813,7 +2814,8 @@ class BzrBranch8(BzrBranch5):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        revision_id = _mod_revision.ensure_null(revision_id)
+        if not revision_id or not isinstance(revision_id, basestring):
+            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         old_revno, old_revid = self.last_revision_info()
         if self._get_append_revisions_only():
             self._check_history_violation(revision_id)
