@@ -393,7 +393,10 @@ class BazaarObjectStore(BaseObjectStore):
                 yield self.mapping.BZR_FILE_IDS_FILE, b, None
         yield "", root_tree, root_ie
         if roundtrip:
-            testament3 = StrictTestament3(rev, tree.inventory)
+            if getattr(StrictTestament3, "from_revision_tree", None):
+                testament3 = StrictTestament3(rev, tree)
+            else: # bzr < 2.4
+                testament3 = StrictTestament3(rev, tree.inventory)
             verifiers = { "testament3-sha1": testament3.as_sha1() }
         else:
             verifiers = {}
@@ -418,7 +421,10 @@ class BazaarObjectStore(BaseObjectStore):
         for path, obj, ie in self._revision_to_objects(rev, tree,
             roundtrip=True):
             if isinstance(obj, Commit):
-                testament3 = StrictTestament3(rev, tree.inventory)
+                if getattr(StrictTestament3, "from_revision_tree", None):
+                    testament3 = StrictTestament3(rev, tree)
+                else: # bzr < 2.4
+                    testament3 = StrictTestament3(rev, tree.inventory)
                 ie = { "testament3-sha1": testament3.as_sha1() }
             updater.add_object(obj, ie, path)
         commit_obj = updater.finish()

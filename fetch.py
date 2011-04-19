@@ -384,12 +384,16 @@ def import_git_commit(repo, mapping, head, lookup_object,
         base_inv = None
     rev.inventory_sha1, inv = repo.add_inventory_by_delta(basis_id,
               inv_delta, rev.revision_id, rev.parent_ids, base_inv)
-    # Check verifiers
-    testament = StrictTestament3(rev, inv)
+    ret_tree = InventoryRevisionTree(repo, inv, rev.revision_id)
     if roundtrip_revid is not None:
-        calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
         original_revid = rev.revision_id
         rev.revision_id = roundtrip_revid
+        # Check verifiers
+        if getattr(StrictTestament3, "from_revision_tree", None):
+            testament = StrictTestament3(rev, ret_tree)
+        else: # bzr < 2.4
+            testament = StrictTestament3(rev, inv)
+        calculated_verifiers = { "testament3-sha1": testament.as_sha1() }
         if calculated_verifiers != verifiers:
             trace.mutter("Testament SHA1 %r for %r did not match %r.",
                          calculated_verifiers["testament3-sha1"],
@@ -399,7 +403,6 @@ def import_git_commit(repo, mapping, head, lookup_object,
         calculated_verifiers = {}
     store_updater.add_object(o, calculated_verifiers, None)
     store_updater.finish()
-    ret_tree = InventoryRevisionTree(repo, inv, rev.revision_id)
     trees_cache.add(ret_tree)
     repo.add_revision(rev.revision_id, rev)
     if "verify" in debug.debug_flags:
