@@ -164,8 +164,16 @@ class GitWorkingTree(workingtree.WorkingTree):
     def rename_one(self, from_rel, to_rel, after=False):
         if not after:
             os.rename(self.abspath(from_rel), self.abspath(to_rel))
-        self.index[to_rel] = self.index[from_rel]
-        del self.index[from_rel]
+        from_path = from_rel.encode("utf-8")
+        to_path = to_rel.encode("utf-8")
+        if not self.has_filename(to_rel):
+            raise errors.BzrMoveFailedError(from_rel, to_rel,
+                errors.NoSuchFile(to_rel))
+        if not from_path in self.index:
+            raise errors.BzrMoveFailedError(from_rel, to_rel,
+                errors.NotVersionedError(path=from_rel))
+        self.index[to_path] = self.index[from_path]
+        del self.index[from_path]
 
     def get_root_id(self):
         return self.path2id("")
