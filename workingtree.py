@@ -345,8 +345,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         return _mod_conflicts.ConflictList()
 
     def update_basis_by_delta(self, new_revid, delta):
-        # FIXME
-        raise NotImplementedError(self.update_basis_by_delta)
+        # The index just contains content, which won't have changed.
+        return
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
