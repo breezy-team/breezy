@@ -23,22 +23,27 @@ try:
 except ImportError:
     pylzma = None
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     annotate,
     debug,
     errors,
     graph as _mod_graph,
-    knit,
     osutils,
     pack,
     static_tuple,
     trace,
+    tsort,
     )
+
+from bzrlib.repofmt import pack_repo
+""")
+
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
-from bzrlib.repofmt import pack_repo
-from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
+    _KeyRefs,
     adapter_registry,
     AbsentContentFactory,
     ChunkedContentFactory,
@@ -78,7 +83,7 @@ def sort_gc_optimal(parent_map):
 
     present_keys = []
     for prefix in sorted(per_prefix_map):
-        present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
+        present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
     return present_keys
 
 
@@ -1471,7 +1476,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             the defined order, regardless of source.
         """
         if ordering == 'topological':
-            present_keys = topo_sort(parent_map)
+            present_keys = tsort.topo_sort(parent_map)
         else:
             # ordering == 'groupcompress'
             # XXX: This only optimizes for the target ordering. We may need
@@ -1922,7 +1927,7 @@ class _GCGraphIndex(object):
         # repeated over and over, this creates a surplus of ints
         self._int_cache = {}
         if track_external_parent_refs:
-            self._key_dependencies = knit._KeyRefs(
+            self._key_dependencies = _KeyRefs(
                 track_new_keys=track_new_keys)
         else:
             self._key_dependencies = None

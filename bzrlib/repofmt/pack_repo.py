@@ -37,9 +37,6 @@ from bzrlib.index import (
     CombinedGraphIndex,
     GraphIndexPrefixAdapter,
     )
-from bzrlib.knit import (
-    _DirectPackAccess,
-    )
 """)
 from bzrlib import (
     btree_index,
