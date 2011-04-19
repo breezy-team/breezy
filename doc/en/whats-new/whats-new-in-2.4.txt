@@ -52,7 +52,7 @@ Faster operations on Large Trees
 ********************************
 
 Many bzr commands used to run into pathological behavior on large trees
-(>10k files), reading the inventory data random order causing cache
+(>10k files), reading the inventory data in random order causing cache
 thrashing. Various other tweaks have been applied with feedback from large
 trees. A possibly incomplete list is as follows for running commands on a
 70k file tree::
