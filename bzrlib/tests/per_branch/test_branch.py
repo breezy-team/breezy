@@ -29,6 +29,7 @@ from bzrlib import (
     remote,
     repository,
     revision,
+    symbol_versioning,
     tests,
     )
 from bzrlib.tests import (
@@ -459,10 +460,10 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree = self.make_branch_and_tree('a')
         tree.commit('a commit', rev_id='rev1')
         br = tree.branch
-        self.applyDeprecated(deprecated_in((2, 4, 0)),
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
             br.set_revision_history, ["rev1"])
         self.assertEquals(br.revision_history(), ["rev1"])
-        self.applyDeprecated(deprecated_in((2, 4, 0)),
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
             br.set_revision_history, [])
         self.assertEquals(br.revision_history(), [])
 
