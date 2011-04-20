@@ -287,6 +287,11 @@ class Transport(object):
     #       where the biggest benefit between combining reads and
     #       and seeking is. Consider a runtime auto-tune.
     _bytes_to_read_before_seek = 0
+    # By default, we won't force .close() to be synchronous for remote readv.
+    # (SFTP in particular has an async .close() call.) However, when running
+    # the test suite, it would be really nice to have them be synchronous, to
+    # keep things clean.
+    _synchronous_close = False
 
     def __init__(self, base):
         super(Transport, self).__init__()
@@ -672,7 +677,9 @@ class Transport(object):
 
         This uses _coalesce_offsets to issue larger reads and fewer seeks.
 
-        :param fp: A file-like object that supports seek() and read(size)
+        :param fp: A file-like object that supports seek() and read(size).
+            Note that implementations are allowed to call .close() on this file
+            handle, so don't trust that you can use it for other work.
         :param offsets: A list of offsets to be read from the given file.
         :return: yield (pos, data) tuples for each request
         """
@@ -689,37 +696,33 @@ class Transport(object):
 
         # Cache the results, but only until they have been fulfilled
         data_map = {}
-        for c_offset in coalesced:
-            # TODO: jam 20060724 it might be faster to not issue seek if
-            #       we are already at the right location. This should be
-            #       benchmarked.
-            fp.seek(c_offset.start)
-            data = fp.read(c_offset.length)
-            if len(data) < c_offset.length:
-                raise errors.ShortReadvError(relpath, c_offset.start,
-                            c_offset.length, actual=len(data))
-            for suboffset, subsize in c_offset.ranges:
-                key = (c_offset.start+suboffset, subsize)
-                data_map[key] = data[suboffset:suboffset+subsize]
+        try:
+            for c_offset in coalesced:
+                # TODO: jam 20060724 it might be faster to not issue seek if
+                #       we are already at the right location. This should be
+                #       benchmarked.
+                fp.seek(c_offset.start)
+                data = fp.read(c_offset.length)
+                if len(data) < c_offset.length:
+                    raise errors.ShortReadvError(relpath, c_offset.start,
+                                c_offset.length, actual=len(data))
+                for suboffset, subsize in c_offset.ranges:
+                    key = (c_offset.start+suboffset, subsize)
+                    data_map[key] = data[suboffset:suboffset+subsize]
 
-            # Now that we've read some data, see if we can yield anything back
-            while cur_offset_and_size in data_map:
-                this_data = data_map.pop(cur_offset_and_size)
-                this_offset = cur_offset_and_size[0]
-                try:
-                    cur_offset_and_size = offset_stack.next()
-                except StopIteration:
-                    # Close the file handle as there will be no more data
-                    # The handle would normally be cleaned up as this code goes
-                    # out of scope, but as we are a generator, not all code
-                    # will re-enter once we have consumed all the expected
-                    # data. For example:
-                    #   zip(range(len(requests)), readv(foo, requests))
-                    # Will stop because the range is done, and not run the
-                    # cleanup code for the readv().
-                    fp.close()
-                    cur_offset_and_size = None
-                yield this_offset, this_data
+                # Now that we've read some data, see if we can yield anything back
+                while cur_offset_and_size in data_map:
+                    this_data = data_map.pop(cur_offset_and_size)
+                    this_offset = cur_offset_and_size[0]
+                    try:
+                        cur_offset_and_size = offset_stack.next()
+                    except StopIteration:
+                        cur_offset_and_size = None
+                    yield this_offset, this_data
+        finally:
+            # Note that this is not python2.4 compatible as try/finally in
+            # generators was added in python 2.5
+            fp.close()
 
     def _sort_expand_and_combine(self, offsets, upper_limit):
         """Helper for readv.
