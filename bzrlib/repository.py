@@ -16,14 +16,11 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import cStringIO
-import re
 import time
 
 from bzrlib import (
     bzrdir,
     check,
-    chk_map,
     config,
     controldir,
     debug,
@@ -104,7 +101,6 @@ class CommitBuilder(object):
 
         :param repository: Repository to commit to.
         :param parents: Revision ids of the parents of the new revision.
-        :param config: Configuration to use.
         :param timestamp: Optional timestamp recorded for commit.
         :param timezone: Optional timezone for timestamp.
         :param committer: Optional committer to set for commit.
@@ -4230,7 +4226,7 @@ class StreamSink(object):
                 parse_result = deserialiser.parse_text_bytes(
                     inventory_delta_bytes)
             except inventory_delta.IncompatibleInventoryDelta, err:
-                trace.mutter("Incompatible delta: %s", err.msg)
+                mutter("Incompatible delta: %s", err.msg)
                 raise errors.IncompatibleRevision(self.target_repo._format)
             basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
             revision_id = new_id

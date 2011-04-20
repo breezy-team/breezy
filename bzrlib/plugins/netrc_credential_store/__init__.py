@@ -25,12 +25,12 @@ from bzrlib import (
     )
 
 lazy_import.lazy_import(globals(), """
-    import errno
-    import netrc
+import errno
+import netrc
 
-    from bzrlib import (
-        errors,
-        )
+from bzrlib import (
+    errors,
+    )
 """)
 
 

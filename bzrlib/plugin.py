@@ -36,7 +36,6 @@ import sys
 from bzrlib import osutils
 
 from bzrlib.lazy_import import lazy_import
-
 lazy_import(globals(), """
 import imp
 import re
@@ -51,11 +50,6 @@ from bzrlib import (
     )
 from bzrlib import plugins as _mod_plugins
 """)
-
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    )
 
 
 DEFAULT_PLUGIN_PATH = None

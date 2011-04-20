@@ -30,6 +30,7 @@ from bzrlib import (
     osutils,
     pack,
     transactions,
+    tsort,
     ui,
     xml5,
     xml6,
@@ -45,7 +46,6 @@ from bzrlib.knit import (
     _KnitGraphIndex,
     _DirectPackAccess,
     )
-from bzrlib import tsort
 """)
 from bzrlib import (
     bzrdir,

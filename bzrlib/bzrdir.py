@@ -33,8 +33,6 @@ import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from stat import S_ISDIR
-
 import bzrlib
 from bzrlib import (
     branch,
@@ -52,7 +50,6 @@ from bzrlib import (
     transport as _mod_transport,
     ui,
     urlutils,
-    versionedfile,
     win32utils,
     workingtree,
     workingtree_4,

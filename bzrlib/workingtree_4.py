@@ -31,7 +31,6 @@ lazy_import(globals(), """
 import errno
 import stat
 
-import bzrlib
 from bzrlib import (
     bzrdir,
     cache_utf8,
@@ -46,8 +45,6 @@ from bzrlib import (
     transform,
     views,
     )
-import bzrlib.branch
-import bzrlib.ui
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
@@ -62,7 +59,6 @@ from bzrlib.osutils import (
     realpath,
     safe_unicode,
     )
-from bzrlib.trace import mutter
 from bzrlib.transport.local import LocalTransport
 from bzrlib.tree import InterTree
 from bzrlib.tree import Tree
@@ -85,7 +81,7 @@ class DirStateWorkingTree(WorkingTree3):
         self._format = _format
         self.bzrdir = _bzrdir
         basedir = safe_unicode(basedir)
-        mutter("opening working tree %r", basedir)
+        trace.mutter("opening working tree %r", basedir)
         self._branch = branch
         self.basedir = realpath(basedir)
         # if branch is at our basedir and is a format 6 or less

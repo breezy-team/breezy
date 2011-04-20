@@ -20,6 +20,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
+    cleanup,
     conflicts as _mod_conflicts,
     debug,
     generate_ids,
@@ -37,7 +38,6 @@ from bzrlib import (
     versionedfile,
     workingtree,
     )
-from bzrlib.cleanup import OperationWithCleanups
 """)
 from bzrlib import (
     decorators,
@@ -53,7 +53,7 @@ from bzrlib.symbol_versioning import (
 
 def transform_tree(from_tree, to_tree, interesting_ids=None):
     from_tree.lock_tree_write()
-    operation = OperationWithCleanups(merge_inner)
+    operation = cleanup.OperationWithCleanups(merge_inner)
     operation.add_cleanup(from_tree.unlock)
     operation.run_simple(from_tree.branch, to_tree, from_tree,
         ignore_zero=True, interesting_ids=interesting_ids, this_tree=from_tree)
@@ -501,7 +501,8 @@ class Merger(object):
     def _add_parent(self):
         new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
         new_parent_trees = []
-        operation = OperationWithCleanups(self.this_tree.set_parent_trees)
+        operation = cleanup.OperationWithCleanups(
+            self.this_tree.set_parent_trees)
         for revision_id in new_parents:
             try:
                 tree = self.revision_tree(revision_id)
@@ -701,7 +702,7 @@ class Merger(object):
         return merge
 
     def do_merge(self):
-        operation = OperationWithCleanups(self._do_merge_to)
+        operation = cleanup.OperationWithCleanups(self._do_merge_to)
         self.this_tree.lock_tree_write()
         operation.add_cleanup(self.this_tree.unlock)
         if self.base_tree is not None:
@@ -813,7 +814,7 @@ class Merge3Merger(object):
             warnings.warn("pb argument to Merge3Merger is deprecated")
 
     def do_merge(self):
-        operation = OperationWithCleanups(self._do_merge)
+        operation = cleanup.OperationWithCleanups(self._do_merge)
         self.this_tree.lock_tree_write()
         operation.add_cleanup(self.this_tree.unlock)
         self.base_tree.lock_read()
@@ -834,7 +835,7 @@ class Merge3Merger(object):
             pass
 
     def make_preview_transform(self):
-        operation = OperationWithCleanups(self._make_preview_transform)
+        operation = cleanup.OperationWithCleanups(self._make_preview_transform)
         self.base_tree.lock_read()
         operation.add_cleanup(self.base_tree.unlock)
         self.other_tree.lock_read()

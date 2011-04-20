@@ -32,7 +32,6 @@ from bzrlib import (
     versionedfile,
     )
 """)
-import bzrlib
 from bzrlib import (
     errors,
     ui,

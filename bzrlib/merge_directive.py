@@ -21,6 +21,7 @@ import re
 from bzrlib import (
     branch as _mod_branch,
     diff,
+    email_message,
     errors,
     gpg,
     hooks,
@@ -263,7 +264,8 @@ class BaseMergeDirective(object):
             body = self.to_signed(branch)
         else:
             body = ''.join(self.to_lines())
-        message = EmailMessage(mail_from, mail_to, subject, body)
+        message = email_message.EmailMessage(mail_from, mail_to, subject,
+            body)
         return message
 
     def install_revisions(self, target_repo):

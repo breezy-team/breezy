@@ -70,7 +70,6 @@ from bzrlib import commands
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import errno
 import fnmatch
 import re
 from cStringIO import StringIO

@@ -33,7 +33,6 @@ from bzrlib import (
     osutils,
     revisiontree,
     inventory,
-    symbol_versioning,
     trace,
     tree,
     )

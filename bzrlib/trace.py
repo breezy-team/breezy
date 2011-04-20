@@ -59,13 +59,13 @@ import logging
 import os
 import sys
 import time
-import tempfile
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from cStringIO import StringIO
 import errno
 import locale
+import tempfile
 import traceback
 """)
 
@@ -81,8 +81,6 @@ from bzrlib import (
     debug,
     errors,
     osutils,
-    plugin,
-    symbol_versioning,
     ui,
     )
 """)

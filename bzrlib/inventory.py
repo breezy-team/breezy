@@ -31,7 +31,6 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 import collections
 import copy
-import os
 import re
 import tarfile
 
@@ -43,11 +42,11 @@ from bzrlib import (
     )
 """)
 
-from bzrlib.errors import (
-    BzrCheckError,
-    BzrError,
+from bzrlib import (
+    lazy_regex,
+    trace,
     )
-from bzrlib.trace import mutter
+
 from bzrlib.static_tuple import StaticTuple
 
 
@@ -224,7 +223,7 @@ class InventoryEntry(object):
 
     def kind_character(self):
         """Return a short kind indicator useful for appending to names."""
-        raise BzrError('unknown kind %r' % self.kind)
+        raise errors.BzrError('unknown kind %r' % self.kind)
 
     known_kinds = ('file', 'directory', 'symlink')
 
@@ -250,8 +249,9 @@ class InventoryEntry(object):
         """
         if self.parent_id is not None:
             if not inv.has_id(self.parent_id):
-                raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
-                        % (self.parent_id, rev_id))
+                raise errors.BzrCheckError(
+                    'missing parent {%s} in inventory for revision {%s}' % (
+                        self.parent_id, rev_id))
         checker._add_entry_to_text_key_references(inv, self)
         self._check(checker, rev_id)
 
@@ -539,7 +539,7 @@ class InventoryLink(InventoryEntry):
         # FIXME: which _modified field should we use ? RBC 20051003
         text_modified = (self.symlink_target != old_entry.symlink_target)
         if text_modified:
-            mutter("    symlink target changed")
+            trace.mutter("    symlink target changed")
         meta_modified = False
         return text_modified, meta_modified
 
@@ -1182,8 +1182,9 @@ class Inventory(CommonInventory):
     def _add_child(self, entry):
         """Add an entry to the inventory, without adding it to its parent"""
         if entry.file_id in self._byid:
-            raise BzrError("inventory already contains entry with id {%s}" %
-                           entry.file_id)
+            raise errors.BzrError(
+                "inventory already contains entry with id {%s}" %
+                entry.file_id)
         self._byid[entry.file_id] = entry
         for child in getattr(entry, 'children', {}).itervalues():
             self._add_child(child)
@@ -1353,15 +1354,17 @@ class Inventory(CommonInventory):
         """
         new_name = ensure_normalized_name(new_name)
         if not is_valid_name(new_name):
-            raise BzrError("not an acceptable filename: %r" % new_name)
+            raise errors.BzrError("not an acceptable filename: %r" % new_name)
 
         new_parent = self._byid[new_parent_id]
         if new_name in new_parent.children:
-            raise BzrError("%r already exists in %r" % (new_name, self.id2path(new_parent_id)))
+            raise errors.BzrError("%r already exists in %r" %
+                (new_name, self.id2path(new_parent_id)))
 
         new_parent_idpath = self.get_idpath(new_parent_id)
         if file_id in new_parent_idpath:
-            raise BzrError("cannot move directory %r into a subdirectory of itself, %r"
+            raise errors.BzrError(
+                "cannot move directory %r into a subdirectory of itself, %r"
                     % (self.id2path(file_id), self.id2path(new_parent_id)))
 
         file_ie = self._byid[file_id]
@@ -2299,13 +2302,9 @@ def ensure_normalized_name(name):
     return name
 
 
-_NAME_RE = None
+_NAME_RE = lazy_regex.lazy_compile(r'^[^/\\]+$')
 
 def is_valid_name(name):
-    global _NAME_RE
-    if _NAME_RE is None:
-        _NAME_RE = re.compile(r'^[^/\\]+$')
-
     return bool(_NAME_RE.match(name))
 
 
