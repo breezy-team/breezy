@@ -2474,7 +2474,7 @@ class DirState(object):
             # the suffix is from tree_index+1:parent_count+1.
             new_location_suffix = [DirState.NULL_PARENT_DETAILS] * (parent_count - tree_index)
             # now stitch in all the entries from this tree
-            for path, entry in tree.inventory.iter_entries_by_dir():
+            for path, entry in tree.iter_entries_by_dir():
                 # here we process each trees details for each item in the tree.
                 # we first update any existing entries for the id at other paths,
                 # then we either create or update the entry for the id at the
