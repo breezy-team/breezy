@@ -940,7 +940,7 @@ cdef _update_entry(self, entry, abspath, stat_value):
         else:
             entry[1][0] = ('l', '', stat_value.st_size,
                            False, DirState.NULLSTAT)
-    self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+    self._mark_modified([entry])
     return link_or_sha1
 
 

@@ -222,7 +222,7 @@ class DirStateWorkingTree(WorkingTree3):
         local_path = self.bzrdir.get_workingtree_transport(None
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path,
-            self._sha1_provider())
+            self._sha1_provider(), self._worth_saving_limit())
         return self._dirstate
 
     def _sha1_provider(self):
@@ -236,6 +236,15 @@ class DirStateWorkingTree(WorkingTree3):
             return ContentFilterAwareSHA1Provider(self)
         else:
             return None
+
+    def _worth_saving_limit(self):
+        """How many hash changes are ok before we must save the dirstate.
+
+        :return: an integer. -1 means never save.
+        """
+        # XXX: In the future, we could return -1 for logical read-only
+        # operations like status. For now, just use a small number.
+        return 10
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -853,7 +862,7 @@ class DirStateWorkingTree(WorkingTree3):
                 rollback_rename()
                 raise
             result.append((from_rel, to_rel))
-            state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
+            state._mark_modified()
             self._make_dirty(reset_inventory=False)
 
         return result

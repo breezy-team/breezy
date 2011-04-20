@@ -72,6 +72,11 @@ Bug Fixes
 * ``bzr log`` now works on revisions which are not in the current branch.
   (Matt Giuca, #241998)
 
+* Don't rewrite the dirstate file when non-interesting changes have
+  occurred. This can significantly improve 'bzr status' times when there
+  are only small changes to a large tree.
+  (Ian Clatworthy, John Arbash Meinel, #380202)
+
 * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
 * ``bzrlib.merge.Merge`` now calls ``iter_changes`` without
