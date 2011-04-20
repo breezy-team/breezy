@@ -453,6 +453,9 @@ class DirState(object):
                 # that takes precedence.
                 self._dirblock_state = DirState.IN_MEMORY_HASH_MODIFIED
         else:
+            # TODO: Since we now have a IN_MEMORY_HASH_MODIFIED state, we
+            #       should fail noisily if someone tries to set
+            #       IN_MEMORY_MODIFIED but we don't have a write-lock!
             # We don't know exactly what changed so disable smart saving
             self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         if header_modified:
@@ -1782,7 +1785,7 @@ class DirState(object):
                 and stat_value.st_ctime < self._cutoff_time):
                 entry[1][0] = ('f', sha1, stat_value.st_size, entry[1][0][3],
                                packed_stat)
-                state._mark_modified([entry])
+                self._mark_modified([entry])
 
     def _sha_cutoff_time(self):
         """Return cutoff time.
@@ -2373,6 +2376,10 @@ class DirState(object):
             trace.mutter('Not saving DirState because '
                     '_changes_aborted is set.')
             return
+        # TODO: Since we now distinguish IN_MEMORY_MODIFIED from
+        #       IN_MEMORY_HASH_MODIFIED, we should only fail quietly if we fail
+        #       to save an IN_MEMORY_HASH_MODIFIED, and fail *noisily* if we
+        #       fail to save IN_MEMORY_MODIFIED
         if self._worth_saving():
             grabbed_write_lock = False
             if self._lock_state != 'w':

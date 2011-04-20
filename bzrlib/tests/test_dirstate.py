@@ -591,7 +591,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
 
             # The dirblock has been updated
             self.assertEqual(7, entry[1][0][2])
-            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+            self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                              state._dirblock_state)
 
             del entry
@@ -629,7 +629,7 @@ class TestDirStateOnFile(TestCaseWithDirState):
                 os.lstat('a-file'))
             # No sha - too new
             self.assertEqual(None, sha1sum)
-            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+            self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                              state._dirblock_state)
 
             # Now, before we try to save, grab another dirstate, and take out a

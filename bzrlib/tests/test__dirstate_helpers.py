@@ -874,7 +874,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         # The dirblock entry should not have cached the file's sha1 (too new)
         self.assertEqual(('f', '', 14, False, dirstate.DirState.NULLSTAT),
                          entry[1][0])
-        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                          state._dirblock_state)
         mode = stat_value.st_mode
         self.assertEqual([('is_exec', mode, False)], state._log)
@@ -893,7 +893,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
                                           stat_value=stat_value)
         self.assertEqual([('is_exec', mode, False)], state._log)
         self.assertEqual(None, link_or_sha1)
-        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                          state._dirblock_state)
         self.assertEqual(('f', '', 14, False, dirstate.DirState.NULLSTAT),
                          entry[1][0])
@@ -956,7 +956,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         # Dirblock is not updated (the link is too new)
         self.assertEqual([('l', '', 6, False, dirstate.DirState.NULLSTAT)],
                          entry[1])
-        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                          state._dirblock_state)
 
         # Because the stat_value looks new, we should re-read the target
