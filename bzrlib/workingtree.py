@@ -1264,13 +1264,13 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         when their last revision is set.
         """
         if _mod_revision.is_null(new_revision):
-            self.branch.set_revision_history([])
+            self.branch.set_last_revision_info(0, new_revision)
             return False
         try:
             self.branch.generate_revision_history(new_revision)
         except errors.NoSuchRevision:
             # not present in the repo - dont try to set it deeper than the tip
-            self.branch.set_revision_history([new_revision])
+            self.branch.set_last_revision_info(1, new_revision)
         return True
 
     @needs_tree_write_lock
