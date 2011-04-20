@@ -822,25 +822,34 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_observed_sha1_cachable(self):
         state, entry = self.get_state_with_a()
+        state.save()
         atime = time.time() - 10
         self.build_tree(['a'])
-        statvalue = os.lstat('a')
-        statvalue = test_dirstate._FakeStat(statvalue.st_size, atime, atime,
-            statvalue.st_dev, statvalue.st_ino, statvalue.st_mode)
+        statvalue = test_dirstate._FakeStat.from_stat(os.lstat('a'))
+        statvalue.st_mtime = statvalue.st_ctime = atime
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
         state._observed_sha1(entry, "foo", statvalue)
         self.assertEqual('foo', entry[1][0][1])
         packed_stat = dirstate.pack_stat(statvalue)
         self.assertEqual(packed_stat, entry[1][0][4])
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
+                         state._dirblock_state)
 
     def test_observed_sha1_not_cachable(self):
         state, entry = self.get_state_with_a()
+        state.save()
         oldval = entry[1][0][1]
         oldstat = entry[1][0][4]
         self.build_tree(['a'])
         statvalue = os.lstat('a')
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
         state._observed_sha1(entry, "foo", statvalue)
         self.assertEqual(oldval, entry[1][0][1])
         self.assertEqual(oldstat, entry[1][0][4])
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
 
     def test_update_entry(self):
         state, _ = self.get_state_with_a()
