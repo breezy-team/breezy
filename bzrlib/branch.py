@@ -2512,11 +2512,11 @@ class BzrBranch(Branch, _RelockDebugMixin):
             mode=self.bzrdir._get_file_mode())
 
     @deprecated_method(deprecated_in((2, 4, 0)))
-    @needs_write_lock
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
         self._set_revision_history(rev_history)
 
+    @needs_write_lock
     def _set_revision_history(self, rev_history):
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "set_revision_history scales with history.")
