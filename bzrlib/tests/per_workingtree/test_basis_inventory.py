@@ -14,13 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os
 
 from bzrlib.tests import TestNotApplicable
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
-from bzrlib.branch import Branch
-from bzrlib import inventory
-from bzrlib.revision import Revision
 import bzrlib.xml6
 
 
