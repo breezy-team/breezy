@@ -245,21 +245,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         revid = b.revision_history()[0]
         self.log('first revision_id is {%s}' % revid)
 
-        inv = b.repository.get_inventory(revid)
-        self.log('contents of inventory: %r' % inv.entries())
+        tree = b.repository.revision_tree(revid)
+        self.log('contents of tree: %r' % list(tree.iter_entries_by_dir()))
 
-        self.check_inventory_shape(inv,
-                                   ['dir/', 'dir/sub/', 'dir/sub/file'])
+        self.check_tree_shape(tree, ['dir/', 'dir/sub/', 'dir/sub/file'])
         wt.rename_one('dir', 'newdir')
 
         wt.lock_read()
-        self.check_inventory_shape(wt.inventory,
+        self.check_tree_shape(wt,
                                    ['newdir/', 'newdir/sub/', 'newdir/sub/file'])
         wt.unlock()
         wt.rename_one('newdir/sub', 'newdir/newsub')
         wt.lock_read()
-        self.check_inventory_shape(wt.inventory,
-                                   ['newdir/', 'newdir/newsub/',
+        self.check_tree_shape(wt, ['newdir/', 'newdir/newsub/',
                                     'newdir/newsub/file'])
         wt.unlock()
 

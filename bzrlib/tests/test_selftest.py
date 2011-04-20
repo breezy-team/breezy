@@ -2810,16 +2810,16 @@ class TestSelftestFiltering(tests.TestCase):
         self.assertEqual(remaining_names, _test_ids(split_suite[1]))
 
 
-class TestCheckInventoryShape(tests.TestCaseWithTransport):
+class TestCheckTreeShape(tests.TestCaseWithTransport):
 
-    def test_check_inventory_shape(self):
+    def test_check_tree_shape(self):
         files = ['a', 'b/', 'b/c']
         tree = self.make_branch_and_tree('.')
         self.build_tree(files)
         tree.add(files)
         tree.lock_read()
         try:
-            self.check_inventory_shape(tree.inventory, files)
+            self.check_tree_shape(tree, files)
         finally:
             tree.unlock()
 
