@@ -30,9 +30,9 @@ from bzrlib import (
     bzrdir,
     errors,
     hooks,
+    inventory as _mod_inventory,
     osutils,
     revisiontree,
-    inventory,
     trace,
     tree,
     )
@@ -620,7 +620,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                         # Same as in _add_one below, if the inventory doesn't
                         # think this is a directory, update the inventory
                         if this_ie.kind != 'directory':
-                            this_ie = inventory.make_entry('directory',
+                            this_ie = _mod_inventory.make_entry('directory',
                                 this_ie.name, this_ie.parent_id, this_id)
                             del inv[this_id]
                             inv.add(this_ie)
@@ -693,14 +693,12 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
         # TODO: Consider re-evaluating the need for this with CHKInventory
         # we don't strictly need to mutate an inventory for this
         # it only makes sense when apply_delta is cheaper than get_inventory()
-        inventory = basis.inventory._get_mutable_inventory()
+        inventory = _mod_inventory.mutable_inventory_from_tree(basis)
         basis.unlock()
         inventory.apply_delta(delta)
         rev_tree = revisiontree.InventoryRevisionTree(self.branch.repository,
                                              inventory, new_revid)
         self.set_parent_trees([(new_revid, rev_tree)])
-
-
 
 
 class MutableTreeHooks(hooks.Hooks):
@@ -811,7 +809,7 @@ def _add_one(tree, inv, parent_ie, path, kind, file_id_callback):
     if parent_ie.kind != 'directory':
         # nb: this relies on someone else checking that the path we're using
         # doesn't contain symlinks.
-        new_parent_ie = inventory.make_entry('directory', parent_ie.name,
+        new_parent_ie = _mod_inventory.make_entry('directory', parent_ie.name,
             parent_ie.parent_id, parent_ie.file_id)
         del inv[parent_ie.file_id]
         inv.add(new_parent_ie)
