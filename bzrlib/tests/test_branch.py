@@ -349,10 +349,13 @@ class TestBranch67(object):
         branch = builder.get_branch()
         branch.lock_write()
         self.addCleanup(branch.unlock)
-        branch.set_revision_history(['foo', 'bar'])
-        branch.set_revision_history(['foo'])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            branch.set_revision_history, ['foo', 'bar'])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+                branch.set_revision_history, ['foo'])
         self.assertRaises(errors.NotLefthandHistory,
-                          branch.set_revision_history, ['bar'])
+            self.applyDeprecated, symbol_versioning.deprecated_in((2, 4, 0)),
+            branch.set_revision_history, ['bar'])
 
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source',
