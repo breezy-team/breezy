@@ -34,6 +34,7 @@ from bzrlib.inventory import (
     InventoryDirectory,
     InventoryEntry,
     TreeReference,
+    mutable_inventory_from_tree,
     )
 from bzrlib.tests import (
     TestCase,
@@ -1436,3 +1437,29 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         inv = self.make_simple_inventory()
         self.assertExpand(['TREE_ROOT', 'dir1-id', 'sub-dir1-id', 'top-id',
                            'subsub-file1-id'], inv, ['top-id', 'subsub-file1-id'])
+
+
+class TestMutableInventoryFromTree(TestCaseWithTransport):
+
+    def test_empty(self):
+        repository = self.make_repository('.')
+        tree = repository.revision_tree(revision.NULL_REVISION)
+        inv = mutable_inventory_from_tree(tree)
+        self.assertEquals(revision.NULL_REVISION, inv.revision_id)
+        self.assertEquals(0, len(inv))
+
+    def test_some_files(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(['a'], ['thefileid'])
+        revid = wt.commit("commit")
+        tree = wt.branch.repository.revision_tree(revid)
+        inv = mutable_inventory_from_tree(tree)
+        self.assertEquals(revid, inv.revision_id)
+        self.assertEquals(2, len(inv))
+        self.assertEquals("a", inv['thefileid'].name)
+        # The inventory should be mutable and independent of
+        # the original tree
+        self.assertFalse(tree.inventory['thefileid'].executable)
+        inv['thefileid'].executable = True
+        self.assertFalse(tree.inventory['thefileid'].executable)
