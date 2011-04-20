@@ -99,6 +99,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._fileid_map = self._basis_fileid_map.copy()
 
     def _index_add_entry(self, path, file_id, kind):
+        assert isinstance(path, basestring)
+        assert type(file_id) == str
         if kind == "directory":
             # Git indexes don't contain directories
             return
@@ -141,9 +143,11 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def _add(self, files, ids, kinds):
         for (path, file_id, kind) in zip(files, ids, kinds):
-            self._index_add_entry(path, file_id, kind)
             if file_id is not None:
                 self._fileid_map.set_file_id(path, file_id)
+            else:
+                file_id = self._fileid_map.lookup_file_id(path)
+            self._index_add_entry(path, file_id, kind)
 
     def _set_root_id(self, file_id):
         self._fileid_map.set_file_id("", file_id)
@@ -391,6 +395,16 @@ class GitWorkingTree(workingtree.WorkingTree):
             ie = self._get_file_ie(path, value, dir_ids[parent])
             yield path, "V", ie.kind, ie.file_id, ie
 
+    def all_file_ids(self):
+        ids = {u"": self.path2id("")}
+        for path in self.index:
+            path = path.decode("utf-8")
+            parent = posixpath.dirname(path).strip("/")
+            for e in self._add_missing_parent_ids(parent, ids):
+                pass
+            ids[path] = self.path2id(path)
+        return set(ids.values())
+
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
         # FIXME: Support specific_file_ids
         # FIXME: Is return order correct?
@@ -418,6 +432,8 @@ class GitWorkingTree(workingtree.WorkingTree):
 
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
+
+    _tree_class = GitWorkingTree
 
     @property
     def _matchingbzrdir(self):
