@@ -1,4 +1,4 @@
-bzr (2.3.1-2) UNRELEASED; urgency=low
+bzr (2.3.1-2) unstable; urgency=low
 
   [ Jelmer Vernooij ]
   * Add python-medusa, python-lzma and python-meliae as build
