@@ -28,9 +28,10 @@ import threading
 
 from bzrlib import (
     osutils,
+    tests,
     trace,
-    transport,
     )
+from bzrlib.tests import test_server
 
 
 class AnonymousWithWriteAccessAuthorizer(ftpserver.DummyAuthorizer):
@@ -133,7 +134,7 @@ class ftp_server(ftpserver.FTPServer):
         self.addr = self.socket.getsockname()
 
 
-class FTPTestServer(transport.Server):
+class FTPTestServer(test_server.TestServer):
     """Common code for FTP server facilities."""
 
     def __init__(self):
@@ -158,8 +159,8 @@ class FTPTestServer(transport.Server):
         self.logs.append(message)
 
     def start_server(self, vfs_server=None):
-        from bzrlib.transport.local import LocalURLServer
-        if not (vfs_server is None or isinstance(vfs_server, LocalURLServer)):
+        if not (vfs_server is None or isinstance(vfs_server,
+                                                 test_server.LocalURLServer)):
             raise AssertionError(
                 "FTPServer currently assumes local transport, got %s"
                 % vfs_server)
@@ -183,6 +184,9 @@ class FTPTestServer(transport.Server):
         self._ftpd_starting.acquire() # So it can be released by the server
         self._ftpd_thread = threading.Thread(target=self._run_server,)
         self._ftpd_thread.start()
+        if 'threads' in tests.selftest_debug_flags:
+            sys.stderr.write('Thread started: %s\n'
+                             % (self._ftpd_thread.ident,))
         # Wait for the server thread to start (i.e release the lock)
         self._ftpd_starting.acquire()
         self._ftpd_starting.release()
@@ -195,6 +199,9 @@ class FTPTestServer(transport.Server):
         self._ftp_server.close()
         self._ftpd_running = False
         self._ftpd_thread.join()
+        if 'threads' in tests.selftest_debug_flags:
+            sys.stderr.write('Thread  joined: %s\n'
+                             % (self._ftpd_thread.ident,))
 
     def _run_server(self):
         """Run the server until stop_server is called, shut it down properly then.

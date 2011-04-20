@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,10 +21,10 @@
 import os
 
 from bzrlib.branch import Branch
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestAdded(ExternalBase):
+class TestAdded(TestCaseWithTransport):
 
     def test_added(self):
         """Test that 'added' command reports added files"""
@@ -67,3 +67,11 @@ class TestAdded(ExternalBase):
         # after commit, now no longer listed
         tree.commit(message='add "%s"' % (name))
         check_added('')
+
+    def test_added_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('a')
+        self.build_tree(['a/README'])
+        tree.add('README')
+        out, err = self.run_bzr(['added', '--directory=a'])
+        self.assertEquals('README\n', out)

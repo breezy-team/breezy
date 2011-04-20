@@ -118,6 +118,11 @@ cdef extern from "string.h":
     # ??? memrchr is a GNU extension :(
     # void *memrchr(void *s, int c, size_t len)
 
+# cimport all of the definitions we will need to access
+from _static_tuple_c cimport import_static_tuple_c, StaticTuple, \
+    StaticTuple_New, StaticTuple_SET_ITEM
+
+import_static_tuple_c()
 
 cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
@@ -156,12 +161,12 @@ def _py_memrchr(s, c):
         return None
     return <char*>found - <char*>_s
 
+
 cdef object safe_string_from_size(char *s, Py_ssize_t size):
     if size < 0:
-        # XXX: On 64-bit machines the <int> cast causes a C compiler warning.
         raise AssertionError(
-            'tried to create a string with an invalid size: %d @0x%x'
-            % (size, <int>s))
+            'tried to create a string with an invalid size: %d'
+            % (size))
     return PyString_FromStringAndSize(s, size)
 
 
@@ -610,7 +615,8 @@ cdef class Reader:
         :param new_block: This is to let the caller know that it needs to
             create a new directory block to store the next entry.
         """
-        cdef object path_name_file_id_key
+        cdef StaticTuple path_name_file_id_key
+        cdef StaticTuple tmp
         cdef char *entry_size_cstr
         cdef unsigned long int entry_size
         cdef char* executable_cstr
@@ -650,10 +656,20 @@ cdef class Reader:
         # Build up the key that will be used.
         # By using <object>(void *) Pyrex will automatically handle the
         # Py_INCREF that we need.
-        path_name_file_id_key = (<object>p_current_dirname[0],
-                                 self.get_next_str(),
-                                 self.get_next_str(),
-                                )
+        cur_dirname = <object>p_current_dirname[0]
+        # Use StaticTuple_New to pre-allocate, rather than creating a regular
+        # tuple and passing it to the StaticTuple constructor.
+        # path_name_file_id_key = StaticTuple(<object>p_current_dirname[0],
+        #                          self.get_next_str(),
+        #                          self.get_next_str(),
+        #                         )
+        tmp = StaticTuple_New(3)
+        Py_INCREF(cur_dirname); StaticTuple_SET_ITEM(tmp, 0, cur_dirname)
+        cur_basename = self.get_next_str()
+        cur_file_id = self.get_next_str()
+        Py_INCREF(cur_basename); StaticTuple_SET_ITEM(tmp, 1, cur_basename)
+        Py_INCREF(cur_file_id); StaticTuple_SET_ITEM(tmp, 2, cur_file_id)
+        path_name_file_id_key = tmp
 
         # Parse all of the per-tree information. current has the information in
         # the same location as parent trees. The only difference is that 'info'
@@ -677,7 +693,20 @@ cdef class Reader:
             executable_cstr = self.get_next(&cur_size)
             is_executable = (executable_cstr[0] == c'y')
             info = self.get_next_str()
-            PyList_Append(trees, (
+            # TODO: If we want to use StaticTuple_New here we need to be pretty
+            #       careful. We are relying on a bit of Pyrex
+            #       automatic-conversion from 'int' to PyInt, and that doesn't
+            #       play well with the StaticTuple_SET_ITEM macro.
+            #       Timing doesn't (yet) show a worthwile improvement in speed
+            #       versus complexity and maintainability.
+            # tmp = StaticTuple_New(5)
+            # Py_INCREF(minikind); StaticTuple_SET_ITEM(tmp, 0, minikind)
+            # Py_INCREF(fingerprint); StaticTuple_SET_ITEM(tmp, 1, fingerprint)
+            # Py_INCREF(entry_size); StaticTuple_SET_ITEM(tmp, 2, entry_size)
+            # Py_INCREF(is_executable); StaticTuple_SET_ITEM(tmp, 3, is_executable)
+            # Py_INCREF(info); StaticTuple_SET_ITEM(tmp, 4, info)
+            # PyList_Append(trees, tmp)
+            PyList_Append(trees, StaticTuple(
                 minikind,     # minikind
                 fingerprint,  # fingerprint
                 entry_size,   # size

@@ -1,5 +1,6 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2010 Canonical Ltd
 # Authors: Robert Collins <robert.collins@canonical.com>
+#          Jelmer Vernooij <jelmer.vernooij@canonical.com>
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,38 +22,20 @@
 
 These test the conformance of all the bzrdir variations to the expected API.
 Specific tests for individual formats are in the tests/test_bzrdir.py file
-rather than in tests/per_branch/*.py.
+rather than in tests/per_branch/*.py. Generic control directory tests not
+specific to BzrDir are in tests/per_controldir/*.py.
 """
 
 from bzrlib.bzrdir import BzrDirFormat
+from bzrlib.controldir import ControlDirFormat
 from bzrlib.tests import (
-                          default_transport,
-                          multiply_tests,
-                          TestCaseWithTransport,
-                          )
-from bzrlib.transport.memory import MemoryServer
-
-
-def make_scenarios(vfs_factory, transport_server, transport_readonly_server,
-    formats, name_suffix=''):
-    """Transform the input to a list of scenarios.
-
-    :param formats: A list of bzrdir_format objects.
-    :param vfs_server: A factory to create a Transport Server which has
-        all the VFS methods working, and is writable.
-    """
-    result = []
-    for format in formats:
-        scenario_name = format.__class__.__name__
-        scenario_name += name_suffix
-        scenario = (scenario_name, {
-            "vfs_transport_factory": vfs_factory,
-            "transport_server": transport_server,
-            "transport_readonly_server": transport_readonly_server,
-            "bzrdir_format": format,
-            })
-        result.append(scenario)
-    return result
+    default_transport,
+    multiply_tests,
+    test_server,
+    TestCaseWithTransport,
+    )
+from bzrlib.tests.per_controldir import make_scenarios
+from bzrlib.transport import memory
 
 
 class TestCaseWithBzrDir(TestCaseWithTransport):
@@ -76,10 +59,10 @@ class TestCaseWithBzrDir(TestCaseWithTransport):
 def load_tests(standard_tests, module, loader):
     test_per_bzrdir = [
         'bzrlib.tests.per_bzrdir.test_bzrdir',
-        'bzrlib.tests.per_bzrdir.test_push',
         ]
     submod_tests = loader.loadTestsFromModuleNames(test_per_bzrdir)
-    formats = BzrDirFormat.known_formats()
+    formats = [format for format in ControlDirFormat.known_formats()
+               if isinstance(format, BzrDirFormat)]
     scenarios = make_scenarios(
         default_transport,
         None,
@@ -88,26 +71,20 @@ def load_tests(standard_tests, module, loader):
         None,
         formats)
     # This will always add scenarios using the smart server.
-    from bzrlib.smart.server import (
-        ReadonlySmartTCPServer_for_testing,
-        ReadonlySmartTCPServer_for_testing_v2_only,
-        SmartTCPServer_for_testing,
-        SmartTCPServer_for_testing_v2_only,
-        )
     from bzrlib.remote import RemoteBzrDirFormat
     # test the remote server behaviour when backed with a MemoryTransport
     # Once for the current version
     scenarios.extend(make_scenarios(
-        MemoryServer,
-        SmartTCPServer_for_testing,
-        ReadonlySmartTCPServer_for_testing,
+        memory.MemoryServer,
+        test_server.SmartTCPServer_for_testing,
+        test_server.ReadonlySmartTCPServer_for_testing,
         [(RemoteBzrDirFormat())],
         name_suffix='-default'))
     # And once with < 1.6 - the 'v2' protocol.
     scenarios.extend(make_scenarios(
-        MemoryServer,
-        SmartTCPServer_for_testing_v2_only,
-        ReadonlySmartTCPServer_for_testing_v2_only,
+        memory.MemoryServer,
+        test_server.SmartTCPServer_for_testing_v2_only,
+        test_server.ReadonlySmartTCPServer_for_testing_v2_only,
         [(RemoteBzrDirFormat())],
         name_suffix='-v2'))
     # add the tests for the sub modules

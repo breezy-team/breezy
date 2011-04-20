@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -32,15 +32,13 @@ permissions should be inherited individually, rather than all be the same.
 
 import os
 import sys
-import stat
-from cStringIO import StringIO
 import urllib
 
+from bzrlib import transport
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.transport import get_transport
 from bzrlib.workingtree import WorkingTree
 
 
@@ -65,7 +63,7 @@ def check_mode_r(test, base, file_mode, dir_mode, include_base=True):
     :param dir_mode: The mode for all directories
     :param include_base: If false, only check the subdirectories
     """
-    t = get_transport(".")
+    t = test.get_transport()
     if include_base:
         test.assertTransportMode(t, base, dir_mode)
     for root, dirs, files in os.walk(base):
@@ -180,7 +178,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
 
         # bodge around for stubsftpserver not letting use connect
         # more than once
-        _t = get_transport(self.get_url())
+        _t = self.get_transport()
 
         os.mkdir('local')
         t_local = self.make_branch_and_tree('local')
@@ -257,7 +255,7 @@ class TestSftpPermissions(TestCaseWithSFTPServer):
         original_umask = os.umask(umask)
 
         try:
-            t = get_transport(self.get_url())
+            t = self.get_transport()
             # Direct access should be masked by umask
             t._sftp_open_exclusive('a', mode=0666).write('foo\n')
             self.assertTransportMode(t, 'a', 0666 &~umask)

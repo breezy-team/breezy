@@ -133,7 +133,7 @@ a Launchpad merge request, say)::
 As a variation, the trunk can be created as a checkout. If you have
 commit privileges on trunk, that lets you merge into trunk and the
 commit of the merge will implicitly publish your change. Alternatively,
-if the trunk URL is read-only (e.g. a http address), that prevents
+if the trunk URL is read-only (e.g. an HTTP address), that prevents
 accidental submission this way - ideal if the project workflow uses
 an automated gatekeeper like PQM, say.
 

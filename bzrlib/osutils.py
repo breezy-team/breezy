@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,45 +14,44 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import errno
 import os
 import re
 import stat
-from stat import (S_ISREG, S_ISDIR, S_ISLNK, ST_MODE, ST_SIZE,
-                  S_ISCHR, S_ISBLK, S_ISFIFO, S_ISSOCK)
 import sys
 import time
-import warnings
+import codecs
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 from datetime import datetime
-import errno
-from ntpath import (abspath as _nt_abspath,
-                    join as _nt_join,
-                    normpath as _nt_normpath,
-                    realpath as _nt_realpath,
-                    splitdrive as _nt_splitdrive,
-                    )
+import getpass
+import ntpath
 import posixpath
+# We need to import both shutil and rmtree as we export the later on posix
+# and need the former on windows
 import shutil
-from shutil import (
-    rmtree,
-    )
-import signal
+from shutil import rmtree
+import socket
 import subprocess
+# We need to import both tempfile and mkdtemp as we export the later on posix
+# and need the former on windows
 import tempfile
-from tempfile import (
-    mkdtemp,
-    )
+from tempfile import mkdtemp
 import unicodedata
 
 from bzrlib import (
     cache_utf8,
     errors,
+    trace,
     win32utils,
     )
 """)
+
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 # sha and md5 modules are deprecated in python2.6 but hashlib is available as
 # of 2.5
@@ -182,7 +181,9 @@ def kind_marker(kind):
     try:
         return _kind_marker_map[kind]
     except KeyError:
-        raise errors.BzrError('invalid file kind %r' % kind)
+        # Slightly faster than using .get(, '') when the common case is that
+        # kind will be found
+        return ''
 
 
 lexists = getattr(os.path, 'lexists', None)
@@ -297,13 +298,13 @@ def _win32_fixdrive(path):
     running python.exe under cmd.exe return capital C:\\
     running win32 python inside a cygwin shell returns lowercase c:\\
     """
-    drive, path = _nt_splitdrive(path)
+    drive, path = ntpath.splitdrive(path)
     return drive.upper() + path
 
 
 def _win32_abspath(path):
-    # Real _nt_abspath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(_nt_abspath(unicode(path)).replace('\\', '/'))
+    # Real ntpath.abspath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(ntpath.abspath(unicode(path)).replace('\\', '/'))
 
 
 def _win98_abspath(path):
@@ -320,30 +321,30 @@ def _win98_abspath(path):
     #   /path       => C:/path
     path = unicode(path)
     # check for absolute path
-    drive = _nt_splitdrive(path)[0]
+    drive = ntpath.splitdrive(path)[0]
     if drive == '' and path[:2] not in('//','\\\\'):
         cwd = os.getcwdu()
         # we cannot simply os.path.join cwd and path
         # because os.path.join('C:','/path') produce '/path'
         # and this is incorrect
         if path[:1] in ('/','\\'):
-            cwd = _nt_splitdrive(cwd)[0]
+            cwd = ntpath.splitdrive(cwd)[0]
             path = path[1:]
         path = cwd + '\\' + path
-    return _win32_fixdrive(_nt_normpath(path).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(path).replace('\\', '/'))
 
 
 def _win32_realpath(path):
-    # Real _nt_realpath doesn't have a problem with a unicode cwd
-    return _win32_fixdrive(_nt_realpath(unicode(path)).replace('\\', '/'))
+    # Real ntpath.realpath doesn't have a problem with a unicode cwd
+    return _win32_fixdrive(ntpath.realpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_pathjoin(*args):
-    return _nt_join(*args).replace('\\', '/')
+    return ntpath.join(*args).replace('\\', '/')
 
 
 def _win32_normpath(path):
-    return _win32_fixdrive(_nt_normpath(unicode(path)).replace('\\', '/'))
+    return _win32_fixdrive(ntpath.normpath(unicode(path)).replace('\\', '/'))
 
 
 def _win32_getcwd():
@@ -388,7 +389,7 @@ dirname = os.path.dirname
 basename = os.path.basename
 split = os.path.split
 splitext = os.path.splitext
-# These were already imported into local scope
+# These were already lazily imported into local scope
 # mkdtemp = tempfile.mkdtemp
 # rmtree = shutil.rmtree
 
@@ -434,7 +435,7 @@ elif sys.platform == 'darwin':
     getcwd = _mac_getcwd
 
 
-def get_terminal_encoding():
+def get_terminal_encoding(trace=False):
     """Find the best encoding for printing to the screen.
 
     This attempts to check both sys.stdout and sys.stdin to see
@@ -446,6 +447,8 @@ def get_terminal_encoding():
 
     On my standard US Windows XP, the preferred encoding is
     cp1252, but the console is cp437
+
+    :param trace: If True trace the selected encoding via mutter().
     """
     from bzrlib.trace import mutter
     output_encoding = getattr(sys.stdout, 'encoding', None)
@@ -453,17 +456,22 @@ def get_terminal_encoding():
         input_encoding = getattr(sys.stdin, 'encoding', None)
         if not input_encoding:
             output_encoding = get_user_encoding()
-            mutter('encoding stdout as osutils.get_user_encoding() %r',
+            if trace:
+                mutter('encoding stdout as osutils.get_user_encoding() %r',
                    output_encoding)
         else:
             output_encoding = input_encoding
-            mutter('encoding stdout as sys.stdin encoding %r', output_encoding)
+            if trace:
+                mutter('encoding stdout as sys.stdin encoding %r',
+                    output_encoding)
     else:
-        mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
+        if trace:
+            mutter('encoding stdout as sys.stdout encoding %r', output_encoding)
     if output_encoding == 'cp0':
         # invalid encoding (cp0 means 'no codepage' on Windows)
         output_encoding = get_user_encoding()
-        mutter('cp0 is invalid encoding.'
+        if trace:
+            mutter('cp0 is invalid encoding.'
                ' encoding stdout as osutils.get_user_encoding() %r',
                output_encoding)
     # check encoding
@@ -495,7 +503,7 @@ def normalizepath(f):
 def isdir(f):
     """True if f is an accessible directory."""
     try:
-        return S_ISDIR(os.lstat(f)[ST_MODE])
+        return stat.S_ISDIR(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
@@ -503,14 +511,14 @@ def isdir(f):
 def isfile(f):
     """True if f is a regular file."""
     try:
-        return S_ISREG(os.lstat(f)[ST_MODE])
+        return stat.S_ISREG(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
 def islink(f):
     """True if f is a symlink."""
     try:
-        return S_ISLNK(os.lstat(f)[ST_MODE])
+        return stat.S_ISLNK(os.lstat(f)[stat.ST_MODE])
     except OSError:
         return False
 
@@ -856,7 +864,7 @@ def format_delta(delta):
 
 def filesize(f):
     """Return size of given open file."""
-    return os.fstat(f.fileno())[ST_SIZE]
+    return os.fstat(f.fileno())[stat.ST_SIZE]
 
 
 # Define rand_bytes based on platform.
@@ -924,7 +932,7 @@ def joinpath(p):
 
 def parent_directories(filename):
     """Return the list of parent directories, deepest first.
-    
+
     For example, parent_directories("a/b/c") -> ["a/b", "a"].
     """
     parents = []
@@ -954,12 +962,11 @@ def failed_to_load_extension(exception):
     # NB: This docstring is just an example, not a doctest, because doctest
     # currently can't cope with the use of lazy imports in this namespace --
     # mbp 20090729
-    
+
     # This currently doesn't report the failure at the time it occurs, because
     # they tend to happen very early in startup when we can't check config
     # files etc, and also we want to report all failures but not spam the user
     # with 10 warnings.
-    from bzrlib import trace
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
         trace.mutter("failed to load compiled extension: %s" % exception_str)
@@ -1030,8 +1037,8 @@ def link_or_copy(src, dest):
 
 
 def delete_any(path):
-    """Delete a file, symlink or directory.  
-    
+    """Delete a file, symlink or directory.
+
     Will delete even if readonly.
     """
     try:
@@ -1123,7 +1130,7 @@ def contains_linebreaks(s):
 
 
 def relpath(base, path):
-    """Return path relative to base, or raise exception.
+    """Return path relative to base, or raise PathNotChild exception.
 
     The path may be either an absolute path or a path relative to the
     current working directory.
@@ -1131,6 +1138,9 @@ def relpath(base, path):
     os.path.commonprefix (python2.4) has a bad bug that it works just
     on string prefixes, assuming that '/u' is a prefix of '/u2'.  This
     avoids that problem.
+
+    NOTE: `base` should not have a trailing slash otherwise you'll get
+    PathNotChild exceptions regardless of `path`.
     """
 
     if len(base) < MIN_ABS_PATHLENGTH:
@@ -1223,6 +1233,22 @@ def canonical_relpaths(base, paths):
     # but for now, we haven't optimized...
     return [canonical_relpath(base, p) for p in paths]
 
+
+def decode_filename(filename):
+    """Decode the filename using the filesystem encoding
+
+    If it is unicode, it is returned.
+    Otherwise it is decoded from the the filesystem's encoding. If decoding
+    fails, a errors.BadFilenameEncoding exception is raised.
+    """
+    if type(filename) is unicode:
+        return filename
+    try:
+        return filename.decode(_fs_enc)
+    except UnicodeDecodeError:
+        raise errors.BadFilenameEncoding(filename, _fs_enc)
+
+
 def safe_unicode(unicode_or_utf8_string):
     """Coerce unicode_or_utf8_string into unicode.
 
@@ -1311,7 +1337,7 @@ if sys.platform == 'darwin':
 def normalizes_filenames():
     """Return True if this platform normalizes unicode filenames.
 
-    Mac OSX does, Windows/Linux do not.
+    Only Mac OSX.
     """
     return _platform_normalizes_filenames
 
@@ -1322,7 +1348,7 @@ def _accessible_normalized_filename(path):
     On platforms where the system normalizes filenames (Mac OSX),
     you can access a file by any path which will normalize correctly.
     On platforms where the system does not normalize filenames
-    (Windows, Linux), you have to access a file by its exact path.
+    (everything else), you have to access a file by its exact path.
 
     Internally, bzr only supports NFC normalization, since that is
     the standard for XML documents.
@@ -1357,7 +1383,12 @@ def set_signal_handler(signum, handler, restart_syscall=True):
         platform or Python version.
     """
     try:
+        import signal
         siginterrupt = signal.siginterrupt
+    except ImportError:
+        # This python implementation doesn't provide signal support, hence no
+        # handler exists
+        return None
     except AttributeError:
         # siginterrupt doesn't exist on this platform, or for this version
         # of Python.
@@ -1430,10 +1461,16 @@ def terminal_width():
     # a similar effect.
 
     # If BZR_COLUMNS is set, take it, user is always right
+    # Except if they specified 0 in which case, impose no limit here
     try:
-        return int(os.environ['BZR_COLUMNS'])
+        width = int(os.environ['BZR_COLUMNS'])
     except (KeyError, ValueError):
-        pass
+        width = None
+    if width is not None:
+        if width > 0:
+            return width
+        else:
+            return None
 
     isatty = getattr(sys.stdout, 'isatty', None)
     if isatty is None or not isatty():
@@ -1629,7 +1666,7 @@ def walkdirs(top, prefix=""):
         dirblock = []
         append = dirblock.append
         try:
-            names = sorted(_listdir(top))
+            names = sorted(map(decode_filename, _listdir(top)))
         except OSError, e:
             if not _is_error_enotdir(e):
                 raise
@@ -1824,6 +1861,31 @@ def copy_tree(from_path, to_path, handlers={}):
             real_handlers[kind](abspath, relpath)
 
 
+def copy_ownership_from_path(dst, src=None):
+    """Copy usr/grp ownership from src file/dir to dst file/dir.
+
+    If src is None, the containing directory is used as source. If chown
+    fails, the error is ignored and a warning is printed.
+    """
+    chown = getattr(os, 'chown', None)
+    if chown is None:
+        return
+
+    if src == None:
+        src = os.path.dirname(dst)
+        if src == '':
+            src = '.'
+
+    try:
+        s = os.stat(src)
+        chown(dst, s.st_uid, s.st_gid)
+    except OSError, e:
+        trace.warning(
+            'Unable to copy ownership from "%s" to "%s". '
+            'You may want to set it manually.', src, dst)
+        trace.log_exception_quietly()
+
+
 def path_prefix_key(path):
     """Generate a prefix-order path key for path.
 
@@ -1915,6 +1977,10 @@ def get_user_encoding(use_cache=True):
     return user_encoding
 
 
+def get_diff_header_encoding():
+    return get_terminal_encoding()
+
+
 def get_host_name():
     """Return the current unicode host name.
 
@@ -1929,40 +1995,113 @@ def get_host_name():
         return socket.gethostname().decode(get_user_encoding())
 
 
-def recv_all(socket, bytes):
+# We must not read/write any more than 64k at a time from/to a socket so we
+# don't risk "no buffer space available" errors on some platforms.  Windows in
+# particular is likely to throw WSAECONNABORTED or WSAENOBUFS if given too much
+# data at once.
+MAX_SOCKET_CHUNK = 64 * 1024
+
+_end_of_stream_errors = [errno.ECONNRESET]
+for _eno in ['WSAECONNRESET', 'WSAECONNABORTED']:
+    _eno = getattr(errno, _eno, None)
+    if _eno is not None:
+        _end_of_stream_errors.append(_eno)
+del _eno
+
+
+def read_bytes_from_socket(sock, report_activity=None,
+        max_read_size=MAX_SOCKET_CHUNK):
+    """Read up to max_read_size of bytes from sock and notify of progress.
+
+    Translates "Connection reset by peer" into file-like EOF (return an
+    empty string rather than raise an error), and repeats the recv if
+    interrupted by a signal.
+    """
+    while 1:
+        try:
+            bytes = sock.recv(max_read_size)
+        except socket.error, e:
+            eno = e.args[0]
+            if eno in _end_of_stream_errors:
+                # The connection was closed by the other side.  Callers expect
+                # an empty string to signal end-of-stream.
+                return ""
+            elif eno == errno.EINTR:
+                # Retry the interrupted recv.
+                continue
+            raise
+        else:
+            if report_activity is not None:
+                report_activity(len(bytes), 'read')
+            return bytes
+
+
+def recv_all(socket, count):
     """Receive an exact number of bytes.
 
     Regular Socket.recv() may return less than the requested number of bytes,
-    dependning on what's in the OS buffer.  MSG_WAITALL is not available
+    depending on what's in the OS buffer.  MSG_WAITALL is not available
     on all platforms, but this should work everywhere.  This will return
     less than the requested amount if the remote end closes.
 
     This isn't optimized and is intended mostly for use in testing.
     """
     b = ''
-    while len(b) < bytes:
-        new = until_no_eintr(socket.recv, bytes - len(b))
+    while len(b) < count:
+        new = read_bytes_from_socket(socket, None, count - len(b))
         if new == '':
             break # eof
         b += new
     return b
 
 
-def send_all(socket, bytes, report_activity=None):
+def send_all(sock, bytes, report_activity=None):
     """Send all bytes on a socket.
 
-    Regular socket.sendall() can give socket error 10053 on Windows.  This
-    implementation sends no more than 64k at a time, which avoids this problem.
+    Breaks large blocks in smaller chunks to avoid buffering limitations on
+    some platforms, and catches EINTR which may be thrown if the send is
+    interrupted by a signal.
+
+    This is preferred to socket.sendall(), because it avoids portability bugs
+    and provides activity reporting.
 
     :param report_activity: Call this as bytes are read, see
         Transport._report_activity
     """
-    chunk_size = 2**16
-    for pos in xrange(0, len(bytes), chunk_size):
-        block = bytes[pos:pos+chunk_size]
-        if report_activity is not None:
-            report_activity(len(block), 'write')
-        until_no_eintr(socket.sendall, block)
+    sent_total = 0
+    byte_count = len(bytes)
+    while sent_total < byte_count:
+        try:
+            sent = sock.send(buffer(bytes, sent_total, MAX_SOCKET_CHUNK))
+        except socket.error, e:
+            if e.args[0] != errno.EINTR:
+                raise
+        else:
+            sent_total += sent
+            report_activity(sent, 'write')
+
+
+def connect_socket(address):
+    # Slight variation of the socket.create_connection() function (provided by
+    # python-2.6) that can fail if getaddrinfo returns an empty list. We also
+    # provide it for previous python versions. Also, we don't use the timeout
+    # parameter (provided by the python implementation) so we don't implement
+    # it either).
+    err = socket.error('getaddrinfo returns an empty list')
+    host, port = address
+    for res in socket.getaddrinfo(host, port, 0, socket.SOCK_STREAM):
+        af, socktype, proto, canonname, sa = res
+        sock = None
+        try:
+            sock = socket.socket(af, socktype, proto)
+            sock.connect(sa)
+            return sock
+
+        except socket.error, err:
+            # 'err' is now the most recent error
+            if sock is not None:
+                sock.close()
+    raise err
 
 
 def dereference_path(path):
@@ -2009,9 +2148,11 @@ def resource_string(package, resource_name):
     base = dirname(bzrlib.__file__)
     if getattr(sys, 'frozen', None):    # bzr.exe
         base = abspath(pathjoin(base, '..', '..'))
-    filename = pathjoin(base, resource_relpath)
-    return open(filename, 'rU').read()
-
+    f = file(pathjoin(base, resource_relpath), "rU")
+    try:
+        return f.read()
+    finally:
+        f.close()
 
 def file_kind_from_stat_mode_thunk(mode):
     global file_kind_from_stat_mode
@@ -2039,7 +2180,18 @@ def file_kind(f, _lstat=os.lstat):
 
 
 def until_no_eintr(f, *a, **kw):
-    """Run f(*a, **kw), retrying if an EINTR error occurs."""
+    """Run f(*a, **kw), retrying if an EINTR error occurs.
+
+    WARNING: you must be certain that it is safe to retry the call repeatedly
+    if EINTR does occur.  This is typically only true for low-level operations
+    like os.read.  If in any doubt, don't use this.
+
+    Keep in mind that this is not a complete solution to EINTR.  There is
+    probably code in the Python standard library and other dependencies that
+    may encounter EINTR if a signal arrives (and there is signal handler for
+    that signal).  So this function can reduce the impact for IO that bzrlib
+    directly controls, but it is not a complete solution.
+    """
     # Borrowed from Twisted's twisted.python.util.untilConcludes function.
     while True:
         try:
@@ -2049,6 +2201,8 @@ def until_no_eintr(f, *a, **kw):
                 continue
             raise
 
+
+@deprecated_function(deprecated_in((2, 2, 0)))
 def re_compile_checked(re_string, flags=0, where=""):
     """Return a compiled re, or raise a sensible error.
 
@@ -2064,12 +2218,12 @@ def re_compile_checked(re_string, flags=0, where=""):
         re_obj = re.compile(re_string, flags)
         re_obj.search("")
         return re_obj
-    except re.error, e:
+    except errors.InvalidPattern, e:
         if where:
             where = ' in ' + where
         # despite the name 'error' is a type
-        raise errors.BzrCommandError('Invalid regular expression%s: %r: %s'
-            % (where, re_string, e))
+        raise errors.BzrCommandError('Invalid regular expression%s: %s'
+            % (where, e.msg))
 
 
 if sys.platform == "win32":
@@ -2165,7 +2319,7 @@ class UnicodeOrBytesToBytesWriter(codecs.StreamWriter):
 if sys.platform == 'win32':
     def open_file(filename, mode='r', bufsize=-1):
         """This function is used to override the ``open`` builtin.
-        
+
         But it uses O_NOINHERIT flag so the file handle is not inherited by
         child processes.  Deleting or renaming a closed file opened with this
         function is not blocking child processes.
@@ -2204,3 +2358,48 @@ if sys.platform == 'win32':
         return os.fdopen(os.open(filename, flags), mode, bufsize)
 else:
     open_file = open
+
+
+def getuser_unicode():
+    """Return the username as unicode.
+    """
+    try:
+        user_encoding = get_user_encoding()
+        username = getpass.getuser().decode(user_encoding)
+    except UnicodeDecodeError:
+        raise errors.BzrError("Can't decode username as %s." % \
+                user_encoding)
+    return username
+
+
+def available_backup_name(base, exists):
+    """Find a non-existing backup file name.
+
+    This will *not* create anything, this only return a 'free' entry.  This
+    should be used for checking names in a directory below a locked
+    tree/branch/repo to avoid race conditions. This is LBYL (Look Before You
+    Leap) and generally discouraged.
+
+    :param base: The base name.
+
+    :param exists: A callable returning True if the path parameter exists.
+    """
+    counter = 1
+    name = "%s.~%d~" % (base, counter)
+    while exists(name):
+        counter += 1
+        name = "%s.~%d~" % (base, counter)
+    return name
+
+
+def set_fd_cloexec(fd):
+    """Set a Unix file descriptor's FD_CLOEXEC flag.  Do nothing if platform
+    support for this is not available.
+    """
+    try:
+        import fcntl
+        old = fcntl.fcntl(fd, fcntl.F_GETFD)
+        fcntl.fcntl(fd, fcntl.F_SETFD, old | fcntl.FD_CLOEXEC)
+    except (ImportError, AttributeError):
+        # Either the fcntl module or specific constants are not present
+        pass

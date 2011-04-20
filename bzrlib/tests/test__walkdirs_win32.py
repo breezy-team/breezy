@@ -74,7 +74,7 @@ class TestWin32Finder(tests.TestCaseInTempDir):
         self.assertReadDir([('foo', 'foo', 'file', u'./foo')],
             '', u'.')
 
-    def test_dir(self):
+    def test_directory(self):
         self.build_tree(['bar/'])
         self.assertReadDir([('bar', 'bar', 'directory', u'./bar')],
             '', u'.')

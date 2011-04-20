@@ -19,12 +19,8 @@ root.
 """
 
 from bzrlib.transport import (
-    get_transport,
     pathfilter,
     register_transport,
-    Server,
-    Transport,
-    unregister_transport,
     )
 
 
@@ -65,21 +61,7 @@ class ChrootTransport(pathfilter.PathFilteringTransport):
         return self._relpath_from_server_root(relpath)
 
 
-class TestingChrootServer(ChrootServer):
-
-    def __init__(self):
-        """TestingChrootServer is not usable until start_server is called."""
-        ChrootServer.__init__(self, None)
-
-    def start_server(self, backing_server=None):
-        """Setup the Chroot on backing_server."""
-        if backing_server is not None:
-            self.backing_transport = get_transport(backing_server.get_url())
-        else:
-            self.backing_transport = get_transport('.')
-        ChrootServer.start_server(self)
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(ChrootTransport, TestingChrootServer)]
+    from bzrlib.tests import test_server
+    return [(ChrootTransport, test_server.TestingChrootServer)]

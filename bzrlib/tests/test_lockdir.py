@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 """Tests for LockDir"""
 
-from cStringIO import StringIO
 import os
 from threading import Thread, Lock
 import time
@@ -34,12 +33,14 @@ from bzrlib.errors import (
     LockBreakMismatch,
     LockBroken,
     LockContention,
-    LockError,
     LockFailed,
     LockNotHeld,
     )
 from bzrlib.lockdir import LockDir
-from bzrlib.tests import (features, TestCaseWithTransport)
+from bzrlib.tests import (
+    features,
+    TestCaseWithTransport,
+    )
 from bzrlib.trace import note
 
 # These tests sometimes use threads to test the behaviour of lock files with
@@ -191,22 +192,21 @@ class TestLockDir(TestCaseWithTransport):
                     "took %f seconds to detect lock contention" % (after - before))
         finally:
             lf1.unlock()
-        lock_base = lf2.transport.abspath(lf2.path)
         self.assertEqual(1, len(self._logged_reports))
-        lock_url = lf2.transport.abspath(lf2.path)
-        self.assertEqual('%s %s\n'
-                         '%s\n%s\n'
-                         'Will continue to try until %s, unless '
-                         'you press Ctrl-C.\n'
-                         'See "bzr help break-lock" for more.',
-                         self._logged_reports[0][0])
-        args = self._logged_reports[0][1]
-        self.assertEqual('Unable to obtain', args[0])
-        self.assertEqual('lock %s' % (lock_base,), args[1])
-        self.assertStartsWith(args[2], 'held by ')
-        self.assertStartsWith(args[3], 'locked ')
-        self.assertEndsWith(args[3], ' ago')
-        self.assertContainsRe(args[4], r'\d\d:\d\d:\d\d')
+        self.assertEqual(self._logged_reports[0][0],
+            '%s lock %s held by %s\n'
+            'at %s [process #%s], acquired %s.\n'
+            'Will continue to try until %s, unless '
+            'you press Ctrl-C.\n'
+            'See "bzr help break-lock" for more.')
+        start, lock_url, user, hostname, pid, time_ago, deadline_str = \
+            self._logged_reports[0][1]
+        self.assertEqual(start, u'Unable to obtain')
+        self.assertEqual(user, u'jrandom@example.com')
+        # skip hostname
+        self.assertContainsRe(pid, r'\d+')
+        self.assertContainsRe(time_ago, r'.* ago')
+        self.assertContainsRe(deadline_str, r'\d{2}:\d{2}:\d{2}')
 
     def test_31_lock_wait_easy(self):
         """Succeed when waiting on a lock with no contention.
@@ -581,16 +581,12 @@ class TestLockDir(TestCaseWithTransport):
                 self.prompts.append(('boolean', prompt))
                 return True
         ui = LoggingUIFactory()
-        orig_factory = bzrlib.ui.ui_factory
-        bzrlib.ui.ui_factory = ui
-        try:
-            ld2.break_lock()
-            self.assertLength(1, ui.prompts)
-            self.assertEqual('boolean', ui.prompts[0][0])
-            self.assertStartsWith(ui.prompts[0][1], 'Break (corrupt LockDir')
-            self.assertRaises(LockBroken, ld.unlock)
-        finally:
-            bzrlib.ui.ui_factory = orig_factory
+        self.overrideAttr(bzrlib.ui, 'ui_factory', ui)
+        ld2.break_lock()
+        self.assertLength(1, ui.prompts)
+        self.assertEqual('boolean', ui.prompts[0][0])
+        self.assertStartsWith(ui.prompts[0][1], 'Break (corrupt LockDir')
+        self.assertRaises(LockBroken, ld.unlock)
 
     def test_break_lock_missing_info(self):
         """break_lock works even if the info file is missing (and tells the UI
@@ -653,11 +649,10 @@ class TestLockDir(TestCaseWithTransport):
             info_list = ld1._format_lock_info(ld1.peek())
         finally:
             ld1.unlock()
-        self.assertEqual('lock %s' % (ld1.transport.abspath(ld1.path),),
-                         info_list[0])
-        self.assertContainsRe(info_list[1],
-                              r'^held by .* on host .* \[process #\d*\]$')
-        self.assertContainsRe(info_list[2], r'locked \d+ seconds? ago$')
+        self.assertEqual(info_list[0], u'jrandom@example.com')
+        # info_list[1] is hostname. we skip this.
+        self.assertContainsRe(info_list[2], '^\d+$') # pid
+        self.assertContainsRe(info_list[3], r'^\d+ seconds? ago$') # time_ago
 
     def test_lock_without_email(self):
         global_config = config.GlobalConfig()
@@ -737,9 +732,7 @@ class TestLockDir(TestCaseWithTransport):
         info = lf.peek()
         formatted_info = lf._format_lock_info(info)
         self.assertEquals(
-            ['lock %s' % t.abspath('test_lock'),
-             'held by <unknown> on host <unknown> [process #<unknown>]',
-             'locked (unknown)'],
+            ['<unknown>', '<unknown>', '<unknown>', '(unknown)'],
             formatted_info)
 
     def test_corrupt_lockdir_info(self):

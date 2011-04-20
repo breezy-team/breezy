@@ -23,45 +23,33 @@ also see this file.
 """
 
 from stat import S_ISDIR
-from StringIO import StringIO
 import sys
 
 import bzrlib
-from bzrlib.errors import (NotBranchError,
-                           NoSuchFile,
+from bzrlib.errors import (NoSuchFile,
                            UnknownFormatError,
                            UnsupportedFormatError,
                            )
 from bzrlib import (
+    btree_index,
     graph,
     tests,
+    transport,
     )
-from bzrlib.branchbuilder import BranchBuilder
 from bzrlib.btree_index import BTreeBuilder, BTreeGraphIndex
-from bzrlib.index import GraphIndex, InMemoryGraphIndex
+from bzrlib.index import GraphIndex
 from bzrlib.repository import RepositoryFormat
-from bzrlib.smart import server
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
-    TestSkipped,
-    test_knit,
     )
-from bzrlib.transport import (
-    fakenfs,
-    get_transport,
-    )
-from bzrlib.transport.memory import MemoryServer
 from bzrlib import (
-    bencode,
     bzrdir,
     errors,
     inventory,
     osutils,
-    progress,
     repository,
     revision as _mod_revision,
-    symbol_versioning,
     upgrade,
     versionedfile,
     workingtree,
@@ -138,7 +126,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
         def check_format(format, url):
             dir = format._matchingbzrdir.initialize(url)
             format.initialize(dir)
-            t = get_transport(url)
+            t = transport.get_transport(url)
             found_format = repository.RepositoryFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(weaverepo.RepositoryFormat7(), "bar")
@@ -465,7 +453,7 @@ class TestFormatKnit1(TestCaseWithTransport):
         repo = self.make_repository('.',
                 format=bzrdir.format_registry.get('knit')())
         inv_xml = '<inventory format="5">\n</inventory>\n'
-        inv = repo.deserialise_inventory('test-rev-id', inv_xml)
+        inv = repo._deserialise_inventory('test-rev-id', inv_xml)
         self.assertEqual('test-rev-id', inv.root.revision)
 
     def test_deserialise_uses_global_revision_id(self):
@@ -477,9 +465,9 @@ class TestFormatKnit1(TestCaseWithTransport):
         # Arguably, the deserialise_inventory should detect a mismatch, and
         # raise an error, rather than silently using one revision_id over the
         # other.
-        self.assertRaises(AssertionError, repo.deserialise_inventory,
+        self.assertRaises(AssertionError, repo._deserialise_inventory,
             'test-rev-id', inv_xml)
-        inv = repo.deserialise_inventory('other-rev-id', inv_xml)
+        inv = repo._deserialise_inventory('other-rev-id', inv_xml)
         self.assertEqual('other-rev-id', inv.root.revision)
 
     def test_supports_external_lookups(self):
@@ -596,7 +584,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
                                 ]
         repo_a = self.make_repository('a')
         repo_b = self.make_repository('b')
-        is_compatible = repository.InterWeaveRepo.is_compatible
+        is_compatible = weaverepo.InterWeaveRepo.is_compatible
         for source in incompatible_formats:
             # force incompatible left then right
             repo_a._format = source
@@ -608,7 +596,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
             for target in formats:
                 repo_b._format = target
                 self.assertTrue(is_compatible(repo_a, repo_b))
-        self.assertEqual(repository.InterWeaveRepo,
+        self.assertEqual(weaverepo.InterWeaveRepo,
                          repository.InterRepository.get(repo_a,
                                                         repo_b).__class__)
 
@@ -616,7 +604,7 @@ class TestInterWeaveRepo(TestCaseWithTransport):
 class TestRepositoryConverter(TestCaseWithTransport):
 
     def test_convert_empty(self):
-        t = get_transport(self.get_url('.'))
+        t = self.get_transport()
         t.mkdir('repository')
         repo_dir = bzrdir.BzrDirMetaFormat1().initialize('repository')
         repo = weaverepo.RepositoryFormat7().initialize(repo_dir)
@@ -691,6 +679,21 @@ class TestRepositoryFormatKnit3(TestCaseWithTransport):
 
 
 class Test2a(tests.TestCaseWithMemoryTransport):
+
+    def test_chk_bytes_uses_custom_btree_parser(self):
+        mt = self.make_branch_and_memory_tree('test', format='2a')
+        mt.lock_write()
+        self.addCleanup(mt.unlock)
+        mt.add([''], ['root-id'])
+        mt.commit('first')
+        index = mt.branch.repository.chk_bytes._index._graph_index._indices[0]
+        self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
+        # It should also work if we re-open the repo
+        repo = mt.branch.repository.bzrdir.open_repository()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        index = repo.chk_bytes._index._graph_index._indices[0]
+        self.assertEqual(btree_index._gcchk_factory, index._leaf_factory)
 
     def test_fetch_combines_groups(self):
         builder = self.make_branch_builder('source', format='2a')
@@ -967,8 +970,7 @@ class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
 
     def setUp(self):
         super(TestDevelopment6FindParentIdsOfRevisions, self).setUp()
-        self.builder = self.make_branch_builder('source',
-            format='development6-rich-root')
+        self.builder = self.make_branch_builder('source')
         self.builder.start_series()
         self.builder.build_snapshot('initial', None,
             [('add', ('', 'tree-root', 'directory', None))])

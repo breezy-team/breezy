@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,17 +18,17 @@
 import errno
 import re
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     bencode,
     errors,
     merge,
     merge3,
-    osutils,
     pack,
     transform,
-    ui,
-    workingtree,
 )
+""")
 
 
 class ShelfCreator(object):

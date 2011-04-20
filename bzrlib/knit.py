@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -54,6 +54,7 @@ in the deltas to provide line annotation
 
 from cStringIO import StringIO
 from itertools import izip
+import gzip
 import operator
 import os
 import sys
@@ -68,17 +69,18 @@ from bzrlib import (
     index as _mod_index,
     lru_cache,
     pack,
+    patiencediff,
     progress,
     static_tuple,
     trace,
     tsort,
     tuned_gzip,
+    ui,
     )
 """)
 from bzrlib import (
     errors,
     osutils,
-    patiencediff,
     )
 from bzrlib.errors import (
     FileExists,
@@ -1194,7 +1196,7 @@ class KnitVersionedFiles(VersionedFiles):
     def get_known_graph_ancestry(self, keys):
         """Get a KnownGraph instance with the ancestry of keys."""
         parent_map, missing_keys = self._index.find_ancestry(keys)
-        for fallback in self._fallback_vfs:
+        for fallback in self._transitive_fallbacks():
             if not missing_keys:
                 break
             (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
@@ -1755,7 +1757,7 @@ class KnitVersionedFiles(VersionedFiles):
         :return: An iterator over (line, key).
         """
         if pb is None:
-            pb = progress.DummyProgress()
+            pb = ui.ui_factory.nested_progress_bar()
         keys = set(keys)
         total = len(keys)
         done = False
@@ -1878,7 +1880,7 @@ class KnitVersionedFiles(VersionedFiles):
         :return: the header and the decompressor stream.
                  as (stream, header_record)
         """
-        df = tuned_gzip.GzipFile(mode='rb', fileobj=StringIO(raw_data))
+        df = gzip.GzipFile(mode='rb', fileobj=StringIO(raw_data))
         try:
             # Current serialise
             rec = self._check_header(key, df.readline())
@@ -1893,7 +1895,7 @@ class KnitVersionedFiles(VersionedFiles):
         # 4168 calls in 2880 217 internal
         # 4168 calls to _parse_record_header in 2121
         # 4168 calls to readlines in 330
-        df = tuned_gzip.GzipFile(mode='rb', fileobj=StringIO(data))
+        df = gzip.GzipFile(mode='rb', fileobj=StringIO(data))
         try:
             record_contents = df.readlines()
         except Exception, e:
@@ -3414,10 +3416,6 @@ class _DirectPackAccess(object):
         if is_error:
             exc_class, exc_value, exc_traceback = retry_exc.exc_info
             raise exc_class, exc_value, exc_traceback
-
-
-# Deprecated, use PatienceSequenceMatcher instead
-KnitSequenceMatcher = patiencediff.PatienceSequenceMatcher
 
 
 def annotate_knit(knit, revision_id):

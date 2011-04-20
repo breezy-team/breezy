@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,18 +21,14 @@ import bzrlib
 from bzrlib import (
     bzrdir,
     errors,
-    lockdir,
-    osutils,
-    tests,
     )
 from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir, BzrDirMetaFormat1
+from bzrlib.bzrdir import BzrDirMetaFormat1
 from bzrlib.commit import Commit, NullCommitReporter
 from bzrlib.config import BranchConfig
 from bzrlib.errors import (PointlessCommit, BzrError, SigningFailed,
                            LockContention)
 from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
-from bzrlib.workingtree import WorkingTree
 
 
 # TODO: Test commit with some added, and added-but-missing files
@@ -274,7 +270,7 @@ class TestCommit(TestCaseWithTransport):
         try:
             self.check_inventory_shape(wt.read_working_inventory(),
                                        ['a/', 'a/hello', 'a/b/'])
-            self.check_inventory_shape(b.repository.get_revision_inventory(r3),
+            self.check_inventory_shape(b.repository.get_inventory(r3),
                                        ['a/', 'a/hello', 'a/b/'])
         finally:
             wt.unlock()
@@ -289,7 +285,7 @@ class TestCommit(TestCaseWithTransport):
         finally:
             wt.unlock()
 
-        inv = b.repository.get_revision_inventory(r4)
+        inv = b.repository.get_inventory(r4)
         eq(inv['hello-id'].revision, r4)
         eq(inv['a-id'].revision, r1)
         eq(inv['b-id'].revision, r3)

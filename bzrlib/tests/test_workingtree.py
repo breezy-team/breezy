@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -15,21 +15,18 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 import os
 
 from bzrlib import (
     bzrdir,
     conflicts,
     errors,
+    transport,
     workingtree,
     )
-from bzrlib.branch import Branch
-from bzrlib.bzrdir import BzrDir
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.tests import TestCase, TestCaseWithTransport, TestSkipped
-from bzrlib.transport import get_transport
 from bzrlib.workingtree import (
     TreeEntry,
     TreeDirectory,
@@ -138,7 +135,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             dir.create_repository()
             dir.create_branch()
             format.initialize(dir)
-            t = get_transport(url)
+            t = transport.get_transport(url)
             found_format = workingtree.WorkingTreeFormat.find_format(dir)
             self.failUnless(isinstance(found_format, format.__class__))
         check_format(workingtree.WorkingTreeFormat3(), "bar")
@@ -303,9 +300,9 @@ class TestInstrumentedTree(TestCase):
         self.assertEqual(
             'method_with_tree_write_lock',
             tree.method_with_tree_write_lock.__name__)
-        self.assertEqual(
+        self.assertDocstring(
             "A lock_tree_write decorated method that returns its arguments.",
-            tree.method_with_tree_write_lock.__doc__)
+            tree.method_with_tree_write_lock)
         args = (1, 2, 3)
         kwargs = {'a':'b'}
         result = tree.method_with_tree_write_lock(1,2,3, a='b')
@@ -349,28 +346,28 @@ class TestAutoResolve(TestCaseWithTransport):
         self.build_tree_contents([('this/hello', 'Hello World')])
         this.commit('Add World')
         this.merge_from_branch(other.branch)
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '<<<<<<<')])
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '=======')])
         this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.build_tree_contents([('this/hello', '\n>>>>>>>')])
         remaining, resolved = this.auto_resolve()
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          this.conflicts())
         self.assertEqual([], resolved)
         self.build_tree_contents([('this/hello', 'hELLO wORLD')])
         remaining, resolved = this.auto_resolve()
         self.assertEqual([], this.conflicts())
-        self.assertEqual([conflicts.TextConflict('hello', None, 'hello_id')],
+        self.assertEqual([conflicts.TextConflict('hello', 'hello_id')],
                          resolved)
         self.failIfExists('this/hello.BASE')
 
@@ -378,7 +375,7 @@ class TestAutoResolve(TestCaseWithTransport):
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello/'])
         tree.add('hello', 'hello-id')
-        file_conflict = conflicts.TextConflict('file', None, 'hello-id')
+        file_conflict = conflicts.TextConflict('file', 'hello-id')
         tree.set_conflicts(conflicts.ConflictList([file_conflict]))
         tree.auto_resolve()
 

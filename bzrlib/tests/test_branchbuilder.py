@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 from bzrlib import (
     branch as _mod_branch,
-    errors,
     revision as _mod_revision,
     tests,
     )
@@ -171,6 +170,15 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         rev = branch.repository.get_revision(rev_id)
         self.assertEqual(u'Foo', rev.message)
 
+    def test_commit_message_callback(self):
+        builder = BranchBuilder(self.get_transport().clone('foo'))
+        rev_id = builder.build_snapshot(None, None,
+            [('add', (u'', None, 'directory', None))],
+            message_callback=lambda x:u'Foo')
+        branch = builder.get_branch()
+        rev = branch.repository.get_revision(rev_id)
+        self.assertEqual(u'Foo', rev.message)
+
     def test_modify_file(self):
         builder = self.build_a_rev()
         rev_id2 = builder.build_snapshot('B-id', None,
@@ -315,6 +323,21 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
         # should look like it was not modified in the merge
         self.assertEqual('C-id', d_tree.inventory['c-id'].revision)
 
+    def test_set_parent_to_null(self):
+        builder = self.build_a_rev()
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
+        builder.build_snapshot('B-id', [],
+            [('add', ('', None, 'directory', None))])
+        # We should now have a graph:
+        #   A B
+        # And not A => B
+        repo = builder.get_branch().repository
+        self.assertEqual({'A-id': (_mod_revision.NULL_REVISION,),
+                          'B-id': (_mod_revision.NULL_REVISION,),},
+                         repo.get_parent_map(['A-id', 'B-id']))
+
+    
     def test_start_finish_series(self):
         builder = BranchBuilder(self.get_transport().clone('foo'))
         builder.start_series()

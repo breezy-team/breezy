@@ -17,6 +17,7 @@
 """Test that we can use smart_add on all Tree implementations."""
 
 from cStringIO import StringIO
+import os
 import sys
 
 from bzrlib import (
@@ -27,15 +28,14 @@ from bzrlib import (
     tests,
     workingtree,
     )
-from bzrlib.add import (
-    AddAction,
-    AddFromBaseAction,
+from bzrlib.tests import (
+    features,
+    test_smart_add,
+    per_workingtree,
     )
-from bzrlib.tests.test_smart_add import AddCustomIDAction
-from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
-class TestSmartAddTree(TestCaseWithWorkingTree):
+class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
 
     def test_single_file(self):
         tree = self.make_branch_and_tree('tree')
@@ -203,9 +203,41 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
         self.assertEqual(['', 'dir', 'dir/subdir', 'dir/subdir/foo'],
             [path for path, ie in tree.iter_entries_by_dir()])
 
+    def test_add_dir_bug_251864(self):
+        """Added file turning into a dir should be detected on add dir
+
+        Similar to bug 205636 but with automatic adding of directory contents.
+        """
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["dir"]) # whoops, make a file called dir
+        tree.smart_add(["dir"])
+        os.remove("dir")
+        self.build_tree(["dir/", "dir/file"])
+        tree.smart_add(["dir"])
+        tree.commit("Add dir contents")
+        self.addCleanup(tree.lock_read().unlock)
+        self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
+            [(t[0], t[2]) for t in tree.list_files()])
+        self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
+
+    def test_add_subdir_file_bug_205636(self):
+        """Added file turning into a dir should be detected on add dir/file"""
+        tree = self.make_branch_and_tree(".")
+        self.build_tree(["dir"]) # whoops, make a file called dir
+        tree.smart_add(["dir"])
+        os.remove("dir")
+        self.build_tree(["dir/", "dir/file"])
+        tree.smart_add(["dir/file"])
+        tree.commit("Add file in dir")
+        self.addCleanup(tree.lock_read().unlock)
+        self.assertEqual([(u"dir", "directory"), (u"dir/file", "file")],
+            [(t[0], t[2]) for t in tree.list_files()])
+        self.assertFalse(list(tree.iter_changes(tree.basis_tree())))
+
     def test_custom_ids(self):
         sio = StringIO()
-        action = AddCustomIDAction(to_file=sio, should_print=True)
+        action = test_smart_add.AddCustomIDAction(to_file=sio,
+                                                  should_print=True)
         self.build_tree(['file1', 'dir1/', 'dir1/file2'])
 
         wt = self.make_branch_and_tree('.')
@@ -226,60 +258,87 @@ class TestSmartAddTree(TestCaseWithWorkingTree):
                          ], [(path, ie.file_id) for path, ie
                                 in wt.inventory.iter_entries()])
 
-    def make_unicode_containing_tree(self):
-        try:
-            self.build_tree([u'a\u030a'])
-        except UnicodeError:
-            raise tests.TestSkipped('Filesystem cannot create unicode filenames')
+
+class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
+
+    def make_tree_with_text_conflict(self):
+        tb = self.make_branch_and_tree('base')
+        self.build_tree_contents([('base/file', 'content in base')])
+        tb.add('file')
+        tb.commit('Adding file')
+
+        t1 = tb.bzrdir.sprout('t1').open_workingtree()
+
+        self.build_tree_contents([('base/file', 'content changed in base')])
+        tb.commit('Changing file in base')
+
+        self.build_tree_contents([('t1/file', 'content in t1')])
+        t1.commit('Changing file in t1')
+        t1.merge_from_branch(tb.branch)
+        return t1
+
+    def test_cant_add_generated_files_implicitly(self):
+        t = self.make_tree_with_text_conflict()
+        added, ignored = t.smart_add([t.basedir])
+        self.assertEqual(([], {}), (added, ignored))
+
+    def test_can_add_generated_files_explicitly(self):
+        fnames = ['file.%s' % s  for s in ('BASE', 'THIS', 'OTHER')]
+        t = self.make_tree_with_text_conflict()
+        added, ignored = t.smart_add([t.basedir + '/%s' % f for f in fnames])
+        self.assertEqual((fnames, {}), (added, ignored))
+
+
+class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
+
+    _test_needs_features = [tests.UnicodeFilenameFeature]
+
+    def setUp(self):
+        super(TestSmartAddTreeUnicode, self).setUp()
+        self.build_tree([u'a\u030a'])
         self.wt = self.make_branch_and_tree('.')
+        self.overrideAttr(osutils, 'normalized_filename')
 
     def test_accessible_explicit(self):
-        self.make_unicode_containing_tree()
-        orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        try:
+        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+            self.expectFailure(
+                'With WorkingTreeFormat2, smart_add requires'
+                ' normalized unicode filenames',
+                self.assertRaises, errors.NoSuchFile,
+                self.wt.smart_add, [u'a\u030a'])
+        else:
             self.wt.smart_add([u'a\u030a'])
-            self.wt.lock_read()
-            self.addCleanup(self.wt.unlock)
-            self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                    [(path, ie.kind) for path,ie in
-                        self.wt.inventory.iter_entries()])
-        finally:
-            osutils.normalized_filename = orig
+        self.wt.lock_read()
+        self.addCleanup(self.wt.unlock)
+        self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
+                         [(path, ie.kind) for path,ie in
+                          self.wt.inventory.iter_entries()])
 
     def test_accessible_implicit(self):
-        self.make_unicode_containing_tree()
-        orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._accessible_normalized_filename
-        try:
+        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+            self.expectFailure(
+                'With WorkingTreeFormat2, smart_add requires'
+                ' normalized unicode filenames',
+                self.assertRaises, errors.NoSuchFile,
+                self.wt.smart_add, [])
+        else:
             self.wt.smart_add([])
-            self.wt.lock_read()
-            self.addCleanup(self.wt.unlock)
-            self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
-                    [(path, ie.kind) for path,ie in
-                        self.wt.inventory.iter_entries()])
-        finally:
-            osutils.normalized_filename = orig
+        self.wt.lock_read()
+        self.addCleanup(self.wt.unlock)
+        self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
+                         [(path, ie.kind) for path,ie
+                          in self.wt.inventory.iter_entries()])
 
     def test_inaccessible_explicit(self):
-        self.make_unicode_containing_tree()
-        orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
-        try:
-            self.assertRaises(errors.InvalidNormalization,
-                    self.wt.smart_add, [u'a\u030a'])
-        finally:
-            osutils.normalized_filename = orig
+        self.assertRaises(errors.InvalidNormalization,
+                          self.wt.smart_add, [u'a\u030a'])
 
     def test_inaccessible_implicit(self):
-        self.make_unicode_containing_tree()
-        orig = osutils.normalized_filename
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
-        try:
-            # TODO: jam 20060701 In the future, this should probably
-            #       just ignore files that don't fit the normalization
-            #       rules, rather than exploding
-            self.assertRaises(errors.InvalidNormalization,
-                    self.wt.smart_add, [])
-        finally:
-            osutils.normalized_filename = orig
+        # TODO: jam 20060701 In the future, this should probably
+        #       just ignore files that don't fit the normalization
+        #       rules, rather than exploding
+        self.assertRaises(errors.InvalidNormalization, self.wt.smart_add, [])

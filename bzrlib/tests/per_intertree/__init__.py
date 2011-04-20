@@ -28,7 +28,6 @@ from bzrlib import (
     revisiontree,
     tests,
     )
-from bzrlib.transport import get_transport
 from bzrlib.transform import TransformPreview
 from bzrlib.tests import (
     default_transport,
@@ -138,8 +137,7 @@ def load_tests(standard_tests, module, loader):
             # -- vila 20090311
             chk_tree_format = WorkingTreeFormat4()
             chk_tree_format._get_matchingbzrdir = \
-                lambda:bzrlib.bzrdir.format_registry.make_bzrdir(
-                    'development6-rich-root')
+                lambda:bzrlib.bzrdir.format_registry.make_bzrdir('2a')
             test_intertree_permutations.append(
                 (InterTree.__name__ + "(CHKInventory)",
                  InterTree,

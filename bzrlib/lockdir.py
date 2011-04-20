@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -152,7 +152,7 @@ from bzrlib import rio
 # files/dirs created.
 
 
-_DEFAULT_TIMEOUT_SECONDS = 300
+_DEFAULT_TIMEOUT_SECONDS = 30
 _DEFAULT_POLL_SECONDS = 1.0
 
 
@@ -347,6 +347,8 @@ class LockDir(lock.Lock):
         This is a UI centric function: it uses the bzrlib.ui.ui_factory to
         prompt for input if a lock is detected and there is any doubt about
         it possibly being still active.
+
+        :returns: LockResult for the broken lock.
         """
         self._check_not_locked()
         try:
@@ -358,8 +360,12 @@ class LockDir(lock.Lock):
             return
         if holder_info is not None:
             lock_info = '\n'.join(self._format_lock_info(holder_info))
-            if bzrlib.ui.ui_factory.get_boolean("Break %s" % lock_info):
-                self.force_break(holder_info)
+            if bzrlib.ui.ui_factory.confirm_action(
+                "Break %(lock_info)s", 'bzrlib.lockdir.break', 
+                dict(lock_info=lock_info)):
+                result = self.force_break(holder_info)
+                bzrlib.ui.ui_factory.show_message(
+                    "Broke lock %s" % result.lock_url)
 
     def force_break(self, dead_holder_info):
         """Release a lock held by another process.
@@ -376,6 +382,8 @@ class LockDir(lock.Lock):
         After the lock is broken it will not be held by any process.
         It is possible that another process may sneak in and take the
         lock before the breaking process acquires it.
+
+        :returns: LockResult for the broken lock.
         """
         if not isinstance(dead_holder_info, dict):
             raise ValueError("dead_holder_info: %r" % dead_holder_info)
@@ -401,6 +409,7 @@ class LockDir(lock.Lock):
                                  current_info.get('nonce'))
         for hook in self.hooks['lock_broken']:
             hook(result)
+        return result
 
     def force_break_corrupt(self, corrupt_info_lines):
         """Release a lock that has been corrupted.
@@ -421,8 +430,8 @@ class LockDir(lock.Lock):
         # there's a small race window between checking it and doing the
         # rename.
         broken_info_path = tmpname + self.__INFO_NAME
-        f = self.transport.get(broken_info_path)
-        broken_lines = f.readlines()
+        broken_content = self.transport.get_bytes(broken_info_path)
+        broken_lines = osutils.split_lines(broken_content)
         if broken_lines != corrupt_info_lines:
             raise LockBreakMismatch(self, broken_lines, corrupt_info_lines)
         self.transport.delete(broken_info_path)
@@ -483,9 +492,9 @@ class LockDir(lock.Lock):
         # XXX: is creating this here inefficient?
         config = bzrlib.config.GlobalConfig()
         try:
-            user = config.user_email()
-        except errors.NoEmailInUsername:
             user = config.username()
+        except errors.NoWhoami:
+            user = osutils.getuser_unicode()
         s = rio.Stanza(hostname=get_host_name(),
                    pid=str(os.getpid()),
                    start_time=str(int(time.time())),
@@ -528,6 +537,17 @@ class LockDir(lock.Lock):
             hook(hook_result)
         return result
 
+    def lock_url_for_display(self):
+        """Give a nicely-printable representation of the URL of this lock."""
+        # As local lock urls are correct we display them.
+        # We avoid displaying remote lock urls.
+        lock_url = self.transport.abspath(self.path)
+        if lock_url.startswith('file://'):
+            lock_url = lock_url.split('.bzr/')[0]
+        else:
+            lock_url = ''
+        return lock_url
+
     def wait_lock(self, timeout=None, poll=None, max_attempts=None):
         """Wait a certain period for a lock.
 
@@ -557,6 +577,7 @@ class LockDir(lock.Lock):
         deadline_str = None
         last_info = None
         attempt_count = 0
+        lock_url = self.lock_url_for_display()
         while True:
             attempt_count += 1
             try:
@@ -581,24 +602,20 @@ class LockDir(lock.Lock):
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
-                lock_url = self.transport.abspath(self.path)
-                # See <https://bugs.launchpad.net/bzr/+bug/250451>
-                # the URL here is sometimes not one that is useful to the
-                # user, perhaps being wrapped in a lp-%d or chroot decorator,
-                # especially if this error is issued from the server.
-                self._report_function('%s %s\n'
-                    '%s\n' # held by
-                    '%s\n' # locked ... ago
-                    'Will continue to try until %s, unless '
-                    'you press Ctrl-C.\n'
-                    'See "bzr help break-lock" for more.',
-                    start,
-                    formatted_info[0],
-                    formatted_info[1],
-                    formatted_info[2],
-                    deadline_str,
-                    )
-
+                user, hostname, pid, time_ago = formatted_info
+                msg = ('%s lock %s '        # lock_url
+                    'held by '              # start
+                    '%s\n'                  # user
+                    'at %s '                # hostname
+                    '[process #%s], '       # pid
+                    'acquired %s.')         # time ago
+                msg_args = [start, lock_url, user, hostname, pid, time_ago]
+                if timeout > 0:
+                    msg += ('\nWill continue to try until %s, unless '
+                        'you press Ctrl-C.')
+                    msg_args.append(deadline_str)
+                msg += '\nSee "bzr help break-lock" for more.'
+                self._report_function(msg, *msg_args)
             if (max_attempts is not None) and (attempt_count >= max_attempts):
                 self._trace("exceeded %d attempts")
                 raise LockContention(self)
@@ -606,8 +623,11 @@ class LockDir(lock.Lock):
                 self._trace("waiting %ss", poll)
                 time.sleep(poll)
             else:
+                # As timeout is always 0 for remote locks
+                # this block is applicable only for local
+                # lock contention
                 self._trace("timeout after waiting %ss", timeout)
-                raise LockContention(self)
+                raise LockContention('(local)', lock_url)
 
     def leave_in_place(self):
         self._locked_via_token = True
@@ -658,17 +678,19 @@ class LockDir(lock.Lock):
 
     def _format_lock_info(self, info):
         """Turn the contents of peek() into something for the user"""
-        lock_url = self.transport.abspath(self.path)
         start_time = info.get('start_time')
         if start_time is None:
             time_ago = '(unknown)'
         else:
             time_ago = format_delta(time.time() - int(info['start_time']))
+        user = info.get('user', '<unknown>')
+        hostname = info.get('hostname', '<unknown>')
+        pid = info.get('pid', '<unknown>')
         return [
-            'lock %s' % (lock_url,),
-            'held by %s on host %s [process #%s]' %
-                tuple([info.get(x, '<unknown>') for x in ['user', 'hostname', 'pid']]),
-            'locked %s' % (time_ago,),
+            user,
+            hostname,
+            pid,
+            time_ago,
             ]
 
     def validate_token(self, token):

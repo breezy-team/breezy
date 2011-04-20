@@ -1,15 +1,28 @@
 Using stacked branches
 ======================
 
+Motivation
+----------
+
+If you are working on a project, and you have read access to whose
+public repository but do not have write access to it, using stacked
+branches to backup/publish your work onto the same host of the public
+repository might be an option for you.
+
+Other scenarios for stacked branch usage include experimental branches
+and code hosting sites. For these scenarios, stacked branches are
+ideal because of the benefits it provides.
+
+
 What is a stacked branch?
 -------------------------
 
-A stacked branch is a branch that knows how to find revisions
-in another branch. Stacked branches store just the
-unique revisions, making them faster to create and more
-storage efficient. In these respects, stacked branches are
-similar to shared repositories. However, stacked branches have
-additional benefits:
+A stacked branch is a branch that knows how to find revisions in
+another branch (the stacked-on branch). Stacked branches store just
+the unique revisions that are not in the stacked-on branch, making
+them faster to create and more storage efficient. In these respects,
+stacked branches are similar to shared repositories. However, stacked
+branches have additional benefits:
 
 * The new branch can be in a completely different location to the
   branch being stacked on.
@@ -20,9 +33,6 @@ additional benefits:
 * Security is improved over shared repositories, because the stacked-on
   repository can be physically readonly to developers committing to stacked
   branches.
-
-These benefits make stacked branches ideal for various scenarios
-including experimental branches and code hosting sites.
 
 
 Creating a stacked branch
@@ -63,7 +73,14 @@ command like this::
 
 This creates a new branch at ``my-url`` that is stacked on ``reference-url``
 and only contains the revisions in the current branch that are not already
-in the branch at ``reference-url``.
+in the branch at ``reference-url``. In particular, ``my-url`` and
+``reference-url`` can be on the same host, and the ``--stacked`` option
+can be used additionally to inform ``push`` to reference the
+revisions in ``reference-url``. For example::
+
+  bzr push --stacked-on sftp://host/project --stacked sftp://host/user/stacked-branch
+
+This usage fits the scenario described in the Motivation section.
 
 
 .. The following text is hidden because bug 375013 breaks the example.

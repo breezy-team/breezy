@@ -22,11 +22,16 @@
 
 
 import os
+import re
+import urlparse
 
 from bzrlib import (
+    branch,
     config,
     errors,
     osutils,
+    trace,
+    transport,
     )
 from bzrlib.plugins.launchpad.lp_registration import (
     InvalidLaunchpadInstance,
@@ -110,6 +115,13 @@ def _get_api_url(service):
         raise InvalidLaunchpadInstance(lp_instance)
 
 
+class NoLaunchpadBranch(errors.BzrError):
+    _fmt = 'No launchpad branch could be found for branch "%(url)s".'
+
+    def __init__(self, branch):
+        errors.BzrError.__init__(self, branch=branch, url=branch.base)
+
+
 def login(service, timeout=None, proxy_info=None):
     """Log in to the Launchpad API.
 
@@ -123,6 +135,151 @@ def login(service, timeout=None, proxy_info=None):
     # create this directory with default umask.
     os.chmod(cache_directory, 0700)
     return launchpad
+
+
+class LaunchpadBranch(object):
+    """Provide bzr and lp API access to a Launchpad branch."""
+
+    def __init__(self, lp_branch, bzr_url, bzr_branch=None, check_update=True):
+        """Constructor.
+
+        :param lp_branch: The Launchpad branch.
+        :param bzr_url: The URL of the Bazaar branch.
+        :param bzr_branch: An instance of the Bazaar branch.
+        """
+        self.bzr_url = bzr_url
+        self._bzr = bzr_branch
+        self._push_bzr = None
+        self._check_update = check_update
+        self.lp = lp_branch
+
+    @property
+    def bzr(self):
+        """Return the bzr branch for this branch."""
+        if self._bzr is None:
+            self._bzr = branch.Branch.open(self.bzr_url)
+        return self._bzr
+
+    @property
+    def push_bzr(self):
+        """Return the push branch for this branch."""
+        if self._push_bzr is None:
+            self._push_bzr = branch.Branch.open(self.lp.bzr_identity)
+        return self._push_bzr
+
+    @staticmethod
+    def plausible_launchpad_url(url):
+        """Is 'url' something that could conceivably be pushed to LP?
+
+        :param url: A URL that may refer to a Launchpad branch.
+        :return: A boolean.
+        """
+        if url is None:
+            return False
+        if url.startswith('lp:'):
+            return True
+        regex = re.compile('([a-z]*\+)*(bzr\+ssh|http)'
+                           '://bazaar.*.launchpad.net')
+        return bool(regex.match(url))
+
+    @staticmethod
+    def candidate_urls(bzr_branch):
+        """Iterate through related URLs that might be Launchpad URLs.
+
+        :param bzr_branch: A Bazaar branch to find URLs from.
+        :return: a generator of URL strings.
+        """
+        url = bzr_branch.get_public_branch()
+        if url is not None:
+            yield url
+        url = bzr_branch.get_push_location()
+        if url is not None:
+            yield url
+        yield bzr_branch.base
+
+    @staticmethod
+    def tweak_url(url, launchpad):
+        """Adjust a URL to work with staging, if needed."""
+        if str(launchpad._root_uri) != STAGING_SERVICE_ROOT:
+            return url
+        if url is None:
+            return None
+        return url.replace('bazaar.launchpad.net',
+                           'bazaar.staging.launchpad.net')
+
+    @classmethod
+    def from_bzr(cls, launchpad, bzr_branch, create_missing=True):
+        """Find a Launchpad branch from a bzr branch."""
+        check_update = True
+        for url in cls.candidate_urls(bzr_branch):
+            url = cls.tweak_url(url, launchpad)
+            if not cls.plausible_launchpad_url(url):
+                continue
+            lp_branch = launchpad.branches.getByUrl(url=url)
+            if lp_branch is not None:
+                break
+        else:
+            if not create_missing:
+                raise NoLaunchpadBranch(bzr_branch)
+            lp_branch = cls.create_now(launchpad, bzr_branch)
+            check_update = False
+        return cls(lp_branch, bzr_branch.base, bzr_branch, check_update)
+
+    @classmethod
+    def create_now(cls, launchpad, bzr_branch):
+        """Create a Bazaar branch on Launchpad for the supplied branch."""
+        url = cls.tweak_url(bzr_branch.get_push_location(), launchpad)
+        if not cls.plausible_launchpad_url(url):
+            raise errors.BzrError('%s is not registered on Launchpad' %
+                                  bzr_branch.base)
+        bzr_branch.create_clone_on_transport(transport.get_transport(url))
+        lp_branch = launchpad.branches.getByUrl(url=url)
+        if lp_branch is None:
+            raise errors.BzrError('%s is not registered on Launchpad' % url)
+        return lp_branch
+
+    def get_dev_focus(self):
+        """Return the 'LaunchpadBranch' for the dev focus of this one."""
+        lp_branch = self.lp
+        if lp_branch.project is None:
+            raise errors.BzrError('%s has no product.' %
+                                  lp_branch.bzr_identity)
+        dev_focus = lp_branch.project.development_focus.branch
+        if dev_focus is None:
+            raise errors.BzrError('%s has no development focus.' %
+                                  lp_branch.bzr_identity)
+        return LaunchpadBranch(dev_focus, dev_focus.bzr_identity)
+
+    def update_lp(self):
+        """Update the Launchpad copy of this branch."""
+        if not self._check_update:
+            return
+        self.bzr.lock_read()
+        try:
+            if self.lp.last_scanned_id is not None:
+                if self.bzr.last_revision() == self.lp.last_scanned_id:
+                    trace.note('%s is already up-to-date.' %
+                               self.lp.bzr_identity)
+                    return
+                graph = self.bzr.repository.get_graph()
+                if not graph.is_ancestor(self.lp.last_scanned_id,
+                                         self.bzr.last_revision()):
+                    raise errors.DivergedBranches(self.bzr, self.push_bzr)
+                trace.note('Pushing to %s' % self.lp.bzr_identity)
+            self.bzr.push(self.push_bzr)
+        finally:
+            self.bzr.unlock()
+
+    def find_lca_tree(self, other):
+        """Find the revision tree for the LCA of this branch and other.
+
+        :param other: Another LaunchpadBranch
+        :return: The RevisionTree of the LCA of this branch and other.
+        """
+        graph = self.bzr.repository.get_graph(other.bzr.repository)
+        lca = graph.find_unique_lca(self.bzr.last_revision(),
+                                    other.bzr.last_revision())
+        return self.bzr.repository.revision_tree(lca)
 
 
 def load_branch(launchpad, branch):
@@ -146,3 +303,13 @@ def load_branch(launchpad, branch):
         if lp_branch:
             return lp_branch
     raise NotLaunchpadBranch(url)
+
+
+def canonical_url(object):
+    """Return the canonical URL for a branch."""
+    scheme, netloc, path, params, query, fragment = urlparse.urlparse(
+        str(object.self_link))
+    path = '/'.join(path.split('/')[2:])
+    netloc = netloc.replace('api.', 'code.')
+    return urlparse.urlunparse((scheme, netloc, path, params, query,
+                                fragment))

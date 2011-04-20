@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@ See ``bzr help rules`` for details.
 
 from bzrlib import (
     config,
-    commands,
+    cmdline,
     errors,
     globbing,
     osutils,
@@ -74,15 +74,13 @@ class _IniBasedRulesSearcher(_RulesSearcher):
 
         :param inifile: the name of the file or a sequence of lines.
         """
-        options = {'encoding': 'utf-8'}
-        self._cfg = configobj.ConfigObj(inifile, options=options)
+        self._cfg = configobj.ConfigObj(inifile, encoding='utf-8')
         sections = self._cfg.keys()
         patterns = []
         self.pattern_to_section = {}
         for s in sections:
             if s.startswith(FILE_PREFS_PREFIX):
-                file_patterns = commands.shlex_split_unicode(
-                    s[FILE_PREFS_PREFIX_LEN:])
+                file_patterns = cmdline.split(s[FILE_PREFS_PREFIX_LEN:])
                 patterns.extend(file_patterns)
                 for fp in file_patterns:
                     self.pattern_to_section[fp] = s

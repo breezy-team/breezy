@@ -28,6 +28,9 @@ from bzrlib.hooks import (
     known_hooks_key_to_object,
     known_hooks_key_to_parent_and_attribute,
     )
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    )
 
 
 class TestHooks(tests.TestCase):
@@ -175,10 +178,20 @@ class TestHookRegistry(tests.TestCase):
         self.assertIs(branch.Branch.hooks,
             known_hooks_key_to_object(('bzrlib.branch', 'Branch.hooks')))
 
+    def test_known_hooks_key_to_parent_and_attribute_deprecated(self):
+        self.assertEqual((branch.Branch, 'hooks'),
+            self.applyDeprecated(deprecated_in((2,3)),
+                known_hooks_key_to_parent_and_attribute,
+                ('bzrlib.branch', 'Branch.hooks')))
+        self.assertEqual((branch, 'Branch'),
+            self.applyDeprecated(deprecated_in((2,3)),
+                known_hooks_key_to_parent_and_attribute,
+                ('bzrlib.branch', 'Branch')))
+
     def test_known_hooks_key_to_parent_and_attribute(self):
         self.assertEqual((branch.Branch, 'hooks'),
-            known_hooks_key_to_parent_and_attribute(
+            known_hooks.key_to_parent_and_attribute(
             ('bzrlib.branch', 'Branch.hooks')))
         self.assertEqual((branch, 'Branch'),
-            known_hooks_key_to_parent_and_attribute(
+            known_hooks.key_to_parent_and_attribute(
             ('bzrlib.branch', 'Branch')))

@@ -30,6 +30,7 @@ import weakref
 from bzrlib import (
     debug,
     errors,
+    transport,
     ui,
     urlutils,
     )
@@ -41,7 +42,6 @@ from bzrlib.trace import mutter
 from bzrlib.transport import (
     ConnectedTransport,
     _CoalescedOffset,
-    get_transport,
     Transport,
     )
 
@@ -570,14 +570,14 @@ class HttpTransportBase(ConnectedTransport):
                                             self._user, self._password,
                                             host, port,
                                             base_path)
-                new_transport = get_transport(new_url)
+                new_transport = transport.get_transport(new_url)
         else:
             # Redirected to a different protocol
             new_url = self._unsplit_url(scheme,
                                         user, password,
                                         host, port,
                                         base_path)
-            new_transport = get_transport(new_url)
+            new_transport = transport.get_transport(new_url)
         return new_transport
 
 
@@ -629,6 +629,11 @@ class SmartClientHTTPMedium(medium.SmartClientMedium):
         """
         pass
 
+    def disconnect(self):
+        """See SmartClientMedium.disconnect()."""
+        t = self._http_transport_ref()
+        t.disconnect()
+
 
 # TODO: May be better located in smart/medium.py with the other
 # SmartMediumRequest classes
@@ -661,3 +666,14 @@ class SmartClientHTTPMediumRequest(medium.SmartClientMediumRequest):
     def _finished_reading(self):
         """See SmartClientMediumRequest._finished_reading."""
         pass
+
+
+def unhtml_roughly(maybe_html, length_limit=1000):
+    """Very approximate html->text translation, for presenting error bodies.
+
+    :param length_limit: Truncate the result to this many characters.
+
+    >>> unhtml_roughly("<b>bad</b> things happened\\n")
+    ' bad  things happened '
+    """
+    return re.subn(r"(<[^>]*>|\n|&nbsp;)", " ", maybe_html)[0][:length_limit]

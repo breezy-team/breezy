@@ -19,28 +19,30 @@
 from cStringIO import StringIO
 import os
 
+from testtools.matchers import (
+    Equals,
+    MatchesAny,
+    )
+
 from bzrlib import (
     branch,
-    builtins,
     bzrdir,
     check,
-    debug,
     errors,
     push,
     repository,
+    symbol_versioning,
     tests,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
-from bzrlib.smart import client, server
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests.per_interbranch import (
     TestCaseWithInterBranch,
     )
-from bzrlib.transport import get_transport
-from bzrlib.transport.local import LocalURLServer
+from bzrlib.tests import test_server
 
 
 # These tests are based on similar tests in 
@@ -64,7 +66,10 @@ class TestPush(TestCaseWithInterBranch):
         self.assertEqual(result.old_revid, 'M1')
         self.assertEqual(result.new_revid, 'P2')
         # and it can be treated as an integer for compatibility
-        self.assertEqual(int(result), 0)
+        self.assertEqual(self.applyDeprecated(
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            result.__int__),
+            0)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another
@@ -145,7 +150,7 @@ class TestPush(TestCaseWithInterBranch):
         except (errors.IncompatibleFormat, errors.UninitializableFormat):
             # This Branch format cannot create shared repositories
             return
-        # This is a little bit trickier because make_branch_and_tree will not
+        # This is a little bit trickier because make_from_branch_and_tree will not
         # re-use a shared repository.
         try:
             a_branch = self.make_from_branch('repo/tree')
@@ -155,7 +160,7 @@ class TestPush(TestCaseWithInterBranch):
         try:
             tree = a_branch.bzrdir.create_workingtree()
         except errors.NotLocalUrl:
-            if self.vfs_transport_factory is LocalURLServer:
+            if self.vfs_transport_factory is test_server.LocalURLServer:
                 # the branch is colocated on disk, we cannot create a checkout.
                 # hopefully callers will expect this.
                 local_controldir = bzrdir.BzrDir.open(self.get_vfs_only_url('repo/tree'))
@@ -196,8 +201,6 @@ class TestPush(TestCaseWithInterBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        if isinstance(self.branch_format_from, branch.BzrBranchFormat4):
-            raise tests.TestNotApplicable('Not a metadir format.')
         if isinstance(self.branch_format_from, branch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
             # make_branch_builder doesn't support it.
@@ -272,23 +275,22 @@ class TestPush(TestCaseWithInterBranch):
         calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
         # After inserting the stream the client has no reason to query the
         # remote graph any further.
-        self.assertEqual(
+        bzr_core_trace = Equals(
             ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
-             'get', 'Branch.set_last_revision_info', 'Branch.unlock'],
-            calls_after_insert_stream)
+             'get', 'Branch.set_last_revision_info', 'Branch.unlock'])
+        bzr_loom_trace = Equals(
+            ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
+             'get', 'Branch.set_last_revision_info', 'get', 'Branch.unlock'])
+        self.assertThat(calls_after_insert_stream,
+            MatchesAny(bzr_core_trace, bzr_loom_trace))
 
     def disableOptimisticGetParentMap(self):
         # Tweak some class variables to stop remote get_parent_map calls asking
         # for or receiving more data than the caller asked for.
-        old_flag = SmartServerRepositoryGetParentMap.no_extra_results
-        inter_class = repository.InterRepository
-        old_batch_size = inter_class._walk_to_common_revisions_batch_size
-        inter_class._walk_to_common_revisions_batch_size = 1
-        SmartServerRepositoryGetParentMap.no_extra_results = True
-        def reset_values():
-            SmartServerRepositoryGetParentMap.no_extra_results = old_flag
-            inter_class._walk_to_common_revisions_batch_size = old_batch_size
-        self.addCleanup(reset_values)
+        self.overrideAttr(repository.InterRepository,
+                          '_walk_to_common_revisions_batch_size', 1)
+        self.overrideAttr(SmartServerRepositoryGetParentMap,
+                            'no_extra_results', True)
 
 
 class TestPushHook(TestCaseWithInterBranch):

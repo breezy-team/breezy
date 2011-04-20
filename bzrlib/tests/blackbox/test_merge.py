@@ -26,9 +26,9 @@ from testtools import matchers
 
 from bzrlib import (
     branch,
+    branchbuilder,
     bzrdir,
     conflicts,
-    errors,
     merge_directive,
     osutils,
     tests,

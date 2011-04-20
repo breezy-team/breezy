@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,30 +17,26 @@
 """Tests for Knit data structure"""
 
 from cStringIO import StringIO
-import difflib
 import gzip
 import sys
 
 from bzrlib import (
     errors,
-    generate_ids,
     knit,
     multiparent,
     osutils,
     pack,
     tests,
+    transport,
     )
 from bzrlib.errors import (
-    RevisionAlreadyPresent,
     KnitHeaderError,
-    RevisionNotPresent,
     NoSuchFile,
     )
 from bzrlib.index import *
 from bzrlib.knit import (
     AnnotatedKnitContent,
     KnitContent,
-    KnitSequenceMatcher,
     KnitVersionedFiles,
     PlainKnitContent,
     _VFContentMapGenerator,
@@ -50,18 +46,14 @@ from bzrlib.knit import (
     _KnitKeyAccess,
     make_file_factory,
     )
+from bzrlib.patiencediff import PatienceSequenceMatcher
 from bzrlib.repofmt import pack_repo
 from bzrlib.tests import (
-    Feature,
-    KnownFailure,
     TestCase,
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
     TestNotApplicable,
     )
-from bzrlib.transport import get_transport
-from bzrlib.transport.memory import MemoryTransport
-from bzrlib.tuned_gzip import GzipFile
 from bzrlib.versionedfile import (
     AbsentContentFactory,
     ConstantMapper,
@@ -106,8 +98,8 @@ class KnitContentTestsMixin(object):
         line_delta = source_content.line_delta(target_content)
         delta_blocks = list(KnitContent.get_line_delta_blocks(line_delta,
             source_lines, target_lines))
-        matcher = KnitSequenceMatcher(None, source_lines, target_lines)
-        matcher_blocks = list(list(matcher.get_matching_blocks()))
+        matcher = PatienceSequenceMatcher(None, source_lines, target_lines)
+        matcher_blocks = list(matcher.get_matching_blocks())
         self.assertEqual(matcher_blocks, delta_blocks)
 
     def test_get_line_delta_blocks(self):
@@ -345,6 +337,33 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         memos.extend(access.add_raw_records([('key2', 5)], '12345'))
         writer.end()
         return memos
+
+    def test_pack_collection_pack_retries(self):
+        """An explicit pack of a pack collection succeeds even when a
+        concurrent pack happens.
+        """
+        builder = self.make_branch_builder('.')
+        builder.start_series()
+        builder.build_snapshot('rev-1', None, [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('file', 'file-id', 'file', 'content\nrev 1\n')),
+            ])
+        builder.build_snapshot('rev-2', ['rev-1'], [
+            ('modify', ('file-id', 'content\nrev 2\n')),
+            ])
+        builder.build_snapshot('rev-3', ['rev-2'], [
+            ('modify', ('file-id', 'content\nrev 3\n')),
+            ])
+        self.addCleanup(builder.finish_series)
+        b = builder.get_branch()
+        self.addCleanup(b.lock_write().unlock)
+        repo = b.repository
+        collection = repo._pack_collection
+        # Concurrently repack the repo.
+        reopened_repo = repo.bzrdir.open_repository()
+        reopened_repo.pack()
+        # Pack the new pack.
+        collection.pack()
 
     def make_vf_for_retrying(self):
         """Create 3 packs and a reload function.
@@ -862,12 +881,8 @@ class LowLevelKnitIndexTests(TestCase):
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        orig = knit._load_data
-        def reset():
-            knit._load_data = orig
-        self.addCleanup(reset)
         from bzrlib._knit_load_data_py import _load_data_py
-        knit._load_data = _load_data_py
+        self.overrideAttr(knit, '_load_data', _load_data_py)
         allow_writes = lambda: 'w' in mode
         return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
 
@@ -1302,14 +1317,11 @@ class LowLevelKnitIndexTests_c(LowLevelKnitIndexTests):
 
     def get_knit_index(self, transport, name, mode):
         mapper = ConstantMapper(name)
-        orig = knit._load_data
-        def reset():
-            knit._load_data = orig
-        self.addCleanup(reset)
         from bzrlib._knit_load_data_pyx import _load_data_c
-        knit._load_data = _load_data_c
+        self.overrideAttr(knit, '_load_data', _load_data_c)
         allow_writes = lambda: mode == 'w'
-        return _KndxIndex(transport, mapper, lambda:None, allow_writes, lambda:True)
+        return _KndxIndex(transport, mapper, lambda:None,
+                          allow_writes, lambda:True)
 
 
 class Test_KnitAnnotator(TestCaseWithMemoryTransport):
@@ -1586,13 +1598,13 @@ class TestKnitIndex(KnitTests):
         # could leave an empty .kndx file, which bzr would later claim was a
         # corrupted file since the header was not present. In reality, the file
         # just wasn't created, so it should be ignored.
-        t = get_transport('.')
+        t = transport.get_transport('.')
         t.put_bytes('test.kndx', '')
 
         knit = self.make_test_knit()
 
     def test_knit_index_checks_header(self):
-        t = get_transport('.')
+        t = transport.get_transport('.')
         t.put_bytes('test.kndx', '# not really a knit header\n\n')
         k = self.make_test_knit()
         self.assertRaises(KnitHeaderError, k.keys)

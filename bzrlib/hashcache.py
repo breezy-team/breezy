@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -288,6 +288,9 @@ class HashCache(object):
             fp = tuple(map(long, fields[1:]))
 
             self._cache[path] = (sha1, fp)
+
+        # GZ 2009-09-20: Should really use a try/finally block to ensure close
+        inf.close()
 
         self.needs_write = False
 

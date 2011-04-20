@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ from bzrlib import (
     lockdir,
     osutils,
     revision as _mod_revision,
+    trace,
     transactions,
     versionedfile,
     xml5,
@@ -31,18 +32,17 @@ from bzrlib import (
     xml7,
     )
 """)
-from bzrlib import (
-    symbol_versioning,
-    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     CommitBuilder,
+    InterRepository,
+    InterSameDataRepository,
+    IsInWriteGroupError,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
     RootCommitBuilder,
     )
-from bzrlib.trace import mutter, mutter_callsite
 
 
 class _KnitParentsProvider(object):
@@ -210,6 +210,8 @@ class KnitRepository(MetaDirRepository):
     def _refresh_data(self):
         if not self.is_locked():
             return
+        if self.is_in_write_group():
+            raise IsInWriteGroupError(self)
         # Create a new transaction to force all knits to see the scope change.
         # This is safe because we're outside a write group.
         self.control_files._finish_transaction()
@@ -342,7 +344,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         :param shared: If true the repository will be initialized as a shared
                        repository.
         """
-        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        trace.mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['knits']
         files = []
         utf8_files = [('format', self.get_format_string())]
@@ -360,6 +362,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         result.revisions.get_parent_map([('A',)])
         result.signatures.get_parent_map([('A',)])
         result.unlock()
+        self._run_post_repo_init_hooks(result, a_bzrdir, shared)
         return result
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
@@ -444,6 +447,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     repository_class = KnitRepository
     _commit_builder_class = RootCommitBuilder
     rich_root_data = True
+    experimental = True
     supports_tree_reference = True
     @property
     def _serializer(self):
@@ -505,3 +509,62 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Knit repository format 4"
+
+
+class InterKnitRepo(InterSameDataRepository):
+    """Optimised code paths between Knit based repositories."""
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return RepositoryFormatKnit1()
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with known Knit formats.
+
+        We don't test for the stores being of specific types because that
+        could lead to confusing results, and there is no need to be
+        overly general.
+        """
+        try:
+            are_knits = (isinstance(source._format, RepositoryFormatKnit) and
+                isinstance(target._format, RepositoryFormatKnit))
+        except AttributeError:
+            return False
+        return are_knits and InterRepository._same_model(source, target)
+
+    @needs_read_lock
+    def search_missing_revision_ids(self, revision_id=None, find_ghosts=True):
+        """See InterRepository.missing_revision_ids()."""
+        if revision_id is not None:
+            source_ids = self.source.get_ancestry(revision_id)
+            if source_ids[0] is not None:
+                raise AssertionError()
+            source_ids.pop(0)
+        else:
+            source_ids = self.source.all_revision_ids()
+        source_ids_set = set(source_ids)
+        # source_ids is the worst possible case we may need to pull.
+        # now we want to filter source_ids against what we actually
+        # have in target, but don't try to check for existence where we know
+        # we do not have a revision as that would be pointless.
+        target_ids = set(self.target.all_revision_ids())
+        possibly_present_revisions = target_ids.intersection(source_ids_set)
+        actually_present_revisions = set(
+            self.target._eliminate_revisions_not_present(possibly_present_revisions))
+        required_revisions = source_ids_set.difference(actually_present_revisions)
+        if revision_id is not None:
+            # we used get_ancestry to determine source_ids then we are assured all
+            # revisions referenced are present as they are installed in topological order.
+            # and the tip revision was validated by get_ancestry.
+            result_set = required_revisions
+        else:
+            # if we just grabbed the possibly available ids, then
+            # we only have an estimate of whats available and need to validate
+            # that against the revision records.
+            result_set = set(
+                self.source._eliminate_revisions_not_present(required_revisions))
+        return self.source.revision_ids_to_search_result(result_set)
+
+
+InterRepository.register_optimiser(InterKnitRepo)

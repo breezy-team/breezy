@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,24 +16,22 @@
 
 """Tests for repository commit builder."""
 
-from copy import copy
-import errno
 import os
-import sys
 
 from bzrlib import (
+    config,
     errors,
+    graph,
     inventory,
     osutils,
     repository,
     revision as _mod_revision,
     tests,
     )
-from bzrlib.graph import Graph
-from bzrlib.tests.per_repository import test_repository
+from bzrlib.tests import per_repository
 
 
-class TestCommitBuilder(test_repository.TestCaseWithRepository):
+class TestCommitBuilder(per_repository.TestCaseWithRepository):
 
     def test_get_commit_builder(self):
         branch = self.make_branch('.')
@@ -195,6 +193,23 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # anyway.
         self.assertEqual(revision_id,
             tree.branch.repository.get_inventory(revision_id).revision_id)
+
+    def test_commit_without_root_errors(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([])
+            def do_commit():
+                try:
+                    list(builder.record_iter_changes(
+                        tree, tree.last_revision(), []))
+                    builder.finish_inventory()
+                except:
+                    builder.abort()
+                    raise
+            self.assertRaises(errors.RootMissing, do_commit)
+        finally:
+            tree.unlock()
 
     def test_commit_without_root_or_record_iter_changes_errors(self):
         tree = self.make_branch_and_tree(".")
@@ -924,8 +939,8 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         # (closest to a public per-file graph API we have today)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        graph = dict(Graph(tree.branch.repository.texts).iter_ancestry([tip]))
-        self.assertEqual(expected_graph, graph)
+        g = dict(graph.Graph(tree.branch.repository.texts).iter_ancestry([tip]))
+        self.assertEqual(expected_graph, g)
 
     def test_last_modified_revision_after_content_file_changes(self):
         # altering a file changes the last modified.
@@ -1274,10 +1289,20 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
         self.assertRaises(ValueError, builder.commit,
             u'Invalid\r\ncommit message\r\n')
 
+    def test_non_ascii_str_committer_rejected(self):
+        """Ensure an error is raised on a non-ascii byte string committer"""
+        branch = self.make_branch('.')
+        branch.repository.lock_write()
+        self.addCleanup(branch.repository.unlock)
+        self.assertRaises(UnicodeDecodeError,
+            branch.repository.get_commit_builder,
+            branch, [], branch.get_config(),
+            committer="Erik B\xe5gfors <erik@example.com>")
+
     def test_stacked_repositories_reject_commit_builder(self):
         # As per bug 375013, committing to stacked repositories is currently
-        # broken, so repositories with fallbacks refuse to hand out a commit
-        # builder.
+        # broken if we aren't in a chk repository. So old repositories with
+        # fallbacks refuse to hand out a commit builder.
         repo_basis = self.make_repository('basis')
         branch = self.make_branch('local')
         repo_local = branch.repository
@@ -1285,7 +1310,39 @@ class TestCommitBuilder(test_repository.TestCaseWithRepository):
             repo_local.add_fallback_repository(repo_basis)
         except errors.UnstackableRepositoryFormat:
             raise tests.TestNotApplicable("not a stackable format.")
-        repo_local.lock_write()
-        self.addCleanup(repo_local.unlock)
-        self.assertRaises(errors.BzrError, repo_local.get_commit_builder,
-            branch, [], branch.get_config())
+        self.addCleanup(repo_local.lock_write().unlock)
+        if not repo_local._format.supports_chks:
+            self.assertRaises(errors.BzrError, repo_local.get_commit_builder,
+                branch, [], branch.get_config())
+        else:
+            builder = repo_local.get_commit_builder(branch, [],
+                                                    branch.get_config())
+            builder.abort()
+
+    def test_committer_no_username(self):
+        # Ensure that when no username is available but a committer is
+        # supplied, commit works.
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
+        # Also, make sure that it's not inferred from mailname.
+        self.overrideAttr(config, '_auto_user_id',
+            lambda: (None, None))
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            # Make sure no username is available.
+            self.assertRaises(errors.NoWhoami, tree.branch.get_commit_builder,
+                              [])
+            builder = tree.branch.get_commit_builder(
+                [], committer='me@example.com')
+            try:
+                list(builder.record_iter_changes(tree, tree.last_revision(),
+                    tree.iter_changes(tree.basis_tree())))
+                builder.finish_inventory()
+            except:
+                builder.abort()
+                raise
+            repo = tree.branch.repository
+            repo.commit_write_group()
+        finally:
+            tree.unlock()

@@ -41,6 +41,10 @@ def build_tree_contents(template):
 
     The template is built relative to the Python process's current
     working directory.
+
+    ('foo/',) will build a directory.
+    ('foo', 'bar') will write 'bar' to 'foo'
+    ('foo@', 'linktarget') will raise an error
     """
     for tt in template:
         name = tt[0]

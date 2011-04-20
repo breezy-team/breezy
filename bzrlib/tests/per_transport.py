@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -26,36 +26,33 @@ from cStringIO import StringIO
 from StringIO import StringIO as pyStringIO
 import stat
 import sys
-import unittest
 
 from bzrlib import (
     errors,
     osutils,
+    pyutils,
     tests,
+    transport as _mod_transport,
     urlutils,
     )
 from bzrlib.errors import (ConnectionError,
-                           DirectoryNotEmpty,
                            FileExists,
                            InvalidURL,
-                           LockError,
                            NoSuchFile,
-                           NotLocalUrl,
                            PathError,
                            TransportNotPossible,
                            )
 from bzrlib.osutils import getcwd
 from bzrlib.smart import medium
 from bzrlib.tests import (
-    TestCaseInTempDir,
     TestSkipped,
     TestNotApplicable,
     multiply_tests,
     )
+from bzrlib.tests import test_server
 from bzrlib.tests.test_transport import TestTransportImplementation
 from bzrlib.transport import (
     ConnectedTransport,
-    get_transport,
     _get_transport_modules,
     )
 from bzrlib.transport.memory import MemoryTransport
@@ -77,7 +74,7 @@ def transport_test_permutations():
     for module in _get_transport_modules():
         try:
             permutations = get_transport_test_permutations(
-                reduce(getattr, (module).split('.')[1:], __import__(module)))
+                pyutils.get_named_object(module))
             for (klass, server_factory) in permutations:
                 scenario = ('%s,%s' % (klass.__name__, server_factory.__name__),
                     {"transport_class":klass,
@@ -101,11 +98,11 @@ class TransportTests(TestTransportImplementation):
 
     def setUp(self):
         super(TransportTests, self).setUp()
-        self._captureVar('BZR_NO_SMART_VFS', None)
+        self.overrideEnv('BZR_NO_SMART_VFS', None)
 
     def check_transport_contents(self, content, transport, relpath):
-        """Check that transport.get(relpath).read() == content."""
-        self.assertEqualDiff(content, transport.get(relpath).read())
+        """Check that transport.get_bytes(relpath) == content."""
+        self.assertEqualDiff(content, transport.get_bytes(relpath))
 
     def test_ensure_base_missing(self):
         """.ensure_base() should create the directory if it doesn't exist"""
@@ -170,8 +167,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(True, t.has_any(['b', 'b', 'b']))
 
     def test_has_root_works(self):
-        from bzrlib.smart import server
-        if self.transport_server is server.SmartTCPServer_for_testing:
+        if self.transport_server is test_server.SmartTCPServer_for_testing:
             raise TestNotApplicable(
                 "SmartTCPServer_for_testing intentionally does not allow "
                 "access to /.")
@@ -251,7 +247,6 @@ class TransportTests(TestTransportImplementation):
 
     def test_get_bytes_unknown_file(self):
         t = self.get_transport()
-
         self.assertRaises(NoSuchFile, t.get_bytes, 'c')
 
     def test_get_with_open_write_stream_sees_all_content(self):
@@ -261,7 +256,7 @@ class TransportTests(TestTransportImplementation):
         handle = t.open_write_stream('foo')
         try:
             handle.write('b')
-            self.assertEqual('b', t.get('foo').read())
+            self.assertEqual('b', t.get_bytes('foo'))
         finally:
             handle.close()
 
@@ -273,7 +268,11 @@ class TransportTests(TestTransportImplementation):
         try:
             handle.write('b')
             self.assertEqual('b', t.get_bytes('foo'))
-            self.assertEqual('b', t.get('foo').read())
+            f = t.get('foo')
+            try:
+                self.assertEqual('b', f.read())
+            finally:
+                f.close()
         finally:
             handle.close()
 
@@ -645,7 +644,7 @@ class TransportTests(TestTransportImplementation):
             self.build_tree(files, transport=transport_from)
             self.assertEqual(4, transport_from.copy_to(files, transport_to))
             for f in files:
-                self.check_transport_contents(transport_to.get(f).read(),
+                self.check_transport_contents(transport_to.get_bytes(f),
                                               transport_from, f)
 
         t = self.get_transport()
@@ -674,7 +673,7 @@ class TransportTests(TestTransportImplementation):
         files = ['a', 'b', 'c', 'd']
         t.copy_to(iter(files), temp_transport)
         for f in files:
-            self.check_transport_contents(temp_transport.get(f).read(),
+            self.check_transport_contents(temp_transport.get_bytes(f),
                                           t, f)
         del temp_transport
 
@@ -1042,7 +1041,7 @@ class TransportTests(TestTransportImplementation):
         except NotImplementedError:
             raise TestSkipped("Transport %s has no bogus URL support." %
                               self._server.__class__)
-        t = get_transport(url)
+        t = _mod_transport.get_transport(url)
         self.assertRaises((ConnectionError, NoSuchFile), t.get, '.bzr/branch')
 
     def test_stat(self):
@@ -1082,6 +1081,53 @@ class TransportTests(TestTransportImplementation):
         subdir = t.clone('subdir')
         subdir.stat('./file')
         subdir.stat('.')
+
+    def test_hardlink(self):
+        from stat import ST_NLINK
+
+        t = self.get_transport()
+
+        source_name = "original_target"
+        link_name = "target_link"
+
+        self.build_tree([source_name], transport=t)
+
+        try:
+            t.hardlink(source_name, link_name)
+
+            self.failUnless(t.has(source_name))
+            self.failUnless(t.has(link_name))
+
+            st = t.stat(link_name)
+            self.failUnlessEqual(st[ST_NLINK], 2)
+        except TransportNotPossible:
+            raise TestSkipped("Transport %s does not support hardlinks." %
+                              self._server.__class__)
+
+    def test_symlink(self):
+        from stat import S_ISLNK
+
+        t = self.get_transport()
+
+        source_name = "original_target"
+        link_name = "target_link"
+
+        self.build_tree([source_name], transport=t)
+
+        try:
+            t.symlink(source_name, link_name)
+
+            self.failUnless(t.has(source_name))
+            self.failUnless(t.has(link_name))
+
+            st = t.stat(link_name)
+            self.failUnless(S_ISLNK(st.st_mode),
+                "expected symlink, got mode %o" % st.st_mode)
+        except TransportNotPossible:
+            raise TestSkipped("Transport %s does not support symlinks." %
+                              self._server.__class__)
+        except IOError:
+            raise tests.KnownFailure("Paramiko fails to create symlinks during tests")
 
     def test_list_dir(self):
         # TODO: Test list_dir, just try once, and if it throws, stop testing
@@ -1219,7 +1265,7 @@ class TransportTests(TestTransportImplementation):
         self.assertIs(t._get_connection(), c._get_connection())
 
         # Temporary failure, we need to create a new dummy connection
-        new_connection = object()
+        new_connection = None
         t._set_connection(new_connection)
         # Check that both transports use the same connection
         self.assertIs(new_connection, t._get_connection())
@@ -1352,6 +1398,7 @@ class TransportTests(TestTransportImplementation):
         self.assertEqual(transport.clone("/").abspath('foo'),
                          transport.abspath("/foo"))
 
+    # GZ 2011-01-26: Test in per_transport but not using self.get_transport?
     def test_win32_abspath(self):
         # Note: we tried to set sys.platform='win32' so we could test on
         # other platforms too, but then osutils does platform specific
@@ -1362,11 +1409,11 @@ class TransportTests(TestTransportImplementation):
 
         # smoke test for abspath on win32.
         # a transport based on 'file:///' never fully qualifies the drive.
-        transport = get_transport("file:///")
+        transport = _mod_transport.get_transport("file:///")
         self.failUnlessEqual(transport.abspath("/"), "file:///")
 
         # but a transport that starts with a drive spec must keep it.
-        transport = get_transport("file:///C:/")
+        transport = _mod_transport.get_transport("file:///C:/")
         self.failUnlessEqual(transport.abspath("/"), "file:///C:/")
 
     def test_local_abspath(self):
@@ -1719,3 +1766,15 @@ class TransportTests(TestTransportImplementation):
         # also raise a special error
         self.assertListRaises((errors.ShortReadvError, errors.InvalidRange),
                               transport.readv, 'a', [(12,2)])
+
+    def test_stat_symlink(self):
+        # if a transport points directly to a symlink (and supports symlinks
+        # at all) you can tell this.  helps with bug 32669.
+        t = self.get_transport()
+        try:
+            t.symlink('target', 'link')
+        except TransportNotPossible:
+            raise TestSkipped("symlinks not supported")
+        t2 = t.clone('link')
+        st = t2.stat('')
+        self.assertTrue(stat.S_ISLNK(st.st_mode))

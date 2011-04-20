@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,32 +22,24 @@ and then upgraded to the new format."""
 # TODO queue for upgrade:
 # test the error message when upgrading an unknown BzrDir format.
 
-import base64
-import os
-import sys
-
 from bzrlib import (
-    branch as _mod_branch,
+    branch,
     bzrdir,
-    progress,
     repository,
+    tests,
+    upgrade,
     workingtree,
     workingtree_4,
     )
-import bzrlib.branch
-from bzrlib.branch import Branch
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.transport import get_transport
-from bzrlib.upgrade import upgrade
 
 
-class TestUpgrade(TestCaseWithTransport):
+class TestUpgrade(tests.TestCaseWithTransport):
 
     def test_upgrade_simple(self):
         """Upgrade simple v0.0.4 format to latest format"""
         eq = self.assertEquals
         self.build_tree_contents(_upgrade1_template)
-        upgrade(u'.')
+        upgrade.upgrade(u'.')
         control = bzrdir.BzrDir.open('.')
         b = control.open_branch()
         # tsk, peeking under the covers.
@@ -73,27 +65,28 @@ class TestUpgrade(TestCaseWithTransport):
         finally:
             rt.unlock()
         # check a backup was made:
-        transport = get_transport(b.base)
-        transport.stat('backup.bzr')
-        transport.stat('backup.bzr/README')
-        transport.stat('backup.bzr/branch-format')
-        transport.stat('backup.bzr/revision-history')
-        transport.stat('backup.bzr/merged-patches')
-        transport.stat('backup.bzr/pending-merged-patches')
-        transport.stat('backup.bzr/pending-merges')
-        transport.stat('backup.bzr/branch-name')
-        transport.stat('backup.bzr/branch-lock')
-        transport.stat('backup.bzr/inventory')
-        transport.stat('backup.bzr/stat-cache')
-        transport.stat('backup.bzr/text-store')
-        transport.stat('backup.bzr/text-store/foo-20051004035611-1591048e9dc7c2d4.gz')
-        transport.stat('backup.bzr/text-store/foo-20051004035756-4081373d897c3453.gz')
-        transport.stat('backup.bzr/inventory-store/')
-        transport.stat('backup.bzr/inventory-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
-        transport.stat('backup.bzr/inventory-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
-        transport.stat('backup.bzr/revision-store/')
-        transport.stat('backup.bzr/revision-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
-        transport.stat('backup.bzr/revision-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
+        backup_dir = 'backup.bzr.~1~'
+        t = self.get_transport('.')
+        t.stat(backup_dir)
+        t.stat(backup_dir + '/README')
+        t.stat(backup_dir + '/branch-format')
+        t.stat(backup_dir + '/revision-history')
+        t.stat(backup_dir + '/merged-patches')
+        t.stat(backup_dir + '/pending-merged-patches')
+        t.stat(backup_dir + '/pending-merges')
+        t.stat(backup_dir + '/branch-name')
+        t.stat(backup_dir + '/branch-lock')
+        t.stat(backup_dir + '/inventory')
+        t.stat(backup_dir + '/stat-cache')
+        t.stat(backup_dir + '/text-store')
+        t.stat(backup_dir + '/text-store/foo-20051004035611-1591048e9dc7c2d4.gz')
+        t.stat(backup_dir + '/text-store/foo-20051004035756-4081373d897c3453.gz')
+        t.stat(backup_dir + '/inventory-store/')
+        t.stat(backup_dir + '/inventory-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
+        t.stat(backup_dir + '/inventory-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
+        t.stat(backup_dir + '/revision-store/')
+        t.stat(backup_dir + '/revision-store/mbp@sourcefrog.net-20051004035611-176b16534b086b3c.gz')
+        t.stat(backup_dir + '/revision-store/mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd.gz')
 
     def test_upgrade_with_ghosts(self):
         """Upgrade v0.0.4 tree containing ghost references.
@@ -107,8 +100,8 @@ class TestUpgrade(TestCaseWithTransport):
         its contents."""
         eq = self.assertEquals
         self.build_tree_contents(_ghost_template)
-        upgrade(u'.')
-        b = Branch.open(u'.')
+        upgrade.upgrade(u'.')
+        b = branch.Branch.open(u'.')
         revision_id = b.revision_history()[1]
         rev = b.repository.get_revision(revision_id)
         eq(len(rev.parent_ids), 2)
@@ -116,13 +109,13 @@ class TestUpgrade(TestCaseWithTransport):
 
     def test_upgrade_makes_dir_weaves(self):
         self.build_tree_contents(_upgrade_dir_template)
-        old_repodir = bzrlib.bzrdir.BzrDir.open_unsupported('.')
+        old_repodir = bzrdir.BzrDir.open_unsupported('.')
         old_repo_format = old_repodir.open_repository()._format
-        upgrade('.')
+        upgrade.upgrade('.')
         # this is the path to the literal file. As format changes
         # occur it needs to be updated. FIXME: ask the store for the
         # path.
-        repo = bzrlib.repository.Repository.open('.')
+        repo = repository.Repository.open('.')
         # it should have changed the format
         self.assertNotEqual(old_repo_format.__class__, repo._format.__class__)
         # and we should be able to read the names for the file id
@@ -136,7 +129,7 @@ class TestUpgrade(TestCaseWithTransport):
 
     def test_upgrade_to_meta_sets_workingtree_last_revision(self):
         self.build_tree_contents(_upgrade_dir_template)
-        upgrade('.', bzrdir.BzrDirMetaFormat1())
+        upgrade.upgrade('.', bzrdir.BzrDirMetaFormat1())
         tree = workingtree.WorkingTree.open('.')
         self.assertEqual([tree.branch.revision_history()[-1]],
             tree.get_parent_ids())
@@ -145,15 +138,15 @@ class TestUpgrade(TestCaseWithTransport):
         # Some format6 branches do not have checkout files. Upgrading
         # such a branch to metadir must not setup a working tree.
         self.build_tree_contents(_upgrade1_template)
-        upgrade('.', bzrdir.BzrDirFormat6())
-        transport = get_transport('.')
-        transport.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
-        self.assertFalse(transport.has('.bzr/stat-cache'))
+        upgrade.upgrade('.', bzrdir.BzrDirFormat6())
+        t = self.get_transport('.')
+        t.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
+        self.assertFalse(t.has('.bzr/stat-cache'))
         # XXX: upgrade fails if a backup.bzr is already present
         # -- David Allouche 2006-08-11
-        transport.delete_tree('backup.bzr')
+        t.delete_tree('backup.bzr.~1~')
         # At this point, we have a format6 branch without checkout files.
-        upgrade('.', bzrdir.BzrDirMetaFormat1())
+        upgrade.upgrade('.', bzrdir.BzrDirMetaFormat1())
         # The upgrade should not have set up a working tree.
         control = bzrdir.BzrDir.open('.')
         self.assertFalse(control.has_workingtree())
@@ -161,27 +154,27 @@ class TestUpgrade(TestCaseWithTransport):
         # upgrade has not eaten our data, even if it's a bit redundant with
         # other tests.
         self.failUnless(isinstance(control._format, bzrdir.BzrDirMetaFormat1))
-        branch = control.open_branch()
-        self.assertEquals(branch.revision_history(),
+        b = control.open_branch()
+        self.assertEquals(b.revision_history(),
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
             'mbp@sourcefrog.net-20051004035756-235f2b7dcdddd8dd'])
 
     def test_upgrade_rich_root(self):
         tree = self.make_branch_and_tree('tree', format='rich-root')
         rev_id = tree.commit('first post')
-        upgrade('tree')
+        upgrade.upgrade('tree')
 
     def test_convert_branch5_branch6(self):
-        branch = self.make_branch('branch', format='knit')
-        branch.set_revision_history(['AB', 'CD'])
-        branch.set_parent('file:///EF')
-        branch.set_bound_location('file:///GH')
-        branch.set_push_location('file:///IJ')
+        b = self.make_branch('branch', format='knit')
+        b.set_revision_history(['AB', 'CD'])
+        b.set_parent('file:///EF')
+        b.set_bound_location('file:///GH')
+        b.set_push_location('file:///IJ')
         target = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
-        converter = branch.bzrdir._format.get_converter(target)
-        converter.convert(branch.bzrdir, progress.DummyProgress())
-        new_branch = _mod_branch.Branch.open(self.get_url('branch'))
-        self.assertIs(new_branch.__class__, _mod_branch.BzrBranch6)
+        converter = b.bzrdir._format.get_converter(target)
+        converter.convert(b.bzrdir, None)
+        new_branch = branch.Branch.open(self.get_url('branch'))
+        self.assertIs(new_branch.__class__, branch.BzrBranch6)
         self.assertEqual('CD', new_branch.last_revision())
         self.assertEqual('file:///EF', new_branch.get_parent())
         self.assertEqual('file:///GH', new_branch.get_bound_location())
@@ -189,28 +182,28 @@ class TestUpgrade(TestCaseWithTransport):
         self.assertEqual('file:///IJ',
             branch_config.get_user_option('push_location'))
 
-        branch2 = self.make_branch('branch2', format='knit')
-        converter = branch2.bzrdir._format.get_converter(target)
-        converter.convert(branch2.bzrdir, progress.DummyProgress())
-        branch2 = _mod_branch.Branch.open(self.get_url('branch'))
-        self.assertIs(branch2.__class__, _mod_branch.BzrBranch6)
+        b2 = self.make_branch('branch2', format='knit')
+        converter = b2.bzrdir._format.get_converter(target)
+        converter.convert(b2.bzrdir, None)
+        b2 = branch.Branch.open(self.get_url('branch'))
+        self.assertIs(b2.__class__, branch.BzrBranch6)
 
     def test_convert_branch7_branch8(self):
-        branch = self.make_branch('branch', format='1.9')
+        b = self.make_branch('branch', format='1.9')
         target = bzrdir.format_registry.make_bzrdir('1.9')
-        target.set_branch_format(_mod_branch.BzrBranchFormat8())
-        converter = branch.bzrdir._format.get_converter(target)
-        converter.convert(branch.bzrdir, progress.DummyProgress())
-        branch = _mod_branch.Branch.open(self.get_url('branch'))
-        self.assertIs(branch.__class__, _mod_branch.BzrBranch8)
-        self.assertEqual({}, branch._get_all_reference_info())
+        target.set_branch_format(branch.BzrBranchFormat8())
+        converter = b.bzrdir._format.get_converter(target)
+        converter.convert(b.bzrdir, None)
+        b = branch.Branch.open(self.get_url('branch'))
+        self.assertIs(b.__class__, branch.BzrBranch8)
+        self.assertEqual({}, b._get_all_reference_info())
 
     def test_convert_knit_dirstate_empty(self):
         # test that asking for an upgrade from knit to dirstate works.
         tree = self.make_branch_and_tree('tree', format='knit')
         target = bzrdir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, progress.DummyProgress())
+        converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual('null:', new_tree.last_revision())
@@ -223,7 +216,7 @@ class TestUpgrade(TestCaseWithTransport):
         tree.add(['file'], ['file-id'])
         target = bzrdir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, progress.DummyProgress())
+        converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual('null:', new_tree.last_revision())
@@ -234,7 +227,7 @@ class TestUpgrade(TestCaseWithTransport):
         rev_id = tree.commit('first post')
         target = bzrdir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, progress.DummyProgress())
+        converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual(rev_id, new_tree.last_revision())
@@ -251,7 +244,7 @@ class TestUpgrade(TestCaseWithTransport):
         tree.merge_from_branch(merge_tree.branch)
         target = bzrdir.format_registry.make_bzrdir('dirstate')
         converter = tree.bzrdir._format.get_converter(target)
-        converter.convert(tree.bzrdir, progress.DummyProgress())
+        converter.convert(tree.bzrdir, None)
         new_tree = workingtree.WorkingTree.open('tree')
         self.assertIs(new_tree.__class__, workingtree_4.WorkingTree4)
         self.assertEqual(rev_id2, new_tree.last_revision())
@@ -268,7 +261,7 @@ _upgrade1_template = \
      ('.bzr/README',
       'This is a Bazaar control directory.\n'
       'Do not change any files in this directory.\n'
-      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'),
+      'See http://bazaar.canonical.com/ for more information about Bazaar.\n'),
      ('.bzr/branch-format', 'Bazaar-NG branch, format 0.0.4\n'),
      ('.bzr/revision-history',
       'mbp@sourcefrog.net-20051004035611-176b16534b086b3c\n'
@@ -310,7 +303,7 @@ _ghost_template = [
     ( './.bzr/README',
       'This is a Bazaar control directory.\n'
       'Do not change any files in this directory.\n'
-      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'
+      'See http://bazaar.canonical.com/ for more information about Bazaar.\n'
     ),
     ( './.bzr/branch-format',
         'Bazaar-NG branch, format 0.0.4\n'
@@ -376,7 +369,7 @@ _upgrade_dir_template = [
     ( './.bzr/README',
       'This is a Bazaar control directory.\n'
       'Do not change any files in this directory.\n'
-      'See http://bazaar-vcs.org/ for more information about Bazaar.\n'
+      'See http://bazaar.canonical.com/ for more information about Bazaar.\n'
     ),
     ( './.bzr/branch-format',
         'Bazaar-NG branch, format 0.0.4\n'
@@ -422,3 +415,88 @@ _upgrade_dir_template = [
     ),
     ( './dir/', ),
 ]
+
+
+class TestSmartUpgrade(tests.TestCaseWithTransport):
+
+    from_format = bzrdir.format_registry.make_bzrdir("pack-0.92")
+    to_format = bzrdir.format_registry.make_bzrdir("2a")
+
+    def make_standalone_branch(self):
+        wt = self.make_branch_and_tree("branch1", format=self.from_format)
+        return wt.bzrdir
+
+    def test_upgrade_standalone_branch(self):
+        control = self.make_standalone_branch()
+        tried, worked, issues = upgrade.smart_upgrade(
+            [control], format=self.to_format)
+        self.assertLength(1, tried)
+        self.assertEqual(tried[0], control)
+        self.assertLength(1, worked)
+        self.assertEqual(worked[0], control)
+        self.assertLength(0, issues)
+        self.failUnlessExists('branch1/backup.bzr.~1~')
+        self.assertEqual(control.open_repository()._format,
+                         self.to_format._repository_format)
+
+    def test_upgrade_standalone_branch_cleanup(self):
+        control = self.make_standalone_branch()
+        tried, worked, issues = upgrade.smart_upgrade(
+            [control], format=self.to_format, clean_up=True)
+        self.assertLength(1, tried)
+        self.assertEqual(tried[0], control)
+        self.assertLength(1, worked)
+        self.assertEqual(worked[0], control)
+        self.assertLength(0, issues)
+        self.failUnlessExists('branch1')
+        self.failUnlessExists('branch1/.bzr')
+        self.failIfExists('branch1/backup.bzr.~1~')
+        self.assertEqual(control.open_repository()._format,
+                         self.to_format._repository_format)
+
+    def make_repo_with_branches(self):
+        repo = self.make_repository('repo', shared=True,
+            format=self.from_format)
+        # Note: self.make_branch() always creates a new repo at the location
+        # so we need to avoid using that here ...
+        b1 = bzrdir.BzrDir.create_branch_convenience("repo/branch1",
+            format=self.from_format)
+        b2 = bzrdir.BzrDir.create_branch_convenience("repo/branch2",
+            format=self.from_format)
+        return repo.bzrdir
+
+    def test_upgrade_repo_with_branches(self):
+        control = self.make_repo_with_branches()
+        tried, worked, issues = upgrade.smart_upgrade(
+            [control], format=self.to_format)
+        self.assertLength(3, tried)
+        self.assertEqual(tried[0], control)
+        self.assertLength(3, worked)
+        self.assertEqual(worked[0], control)
+        self.assertLength(0, issues)
+        self.failUnlessExists('repo/backup.bzr.~1~')
+        self.failUnlessExists('repo/branch1/backup.bzr.~1~')
+        self.failUnlessExists('repo/branch2/backup.bzr.~1~')
+        self.assertEqual(control.open_repository()._format,
+                         self.to_format._repository_format)
+        b1 = branch.Branch.open('repo/branch1')
+        self.assertEqual(b1._format, self.to_format._branch_format)
+
+    def test_upgrade_repo_with_branches_cleanup(self):
+        control = self.make_repo_with_branches()
+        tried, worked, issues = upgrade.smart_upgrade(
+            [control], format=self.to_format, clean_up=True)
+        self.assertLength(3, tried)
+        self.assertEqual(tried[0], control)
+        self.assertLength(3, worked)
+        self.assertEqual(worked[0], control)
+        self.assertLength(0, issues)
+        self.failUnlessExists('repo')
+        self.failUnlessExists('repo/.bzr')
+        self.failIfExists('repo/backup.bzr.~1~')
+        self.failIfExists('repo/branch1/backup.bzr.~1~')
+        self.failIfExists('repo/branch2/backup.bzr.~1~')
+        self.assertEqual(control.open_repository()._format,
+                         self.to_format._repository_format)
+        b1 = branch.Branch.open('repo/branch1')
+        self.assertEqual(b1._format, self.to_format._branch_format)

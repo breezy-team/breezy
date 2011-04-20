@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 # Authors: Aaron Bentley
 #
 # This program is free software; you can redistribute it and/or modify
@@ -26,30 +26,11 @@ from bzrlib import (
     tests,
     )
 from bzrlib.bundle import serializer
+from bzrlib.transport import memory
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Multiply tests for the send command."""
-    result = loader.suiteClass()
-
-    # one for each king of change
-    changes_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((
-                TestSendStrictWithChanges,
-                )))
-    changes_scenarios = [
-        ('uncommitted',
-         dict(_changes_type='_uncommitted_changes')),
-        ('pending_merges',
-         dict(_changes_type='_pending_merges')),
-        ('out-of-sync-trees',
-         dict(_changes_type='_out_of_sync_trees')),
-        ]
-    tests.multiply_tests(changes_tests, changes_scenarios, result)
-    # No parametrization for the remaining tests
-    result.addTests(remaining_tests)
-
-    return result
+load_tests = load_tests_apply_scenarios
 
 
 class TestSendMixin(object):
@@ -280,7 +261,7 @@ class TestSend(tests.TestCaseWithTransport, TestSendMixin):
         self.assertEqual('rev3', md.revision_id)
 
     def test_nonexistant_branch(self):
-        self.vfs_transport_factory = tests.MemoryServer
+        self.vfs_transport_factory = memory.MemoryServer
         location = self.get_url('absentdir/')
         out, err = self.run_bzr(["send", "--from", location], retcode=3)
         self.assertEqual(out, '')
@@ -306,6 +287,8 @@ class TestSendStrictMixin(TestSendMixin):
     _default_sent_revs = ['local']
     _default_errors = ['Working tree ".*/local/" has uncommitted '
                        'changes \(See bzr status\)\.',]
+    _default_additional_error = 'Use --no-strict to force the send.\n'
+    _default_additional_warning = 'Uncommitted changes will not be sent.'
 
     def set_config_send_strict(self, value):
         # set config var (any of bazaar.conf, locations.conf, branch.conf
@@ -314,14 +297,23 @@ class TestSendStrictMixin(TestSendMixin):
         conf.set_user_option('send_strict', value)
 
     def assertSendFails(self, args):
-        self.run_send(args, rc=3, err_re=self._default_errors)
+        out, err = self.run_send(args, rc=3, err_re=self._default_errors)
+        self.assertContainsRe(err, self._default_additional_error)
 
-    def assertSendSucceeds(self, args, revs=None):
+    def assertSendSucceeds(self, args, revs=None, with_warning=False):
+        if with_warning:
+            err_re = self._default_errors
+        else:
+            err_re = []
         if revs is None:
             revs = self._default_sent_revs
-        out, err = self.run_send(args)
-        self.assertEquals(
-            'Bundling %d revision(s).\n' % len(revs), err)
+        out, err = self.run_send(args, err_re=err_re)
+        bundling_revs = 'Bundling %d revision(s).\n' % len(revs)
+        if with_warning:
+            self.assertContainsRe(err, self._default_additional_warning)
+            self.assertEndsWith(err, bundling_revs)
+        else:
+            self.assertEquals(bundling_revs, err)
         md = merge_directive.MergeDirective.from_lines(StringIO(out))
         self.assertEqual('parent', md.base_revision_id)
         br = serializer.read_bundle(StringIO(md.get_raw_bundle()))
@@ -355,6 +347,18 @@ class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
 
 class TestSendStrictWithChanges(tests.TestCaseWithTransport,
                                    TestSendStrictMixin):
+
+    # These are textually the same as test_push.strict_push_change_scenarios,
+    # but since the functions are reimplemented here, the definitions are left
+    # here too.
+    scenarios = [
+        ('uncommitted',
+         dict(_changes_type='_uncommitted_changes')),
+        ('pending_merges',
+         dict(_changes_type='_pending_merges')),
+        ('out-of-sync-trees',
+         dict(_changes_type='_out_of_sync_trees')),
+        ]
 
     _changes_type = None # Set by load_tests
 
@@ -395,7 +399,7 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self._default_sent_revs = ['modified-in-local', 'local']
 
     def test_send_default(self):
-        self.assertSendFails([])
+        self.assertSendSucceeds([], with_warning=True)
 
     def test_send_with_revision(self):
         self.assertSendSucceeds(['-r', 'revid:local'], revs=['local'])
@@ -411,11 +415,9 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
         self.assertSendFails([])
         self.assertSendSucceeds(['--no-strict'])
 
-
     def test_send_bogus_config_var_ignored(self):
         self.set_config_send_strict("I'm unsure")
-        self.assertSendFails([])
-
+        self.assertSendSucceeds([], with_warning=True)
 
     def test_send_no_strict_command_line_override_config(self):
         self.set_config_send_strict('true')

@@ -689,13 +689,12 @@ class LeafNode(Node):
         the key/value pairs.
     """
 
-    __slots__ = ('_common_serialised_prefix', '_serialise_key')
+    __slots__ = ('_common_serialised_prefix',)
 
     def __init__(self, search_key_func=None):
         Node.__init__(self)
         # All of the keys in this leaf node share this common prefix
         self._common_serialised_prefix = None
-        self._serialise_key = '\x00'.join
         if search_key_func is None:
             self._search_key_func = _search_key_plain
         else:
@@ -884,6 +883,8 @@ class LeafNode(Node):
             if self._search_prefix is _unknown:
                 raise AssertionError('%r must be known' % self._search_prefix)
             return self._search_prefix, [("", self)]
+
+    _serialise_key = '\x00'.join
 
     def serialise(self, store):
         """Serialise the LeafNode to store.
@@ -1368,7 +1369,7 @@ class InternalNode(Node):
         return self._search_prefix
 
     def unmap(self, store, key, check_remap=True):
-        """Remove key from this node and it's children."""
+        """Remove key from this node and its children."""
         if not len(self._items):
             raise AssertionError("can't unmap in an empty InternalNode.")
         children = [node for node, _
@@ -1723,6 +1724,7 @@ def iter_interesting_nodes(store, interesting_root_keys,
 
 try:
     from bzrlib._chk_map_pyx import (
+        _bytes_to_text_key,
         _search_key_16,
         _search_key_255,
         _deserialise_leaf_node,
@@ -1731,6 +1733,7 @@ try:
 except ImportError, e:
     osutils.failed_to_load_extension(e)
     from bzrlib._chk_map_py import (
+        _bytes_to_text_key,
         _search_key_16,
         _search_key_255,
         _deserialise_leaf_node,

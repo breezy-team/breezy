@@ -34,6 +34,5 @@ class TestMerge(TestCaseWithConnectionHookedTransport):
         cmd = cmd_merge()
         # We don't care about the ouput but 'outf' should be defined
         cmd.outf = StringIOWrapper()
-        cmd.run_direct(self.get_url('branch1'), directory='branch2')
+        cmd.run(self.get_url('branch1'), directory='branch2')
         self.assertEquals(1, len(self.connections))
-

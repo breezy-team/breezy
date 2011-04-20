@@ -1,0 +1,391 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.15
+########
+
+:Released: 2007-04-01
+
+Bugfixes
+********
+
+* Handle incompatible repositories as a user issue when fetching.
+  (Aaron Bentley)
+
+* Don't give a recommendation to upgrade when branching or
+  checking out a branch that contains an old-format working tree.
+  (Martin Pool)
+
+bzr 0.15rc3
+###########
+
+:Released:  2007-03-26
+
+Changes
+*******
+
+* A warning is now displayed when opening working trees in older
+  formats, to encourage people to upgrade to WorkingTreeFormat4.
+  (Martin Pool)
+
+Improvements
+************
+
+* HTTP redirections are now taken into account when a branch (or a
+  bundle) is accessed for the first time. A message is issued at each
+  redirection to inform the user. In the past, HTTP redirections were
+  silently followed for each request which significantly degraded the
+  performances. The HTTP redirections are not followed anymore by
+  default, instead a RedirectRequested exception is raised. For bzrlib
+  users needing to follow HTTP redirections anyway,
+  ``bzrlib.transport.do_catching_redirections`` provide an easy transition
+  path.  (vila)
+
+Internals
+*********
+
+* Added ``ReadLock.temporary_write_lock()`` to allow upgrading an OS read
+  lock to an OS write lock. Linux can do this without unlocking, Win32
+  needs to unlock in between. (John Arbash Meinel)
+
+* New parameter ``recommend_upgrade`` to ``BzrDir.open_workingtree``
+  to silence (when false) warnings about opening old formats.
+  (Martin Pool)
+
+* Fix minor performance regression with bzr-0.15 on pre-dirstate
+  trees. (We were reading the working inventory too many times).
+  (John Arbash Meinel)
+
+* Remove ``Branch.get_transaction()`` in favour of a simple cache of
+  ``revision_history``.  Branch subclasses should override
+  ``_gen_revision_history`` rather than ``revision_history`` to make use of
+  this cache, and call ``_clear_revision_history_cache`` and
+  ``_cache_revision_history`` at appropriate times. (Andrew Bennetts)
+
+Bugfixes
+********
+
+* Take ``smtp_server`` from user config into account.
+  (vila, #92195)
+
+* Restore Unicode filename handling for versioned and unversioned files.
+  (John Arbash Meinel, #92608)
+
+* Don't fail during ``bzr commit`` if a file is marked removed, and
+  the containing directory is auto-removed.  (John Arbash Meinel, #93681)
+
+* ``bzr status FILENAME`` failed on Windows because of an uncommon
+  errno. (``ERROR_DIRECTORY == 267 != ENOTDIR``).
+  (Wouter van Heyst, John Arbash Meinel, #90819)
+
+* ``bzr checkout source`` should create a local branch in the same
+  format as source. (John Arbash Meinel, #93854)
+
+* ``bzr commit`` with a kind change was failing to update the
+  last-changed-revision for directories.  The
+  InventoryDirectory._unchanged only looked at the ``parent_id`` and name,
+  ignoring the fact that the kind could have changed, too.
+  (John Arbash Meinel, #90111)
+
+* ``bzr mv dir/subdir other`` was incorrectly updating files inside
+  the directory. So that there was a chance it would break commit,
+  etc. (John Arbash Meinel, #94037)
+
+* Correctly handles mutiple permanent HTTP redirections.
+  (vila, #88780)
+
+bzr 0.15rc2
+###########
+
+:Released:  2007-03-14
+
+Notes When Upgrading
+********************
+
+* Release 0.15rc2 of bzr changes the ``bzr init-repo`` command to
+  default to ``--trees`` instead of ``--no-trees``.
+  Existing shared repositories are not affected.
+
+Improvements
+************
+
+* New ``merge-directive`` command to generate machine- and human-readable
+  merge requests.  (Aaron Bentley)
+
+* New ``submit:`` revision specifier makes it easy to diff against the
+  common ancestor with the submit location (Aaron Bentley)
+
+* Added support for Putty's SSH implementation. (Dmitry Vasiliev)
+
+* Added ``bzr status --versioned`` to report only versioned files,
+  not unknowns. (Kent Gibson)
+
+* Merge now autodetects the correct line-ending style for its conflict
+  markers.  (Aaron Bentley)
+
+Internals
+*********
+
+* Refactored SSH vendor registration into SSHVendorManager class.
+  (Dmitry Vasiliev)
+
+Bugfixes
+********
+
+* New ``--numbered-dirs`` option to ``bzr selftest`` to use
+  numbered dirs for TestCaseInTempDir. This is default behavior
+  on Windows. Anyone can force named dirs on Windows
+  with ``--no-numbered-dirs``. (Alexander Belchenko)
+
+* Fix ``RevisionSpec_revid`` to handle the Unicode strings passed in
+  from the command line. (Marien Zwart, #90501)
+
+* Fix ``TreeTransform._iter_changes`` when both the source and
+  destination are missing. (Aaron Bentley, #88842)
+
+* Fix commit of merges with symlinks in dirstate trees.
+  (Marien Zwart)
+
+* Switch the ``bzr init-repo`` default from --no-trees to --trees.
+  (Wouter van Heyst, #53483)
+
+
+bzr 0.15rc1
+###########
+
+:Released:  2007-03-07
+
+Surprises
+*********
+
+* The default disk format has changed. Please run 'bzr upgrade' in your
+  working trees to upgrade. This new default is compatible for network
+  operations, but not for local operations. That is, if you have two
+  versions of bzr installed locally, after upgrading you can only use the
+  bzr 0.15 version. This new default does not enable tags or nested-trees
+  as they are incompatible with bzr versions before 0.15 over the network.
+
+* For users of bzrlib: Two major changes have been made to the working tree
+  api in bzrlib. The first is that many methods and attributes, including
+  the inventory attribute, are no longer valid for use until one of
+  ``lock_read``/``lock_write``/``lock_tree_write`` has been called,
+  and become invalid again after unlock is called. This has been done
+  to improve performance and correctness as part of the dirstate
+  development.
+  (Robert Collins, John A Meinel, Martin Pool, and others).
+
+* For users of bzrlib: The attribute 'tree.inventory' should be considered
+  readonly. Previously it was possible to directly alter this attribute, or
+  its contents, and have the tree notice this. This has been made
+  unsupported - it may work in some tree formats, but in the newer dirstate
+  format such actions will have no effect and will be ignored, or even
+  cause assertions. All operations possible can still be carried out by a
+  combination of the tree API, and the bzrlib.transform API. (Robert
+  Collins, John A Meinel, Martin Pool, and others).
+
+Improvements
+************
+
+* Support for OS Windows 98. Also .bzr.log on any windows system
+  saved in My Documents folder. (Alexander Belchenko)
+
+* ``bzr mv`` enhanced to support already moved files.
+  In the past the mv command would have failed if the source file doesn't
+  exist. In this situation ``bzr mv`` would now detect that the file has
+  already moved and update the repository accordingly, if the target file
+  does exist.
+  A new option ``--after`` has been added so that if two files already
+  exist, you could notify Bazaar that you have moved a (versioned) file
+  and replaced it with another. Thus in this case ``bzr move --after``
+  will only update the Bazaar identifier.
+  (Steffen Eichenberg, Marius Kruger)
+
+* ``ls`` now works on treeless branches and remote branches.
+  (Aaron Bentley)
+
+* ``bzr help global-options`` describes the global options.
+  (Aaron Bentley)
+
+* ``bzr pull --overwrite`` will now correctly overwrite checkouts.
+  (Robert Collins)
+
+* Files are now allowed to change kind (e.g. from file to symlink).
+  Supported by ``commit``, ``revert`` and ``status``
+  (Aaron Bentley)
+
+* ``inventory`` and ``unknowns`` hidden in favour of ``ls``
+  (Aaron Bentley)
+
+* ``bzr help checkouts`` descibes what checkouts are and some possible
+  uses of them. (James Westby, Aaron Bentley)
+
+* A new ``-d`` option to push, pull and merge overrides the default
+  directory.  (Martin Pool)
+
+* Branch format 6: smaller, and potentially faster than format 5.  Supports
+  ``append_history_only`` mode, where the log view and revnos do not change,
+  except by being added to.  Stores policy settings in
+  ".bzr/branch/branch.conf".
+
+* ``append_only`` branches:  Format 6 branches may be configured so that log
+  view and revnos are always consistent.  Either create the branch using
+  "bzr init --append-revisions-only" or edit the config file as descriped
+  in docs/configuration.txt.
+
+* rebind: Format 6 branches retain the last-used bind location, so if you
+  "bzr unbind", you can "bzr bind" to bind to the previously-selected
+  bind location.
+
+* Builtin tags support, created and deleted by the ``tag`` command and
+  stored in the branch.  Tags can be accessed with the revisionspec
+  ``-rtag:``, and listed with ``bzr tags``.  Tags are not versioned
+  at present. Tags require a network incompatible upgrade. To perform this
+  upgrade, run ``bzr upgrade --dirstate-tags`` in your branch and
+  repositories. (Martin Pool)
+
+* The ``bzr://`` transport now has a well-known port number, 4155,
+  which it will use by default.  (Andrew Bennetts, Martin Pool)
+
+* Bazaar now looks for user-installed plugins before looking for site-wide
+  plugins. (Jonathan Lange)
+
+* ``bzr resolve`` now detects and marks resolved text conflicts.
+  (Aaron Bentley)
+
+Internals
+*********
+
+* Internally revision ids and file ids are now passed around as utf-8
+  bytestrings, rather than treating them as Unicode strings. This has
+  performance benefits for Knits, since we no longer need to decode the
+  revision id for each line of content, nor for each entry in the index.
+  This will also help with the future dirstate format.
+  (John Arbash Meinel)
+
+* Reserved ids (any revision-id ending in a colon) are rejected by
+  versionedfiles, repositories, branches, and working trees
+  (Aaron Bentley)
+
+* Minor performance improvement by not creating a ProgressBar for
+  every KnitIndex we create. (about 90ms for a bzr.dev tree)
+  (John Arbash Meinel)
+
+* New easier to use Branch hooks facility. There are five initial hooks,
+  all documented in bzrlib.branch.BranchHooks.__init__ - ``'set_rh'``,
+  ``'post_push'``, ``'post_pull'``, ``'post_commit'``,
+  ``'post_uncommit'``. These hooks fire after the matching operation
+  on a branch has taken place, and were originally added for the
+  branchrss plugin. (Robert Collins)
+
+* New method ``Branch.push()`` which should be used when pushing from a
+  branch as it makes performance and policy decisions to match the UI
+  level command ``push``. (Robert Collins).
+
+* Add a new method ``Tree.revision_tree`` which allows access to cached
+  trees for arbitrary revisions. This allows the in development dirstate
+  tree format to provide access to the callers to cached copies of
+  inventory data which are cheaper to access than inventories from the
+  repository.
+  (Robert Collins, Martin Pool)
+
+* New ``Branch.last_revision_info`` method, this is being done to allow
+  optimization of requests for both the number of revisions and the last
+  revision of a branch with smartservers and potentially future branch
+  formats. (Wouter van Heyst, Robert Collins)
+
+* Allow ``'import bzrlib.plugins.NAME'`` to work when the plugin NAME has not
+  yet been loaded by ``load_plugins()``. This allows plugins to depend on each
+  other for code reuse without requiring users to perform file-renaming
+  gymnastics. (Robert Collins)
+
+* New Repository method ``'gather_stats'`` for statistic data collection.
+  This is expected to grow to cover a number of related uses mainly
+  related to bzr info. (Robert Collins)
+
+* Log formatters are now managed with a registry.
+  ``log.register_formatter`` continues to work, but callers accessing
+  the FORMATTERS dictionary directly will not.
+
+* Allow a start message to be passed to the ``edit_commit_message``
+  function.  This will be placed in the message offered to the user
+  for editing above the separator. It allows a template commit message
+  to be used more easily. (James Westby)
+
+* ``GPGStrategy.sign()`` will now raise ``BzrBadParameterUnicode`` if
+  you pass a Unicode string rather than an 8-bit string. Callers need
+  to be updated to encode first. (John Arbash Meinel)
+
+* Branch.push, pull, merge now return Result objects with information
+  about what happened, rather than a scattering of various methods.  These
+  are also passed to the post hooks.  (Martin Pool)
+
+* File formats and architecture is in place for managing a forest of trees
+  in bzr, and splitting up existing trees into smaller subtrees, and
+  finally joining trees to make a larger tree. This is the first iteration
+  of this support, and the user-facing aspects still require substantial
+  work.  If you wish to experiment with it, use ``bzr upgrade
+  --dirstate-with-subtree`` in your working trees and repositories.
+  You can use the hidden commands ``split`` and ``join`` and to create
+  and manipulate nested trees, but please consider using the nested-trees
+  branch, which contains substantial UI improvements, instead.
+  http://code.aaronbentley.com/bzr/bzrrepo/nested-trees/
+  (Aaron Bentley, Martin Pool, Robert Collins).
+
+Bugfixes
+********
+
+* ``bzr annotate`` now uses dotted revnos from the viewpoint of the
+  branch, rather than the last changed revision of the file.
+  (John Arbash Meinel, #82158)
+
+* Lock operations no longer hang if they encounter a permission problem.
+  (Aaron Bentley)
+
+* ``bzr push`` can resume a push that was canceled before it finished.
+  Also, it can push even if the target directory exists if you supply
+  the ``--use-existing-dir`` flag.
+  (John Arbash Meinel, #30576, #45504)
+
+* Fix HTTP proxy authentication when user and an optional
+  password appears in the ``*_proxy`` vars. (Vincent Ladeuil,
+  #83954).
+
+* ``bzr log branch/file`` works for local treeless branches
+  (Aaron Bentley, #84247)
+
+* Fix problem with UNC paths on Windows 98. (Alexander Belchenko, #84728)
+
+* Searching location of CA bundle for PyCurl in env variable
+  (``CURL_CA_BUNDLE``), and on win32 along the PATH.
+  (Alexander Belchenko, #82086)
+
+* ``bzr init`` works with unicode argument LOCATION.
+  (Alexander Belchenko, #85599)
+
+* Raise ``DependencyNotPresent`` if pycurl do not support https.
+  (Vincent Ladeuil, #85305)
+
+* Invalid proxy env variables should not cause a traceback.
+  (Vincent Ladeuil, #87765)
+
+* Ignore patterns normalised to use '/' path separator.
+  (Kent Gibson, #86451)
+
+* bzr rocks. It sure does! Fix case. (Vincent Ladeuil, #78026)
+
+* Fix bzrtools shelve command for removed lines beginning with "--"
+  (Johan Dahlberg, #75577)
+
+Testing
+*******
+
+* New ``--first`` option to ``bzr selftest`` to run specified tests
+  before the rest of the suite.  (Martin Pool)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

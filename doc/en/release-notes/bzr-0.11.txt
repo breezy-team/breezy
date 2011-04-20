@@ -1,0 +1,226 @@
+####################
+Bazaar Release Notes
+####################
+
+.. toctree::
+   :maxdepth: 1
+
+bzr 0.11
+########
+
+:Released:  2006-10-02
+
+* Smart server transport test failures on windows fixed. (Lukáš Lalinský).
+
+bzr 0.11rc2
+###########
+
+:Released:  2006-09-27
+
+Bug Fixes
+*********
+
+* Test suite hangs on windows fixed. (Andrew Bennets, Alexander Belchenko).
+
+* Commit performance regression fixed. (Aaron Bentley, Robert Collins, John
+  Arbash Meinel).
+
+bzr 0.11rc1
+###########
+
+:Released:  2006-09-25
+
+Improvements
+************
+
+* Knit files now wait to create their contents until the first data is
+  added. The old code used to create an empty .knit and a .kndx with just
+  the header. However, this caused a lot of extra round trips over SFTP.
+  This can change the time for ``bzr push`` to create a new remote branch
+  from 160s down to 100s. This also affects ``bzr commit`` performance when
+  adding new files, ``bzr commit`` on a new kernel-like tree drops from 50s
+  down to 40s (John Arbash Meinel, #44692)
+
+* When an entire subtree has been deleted, commit will now report that
+  just the top of the subtree has been deleted, rather than reporting
+  all the individual items. (Robert Collins)
+
+* Commit performs one less XML parse. (Robert Collins)
+
+* ``bzr checkout`` now operates on readonly branches as well
+  as readwrite branches. This fixes bug #39542. (Robert Collins)
+
+* ``bzr bind`` no longer synchronises history with the master branch.
+  Binding should be followed by an update or push to synchronise the
+  two branches. This is closely related to the fix for bug #39542.
+  (Robert Collins)
+
+* ``bzrlib.lazy_import.lazy_import`` function to create on-demand
+  objects.  This allows all imports to stay at the global scope, but
+  modules will not actually be imported if they are not used.
+  (John Arbash Meinel)
+
+* Support ``bzr://`` and ``bzr+ssh://`` URLS to work with the new RPC-based
+  transport which will be used with the upcoming high-performance smart
+  server. The new command ``bzr serve`` will invoke bzr in server mode,
+  which processes these requests. (Andrew Bennetts, Robert Collins, Martin
+  Pool)
+
+* New command ``bzr version-info`` which can be used to get a summary
+  of the current state of the tree. This is especially useful as part
+  of a build commands. See ``doc/version_info.txt`` for more information
+  (John Arbash Meinel)
+
+Bug Fixes
+*********
+
+* ``'bzr inventory [FILE...]'`` allows restricting the file list to a
+  specific set of files. (John Arbash Meinel, #3631)
+
+* Don't abort when annotating empty files (John Arbash Meinel, #56814)
+
+* Add ``Stanza.to_unicode()`` which can be passed to another Stanza
+  when nesting stanzas. Also, add ``read_stanza_unicode`` to handle when
+  reading a nested Stanza. (John Arbash Meinel)
+
+* Transform._set_mode() needs to stat the right file.
+  (John Arbash Meinel, #56549)
+
+* Raise WeaveFormatError rather than StopIteration when trying to read
+  an empty Weave file. (John Arbash Meinel, #46871)
+
+* Don't access e.code for generic URLErrors, only HTTPErrors have .code.
+  (Vincent Ladeuil, #59835)
+
+* Handle boundary="" lines properly to allow access through a Squid proxy.
+  (John Arbash Meinel, #57723)
+
+* revert now removes newly-added directories (Aaron Bentley, #54172)
+
+* ``bzr upgrade sftp://`` shouldn't fail to upgrade v6 branches if there
+  isn't a working tree. (David Allouche, #40679)
+
+* Give nicer error messages when a user supplies an invalid --revision
+  parameter. (John Arbash Meinel, #55420)
+
+* Handle when LANG is not recognized by python. Emit a warning, but
+  just revert to using 'ascii'. (John Arbash Meinel, #35392)
+
+* Don't use ``preexec_fn`` on win32, as it is not supported by subprocess.
+  (John Arbash Meinel)
+
+* Skip specific tests when the dependencies aren't met. This includes
+  some ``setup.py`` tests when ``python-dev`` is not available, and
+  some tests that depend on paramiko. (John Arbash Meinel, Mattheiu Moy)
+
+* Fallback to Paramiko properly, if no ``ssh`` executable exists on
+  the system. (Andrew Bennetts, John Arbash Meinel)
+
+* ``Branch.bind(other_branch)`` no longer takes a write lock on the
+  other branch, and will not push or pull between the two branches.
+  API users will need to perform a push or pull or update operation if they
+  require branch synchronisation to take place. (Robert Collins, #43744)
+
+* When creating a tarball or zipfile export, export unicode names as utf-8
+  paths. This may not work perfectly on all platforms, but has the best
+  chance of working in the common case. (John Arbash Meinel, #56815)
+
+* When committing, only files that exist in working tree or basis tree
+  may be specified (Aaron Bentley, #50793)
+
+Portability
+***********
+
+* Fixes to run on Python 2.5 (Brian M. Carlson, Martin Pool, Marien Zwart)
+
+Internals
+*********
+
+* TestCaseInTempDir now creates a separate directory for HOME, rather
+  than having HOME set to the same location as the working directory.
+  (John Arbash Meinel)
+
+* ``run_bzr_subprocess()`` can take an optional ``env_changes={}`` parameter,
+  which will update os.environ inside the spawned child. It also can
+  take a ``universal_newlines=True``, which helps when checking the output
+  of the command. (John Arbash Meinel)
+
+* Refactor SFTP vendors to allow easier re-use when SSH is used.
+  (Andrew Bennetts)
+
+* ``Transport.list_dir()`` and ``Transport.iter_files_recursive()`` should always
+  return urlescaped paths. This is now tested (there were bugs in a few
+  of the transports) (Andrew Bennetts, David Allouche, John Arbash Meinel)
+
+* New utility function ``symbol_versioning.deprecation_string``. Returns the
+  formatted string for a callable, deprecation format pair. (Robert Collins)
+
+* New TestCase helper applyDeprecated. This allows you to call a callable
+  which is deprecated without it spewing to the screen, just by supplying
+  the deprecation format string issued for it. (Robert Collins)
+
+* Transport.append and Transport.put have been deprecated in favor of
+  ``.append_bytes``, ``.append_file``, ``.put_bytes``, and
+  ``.put_file``. This removes the ambiguity in what type of object the
+  functions take.  ``Transport.non_atomic_put_{bytes,file}`` has also
+  been added. Which works similarly to ``Transport.append()`` except for
+  SFTP, it doesn't have a round trip when opening the file. Also, it
+  provides functionality for creating a parent directory when trying
+  to create a file, rather than raise NoSuchFile and forcing the
+  caller to repeat their request.
+  (John Arbash Meinel)
+
+* WorkingTree has a new api ``unversion`` which allow the unversioning of
+  entries by their file id. (Robert Collins)
+
+* ``WorkingTree.pending_merges`` is deprecated.  Please use the
+  ``get_parent_ids`` (introduced in 0.10) method instead. (Robert Collins)
+
+* WorkingTree has a new ``lock_tree_write`` method which locks the branch for
+  read rather than write. This is appropriate for actions which only need
+  the branch data for reference rather than mutation. A new decorator
+  ``needs_tree_write_lock`` is provided in the workingtree module. Like the
+  ``needs_read_lock`` and ``needs_write_lock`` decorators this allows static
+  declaration of the locking requirements of a function to ensure that
+  a lock is taken out for casual scripts. (Robert Collins, #54107)
+
+* All WorkingTree methods which write to the tree, but not to the branch
+  have been converted to use ``needs_tree_write_lock`` rather than
+  ``needs_write_lock``. Also converted is the revert, conflicts and tree
+  transform modules. This provides a modest performance improvement on
+  metadir style trees, due to the reduce lock-acquisition, and a more
+  significant performance improvement on lightweight checkouts from
+  remote branches, where trivial operations used to pay a significant
+  penalty. It also provides the basis for allowing readonly checkouts.
+  (Robert Collins)
+
+* Special case importing the standard library 'copy' module. This shaves
+  off 40ms of startup time, while retaining compatibility. See:
+  ``bzrlib/inspect_for_copy.py`` for more details. (John Arbash Meinel)
+
+* WorkingTree has a new parent class MutableTree which represents the
+  specialisations of Tree which are able to be altered. (Robert Collins)
+
+* New methods mkdir and ``put_file_bytes_non_atomic`` on MutableTree that
+  mutate the tree and its contents. (Robert Collins)
+
+* Transport behaviour at the root of the URL is now defined and tested.
+  (Andrew Bennetts, Robert Collins)
+
+Testing
+*******
+
+* New test helper classs MemoryTree. This is typically accessed via
+  ``self.make_branch_and_memory_tree()`` in test cases. (Robert Collins)
+
+* Add ``start_bzr_subprocess`` and ``stop_bzr_subprocess`` to allow test
+  code to continue running concurrently with a subprocess of bzr.
+  (Andrew Bennetts, Robert Collins)
+
+* Add a new method ``Transport.get_smart_client()``. This is provided to
+  allow upgrades to a richer interface than the VFS one provided by
+  Transport. (Andrew Bennetts, Martin Pool)
+
+
+..
+   vim: tw=74 ft=rst ff=unix

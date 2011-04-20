@@ -17,10 +17,10 @@
 """Implementation of Transport that adapts another transport to be readonly."""
 
 from bzrlib.errors import TransportNotPossible, NoSmartMedium
-from bzrlib.transport.decorator import TransportDecorator, DecoratorServer
+from bzrlib.transport import decorator
 
 
-class ReadonlyTransportDecorator(TransportDecorator):
+class ReadonlyTransportDecorator(decorator.TransportDecorator):
     """A decorator that can convert any transport to be readonly.
 
     This is requested via the 'readonly+' prefix to get_transport().
@@ -78,15 +78,7 @@ class ReadonlyTransportDecorator(TransportDecorator):
         raise NoSmartMedium(self)
 
 
-
-class ReadonlyServer(DecoratorServer):
-    """Server for the ReadonlyTransportDecorator for testing with."""
-
-    def get_decorator_class(self):
-        return ReadonlyTransportDecorator
-
-
 def get_test_permutations():
     """Return the permutations to be used in testing."""
-    return [(ReadonlyTransportDecorator, ReadonlyServer),
-            ]
+    from bzrlib.tests import test_server
+    return [(ReadonlyTransportDecorator, test_server.ReadonlyServer),]

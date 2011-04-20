@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Robey Pointer <robey@lag.net>
+# Copyright (C) 2005-2011 Robey Pointer <robey@lag.net>
 # Copyright (C) 2005, 2006, 2007 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,7 +18,6 @@
 import os
 import socket
 import sys
-import threading
 import time
 
 from bzrlib import (
@@ -30,9 +29,7 @@ from bzrlib import (
     ui,
     )
 from bzrlib.osutils import (
-    pathjoin,
     lexists,
-    set_or_unset_env,
     )
 from bzrlib.tests import (
     features,
@@ -41,14 +38,11 @@ from bzrlib.tests import (
     TestSkipped,
     )
 from bzrlib.tests.http_server import HttpServer
-from bzrlib.transport import get_transport
 import bzrlib.transport.http
 
 if features.paramiko.available():
     from bzrlib.transport import sftp as _mod_sftp
     from bzrlib.tests import stub_sftp
-
-from bzrlib.workingtree import WorkingTree
 
 
 def set_test_transport_to_sftp(testcase):
@@ -175,27 +169,21 @@ class SFTPNonServerTest(TestCase):
         """Test that if no 'ssh' is available we get builtin paramiko"""
         from bzrlib.transport import ssh
         # set '.' as the only location in the path, forcing no 'ssh' to exist
-        orig_vendor = ssh._ssh_vendor_manager._cached_ssh_vendor
-        orig_path = set_or_unset_env('PATH', '.')
-        try:
-            # No vendor defined yet, query for one
-            ssh._ssh_vendor_manager.clear_cache()
-            vendor = ssh._get_ssh_vendor()
-            self.assertIsInstance(vendor, ssh.ParamikoVendor)
-        finally:
-            set_or_unset_env('PATH', orig_path)
-            ssh._ssh_vendor_manager._cached_ssh_vendor = orig_vendor
+        self.overrideAttr(ssh, '_ssh_vendor_manager')
+        self.overrideEnv('PATH', '.')
+        ssh._ssh_vendor_manager.clear_cache()
+        vendor = ssh._get_ssh_vendor()
+        self.assertIsInstance(vendor, ssh.ParamikoVendor)
 
     def test_abspath_root_sibling_server(self):
         server = stub_sftp.SFTPSiblingAbsoluteServer()
         server.start_server()
-        try:
-            transport = get_transport(server.get_url())
-            self.assertFalse(transport.abspath('/').endswith('/~/'))
-            self.assertTrue(transport.abspath('/').endswith('/'))
-            del transport
-        finally:
-            server.stop_server()
+        self.addCleanup(server.stop_server)
+
+        transport = _mod_transport.get_transport(server.get_url())
+        self.assertFalse(transport.abspath('/').endswith('/~/'))
+        self.assertTrue(transport.abspath('/').endswith('/'))
+        del transport
 
 
 class SFTPBranchTest(TestCaseWithSFTPServer):
@@ -297,29 +285,23 @@ class SSHVendorBadConnection(TestCaseWithTransport):
     def setUp(self):
         self.requireFeature(features.paramiko)
         super(SSHVendorBadConnection, self).setUp()
-        import bzrlib.transport.ssh
 
         # open a random port, so we know nobody else is using it
         # but don't actually listen on the port.
         s = socket.socket()
         s.bind(('localhost', 0))
+        self.addCleanup(s.close)
         self.bogus_url = 'sftp://%s:%s/' % s.getsockname()
 
-        orig_vendor = bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor
-        def reset():
-            bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor = orig_vendor
-            s.close()
-        self.addCleanup(reset)
-
     def set_vendor(self, vendor):
-        import bzrlib.transport.ssh
-        bzrlib.transport.ssh._ssh_vendor_manager._cached_ssh_vendor = vendor
+        from bzrlib.transport import ssh
+        self.overrideAttr(ssh._ssh_vendor_manager, '_cached_ssh_vendor', vendor)
 
     def test_bad_connection_paramiko(self):
         """Test that a real connection attempt raises the right error"""
         from bzrlib.transport import ssh
         self.set_vendor(ssh.ParamikoVendor())
-        t = bzrlib.transport.get_transport(self.bogus_url)
+        t = _mod_transport.get_transport(self.bogus_url)
         self.assertRaises(errors.ConnectionError, t.get, 'foobar')
 
     def test_bad_connection_ssh(self):
@@ -330,7 +312,7 @@ class SSHVendorBadConnection(TestCaseWithTransport):
         # However, 'ssh' will create stipple on the output, so instead
         # I'm using run_bzr_subprocess, and parsing the output
         # try:
-        #     t = bzrlib.transport.get_transport(self.bogus_url)
+        #     t = _mod_transport.get_transport(self.bogus_url)
         # except errors.ConnectionError:
         #     # Correct error
         #     pass
@@ -511,13 +493,13 @@ class TestUsesAuthConfig(TestCaseWithSFTPServer):
     """Test that AuthenticationConfig can supply default usernames."""
 
     def get_transport_for_connection(self, set_config):
-        port = self.get_server()._listener.port
+        port = self.get_server().port
         if set_config:
             conf = config.AuthenticationConfig()
             conf._get_config().update(
                 {'sftptest': {'scheme': 'ssh', 'port': port, 'user': 'bar'}})
             conf._save()
-        t = get_transport('sftp://localhost:%d' % port)
+        t = _mod_transport.get_transport('sftp://localhost:%d' % port)
         # force a connection to be performed.
         t.has('foo')
         return t

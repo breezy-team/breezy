@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 """Tests of the dirstate functionality being built for WorkingTreeFormat4."""
 
-import bisect
 import os
 
 from bzrlib import (
@@ -29,6 +28,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import test_osutils
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
 # TODO:
@@ -44,18 +44,13 @@ from bzrlib.tests import test_osutils
 # set_path_id  setting id when state is in memory modified
 
 
-def load_tests(basic_tests, module, loader):
-    suite = loader.suiteClass()
-    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
-        basic_tests, tests.condition_isinstance(TestCaseWithDirState))
-    tests.multiply_tests(dir_reader_tests,
-                         test_osutils.dir_reader_scenarios(), suite)
-    suite.addTest(remaining_tests)
-    return suite
+load_tests = load_tests_apply_scenarios
 
 
 class TestCaseWithDirState(tests.TestCaseWithTransport):
     """Helper functions for creating DirState objects with various content."""
+
+    scenarios = test_osutils.dir_reader_scenarios()
 
     # Set by load_tests
     _dir_reader_class = None
@@ -64,14 +59,8 @@ class TestCaseWithDirState(tests.TestCaseWithTransport):
     def setUp(self):
         tests.TestCaseWithTransport.setUp(self)
 
-        # Save platform specific info and reset it
-        cur_dir_reader = osutils._selected_dir_reader
-
-        def restore():
-            osutils._selected_dir_reader = cur_dir_reader
-        self.addCleanup(restore)
-
-        osutils._selected_dir_reader = self._dir_reader_class()
+        self.overrideAttr(osutils,
+                          '_selected_dir_reader', self._dir_reader_class())
 
     def create_empty_dirstate(self):
         """Return a locked but empty dirstate"""
@@ -735,6 +724,22 @@ class TestDirStateInitialize(TestCaseWithDirState):
 
 
 class TestDirStateManipulations(TestCaseWithDirState):
+
+    def test_update_minimal_updates_id_index(self):
+        state = self.create_dirstate_with_root_and_subdir()
+        self.addCleanup(state.unlock)
+        id_index = state._get_id_index()
+        self.assertEqual(['a-root-value', 'subdir-id'], sorted(id_index))
+        state.add('file-name', 'file-id', 'file', None, '')
+        self.assertEqual(['a-root-value', 'file-id', 'subdir-id'],
+                         sorted(id_index))
+        state.update_minimal(('', 'new-name', 'file-id'), 'f',
+                             path_utf8='new-name')
+        self.assertEqual(['a-root-value', 'file-id', 'subdir-id'],
+                         sorted(id_index))
+        self.assertEqual([('', 'new-name', 'file-id')],
+                         sorted(id_index['file-id']))
+        state._validate()
 
     def test_set_state_from_inventory_no_content_no_parents(self):
         # setting the current inventory is a slow but important api to support.

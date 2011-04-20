@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,16 +16,18 @@
 
 
 from bzrlib import (
+    branch,
     errors,
     revision as _mod_revision,
+    tests,
     )
-from bzrlib.tests.per_branch.test_branch import TestCaseWithBranch
+from bzrlib.tests import per_branch
 
 
 """Tests for branch.update()"""
 
 
-class TestUpdate(TestCaseWithBranch):
+class TestUpdate(per_branch.TestCaseWithBranch):
 
     def test_update_unbound_works(self):
         b = self.make_branch('.')
@@ -69,7 +71,7 @@ class TestUpdate(TestCaseWithBranch):
         self.assertEqual(['bar'], child_tree.branch.revision_history())
 
 
-class TestUpdateRevisions(TestCaseWithBranch):
+class TestUpdateRevisions(per_branch.TestCaseWithBranch):
 
     def test_accepts_graph(self):
         # An implementation may not use it, but it should allow a 'graph' to be
@@ -115,3 +117,23 @@ class TestUpdateRevisions(TestCaseWithBranch):
 
         tree1.branch.update_revisions(tree2.branch, overwrite=True)
         self.assertEqual((1, rev1), tree1.branch.last_revision_info())
+
+    def test_update_in_checkout_of_readonly(self):
+        tree1 = self.make_branch_and_tree('tree1')
+        rev1 = tree1.commit('one')
+        try:
+            tree1.branch.tags.set_tag('test-tag', rev1)
+        except errors.TagsNotSupported:
+            # Tags not supported
+            raise tests.TestNotApplicable("only triggered from branches with"
+                " tags")
+        readonly_branch1 = branch.Branch.open('readonly+' + tree1.branch.base)
+        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
+        try:
+            tree2.branch.bind(readonly_branch1)
+        except errors.UpgradeRequired:
+            # old branch, cant test.
+            raise tests.TestNotApplicable("only triggered in bound branches")
+        rev2 = tree1.commit('two')
+        tree2.update()
+        self.assertEqual(rev2, tree2.branch.last_revision())

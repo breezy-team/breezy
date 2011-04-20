@@ -154,7 +154,7 @@ class Shelver(object):
 
     @classmethod
     def from_args(klass, diff_writer, revision=None, all=False, file_list=None,
-                  message=None, directory='.', destroy=False):
+                  message=None, directory=None, destroy=False):
         """Create a shelver from commandline arguments.
 
         The returned shelver wil have a work_tree that is locked and should
@@ -168,6 +168,10 @@ class Shelver(object):
         :param destroy: Change the working tree without storing the shelved
             changes.
         """
+        if directory is None:
+            directory = u'.'
+        elif file_list:
+            file_list = [osutils.pathjoin(directory, f) for f in file_list]
         tree, path = workingtree.WorkingTree.open_containing(directory)
         # Ensure that tree is locked for the lifetime of target_tree, as
         # target tree may be reading from the same dirstate.
@@ -175,7 +179,7 @@ class Shelver(object):
         try:
             target_tree = builtins._get_one_revision_tree('shelf2', revision,
                 tree.branch, tree)
-            files = builtins.safe_relpath_files(tree, file_list)
+            files = tree.safe_relpath_files(file_list)
             return klass(tree, target_tree, diff_writer, all, all, files,
                          message, destroy)
         finally:
@@ -241,7 +245,8 @@ class Shelver(object):
             new_tree = self.work_tree
         old_path = old_tree.id2path(file_id)
         new_path = new_tree.id2path(file_id)
-        text_differ = diff.DiffText(old_tree, new_tree, diff_file)
+        text_differ = diff.DiffText(old_tree, new_tree, diff_file,
+            path_encoding=osutils.get_terminal_encoding())
         patch = text_differ.diff(file_id, old_path, new_path, 'file', 'file')
         diff_file.seek(0)
         return patches.parse_patch(diff_file)
@@ -471,18 +476,14 @@ class Unshelver(object):
                 if unshelver.message is not None:
                     trace.note('Message: %s' % unshelver.message)
                 change_reporter = delta._ChangeReporter()
-                task = ui.ui_factory.nested_progress_bar()
-                try:
-                    merger = unshelver.make_merger(task)
-                    merger.change_reporter = change_reporter
-                    if self.apply_changes:
-                        merger.do_merge()
-                    elif self.show_diff:
-                        self.write_diff(merger)
-                    else:
-                        self.show_changes(merger)
-                finally:
-                    task.finished()
+                merger = unshelver.make_merger(None)
+                merger.change_reporter = change_reporter
+                if self.apply_changes:
+                    merger.do_merge()
+                elif self.show_diff:
+                    self.write_diff(merger)
+                else:
+                    self.show_changes(merger)
             if self.delete_shelf:
                 self.manager.delete_shelf(self.shelf_id)
                 trace.note('Deleted changes with id "%d".' % self.shelf_id)
@@ -496,8 +497,10 @@ class Unshelver(object):
         tt = tree_merger.make_preview_transform()
         new_tree = tt.get_preview_tree()
         if self.write_diff_to is None:
-            self.write_diff_to = ui.ui_factory.make_output_stream()
-        diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to)
+            self.write_diff_to = ui.ui_factory.make_output_stream(encoding_type='exact')
+        path_encoding = osutils.get_diff_header_encoding()
+        diff.show_diff_trees(merger.this_tree, new_tree, self.write_diff_to,
+            path_encoding=path_encoding)
         tt.finalize()
 
     def show_changes(self, merger):

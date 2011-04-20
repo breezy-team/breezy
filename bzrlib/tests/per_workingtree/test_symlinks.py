@@ -102,6 +102,8 @@ class TestKindChanges(TestCaseWithWorkingTree):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         self.assertEquals([], list(tree.iter_changes(tree.basis_tree())))
+        self.assertEquals(
+            ['a', 'a/f'], sorted(info[0] for info in tree.list_files()))
 
     def test_dir_changes_to_symlink(self):
         # <https://bugs.launchpad.net/bzr/+bug/192859>:
@@ -157,7 +159,7 @@ class TestOpenTree(TestCaseWithWorkingTree):
             'tree', ['subdir/subcontent'])
 
     def check_tree_files(self, to_open, expected_tree, expect_paths):
-        tree, relpaths = builtins.tree_files(to_open)
+        tree, relpaths = workingtree.WorkingTree.open_containing_paths(to_open)
         self.assertEndsWith(tree.basedir, expected_tree)
         self.assertEquals(expect_paths, relpaths)
 

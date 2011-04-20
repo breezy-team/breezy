@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,60 +28,34 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     test_dirstate,
-    test_osutils,
+    )
+from bzrlib.tests.test_osutils import dir_reader_scenarios
+from bzrlib.tests.scenarios import (
+    load_tests_apply_scenarios,
+    multiply_scenarios,
     )
 
-try:
-    from bzrlib import _dirstate_helpers_pyx
-    has_dirstate_helpers_pyx = True
-except ImportError:
-    has_dirstate_helpers_pyx = False
+
+load_tests = load_tests_apply_scenarios
 
 
 compiled_dirstate_helpers_feature = tests.ModuleAvailableFeature(
-                                'bzrlib._dirstate_helpers_pyx')
+    'bzrlib._dirstate_helpers_pyx')
 
 
-def load_tests(basic_tests, module, loader):
-    # FIXME: we should also parametrize against SHA1Provider !
-    suite = loader.suiteClass()
-    remaining_tests = basic_tests
+# FIXME: we should also parametrize against SHA1Provider !
 
-    dir_reader_scenarios = test_osutils.dir_reader_scenarios()
+ue_scenarios = [('dirstate_Python',
+    {'update_entry': dirstate.py_update_entry})]
+if compiled_dirstate_helpers_feature.available():
+    update_entry = compiled_dirstate_helpers_feature.module.update_entry
+    ue_scenarios.append(('dirstate_Pyrex', {'update_entry': update_entry}))
 
-    ue_scenarios = [('dirstate_Python',
-                     {'update_entry': dirstate.py_update_entry})]
-    if compiled_dirstate_helpers_feature.available():
-        update_entry = compiled_dirstate_helpers_feature.module.update_entry
-        pyrex_scenario = ('dirstate_Pyrex', {'update_entry': update_entry})
-        ue_scenarios.append(pyrex_scenario)
-    process_entry_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance(TestUpdateEntry))
-    tests.multiply_tests(process_entry_tests,
-                         tests.multiply_scenarios(dir_reader_scenarios,
-                                                  ue_scenarios),
-                         suite)
-
-    pe_scenarios = [('dirstate_Python',
-                     {'_process_entry': dirstate.ProcessEntryPython})]
-    if compiled_dirstate_helpers_feature.available():
-        process_entry = compiled_dirstate_helpers_feature.module.ProcessEntryC
-        pyrex_scenario = ('dirstate_Pyrex', {'_process_entry': process_entry})
-        pe_scenarios.append(pyrex_scenario)
-    process_entry_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance(TestProcessEntry))
-    tests.multiply_tests(process_entry_tests,
-                         tests.multiply_scenarios(dir_reader_scenarios,
-                                                  pe_scenarios),
-                         suite)
-
-    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance(
-            test_dirstate.TestCaseWithDirState))
-    tests.multiply_tests(dir_reader_tests, dir_reader_scenarios, suite)
-    suite.addTest(remaining_tests)
-
-    return suite
+pe_scenarios = [('dirstate_Python',
+    {'_process_entry': dirstate.ProcessEntryPython})]
+if compiled_dirstate_helpers_feature.available():
+    process_entry = compiled_dirstate_helpers_feature.module.ProcessEntryC
+    pe_scenarios.append(('dirstate_Pyrex', {'_process_entry': process_entry}))
 
 
 class TestBisectPathMixin(object):
@@ -719,6 +693,8 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
     implementation.
     """
 
+    # inherits scenarios from test_dirstate
+
     def get_read_dirblocks(self):
         from bzrlib._dirstate_helpers_py import _read_dirblocks
         return _read_dirblocks
@@ -737,7 +713,7 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
 
     def test_trailing_garbage(self):
         tree, state, expected = self.create_basic_dirstate()
-        # On Linux, we can write extra data as long as we haven't read yet, but
+        # On Unix, we can write extra data as long as we haven't read yet, but
         # on Win32, if you've opened the file with FILE_SHARE_READ, trying to
         # open it in append mode will fail.
         state.unlock()
@@ -826,16 +802,15 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
 class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
     """Test the DirState.update_entry functions"""
 
+    scenarios = multiply_scenarios(
+        dir_reader_scenarios(), ue_scenarios)
+
     # Set by load_tests
     update_entry = None
 
     def setUp(self):
         super(TestUpdateEntry, self).setUp()
-        orig = dirstate.update_entry
-        def cleanup():
-            dirstate.update_entry = orig
-        self.addCleanup(cleanup)
-        dirstate.update_entry = self.update_entry
+        self.overrideAttr(dirstate, 'update_entry', self.update_entry)
 
     def get_state_with_a(self):
         """Create a DirState tracking a single object named 'a'"""
@@ -1273,16 +1248,14 @@ class UppercaseSHA1Provider(dirstate.SHA1Provider):
 
 class TestProcessEntry(test_dirstate.TestCaseWithDirState):
 
+    scenarios = multiply_scenarios(dir_reader_scenarios(), pe_scenarios)
+
     # Set by load_tests
     _process_entry = None
 
     def setUp(self):
         super(TestProcessEntry, self).setUp()
-        orig = dirstate._process_entry
-        def cleanup():
-            dirstate._process_entry = orig
-        self.addCleanup(cleanup)
-        dirstate._process_entry = self._process_entry
+        self.overrideAttr(dirstate, '_process_entry', self._process_entry)
 
     def assertChangedFileIds(self, expected, tree):
         tree.lock_read()
@@ -1297,8 +1270,6 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         # This is a direct test of bug #495023, it relies on osutils.is_inside
         # getting called in an inner function. Which makes it a bit brittle,
         # but at least it does reproduce the bug.
-        def is_inside_raises(*args, **kwargs):
-            raise RuntimeError('stop this')
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/file', 'tree/dir/', 'tree/dir/sub',
                          'tree/dir2/', 'tree/dir2/sub2'])
@@ -1307,9 +1278,9 @@ class TestProcessEntry(test_dirstate.TestCaseWithDirState):
         tree.lock_read()
         self.addCleanup(tree.unlock)
         basis_tree = tree.basis_tree()
-        orig = osutils.is_inside
-        self.addCleanup(setattr, osutils, 'is_inside', orig)
-        osutils.is_inside = is_inside_raises
+        def is_inside_raises(*args, **kwargs):
+            raise RuntimeError('stop this')
+        self.overrideAttr(osutils, 'is_inside', is_inside_raises)
         self.assertListRaises(RuntimeError, tree.iter_changes, basis_tree)
 
     def test_simple_changes(self):

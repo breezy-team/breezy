@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,6 +61,18 @@ class UIFactoryTestMixin(object):
         self.assertEquals(True, self.factory.is_quiet())
         self.factory.be_quiet(False)
         self.assertEquals(False, self.factory.is_quiet())
+
+    def test_confirm_action(self):
+        # confirm_action should be answered by every ui factory; even
+        # noninteractive ones should have a reasonable default
+        self._load_responses([True])
+        result = self.factory.confirm_action(
+            'Break a lock?',
+            'bzr.lock.break.confirm',
+            {})
+        # will be true either because we read it from the input or because
+        # that's the default
+        self.assertEquals(result, True)
 
     def test_note(self):
         self.factory.note("a note to the user")
@@ -137,7 +149,7 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def _check_log_transport_activity_noarg(self):
         self.assertEqual('', self.stdout.getvalue())
-        self.assertContainsRe(self.stderr.getvalue(), r'\d+KB\s+\dKB/s |')
+        self.assertContainsRe(self.stderr.getvalue(), r'\d+kB\s+\dkB/s |')
         self.assertNotContainsRe(self.stderr.getvalue(), r'Transferred:')
 
     def _check_log_transport_activity_display(self):
@@ -149,6 +161,11 @@ class TestTextUIFactory(tests.TestCase, UIFactoryTestMixin):
         self.assertEqual('', self.stdout.getvalue())
         # Without a TTY, we shouldn't display anything
         self.assertEqual('', self.stderr.getvalue())
+
+    def _load_responses(self, responses):
+        self.factory.stdin.seek(0)
+        self.factory.stdin.writelines([(r and "y\n" or "n\n") for r in responses])
+        self.factory.stdin.seek(0)
 
 
 class TestTTYTextUIFactory(TestTextUIFactory):
@@ -170,10 +187,10 @@ class TestTTYTextUIFactory(TestTextUIFactory):
 
             def __setattr__(self, name, value):
                 return setattr(self._sio, name, value)
-                
+
         # Remove 'TERM' == 'dumb' which causes us to *not* treat output as a
         # real terminal, even though isatty returns True
-        self._captureVar('TERM', None)
+        self.overrideEnv('TERM', None)
         self.stderr = TTYStringIO()
         self.stdout = TTYStringIO()
         self.factory = ui.text.TextUIFactory(self.stdin, self.stdout,
@@ -181,10 +198,11 @@ class TestTTYTextUIFactory(TestTextUIFactory):
 
     def _check_log_transport_activity_display(self):
         self.assertEqual('', self.stdout.getvalue())
-        # Displaying the result should write to the progress stream
+        # Displaying the result should write to the progress stream using
+        # base-10 units (see HACKING.txt).
         self.assertContainsRe(self.stderr.getvalue(),
-            r'Transferred: 7KiB'
-            r' \(\d+\.\dK/s r:2K w:1K u:4K\)')
+            r'Transferred: 7kB'
+            r' \(\d+\.\dkB/s r:2kB w:1kB u:4kB\)')
 
     def _check_log_transport_activity_display_no_bytes(self):
         self.assertEqual('', self.stdout.getvalue())
@@ -221,6 +239,9 @@ class TestSilentUIFactory(tests.TestCase, UIFactoryTestMixin):
     def _check_log_transport_activity_display_no_bytes(self):
         pass
 
+    def _load_responses(self, responses):
+        pass
+
 
 class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
     # discards output, reads input from variables
@@ -249,3 +270,6 @@ class TestCannedInputUIFactory(tests.TestCase, UIFactoryTestMixin):
 
     def _check_log_transport_activity_display_no_bytes(self):
         pass
+
+    def _load_responses(self, responses):
+        self.factory.responses.extend(responses)

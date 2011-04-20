@@ -279,7 +279,7 @@ Many commands that accept URLs also accept location aliases too.  See
 
 _basic_help = \
 """Bazaar %s -- a free distributed version-control tool
-http://bazaar-vcs.org/
+http://bazaar.canonical.com/
 
 Basic commands:
   bzr init           makes this directory a versioned branch
@@ -406,13 +406,13 @@ protocol , such as sftp://, and that you have write permissions at the other
 end. Checkouts also work on the local file system, so that all that matters is
 file permissions.
 
-You can change the master of a checkout by using the "bind" command (see "help
-bind"). This will change the location that the commits are sent to. The bind
-command can also be used to turn a branch into a heavy checkout. If you
-would like to convert your heavy checkout into a normal branch so that every
-commit is local, you can use the "unbind" command. To see whether or not a
-branch is bound or not you can use the "info" command. If the branch is bound
-it will tell you the location of the bound branch.
+You can change the master of a checkout by using the "switch" command (see
+"help switch").  This will change the location that the commits are sent to.
+The "bind" command can also be used to turn a normal branch into a heavy
+checkout. If you would like to convert your heavy checkout into a normal
+branch so that every commit is local, you can use the "unbind" command. To see
+whether or not a branch is bound or not you can use the "info" command. If the
+branch is bound it will tell you the location of the bound branch.
 
 Related commands::
 
@@ -422,8 +422,10 @@ Related commands::
   commit      Make a commit that is sent to the master branch. If you have
               a heavy checkout then the --local option will commit to the
               checkout without sending the commit to the master
-  bind        Change the master branch that the commits in the checkout will
+  switch      Change the master branch that the commits in the checkout will
               be sent to
+  bind        Turn a standalone branch into a heavy checkout so that any
+              commits will be sent to the master branch
   unbind      Turn a heavy checkout into a standalone branch so that any
               commits are only made locally
   info        Displays whether a branch is bound or unbound. If the branch is
@@ -510,7 +512,7 @@ Useful commands::
 
   checkout     Create a working tree when a branch does not have one.
   remove-tree  Removes the working tree from a branch when it is safe to do so.
-  update       When a working tree is out of sync with it's associated branch
+  update       When a working tree is out of sync with its associated branch
                this will update the tree to match the branch.
 """
 
@@ -589,29 +591,39 @@ Column 3 - execute::
 _env_variables = \
 """Environment Variables
 
-================ =================================================================
-BZRPATH          Path where bzr is to look for shell plugin external commands.
-BZR_EMAIL        E-Mail address of the user. Overrides EMAIL.
-EMAIL            E-Mail address of the user.
-BZR_EDITOR       Editor for editing commit messages. Overrides EDITOR.
-EDITOR           Editor for editing commit messages.
-BZR_PLUGIN_PATH  Paths where bzr should look for plugins.
-BZR_HOME         Directory holding .bazaar config dir. Overrides HOME.
-BZR_HOME (Win32) Directory holding bazaar config dir. Overrides APPDATA and HOME.
-BZR_REMOTE_PATH  Full name of remote 'bzr' command (for bzr+ssh:// URLs).
-BZR_SSH          Path to SSH client, or one of paramiko, openssh, sshcorp, plink.
-BZR_LOG          Location of .bzr.log (use '/dev/null' to suppress log).
-BZR_LOG (Win32)  Location of .bzr.log (use 'NUL' to suppress log).
-BZR_COLUMNS      Override implicit terminal width.
-BZR_CONCURRENCY  Number of processes that can be run concurrently (selftest).
-================ =================================================================
+=================== ===========================================================
+BZRPATH             Path where bzr is to look for shell plugin external
+                    commands.
+BZR_EMAIL           E-Mail address of the user. Overrides EMAIL.
+EMAIL               E-Mail address of the user.
+BZR_EDITOR          Editor for editing commit messages. Overrides EDITOR.
+EDITOR              Editor for editing commit messages.
+BZR_PLUGIN_PATH     Paths where bzr should look for plugins.
+BZR_DISABLE_PLUGINS Plugins that bzr should not load.
+BZR_PLUGINS_AT      Plugins to load from a directory not in BZR_PLUGIN_PATH.
+BZR_HOME            Directory holding .bazaar config dir. Overrides HOME.
+BZR_HOME (Win32)    Directory holding bazaar config dir. Overrides APPDATA and
+                    HOME.
+BZR_REMOTE_PATH     Full name of remote 'bzr' command (for bzr+ssh:// URLs).
+BZR_SSH             Path to SSH client, or one of paramiko, openssh, sshcorp,
+                    plink or lsh.
+BZR_LOG             Location of .bzr.log (use '/dev/null' to suppress log).
+BZR_LOG (Win32)     Location of .bzr.log (use 'NUL' to suppress log).
+BZR_COLUMNS         Override implicit terminal width.
+BZR_CONCURRENCY     Number of processes that can be run concurrently (selftest)
+BZR_PROGRESS_BAR    Override the progress display. Values are 'none', 'dots',
+                    or 'tty'.
+BZR_PDB             Control whether to launch a debugger on error.
+BZR_SIGQUIT_PDB     Control whether SIGQUIT behaves normally or invokes a
+                    breakin debugger.
+=================== ===========================================================
 """
 
 
 _files = \
 r"""Files
 
-:On Linux:   ~/.bazaar/bazaar.conf
+:On Unix:   ~/.bazaar/bazaar.conf
 :On Windows: C:\\Documents and Settings\\username\\Application Data\\bazaar\\2.0\\bazaar.conf
 
 Contains the user's default configuration. The section ``[DEFAULT]`` is
@@ -875,6 +887,8 @@ class RegisteredTopic(object):
 def help_as_plain_text(text):
     """Minimal converter of reStructuredText to plain text."""
     import re
+    # Remove the standalone code block marker
+    text = re.sub(r"(?m)^\s*::\n\s*$", "", text)
     lines = text.splitlines()
     result = []
     for line in lines:

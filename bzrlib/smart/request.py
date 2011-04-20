@@ -510,6 +510,8 @@ request_handlers.register_lazy( 'Branch.revision_history',
     'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
 request_handlers.register_lazy( 'Branch.set_config_option',
     'bzrlib.smart.branch', 'SmartServerBranchRequestSetConfigOption')
+request_handlers.register_lazy( 'Branch.set_config_option_dict',
+    'bzrlib.smart.branch', 'SmartServerBranchRequestSetConfigOptionDict')
 request_handlers.register_lazy( 'Branch.set_last_revision',
     'bzrlib.smart.branch', 'SmartServerBranchRequestSetLastRevision')
 request_handlers.register_lazy(

@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ from bzrlib import (
     errors,
     merge as _mod_merge,
     option,
-    progress,
     )
 from bzrlib.tests import (
     multiply_tests,
@@ -46,7 +45,7 @@ def load_tests(standard_tests, module, loader):
 class TestMergeImplementation(TestCaseWithTransport):
 
     def do_merge(self, target_tree, source_tree, **kwargs):
-        merger = _mod_merge.Merger.from_revision_ids(progress.DummyProgress(),
+        merger = _mod_merge.Merger.from_revision_ids(None,
             target_tree, source_tree.last_revision(),
             other_branch=source_tree.branch)
         merger.merge_type=self.merge_type

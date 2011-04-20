@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,7 +27,6 @@ from bzrlib import (
     inventory,
     merge,
     osutils,
-    repository,
     revision as _mod_revision,
     tests,
     treebuilder,
@@ -35,13 +34,11 @@ from bzrlib import (
 from bzrlib.bundle import read_mergeable_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
-from bzrlib.bzrdir import BzrDir
 from bzrlib.directory_service import directories
 from bzrlib.bundle.serializer import write_bundle, read_bundle, v09, v4
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08
 from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.bundle.serializer.v4 import BundleSerializerV4
-from bzrlib.branch import Branch
 from bzrlib.repofmt import knitrepo
 from bzrlib.tests import (
     test_read_bundle,
@@ -114,12 +111,12 @@ class MockTree(object):
             ie = InventoryDirectory(file_id, name, parent_id)
         elif kind == 'file':
             ie = InventoryFile(file_id, name, parent_id)
+            ie.text_sha1 = text_sha_1
+            ie.text_size = text_size
         elif kind == 'symlink':
             ie = InventoryLink(file_id, name, parent_id)
         else:
             raise errors.BzrError('unknown kind %r' % kind)
-        ie.text_sha1 = text_sha_1
-        ie.text_size = text_size
         return ie
 
     def add_dir(self, file_id, path):
@@ -1039,7 +1036,7 @@ class BundleTester(object):
         bundle = read_bundle(self.create_bundle_text('null:', 'rev2')[0])
         repo = self.make_repository('repo', format='dirstate-with-subtree')
         bundle.install_revisions(repo)
-        inv_text = repo.get_inventory_xml('rev2')
+        inv_text = repo._get_inventory_xml('rev2')
         self.assertNotContainsRe(inv_text, 'format="5"')
         self.assertContainsRe(inv_text, 'format="7"')
 
@@ -1065,8 +1062,8 @@ class BundleTester(object):
 
     def test_inv_hash_across_serializers(self):
         repo = self.make_repo_with_installed_revisions()
-        recorded_inv_sha1 = repo.get_inventory_sha1('rev2')
-        xml = repo.get_inventory_xml('rev2')
+        recorded_inv_sha1 = repo.get_revision('rev2').inventory_sha1
+        xml = repo._get_inventory_xml('rev2')
         self.assertEqual(osutils.sha_string(xml), recorded_inv_sha1)
 
     def test_across_models_incompatible(self):
@@ -1820,7 +1817,7 @@ class TestReadMergeableFromUrl(tests.TestCaseWithTransport):
             def look_up(self, name, url):
                 return 'source'
         directories.register('foo:', FooService, 'Testing directory service')
-        self.addCleanup(lambda: directories.remove('foo:'))
+        self.addCleanup(directories.remove, 'foo:')
         self.build_tree_contents([('./foo:bar', out.getvalue())])
         self.assertRaises(errors.NotABundle, read_mergeable_from_url,
                           'foo:bar')

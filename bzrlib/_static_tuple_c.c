@@ -703,6 +703,18 @@ StaticTuple_traverse(StaticTuple *self, visitproc visit, void *arg)
     return 0;
 }
 
+
+static PyObject *
+StaticTuple_sizeof(StaticTuple *self)
+{
+	Py_ssize_t res;
+
+	res = _PyObject_SIZE(&StaticTuple_Type) + (int)self->size * sizeof(void*);
+	return PyInt_FromSsize_t(res);
+}
+
+
+
 static char StaticTuple_doc[] =
     "C implementation of a StaticTuple structure."
     "\n This is used as StaticTuple(item1, item2, item3)"
@@ -722,6 +734,7 @@ static PyMethodDef StaticTuple_methods[] = {
      "Create a StaticTuple from a given sequence. This functions"
      " the same as the tuple() constructor."},
     {"__reduce__", (PyCFunction)StaticTuple_reduce, METH_NOARGS, StaticTuple_reduce_doc},
+    {"__sizeof__",  (PyCFunction)StaticTuple_sizeof, METH_NOARGS}, 
     {NULL, NULL} /* sentinel */
 };
 

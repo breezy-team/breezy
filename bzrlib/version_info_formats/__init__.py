@@ -20,9 +20,6 @@ import time
 
 from bzrlib.osutils import local_time_offset, format_date
 from bzrlib import registry
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    )
 
 
 def create_date_str(timestamp=None, offset=None):

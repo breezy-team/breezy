@@ -81,7 +81,7 @@ class XMLRPCTransport(xmlrpclib.Transport):
 class LaunchpadService(object):
     """A service to talk to Launchpad via XMLRPC.
 
-    See http://bazaar-vcs.org/Specs/LaunchpadRpc for the methods we can call.
+    See http://wiki.bazaar.canonical.com/Specs/LaunchpadRpc for the methods we can call.
     """
 
     LAUNCHPAD_DOMAINS = {

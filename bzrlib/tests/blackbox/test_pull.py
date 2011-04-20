@@ -29,12 +29,12 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.osutils import pathjoin
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
 
 
-class TestPull(ExternalBase):
+class TestPull(TestCaseWithTransport):
 
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
@@ -343,7 +343,7 @@ class TestPull(ExternalBase):
             def look_up(self, name, url):
                 return 'source'
         directories.register('foo:', FooService, 'Testing directory service')
-        self.addCleanup(lambda: directories.remove('foo:'))
+        self.addCleanup(directories.remove, 'foo:')
         self.run_bzr('pull foo:bar -d target')
         self.assertEqual(source_last, target.last_revision())
 
@@ -433,3 +433,66 @@ class TestPull(ExternalBase):
             from_tree.branch.bzrdir.root_transport.base])
         self.assertContainsRe(err,
             "(?m)Doing on-the-fly conversion")
+
+    def test_pull_to_experimental_format_warning(self):
+        """You get a warning for pulling into experimental formats.
+        """
+        from_tree = self.make_branch_and_tree('from', format='development-subtree')
+        to_tree = self.make_branch_and_tree('to', format='development-subtree')
+        from_tree.commit(message='first commit')
+        out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertContainsRe(err,
+            "(?m)Fetching into experimental format")
+
+    def test_pull_cross_to_experimental_format_warning(self):
+        """You get a warning for pulling into experimental formats.
+        """
+        from_tree = self.make_branch_and_tree('from', format='2a')
+        to_tree = self.make_branch_and_tree('to', format='development-subtree')
+        from_tree.commit(message='first commit')
+        out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
+        self.assertContainsRe(err,
+            "(?m)Fetching into experimental format")
+
+    def test_pull_show_base(self):
+        """bzr pull supports --show-base
+
+        see https://bugs.launchpad.net/bzr/+bug/202374"""
+        # create two trees with conflicts, setup conflict, check that
+        # conflicted file looks correct
+        a_tree = self.example_branch('a')
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+
+        f = open(pathjoin('a', 'hello'),'wt')
+        f.write('fee')
+        f.close()
+        a_tree.commit('fee')
+
+        f = open(pathjoin('b', 'hello'),'wt')
+        f.write('fie')
+        f.close()
+
+        out,err=self.run_bzr(['pull','-d','b','a','--show-base'])
+
+        # check for message here
+        self.assertEqual(err,
+                         ' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
+
+        self.assertEqualDiff('<<<<<<< TREE\n'
+                             'fie||||||| BASE-REVISION\n'
+                             'foo=======\n'
+                             'fee>>>>>>> MERGE-SOURCE\n',
+                             open(pathjoin('b', 'hello')).read())
+
+    def test_pull_show_base_working_tree_only(self):
+        """--show-base only allowed if there's a working tree
+
+        see https://bugs.launchpad.net/bzr/+bug/202374"""
+        # create a branch, see that --show-base fails
+        self.make_branch('from')
+        self.make_branch('to')
+        out=self.run_bzr(['pull','-d','to','from','--show-base'],retcode=3)
+        self.assertEqual(out,
+                         ('','bzr: ERROR: Need working tree for --show-base.\n'))
+
+

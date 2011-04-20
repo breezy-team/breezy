@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@ import sys
 
 from bzrlib import (
     errors,
-    symbol_versioning,
+    registry,
     tests,
     version_info_formats,
     )
@@ -192,6 +192,7 @@ class TestVersionInfo(TestCaseWithTransport):
         val = sio.getvalue()
         self.assertContainsRe(val, "'revision_id': None")
         self.assertContainsRe(val, "'revno': 0")
+        self.assertNotContainsString(val, '\n\n\n\n')
 
     def test_python_version(self):
         wt = self.create_branch()
@@ -325,20 +326,8 @@ class TestVersionInfoFormatRegistry(tests.TestCase):
 
     def setUp(self):
         super(TestVersionInfoFormatRegistry, self).setUp()
-        registry = version_info_formats.format_registry
-        self._default_key = registry._default_key
-        self._dict = registry._dict.copy()
-        self._help_dict = registry._help_dict.copy()
-        self._info_dict = registry._info_dict.copy()
-        self.addCleanup(self._cleanup)
-
-    def _cleanup(self):
-        # Restore the registry to pristine state after the test runs
-        registry = version_info_formats.format_registry
-        registry._default_key = self._default_key
-        registry._dict = self._dict
-        registry._help_dict = self._help_dict
-        registry._info_dict = self._info_dict
+        self.overrideAttr(version_info_formats,
+                          'format_registry', registry.Registry())
 
     def test_register_remove(self):
         registry = version_info_formats.format_registry
