@@ -2263,8 +2263,8 @@ class DirState(object):
         """The number of parent entries in each record row."""
         return len(self._parents) - len(self._ghosts)
 
-    @staticmethod
-    def on_file(path, sha1_provider=None, worth_saving_limit=0):
+    @classmethod
+    def on_file(cls, path, sha1_provider=None, worth_saving_limit=0):
         """Construct a DirState on the file at path "path".
 
         :param path: The path at which the dirstate file on disk should live.
@@ -2277,8 +2277,8 @@ class DirState(object):
         """
         if sha1_provider is None:
             sha1_provider = DefaultSHA1Provider()
-        result = DirState(path, sha1_provider,
-                          worth_saving_limit=worth_saving_limit)
+        result = cls(path, sha1_provider,
+                     worth_saving_limit=worth_saving_limit)
         return result
 
     def _read_dirblocks_if_needed(self):
@@ -2424,7 +2424,7 @@ class DirState(object):
             # number of changes, keeping the calculation time
             # as low overhead as possible. (This also keeps all existing
             # tests passing as the default is 0, i.e. always save.)
-            if len(self._known_hash_changes) > self._worth_saving_limit:
+            if len(self._known_hash_changes) >= self._worth_saving_limit:
                 return True
         return False
 

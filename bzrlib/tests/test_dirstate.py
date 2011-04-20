@@ -1343,6 +1343,50 @@ class TestDirStateManipulations(TestCaseWithDirState):
             tree1.unlock()
 
 
+class TestDirStateHashUpdates(TestCaseWithDirState):
+
+    def do_update_entry(self, state, path):
+        entry = state._get_entry(0, path_utf8=path)
+        stat = os.lstat(path)
+        return dirstate.update_entry(state, entry, os.path.abspath(path), stat)
+
+    def test_worth_saving_limit_avoids_writing(self):
+        state = self.create_complex_dirstate()
+        state.save()
+        state.unlock()
+        self.build_tree(['c', 'd'])
+        state = InstrumentedDirState.on_file('dirstate',
+                                             worth_saving_limit=2)
+        state.lock_write()
+        self.addCleanup(state.unlock)
+        state._read_dirblocks_if_needed()
+        state.adjust_time(+20) # Allow things to be cached
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        f = open('dirstate', 'rb')
+        try:
+            content = f.read()
+        finally:
+            f.close()
+        self.do_update_entry(state, 'c')
+        self.assertEqual(1, len(state._known_hash_changes))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
+                         state._dirblock_state)
+        state.save()
+        # It should not have set the state to IN_MEMORY_UNMODIFIED because the
+        # hash values haven't been written out.
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
+                         state._dirblock_state)
+        self.assertFileEqual(content, 'dirstate')
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
+                         state._dirblock_state)
+        self.do_update_entry(state, 'd')
+        self.assertEqual(2, len(state._known_hash_changes))
+        state.save()
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        self.assertEqual(0, len(state._known_hash_changes))
+
 class TestGetLines(TestCaseWithDirState):
 
     def test_get_line_with_2_rows(self):
@@ -1741,8 +1785,9 @@ class TestDirstateSortOrder(tests.TestCaseWithTransport):
 class InstrumentedDirState(dirstate.DirState):
     """An DirState with instrumented sha1 functionality."""
 
-    def __init__(self, path, sha1_provider):
-        super(InstrumentedDirState, self).__init__(path, sha1_provider)
+    def __init__(self, path, sha1_provider, worth_saving_limit=0):
+        super(InstrumentedDirState, self).__init__(path, sha1_provider,
+            worth_saving_limit=worth_saving_limit)
         self._time_offset = 0
         self._log = []
         # member is dynamically set in DirState.__init__ to turn on trace
