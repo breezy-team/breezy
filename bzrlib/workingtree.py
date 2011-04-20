@@ -1270,7 +1270,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             self.branch.generate_revision_history(new_revision)
         except errors.NoSuchRevision:
             # not present in the repo - dont try to set it deeper than the tip
-            self.branch.set_last_revision_info(1, new_revision)
+            self.branch._set_revision_history([new_revision])
         return True
 
     @needs_tree_write_lock
