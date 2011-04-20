@@ -367,7 +367,6 @@ class FetchSpecFactory(object):
 
     def __init__(self):
         self._explicit_rev_ids = set()
-        self.include_tags = True
         self.source_branch = None
         self.source_branch_stop_revision_id = None
         self.source_repo = None
@@ -395,8 +394,7 @@ class FetchSpecFactory(object):
         heads_to_fetch = set(self._explicit_rev_ids)
         if self.source_branch is not None:
             must_fetch, if_present_fetch = self.source_branch.heads_to_fetch(
-                stop_revision=self.source_branch_stop_revision_id,
-                include_tags=self.include_tags)
+                stop_revision=self.source_branch_stop_revision_id)
             heads_to_fetch.update(must_fetch)
         else:
             if_present_fetch = set()

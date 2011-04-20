@@ -670,17 +670,15 @@ class Branch(controldir.ControlComponent):
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     @needs_write_lock
-    def fetch(self, from_branch, last_revision=None, fetch_tags=True):
+    def fetch(self, from_branch, last_revision=None):
         """Copy revisions from from_branch into this branch.
 
         :param from_branch: Where to copy from.
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
-        :param fetch_tags: Whether to fetch tags
         :return: None
         """
-        return InterBranch.get(from_branch, self).fetch(last_revision,
-            fetch_tags=fetch_tags)
+        return InterBranch.get(from_branch, self).fetch(last_revision)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
@@ -995,7 +993,7 @@ class Branch(controldir.ControlComponent):
             return (0, _mod_revision.NULL_REVISION)
 
     def update_revisions(self, other, stop_revision=None, overwrite=False,
-                         graph=None, fetch_tags=True):
+            graph=None):
         """Pull in new perfect-fit revisions.
 
         :param other: Another Branch to pull from
@@ -1004,12 +1002,10 @@ class Branch(controldir.ControlComponent):
             to see if it is a proper descendant.
         :param graph: A Graph object that can be used to query history
             information. This can be None.
-        :param fetch_tags: Flag that specifies if tags from other should be
-            fetched too.
         :return: None
         """
         return InterBranch.get(other, self).update_revisions(stop_revision,
-            overwrite, graph, fetch_tags=fetch_tags)
+            overwrite, graph)
 
     @deprecated_method(deprecated_in((2, 4, 0)))
     def import_last_revision_info(self, source_repo, revno, revid):
@@ -1035,7 +1031,7 @@ class Branch(controldir.ControlComponent):
         :param revid: Revision id of the new tip
         """
         if not self.repository.has_same_location(source.repository):
-            self.fetch(source, revid, fetch_tags=True)
+            self.fetch(source, revid)
         self.set_last_revision_info(revno, revid)
 
     def revision_id_to_revno(self, revision_id):
@@ -1517,12 +1513,11 @@ class Branch(controldir.ControlComponent):
         else:
             raise AssertionError("invalid heads: %r" % (heads,))
 
-    def heads_to_fetch(self, stop_revision=None, include_tags=True):
+    def heads_to_fetch(self, stop_revision=None):
         """Return the heads that must and that should be fetched to copy this
         branch into another repo.
 
         :param stop_revision: Last branch revision to fetch, if not tip.
-        :param include_tags: Whether to include tags
 
         :returns: a 2-tuple of (must_fetch, if_present_fetch).  must_fetch is a
             set of heads that must be fetched.  if_present_fetch is a set of
@@ -1534,12 +1529,9 @@ class Branch(controldir.ControlComponent):
         if stop_revision is None:
             stop_revision = self.last_revision()
         must_fetch = set([stop_revision])
-        if include_tags:
-            try:
-                if_present_fetch = set(self.tags.get_reverse_tag_dict())
-            except errors.TagsNotSupported:
-                if_present_fetch = set()
-        else:
+        try:
+            if_present_fetch = set(self.tags.get_reverse_tag_dict())
+        except errors.TagsNotSupported:
             if_present_fetch = set()
         must_fetch.discard(_mod_revision.NULL_REVISION)
         if_present_fetch.discard(_mod_revision.NULL_REVISION)
@@ -3284,7 +3276,7 @@ class InterBranch(InterObject):
 
     @needs_write_lock
     def update_revisions(self, stop_revision=None, overwrite=False,
-                         graph=None, fetch_tags=True):
+            graph=None):
         """Pull in new perfect-fit revisions.
 
         :param stop_revision: Updated until the given revision
@@ -3292,8 +3284,6 @@ class InterBranch(InterObject):
             to see if it is a proper descendant.
         :param graph: A Graph object that can be used to query history
             information. This can be None.
-        :param fetch_tags: Flag that specifies if tags from source should be
-            fetched too.
         :return: None
         """
         raise NotImplementedError(self.update_revisions)
@@ -3317,11 +3307,10 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.copy_content_into)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None, fetch_tags=False):
+    def fetch(self, stop_revision=None):
         """Fetch revisions.
 
         :param stop_revision: Last revision to fetch
-        :param fetch_tags: Whether to fetch tags
         """
         raise NotImplementedError(self.fetch)
 
@@ -3365,7 +3354,7 @@ class GenericInterBranch(InterBranch):
             self.source.tags.merge_to(self.target.tags)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None, fetch_tags=True):
+    def fetch(self, stop_revision=None):
         if self.target.base == self.source.base:
             return (0, [])
         self.source.lock_read()
@@ -3376,7 +3365,6 @@ class GenericInterBranch(InterBranch):
             fetch_spec_factory.source_repo = self.source.repository
             fetch_spec_factory.target_repo = self.target.repository
             fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
-            fetch_spec_factory.include_tags = fetch_tags
             fetch_spec = fetch_spec_factory.make_fetch_spec()
             return self.target.repository.fetch(self.source.repository,
                 fetch_spec=fetch_spec)
@@ -3385,7 +3373,7 @@ class GenericInterBranch(InterBranch):
 
     @needs_write_lock
     def update_revisions(self, stop_revision=None, overwrite=False,
-        graph=None, fetch_tags=True):
+            graph=None):
         """See InterBranch.update_revisions()."""
         other_revno, other_last_revision = self.source.last_revision_info()
         stop_revno = None # unknown
@@ -3403,7 +3391,7 @@ class GenericInterBranch(InterBranch):
         # case of having something to pull, and so that the check for
         # already merged can operate on the just fetched graph, which will
         # be cached in memory.
-        self.fetch(stop_revision=stop_revision, fetch_tags=fetch_tags)
+        self.fetch(stop_revision=stop_revision)
         # Check to see if one is an ancestor of the other
         if not overwrite:
             if graph is None:
