@@ -764,15 +764,17 @@ class Branch(controldir.ControlComponent):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        revision_id = _mod_revision.ensure_null(revision_id)
-        old_revno, old_revid = self.last_revision_info()
-        if self._get_append_revisions_only():
-            self._check_history_violation(revision_id)
-        self._run_pre_change_branch_tip_hooks(revno, revision_id)
-        self._write_last_revision_info(revno, revision_id)
-        self._clear_cached_state()
-        self._last_revision_info_cache = revno, revision_id
-        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
+        """Set the last revision of this branch.
+
+        The caller is responsible for checking that the revno is correct
+        for this revision id.
+
+        It may be possible to set the branch last revision to an id not
+        present in the repository.  However, branches can also be
+        configured to check constraints on history, in which case this may not
+        be permitted.
+        """
+        raise NotImplementedError(self.last_revision_info)
 
     @needs_write_lock
     def set_parent(self, url):
@@ -1012,7 +1014,7 @@ class Branch(controldir.ControlComponent):
         return self._last_revision_info_cache
 
     def _read_last_revision_info(self):
-        raise NotImplementedError(self._last_revision_info)
+        raise NotImplementedError(self._read_last_revision_info)
 
     def update_revisions(self, other, stop_revision=None, overwrite=False,
                          graph=None, fetch_tags=True):
@@ -2519,17 +2521,15 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
-        """Set the last revision of this branch.
-
-        The caller is responsible for checking that the revno is correct
-        for this revision id.
-
-        It may be possible to set the branch last revision to an id not
-        present in the repository.  However, branches can also be
-        configured to check constraints on history, in which case this may not
-        be permitted.
-        """
-        raise NotImplementedError(self.set_last_revision_info)
+        revision_id = _mod_revision.ensure_null(revision_id)
+        old_revno, old_revid = self.last_revision_info()
+        if self._get_append_revisions_only():
+            self._check_history_violation(revision_id)
+        self._run_pre_change_branch_tip_hooks(revno, revision_id)
+        self._write_last_revision_info(revno, revision_id)
+        self._clear_cached_state()
+        self._last_revision_info_cache = revno, revision_id
+        self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
@@ -2735,6 +2735,8 @@ class FullHistoryBzrBranch(BzrBranch):
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
         self._set_revision_history(rev_history)
+        for hook in Branch.hooks['set_rh']:
+            hook(self, rev_history)
 
     def _set_revision_history(self, rev_history):
         if 'evil' in debug.debug_flags:

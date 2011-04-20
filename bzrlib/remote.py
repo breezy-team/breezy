@@ -2850,7 +2850,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             missing_parent = parent_map[missing_parent]
         raise errors.RevisionNotPresent(missing_parent, self.repository)
 
-    def _last_revision_info(self):
+    def _read_last_revision_info(self):
         response = self._call('Branch.last_revision_info', self._remote_path())
         if response[0] != 'ok':
             raise SmartProtocolError('unexpected response code %s' % (response,))
