@@ -41,6 +41,7 @@ from bzrlib.workingtree import (
     TreeDirectory,
     TreeFile,
     TreeLink,
+    InventoryWorkingTree,
     WorkingTree,
     )
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
@@ -775,7 +776,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.lock_read()
             self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in
-                                tree.inventory.iter_entries()])
+                                tree.iter_entries_by_dir()])
             tree.unlock()
         finally:
             osutils.normalized_filename = orig
@@ -797,6 +798,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test__write_inventory(self):
         # The private interface _write_inventory is currently used by transform.
         tree = self.make_branch_and_tree('.')
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable("_write_inventory does not exist on "
+                "non-inventory working trees")
         # if we write write an inventory then do a walkdirs we should get back
         # missing entries, and actual, and unknowns as appropriate.
         self.build_tree(['present', 'unknown'])
