@@ -777,6 +777,16 @@ class Branch(controldir.ControlComponent):
         raise NotImplementedError(self.last_revision_info)
 
     @needs_write_lock
+    def generate_revision_history(self, revision_id, last_rev=None,
+                                  other_branch=None):
+        """See BzrBranch5.generate_revision_history"""
+        # FIXME: This shouldn't have to fetch the entire history
+        history = self._lefthand_history(revision_id, last_rev, other_branch)
+        revno = len(history)
+        self.set_last_revision_info(revno, revision_id)
+        self._cache_revision_history(history)
+
+    @needs_write_lock
     def set_parent(self, url):
         """See Branch.set_parent."""
         # TODO: Maybe delete old location files?
@@ -2531,20 +2541,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
         self._last_revision_info_cache = revno, revision_id
         self._run_post_change_branch_tip_hooks(old_revno, old_revid)
 
-    @needs_write_lock
-    def generate_revision_history(self, revision_id, last_rev=None,
-        other_branch=None):
-        """Create a new revision history that will finish with revision_id.
-
-        :param revision_id: the new tip to use.
-        :param last_rev: The previous last_revision. If not None, then this
-            must be a ancestory of revision_id, or DivergedBranches is raised.
-        :param other_branch: The other branch that DivergedBranches should
-            raise with respect to.
-        """
-        self._set_revision_history(self._lefthand_history(revision_id,
-            last_rev, other_branch))
-
     def basis_tree(self):
         """See Branch.basis_tree."""
         return self.repository.revision_tree(self.last_revision())
@@ -2794,6 +2790,20 @@ class FullHistoryBzrBranch(BzrBranch):
                 new_history = rev.get_history(self.repository)[1:]
         destination._set_revision_history(new_history)
 
+    @needs_write_lock
+    def generate_revision_history(self, revision_id, last_rev=None,
+        other_branch=None):
+        """Create a new revision history that will finish with revision_id.
+
+        :param revision_id: the new tip to use.
+        :param last_rev: The previous last_revision. If not None, then this
+            must be a ancestory of revision_id, or DivergedBranches is raised.
+        :param other_branch: The other branch that DivergedBranches should
+            raise with respect to.
+        """
+        self._set_revision_history(self._lefthand_history(revision_id,
+            last_rev, other_branch))
+
 
 class BzrBranch5(FullHistoryBzrBranch):
     """A format 5 branch. This supports new features over plain branches.
@@ -3000,14 +3010,6 @@ class BzrBranch8(BzrBranch):
     def _get_append_revisions_only(self):
         return self.get_config(
             ).get_user_option_as_bool('append_revisions_only')
-
-    @needs_write_lock
-    def generate_revision_history(self, revision_id, last_rev=None,
-                                  other_branch=None):
-        """See BzrBranch5.generate_revision_history"""
-        history = self._lefthand_history(revision_id, last_rev, other_branch)
-        revno = len(history)
-        self.set_last_revision_info(revno, revision_id)
 
     @needs_read_lock
     def get_rev_id(self, revno, history=None):
