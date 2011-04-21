@@ -2,8 +2,22 @@ Source: bzr
 Section: vcs
 Priority: optional
 Maintainer: Debian Bazaar Maintainers <pkg-bazaar-maint@lists.alioth.debian.org>
-Uploaders: Jeff Bailey <jbailey@raspberryginger.com>, Wouter van Heyst <larstiq@larstiq.dyndns.org>, Reinhard Tartler <siretart@tauware.de>, Jelmer Vernooij <jelmer@debian.org>
-Build-Depends: debhelper (>> 7.4.16), python (>= 2.6.6-3), python-all-dev (>= 2.6.6-3), python-docutils, cython | python-pyrex, python-testtools (>= 0.9.5~), python-configobj (>= 4.7.2+ds-2), python (>> 2.5) | python-celementtree | python-elementtree, python-subunit, python-meliae, python-medusa, python-lzma
+Uploaders: Jeff Bailey <jbailey@raspberryginger.com>,
+           Wouter van Heyst <larstiq@larstiq.dyndns.org>,
+           Reinhard Tartler <siretart@tauware.de>,
+           Jelmer Vernooij <jelmer@debian.org>
+Build-Depends: cython | python-pyrex,
+               debhelper (>> 7.4.16),
+               python (>= 2.6.6-3),
+               python (>> 2.5) | python-celementtree | python-elementtree,
+               python-all-dev (>= 2.6.6-3),
+               python-configobj (>= 4.7.2+ds-2),
+               python-docutils,
+               python-lzma,
+               python-medusa,
+               python-meliae,
+               python-subunit,
+               python-testtools (>= 0.9.5~)
 Standards-Version: 3.9.1
 X-Python-Version: >= 2.4
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr/2.4
@@ -12,9 +26,11 @@ Dm-Upload-Allowed: yes
 
 Package: bzr
 Architecture: all
-Depends: ${python:Depends}, python-bzrlib (>= ${source:Version}), ${misc:Depends}
+Depends: python-bzrlib (>= ${source:Version}),
+         ${misc:Depends},
+         ${python:Depends}
 Recommends: bzrtools
-Suggests: bzr-gtk, bzr-svn, bzr-doc, python-testtools (>= 0.9.5~)
+Suggests: bzr-doc, bzr-gtk, bzr-svn
 Provides: ${python:Provides}
 Description: easy to use distributed version control system
  Bazaar is a distributed version control system designed to be easy to
@@ -43,9 +59,16 @@ Description: easy to use distributed version control system
 Package: python-bzrlib
 Architecture: any
 Section: python
-Depends: ${shlibs:Depends}, ${python:Depends}, python (>> 2.5) | python-celementtree | python-elementtree, python-configobj, ${misc:Depends}
-Recommends: python-paramiko, ca-certificates, python-launchpadlib
-Suggests: python-pycurl, xdg-utils, python-kerberos (>= 1.0+svn2455-1)
+Depends: python (>> 2.5) | python-celementtree | python-elementtree,
+         python-configobj,
+         ${misc:Depends},
+         ${python:Depends},
+         ${shlibs:Depends}
+Recommends: ca-certificates, python-launchpadlib, python-paramiko
+Suggests: python-bzrlib.tests,
+          python-kerberos (>= 1.0+svn2455-1),
+          python-pycurl,
+          xdg-utils
 Breaks: bzr (<< 2.3.0-2), ${python:Breaks}
 Replaces: bzr (<< 2.3.0-2)
 Description: distributed version control system - python library
@@ -58,6 +81,24 @@ Description: distributed version control system - python library
  Install python-paramiko if you are going to push branches to remote
  hosts with sftp, and python-pycurl if you'd like for SSL certificates
  always to be verified.
+
+Package: python-bzrlib.tests
+Architecture: all
+Section: python
+Depends: python-bzrlib (= ${source:Version}),
+         python-testtools (>= 0.9.5~),
+         ${misc:Depends},
+         ${python:Depends}
+Breaks: python-bzrlib (<< 2.4.0~beta1-1), ${python:Breaks}
+Replaces: python-bzrlib (<< 2.4.0~beta1-1)
+Description: distributed version control system - testsuite
+ Bazaar is a distributed version control system designed to be easy to
+ use and intuitive, able to adapt to many workflows, reliable, and
+ easily extendable.
+ .
+ This package contains the bzrlib test infrastructure and testsuite,
+ which is required to run the 'bzr selftest' command and to run
+ plugin tests.
 
 Package: bzr-doc
 Architecture: all
