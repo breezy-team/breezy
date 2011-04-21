@@ -304,6 +304,12 @@ Bug Fixes
 * ``bzr serve`` no longer crashes when a server_started hook is installed and
   IPv6 support is available on the system. (Jelmer Vernooij, #293697)
 
+* ``bzr status`` will not rewrite the dirstate file if it only has
+  'trivial' changes. (Currently limited to dir updates and newly-added
+  files changing state.) This saves a bit of time for regular operations.
+  eg. ``bzr status`` in a 100k tree takes 1.4s to compute the status, but 1s
+  to re-save the dirstate file. (John Arbash Meinel, #765881)
+
 * ``bzr tags`` will no longer choke on branches with ghost revisions in
   their mainline and tags on revisions not in the branch ancestry. 
   (Jelmer Vernooij, #397556)

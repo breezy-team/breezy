@@ -866,6 +866,7 @@ cdef _update_entry(self, entry, abspath, stat_value):
     # _st mode of the compiled stat objects.
     cdef int minikind, saved_minikind
     cdef void * details
+    cdef int worth_saving
     minikind = minikind_from_mode(stat_value.st_mode)
     if 0 == minikind:
         return None
@@ -900,6 +901,7 @@ cdef _update_entry(self, entry, abspath, stat_value):
     # If we have gotten this far, that means that we need to actually
     # process this entry.
     link_or_sha1 = None
+    worth_saving = 1
     if minikind == c'f':
         executable = self._is_executable(stat_value.st_mode,
                                          saved_executable)
@@ -916,10 +918,15 @@ cdef _update_entry(self, entry, abspath, stat_value):
             entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
                            executable, packed_stat)
         else:
-            entry[1][0] = ('f', '', stat_value.st_size,
-                           executable, DirState.NULLSTAT)
+            # This file is not worth caching the sha1. Either it is too new, or
+            # it is newly added. Regardless, the only things we are changing
+            # are derived from the stat, and so are not worth caching. So we do
+            # *not* set the IN_MEMORY_MODIFIED flag. (But we'll save the
+            # updated values if there is *other* data worth saving.)
+            entry[1][0] = ('f', '', stat_value.st_size, executable,
+                           DirState.NULLSTAT)
+            worth_saving = 0
     elif minikind == c'd':
-        link_or_sha1 = None
         entry[1][0] = ('d', '', 0, False, packed_stat)
         if saved_minikind != c'd':
             # This changed from something into a directory. Make sure we
@@ -929,6 +936,10 @@ cdef _update_entry(self, entry, abspath, stat_value):
                 self._get_block_entry_index(entry[0][0], entry[0][1], 0)
             self._ensure_block(block_index, entry_index,
                                pathjoin(entry[0][0], entry[0][1]))
+        else:
+            # Any changes are derived trivially from the stat object, not worth
+            # re-writing a dirstate for just this
+            worth_saving = 0
     elif minikind == c'l':
         link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
         if self._cutoff_time is None:
@@ -940,7 +951,8 @@ cdef _update_entry(self, entry, abspath, stat_value):
         else:
             entry[1][0] = ('l', '', stat_value.st_size,
                            False, DirState.NULLSTAT)
-    self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+    if worth_saving:
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
     return link_or_sha1
 
 
