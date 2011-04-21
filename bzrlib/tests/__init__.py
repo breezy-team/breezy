@@ -2136,7 +2136,9 @@ class TestCase(testtools.TestCase):
             name = path.replace('\\', '/')
             if ie.kind == 'directory':
                 name = name + '/'
-            if name in shape:
+            if name == "/":
+                pass # ignore root entry
+            elif name in shape:
                 shape.remove(name)
             else:
                 extras.append(name)

@@ -252,10 +252,10 @@ class TestSmartAddTree(per_workingtree.TestCaseWithWorkingTree):
         self.addCleanup(wt.unlock)
         self.assertEqual([('', wt.path2id('')),
                           ('dir1', 'directory-dir1'),
-                          ('dir1/file2', 'file-dir1%file2'),
                           ('file1', 'file-file1'),
+                          ('dir1/file2', 'file-dir1%file2'),
                          ], [(path, ie.file_id) for path, ie
-                                in wt.iter_entries()])
+                                in wt.iter_entries_by_dir()])
 
 
 class TestSmartAddConflictRelatedFiles(per_workingtree.TestCaseWithWorkingTree):
@@ -311,7 +311,7 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         self.addCleanup(self.wt.unlock)
         self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
                          [(path, ie.kind) for path,ie in
-                          self.wt.iter_entries()])
+                          self.wt.iter_entries_by_dir()])
 
     def test_accessible_implicit(self):
         osutils.normalized_filename = osutils._accessible_normalized_filename
@@ -326,7 +326,7 @@ class TestSmartAddTreeUnicode(per_workingtree.TestCaseWithWorkingTree):
         self.addCleanup(self.wt.unlock)
         self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
                          [(path, ie.kind) for path,ie
-                          in self.wt.iter_entries()])
+                          in self.wt.iter_entries_by_dir()])
 
     def test_inaccessible_explicit(self):
         osutils.normalized_filename = osutils._inaccessible_normalized_filename
