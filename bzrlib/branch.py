@@ -2511,9 +2511,13 @@ class BzrBranch(Branch, _RelockDebugMixin):
             'revision-history', '\n'.join(history),
             mode=self.bzrdir._get_file_mode())
 
-    @needs_write_lock
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
+        self._set_revision_history(rev_history)
+
+    @needs_write_lock
+    def _set_revision_history(self, rev_history):
         if 'evil' in debug.debug_flags:
             mutter_callsite(3, "set_revision_history scales with history.")
         check_not_reserved_id = _mod_revision.check_not_reserved_id
@@ -2563,7 +2567,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
             except ValueError:
                 rev = self.repository.get_revision(revision_id)
                 new_history = rev.get_history(self.repository)[1:]
-        destination.set_revision_history(new_history)
+        destination._set_revision_history(new_history)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
@@ -2585,7 +2589,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         history = self._lefthand_history(revision_id)
         if len(history) != revno:
             raise AssertionError('%d != %d' % (len(history), revno))
-        self.set_revision_history(history)
+        self._set_revision_history(history)
 
     def _gen_revision_history(self):
         history = self._transport.get_bytes('revision-history').split('\n')
@@ -2605,7 +2609,7 @@ class BzrBranch(Branch, _RelockDebugMixin):
         :param other_branch: The other branch that DivergedBranches should
             raise with respect to.
         """
-        self.set_revision_history(self._lefthand_history(revision_id,
+        self._set_revision_history(self._lefthand_history(revision_id,
             last_rev, other_branch))
 
     def basis_tree(self):

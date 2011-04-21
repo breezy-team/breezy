@@ -29,6 +29,7 @@ from bzrlib import (
     remote,
     repository,
     revision,
+    symbol_versioning,
     tests,
     )
 from bzrlib.tests import (
@@ -74,7 +75,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
 
         br = self.get_branch()
         br.fetch(wt.branch)
-        br.set_revision_history(['rev1', 'rev2', 'rev3'])
+        br.generate_revision_history('rev3')
         rh = br.revision_history()
         self.assertEqual(['rev1', 'rev2', 'rev3'], rh)
         for revision_id in rh:
@@ -459,9 +460,11 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree = self.make_branch_and_tree('a')
         tree.commit('a commit', rev_id='rev1')
         br = tree.branch
-        br.set_revision_history(["rev1"])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            br.set_revision_history, ["rev1"])
         self.assertEquals(br.revision_history(), ["rev1"])
-        br.set_revision_history([])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            br.set_revision_history, [])
         self.assertEquals(br.revision_history(), [])
 
     def test_heads_to_fetch(self):
