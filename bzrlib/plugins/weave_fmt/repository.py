@@ -28,7 +28,6 @@ import urllib
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    bzrdir_weave,
     xml5,
     graph as _mod_graph,
     ui,
@@ -146,10 +145,10 @@ class AllInOneRepository(Repository):
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
-                           revision_id=None):
+                           revision_id=None, lossy=False):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
         result = CommitBuilder(self, parents, config, timestamp, timezone,
-                              committer, revprops, revision_id)
+                              committer, revprops, revision_id, lossy=lossy)
         self.start_write_group()
         return result
 
@@ -188,11 +187,6 @@ class AllInOneRepository(Repository):
     def make_working_trees(self):
         """Returns the policy for making working trees on new branches."""
         return True
-
-    def revision_graph_can_have_wrong_parents(self):
-        # XXX: This is an old format that we don't support full checking on, so
-        # just claim that checking for this inconsistency is not required.
-        return False
 
 
 class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
@@ -240,10 +234,10 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
-                           revision_id=None):
+                           revision_id=None, lossy=False):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
         result = CommitBuilder(self, parents, config, timestamp, timezone,
-                              committer, revprops, revision_id)
+                              committer, revprops, revision_id, lossy=lossy)
         self.start_write_group()
         return result
 
@@ -264,9 +258,6 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
         return self.inventories.add_lines((revision_id,), final_parents, lines,
             check_content=check_content)[0]
 
-    def revision_graph_can_have_wrong_parents(self):
-        return False
-
 
 class PreSplitOutRepositoryFormat(RepositoryFormat):
     """Base class for the pre split out repository formats."""
@@ -281,6 +272,9 @@ class PreSplitOutRepositoryFormat(RepositoryFormat):
     fast_deltas = False
     supports_leaving_lock = False
     supports_full_versioned_files = True
+    # XXX: This is an old format that we don't support full checking on, so
+    # just claim that checking for this inconsistency is not required.
+    revision_graph_can_have_wrong_parents = False
 
     def initialize(self, a_bzrdir, shared=False, _internal=False):
         """Create a weave repository."""
@@ -503,6 +497,7 @@ class RepositoryFormat7(MetaDirRepositoryFormat):
     supports_chks = False
     supports_funky_characters = False
     supports_full_versioned_files = True
+    revision_graph_can_have_wrong_parents = False
 
     _fetch_order = 'topological'
     _fetch_reconcile = True

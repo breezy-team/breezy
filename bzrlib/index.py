@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,10 +31,11 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib import trace
-from bzrlib.bisect_multi import bisect_multi_bytes
-from bzrlib.revision import NULL_REVISION
-from bzrlib.trace import mutter
+from bzrlib import (
+    bisect_multi,
+    revision as _mod_revision,
+    trace,
+    )
 """)
 from bzrlib import (
     debug,
@@ -444,7 +445,8 @@ class GraphIndex(object):
             # We already did this
             return
         if 'index' in debug.debug_flags:
-            mutter('Reading entire index %s', self._transport.abspath(self._name))
+            trace.mutter('Reading entire index %s',
+                          self._transport.abspath(self._name))
         if stream is None:
             stream = self._transport.get(self._name)
             if self._base_offset != 0:
@@ -671,7 +673,7 @@ class GraphIndex(object):
         if self._nodes is not None:
             return self._iter_entries_from_total_buffer(keys)
         else:
-            return (result[1] for result in bisect_multi_bytes(
+            return (result[1] for result in bisect_multi.bisect_multi_bytes(
                 self._lookup_keys_via_location, self._size, keys))
 
     def iter_entries_prefix(self, keys):
@@ -1288,15 +1290,15 @@ class CombinedGraphIndex(object):
     def get_parent_map(self, keys):
         """See graph.StackedParentsProvider.get_parent_map"""
         search_keys = set(keys)
-        if NULL_REVISION in search_keys:
-            search_keys.discard(NULL_REVISION)
-            found_parents = {NULL_REVISION:[]}
+        if _mod_revision.NULL_REVISION in search_keys:
+            search_keys.discard(_mod_revision.NULL_REVISION)
+            found_parents = {_mod_revision.NULL_REVISION:[]}
         else:
             found_parents = {}
         for index, key, value, refs in self.iter_entries(search_keys):
             parents = refs[0]
             if not parents:
-                parents = (NULL_REVISION,)
+                parents = (_mod_revision.NULL_REVISION,)
             found_parents[key] = parents
         return found_parents
 
@@ -1434,8 +1436,8 @@ class CombinedGraphIndex(object):
         """
         indices_info = zip(self._index_names, self._indices)
         if 'index' in debug.debug_flags:
-            mutter('CombinedGraphIndex reordering: currently %r, promoting %r',
-                   indices_info, hit_indices)
+            trace.mutter('CombinedGraphIndex reordering: currently %r, '
+                         'promoting %r', indices_info, hit_indices)
         hit_names = []
         unhit_names = []
         new_hit_indices = []
@@ -1458,7 +1460,7 @@ class CombinedGraphIndex(object):
         self._indices = new_hit_indices + unhit_indices
         self._index_names = hit_names + unhit_names
         if 'index' in debug.debug_flags:
-            mutter('CombinedGraphIndex reordered: %r', self._indices)
+            trace.mutter('CombinedGraphIndex reordered: %r', self._indices)
         return hit_names
 
     def _move_to_front_by_name(self, hit_names):

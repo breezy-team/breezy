@@ -39,7 +39,7 @@ class TestMkdir(TestCaseWithTransport):
         # here locally.
         shared_repo = self.make_repository('.')
         self.run_bzr(['mkdir', 'abc'], retcode=3)
-        self.failIfExists('abc')
+        self.assertPathDoesNotExist('abc')
 
 
 class TestVersioning(TestCaseInTempDir):
@@ -61,7 +61,7 @@ class TestVersioning(TestCaseInTempDir):
 
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'foo')
-        self.failIf(delta.modified)
+        self.assertFalse(delta.modified)
 
     def test_mkdir_in_subdir(self):
         """'bzr mkdir' operation in subdirectory"""
@@ -85,7 +85,7 @@ class TestVersioning(TestCaseInTempDir):
         self.assertEquals(len(delta.added), 2)
         self.assertEquals(delta.added[0][0], 'dir')
         self.assertEquals(delta.added[1][0], pathjoin('dir','subdir'))
-        self.failIf(delta.modified)
+        self.assertFalse(delta.modified)
 
     def test_mkdir_w_nested_trees(self):
         """'bzr mkdir' with nested trees"""
@@ -100,9 +100,9 @@ class TestVersioning(TestCaseInTempDir):
         os.chdir('../..')
 
         self.run_bzr(['mkdir', 'dir', 'a/dir', 'a/b/dir'])
-        self.failUnless(os.path.isdir('dir'))
-        self.failUnless(os.path.isdir('a/dir'))
-        self.failUnless(os.path.isdir('a/b/dir'))
+        self.assertTrue(os.path.isdir('dir'))
+        self.assertTrue(os.path.isdir('a/dir'))
+        self.assertTrue(os.path.isdir('a/b/dir'))
 
         wt = WorkingTree.open('.')
         wt_a = WorkingTree.open('a')
@@ -111,17 +111,17 @@ class TestVersioning(TestCaseInTempDir):
         delta = wt.changes_from(wt.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
-        self.failIf(delta.modified)
+        self.assertFalse(delta.modified)
 
         delta = wt_a.changes_from(wt_a.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
-        self.failIf(delta.modified)
+        self.assertFalse(delta.modified)
 
         delta = wt_b.changes_from(wt_b.basis_tree())
         self.assertEquals(len(delta.added), 1)
         self.assertEquals(delta.added[0][0], 'dir')
-        self.failIf(delta.modified)
+        self.assertFalse(delta.modified)
 
     def check_branch(self):
         """After all the above changes, run the check and upgrade commands.

@@ -37,7 +37,9 @@ def all_repository_vf_format_scenarios():
 
 def load_tests(basic_tests, module, loader):
     testmod_names = [
+        'test_check',
         'test_check_reconcile',
+        'test_reconcile',
         'test_repository',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(

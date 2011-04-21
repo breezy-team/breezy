@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -297,8 +297,6 @@ class TestUpgrade(TestCaseWithTransport):
         t = self.get_transport('.')
         t.delete_multi(['.bzr/pending-merges', '.bzr/inventory'])
         self.assertFalse(t.has('.bzr/stat-cache'))
-        # XXX: upgrade fails if a backup.bzr is already present
-        # -- David Allouche 2006-08-11
         t.delete_tree('backup.bzr.~1~')
         # At this point, we have a format6 branch without checkout files.
         upgrade.upgrade('.', bzrdir.BzrDirMetaFormat1())
@@ -308,7 +306,7 @@ class TestUpgrade(TestCaseWithTransport):
         # We have covered the scope of this test, we may as well check that
         # upgrade has not eaten our data, even if it's a bit redundant with
         # other tests.
-        self.failUnless(isinstance(control._format, bzrdir.BzrDirMetaFormat1))
+        self.assertIsInstance(control._format, bzrdir.BzrDirMetaFormat1)
         b = control.open_branch()
         self.assertEquals(b.revision_history(),
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
@@ -322,10 +320,9 @@ class TestUpgrade(TestCaseWithTransport):
         control = bzrdir.BzrDir.open('.')
         b = control.open_branch()
         # tsk, peeking under the covers.
-        self.failUnless(
-            isinstance(
-                control._format,
-                bzrdir.BzrDirFormat.get_default_format().__class__))
+        self.assertIsInstance(
+            control._format,
+            bzrdir.BzrDirFormat.get_default_format().__class__)
         rh = b.revision_history()
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
@@ -421,15 +418,15 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         # old format branches use a special lock file on sftp.
         b = self.make_branch('', format=BzrDirFormat6())
         b = branch.Branch.open(self.get_url())
-        self.failUnlessExists('.bzr/')
-        self.failUnlessExists('.bzr/branch-format')
-        self.failUnlessExists('.bzr/branch-lock')
+        self.assertPathExists('.bzr/')
+        self.assertPathExists('.bzr/branch-format')
+        self.assertPathExists('.bzr/branch-lock')
 
-        self.failIf(lexists('.bzr/branch-lock.write-lock'))
+        self.assertPathDoesNotExist('.bzr/branch-lock.write-lock')
         b.lock_write()
-        self.failUnlessExists('.bzr/branch-lock.write-lock')
+        self.assertPathExists('.bzr/branch-lock.write-lock')
         b.unlock()
-        self.failIf(lexists('.bzr/branch-lock.write-lock'))
+        self.assertPathDoesNotExist('.bzr/branch-lock.write-lock')
 
 
 class TestInfo(TestCaseWithTransport):

@@ -639,7 +639,7 @@ class TestRevisionSpec_branch(TestRevisionSpec):
         # XXX: Right now, we use fetch() to make sure the remote revisions
         # have been pulled into the local branch. We may change that
         # behavior in the future.
-        self.failUnless(self.tree.branch.repository.has_revision('new_r3'))
+        self.assertTrue(self.tree.branch.repository.has_revision('new_r3'))
 
     def test_no_commits(self):
         new_tree = self.make_branch_and_tree('new_tree')
