@@ -25,7 +25,6 @@ and then upgraded to the new format."""
 from bzrlib import (
     branch,
     bzrdir,
-    repository,
     tests,
     upgrade,
     workingtree,
@@ -42,7 +41,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
 
     def test_convert_branch5_branch6(self):
         b = self.make_branch('branch', format='knit')
-        b.set_revision_history(['AB', 'CD'])
+        b._set_revision_history(['CD'])
         b.set_parent('file:///EF')
         b.set_bound_location('file:///GH')
         b.set_push_location('file:///IJ')

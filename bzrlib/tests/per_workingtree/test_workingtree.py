@@ -327,7 +327,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # because some formats mutate the branch to set it on the tree
         # we need to alter the branch to let this pass.
         try:
-            wt.branch.set_revision_history(['A', 'B'])
+            wt.branch._set_revision_history(['A', 'B'])
         except errors.NoSuchRevision, e:
             self.assertEqual('B', e.revision)
             raise TestSkipped("Branch format does not permit arbitrary"
