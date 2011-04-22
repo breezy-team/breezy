@@ -1,0 +1,17 @@
+=== modified file 'bzrlib/builtins.py'
+--- old/bzrlib/builtins.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/builtins.py	2011-04-21 11:36:51 +0000
+@@ -3734,7 +3734,11 @@
+             randomize=None, exclude=None, strict=False,
+             load_list=None, debugflag=None, starting_with=None, subunit=False,
+             parallel=None, lsprof_tests=False):
+-        from bzrlib import tests
++        try:
++            from bzrlib import tests
++        except ImportError:
++            raise errors.BzrCommandError("tests not available. Install the "
++                "python-bzrlib.tests package to run the bzr testsuite.")
+ 
+         if testspecs_list is not None:
+             pattern = '|'.join(testspecs_list)
+

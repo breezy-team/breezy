@@ -30,8 +30,7 @@ Depends: python-bzrlib (>= ${source:Version}),
          ${misc:Depends},
          ${python:Depends}
 Recommends: bzrtools
-Suggests: bzr-doc, bzr-gtk, bzr-svn
-Provides: ${python:Provides}
+Suggests: bzr-doc, bzr-gtk, bzr-svn, python-bzrlib.tests
 Description: easy to use distributed version control system
  Bazaar is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and
@@ -69,7 +68,8 @@ Suggests: python-bzrlib.tests,
           python-kerberos (>= 1.0+svn2455-1),
           python-pycurl,
           xdg-utils
-Breaks: bzr (<< 2.3.0-2), ${python:Breaks}
+Breaks: bzr (<< 2.3.0-2)
+Provides: ${python:Provides}
 Replaces: bzr (<< 2.3.0-2)
 Description: distributed version control system - python library
  Bazaar is a distributed version control system designed to be easy to
@@ -85,12 +85,15 @@ Description: distributed version control system - python library
 Package: python-bzrlib.tests
 Architecture: all
 Section: python
-Depends: python-bzrlib (= ${source:Version}),
+Depends: python-bzrlib (>= ${source:Version}),
+         python-bzrlib (<= ${source:Version}.1~),
          python-testtools (>= 0.9.5~),
          ${misc:Depends},
          ${python:Depends}
-Breaks: python-bzrlib (<< 2.4.0~beta1-1), ${python:Breaks}
-Replaces: python-bzrlib (<< 2.4.0~beta1-1)
+Suggests: python-subunit
+Breaks: python-bzrlib (<< 2.4.0~beta1-2)
+Provides: ${python:Provides}
+Replaces: python-bzrlib (<< 2.4.0~beta1-2)
 Description: distributed version control system - testsuite
  Bazaar is a distributed version control system designed to be easy to
  use and intuitive, able to adapt to many workflows, reliable, and

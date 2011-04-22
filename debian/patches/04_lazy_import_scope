@@ -1,0 +1,1289 @@
+=== modified file 'bzrlib/api.py'
+--- old/bzrlib/api.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/api.py	2011-04-21 23:05:21 +0000
+@@ -22,10 +22,7 @@
+ """
+ 
+ import bzrlib
+-from bzrlib.lazy_import import lazy_import
+-lazy_import(globals(), """
+ from bzrlib.errors import IncompatibleAPI
+-""")
+ 
+ 
+ def get_current_api_version(object_with_api):
+
+=== modified file 'bzrlib/btree_index.py'
+--- old/bzrlib/btree_index.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/btree_index.py	2011-04-21 23:05:21 +0000
+@@ -18,10 +18,14 @@
+ """B+Tree indices"""
+ 
+ import cStringIO
+-from bisect import bisect_right
++
++from bzrlib.lazy_import import lazy_import
++lazy_import(globals(), """
++import bisect
+ import math
+ import tempfile
+ import zlib
++""")
+ 
+ from bzrlib import (
+     chunk_writer,
+@@ -1047,7 +1051,7 @@
+         # iter_steps = len(in_keys) + len(fixed_keys)
+         # bisect_steps = len(in_keys) * math.log(len(fixed_keys), 2)
+         if len(in_keys) == 1: # Bisect will always be faster for M = 1
+-            return [(bisect_right(fixed_keys, in_keys[0]), in_keys)]
++            return [(bisect.bisect_right(fixed_keys, in_keys[0]), in_keys)]
+         # elif bisect_steps < iter_steps:
+         #     offsets = {}
+         #     for key in in_keys:
+
+=== modified file 'bzrlib/bundle/commands.py'
+--- old/bzrlib/bundle/commands.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/bundle/commands.py	2011-04-21 23:05:21 +0000
+@@ -20,7 +20,6 @@
+ and for applying a changeset.
+ """
+ 
+-import sys
+ from cStringIO import StringIO
+ 
+ from bzrlib.lazy_import import lazy_import
+@@ -36,8 +35,6 @@
+ """)
+ 
+ from bzrlib.commands import Command
+-from bzrlib.option import Option
+-from bzrlib.trace import note
+ 
+ 
+ class cmd_bundle_info(Command):
+
+=== modified file 'bzrlib/bzrdir.py'
+--- old/bzrlib/bzrdir.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/bzrdir.py	2011-04-21 23:05:21 +0000
+@@ -29,8 +29,6 @@
+ 
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+-from stat import S_ISDIR
+-
+ import bzrlib
+ from bzrlib import (
+     config,
+
+=== modified file 'bzrlib/chk_map.py'
+--- old/bzrlib/chk_map.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/chk_map.py	2011-04-21 23:05:21 +0000
+@@ -44,7 +44,6 @@
+ lazy_import.lazy_import(globals(), """
+ from bzrlib import (
+     errors,
+-    versionedfile,
+     )
+ """)
+ from bzrlib import (
+
+=== modified file 'bzrlib/cmd_version_info.py'
+--- old/bzrlib/cmd_version_info.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/cmd_version_info.py	2011-04-21 23:05:21 +0000
+@@ -22,7 +22,6 @@
+ from bzrlib import (
+     branch,
+     errors,
+-    ui,
+     version_info_formats,
+     workingtree,
+     )
+
+=== modified file 'bzrlib/commands.py'
+--- old/bzrlib/commands.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/commands.py	2011-04-21 23:05:21 +0000
+@@ -27,10 +27,8 @@
+ 
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+-import codecs
+ import errno
+ import threading
+-from warnings import warn
+ 
+ import bzrlib
+ from bzrlib import (
+@@ -42,7 +40,6 @@
+     osutils,
+     trace,
+     ui,
+-    win32utils,
+     )
+ """)
+ 
+
+=== modified file 'bzrlib/config.py'
+--- old/bzrlib/config.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/config.py	2011-04-21 23:05:21 +0000
+@@ -63,13 +63,13 @@
+ """
+ 
+ import os
++import string
+ import sys
+ 
+ from bzrlib import commands
+ from bzrlib.decorators import needs_write_lock
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+-import errno
+ import fnmatch
+ import re
+ from cStringIO import StringIO
+
+=== modified file 'bzrlib/diff.py'
+--- old/bzrlib/diff.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/diff.py	2011-04-21 23:05:21 +0000
+@@ -25,10 +25,8 @@
+ import errno
+ import subprocess
+ import tempfile
+-import time
+ 
+ from bzrlib import (
+-    branch as _mod_branch,
+     bzrdir,
+     cmdline,
+     cleanup,
+
+=== modified file 'bzrlib/directory_service.py'
+--- old/bzrlib/directory_service.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/directory_service.py	2011-04-21 23:05:21 +0000
+@@ -20,11 +20,16 @@
+ to true URLs.  Examples include lp:urls and per-user location aliases.
+ """
+ 
+-from bzrlib import errors, registry
++from bzrlib import (
++    errors,
++    registry,
++    )
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+-from bzrlib.branch import Branch
+-from bzrlib import urlutils
++from bzrlib import (
++    branch as _mod_branch,
++    urlutils,
++    )
+ """)
+ 
+ 
+@@ -68,7 +73,7 @@
+     """
+ 
+     def look_up(self, name, url):
+-        branch = Branch.open_containing('.')[0]
++        branch = _mod_branch.Branch.open_containing('.')[0]
+         lookups = {
+             'parent': branch.get_parent,
+             'submit': branch.get_submit_branch,
+
+=== modified file 'bzrlib/fetch.py'
+--- old/bzrlib/fetch.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/fetch.py	2011-04-21 23:05:21 +0000
+@@ -33,7 +33,6 @@
+     versionedfile,
+     )
+ """)
+-import bzrlib
+ from bzrlib import (
+     errors,
+     ui,
+
+=== modified file 'bzrlib/foreign.py'
+--- old/bzrlib/foreign.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/foreign.py	2011-04-21 23:05:21 +0000
+@@ -29,7 +29,6 @@
+ lazy_import(globals(), """
+ from bzrlib import (
+     errors,
+-    osutils,
+     registry,
+     transform,
+     )
+
+=== modified file 'bzrlib/generate_ids.py'
+--- old/bzrlib/generate_ids.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/generate_ids.py	2011-04-21 23:05:21 +0000
+@@ -19,7 +19,6 @@
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+ import time
+-import unicodedata
+ 
+ from bzrlib import (
+     config,
+
+=== modified file 'bzrlib/hooks.py'
+--- old/bzrlib/hooks.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/hooks.py	2011-04-21 23:05:21 +0000
+@@ -16,8 +16,8 @@
+ 
+ 
+ """Support for plugin hooking logic."""
++
+ from bzrlib import (
+-    pyutils,
+     registry,
+     symbol_versioning,
+     )
+@@ -26,10 +26,10 @@
+ import textwrap
+ 
+ from bzrlib import (
+-        _format_version_tuple,
+-        errors,
+-        )
+-from bzrlib.help_topics import help_as_plain_text
++    _format_version_tuple,
++    errors,
++    pyutils,
++    )
+ """)
+ 
+ 
+
+=== modified file 'bzrlib/index.py'
+--- old/bzrlib/index.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/index.py	2011-04-21 23:05:21 +0000
+@@ -31,10 +31,11 @@
+ 
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+-from bzrlib import trace
+-from bzrlib.bisect_multi import bisect_multi_bytes
+-from bzrlib.revision import NULL_REVISION
+-from bzrlib.trace import mutter
++from bzrlib import (
++    bisect_multi,
++    revision as _mod_revision,
++    trace,
++    )
+ """)
+ from bzrlib import (
+     debug,
+@@ -444,7 +445,8 @@
+             # We already did this
+             return
+         if 'index' in debug.debug_flags:
+-            mutter('Reading entire index %s', self._transport.abspath(self._name))
++            trace.mutter('Reading entire index %s',
++                          self._transport.abspath(self._name))
+         if stream is None:
+             stream = self._transport.get(self._name)
+             if self._base_offset != 0:
+@@ -671,7 +673,7 @@
+         if self._nodes is not None:
+             return self._iter_entries_from_total_buffer(keys)
+         else:
+-            return (result[1] for result in bisect_multi_bytes(
++            return (result[1] for result in bisect_multi.bisect_multi_bytes(
+                 self._lookup_keys_via_location, self._size, keys))
+ 
+     def iter_entries_prefix(self, keys):
+@@ -1288,15 +1290,15 @@
+     def get_parent_map(self, keys):
+         """See graph.StackedParentsProvider.get_parent_map"""
+         search_keys = set(keys)
+-        if NULL_REVISION in search_keys:
+-            search_keys.discard(NULL_REVISION)
+-            found_parents = {NULL_REVISION:[]}
++        if _mod_revision.NULL_REVISION in search_keys:
++            search_keys.discard(_mod_revision.NULL_REVISION)
++            found_parents = {_mod_revision.NULL_REVISION:[]}
+         else:
+             found_parents = {}
+         for index, key, value, refs in self.iter_entries(search_keys):
+             parents = refs[0]
+             if not parents:
+-                parents = (NULL_REVISION,)
++                parents = (_mod_revision.NULL_REVISION,)
+             found_parents[key] = parents
+         return found_parents
+ 
+@@ -1434,8 +1436,8 @@
+         """
+         indices_info = zip(self._index_names, self._indices)
+         if 'index' in debug.debug_flags:
+-            mutter('CombinedGraphIndex reordering: currently %r, promoting %r',
+-                   indices_info, hit_indices)
++            trace.mutter('CombinedGraphIndex reordering: currently %r, '
++                         'promoting %r', indices_info, hit_indices)
+         hit_names = []
+         unhit_names = []
+         new_hit_indices = []
+@@ -1458,7 +1460,7 @@
+         self._indices = new_hit_indices + unhit_indices
+         self._index_names = hit_names + unhit_names
+         if 'index' in debug.debug_flags:
+-            mutter('CombinedGraphIndex reordered: %r', self._indices)
++            trace.mutter('CombinedGraphIndex reordered: %r', self._indices)
+         return hit_names
+ 
+     def _move_to_front_by_name(self, hit_names):
+
+=== modified file 'bzrlib/inventory.py'
+--- old/bzrlib/inventory.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/inventory.py	2011-04-21 23:05:21 +0000
+@@ -31,7 +31,6 @@
+ lazy_import(globals(), """
+ import collections
+ import copy
+-import os
+ import re
+ import tarfile
+ 
+@@ -43,11 +42,11 @@
+     )
+ """)
+ 
+-from bzrlib.errors import (
+-    BzrCheckError,
+-    BzrError,
++from bzrlib import (
++    lazy_regex,
++    trace,
+     )
+-from bzrlib.trace import mutter
++
+ from bzrlib.static_tuple import StaticTuple
+ 
+ 
+@@ -224,7 +223,7 @@
+ 
+     def kind_character(self):
+         """Return a short kind indicator useful for appending to names."""
+-        raise BzrError('unknown kind %r' % self.kind)
++        raise errors.BzrError('unknown kind %r' % self.kind)
+ 
+     known_kinds = ('file', 'directory', 'symlink')
+ 
+@@ -250,8 +249,9 @@
+         """
+         if self.parent_id is not None:
+             if not inv.has_id(self.parent_id):
+-                raise BzrCheckError('missing parent {%s} in inventory for revision {%s}'
+-                        % (self.parent_id, rev_id))
++                raise errors.BzrCheckError(
++                    'missing parent {%s} in inventory for revision {%s}' % (
++                        self.parent_id, rev_id))
+         checker._add_entry_to_text_key_references(inv, self)
+         self._check(checker, rev_id)
+ 
+@@ -539,7 +539,7 @@
+         # FIXME: which _modified field should we use ? RBC 20051003
+         text_modified = (self.symlink_target != old_entry.symlink_target)
+         if text_modified:
+-            mutter("    symlink target changed")
++            trace.mutter("    symlink target changed")
+         meta_modified = False
+         return text_modified, meta_modified
+ 
+@@ -1169,8 +1169,9 @@
+     def _add_child(self, entry):
+         """Add an entry to the inventory, without adding it to its parent"""
+         if entry.file_id in self._byid:
+-            raise BzrError("inventory already contains entry with id {%s}" %
+-                           entry.file_id)
++            raise errors.BzrError(
++                "inventory already contains entry with id {%s}" %
++                entry.file_id)
+         self._byid[entry.file_id] = entry
+         for child in getattr(entry, 'children', {}).itervalues():
+             self._add_child(child)
+@@ -1340,15 +1341,17 @@
+         """
+         new_name = ensure_normalized_name(new_name)
+         if not is_valid_name(new_name):
+-            raise BzrError("not an acceptable filename: %r" % new_name)
++            raise errors.BzrError("not an acceptable filename: %r" % new_name)
+ 
+         new_parent = self._byid[new_parent_id]
+         if new_name in new_parent.children:
+-            raise BzrError("%r already exists in %r" % (new_name, self.id2path(new_parent_id)))
++            raise errors.BzrError("%r already exists in %r" %
++                (new_name, self.id2path(new_parent_id)))
+ 
+         new_parent_idpath = self.get_idpath(new_parent_id)
+         if file_id in new_parent_idpath:
+-            raise BzrError("cannot move directory %r into a subdirectory of itself, %r"
++            raise errors.BzrError(
++                "cannot move directory %r into a subdirectory of itself, %r"
+                     % (self.id2path(file_id), self.id2path(new_parent_id)))
+ 
+         file_ie = self._byid[file_id]
+@@ -2232,13 +2235,9 @@
+     return name
+ 
+ 
+-_NAME_RE = None
++_NAME_RE = lazy_regex.lazy_compile(r'^[^/\\]+$')
+ 
+ def is_valid_name(name):
+-    global _NAME_RE
+-    if _NAME_RE is None:
+-        _NAME_RE = re.compile(r'^[^/\\]+$')
+-
+     return bool(_NAME_RE.match(name))
+ 
+ 
+
+=== modified file 'bzrlib/knit.py'
+--- old/bzrlib/knit.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/knit.py	2011-04-21 23:05:21 +0000
+@@ -63,15 +63,12 @@
+ import gzip
+ 
+ from bzrlib import (
+-    annotate,
+     debug,
+     diff,
+     graph as _mod_graph,
+     index as _mod_index,
+-    lru_cache,
+     pack,
+     patiencediff,
+-    progress,
+     static_tuple,
+     trace,
+     tsort,
+@@ -80,6 +77,7 @@
+     )
+ """)
+ from bzrlib import (
++    annotate,
+     errors,
+     osutils,
+     )
+
+=== modified file 'bzrlib/lockable_files.py'
+--- old/bzrlib/lockable_files.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/lockable_files.py	2011-04-21 23:05:21 +0000
+@@ -16,7 +16,6 @@
+ 
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+-import codecs
+ import warnings
+ 
+ from bzrlib import (
+
+=== modified file 'bzrlib/log.py'
+--- old/bzrlib/log.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/log.py	2011-04-21 23:05:21 +0000
+@@ -70,11 +70,9 @@
+     diff,
+     errors,
+     foreign,
+-    osutils,
+     repository as _mod_repository,
+     revision as _mod_revision,
+     revisionspec,
+-    trace,
+     tsort,
+     )
+ """)
+@@ -85,6 +83,7 @@
+ from bzrlib.osutils import (
+     format_date,
+     format_date_with_offset_in_original_timezone,
++    get_diff_header_encoding,
+     get_terminal_encoding,
+     terminal_width,
+     )
+@@ -432,7 +431,7 @@
+         else:
+             specific_files = None
+         s = StringIO()
+-        path_encoding = osutils.get_diff_header_encoding()
++        path_encoding = get_diff_header_encoding()
+         diff.show_diff_trees(tree_1, tree_2, s, specific_files, old_label='',
+             new_label='', path_encoding=path_encoding)
+         return s.getvalue()
+
+=== modified file 'bzrlib/merge.py'
+--- old/bzrlib/merge.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/merge.py	2011-04-21 23:05:21 +0000
+@@ -20,6 +20,7 @@
+ lazy_import(globals(), """
+ from bzrlib import (
+     branch as _mod_branch,
++    cleanup,
+     conflicts as _mod_conflicts,
+     debug,
+     generate_ids,
+@@ -37,7 +38,6 @@
+     versionedfile,
+     workingtree,
+     )
+-from bzrlib.cleanup import OperationWithCleanups
+ """)
+ from bzrlib import (
+     decorators,
+@@ -53,7 +53,7 @@
+ 
+ def transform_tree(from_tree, to_tree, interesting_ids=None):
+     from_tree.lock_tree_write()
+-    operation = OperationWithCleanups(merge_inner)
++    operation = cleanup.OperationWithCleanups(merge_inner)
+     operation.add_cleanup(from_tree.unlock)
+     operation.run_simple(from_tree.branch, to_tree, from_tree,
+         ignore_zero=True, interesting_ids=interesting_ids, this_tree=from_tree)
+@@ -501,7 +501,8 @@
+     def _add_parent(self):
+         new_parents = self.this_tree.get_parent_ids() + [self.other_rev_id]
+         new_parent_trees = []
+-        operation = OperationWithCleanups(self.this_tree.set_parent_trees)
++        operation = cleanup.OperationWithCleanups(
++            self.this_tree.set_parent_trees)
+         for revision_id in new_parents:
+             try:
+                 tree = self.revision_tree(revision_id)
+@@ -708,7 +709,7 @@
+         return merge
+ 
+     def do_merge(self):
+-        operation = OperationWithCleanups(self._do_merge_to)
++        operation = cleanup.OperationWithCleanups(self._do_merge_to)
+         self.this_tree.lock_tree_write()
+         operation.add_cleanup(self.this_tree.unlock)
+         if self.base_tree is not None:
+@@ -820,7 +821,7 @@
+             warnings.warn("pb argument to Merge3Merger is deprecated")
+ 
+     def do_merge(self):
+-        operation = OperationWithCleanups(self._do_merge)
++        operation = cleanup.OperationWithCleanups(self._do_merge)
+         self.this_tree.lock_tree_write()
+         operation.add_cleanup(self.this_tree.unlock)
+         self.base_tree.lock_read()
+@@ -841,7 +842,7 @@
+             pass
+ 
+     def make_preview_transform(self):
+-        operation = OperationWithCleanups(self._make_preview_transform)
++        operation = cleanup.OperationWithCleanups(self._make_preview_transform)
+         self.base_tree.lock_read()
+         operation.add_cleanup(self.base_tree.unlock)
+         self.other_tree.lock_read()
+
+=== modified file 'bzrlib/merge_directive.py'
+--- old/bzrlib/merge_directive.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/merge_directive.py	2011-04-21 23:05:21 +0000
+@@ -23,6 +23,7 @@
+ from bzrlib import (
+     branch as _mod_branch,
+     diff,
++    email_message,
+     errors,
+     gpg,
+     hooks,
+@@ -266,7 +267,8 @@
+             body = self.to_signed(branch)
+         else:
+             body = ''.join(self.to_lines())
+-        message = EmailMessage(mail_from, mail_to, subject, body)
++        message = email_message.EmailMessage(mail_from, mail_to, subject,
++            body)
+         return message
+ 
+     def install_revisions(self, target_repo):
+
+=== modified file 'bzrlib/multiparent.py'
+--- old/bzrlib/multiparent.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/multiparent.py	2011-04-21 23:05:21 +0000
+@@ -18,19 +18,18 @@
+ 
+ lazy_import(globals(), """
+ import errno
++import gzip
+ import itertools
+ import os
+ from StringIO import StringIO
+ 
+ from bzrlib import (
++    bencode,
+     errors,
+     patiencediff,
+-    trace,
+     ui,
+     )
+-from bzrlib import bencode
+ """)
+-from gzip import GzipFile
+ 
+ 
+ def topo_iter_keys(vf, keys=None):
+@@ -561,7 +560,7 @@
+             sio = StringIO(infile.read(count))
+         finally:
+             infile.close()
+-        zip_file = GzipFile(None, mode='rb', fileobj=sio)
++        zip_file = gzip.GzipFile(None, mode='rb', fileobj=sio)
+         try:
+             file_version_id = zip_file.readline()
+             content = zip_file.read()
+@@ -577,7 +576,7 @@
+                                     # before any write returns 0
+             start = outfile.tell()
+             try:
+-                zipfile = GzipFile(None, mode='ab', fileobj=outfile)
++                zipfile = gzip.GzipFile(None, mode='ab', fileobj=outfile)
+                 zipfile.writelines(itertools.chain(
+                     ['version %s\n' % version_id], diff.to_patch()))
+             finally:
+@@ -674,7 +673,7 @@
+ 
+ def gzip_string(lines):
+     sio = StringIO()
+-    data_file = GzipFile(None, mode='wb', fileobj=sio)
++    data_file = gzip.GzipFile(None, mode='wb', fileobj=sio)
+     data_file.writelines(lines)
+     data_file.close()
+     return sio.getvalue()
+
+=== modified file 'bzrlib/mutabletree.py'
+--- old/bzrlib/mutabletree.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/mutabletree.py	2011-04-21 23:05:21 +0000
+@@ -33,7 +33,6 @@
+     osutils,
+     revisiontree,
+     inventory,
+-    symbol_versioning,
+     trace,
+     tree,
+     )
+
+=== modified file 'bzrlib/patiencediff.py'
+--- old/bzrlib/patiencediff.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/patiencediff.py	2011-04-21 23:05:21 +0000
+@@ -73,7 +73,6 @@
+      four
+     """
+     if sequencematcher is None:
+-        import difflib
+         sequencematcher = difflib.SequenceMatcher
+ 
+     if fromfiledate:
+
+=== modified file 'bzrlib/plugin.py'
+--- old/bzrlib/plugin.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/plugin.py	2011-04-21 23:05:21 +0000
+@@ -52,11 +52,6 @@
+ from bzrlib import plugins as _mod_plugins
+ """)
+ 
+-from bzrlib.symbol_versioning import (
+-    deprecated_function,
+-    deprecated_in,
+-    )
+-
+ 
+ DEFAULT_PLUGIN_PATH = None
+ _loaded = False
+
+=== modified file 'bzrlib/plugins/launchpad/__init__.py'
+--- old/bzrlib/plugins/launchpad/__init__.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/plugins/launchpad/__init__.py	2011-04-21 23:05:21 +0000
+@@ -47,7 +47,6 @@
+ lazy_import(globals(), """
+ from bzrlib import (
+     branch as _mod_branch,
+-    errors,
+     ui,
+     trace,
+     )
+@@ -55,13 +54,13 @@
+ 
+ from bzrlib import bzrdir
+ from bzrlib.commands import (
+-        Command,
+-        register_command,
+-)
++    Command,
++    register_command,
++    )
+ from bzrlib.directory_service import directories
+ from bzrlib.errors import (
+     BzrCommandError,
+-    DependencyNotPresent,
++    InvalidRevisionSpec,
+     InvalidURL,
+     NoPublicBranch,
+     NotBranchError,
+@@ -421,7 +420,7 @@
+             merging_revision = graph.find_lefthand_merger(
+                 revision_id, b.last_revision())
+             if merging_revision is None:
+-                raise errors.InvalidRevisionSpec(revision[0].user_spec, b)
++                raise InvalidRevisionSpec(revision[0].user_spec, b)
+         pb.update('Finding revno')
+         return b.revision_id_to_revno(merging_revision)
+ 
+
+=== modified file 'bzrlib/plugins/netrc_credential_store/__init__.py'
+--- old/bzrlib/plugins/netrc_credential_store/__init__.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/plugins/netrc_credential_store/__init__.py	2011-04-21 23:05:21 +0000
+@@ -25,12 +25,12 @@
+     )
+ 
+ lazy_import.lazy_import(globals(), """
+-    import errno
+-    import netrc
++import errno
++import netrc
+ 
+-    from bzrlib import (
+-        errors,
+-        )
++from bzrlib import (
++    errors,
++    )
+ """)
+ 
+ 
+
+=== modified file 'bzrlib/repofmt/pack_repo.py'
+--- old/bzrlib/repofmt/pack_repo.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/repofmt/pack_repo.py	2011-04-21 23:05:21 +0000
+@@ -30,6 +30,7 @@
+     osutils,
+     pack,
+     transactions,
++    tsort,
+     ui,
+     xml5,
+     xml6,
+@@ -45,7 +46,6 @@
+     _KnitGraphIndex,
+     _DirectPackAccess,
+     )
+-from bzrlib import tsort
+ """)
+ from bzrlib import (
+     bzrdir,
+
+=== modified file 'bzrlib/repository.py'
+--- old/bzrlib/repository.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/repository.py	2011-04-21 23:05:21 +0000
+@@ -16,14 +16,11 @@
+ 
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+-import cStringIO
+-import re
+ import time
+ 
+ from bzrlib import (
+     bzrdir,
+     check,
+-    chk_map,
+     config,
+     controldir,
+     debug,
+@@ -104,7 +101,6 @@
+ 
+         :param repository: Repository to commit to.
+         :param parents: Revision ids of the parents of the new revision.
+-        :param config: Configuration to use.
+         :param timestamp: Optional timestamp recorded for commit.
+         :param timezone: Optional timezone for timestamp.
+         :param committer: Optional committer to set for commit.
+@@ -4173,7 +4169,7 @@
+                 parse_result = deserialiser.parse_text_bytes(
+                     inventory_delta_bytes)
+             except inventory_delta.IncompatibleInventoryDelta, err:
+-                trace.mutter("Incompatible delta: %s", err.msg)
++                mutter("Incompatible delta: %s", err.msg)
+                 raise errors.IncompatibleRevision(self.target_repo._format)
+             basis_id, new_id, rich_root, tree_refs, inv_delta = parse_result
+             revision_id = new_id
+
+=== modified file 'bzrlib/revision.py'
+--- old/bzrlib/revision.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/revision.py	2011-04-21 23:05:21 +0000
+@@ -20,7 +20,6 @@
+ 
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+-from bzrlib import deprecated_graph
+ from bzrlib import bugtracker
+ """)
+ from bzrlib import (
+
+=== modified file 'bzrlib/sign_my_commits.py'
+--- old/bzrlib/sign_my_commits.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/sign_my_commits.py	2011-04-21 23:05:21 +0000
+@@ -20,10 +20,9 @@
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+ from bzrlib import (
+-    config,
++    bzrdir as _mod_bzrdir,
+     gpg,
+     )
+-from bzrlib.bzrdir import BzrDir
+ """)
+ from bzrlib.commands import Command
+ from bzrlib.option import Option
+@@ -50,10 +49,10 @@
+ 
+     def run(self, location=None, committer=None, dry_run=False):
+         if location is None:
+-            bzrdir = BzrDir.open_containing('.')[0]
++            bzrdir = _mod_bzrdir.BzrDir.open_containing('.')[0]
+         else:
+             # Passed in locations should be exact
+-            bzrdir = BzrDir.open(location)
++            bzrdir = _mod_bzrdir.BzrDir.open(location)
+         branch = bzrdir.open_branch()
+         repo = branch.repository
+         branch_config = branch.get_config()
+
+=== modified file 'bzrlib/smart/medium.py'
+--- old/bzrlib/smart/medium.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/smart/medium.py	2011-04-21 23:05:21 +0000
+@@ -38,7 +38,6 @@
+ from bzrlib import (
+     debug,
+     errors,
+-    symbol_versioning,
+     trace,
+     ui,
+     urlutils,
+
+=== modified file 'bzrlib/trace.py'
+--- old/bzrlib/trace.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/trace.py	2011-04-21 23:05:21 +0000
+@@ -59,13 +59,13 @@
+ import os
+ import sys
+ import time
+-import tempfile
+ 
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+ from cStringIO import StringIO
+ import errno
+ import locale
++import tempfile
+ import traceback
+ """)
+ 
+@@ -81,8 +81,6 @@
+     debug,
+     errors,
+     osutils,
+-    plugin,
+-    symbol_versioning,
+     ui,
+     )
+ """)
+
+=== modified file 'bzrlib/transform.py'
+--- old/bzrlib/transform.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/transform.py	2011-04-21 23:05:21 +0000
+@@ -19,11 +19,11 @@
+ from stat import S_ISREG, S_IEXEC
+ import time
+ 
+-import bzrlib
+ from bzrlib import (
+     errors,
+     lazy_import,
+     registry,
++    trace,
+     tree,
+     )
+ lazy_import.lazy_import(globals(), """
+@@ -38,7 +38,6 @@
+     multiparent,
+     osutils,
+     revision as _mod_revision,
+-    trace,
+     ui,
+     urlutils,
+     )
+@@ -48,7 +47,6 @@
+                            ExistingLimbo, ImmortalLimbo, NoFinalPath,
+                            UnableCreateSymlink)
+ from bzrlib.filters import filtered_output_bytes, ContentFilterContext
+-from bzrlib.inventory import InventoryEntry
+ from bzrlib.osutils import (
+     delete_any,
+     file_kind,
+@@ -64,7 +62,6 @@
+     deprecated_in,
+     deprecated_method,
+     )
+-from bzrlib.trace import warning
+ 
+ 
+ ROOT_PARENT = "root-parent"
+@@ -629,7 +626,7 @@
+             if kind is None:
+                 conflicts.append(('versioning no contents', trans_id))
+                 continue
+-            if not InventoryEntry.versionable_kind(kind):
++            if not inventory.InventoryEntry.versionable_kind(kind):
+                 conflicts.append(('versioning bad kind', trans_id, kind))
+         return conflicts
+ 
+@@ -1362,8 +1359,8 @@
+         if orphan_policy is None:
+             orphan_policy = default_policy
+         if orphan_policy not in orphaning_registry:
+-            trace.warning('%s (from %s) is not a known policy, defaulting to %s'
+-                          % (orphan_policy, conf_var_name, default_policy))
++            trace.warning('%s (from %s) is not a known policy, defaulting '
++                'to %s' % (orphan_policy, conf_var_name, default_policy))
+             orphan_policy = default_policy
+         handle_orphan = orphaning_registry.get(orphan_policy)
+         handle_orphan(self, trans_id, parent_id)
+@@ -2524,7 +2521,7 @@
+             precomputed_delta = None
+         conflicts = cook_conflicts(raw_conflicts, tt)
+         for conflict in conflicts:
+-            warning(conflict)
++            trace.warning(conflict)
+         try:
+             wt.add_conflicts(conflicts)
+         except errors.UnsupportedOperation:
+@@ -2765,7 +2762,7 @@
+                 unversioned_filter=working_tree.is_ignored)
+             delta.report_changes(tt.iter_changes(), change_reporter)
+         for conflict in conflicts:
+-            warning(conflict)
++            trace.warning(conflict)
+         pp.next_phase()
+         tt.apply()
+         working_tree.set_merge_modified(merge_modified)
+
+=== modified file 'bzrlib/transport/local.py'
+--- old/bzrlib/transport/local.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/transport/local.py	2011-04-21 23:05:21 +0000
+@@ -20,7 +20,7 @@
+ """
+ 
+ import os
+-from stat import ST_MODE, S_ISDIR, ST_SIZE, S_IMODE
++from stat import ST_MODE, S_ISDIR, S_IMODE
+ import sys
+ 
+ from bzrlib.lazy_import import lazy_import
+@@ -33,9 +33,7 @@
+     osutils,
+     urlutils,
+     symbol_versioning,
+-    transport,
+     )
+-from bzrlib.trace import mutter
+ from bzrlib.transport import LateReadError
+ """)
+ 
+
+=== modified file 'bzrlib/tree.py'
+--- old/bzrlib/tree.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/tree.py	2011-04-21 23:05:21 +0000
+@@ -25,18 +25,20 @@
+     conflicts as _mod_conflicts,
+     debug,
+     delta,
++    errors,
+     filters,
+     osutils,
+     revision as _mod_revision,
+     rules,
+     )
+ from bzrlib.decorators import needs_read_lock
+-from bzrlib.errors import BzrError, NoSuchId
+-from bzrlib import errors
+ from bzrlib.inventory import InventoryFile
+ from bzrlib.inter import InterObject
+ from bzrlib.osutils import fingerprint_file
+-from bzrlib.symbol_versioning import deprecated_function, deprecated_in
++from bzrlib.symbol_versioning import (
++    deprecated_function,
++    deprecated_in,
++    )
+ from bzrlib.trace import note
+ 
+ 
+@@ -415,7 +417,7 @@
+                         elif child_base.lower() == lelt:
+                             cur_id = child
+                             new_path = osutils.pathjoin(cur_path, child_base)
+-                    except NoSuchId:
++                    except errors.NoSuchId:
+                         # before a change is committed we can see this error...
+                         continue
+                 if new_path:
+@@ -529,13 +531,16 @@
+ 
+         if ie.text_size is not None:
+             if ie.text_size != fp['size']:
+-                raise BzrError("mismatched size for file %r in %r" % (ie.file_id, self._store),
++                raise errors.BzrError(
++                        "mismatched size for file %r in %r" %
++                        (ie.file_id, self._store),
+                         ["inventory expects %d bytes" % ie.text_size,
+                          "file is actually %d bytes" % fp['size'],
+                          "store is probably damaged/corrupt"])
+ 
+         if ie.text_sha1 != fp['sha1']:
+-            raise BzrError("wrong SHA-1 for file %r in %r" % (ie.file_id, self._store),
++            raise errors.BzrError("wrong SHA-1 for file %r in %r" %
++                    (ie.file_id, self._store),
+                     ["inventory expects %s" % ie.text_sha1,
+                      "file is actually %s" % fp['sha1'],
+                      "store is probably damaged/corrupt"])
+
+=== modified file 'bzrlib/ui/__init__.py'
+--- old/bzrlib/ui/__init__.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/ui/__init__.py	2011-04-21 23:05:21 +0000
+@@ -42,26 +42,16 @@
+ """
+ 
+ 
+-import os
+-import sys
+ import warnings
+ 
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
+-import getpass
+-
+ from bzrlib import (
+-    errors,
+     osutils,
+     progress,
+     trace,
+     )
+ """)
+-from bzrlib.symbol_versioning import (
+-    deprecated_function,
+-    deprecated_in,
+-    deprecated_method,
+-    )
+ 
+ 
+ _valid_boolean_strings = dict(yes=True, no=False,
+
+=== modified file 'bzrlib/ui/text.py'
+--- old/bzrlib/ui/text.py	2011-04-20 20:00:48 +0000
++++ new/bzrlib/ui/text.py	2011-04-21 23:05:21 +0000
+@@ -18,20 +18,20 @@
+ """Text UI, write output to the console.
+ """
+ 
+-import codecs
+-import getpass
+ import os
+ import sys
+ import time
+-import warnings
+ 
+ from bzrlib.lazy_import import lazy_import
+ lazy_import(globals(), """
++import codecs
++import getpass
++import warnings
++
+ from bzrlib import (
+     debug,
+     progress,
+     osutils,
+-    symbol_versioning,
+     trace,
+     )
+ 
+
+=== modified file 'bzrlib/versionedfile.py'
+--- old/bzrlib/versionedfile.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/versionedfile.py	2011-04-21 23:05:21 +0000
+@@ -28,6 +28,7 @@
+ 
+ from bzrlib import (
+     annotate,
++    bencode,
+     errors,
+     graph as _mod_graph,
+     groupcompress,
+@@ -37,14 +38,10 @@
+     multiparent,
+     tsort,
+     revision,
+-    ui,
+     )
+-from bzrlib.graph import DictParentsProvider, Graph, StackedParentsProvider
+-from bzrlib.transport.memory import MemoryTransport
+ """)
+ from bzrlib.registry import Registry
+ from bzrlib.textmerge import TextMerge
+-from bzrlib import bencode
+ 
+ 
+ adapter_registry = Registry()
+@@ -1451,7 +1448,7 @@
+         # line data for locally held keys.
+         self._lines = {}
+         # key lookup providers
+-        self._providers = [DictParentsProvider(self._parents)]
++        self._providers = [_mod_graph.DictParentsProvider(self._parents)]
+ 
+     def plan_merge(self, ver_a, ver_b, base=None):
+         """See VersionedFile.plan_merge"""
+@@ -1464,7 +1461,7 @@
+ 
+     def plan_lca_merge(self, ver_a, ver_b, base=None):
+         from bzrlib.merge import _PlanLCAMerge
+-        graph = Graph(self)
++        graph = _mod_graph.Graph(self)
+         new_plan = _PlanLCAMerge(ver_a, ver_b, self, (self._file_id,), graph).plan_merge()
+         if base is None:
+             return new_plan
+@@ -1522,7 +1519,8 @@
+             result[revision.NULL_REVISION] = ()
+         self._providers = self._providers[:1] + self.fallback_versionedfiles
+         result.update(
+-            StackedParentsProvider(self._providers).get_parent_map(keys))
++            _mod_graph.StackedParentsProvider(
++                self._providers).get_parent_map(keys))
+         for key, parents in result.iteritems():
+             if parents == ():
+                 result[key] = (revision.NULL_REVISION,)
+
+=== modified file 'bzrlib/workingtree.py'
+--- old/bzrlib/workingtree.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/workingtree.py	2011-04-21 23:05:21 +0000
+@@ -44,7 +44,6 @@
+ import stat
+ import re
+ 
+-import bzrlib
+ from bzrlib import (
+     branch,
+     bzrdir,
+@@ -61,6 +60,7 @@
+     registry,
+     revision as _mod_revision,
+     revisiontree,
++    rio as _mod_rio,
+     trace,
+     transform,
+     transport,
+@@ -98,7 +98,6 @@
+ from bzrlib.trace import mutter, note
+ from bzrlib.transport.local import LocalTransport
+ from bzrlib.revision import CURRENT_REVISION
+-from bzrlib.rio import RioReader, rio_file, Stanza
+ from bzrlib.symbol_versioning import (
+     deprecated_passed,
+     DEPRECATED_PARAMETER,
+@@ -891,7 +890,7 @@
+             if revision_id in heads and revision_id not in new_revision_ids:
+                 new_revision_ids.append(revision_id)
+         if new_revision_ids != revision_ids:
+-            trace.mutter('requested to set revision_ids = %s,'
++            mutter('requested to set revision_ids = %s,'
+                          ' but filtered to %s', revision_ids, new_revision_ids)
+         return new_revision_ids
+ 
+@@ -963,7 +962,8 @@
+     def set_merge_modified(self, modified_hashes):
+         def iter_stanzas():
+             for file_id, hash in modified_hashes.iteritems():
+-                yield Stanza(file_id=file_id.decode('utf8'), hash=hash)
++                yield _mod_rio.Stanza(file_id=file_id.decode('utf8'),
++                    hash=hash)
+         self._put_rio('merge-hashes', iter_stanzas(), MERGE_MODIFIED_HEADER_1)
+ 
+     def _sha_from_stat(self, path, stat_result):
+@@ -978,7 +978,7 @@
+ 
+     def _put_rio(self, filename, stanzas, header):
+         self._must_be_locked()
+-        my_file = rio_file(stanzas, header)
++        my_file = _mod_rio.rio_file(stanzas, header)
+         self._transport.put_file(filename, my_file,
+             mode=self.bzrdir._get_file_mode())
+ 
+@@ -1048,7 +1048,7 @@
+                     raise errors.MergeModifiedFormatError()
+             except StopIteration:
+                 raise errors.MergeModifiedFormatError()
+-            for s in RioReader(hashfile):
++            for s in _mod_rio.RioReader(hashfile):
+                 # RioReader reads in Unicode, so convert file_ids back to utf8
+                 file_id = osutils.safe_file_id(s.get("file_id"), warn=False)
+                 if file_id not in self.inventory:
+@@ -2354,7 +2354,7 @@
+                                              show_base=show_base)
+             if nb_conflicts:
+                 self.add_parent_tree((old_tip, other_tree))
+-                trace.note('Rerun update after fixing the conflicts.')
++                note('Rerun update after fixing the conflicts.')
+                 return nb_conflicts
+ 
+         if last_rev != _mod_revision.ensure_null(revision):
+@@ -2754,7 +2754,8 @@
+                     raise errors.ConflictFormatError()
+             except StopIteration:
+                 raise errors.ConflictFormatError()
+-            return _mod_conflicts.ConflictList.from_stanzas(RioReader(confile))
++            reader = _mod_rio.RioReader(confile)
++            return _mod_conflicts.ConflictList.from_stanzas(reader)
+         finally:
+             confile.close()
+ 
+
+=== modified file 'bzrlib/workingtree_4.py'
+--- old/bzrlib/workingtree_4.py	2011-04-21 11:12:00 +0000
++++ new/bzrlib/workingtree_4.py	2011-04-21 23:05:21 +0000
+@@ -31,7 +31,6 @@
+ import errno
+ import stat
+ 
+-import bzrlib
+ from bzrlib import (
+     bzrdir,
+     cache_utf8,
+@@ -46,8 +45,6 @@
+     transform,
+     views,
+     )
+-import bzrlib.branch
+-import bzrlib.ui
+ """)
+ 
+ from bzrlib.decorators import needs_read_lock, needs_write_lock
+@@ -62,7 +59,6 @@
+     realpath,
+     safe_unicode,
+     )
+-from bzrlib.trace import mutter
+ from bzrlib.transport.local import LocalTransport
+ from bzrlib.tree import InterTree
+ from bzrlib.tree import Tree
+@@ -85,7 +81,7 @@
+         self._format = _format
+         self.bzrdir = _bzrdir
+         basedir = safe_unicode(basedir)
+-        mutter("opening working tree %r", basedir)
++        trace.mutter("opening working tree %r", basedir)
+         self._branch = branch
+         self.basedir = realpath(basedir)
+         # if branch is at our basedir and is a format 6 or less
+
