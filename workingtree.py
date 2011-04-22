@@ -445,9 +445,9 @@ class GitWorkingTree(workingtree.WorkingTree):
             dir_file_id = self.path2id(dirname)
             assert isinstance(value, tuple) and len(value) == 10
             (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
-            stat_result = posix.stat_result(st_mode=mode, st_ino=ino,
-                    st_dev=dev, st_uid=uid, st_gid=gid, st_size=size,
-                    st_mtime=mtime, st_ctime=ctime)
+            stat_result = posix.stat_result((mode, ino,
+                    dev, 1, uid, gid, size,
+                    0, mtime, ctime))
             per_dir[(dirname, dir_file_id)].append(
                 (path.decode("utf-8"), child_name.decode("utf-8"),
                 mode_kind(mode), stat_result,
