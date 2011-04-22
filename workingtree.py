@@ -21,6 +21,7 @@
 from cStringIO import (
     StringIO,
     )
+from collections import defaultdict
 import errno
 from dulwich.index import (
     Index,
@@ -33,6 +34,7 @@ from dulwich.objects import (
     ZERO_SHA,
     )
 import os
+import posix
 import posixpath
 import stat
 
@@ -144,9 +146,9 @@ class GitWorkingTree(workingtree.WorkingTree):
     def _add(self, files, ids, kinds):
         for (path, file_id, kind) in zip(files, ids, kinds):
             if file_id is not None:
-                self._fileid_map.set_file_id(path, file_id)
+                self._fileid_map.set_file_id(path.encode("utf-8"), file_id)
             else:
-                file_id = self._fileid_map.lookup_file_id(path)
+                file_id = self._fileid_map.lookup_file_id(path.encode("utf-8"))
             self._index_add_entry(path, file_id, kind)
 
     def _set_root_id(self, file_id):
@@ -431,6 +433,27 @@ class GitWorkingTree(workingtree.WorkingTree):
         # The index just contains content, which won't have changed.
         self._reset_data()
 
+    def _walkdirs(self, prefix=""):
+        if prefix != "":
+            prefix += "/"
+        per_dir = defaultdict(list)
+        for path, value in self.index.iteritems():
+            if not path.startswith(prefix):
+                continue
+            (dirname, child_name) = posixpath.split(path)
+            dirname = dirname.decode("utf-8")
+            dir_file_id = self.path2id(dirname)
+            assert isinstance(value, tuple) and len(value) == 10
+            (ctime, mtime, dev, ino, mode, uid, gid, size, sha, flags) = value
+            stat_result = posix.stat_result(st_mode=mode, st_ino=ino,
+                    st_dev=dev, st_uid=uid, st_gid=gid, st_size=size,
+                    st_mtime=mtime, st_ctime=ctime)
+            per_dir[(dirname, dir_file_id)].append(
+                (path.decode("utf-8"), child_name.decode("utf-8"),
+                mode_kind(mode), stat_result,
+                self.path2id(path.decode("utf-8")),
+                mode_kind(mode)))
+        return per_dir.iteritems()
 
 class GitWorkingTreeFormat(workingtree.WorkingTreeFormat):
 
