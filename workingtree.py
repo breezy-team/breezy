@@ -416,7 +416,8 @@ class GitWorkingTree(workingtree.WorkingTree):
         for path, value in self.index.iteritems():
             path = path.decode("utf-8")
             parent = posixpath.dirname(path).strip("/")
-            for (dir_path, dir_ie) in self._add_missing_parent_ids(parent, dir_ids):
+            for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
+                    dir_ids):
                 yield dir_path, dir_ie
             parent_id = self.path2id(parent)
             yield path, self._get_file_ie(path, value, parent_id)
@@ -482,20 +483,24 @@ class InterIndexGitTree(tree.InterTree):
             if file_id is None:
                 target_fileid_map = {}
             else:
-                target_fileid_map = self.target.mapping.import_fileid_map(Blob.from_string(self.target.get_file_text(file_id)))
+                target_fileid_map = self.target.mapping.import_fileid_map(
+                    Blob.from_string(self.target.get_file_text(file_id)))
         else:
             target_fileid_map = {}
-        target_fileid_map = GitFileIdMap(target_fileid_map, self.target.mapping)
+        target_fileid_map = GitFileIdMap(target_fileid_map,
+                self.target.mapping)
         ret = tree_delta_from_git_changes(changes, self.target.mapping,
             (source_fileid_map, target_fileid_map),
             specific_file=specific_files, require_versioned=require_versioned)
         if want_unversioned:
             for e in self.target.extras():
-                ret.unversioned.append((e, None, osutils.file_kind(self.target.abspath(e))))
+                ret.unversioned.append((e, None,
+                    osutils.file_kind(self.target.abspath(e))))
         return ret
 
     def iter_changes(self, include_unchanged=False, specific_files=None,
-        pb=None, extra_trees=[], require_versioned=True, want_unversioned=False):
+        pb=None, extra_trees=[], require_versioned=True,
+        want_unversioned=False):
         changes = self._index.changes_from_tree(
             self.source.store, self.source.tree,
             want_unchanged=include_unchanged)
