@@ -582,6 +582,8 @@ class GitFileIdMap(object):
         self.mapping = mapping
 
     def set_file_id(self, path, file_id):
+        assert type(path) is str
+        assert type(file_id) is str
         self.file_ids[path] = file_id
 
     def lookup_file_id(self, path):
