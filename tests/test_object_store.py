@@ -141,6 +141,8 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
     def test_get_blob(self):
         b = Blob()
         b.data = 'a\nb\nc\nd\ne\n'
+        self.store.lock_read()
+        self.addCleanup(self.store.unlock)
         self.assertRaises(KeyError, self.store.__getitem__, b.id)
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
@@ -149,11 +151,17 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
              ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
+        # read locks cache
+        self.assertRaises(KeyError, self.store.__getitem__, b.id)
+        self.store.unlock()
+        self.store.lock_read()
         self.assertEquals(b, self.store[b.id])
 
     def test_get_raw(self):
         b = Blob()
         b.data = 'a\nb\nc\nd\ne\n'
+        self.store.lock_read()
+        self.addCleanup(self.store.unlock)
         self.assertRaises(KeyError, self.store.get_raw, b.id)
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
@@ -162,11 +170,17 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
              ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
+        # read locks cache
+        self.assertRaises(KeyError, self.store.get_raw, b.id)
+        self.store.unlock()
+        self.store.lock_read()
         self.assertEquals(b.as_raw_string(), self.store.get_raw(b.id)[1])
 
     def test_contains(self):
         b = Blob()
         b.data = 'a\nb\nc\nd\ne\n'
+        self.store.lock_read()
+        self.addCleanup(self.store.unlock)
         self.assertFalse(b.id in self.store)
         bb = BranchBuilder(branch=self.branch)
         bb.start_series()
@@ -175,6 +189,10 @@ class BazaarObjectStoreTests(TestCaseWithTransport):
              ('add', ('foo', 'foo-id', 'file', 'a\nb\nc\nd\ne\n')),
              ])
         bb.finish_series()
+        # read locks cache
+        self.assertFalse(b.id in self.store)
+        self.store.unlock()
+        self.store.lock_read()
         self.assertTrue(b.id in self.store)
 
 

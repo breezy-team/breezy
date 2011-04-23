@@ -31,7 +31,7 @@ from bzrlib.plugins.git.errors import (
     NoPushSupport,
     )
 from bzrlib.plugins.git.object_store import (
-    BazaarObjectStore,
+    get_object_store,
     )
 from bzrlib.plugins.git.repository import (
     GitRepository,
@@ -103,7 +103,7 @@ class InterToGitRepository(InterRepository):
     def __init__(self, source, target):
         super(InterToGitRepository, self).__init__(source, target)
         self.mapping = self.target.get_mapping()
-        self.source_store = BazaarObjectStore(self.source, self.mapping)
+        self.source_store = get_object_store(self.source, self.mapping)
 
     @staticmethod
     def _get_repo_format_to_test():
@@ -230,7 +230,7 @@ class InterToLocalGitRepository(InterToGitRepository):
         return old_refs, new_refs
 
     def dfetch_refs(self, update_refs):
-        self.source.lock_read()
+        self.source_store.lock_read()
         try:
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
@@ -259,7 +259,7 @@ class InterToLocalGitRepository(InterToGitRepository):
                         gitid = self.source_store._lookup_revision_sha1(revid)
                 self.target_refs[name] = gitid
         finally:
-            self.source.unlock()
+            self.source_store.unlock()
         return revidmap, old_refs, new_refs
 
     def _get_missing_objects_iterator(self, pb):
@@ -272,16 +272,16 @@ class InterToLocalGitRepository(InterToGitRepository):
             fetch_spec=None, mapped_refs=None):
         if not self.mapping.roundtripping:
             raise NoPushSupport()
-        if mapped_refs is not None:
-            stop_revisions = mapped_refs
-        elif revision_id is not None:
-            stop_revisions = [(None, revision_id)]
-        elif fetch_spec is not None:
-            stop_revisions = [(None, revid) for revid in fetch_spec.heads]
-        else:
-            stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
-        self.source.lock_read()
+        self.source_store.lock_read()
         try:
+            if mapped_refs is not None:
+                stop_revisions = mapped_refs
+            elif revision_id is not None:
+                stop_revisions = [(None, revision_id)]
+            elif fetch_spec is not None:
+                stop_revisions = [(None, revid) for revid in fetch_spec.heads]
+            else:
+                stop_revisions = [(None, revid) for revid in self.source.all_revision_ids()]
             todo = list(self.missing_revisions(stop_revisions))
             pb = ui.ui_factory.nested_progress_bar()
             try:
@@ -296,7 +296,7 @@ class InterToLocalGitRepository(InterToGitRepository):
             finally:
                 pb.finished()
         finally:
-            self.source.unlock()
+            self.source_store.unlock()
 
     @staticmethod
     def is_compatible(source, target):
@@ -317,16 +317,17 @@ class InterToRemoteGitRepository(InterToGitRepository):
             self.new_refs = update_refs(self.old_refs)
             for name, (gitid, revid) in self.new_refs.iteritems():
                 if gitid is None:
-                    ret[name] = unpeel_map.re_unpeel_tag(self.source_store._lookup_revision_sha1(revid), old_refs.get(name))
+                    git_sha = self.source_store._lookup_revision_sha1(revid)
+                    ret[name] = unpeel_map.re_unpeel_tag(git_sha, old_refs.get(name))
                 else:
                     ret[name] = gitid
             return ret
-        self.source.lock_read()
+        self.source_store.lock_read()
         try:
             new_refs = self.target.send_pack(determine_wants,
                     self.source_store.generate_lossy_pack_contents)
         finally:
-            self.source.unlock()
+            self.source_store.unlock()
         return revidmap, self.old_refs, self.new_refs
 
     def fetch_refs(self, update_refs):

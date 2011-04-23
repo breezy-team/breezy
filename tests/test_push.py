@@ -58,8 +58,12 @@ class InterToGitRepositoryTests(TestCaseWithTransport):
         self.assertEquals(revidmap, {})
 
     def test_pointless_missing_revisions(self):
+        self.interrepo.source_store.lock_read()
+        self.addCleanup(self.interrepo.source_store.unlock)
         self.assertEquals([], list(self.interrepo.missing_revisions([])))
 
     def test_missing_revisions_unknown_stop_rev(self):
+        self.interrepo.source_store.lock_read()
+        self.addCleanup(self.interrepo.source_store.unlock)
         self.assertEquals([],
                 list(self.interrepo.missing_revisions([(None, "unknown")])))

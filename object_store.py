@@ -34,6 +34,7 @@ from bzrlib import (
     ui,
     urlutils,
     )
+from bzrlib.lock import LogicalLockResult
 from bzrlib.revision import (
     NULL_REVISION,
     )
@@ -59,6 +60,9 @@ import stat
 def get_object_store(repo, mapping=None):
     git = getattr(repo, "_git", None)
     if git is not None:
+        git.object_store.unlock = lambda x: None
+        git.object_store.lock_read = LogicalLockResult(lambda: None)
+        git.object_store.lock_write = LogicalLockResult(lambda: None)
         return git.object_store
     return BazaarObjectStore(repo, mapping)
 
@@ -174,7 +178,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             except errors.NoSuchId:
                 pass
             else:
-                if (pie.text_sha1 == ie.text_sha1 and 
+                if (pie.text_sha1 == ie.text_sha1 and
                     pie.kind == ie.kind and
                     pie.symlink_target == ie.symlink_target):
                     return pie
@@ -219,7 +223,7 @@ def _tree_to_objects(tree, parent_trees, idmap, unusual_modes,
             tree.inventory[parent[0]].kind == "directory"):
             # Removal
             new_trees[posixpath.dirname(path[0])] = parent[0]
-    
+
     # Fetch contents of the blobs that were changed
     for (path, ie), chunks in tree.iter_files_bytes(
         [(ie.file_id, (path, ie)) for (path, ie) in new_blobs]):
@@ -282,6 +286,8 @@ class BazaarObjectStore(BaseObjectStore):
 
     def __init__(self, repository, mapping=None):
         self.repository = repository
+        self._map_updated = False
+        self._locked = None
         if mapping is None:
             self.mapping = default_mapping
         else:
@@ -294,6 +300,10 @@ class BazaarObjectStore(BaseObjectStore):
         self.tree_cache = LRUTreeCache(self.repository)
 
     def _update_sha_map(self, stop_revision=None):
+        if not self.is_locked():
+            raise AssertionError()
+        if self._map_updated:
+            return
         graph = self.repository.get_graph()
         if stop_revision is None:
             heads = graph.heads(self.repository.all_revision_ids())
@@ -311,6 +321,7 @@ class BazaarObjectStore(BaseObjectStore):
             missing_revids.remove(NULL_REVISION)
         missing_revids = self.repository.has_revisions(missing_revids)
         if not missing_revids:
+            self._map_updated = True
             return
         self.start_write_group()
         try:
@@ -322,6 +333,7 @@ class BazaarObjectStore(BaseObjectStore):
                     self._update_sha_map_revision(revid)
             finally:
                 pb.finished()
+            self._map_updated = True
         except:
             self.abort_write_group()
             raise
@@ -389,7 +401,8 @@ class BazaarObjectStore(BaseObjectStore):
         if roundtrip and self.mapping.BZR_FILE_IDS_FILE is not None:
             b = self._create_fileid_map_blob(tree.inventory)
             if b is not None:
-                root_tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
+                root_tree[self.mapping.BZR_FILE_IDS_FILE] = (
+                    (stat.S_IFREG | 0644), b.id)
                 yield self.mapping.BZR_FILE_IDS_FILE, b, None
         yield "", root_tree, root_ie
         if roundtrip:
@@ -485,7 +498,8 @@ class BazaarObjectStore(BaseObjectStore):
             self.mapping.BZR_FILE_IDS_FILE is not None):
             b = self._create_fileid_map_blob(inv)
             # If this is the root tree, add the file ids
-            tree[self.mapping.BZR_FILE_IDS_FILE] = ((stat.S_IFREG | 0644), b.id)
+            tree[self.mapping.BZR_FILE_IDS_FILE] = (
+                (stat.S_IFREG | 0644), b.id)
         _check_expected_sha(expected_sha, tree)
         return tree
 
@@ -542,7 +556,27 @@ class BazaarObjectStore(BaseObjectStore):
         except KeyError:
             return False
 
-    def lookup_git_shas(self, shas, update_map=True):
+    def lock_read(self):
+        self._locked = 'r'
+        self._map_updated = False
+        self.repository.lock_read()
+        return LogicalLockResult(self.unlock)
+
+    def lock_write(self):
+        self._locked = 'r'
+        self._map_updated = False
+        self.repository.lock_write()
+        return LogicalLockResult(self.unlock)
+
+    def is_locked(self):
+        return (self._locked is not None)
+
+    def unlock(self):
+        self._locked = None
+        self._map_updated = False
+        self.repository.unlock()
+
+    def lookup_git_shas(self, shas):
         ret = {}
         for sha in shas:
             if sha == ZERO_SHA:
@@ -551,19 +585,17 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 ret[sha] = list(self._cache.idmap.lookup_git_sha(sha))
             except KeyError:
-                if update_map:
-                    # if not, see if there are any unconverted revisions and add
-                    # them to the map, search for sha in map again
-                    self._update_sha_map()
-                    update_map = False
-                    try:
-                        ret[sha] = list(self._cache.idmap.lookup_git_sha(sha))
-                    except KeyError:
-                        pass
+                # if not, see if there are any unconverted revisions and
+                # add them to the map, search for sha in map again
+                self._update_sha_map()
+                try:
+                    ret[sha] = list(self._cache.idmap.lookup_git_sha(sha))
+                except KeyError:
+                    pass
         return ret
 
-    def lookup_git_sha(self, sha, update_map=True):
-        return self.lookup_git_shas([sha], update_map=update_map)[sha]
+    def lookup_git_sha(self, sha):
+        return self.lookup_git_shas([sha])[sha]
 
     def __getitem__(self, sha):
         if self._cache.content_cache is not None:
@@ -581,13 +613,14 @@ class BazaarObjectStore(BaseObjectStore):
                     trace.mutter('entry for %s %s in shamap: %r, but not '
                                  'found in repository', kind, sha, type_data)
                     raise KeyError(sha)
-                commit = self._reconstruct_commit(rev, tree_sha, roundtrip=True,
-                    verifiers=verifiers)
+                commit = self._reconstruct_commit(rev, tree_sha,
+                    roundtrip=True, verifiers=verifiers)
                 _check_expected_sha(sha, commit)
                 return commit
             elif kind == "blob":
                 (fileid, revision) = type_data
-                return self._reconstruct_blobs([(fileid, revision, sha)]).next()
+                blobs = self._reconstruct_blobs([(fileid, revision, sha)])
+                return blobs.next()
             elif kind == "tree":
                 (fileid, revid) = type_data
                 try:

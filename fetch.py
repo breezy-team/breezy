@@ -615,7 +615,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
         def progress(text):
             report_git_progress(pb, text)
         store = BazaarObjectStore(self.target, mapping)
-        self.target.lock_write()
+        store.lock_write()
         try:
             heads = self.get_target_heads()
             graph_walker = store.get_graph_walker(
@@ -637,7 +637,7 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
                 if create_pb:
                     create_pb.finished()
         finally:
-            self.target.unlock()
+            store.unlock()
 
     @staticmethod
     def is_compatible(source, target):
@@ -661,14 +661,14 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
             create_pb = pb = ui.ui_factory.nested_progress_bar()
         target_git_object_retriever = BazaarObjectStore(self.target, mapping)
         try:
-            self.target.lock_write()
+            target_git_object_retriever.lock_write()
             try:
                 (pack_hint, last_rev) = import_git_objects(self.target, mapping,
                     self.source._git.object_store,
                     target_git_object_retriever, wants, pb, limit)
                 return (pack_hint, last_rev, remote_refs)
             finally:
-                self.target.unlock()
+                target_git_object_retriever.unlock()
         finally:
             if create_pb:
                 create_pb.finished()

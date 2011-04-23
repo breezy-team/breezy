@@ -126,7 +126,11 @@ class GitMergeDirective(BaseMergeDirective):
     def _generate_commit(cls, repository, revision_id, num, total):
         s = StringIO()
         store = get_object_store(repository)
-        commit = store[store._lookup_revision_sha1(revision_id)]
+        store.lock_read()
+        try:
+            commit = store[store._lookup_revision_sha1(revision_id)]
+        finally:
+            store.unlock()
         from dulwich.patch import write_commit_patch, get_summary
         try:
             lhs_parent = repository.get_revision(revision_id).parent_ids[0]

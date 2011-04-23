@@ -72,13 +72,13 @@ class BzrBackendRepo(BackendRepo):
         """ yield git objects to send to client """
 
         wants = determine_wants(self.get_refs())
-        self.repo.lock_read()
+        self.object_store.lock_read()
         try:
             have = self.object_store.find_common_revisions(graph_walker)
             return self.object_store.generate_pack_contents(have, wants, progress,
                 get_tagged)
         finally:
-            self.repo.unlock()
+            self.object_store.unlock()
 
 
 def serve_git(transport, host=None, port=None, inet=False):

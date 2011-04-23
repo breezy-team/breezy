@@ -161,7 +161,7 @@ class cmd_git_object(Command):
             get_object_store,
             )
         object_store = get_object_store(repo)
-        repo.lock_read()
+        object_store.lock_read()
         try:
             if sha1 is not None:
                 try:
@@ -177,7 +177,7 @@ class cmd_git_object(Command):
                 for sha1 in object_store:
                     self.outf.write("%s\n" % sha1)
         finally:
-            repo.unlock()
+            object_store.unlock()
 
 
 class cmd_git_refs(Command):
@@ -204,14 +204,14 @@ class cmd_git_refs(Command):
             )
         bzrdir, _ = BzrDir.open_containing(directory)
         repo = bzrdir.find_repository()
-        repo.lock_read()
+        object_store = get_object_store(repo)
+        object_store.lock_read()
         try:
-            object_store = get_object_store(repo)
             refs = BazaarRefsContainer(bzrdir, object_store)
             for k, v in refs.as_dict().iteritems():
                 self.outf.write("%s -> %s\n" % (k, v))
         finally:
-            repo.unlock()
+            object_store.unlock()
 
 
 class cmd_git_apply(Command):
