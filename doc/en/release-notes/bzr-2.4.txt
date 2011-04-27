@@ -113,7 +113,7 @@ API Changes
 
 * ``Branch.update_revisions`` has been made private and should no
   longer be used by external users. Use ``Branch.pull`` or ``Branch.push``
-  instead. (Jelmer Vernooij)
+  instead. (Jelmer Vernooij, #771765)
 
 * Commands now have an `invoked_as` attribute, showing the name under
   which they were called before alias expansion.
