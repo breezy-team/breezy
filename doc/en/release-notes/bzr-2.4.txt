@@ -90,7 +90,7 @@ Bug Fixes
 
 * ``SFTPTransport`` is more pro-active about closing file-handles. This
   reduces the chance of having threads fail from async requests while
-  running the test suite. (John Arbash Meinel, #767177)
+  running the test suite. (John Arbash Meinel, #656170)
 
 * Standalone bzr.exe installation on Windows: user can put additional python 
   libraries into ``site-packages`` subdirectory of the installation directory,
