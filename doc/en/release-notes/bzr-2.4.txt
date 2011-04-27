@@ -111,6 +111,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Branch.update_revisions`` has been made private and should no
+  longer be used by external users. Use ``Branch.pull`` or ``Branch.push``
+  instead. (Jelmer Vernooij)
+
 * Commands now have an `invoked_as` attribute, showing the name under
   which they were called before alias expansion.
   (Martin Pool)
