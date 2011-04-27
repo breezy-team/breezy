@@ -609,9 +609,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
             self.target.repository.pack(hint=pack_hint)
         return head, refs
 
-    def update_revisions(self, stop_revision=None, overwrite=False,
-                         graph=None):
-        """See InterBranch.update_revisions()."""
+    def _update_revisions(self, stop_revision=None, overwrite=False):
         head, refs = self.fetch_objects(stop_revision, fetch_tags=True)
         if overwrite:
             prev_last_revid = None
@@ -647,11 +645,10 @@ class InterFromGitBranch(branch.GenericInterBranch):
         try:
             # We assume that during 'pull' the target repository is closer than
             # the source one.
-            graph = self.target.repository.get_graph(self.source.repository)
             (result.old_revno, result.old_revid) = \
                 self.target.last_revision_info()
-            result.new_git_head, remote_refs = self.update_revisions(
-                stop_revision, overwrite=overwrite, graph=graph)
+            result.new_git_head, remote_refs = self._update_revisions(
+                stop_revision, overwrite=overwrite)
             result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
                 overwrite)
             (result.new_revno, result.new_revid) = \
@@ -673,10 +670,9 @@ class InterFromGitBranch(branch.GenericInterBranch):
         result = branch.BranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
-        graph = self.target.repository.get_graph(self.source.repository)
         result.old_revno, result.old_revid = self.target.last_revision_info()
-        result.new_git_head, remote_refs = self.update_revisions(
-            stop_revision, overwrite=overwrite, graph=graph)
+        result.new_git_head, remote_refs = self._update_revisions(
+            stop_revision, overwrite=overwrite)
         result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
             overwrite)
         result.new_revno, result.new_revid = self.target.last_revision_info()
@@ -792,9 +788,6 @@ class InterToGitBranch(branch.GenericInterBranch):
     def is_compatible(self, source, target):
         return (not isinstance(source, GitBranch) and
                 isinstance(target, GitBranch))
-
-    def update_revisions(self, *args, **kwargs):
-        raise NoPushSupport()
 
     def _get_new_refs(self, stop_revision=None):
         if stop_revision is None:
