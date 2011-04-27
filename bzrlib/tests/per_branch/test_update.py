@@ -73,23 +73,6 @@ class TestUpdate(per_branch.TestCaseWithBranch):
 
 class TestUpdateRevisions(per_branch.TestCaseWithBranch):
 
-    def test_accepts_graph(self):
-        # An implementation may not use it, but it should allow a 'graph' to be
-        # supplied
-        tree1 = self.make_branch_and_tree('tree1')
-        rev1 = tree1.commit('one')
-        tree2 = tree1.bzrdir.sprout('tree2').open_workingtree()
-        rev2 = tree2.commit('two')
-
-        tree1.lock_write()
-        self.addCleanup(tree1.unlock)
-        tree2.lock_read()
-        self.addCleanup(tree2.unlock)
-        graph = tree2.branch.repository.get_graph(tree1.branch.repository)
-
-        tree1.branch.update_revisions(tree2.branch, graph=graph)
-        self.assertEqual((2, rev2), tree1.branch.last_revision_info())
-
     def test_overwrite_ignores_diverged(self):
         tree1 = self.make_branch_and_tree('tree1')
         rev1 = tree1.commit('one')

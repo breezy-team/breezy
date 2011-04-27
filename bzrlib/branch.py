@@ -999,6 +999,7 @@ class Branch(controldir.ControlComponent):
         else:
             return (0, _mod_revision.NULL_REVISION)
 
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def update_revisions(self, other, stop_revision=None, overwrite=False,
                          graph=None, fetch_tags=True):
         """Pull in new perfect-fit revisions.
@@ -3300,7 +3301,7 @@ class InterBranch(InterObject):
         """
         raise NotImplementedError(self.pull)
 
-    @needs_write_lock
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def update_revisions(self, stop_revision=None, overwrite=False,
                          graph=None, fetch_tags=True):
         """Pull in new perfect-fit revisions.
@@ -3399,10 +3400,16 @@ class GenericInterBranch(InterBranch):
         finally:
             self.source.unlock()
 
-    @needs_write_lock
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def update_revisions(self, stop_revision=None, overwrite=False,
         graph=None, fetch_tags=True):
         """See InterBranch.update_revisions()."""
+        self._update_revisions(stop_revision=stop_revision,
+            overwrite=overwrite, graph=graph, fetch_tags=fetch_tags)
+
+    @needs_write_lock
+    def _update_revisions(self, stop_revision=None, overwrite=False,
+            graph=None, fetch_tags=True):
         other_revno, other_last_revision = self.source.last_revision_info()
         stop_revno = None # unknown
         if stop_revision is None:
@@ -3589,8 +3596,8 @@ class GenericInterBranch(InterBranch):
             # -- JRV20090506
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
-            self.target.update_revisions(self.source, stop_revision,
-                overwrite=overwrite, graph=graph)
+            self.update_revisions(stop_revision, overwrite=overwrite,
+                graph=graph)
             # TODO: The old revid should be specified when merging tags, 
             # so a tags implementation that versions tags can only 
             # pull in the most recent changes. -- JRV20090506
