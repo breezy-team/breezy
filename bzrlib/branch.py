@@ -3335,7 +3335,7 @@ class GenericInterBranch(InterBranch):
 
     @needs_write_lock
     def _update_revisions(self, stop_revision=None, overwrite=False,
-            graph=None, fetch_tags=True):
+            graph=None):
         other_revno, other_last_revision = self.source.last_revision_info()
         stop_revno = None # unknown
         if stop_revision is None:
