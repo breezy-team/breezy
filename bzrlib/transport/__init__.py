@@ -719,10 +719,10 @@ class Transport(object):
                     except StopIteration:
                         cur_offset_and_size = None
                     yield this_offset, this_data
-        finally:
-            # Note that this is not python2.4 compatible as try/finally in
-            # generators was added in python 2.5
+        except:
             fp.close()
+            raise
+        fp.close()
 
     def _sort_expand_and_combine(self, offsets, upper_limit):
         """Helper for readv.

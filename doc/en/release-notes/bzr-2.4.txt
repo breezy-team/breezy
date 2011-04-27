@@ -15,11 +15,6 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
-* We have finally broken compatibility with python 2.4. From bzr-2.4
-  onward we only maintain python-2.5+ compatibility. Note that stable
-  update releases will continue to be made on older versions.
-  (John Arbash Meinel)
-
 * Two command synonyms for ``bzr branch`` have been deprecated, to avoid
   confusion and to allow the names to later be reused.  The removed names
   are: ``get`` and ``clone``.   (Martin Pool, #506265)
