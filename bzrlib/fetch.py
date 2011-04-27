@@ -375,7 +375,7 @@ class FetchSpecFactory(object):
     def add_revision_ids(self, revision_ids):
         """Add revision_ids to the set of revision_ids to be fetched."""
         self._explicit_rev_ids.update(revision_ids)
-
+        
     def make_fetch_spec(self):
         """Build a SearchResult or PendingAncestryResult or etc."""
         if self.target_repo_kind is None or self.source_repo is None:
@@ -392,8 +392,15 @@ class FetchSpecFactory(object):
                     self.target_repo, self.source_repo).execute()
         heads_to_fetch = set(self._explicit_rev_ids)
         if self.source_branch is not None:
-            must_fetch, if_present_fetch = self.source_branch.heads_to_fetch(
-                stop_revision=self.source_branch_stop_revision_id)
+            must_fetch, if_present_fetch = self.source_branch.heads_to_fetch()
+            if self.source_branch_stop_revision_id is not None:
+                # Replace the tip rev from must_fetch with the stop revision
+                # XXX: this might be wrong if the tip rev is also in the
+                # must_fetch set for other reasons (e.g. it's the tip of
+                # multiple loom threads?), but then it's pretty unclear what it
+                # should mean to specify a stop_revision in that case anyway.
+                must_fetch.discard(self.source_branch.last_revision())
+                must_fetch.add(self.source_branch_stop_revision_id)
             heads_to_fetch.update(must_fetch)
         else:
             if_present_fetch = set()

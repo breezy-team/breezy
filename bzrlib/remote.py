@@ -3052,33 +3052,32 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
         self._ensure_real()
         return self._real_branch.set_push_location(location)
 
-    def heads_to_fetch(self, stop_revision=None):
+    def heads_to_fetch(self):
         if self._format._use_default_local_heads_to_fetch():
             # We recognise this format, and its heads-to-fetch implementation
             # is the default one (tip + tags).  In this case it's cheaper to
             # just use the default implementation rather than a special RPC as
             # the tip and tags data is cached.
-            return branch.Branch.heads_to_fetch(self, stop_revision)
+            return branch.Branch.heads_to_fetch(self)
         medium = self._client._medium
         if medium._is_remote_before((2, 4)):
-            return self._vfs_heads_to_fetch(stop_revision)
+            return self._vfs_heads_to_fetch()
         try:
-            return self._rpc_heads_to_fetch(stop_revision)
+            return self._rpc_heads_to_fetch()
         except errors.UnknownSmartMethod:
             medium._remember_remote_is_before((2, 4))
-            return self._vfs_heads_to_fetch(stop_revision)
+            return self._vfs_heads_to_fetch()
 
-    def _rpc_heads_to_fetch(self, stop_revision):
-        response = self._call('Branch.heads_to_fetch', self._remote_path(),
-            stop_revision)
+    def _rpc_heads_to_fetch(self):
+        response = self._call('Branch.heads_to_fetch', self._remote_path())
         if len(response) != 2:
             raise errors.UnexpectedSmartServerResponse(response)
         must_fetch, if_present_fetch = response
         return set(must_fetch), set(if_present_fetch)
 
-    def _vfs_heads_to_fetch(self, stop_revision):
+    def _vfs_heads_to_fetch(self):
         self._ensure_real()
-        return self._real_branch.heads_to_fetch(stop_revision)
+        return self._real_branch.heads_to_fetch()
 
 
 class RemoteConfig(object):
