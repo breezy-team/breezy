@@ -287,11 +287,6 @@ class Transport(object):
     #       where the biggest benefit between combining reads and
     #       and seeking is. Consider a runtime auto-tune.
     _bytes_to_read_before_seek = 0
-    # By default, we won't force .close() to be synchronous for remote readv.
-    # (SFTP in particular has an async .close() call.) However, when running
-    # the test suite, it would be really nice to have them be synchronous, to
-    # keep things clean.
-    _synchronous_close = False
 
     def __init__(self, base):
         super(Transport, self).__init__()
