@@ -365,6 +365,24 @@ class UpstreamBranchSourceTests(TestCaseWithTransport):
             source.version_as_revision("foo", "2.1+bzr2"))
         self.assertEquals(revid1, source.version_as_revision("foo", "2.1"))
 
+    def test_version_as_revision_no_revspec(self):
+        # There is no relevant revspec known
+        config = DebBuildConfig(
+            [('user.conf', True), ('default.conf', False)],
+            branch=self.tree.branch)
+        source = UpstreamBranchSource(self.tree.branch, {}, config=config)
+        self.assertRaises(PackageVersionNotPresent,
+            source.version_as_revision, "foo", "2.1")
+
+    def test_version_as_revision_invalid_revspec(self):
+        # There is no relevant revspec known
+        config = DebBuildConfig(
+            [('user.conf', True), ('default.conf', False)],
+            branch=self.tree.branch)
+        source = UpstreamBranchSource(self.tree.branch, {}, config=config)
+        self.assertRaises(PackageVersionNotPresent,
+            source.version_as_revision, "foo", "2.1+bzr4242")
+
 
 class LazyUpstreamBranchSourceTests(TestCaseWithTransport):
     """Tests for LazyUpstreamBranchSource."""

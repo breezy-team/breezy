@@ -70,6 +70,7 @@ from bzrlib.plugins.builddeb.errors import (
     BuildFailedError,
     MissingChangelogError,
     NoPreviousUpload,
+    PackageVersionNotPresent,
     StrictBuildFailed,
     )
 from bzrlib.plugins.builddeb.hooks import run_hook
@@ -717,8 +718,15 @@ class cmd_merge_upstream(Command):
             note("Using version string %s." % (version))
             # Look up the revision id from the version string
             if upstream_revision is None and upstream_branch_source is not None:
-                upstream_revision = upstream_branch_source.version_as_revision(
-                    package, version)
+                try:
+                    upstream_revision = upstream_branch_source.version_as_revision(
+                        package, version)
+                except PackageVersionNotPresent:
+                    raise BzrCommandError(
+                        "Version %s can not be found in upstream branch %r. "
+                        "Specify the revision manually using --revision or adjust "
+                        "'export-upstream-revision' in the configuration." %
+                        (version, upstream_branch_source))
             if need_upstream_tarball:
                 target_dir = tempfile.mkdtemp() # FIXME: Cleanup?
                 location = primary_upstream_source.fetch_tarball(

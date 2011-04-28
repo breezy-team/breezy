@@ -139,7 +139,9 @@ class TestMergeUpstream(BuilddebTestCase):
         return result
 
     def release_upstream(self, upstream):
-        tar = ExportedTarball(upstream, version=self.getUniqueInteger())
+        version = str(self.getUniqueInteger())
+        upstream.tree.branch.tags.set_tag(version, upstream.tree.branch.last_revision())
+        tar = ExportedTarball(upstream, version=version)
         tar.setUp(self)
         return tar
 
@@ -161,7 +163,7 @@ class TestMergeUpstream(BuilddebTestCase):
         changed_upstream = self.file_moved_replaced_upstream(upstream)
         rel2 = self.release_upstream(changed_upstream)
         self.run_bzr(['merge-upstream', '--version', str(rel2.version),
-            os.path.abspath(rel2.tarball), changed_upstream.tree.basedir],
+            os.path.abspath(rel2.tarball)],
             working_dir=package.tree.basedir)
 
     def test_hooks(self):
@@ -178,8 +180,7 @@ class TestMergeUpstream(BuilddebTestCase):
         changed_upstream = self.file_moved_replaced_upstream(upstream)
         rel2 = self.release_upstream(changed_upstream)
         self.run_bzr(['merge-upstream', '--version', str(rel2.version),
-            os.path.abspath(rel2.tarball), changed_upstream.tree.basedir],
-            working_dir=package.tree.basedir)
+            os.path.abspath(rel2.tarball)], working_dir=package.tree.basedir)
         self.failUnlessExists(os.path.join(package.tree.basedir, 'muhook'))
 
 # vim: ts=4 sts=4 sw=4

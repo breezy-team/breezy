@@ -76,6 +76,8 @@ class UpstreamSource(object):
 
         :param package: Package name
         :package version: Version string
+        :raise PackageVersionNotPresent: When the specified version was not
+            found
         """
         raise NotImplementedError(self.version_as_revision)
 
