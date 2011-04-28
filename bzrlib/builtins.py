@@ -3999,7 +3999,7 @@ class cmd_merge(Command):
             merger.other_rev_id is not None):
             note('Nothing to do.')
             return 0
-        if pull:
+        if pull and not preview:
             if merger.interesting_files is not None:
                 raise errors.BzrCommandError('Cannot pull individual files')
             if (merger.base_rev_id == tree.last_revision()):
