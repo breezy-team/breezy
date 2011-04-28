@@ -310,7 +310,7 @@ class cmd_fast_import(Command):
             'export-marks': export_marks,
             }
         return _run(source, generic_processor.GenericProcessor,
-                control=control, params=params, verbose=verbose,
+                bzrdir=control, params=params, verbose=verbose,
                 user_map=user_map)
 
     def _generate_info(self, source):

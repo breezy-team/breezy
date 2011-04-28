@@ -134,4 +134,4 @@ class TestFastImport(ExternalBase):
         tree = self.make_branch_and_tree("br")
         self.build_tree_contents([('file.fi', simple_fast_import_stream)])
         data = self.run_bzr("fast-import file.fi br")[0]
-        self.assertEquals(3, tree.branch.revno())
+        self.assertEquals(1, tree.branch.revno())
