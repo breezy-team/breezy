@@ -194,6 +194,46 @@ class TestCaseForGenericProcessor(tests.TestCaseWithTransport):
                          revtree.inventory.root.children[path].revision)
 
 
+class TestImportToPackTag(TestCaseForGenericProcessor):
+
+    def file_command_iter(self, path, kind='file', content='aaa',
+        executable=False, to_kind=None, to_content='bbb', to_executable=None):
+        # Revno 1: create a file or symlink
+        # Revno 2: modify it
+        if to_kind is None:
+            to_kind = kind
+        if to_executable is None:
+            to_executable = executable
+        def command_list():
+            author = ['', 'bugs@a.com', time.time(), time.timezone]
+            committer = ['', 'elmer@a.com', time.time(), time.timezone]
+            def files_one():
+                yield commands.FileModifyCommand(path,
+                    kind_to_mode(kind, executable), None, content)
+            yield commands.CommitCommand('head', '1', author,
+                committer, "commit 1", None, [], files_one)
+            def files_two():
+                yield commands.FileModifyCommand(path,
+                    kind_to_mode(to_kind, to_executable), None, to_content)
+
+            # pass "head" for from_ to show that #401249 is worse than I knew
+            yield commands.CommitCommand('head', '2', author,
+                committer, "commit 2", "head", [], files_two)
+
+            yield commands.TagCommand('tag1', ':1', committer, "tag 1")
+
+            # pass "head" for from_ to demonstrate #401249
+            yield commands.TagCommand('tag2', 'head', committer, "tag 2")
+        return command_list
+
+    def test_tag(self):
+        handler, branch = self.get_handler()
+        path = 'a'
+        raise tests.KnownFailure("non-mark committish not yet supported"
+                                 "- bug #410249")
+        handler.process(self.file_command_iter(path))
+
+
 class TestImportToPackModify(TestCaseForGenericProcessor):
 
     def file_command_iter(self, path, kind='file', content='aaa',
