@@ -3,8 +3,7 @@ from distutils.core import setup
 from info import *
 
 if __name__ == '__main__':
-    from bzrlib import _format_version_tuple
-    version = _format_version_tuple(bzr_plugin_version)
+    version = ".".join([str(x) for x in bzr_plugin_version])
     setup(name="bzr-fastimport",
           version=version,
           description="stream-based import into and export from Bazaar.",

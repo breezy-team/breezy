@@ -11,6 +11,8 @@ Bug fixes
 
 * Fix internal error in 'bzr fast-import-info'. (Jelmer Vernooij, #730833)
 
+* Setup.py no longer relies on bzrlib. (Jelmer Vernooij, #735201)
+
 0.10 08-Mar-2011
 
 Changes
