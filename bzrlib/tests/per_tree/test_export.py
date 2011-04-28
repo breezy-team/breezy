@@ -14,21 +14,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from __future__ import with_statement
-
-import contextlib
+import os
 import tarfile
 
 from bzrlib.export import export
+from bzrlib import tests
 from bzrlib.tests.per_tree import TestCaseWithTree
 
-@contextlib.contextmanager
-def write_locked(tree):
-    tree.lock_write()
-    try:
-        yield
-    finally:
-        tree.unlock()
 
 class TestExport(TestCaseWithTree):
 
