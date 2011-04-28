@@ -259,7 +259,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         # FIXME: What about directories?
         if path in self.index:
             return path
-        raise errors.NoSuchId(None, file_id)
+        raise errors.NoSuchId(self, file_id)
 
     def get_file_mtime(self, file_id, path=None):
         """See Tree.get_file_mtime."""
