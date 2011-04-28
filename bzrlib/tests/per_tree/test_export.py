@@ -1,4 +1,4 @@
-# Copyright (C) 2011 Canocal Ltd
+# Copyright (C) 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 from __future__ import with_statement
 
 import contextlib
+import tarfile
 
 from bzrlib.export import export
 from bzrlib.tests.per_tree import TestCaseWithTree
@@ -33,9 +34,14 @@ class TestExport(TestCaseWithTree):
 
     def test_export_tar(self):
         work_a = self.make_branch_and_tree('wta')
-        self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
+        self.build_tree_contents(
+            [('wta/file', 'a\nb\nc\nd\n'), ('wta/dir', '')])
         work_a.add('file', 'file-id')
+        work_a.add('dir', 'dir-id')
         work_a.commit('add file')
-        with write_locked(work_a):
-            tree_a = self.workingtree_to_test_tree(work_a)
-            export(tree_a, 'output', 'tar')
+        tree_a = self.workingtree_to_test_tree(work_a)
+        export(tree_a, 'output', 'tar')
+        tf = tarfile.open('output')
+        names = tf.getnames()
+        self.assertIn('output/file', names)
+        self.assertIn('output/dir', names)
