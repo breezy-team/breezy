@@ -285,7 +285,7 @@ class TransportTests(TestTransportImplementation):
             return
 
         t.put_bytes('a', 'some text for a\n')
-        self.failUnless(t.has('a'))
+        self.assertTrue(t.has('a'))
         self.check_transport_contents('some text for a\n', t, 'a')
 
         # The contents should be overwritten
@@ -303,9 +303,9 @@ class TransportTests(TestTransportImplementation):
                     t.put_bytes_non_atomic, 'a', 'some text for a\n')
             return
 
-        self.failIf(t.has('a'))
+        self.assertFalse(t.has('a'))
         t.put_bytes_non_atomic('a', 'some text for a\n')
-        self.failUnless(t.has('a'))
+        self.assertTrue(t.has('a'))
         self.check_transport_contents('some text for a\n', t, 'a')
         # Put also replaces contents
         t.put_bytes_non_atomic('a', 'new\ncontents for\na\n')
@@ -323,7 +323,7 @@ class TransportTests(TestTransportImplementation):
         # Now test the create_parent flag
         self.assertRaises(NoSuchFile, t.put_bytes_non_atomic, 'dir/a',
                                        'contents\n')
-        self.failIf(t.has('dir/a'))
+        self.assertFalse(t.has('dir/a'))
         t.put_bytes_non_atomic('dir/a', 'contents for dir/a\n',
                                create_parent_dir=True)
         self.check_transport_contents('contents for dir/a\n', t, 'dir/a')
@@ -401,7 +401,7 @@ class TransportTests(TestTransportImplementation):
         result = t.put_file('a', StringIO('some text for a\n'))
         # put_file returns the length of the data written
         self.assertEqual(16, result)
-        self.failUnless(t.has('a'))
+        self.assertTrue(t.has('a'))
         self.check_transport_contents('some text for a\n', t, 'a')
         # Put also replaces contents
         result = t.put_file('a', StringIO('new\ncontents for\na\n'))
@@ -419,9 +419,9 @@ class TransportTests(TestTransportImplementation):
                     t.put_file_non_atomic, 'a', StringIO('some text for a\n'))
             return
 
-        self.failIf(t.has('a'))
+        self.assertFalse(t.has('a'))
         t.put_file_non_atomic('a', StringIO('some text for a\n'))
-        self.failUnless(t.has('a'))
+        self.assertTrue(t.has('a'))
         self.check_transport_contents('some text for a\n', t, 'a')
         # Put also replaces contents
         t.put_file_non_atomic('a', StringIO('new\ncontents for\na\n'))
@@ -439,7 +439,7 @@ class TransportTests(TestTransportImplementation):
         # Now test the create_parent flag
         self.assertRaises(NoSuchFile, t.put_file_non_atomic, 'dir/a',
                                        StringIO('contents\n'))
-        self.failIf(t.has('dir/a'))
+        self.assertFalse(t.has('dir/a'))
         t.put_file_non_atomic('dir/a', StringIO('contents for dir/a\n'),
                               create_parent_dir=True)
         self.check_transport_contents('contents for dir/a\n', t, 'dir/a')
@@ -822,9 +822,9 @@ class TransportTests(TestTransportImplementation):
             return
 
         t.put_bytes('a', 'a little bit of text\n')
-        self.failUnless(t.has('a'))
+        self.assertTrue(t.has('a'))
         t.delete('a')
-        self.failIf(t.has('a'))
+        self.assertFalse(t.has('a'))
 
         self.assertRaises(NoSuchFile, t.delete, 'a')
 
@@ -836,9 +836,9 @@ class TransportTests(TestTransportImplementation):
         t.delete_multi(['a', 'c'])
         self.assertEqual([False, True, False],
                 list(t.has_multi(['a', 'b', 'c'])))
-        self.failIf(t.has('a'))
-        self.failUnless(t.has('b'))
-        self.failIf(t.has('c'))
+        self.assertFalse(t.has('a'))
+        self.assertTrue(t.has('b'))
+        self.assertFalse(t.has('c'))
 
         self.assertRaises(NoSuchFile,
                 t.delete_multi, ['a', 'b', 'c'])
@@ -905,7 +905,7 @@ class TransportTests(TestTransportImplementation):
         t.mkdir('foo-baz')
         t.rmdir('foo')
         self.assertRaises((NoSuchFile, PathError), t.rmdir, 'foo')
-        self.failUnless(t.has('foo-bar'))
+        self.assertTrue(t.has('foo-bar'))
 
     def test_rename_dir_succeeds(self):
         t = self.get_transport()
@@ -994,8 +994,8 @@ class TransportTests(TestTransportImplementation):
         self.assertEquals([True, False], list(t.has_multi(['a', 'b'])))
 
         t.move('a', 'b')
-        self.failUnless(t.has('b'))
-        self.failIf(t.has('a'))
+        self.assertTrue(t.has('b'))
+        self.assertFalse(t.has('a'))
 
         self.check_transport_contents('a first file\n', t, 'b')
         self.assertEquals([False, True], list(t.has_multi(['a', 'b'])))
@@ -1003,7 +1003,7 @@ class TransportTests(TestTransportImplementation):
         # Overwrite a file
         t.put_bytes('c', 'c this file\n')
         t.move('c', 'b')
-        self.failIf(t.has('c'))
+        self.assertFalse(t.has('c'))
         self.check_transport_contents('c this file\n', t, 'b')
 
         # TODO: Try to write a test for atomicity
@@ -1063,10 +1063,10 @@ class TransportTests(TestTransportImplementation):
         for path, size in zip(paths, sizes):
             st = t.stat(path)
             if path.endswith('/'):
-                self.failUnless(S_ISDIR(st.st_mode))
+                self.assertTrue(S_ISDIR(st.st_mode))
                 # directory sizes are meaningless
             else:
-                self.failUnless(S_ISREG(st.st_mode))
+                self.assertTrue(S_ISREG(st.st_mode))
                 self.assertEqual(size, st.st_size)
 
         remote_stats = list(t.stat_multi(paths))
@@ -1095,11 +1095,11 @@ class TransportTests(TestTransportImplementation):
         try:
             t.hardlink(source_name, link_name)
 
-            self.failUnless(t.has(source_name))
-            self.failUnless(t.has(link_name))
+            self.assertTrue(t.has(source_name))
+            self.assertTrue(t.has(link_name))
 
             st = t.stat(link_name)
-            self.failUnlessEqual(st[ST_NLINK], 2)
+            self.assertEqual(st[ST_NLINK], 2)
         except TransportNotPossible:
             raise TestSkipped("Transport %s does not support hardlinks." %
                               self._server.__class__)
@@ -1117,11 +1117,11 @@ class TransportTests(TestTransportImplementation):
         try:
             t.symlink(source_name, link_name)
 
-            self.failUnless(t.has(source_name))
-            self.failUnless(t.has(link_name))
+            self.assertTrue(t.has(source_name))
+            self.assertTrue(t.has(link_name))
 
             st = t.stat(link_name)
-            self.failUnless(S_ISLNK(st.st_mode),
+            self.assertTrue(S_ISLNK(st.st_mode),
                 "expected symlink, got mode %o" % st.st_mode)
         except TransportNotPossible:
             raise TestSkipped("Transport %s does not support symlinks." %
@@ -1293,32 +1293,32 @@ class TransportTests(TestTransportImplementation):
 
         self.build_tree(['a', 'b/', 'b/c'], transport=t1)
 
-        self.failUnless(t1.has('a'))
-        self.failUnless(t1.has('b/c'))
-        self.failIf(t1.has('c'))
+        self.assertTrue(t1.has('a'))
+        self.assertTrue(t1.has('b/c'))
+        self.assertFalse(t1.has('c'))
 
         t2 = t1.clone('b')
         self.assertEqual(t1.base + 'b/', t2.base)
 
-        self.failUnless(t2.has('c'))
-        self.failIf(t2.has('a'))
+        self.assertTrue(t2.has('c'))
+        self.assertFalse(t2.has('a'))
 
         t3 = t2.clone('..')
-        self.failUnless(t3.has('a'))
-        self.failIf(t3.has('c'))
+        self.assertTrue(t3.has('a'))
+        self.assertFalse(t3.has('c'))
 
-        self.failIf(t1.has('b/d'))
-        self.failIf(t2.has('d'))
-        self.failIf(t3.has('b/d'))
+        self.assertFalse(t1.has('b/d'))
+        self.assertFalse(t2.has('d'))
+        self.assertFalse(t3.has('b/d'))
 
         if t1.is_readonly():
             self.build_tree_contents([('b/d', 'newfile\n')])
         else:
             t2.put_bytes('d', 'newfile\n')
 
-        self.failUnless(t1.has('b/d'))
-        self.failUnless(t2.has('d'))
-        self.failUnless(t3.has('b/d'))
+        self.assertTrue(t1.has('b/d'))
+        self.assertTrue(t2.has('d'))
+        self.assertTrue(t3.has('b/d'))
 
     def test_clone_to_root(self):
         orig_transport = self.get_transport()
@@ -1410,11 +1410,11 @@ class TransportTests(TestTransportImplementation):
         # smoke test for abspath on win32.
         # a transport based on 'file:///' never fully qualifies the drive.
         transport = _mod_transport.get_transport("file:///")
-        self.failUnlessEqual(transport.abspath("/"), "file:///")
+        self.assertEqual(transport.abspath("/"), "file:///")
 
         # but a transport that starts with a drive spec must keep it.
         transport = _mod_transport.get_transport("file:///C:/")
-        self.failUnlessEqual(transport.abspath("/"), "file:///C:/")
+        self.assertEqual(transport.abspath("/"), "file:///C:/")
 
     def test_local_abspath(self):
         transport = self.get_transport()

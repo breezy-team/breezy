@@ -29,13 +29,14 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from stat import S_ISDIR
-
 import bzrlib
 from bzrlib import (
+    branch as _mod_branch,
+    cleanup,
     config,
     controldir,
     errors,
+    fetch,
     graph,
     lockable_files,
     lockdir,
@@ -47,12 +48,11 @@ from bzrlib import (
     transport as _mod_transport,
     ui,
     urlutils,
-    versionedfile,
     win32utils,
     workingtree,
     workingtree_4,
     )
-from bzrlib.repofmt import pack_repo
+from bzrlib.repofmt import knitpack_repo
 from bzrlib.transport import (
     do_catching_redirections,
     local,
@@ -60,6 +60,7 @@ from bzrlib.transport import (
 """)
 
 from bzrlib.trace import (
+    mutter,
     note,
     )
 
@@ -121,34 +122,6 @@ class BzrDir(controldir.ControlDir):
         except errors.NoRepositoryPresent:
             # No repo, no problem.
             pass
-
-    @staticmethod
-    def _check_supported(format, allow_unsupported,
-        recommend_upgrade=True,
-        basedir=None):
-        """Give an error or warning on old formats.
-
-        :param format: may be any kind of format - workingtree, branch,
-        or repository.
-
-        :param allow_unsupported: If true, allow opening
-        formats that are strongly deprecated, and which may
-        have limited functionality.
-
-        :param recommend_upgrade: If true (default), warn
-        the user through the ui object that they may wish
-        to upgrade the object.
-        """
-        # TODO: perhaps move this into a base Format class; it's not BzrDir
-        # specific. mbp 20070323
-        if not allow_unsupported and not format.is_supported():
-            # see open_downlevel to open legacy branches.
-            raise errors.UnsupportedFormatError(format=format)
-        if recommend_upgrade \
-            and getattr(format, 'upgrade_recommended', False):
-            ui.ui_factory.recommend_upgrade(
-                format.get_format_description(),
-                basedir)
 
     def clone_on_transport(self, transport, revision_id=None,
         force_new_repo=False, preserve_stacking=False, stacked_on=None,
@@ -414,6 +387,161 @@ class BzrDir(controldir.ControlDir):
         """Create a new repository if needed, returning the repository."""
         policy = self.determine_repository_policy(force_new_repo)
         return policy.acquire_repository()[0]
+
+    def _find_source_repo(self, add_cleanup, source_branch):
+        """Find the source branch and repo for a sprout operation.
+        
+        This is helper intended for use by _sprout.
+
+        :returns: (source_branch, source_repository).  Either or both may be
+            None.  If not None, they will be read-locked (and their unlock(s)
+            scheduled via the add_cleanup param).
+        """
+        if source_branch is not None:
+            add_cleanup(source_branch.lock_read().unlock)
+            return source_branch, source_branch.repository
+        try:
+            source_branch = self.open_branch()
+            source_repository = source_branch.repository
+        except errors.NotBranchError:
+            source_branch = None
+            try:
+                source_repository = self.open_repository()
+            except errors.NoRepositoryPresent:
+                source_repository = None
+            else:
+                add_cleanup(source_repository.lock_read().unlock)
+        else:
+            add_cleanup(source_branch.lock_read().unlock)
+        return source_branch, source_repository
+
+    def sprout(self, url, revision_id=None, force_new_repo=False,
+               recurse='down', possible_transports=None,
+               accelerator_tree=None, hardlink=False, stacked=False,
+               source_branch=None, create_tree_if_local=True):
+        """Create a copy of this controldir prepared for use as a new line of
+        development.
+
+        If url's last component does not exist, it will be created.
+
+        Attributes related to the identity of the source branch like
+        branch nickname will be cleaned, a working tree is created
+        whether one existed before or not; and a local branch is always
+        created.
+
+        if revision_id is not None, then the clone operation may tune
+            itself to download less data.
+        :param accelerator_tree: A tree which can be used for retrieving file
+            contents more quickly than the revision tree, i.e. a workingtree.
+            The revision tree will be used for cases where accelerator_tree's
+            content is different.
+        :param hardlink: If true, hard-link files from accelerator_tree,
+            where possible.
+        :param stacked: If true, create a stacked branch referring to the
+            location of this control directory.
+        :param create_tree_if_local: If true, a working-tree will be created
+            when working locally.
+        """
+        operation = cleanup.OperationWithCleanups(self._sprout)
+        return operation.run(url, revision_id=revision_id,
+            force_new_repo=force_new_repo, recurse=recurse,
+            possible_transports=possible_transports,
+            accelerator_tree=accelerator_tree, hardlink=hardlink,
+            stacked=stacked, source_branch=source_branch,
+            create_tree_if_local=create_tree_if_local)
+
+    def _sprout(self, op, url, revision_id=None, force_new_repo=False,
+               recurse='down', possible_transports=None,
+               accelerator_tree=None, hardlink=False, stacked=False,
+               source_branch=None, create_tree_if_local=True):
+        add_cleanup = op.add_cleanup
+        fetch_spec_factory = fetch.FetchSpecFactory()
+        if revision_id is not None:
+            fetch_spec_factory.add_revision_ids([revision_id])
+            fetch_spec_factory.source_branch_stop_revision_id = revision_id
+        target_transport = _mod_transport.get_transport(url,
+            possible_transports)
+        target_transport.ensure_base()
+        cloning_format = self.cloning_metadir(stacked)
+        # Create/update the result branch
+        result = cloning_format.initialize_on_transport(target_transport)
+        source_branch, source_repository = self._find_source_repo(
+            add_cleanup, source_branch)
+        fetch_spec_factory.source_branch = source_branch
+        # if a stacked branch wasn't requested, we don't create one
+        # even if the origin was stacked
+        if stacked and source_branch is not None:
+            stacked_branch_url = self.root_transport.base
+        else:
+            stacked_branch_url = None
+        repository_policy = result.determine_repository_policy(
+            force_new_repo, stacked_branch_url, require_stacking=stacked)
+        result_repo, is_new_repo = repository_policy.acquire_repository()
+        add_cleanup(result_repo.lock_write().unlock)
+        fetch_spec_factory.source_repo = source_repository
+        fetch_spec_factory.target_repo = result_repo
+        if stacked or (len(result_repo._fallback_repositories) != 0):
+            target_repo_kind = fetch.TargetRepoKinds.STACKED
+        elif is_new_repo:
+            target_repo_kind = fetch.TargetRepoKinds.EMPTY
+        else:
+            target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+        fetch_spec_factory.target_repo_kind = target_repo_kind
+        if source_repository is not None:
+            fetch_spec = fetch_spec_factory.make_fetch_spec()
+            result_repo.fetch(source_repository, fetch_spec=fetch_spec)
+
+        if source_branch is None:
+            # this is for sprouting a controldir without a branch; is that
+            # actually useful?
+            # Not especially, but it's part of the contract.
+            result_branch = result.create_branch()
+        else:
+            result_branch = source_branch.sprout(result,
+                revision_id=revision_id, repository_policy=repository_policy,
+                repository=result_repo)
+        mutter("created new branch %r" % (result_branch,))
+
+        # Create/update the result working tree
+        if (create_tree_if_local and
+            isinstance(target_transport, local.LocalTransport) and
+            (result_repo is None or result_repo.make_working_trees())):
+            wt = result.create_workingtree(accelerator_tree=accelerator_tree,
+                hardlink=hardlink, from_branch=result_branch)
+            wt.lock_write()
+            try:
+                if wt.path2id('') is None:
+                    try:
+                        wt.set_root_id(self.open_workingtree.get_root_id())
+                    except errors.NoWorkingTree:
+                        pass
+            finally:
+                wt.unlock()
+        else:
+            wt = None
+        if recurse == 'down':
+            basis = None
+            if wt is not None:
+                basis = wt.basis_tree()
+            elif result_branch is not None:
+                basis = result_branch.basis_tree()
+            elif source_branch is not None:
+                basis = source_branch.basis_tree()
+            if basis is not None:
+                add_cleanup(basis.lock_read().unlock)
+                subtrees = basis.iter_references()
+            else:
+                subtrees = []
+            for path, file_id in subtrees:
+                target = urlutils.join(url, urlutils.escape(path))
+                sublocation = source_branch.reference_parent(file_id, path)
+                sublocation.bzrdir.sprout(target,
+                    basis.get_reference_revision(file_id, path),
+                    force_new_repo=force_new_repo, recurse=recurse,
+                    stacked=stacked)
+        return result
+
+
 
     @staticmethod
     def create_branch_convenience(base, force_new_repo=False,
@@ -729,7 +857,7 @@ class BzrDir(controldir.ControlDir):
         except errors.TooManyRedirections:
             raise errors.NotBranchError(base)
 
-        BzrDir._check_supported(format, _unsupported)
+        format.check_support_status(_unsupported)
         return format.open(transport, _found=True)
 
     @staticmethod
@@ -952,15 +1080,15 @@ class BzrDirHooks(hooks.Hooks):
 
     def __init__(self):
         """Create the default hooks."""
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('pre_open',
+        hooks.Hooks.__init__(self, "bzrlib.bzrdir", "BzrDir.hooks")
+        self.add_hook('pre_open',
             "Invoked before attempting to open a BzrDir with the transport "
-            "that the open will use.", (1, 14), None))
-        self.create_hook(hooks.HookPoint('post_repo_init',
+            "that the open will use.", (1, 14))
+        self.add_hook('post_repo_init',
             "Invoked after a repository has been initialized. "
             "post_repo_init is called with a "
             "bzrlib.bzrdir.RepoInitHookParams.",
-            (2, 2), None))
+            (2, 2))
 
 # install the default hooks
 BzrDir.hooks = BzrDirHooks()
@@ -1169,7 +1297,7 @@ class BzrDirMeta1(BzrDir):
                     ignore_fallbacks=False):
         """See BzrDir.open_branch."""
         format = self.find_branch_format(name=name)
-        self._check_supported(format, unsupported)
+        format.check_support_status(unsupported)
         return format.open(self, name=name,
             _found=True, ignore_fallbacks=ignore_fallbacks)
 
@@ -1177,7 +1305,7 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.open_repository."""
         from bzrlib.repository import RepositoryFormat
         format = RepositoryFormat.find_format(self)
-        self._check_supported(format, unsupported)
+        format.check_support_status(unsupported)
         return format.open(self, _found=True)
 
     def open_workingtree(self, unsupported=False,
@@ -1185,8 +1313,7 @@ class BzrDirMeta1(BzrDir):
         """See BzrDir.open_workingtree."""
         from bzrlib.workingtree import WorkingTreeFormat
         format = WorkingTreeFormat.find_format(self)
-        self._check_supported(format, unsupported,
-            recommend_upgrade,
+        format.check_support_status(unsupported, recommend_upgrade,
             basedir=self.root_transport.base)
         return format.open(self, _found=True)
 
@@ -1579,9 +1706,9 @@ class BzrDirMetaFormat1(BzrDirFormat):
                     # stack_on is inaccessible, JFDI.
                     # TODO: bad monkey, hard-coded formats...
                     if self.repository_format.rich_root_data:
-                        new_repo_format = pack_repo.RepositoryFormatKnitPack5RichRoot()
+                        new_repo_format = knitpack_repo.RepositoryFormatKnitPack5RichRoot()
                     else:
-                        new_repo_format = pack_repo.RepositoryFormatKnitPack5()
+                        new_repo_format = knitpack_repo.RepositoryFormatKnitPack5()
             else:
                 # If the target already supports stacking, then we know the
                 # project is already able to use stacking, so auto-upgrade
@@ -1731,7 +1858,6 @@ class ConvertMetaToMeta(controldir.Converter):
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups/some sort of registry.
             # Avoid circular imports
-            from bzrlib import branch as _mod_branch
             old = branch._format.__class__
             new = self.target_format.get_branch_format().__class__
             while old != new:
@@ -2028,7 +2154,7 @@ register_metadir(controldir.format_registry, 'dirstate-with-subtree',
     hidden=True,
     )
 register_metadir(controldir.format_registry, 'pack-0.92',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack1',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack1',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-tags format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
@@ -2037,7 +2163,7 @@ register_metadir(controldir.format_registry, 'pack-0.92',
     tree_format='bzrlib.workingtree.WorkingTreeFormat4',
     )
 register_metadir(controldir.format_registry, 'pack-0.92-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack3',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack3',
     help='New in 0.92: Pack-based format with data compatible with '
         'dirstate-with-subtree format repositories. Interoperates with '
         'bzr repositories before 0.92 but cannot be read by bzr < 0.92. '
@@ -2048,7 +2174,7 @@ register_metadir(controldir.format_registry, 'pack-0.92-subtree',
     experimental=True,
     )
 register_metadir(controldir.format_registry, 'rich-root-pack',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack4',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack4',
     help='New in 1.0: A variant of pack-0.92 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat6',
@@ -2056,7 +2182,7 @@ register_metadir(controldir.format_registry, 'rich-root-pack',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.6',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack5',
     help='A format that allows a branch to indicate that there is another '
          '(stacked) repository that should be used to access data that is '
          'not present locally.',
@@ -2065,7 +2191,7 @@ register_metadir(controldir.format_registry, '1.6',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.6.1-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack5RichRoot',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack5RichRoot',
     help='A variant of 1.6 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
@@ -2073,7 +2199,7 @@ register_metadir(controldir.format_registry, '1.6.1-rich-root',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.9',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6',
     help='A repository format using B+tree indexes. These indexes '
          'are smaller in size, have smarter caching and provide faster '
          'performance for most operations.',
@@ -2082,7 +2208,7 @@ register_metadir(controldir.format_registry, '1.9',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.9-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of 1.9 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
@@ -2090,13 +2216,13 @@ register_metadir(controldir.format_registry, '1.9-rich-root',
     hidden=True,
     )
 register_metadir(controldir.format_registry, '1.14',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6',
     help='A working-tree format that supports content filtering.',
     branch_format='bzrlib.branch.BzrBranchFormat7',
     tree_format='bzrlib.workingtree.WorkingTreeFormat5',
     )
 register_metadir(controldir.format_registry, '1.14-rich-root',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatKnitPack6RichRoot',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatKnitPack6RichRoot',
     help='A variant of 1.14 that supports rich-root data '
          '(needed for bzr-svn and bzr-git).',
     branch_format='bzrlib.branch.BzrBranchFormat7',
@@ -2120,7 +2246,7 @@ register_metadir(controldir.format_registry, 'development-subtree',
                  # chk based subtree format.
     )
 register_metadir(controldir.format_registry, 'development5-subtree',
-    'bzrlib.repofmt.pack_repo.RepositoryFormatPackDevelopment2Subtree',
+    'bzrlib.repofmt.knitpack_repo.RepositoryFormatPackDevelopment2Subtree',
     help='Development format, subtree variant. Can convert data to and '
         'from pack-0.92-subtree (and anything compatible with '
         'pack-0.92-subtree) format repositories. Repositories and branches in '

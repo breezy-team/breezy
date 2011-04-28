@@ -2,9 +2,10 @@ Description: Remove included copy of python-configobj
 Author: Jelmer Vernooij <jelmer@debian.org>
 Bug-Debian: http://bugs.debian.org/555336
 
---- bzr-2.3.0.orig/bzrlib/config.py
-+++ bzr-2.3.0/bzrlib/config.py
-@@ -91,7 +91,7 @@ from bzrlib import (
+=== modified file 'bzrlib/config.py'
+--- old/bzrlib/config.py	2011-04-28 16:54:40 +0000
++++ new/bzrlib/config.py	2011-04-28 17:03:02 +0000
+@@ -92,7 +92,7 @@
      urlutils,
      win32utils,
      )
@@ -13,9 +14,11 @@ Bug-Debian: http://bugs.debian.org/555336
  """)
  
  
---- bzr-2.3.0.orig/bzrlib/rules.py
-+++ bzr-2.3.0/bzrlib/rules.py
-@@ -26,7 +26,7 @@ from bzrlib import (
+
+=== modified file 'bzrlib/rules.py'
+--- old/bzrlib/rules.py	2011-02-03 18:37:04 +0000
++++ new/bzrlib/rules.py	2011-04-28 17:03:02 +0000
+@@ -26,7 +26,7 @@
      globbing,
      osutils,
      )
@@ -24,10 +27,12 @@ Bug-Debian: http://bugs.debian.org/555336
  
  
  # Name of the file holding rules in a tree
---- bzr-2.3.0.orig/bzrlib/tests/test_config.py
-+++ bzr-2.3.0/bzrlib/tests/test_config.py
-@@ -43,7 +43,7 @@ from bzrlib.tests import (
-     features,
+
+=== modified file 'bzrlib/tests/test_config.py'
+--- old/bzrlib/tests/test_config.py	2011-04-28 16:54:40 +0000
++++ new/bzrlib/tests/test_config.py	2011-04-28 17:03:02 +0000
+@@ -45,7 +45,7 @@
+     TestSkipped,
      scenarios,
      )
 -from bzrlib.util.configobj import configobj
@@ -35,10 +40,9 @@ Bug-Debian: http://bugs.debian.org/555336
  
  
  def lockable_config_scenarios():
-=== removed directory 'bzrlib/util/configobj'
-=== removed file 'bzrlib/util/configobj/__init__.py'
+
 === removed file 'bzrlib/util/configobj/configobj.py'
---- old/bzrlib/util/configobj/configobj.py	2011-02-03 18:34:23 +0000
+--- old/bzrlib/util/configobj/configobj.py	2011-04-05 13:44:35 +0000
 +++ new/bzrlib/util/configobj/configobj.py	1970-01-01 00:00:00 +0000
 @@ -1,2461 +0,0 @@
 -# configobj.py
@@ -2502,3 +2506,4 @@ Bug-Debian: http://bugs.debian.org/555336
 -
 -
 -"""*A programming language is a medium of expression.* - Paul Graham"""
+

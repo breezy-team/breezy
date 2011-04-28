@@ -25,16 +25,14 @@ from bzrlib import (
     gpg,
     merge,
     urlutils,
-    transactions,
     transport,
     remote,
     repository,
     revision,
+    symbol_versioning,
     tests,
     )
-from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import (
-    http_server,
     per_branch,
     )
 from bzrlib.tests.http_server import HttpServer
@@ -77,7 +75,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
 
         br = self.get_branch()
         br.fetch(wt.branch)
-        br.set_revision_history(['rev1', 'rev2', 'rev3'])
+        br.generate_revision_history('rev3')
         rh = br.revision_history()
         self.assertEqual(['rev1', 'rev2', 'rev3'], rh)
         for revision_id in rh:
@@ -330,7 +328,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         # config file in the branch.
         branch.nick = "Aaron's branch"
         if not isinstance(branch, remote.RemoteBranch):
-            self.failUnless(branch._transport.has("branch.conf"))
+            self.assertTrue(branch._transport.has("branch.conf"))
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
@@ -389,7 +387,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_format_description(self):
         tree = self.make_branch_and_tree('tree')
         text = tree.branch._format.get_format_description()
-        self.failUnless(len(text))
+        self.assertTrue(len(text))
 
     def test_get_commit_builder(self):
         branch = self.make_branch(".")
@@ -462,9 +460,11 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree = self.make_branch_and_tree('a')
         tree.commit('a commit', rev_id='rev1')
         br = tree.branch
-        br.set_revision_history(["rev1"])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            br.set_revision_history, ["rev1"])
         self.assertEquals(br.revision_history(), ["rev1"])
-        br.set_revision_history([])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            br.set_revision_history, [])
         self.assertEquals(br.revision_history(), [])
 
     def test_heads_to_fetch(self):
@@ -675,19 +675,19 @@ class TestFormat(per_branch.TestCaseWithBranch):
         t = self.get_transport()
         readonly_t = transport.get_transport(self.get_readonly_url())
         made_branch = self.make_branch('.')
-        self.failUnless(isinstance(made_branch, _mod_branch.Branch))
+        self.assertIsInstance(made_branch, _mod_branch.Branch)
 
         # find it via bzrdir opening:
         opened_control = bzrdir.BzrDir.open(readonly_t.base)
         direct_opened_branch = opened_control.open_branch()
         self.assertEqual(direct_opened_branch.__class__, made_branch.__class__)
         self.assertEqual(opened_control, direct_opened_branch.bzrdir)
-        self.failUnless(isinstance(direct_opened_branch._format,
-                        self.branch_format.__class__))
+        self.assertIsInstance(direct_opened_branch._format,
+            self.branch_format.__class__)
 
         # find it via Branch.open
         opened_branch = _mod_branch.Branch.open(readonly_t.base)
-        self.failUnless(isinstance(opened_branch, made_branch.__class__))
+        self.assertIsInstance(opened_branch, made_branch.__class__)
         self.assertEqual(made_branch._format.__class__,
                          opened_branch._format.__class__)
         # if it has a unique id string, can we probe for it ?
@@ -735,6 +735,66 @@ class TestBound(per_branch.TestCaseWithBranch):
             tree_b.branch.bind(tree_a.branch)
         except errors.UpgradeRequired:
             raise tests.TestNotApplicable('Format does not support binding')
+
+    def test_unbind_clears_cached_master_branch(self):
+        """b.unbind clears any cached value of b.get_master_branch."""
+        master = self.make_branch('master')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.unbind()
+        self.assertEqual(None, branch.get_master_branch())
+
+    def test_unlocked_does_not_cache_master_branch(self):
+        """Unlocked branches do not cache the result of get_master_branch."""
+        master = self.make_branch('master')
+        branch1 = self.make_branch('branch')
+        try:
+            branch1.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        # Open branch1 again
+        branch2 = branch1.bzrdir.open_branch()
+        self.assertNotEqual(None, branch1.get_master_branch())
+        # Unbind the branch via branch2.  branch1 isn't locked so will
+        # immediately return the new value for get_master_branch.
+        branch2.unbind()
+        self.assertEqual(None, branch1.get_master_branch())
+
+    def test_bind_clears_cached_master_branch(self):
+        """b.bind clears any cached value of b.get_master_branch."""
+        master1 = self.make_branch('master1')
+        master2 = self.make_branch('master2')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master1)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.bind(master2)
+        self.assertEqual('.', urlutils.relative_url(self.get_url('master2'),
+                branch.get_master_branch().base))
+
+    def test_set_bound_location_clears_cached_master_branch(self):
+        """b.set_bound_location clears any cached value of b.get_master_branch.
+        """
+        master1 = self.make_branch('master1')
+        master2 = self.make_branch('master2')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master1)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.set_bound_location(self.get_url('master2'))
+        self.assertEqual('.', urlutils.relative_url(self.get_url('master2'),
+                branch.get_master_branch().base))
 
 
 class TestStrict(per_branch.TestCaseWithBranch):

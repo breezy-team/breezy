@@ -226,7 +226,7 @@ class TestDiff(tests.TestCase):
         output = StringIO.StringIO()
         diff.internal_diff(u'old_\xb5', ['old_text\n'],
                             u'new_\xe5', ['new_text\n'], output)
-        self.failUnless(isinstance(output.getvalue(), str),
+        self.assertIsInstance(output.getvalue(), str,
             'internal_diff should return bytestrings')
 
 
@@ -249,23 +249,20 @@ class TestDiffFiles(tests.TestCaseInTempDir):
         self.assertEqual(out.splitlines(True) + ['\n'], lines)
 
 
-class TestShowDiffTreesHelper(tests.TestCaseWithTransport):
-    """Has a helper for running show_diff_trees"""
-
-    def get_diff(self, tree1, tree2, specific_files=None, working_tree=None):
-        output = StringIO()
-        if working_tree is not None:
-            extra_trees = (working_tree,)
-        else:
-            extra_trees = ()
-        diff.show_diff_trees(tree1, tree2, output,
-                             specific_files=specific_files,
-                             extra_trees=extra_trees, old_label='old/',
-                             new_label='new/')
-        return output.getvalue()
+def get_diff_as_string(tree1, tree2, specific_files=None, working_tree=None):
+    output = StringIO()
+    if working_tree is not None:
+        extra_trees = (working_tree,)
+    else:
+        extra_trees = ()
+    diff.show_diff_trees(tree1, tree2, output,
+        specific_files=specific_files,
+        extra_trees=extra_trees, old_label='old/',
+        new_label='new/')
+    return output.getvalue()
 
 
-class TestDiffDates(TestShowDiffTreesHelper):
+class TestDiffDates(tests.TestCaseWithTransport):
 
     def setUp(self):
         super(TestDiffDates, self).setUp()
@@ -306,7 +303,7 @@ class TestDiffDates(TestShowDiffTreesHelper):
         os.utime('file1', (1144195200, 1144195200)) # 2006-04-05 00:00:00 UTC
 
     def test_diff_rev_tree_working_tree(self):
-        output = self.get_diff(self.wt.basis_tree(), self.wt)
+        output = get_diff_as_string(self.wt.basis_tree(), self.wt)
         # note that the date for old/file1 is from rev 2 rather than from
         # the basis revision (rev 4)
         self.assertEqualDiff(output, '''\
@@ -322,7 +319,7 @@ class TestDiffDates(TestShowDiffTreesHelper):
     def test_diff_rev_tree_rev_tree(self):
         tree1 = self.b.repository.revision_tree('rev-2')
         tree2 = self.b.repository.revision_tree('rev-3')
-        output = self.get_diff(tree1, tree2)
+        output = get_diff_as_string(tree1, tree2)
         self.assertEqualDiff(output, '''\
 === modified file 'file2'
 --- old/file2\t2006-04-01 00:00:00 +0000
@@ -336,7 +333,7 @@ class TestDiffDates(TestShowDiffTreesHelper):
     def test_diff_add_files(self):
         tree1 = self.b.repository.revision_tree(_mod_revision.NULL_REVISION)
         tree2 = self.b.repository.revision_tree('rev-1')
-        output = self.get_diff(tree1, tree2)
+        output = get_diff_as_string(tree1, tree2)
         # the files have the epoch time stamp for the tree in which
         # they don't exist.
         self.assertEqualDiff(output, '''\
@@ -357,7 +354,7 @@ class TestDiffDates(TestShowDiffTreesHelper):
     def test_diff_remove_files(self):
         tree1 = self.b.repository.revision_tree('rev-3')
         tree2 = self.b.repository.revision_tree('rev-4')
-        output = self.get_diff(tree1, tree2)
+        output = get_diff_as_string(tree1, tree2)
         # the file has the epoch time stamp for the tree in which
         # it doesn't exist.
         self.assertEqualDiff(output, '''\
@@ -374,7 +371,7 @@ class TestDiffDates(TestShowDiffTreesHelper):
         self.wt.rename_one('file1', 'file1b')
         old_tree = self.b.repository.revision_tree('rev-1')
         new_tree = self.b.repository.revision_tree('rev-4')
-        out = self.get_diff(old_tree, new_tree, specific_files=['file1b'],
+        out = get_diff_as_string(old_tree, new_tree, specific_files=['file1b'],
                             working_tree=self.wt)
         self.assertContainsRe(out, 'file1\t')
 
@@ -386,16 +383,15 @@ class TestDiffDates(TestShowDiffTreesHelper):
         self.wt.rename_one('file1', 'dir1/file1')
         old_tree = self.b.repository.revision_tree('rev-1')
         new_tree = self.b.repository.revision_tree('rev-4')
-        out = self.get_diff(old_tree, new_tree, specific_files=['dir1'],
+        out = get_diff_as_string(old_tree, new_tree, specific_files=['dir1'],
                             working_tree=self.wt)
         self.assertContainsRe(out, 'file1\t')
-        out = self.get_diff(old_tree, new_tree, specific_files=['dir2'],
+        out = get_diff_as_string(old_tree, new_tree, specific_files=['dir2'],
                             working_tree=self.wt)
         self.assertNotContainsRe(out, 'file1\t')
 
 
-
-class TestShowDiffTrees(TestShowDiffTreesHelper):
+class TestShowDiffTrees(tests.TestCaseWithTransport):
     """Direct tests for show_diff_trees"""
 
     def test_modified_file(self):
@@ -406,7 +402,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         tree.commit('one', rev_id='rev-1')
 
         self.build_tree_contents([('tree/file', 'new contents\n')])
-        d = self.get_diff(tree.basis_tree(), tree)
+        d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d, "=== modified file 'file'\n")
         self.assertContainsRe(d, '--- old/file\t')
         self.assertContainsRe(d, '\\+\\+\\+ new/file\t')
@@ -423,7 +419,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
 
         tree.rename_one('dir', 'other')
         self.build_tree_contents([('tree/other/file', 'new contents\n')])
-        d = self.get_diff(tree.basis_tree(), tree)
+        d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d, "=== renamed directory 'dir' => 'other'\n")
         self.assertContainsRe(d, "=== modified file 'other/file'\n")
         # XXX: This is technically incorrect, because it used to be at another
@@ -442,7 +438,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         tree.commit('one', rev_id='rev-1')
 
         tree.rename_one('dir', 'newdir')
-        d = self.get_diff(tree.basis_tree(), tree)
+        d = get_diff_as_string(tree.basis_tree(), tree)
         # Renaming a directory should be a single "you renamed this dir" even
         # when there are files inside.
         self.assertEqual(d, "=== renamed directory 'dir' => 'newdir'\n")
@@ -455,7 +451,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         tree.commit('one', rev_id='rev-1')
 
         tree.rename_one('file', 'newname')
-        d = self.get_diff(tree.basis_tree(), tree)
+        d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d, "=== renamed file 'file' => 'newname'\n")
         # We shouldn't have a --- or +++ line, because there is no content
         # change
@@ -470,7 +466,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
 
         tree.rename_one('file', 'newname')
         self.build_tree_contents([('tree/newname', 'new contents\n')])
-        d = self.get_diff(tree.basis_tree(), tree)
+        d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d, "=== renamed file 'file' => 'newname'\n")
         self.assertContainsRe(d, '--- old/file\t')
         self.assertContainsRe(d, '\\+\\+\\+ new/newname\t')
@@ -500,7 +496,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         tree.rename_one('c', 'new-c')
         tree.rename_one('d', 'new-d')
 
-        d = self.get_diff(tree.basis_tree(), tree)
+        d = get_diff_as_string(tree.basis_tree(), tree)
 
         self.assertContainsRe(d, r"file 'a'.*\(properties changed:"
                                   ".*\+x to -x.*\)")
@@ -564,7 +560,7 @@ class TestShowDiffTrees(TestShowDiffTreesHelper):
         tree.add(['add_'+alpha], ['file-id'])
         self.build_tree_contents([('tree/mod_'+alpha, 'contents_mod\n')])
 
-        d = self.get_diff(tree.basis_tree(), tree)
+        d = get_diff_as_string(tree.basis_tree(), tree)
         self.assertContainsRe(d,
                 "=== renamed file 'ren_%s' => 'ren_%s'\n"%(autf8, outf8))
         self.assertContainsRe(d, "=== added file 'add_%s'"%autf8)
@@ -1484,4 +1480,3 @@ class TestGetTreesAndBranchesToDiff(TestGetTreesAndBranchesToDiffLocked):
         return self.applyDeprecated(
             deprecated_in((2, 2, 0)), diff.get_trees_and_branches_to_diff,
             path_list, revision_specs, old_url, new_url)
-

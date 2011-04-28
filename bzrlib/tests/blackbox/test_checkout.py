@@ -69,7 +69,7 @@ class TestCheckout(TestCaseWithTransport):
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
         self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
-        self.failIfExists('checkout/added_in_2')
+        self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_light_dash_r(self):
         out, err = self.run_bzr(['checkout','--lightweight', '-r', '-2',
@@ -78,7 +78,7 @@ class TestCheckout(TestCaseWithTransport):
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
         self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
-        self.failIfExists('checkout/added_in_2')
+        self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_reconstitutes_working_trees(self):
         # doing a 'bzr checkout' in the directory of a branch with no tree
@@ -124,9 +124,9 @@ class TestCheckout(TestCaseWithTransport):
             cmd.append('--lightweight')
         self.run_bzr('checkout source target')
         # files with unique content should be moved
-        self.failUnlessExists('target/file2.moved')
+        self.assertPathExists('target/file2.moved')
         # files with content matching tree should not be moved
-        self.failIfExists('target/file1.moved')
+        self.assertPathDoesNotExist('target/file1.moved')
 
     def test_checkout_existing_dir_heavy(self):
         self._test_checkout_existing_dir(False)

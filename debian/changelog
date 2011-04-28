@@ -1,3 +1,14 @@
+bzr (2.4.0~beta2-1) experimental; urgency=low
+
+  * New upstream release.
+   + No longer requires setting user identity to commit. LP: #616878
+   + Sets proper permissions on files in exported zip files. LP: #207253
+   + Prints better error message when argv can't be decoded in application
+     locale. LP: #745712
+   + Now uses /etc/mailname when determining default identity. Closes: #574933
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Thu, 28 Apr 2011 18:18:35 +0200
+
 bzr (2.4.0~beta1-2) experimental; urgency=low
 
   * Split bzrlib.tests out from python-bzrlib into python-bzrlib.tests,
