@@ -166,6 +166,21 @@ class TestMergeUpstream(BuilddebTestCase):
             os.path.abspath(rel2.tarball)],
             working_dir=package.tree.basedir)
 
+    def test_upstream_branch_revision_not_found(self):
+        # When an upstream branch is specified but does not have the
+        # upstream version, 'bzr merge-upstream' should complain.
+        upstream = self.make_upstream()
+        rel1 = self.release_upstream(upstream)
+        package = self.import_upstream(rel1, upstream)
+        changed_upstream = self.file_moved_replaced_upstream(upstream)
+        rel2 = self.release_upstream(changed_upstream)
+        self.run_bzr_error([
+            'Using version string 8.',
+            'bzr: ERROR: Version 8 can not be found in upstream branch <UpstreamBranchSource for \'.*\'>. Specify the revision manually using --revision or adjust \'export-upstream-revision\' in the configuration.'],
+            ['merge-upstream', '--version', str(rel2.version),
+            os.path.abspath(rel2.tarball), changed_upstream.tree.basedir],
+            working_dir=package.tree.basedir)
+
     def test_hooks(self):
         upstream = self.make_upstream()
         rel1 = self.release_upstream(upstream)
