@@ -67,6 +67,17 @@ class TestDirExport(tests.TestCaseWithTransport):
         self.assertPathExists('target/b')
         self.assertPathExists('target/b/c')
 
+    def test_empty_subdir(self):
+        self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
+        wt = self.make_branch_and_tree('source')
+        wt.add(['a', 'b', 'b/c'])
+        wt.commit('1')
+        self.build_tree(['target/'])
+        export.export(wt, 'target', format="dir", subdir='')
+        self.assertPathExists('target/a')
+        self.assertPathExists('target/b')
+        self.assertPathExists('target/b/c')
+
     def test_to_existing_nonempty_dir_fail(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
         wt = self.make_branch_and_tree('source')
