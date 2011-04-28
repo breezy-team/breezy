@@ -76,7 +76,10 @@ class TestFastExport(ExternalBase):
         tree.commit("pointless")
         data = self.run_bzr("fast-export br br.fi")[0]
         self.assertEquals("", data)
-        self.failUnlessExists("br.fi")
+        try:
+            self.assertPathExists("br.fi")
+        except AttributeError: # bzr < 2.4
+            self.failUnlessExists("br.fi")
 
 
 simple_fast_import_stream = """commit refs/heads/master
