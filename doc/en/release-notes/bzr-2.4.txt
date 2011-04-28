@@ -365,9 +365,6 @@ API Changes
   ``RepositoryFormat.supports_leaving_lock`` flags have been added.
   (Jelmer Vernooij)
 
-* ``Branch.fetch`` implementations must now accept an optional
-  ``fetch_spec`` keyword argument. (Andrew Bennetts)
-
 * ``Branch.import_last_revision_info`` is deprecated.  Use the
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
