@@ -45,3 +45,15 @@ class TestExport(TestCaseWithTree):
         names = tf.getnames()
         self.assertIn('output/file', names)
         self.assertIn('output/dir', names)
+
+    def test_export_tar_symlink(self):
+        self.requireFeature(tests.SymlinkFeature)
+        work_a = self.make_branch_and_tree('wta')
+        os.symlink('target', 'wta/link')
+        work_a.add('link', 'link-id')
+        work_a.commit('add link')
+        tree_a = self.workingtree_to_test_tree(work_a)
+        export(tree_a, 'output', 'tar')
+        tf = tarfile.open('output')
+        names = tf.getnames()
+        self.assertIn('output/link', names)
