@@ -1898,11 +1898,7 @@ class TransformPreview(DiskTreeTransform):
         path = self._tree_id_paths.get(trans_id)
         if path is None:
             return None
-        file_id = self._tree.path2id(path)
-        try:
-            return self._tree.kind(file_id)
-        except errors.NoSuchFile:
-            return None
+        return self._tree.path_content_summary(path)[0]
 
     def _set_mode(self, trans_id, mode_id, typefunc):
         """Set the mode of new file contents.
@@ -2231,6 +2227,15 @@ class _PreviewTree(tree.InventoryTree):
                 raise
             except errors.NoSuchId:
                 return False
+
+    def has_filename(self, path):
+        trans_id = self._path2trans_id(path)
+        if trans_id in self._transform._new_contents:
+            return True
+        elif trans_id in self._transform._removed_contents:
+            return False
+        else:
+            return self._transform._tree.has_filename(path)
 
     def path_content_summary(self, path):
         trans_id = self._path2trans_id(path)

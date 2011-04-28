@@ -33,6 +33,9 @@ class TestExport(TestCaseWithTree):
 
     def test_export_tar(self):
         work_a = self.make_branch_and_tree('wta')
+        self.build_tree_contents([('wta/file', 'a\nb\nc\nd\n')])
+        work_a.add('file', 'file-id')
+        work_a.commit('add file')
         with write_locked(work_a):
             tree_a = self.workingtree_to_test_tree(work_a)
             export(tree_a, 'output', 'tar')
