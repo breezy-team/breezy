@@ -21,7 +21,10 @@
 import re
 
 from bzrlib.branch import Branch
-from bzrlib.errors import InvalidRevisionId
+from bzrlib.errors import (
+    InvalidRevisionId,
+    InvalidRevisionSpec,
+    )
 from bzrlib.revisionspec import RevisionSpec
 from bzrlib.trace import note
 
@@ -232,9 +235,12 @@ class UpstreamBranchSource(UpstreamSource):
         else:
             revspec = get_export_upstream_revision(self.config, version=version)
         if revspec is not None:
-            return RevisionSpec.from_string(
-                revspec).as_revision_id(self.upstream_branch)
-        return None
+            try:
+                return RevisionSpec.from_string(
+                    revspec).as_revision_id(self.upstream_branch)
+            except InvalidRevisionSpec:
+                raise PackageVersionNotPresent(package, version, self)
+        raise PackageVersionNotPresent(package, version, self)
 
     def get_latest_version(self, package, current_version):
         return self.get_version(package, current_version,

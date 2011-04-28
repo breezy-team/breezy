@@ -92,8 +92,8 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
     proc = subprocess.Popen(["dch", "-v",
             str(package_version(upstream_version, distribution_name,
                                 changelog.epoch)),
-            "-D", "UNRELEASED", "--release-heuristic", "changelog", entry_description],
-            cwd=tree.basedir)
+            "-D", "UNRELEASED", "--release-heuristic", "changelog",
+            entry_description], cwd=tree.basedir)
     proc.wait()
     # FIXME: Raise insightful exception here rather than just checking
     # return code.
