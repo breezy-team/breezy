@@ -309,8 +309,9 @@ class cmd_fast_import(Command):
             'import-marks': import_marks,
             'export-marks': export_marks,
             }
-        return _run(source, generic_processor.GenericProcessor, control=control,
-                params=params, verbose=verbose, user_map=user_map)
+        return _run(source, generic_processor.GenericProcessor,
+                control=control, params=params, verbose=verbose,
+                user_map=user_map)
 
     def _generate_info(self, source):
         from cStringIO import StringIO
