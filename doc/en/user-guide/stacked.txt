@@ -78,7 +78,7 @@ in the branch at ``reference-url``. In particular, ``my-url`` and
 can be used additionally to inform ``push`` to reference the
 revisions in ``reference-url``. For example::
 
-  bzr push --stacked-on sftp://host/project --stacked sftp://host/user/stacked-branch
+  bzr push --stacked-on bzr+ssh://host/project --stacked bzr+ssh://host/user/stacked-branch
 
 This usage fits the scenario described in the Motivation section.
 

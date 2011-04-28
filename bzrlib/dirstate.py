@@ -265,6 +265,17 @@ else:
         # return '%X.%X' % (int(st.st_mtime), st.st_mode)
 
 
+def _unpack_stat(packed_stat):
+    """Turn a packed_stat back into the stat fields.
+
+    This is meant as a debugging tool, should not be used in real code.
+    """
+    (st_size, st_mtime, st_ctime, st_dev, st_ino,
+     st_mode) = struct.unpack('>LLLLLL', binascii.a2b_base64(packed_stat))
+    return dict(st_size=st_size, st_mtime=st_mtime, st_ctime=st_ctime,
+                st_dev=st_dev, st_ino=st_ino, st_mode=st_mode)
+
+
 class SHA1Provider(object):
     """An interface for getting sha1s of a file."""
 
@@ -1734,8 +1745,8 @@ class DirState(object):
                 self._sha_cutoff_time()
             if (stat_value.st_mtime < self._cutoff_time
                 and stat_value.st_ctime < self._cutoff_time):
-                entry[1][0] = ('f', sha1, entry[1][0][2], entry[1][0][3],
-                    packed_stat)
+                entry[1][0] = ('f', sha1, stat_value.st_size, entry[1][0][3],
+                               packed_stat)
                 self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def _sha_cutoff_time(self):
@@ -3194,6 +3205,7 @@ def py_update_entry(state, entry, abspath, stat_value,
     # If we have gotten this far, that means that we need to actually
     # process this entry.
     link_or_sha1 = None
+    worth_saving = True
     if minikind == 'f':
         executable = state._is_executable(stat_value.st_mode,
                                          saved_executable)
@@ -3215,6 +3227,7 @@ def py_update_entry(state, entry, abspath, stat_value,
         else:
             entry[1][0] = ('f', '', stat_value.st_size,
                            executable, DirState.NULLSTAT)
+            worth_saving = False
     elif minikind == 'd':
         link_or_sha1 = None
         entry[1][0] = ('d', '', 0, False, packed_stat)
@@ -3226,6 +3239,8 @@ def py_update_entry(state, entry, abspath, stat_value,
                 state._get_block_entry_index(entry[0][0], entry[0][1], 0)
             state._ensure_block(block_index, entry_index,
                                osutils.pathjoin(entry[0][0], entry[0][1]))
+        else:
+            worth_saving = False
     elif minikind == 'l':
         link_or_sha1 = state._read_link(abspath, saved_link_or_sha1)
         if state._cutoff_time is None:
@@ -3237,7 +3252,8 @@ def py_update_entry(state, entry, abspath, stat_value,
         else:
             entry[1][0] = ('l', '', stat_value.st_size,
                            False, DirState.NULLSTAT)
-    state._dirblock_state = DirState.IN_MEMORY_MODIFIED
+    if worth_saving:
+        state._dirblock_state = DirState.IN_MEMORY_MODIFIED
     return link_or_sha1
 
 

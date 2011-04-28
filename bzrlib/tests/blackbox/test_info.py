@@ -276,8 +276,12 @@ Repository:
         tree5 = branch1.create_checkout('lightcheckout', lightweight=True)
         branch5 = tree5.branch
         out, err = self.run_bzr('info -v lightcheckout')
+        if "metaweave" in bzrdir.format_registry:
+            format_description = "knit or metaweave"
+        else:
+            format_description = "knit"
         self.assertEqualDiff(
-"""Lightweight checkout (format: knit or metaweave)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -306,7 +310,7 @@ Branch history:
 
 Repository:
          1 revision
-""" % (datestring_first, datestring_first,), out)
+""" % (format_description, datestring_first, datestring_first,), out)
         self.assertEqual('', err)
 
         # Update initial standalone branch
@@ -439,7 +443,7 @@ Repository:
         # Out of date lightweight checkout
         out, err = self.run_bzr('info lightcheckout --verbose')
         self.assertEqualDiff(
-"""Lightweight checkout (format: knit or metaweave)
+"""Lightweight checkout (format: %s)
 Location:
   light checkout root: lightcheckout
    checkout of branch: standalone
@@ -470,7 +474,7 @@ Branch history:
 
 Repository:
          2 revisions
-""" % (datestring_first, datestring_last,), out)
+""" % (format_description, datestring_first, datestring_last,), out)
         self.assertEqual('', err)
 
     def test_info_standalone_no_tree(self):

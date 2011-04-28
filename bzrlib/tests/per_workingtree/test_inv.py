@@ -18,12 +18,8 @@
 
 
 import os
-import time
 
-from bzrlib import (
-    errors,
-    inventory,
-    )
+from bzrlib import inventory
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 

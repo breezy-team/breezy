@@ -26,7 +26,10 @@ from bzrlib import (
     tests,
     )
 from bzrlib.inventory import ROOT_ID
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import (
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -263,7 +266,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('rev1', gpg.LoopbackGPGStrategy(None))
+        try:
+            repo.sign_revision('rev1', gpg.LoopbackGPGStrategy(None))
+        except errors.UnsupportedOperation:
+            self.assertFalse(repo._format.supports_revision_signatures)
+            raise TestNotApplicable("repository format does not support signatures")
         repo.commit_write_group()
         repo.unlock()
         return repo

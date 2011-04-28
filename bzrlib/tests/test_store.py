@@ -116,7 +116,7 @@ class TestMemoryStore(TestCase):
 
     def test_missing_is_absent(self):
         store = self.get_store()
-        self.failIf('aa' in store)
+        self.assertFalse('aa' in store)
 
     def test_adding_fails_when_present(self):
         my_store = self.get_store()
@@ -165,8 +165,8 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
         s = self.get_store(u'.', compressed=False)
         cs.add(StringIO('hello there'), 'a')
 
-        self.failUnlessExists('a.gz')
-        self.failIf(os.path.lexists('a'))
+        self.assertPathExists('a.gz')
+        self.assertFalse(os.path.lexists('a'))
 
         self.assertEquals(gzip.GzipFile('a.gz').read(), 'hello there')
 
@@ -178,8 +178,8 @@ class TestMixedTextStore(TestCaseInTempDir, TestStores):
         self.assertRaises(BzrError, s.add, StringIO('goodbye'), 'a')
 
         s.add(StringIO('goodbye'), 'b')
-        self.failUnlessExists('b')
-        self.failIf(os.path.lexists('b.gz'))
+        self.assertPathExists('b')
+        self.assertFalse(os.path.lexists('b.gz'))
         self.assertEquals(open('b').read(), 'goodbye')
 
         self.assertEquals(cs.has_id('b'), True)
@@ -230,7 +230,7 @@ class TestInstrumentedTransportStore(TestCase):
 class TestMockTransport(TestCase):
 
     def test_isinstance(self):
-        self.failUnless(isinstance(MockTransport(), transport.Transport))
+        self.assertIsInstance(MockTransport(), transport.Transport)
 
     def test_has(self):
         self.assertEqual(False, MockTransport().has('foo'))
