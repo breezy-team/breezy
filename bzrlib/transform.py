@@ -1898,7 +1898,10 @@ class TransformPreview(DiskTreeTransform):
         path = self._tree_id_paths.get(trans_id)
         if path is None:
             return None
-        return self._tree.path_content_summary(path)[0]
+        kind = self._tree.path_content_summary(path)[0]
+        if kind == 'missing':
+            kind = None
+        return kind
 
     def _set_mode(self, trans_id, mode_id, typefunc):
         """Set the mode of new file contents.
