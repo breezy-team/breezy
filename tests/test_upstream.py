@@ -55,6 +55,7 @@ from bzrlib.plugins.builddeb.upstream import (
     UpstreamSource,
     UScanSource,
     Version,
+    extract_tarball_version,
     )
 from bzrlib.plugins.builddeb.upstream.branch import (
     get_export_upstream_revision,
@@ -669,6 +670,10 @@ class TarfileSourceTests(TestCaseWithTransport):
         source = TarfileSource("foo-1.0.tar.gz", "1.0")
         self.assertEquals("1.0", source.get_latest_version("foo", "0.9"))
 
+    def test_get_latest_version_parses(self):
+        source = TarfileSource("foo-1.0.tar.gz")
+        self.assertEquals("1.0", source.get_latest_version("foo", "0.9"))
+
     def test_fetch_tarball(self):
         source = TarfileSource("foo-1.0.tar.gz", "1.0")
         os.mkdir("bar")
@@ -741,3 +746,18 @@ class _SimpleUpstreamProvider(UpstreamProvider):
         if path is not None:
             return path
         raise MissingUpstreamTarball(self._tarball_names()[0])
+
+
+class ExtractTarballVersionTests(TestCase):
+
+    def test_unknown_extension(self):
+        self.assertEquals(None,
+            extract_tarball_version("/tmp/foo-1.2.tar.bla", "foo"))
+
+    def test_debian_style(self):
+        self.assertEquals("1.2+testfix",
+            extract_tarball_version("/tmp/foo_1.2+testfix.orig.tar.gz", "foo"))
+
+    def test_traditional_style(self):
+        self.assertEquals("1.2b2",
+            extract_tarball_version("/tmp/foo-1.2b2.zip", "foo"))
