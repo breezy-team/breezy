@@ -19,6 +19,7 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import os
+import re
 import shutil
 import subprocess
 import tarfile
@@ -572,12 +573,36 @@ class UpstreamProvider(object):
                 tarball_name(self.package, self.version, format='lzma')]
 
 
+def extract_tarball_version(path, packagename):
+    """Extract a version from a tarball path.
+
+    :param path: Path to the tarball (e.g. "/tmp/bzr-builddeb-2.7.3.tar.gz")
+    :param packagename: Name of the package (e.g. "bzr-builddeb")
+    """
+    basename = os.path.basename(path)
+    for extension in [".tar.gz", ".tgz", ".tar.bz2", ".zip"]:
+        if basename.endswith(extension):
+            basename = basename[:-len(extension)]
+            break
+    else:
+        # Unknown extension
+        return None
+    # Debian style tarball
+    m = re.match(packagename+"_(.*).orig", basename)
+    if m:
+        return m.group(1)
+    # Traditional, PACKAGE-VERSION.tar.gz
+    m = re.match(packagename+"-(.*)", basename)
+    if m:
+        return m.group(1)
+    return None
+
+
 class TarfileSource(UpstreamSource):
     """Source that uses a single local tarball."""
 
     def __init__(self, path, version=None):
         self.path = path
-        # TODO: Parse self.path for version is version is None?
         self.version = version
 
     def fetch_tarball(self, package, version, target_dir):
@@ -588,4 +613,6 @@ class TarfileSource(UpstreamSource):
         return os.path.join(target_dir, dest_name)
 
     def get_latest_version(self, package, version):
-        return self.version
+        if self.version is not None:
+            return self.version
+        return extract_tarball_version(self.path, package)

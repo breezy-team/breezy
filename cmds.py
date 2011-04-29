@@ -47,7 +47,6 @@ from bzrlib.errors import (
     NoWorkingTree,
     )
 from bzrlib.option import Option
-from bzrlib.revisionspec import RevisionSpec
 from bzrlib.tag import _merge_tags_if_possible
 from bzrlib.trace import note, warning
 from bzrlib.workingtree import WorkingTree
@@ -465,14 +464,14 @@ class cmd_merge_upstream(Command):
     Takes a new upstream version and merges it in to your branch, so that your
     packaging changes are applied to the new version.
 
-    You must supply the source to import from, and the version number of the
-    new release. The source can be a .tar.gz, .tar, .tar.bz2, .tgz or .zip
-    archive, or a directory. The source may also be a remote file described by
-    a URL.
+    You must supply the source to import from, and in some cases
+    the version number of the new release. The source can be a .tar.gz, .tar,
+    .tar.bz2, .tgz or .zip archive, a directory or a branch. The source may
+    also be a remote file described by a URL.
 
-    You must supply the version number of the new upstream release
-    using --version, unless you're importing from an upstream branch, in which
-    case it can be guessed from that.
+    In most situations the version can be guessed from the upstream source.
+    If the upstream version can not be guessed or if it is guessed
+    incorrectly then the version number can be specified with --version.
 
     The distribution this version is targetted at can be specified with
     --distribution. This will be used to guess the version number suffix
@@ -713,7 +712,8 @@ class cmd_merge_upstream(Command):
                         "number using --version or specify --snapshot to "
                         "merge a snapshot from the upstream branch.")
                 else:
-                    raise BzrCommandError("You must specify the version number using --version.")
+                    raise BzrCommandError("You must specify the version "
+                                          "number using --version.")
             assert isinstance(version, str)
             note("Using version string %s." % (version))
             # Look up the revision id from the version string
