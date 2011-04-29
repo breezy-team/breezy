@@ -1449,13 +1449,14 @@ class DistributionBranch(object):
                         # Bug lp:515367 where the first upstream tarball is
                         # missing a proper history link and a criss-cross merge
                         # then recurses and finds no deeper ancestor.
-                        if len(parents) != 2:
-                            # Very first import... shouldn't be possible.
-                            raise
                         # Use the previous upstream import as the from revision
+                        if len(parents) == 0:
+                            from_revision = NULL_REVISION
+                        else:
+                            from_revision = parents[0]
                         conflicts = self.tree.merge_from_branch(
                                 self.upstream_branch, merge_type=merge_type,
-                                from_revision=parents[0])
+                                from_revision=from_revision)
                 else:
                     # Pull so that merge-upstream allows you to start a branch
                     # from upstream tarball.

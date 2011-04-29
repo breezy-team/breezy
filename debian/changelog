@@ -2,8 +2,11 @@ bzr-builddeb (2.7.4) UNRELEASED; urgency=low
 
   * In 'bzr merge-usptream', don't ignore upstream branch when upstream
     version can not be found.  LP: #772424
+  * Use --create when merging a new upstream into a branch that doesn't have a
+    changelog file. LP: #385667
+  * Fix merging of upstream in new packages. LP: #772225
 
- -- Jelmer Vernooij <jelmer@debian.org>  Thu, 28 Apr 2011 16:50:38 +0200
+ -- Jelmer Vernooij <jelmer@debian.org>  Fri, 29 Apr 2011 14:47:48 +0200
 
 bzr-builddeb (2.7.3) unstable; urgency=low
 

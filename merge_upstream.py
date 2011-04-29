@@ -89,11 +89,17 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
          "upstream_version should be a str, not %s" % str(
                  type(upstream_version))
     entry_description = upstream_merge_changelog_line(upstream_version)
-    proc = subprocess.Popen(["dch", "-v",
-            str(package_version(upstream_version, distribution_name,
-                                changelog.epoch)),
+    if changelog is None:
+        epoch = None
+    else:
+        epoch = changelog.epoch
+    argv = ["dch", "-v",
+            str(package_version(upstream_version, distribution_name, epoch)),
             "-D", "UNRELEASED", "--release-heuristic", "changelog",
-            entry_description], cwd=tree.basedir)
+            "--package", package, entry_description]
+    if not tree.has_filename("debian/changelog"):
+        argv.append("--create")
+    proc = subprocess.Popen(argv, cwd=tree.basedir)
     proc.wait()
     # FIXME: Raise insightful exception here rather than just checking
     # return code.

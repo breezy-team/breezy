@@ -198,4 +198,12 @@ class TestMergeUpstream(BuilddebTestCase):
             os.path.abspath(rel2.tarball)], working_dir=package.tree.basedir)
         self.failUnlessExists(os.path.join(package.tree.basedir, 'muhook'))
 
+    def test_new_package(self):
+        upstream = self.make_upstream()
+        tree = upstream.tree.bzrdir.sprout("package").open_workingtree()
+        rel1 = self.release_upstream(upstream)
+        self.run_bzr(['merge-upstream', '--version', str(rel1.version),
+            "--package", "bar", os.path.abspath(rel1.tarball)],
+            working_dir=tree.basedir)
+
 # vim: ts=4 sts=4 sw=4
