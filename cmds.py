@@ -588,7 +588,6 @@ class cmd_merge_upstream(Command):
             location, v3)
 
     def _get_changelog_info(self, tree, last_version, package, distribution):
-        changelog = None
         current_version = last_version
         try:
             (changelog, larstiq) = find_changelog(tree, False, max_blocks=2)
@@ -601,7 +600,8 @@ class cmd_merge_upstream(Command):
                 if distribution is not None:
                     note("Using distribution %s" % distribution)
         except MissingChangelogError:
-            pass
+            larstiq = False
+            changelog = None
         if distribution is None:
             note("No distribution specified, and no changelog, "
                     "assuming 'debian'")
@@ -638,8 +638,11 @@ class cmd_merge_upstream(Command):
             contains_upstream_source = tree_contains_upstream_source(tree)
             build_type = config.build_type
             if build_type is None:
-                build_type = guess_build_type(tree, changelog.version,
-                    contains_upstream_source)
+                changelog_version = None
+            else:
+                changelog_version = changelog.version
+            build_type = guess_build_type(tree, changelog_version,
+                contains_upstream_source)
             need_upstream_tarball = (build_type != BUILD_TYPE_MERGE)
             if build_type == BUILD_TYPE_NATIVE:
                 raise BzrCommandError("Merge upstream in native mode is not "
@@ -740,9 +743,11 @@ class cmd_merge_upstream(Command):
                 conflicts = self._do_merge(tree, tarball_filename, package,
                     version, current_version, upstream_branch, upstream_revision,
                     merge_type, force)
-            if Version(current_version) >= Version(version):
+            if current_version is not None and Version(current_version) >= Version(version):
                 raise BzrCommandError(
                     "Upstream version %s has already been merged." % version)
+            if not tree.has_filename("debian"):
+                tree.mkdir("debian")
             self._add_changelog_entry(tree, package, version,
                 distribution_name, changelog)
             run_hook(tree, 'merge-upstream', config)

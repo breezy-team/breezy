@@ -4,6 +4,9 @@ bzr-builddeb (2.7.4) UNRELEASED; urgency=low
     version can not be found.  LP: #772424
   * Automatically determine the version from the tarball name if possible.
     LP: #773199
+  * Use --create when merging a new upstream into a branch that doesn't have a
+    changelog file. LP: #385667
+  * Fix merging of upstream in new packages. LP: #772225
 
  -- Jelmer Vernooij <jelmer@debian.org>  Fri, 29 Apr 2011 14:33:48 +0200
 
