@@ -1,0 +1,20 @@
+Description: Make auto user id tests cope with GECOS being empty
+Author: Jelmer Vernooij <jelmer@samba.org>
+Forwarded: yes
+Applied-Upstream: yes
+
+=== modified file 'bzrlib/tests/test_config.py'
+--- old/bzrlib/tests/test_config.py	2011-04-28 22:34:03 +0000
++++ new/bzrlib/tests/test_config.py	2011-04-28 23:59:14 +0000
+@@ -2483,8 +2483,8 @@
+             raise TestSkipped("User name inference not implemented on win32")
+         realname, address = config._auto_user_id()
+         if os.path.exists('/etc/mailname'):
+-            self.assertTrue(realname)
+-            self.assertTrue(address)
++            self.assertIsNot(None, realname)
++            self.assertIsNot(None, address)
+         else:
+             self.assertEquals((None, None), (realname, address))
+ 
+
