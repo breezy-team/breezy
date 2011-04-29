@@ -1973,8 +1973,9 @@ class _PreviewTree(tree.InventoryTree):
             vf.fallback_versionedfiles.append(base_vf)
         return tree_revision
 
-    def _stat_limbo_file(self, file_id):
-        trans_id = self._transform.trans_id_file_id(file_id)
+    def _stat_limbo_file(self, file_id=None, trans_id=None):
+        if trans_id is None:
+            trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return os.lstat(name)
 
@@ -2195,6 +2196,12 @@ class _PreviewTree(tree.InventoryTree):
 
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
+        trans_id = self._transform.trans_id_file_id(file_id)
+        kind = self._transform.final_kind(trans_id)
+        if kind != 'file':
+            return None
+        if trans_id in self._transform._new_contents:
+            return self._stat_limbo_file(trans_id=trans_id).st_size
         if self.kind(file_id) == 'file':
             return self._transform._tree.get_file_size(file_id)
         else:

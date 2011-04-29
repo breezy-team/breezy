@@ -2651,6 +2651,18 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview_mtime = preview_tree.get_file_mtime('file-id', 'renamed')
         work_mtime = work_tree.get_file_mtime('file-id', 'file')
 
+    def test_get_file_size(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/old', 'old')])
+        work_tree.add('old', 'old-id')
+        preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
+        new_id = preview.new_file('name', preview.root, 'contents', 'new-id',
+                                  'executable')
+        tree = preview.get_preview_tree()
+        self.assertEqual(len('old'), tree.get_file_size('old-id'))
+        self.assertEqual(len('contents'), tree.get_file_size('new-id'))
+
     def test_get_file(self):
         preview = self.get_empty_preview()
         preview.new_file('file', preview.root, 'contents', 'file-id')
