@@ -1,0 +1,16 @@
+Author: Jelmer Vernooij <jelmer@debian.org>
+Status: Forwarded upstream, https://code.launchpad.net/~jelmer/bzr/fix-locale/+merge/59570
+
+=== modified file 'bzrlib/tests/blackbox/test_exceptions.py'
+--- old/bzrlib/tests/blackbox/test_exceptions.py	2011-04-15 18:11:36 +0000
++++ new/bzrlib/tests/blackbox/test_exceptions.py	2011-04-30 00:20:03 +0000
+@@ -55,7 +55,7 @@
+         if os.name != "posix":
+             raise tests.TestNotApplicable("Needs system beholden to C locales")
+         out, err = self.run_bzr_subprocess(["\xa0"],
+-            env_changes={"LANG": "C"},
++            env_changes={"LANG": "C", "LC_ALL": "C"},
+             universal_newlines=True,
+             retcode=errors.EXIT_ERROR)
+         self.assertContainsRe(err, r"^bzr: ERROR: .*'\\xa0'.* unsupported")
+

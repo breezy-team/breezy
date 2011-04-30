@@ -2,3 +2,4 @@
 02_external_configobj
 03_external_elementtree
 04_auto_user_id_test_fix
+05_fix_locale_test

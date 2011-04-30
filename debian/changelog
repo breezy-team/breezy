@@ -1,3 +1,9 @@
+bzr (2.4.0~beta2-2) experimental; urgency=low
+
+  * Fix locale setting during TestExceptionReporting.test_undecodable_argv.
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sat, 30 Apr 2011 02:27:33 +0200
+
 bzr (2.4.0~beta2-1) experimental; urgency=low
 
   * New upstream release.
