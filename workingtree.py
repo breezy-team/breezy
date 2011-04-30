@@ -256,6 +256,7 @@ class GitWorkingTree(workingtree.WorkingTree):
         if type(file_id) != str:
             raise AssertionError
         path = self._fileid_map.lookup_path(file_id)
+        # FIXME: What about directories?
         if path in self.index:
             return path
         raise errors.NoSuchId(None, file_id)
