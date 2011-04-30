@@ -16,15 +16,16 @@
 
 import os
 import tarfile
+import zipfile
 
 from bzrlib.export import export
 from bzrlib import tests
 from bzrlib.tests.per_tree import TestCaseWithTree
 
 
-class TestExport(TestCaseWithTree):
+class ExportTest(object):
 
-    def test_export_tar(self):
+    def prepare_archive(self):
         work_a = self.make_branch_and_tree('wta')
         self.build_tree_contents(
             [('wta/file', 'a\nb\nc\nd\n'), ('wta/dir', '')])
@@ -32,20 +33,47 @@ class TestExport(TestCaseWithTree):
         work_a.add('dir', 'dir-id')
         work_a.commit('add file')
         tree_a = self.workingtree_to_test_tree(work_a)
-        export(tree_a, 'output', 'tar')
-        tf = tarfile.open('output')
-        names = tf.getnames()
-        self.assertIn('output/file', names)
-        self.assertIn('output/dir', names)
+        export(tree_a, 'output', self.archiver)
 
-    def test_export_tar_symlink(self):
+    def prepare_symlink_archive(self):
         self.requireFeature(tests.SymlinkFeature)
         work_a = self.make_branch_and_tree('wta')
         os.symlink('target', 'wta/link')
         work_a.add('link', 'link-id')
         work_a.commit('add link')
         tree_a = self.workingtree_to_test_tree(work_a)
-        export(tree_a, 'output', 'tar')
-        tf = tarfile.open('output')
-        names = tf.getnames()
+        export(tree_a, 'output', self.archiver)
+
+    def test_export(self):
+        self.prepare_archive()
+        names = self.get_archive_names()
+        self.assertIn('output/file', names)
+        self.assertIn('output/dir', names)
+
+    def test_export_symlink(self):
+        self.prepare_symlink_archive()
+        names = self.get_archive_names()
         self.assertIn('output/link', names)
+
+
+class TestTar(ExportTest, TestCaseWithTree):
+
+    archiver = 'tar'
+
+    def get_archive_names(self):
+        with tarfile.open('output') as tf:
+            return tf.getnames()
+
+
+class TestZip(ExportTest, TestCaseWithTree):
+
+    archiver = 'zip'
+
+    def get_archive_names(self):
+        with zipfile.ZipFile('output') as zf:
+            return zf.namelist()
+
+    def test_export_symlink(self):
+        self.prepare_symlink_archive()
+        names = self.get_archive_names()
+        self.assertIn('output/link.lnk', names)
