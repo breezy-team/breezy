@@ -397,8 +397,7 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         """We can get any revision id in the repository"""
         # XXX: This may change in the future, but for now, it is true
         self.tree2.commit('alt third', rev_id='alt_r3')
-        self.tree.branch.repository.fetch(self.tree2.branch.repository,
-                                          revision_id='alt_r3')
+        self.tree.branch.fetch(self.tree2.branch, 'alt_r3')
         self.assertInHistoryIs(None, 'alt_r3', 'revid:alt_r3')
 
     def test_unicode(self):
@@ -475,8 +474,7 @@ class TestRevisionSpec_before(TestRevisionSpec):
     def test_alt_no_parents(self):
         new_tree = self.make_branch_and_tree('new_tree')
         new_tree.commit('first', rev_id='new_r1')
-        self.tree.branch.repository.fetch(new_tree.branch.repository,
-                                          revision_id='new_r1')
+        self.tree.branch.fetch(new_tree.branch, 'new_r1')
         self.assertInHistoryIs(0, 'null:', 'before:revid:new_r1')
 
     def test_as_revision_id(self):

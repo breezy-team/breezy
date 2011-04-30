@@ -45,6 +45,10 @@ Bug Fixes
   normally not require running ``bzr whoami`` first.
   (Martin Pool, #616878)
 
+* ``bzr merge --preview --pull`` should respect the ``--preview`` option
+  first, and not actually change the branch tip revision.
+  (John Arbash Meinel, Dennis Duchier, #760152)
+
 * ``bzr push`` into a repository (that doesn't have a branch), will no
   longer copy all revisions in the repository. Only the ones in the
   ancestry of the source branch, like it does in all other cases.
