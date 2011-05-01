@@ -74,7 +74,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         url = self.get_url()
         bdir = bzrdir.BzrDirMetaFormat1().initialize(url)
         bdir.create_repository()
-        branch = bdir.create_branch()
+        branch = _mod_branch.BzrBranchFormat5().initialize(bdir)
         t = self.get_transport()
         self.log("branch instance is %r" % branch)
         self.assert_(isinstance(branch, _mod_branch.BzrBranch5))
