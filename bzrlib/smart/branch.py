@@ -232,13 +232,12 @@ class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
 
     def do_tip_change_with_locked_branch(self, branch, new_last_revision_id):
         if new_last_revision_id == 'null:':
-            branch._set_revision_history([])
+            branch.set_last_revision_info(0, 'null:')
         else:
             if not branch.repository.has_revision(new_last_revision_id):
                 return FailedSmartServerResponse(
                     ('NoSuchRevision', new_last_revision_id))
-            branch._set_revision_history(branch._lefthand_history(
-                new_last_revision_id, None, None))
+            branch.generate_revision_history(new_last_revision_id)
         return SuccessfulSmartServerResponse(('ok',))
 
 
