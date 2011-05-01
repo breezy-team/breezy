@@ -2774,7 +2774,7 @@ class FullHistoryBzrBranch(BzrBranch):
         return history
 
     def _synchronize_history(self, destination, revision_id):
-        if not isinstance(destination._format, FullHistoryBzrBranch):
+        if not isinstance(destination, FullHistoryBzrBranch):
             super(BzrBranch, self)._synchronize_history(
                 destination, revision_id)
             return
