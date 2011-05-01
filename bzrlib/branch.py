@@ -2531,6 +2531,8 @@ class BzrBranch(Branch, _RelockDebugMixin):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        if not revision_id or not isinstance(revision_id, basestring):
+            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         revision_id = _mod_revision.ensure_null(revision_id)
         old_revno, old_revid = self.last_revision_info()
         if self._get_append_revisions_only():
@@ -2709,6 +2711,8 @@ class FullHistoryBzrBranch(BzrBranch):
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
+        if not revision_id or not isinstance(revision_id, basestring):
+            raise errors.InvalidRevisionId(revision_id=revision_id, branch=self)
         revision_id = _mod_revision.ensure_null(revision_id)
         # this old format stores the full history, but this api doesn't
         # provide it, so we must generate, and might as well check it's
