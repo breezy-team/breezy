@@ -321,7 +321,7 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                              ], d_tree)
         # Because we copied the exact text into *this* tree, the 'c' file
         # should look like it was not modified in the merge
-        self.assertEqual('C-id', d_tree.inventory['c-id'].revision)
+        self.assertEqual('C-id', d_tree.get_file_revision('c-id'))
 
     def test_set_parent_to_null(self):
         builder = self.build_a_rev()

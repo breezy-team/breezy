@@ -19,7 +19,10 @@
 """Black-box tests for bzr merge.
 """
 
+import doctest
 import os
+
+from testtools import matchers
 
 from bzrlib import (
     branch,
@@ -101,7 +104,7 @@ class TestMerge(tests.TestCaseWithTransport):
         # Merging a branch pulls its revision into the tree
         b = branch.Branch.open('../b')
         b_tip = b.last_revision()
-        self.failUnless(a.branch.repository.has_revision(b_tip))
+        self.assertTrue(a.branch.repository.has_revision(b_tip))
         self.assertEqual([a_tip, b_tip], a.get_parent_ids())
         a_tree.revert(backups=False)
         out, err = self.run_bzr('merge -r revno:1:./hello', retcode=3)
@@ -203,12 +206,12 @@ class TestMerge(tests.TestCaseWithTransport):
         b_tree.commit(message='Modified a.txt')
         os.chdir('b')
         self.run_bzr('merge ../a/', retcode=1)
-        self.failUnlessExists('sub/a.txt.THIS')
-        self.failUnlessExists('sub/a.txt.BASE')
+        self.assertPathExists('sub/a.txt.THIS')
+        self.assertPathExists('sub/a.txt.BASE')
         os.chdir('../a')
         self.run_bzr('merge ../b/', retcode=1)
-        self.failUnlessExists('sub/a.txt.OTHER')
-        self.failUnlessExists('sub/a.txt.BASE')
+        self.assertPathExists('sub/a.txt.OTHER')
+        self.assertPathExists('sub/a.txt.BASE')
 
     def test_conflict_leaves_base_this_other_files(self):
         tree, other = self.create_conflicting_branches()
@@ -325,14 +328,14 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_a.add(['file_1', 'file_2'])
         tree_a.commit('commit 1')
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
-        self.failUnlessExists('b/file_1')
+        self.assertPathExists('b/file_1')
         tree_a.rename_one('file_1', 'file_i')
         tree_a.commit('commit 2')
         tree_a.rename_one('file_2', 'file_ii')
         ## os.chdir('b')
         self.run_bzr('merge a --uncommitted -d b')
-        self.failUnlessExists('b/file_1')
-        self.failUnlessExists('b/file_ii')
+        self.assertPathExists('b/file_1')
+        self.assertPathExists('b/file_ii')
         tree_b.revert()
         self.run_bzr_error(('Cannot use --uncommitted and --revision',),
                            'merge /a --uncommitted -r1 -d b')
@@ -346,18 +349,18 @@ class TestMerge(tests.TestCaseWithTransport):
         tree_a.add(['file1', 'file2'])
         os.chdir('tree_b')
         self.run_bzr(['merge', '--uncommitted', '../tree_a/file1'])
-        self.failUnlessExists('file1')
-        self.failIfExists('file2')
+        self.assertPathExists('file1')
+        self.assertPathDoesNotExist('file2')
 
     def pullable_branch(self):
         tree_a = self.make_branch_and_tree('a')
-        self.build_tree(['a/file'])
+        self.build_tree_contents([('a/file', 'bar\n')])
         tree_a.add(['file'])
         self.id1 = tree_a.commit('commit 1')
 
         tree_b = self.make_branch_and_tree('b')
         tree_b.pull(tree_a.branch)
-        file('b/file', 'wb').write('foo')
+        self.build_tree_contents([('b/file', 'foo\n')])
         self.id2 = tree_b.commit('commit 2')
 
     def test_merge_pull(self):
@@ -367,6 +370,21 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertContainsRe(out, 'Now on revision 2\\.')
         tree_a = workingtree.WorkingTree.open('.')
         self.assertEqual([self.id2], tree_a.get_parent_ids())
+
+    def test_merge_pull_preview(self):
+        self.pullable_branch()
+        (out, err) = self.run_bzr('merge --pull --preview -d a b')
+        self.assertThat(out, matchers.DocTestMatches(
+"""=== modified file 'file'
+--- file\t...
++++ file\t...
+@@ -1,1 +1,1 @@
+-bar
++foo
+
+""", doctest.ELLIPSIS | doctest.REPORT_UDIFF))
+        tree_a = workingtree.WorkingTree.open('a')
+        self.assertEqual([self.id1], tree_a.get_parent_ids())
 
     def test_merge_kind_change(self):
         tree_a = self.make_branch_and_tree('tree_a')
@@ -407,8 +425,8 @@ class TestMerge(tests.TestCaseWithTransport):
         self.write_directive('directive', source.branch, 'target', 'rev2',
                              'rev1')
         out, err = self.run_bzr('merge -d target directive')
-        self.failIfExists('target/a')
-        self.failUnlessExists('target/b')
+        self.assertPathDoesNotExist('target/a')
+        self.assertPathExists('target/b')
         self.assertContainsRe(err, 'Performing cherrypick')
 
     def write_directive(self, filename, source, target, revision_id,
@@ -449,19 +467,19 @@ class TestMerge(tests.TestCaseWithTransport):
         branch_b.add('file2')
         branch_b.commit('added file2', rev_id='rev2b')
         branch_b.merge_from_branch(branch_a.branch)
-        self.failUnlessExists('branch_b/file1')
+        self.assertPathExists('branch_b/file1')
         branch_b.commit('merged branch_a', rev_id='rev3b')
 
         # It works if the revid has an interger revno
         self.run_bzr('merge -d target -r revid:rev2a branch_a')
-        self.failUnlessExists('target/file1')
-        self.failIfExists('target/file2')
+        self.assertPathExists('target/file1')
+        self.assertPathDoesNotExist('target/file2')
         target.revert()
 
         # It should work if the revid has no integer revno
         self.run_bzr('merge -d target -r revid:rev2a branch_b')
-        self.failUnlessExists('target/file1')
-        self.failIfExists('target/file2')
+        self.assertPathExists('target/file1')
+        self.assertPathDoesNotExist('target/file2')
 
     def assertDirectoryContent(self, directory, entries, message=''):
         """Assert whether entries (file or directories) exist in a directory.
@@ -602,7 +620,7 @@ class TestMerge(tests.TestCaseWithTransport):
         other.add('other_file')
         other.commit('rev1b')
         self.run_bzr('merge -d this other -r0..')
-        self.failUnlessExists('this/other_file')
+        self.assertPathExists('this/other_file')
 
     def test_merge_interactive_unlocks_branch(self):
         this = self.make_branch_and_tree('this')
@@ -620,9 +638,9 @@ class TestMerge(tests.TestCaseWithTransport):
             tree.commit("added "+f)
         for context in (".", "", "a"):
             self.run_bzr("merge -r 1..0 " + context)
-            self.failIfExists("a")
+            self.assertPathDoesNotExist("a")
             tree.revert()
-            self.failUnlessExists("a")
+            self.assertPathExists("a")
 
     def test_merge_fetches_tags(self):
         """Tags are updated by merge, and revisions named in those tags are

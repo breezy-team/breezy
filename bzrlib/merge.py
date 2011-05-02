@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -458,16 +458,13 @@ class Merger(object):
     @deprecated_method(deprecated_in((2, 1, 0)))
     def file_revisions(self, file_id):
         self.ensure_revision_trees()
-        def get_id(tree, file_id):
-            revision_id = tree.inventory[file_id].revision
-            return revision_id
         if self.this_rev_id is None:
             if self.this_basis_tree.get_file_sha1(file_id) != \
                 self.this_tree.get_file_sha1(file_id):
                 raise errors.WorkingTreeNotRevision(self.this_tree)
 
         trees = (self.this_basis_tree, self.other_tree)
-        return [get_id(tree, file_id) for tree in trees]
+        return [tree.get_file_revision(file_id) for tree in trees]
 
     @deprecated_method(deprecated_in((2, 1, 0)))
     def check_basis(self, check_clean, require_commits=True):
@@ -566,14 +563,7 @@ class Merger(object):
 
     def _maybe_fetch(self, source, target, revision_id):
         if not source.repository.has_same_location(target.repository):
-            try:
-                tags_to_fetch = set(source.tags.get_reverse_tag_dict())
-            except errors.TagsNotSupported:
-                tags_to_fetch = None
-            fetch_spec = _mod_graph.NotInOtherForRevs(target.repository,
-                source.repository, [revision_id],
-                if_present_ids=tags_to_fetch).execute()
-            target.fetch(source, fetch_spec=fetch_spec)
+            target.fetch(source, revision_id)
 
     def find_base(self):
         revisions = [_mod_revision.ensure_null(self.this_basis),
@@ -911,7 +901,7 @@ class Merge3Merger(object):
         """
         result = []
         iterator = self.other_tree.iter_changes(self.base_tree,
-                include_unchanged=True, specific_files=self.interesting_files,
+                specific_files=self.interesting_files,
                 extra_trees=[self.this_tree])
         this_entries = dict((e.file_id, e) for p, e in
                             self.this_tree.iter_entries_by_dir(
@@ -1126,7 +1116,7 @@ class Merge3Merger(object):
         # 'other_tree.inventory.root' is not present in this tree. We are
         # calling adjust_path for children which *want* to be present with a
         # correct place to go.
-        for thing, child in self.other_tree.inventory.root.children.iteritems():
+        for _, child in self.other_tree.inventory.root.children.iteritems():
             trans_id = self.tt.trans_id_file_id(child.file_id)
             if not other_root_is_present:
                 if self.tt.final_kind(trans_id) is not None:
@@ -1134,8 +1124,12 @@ class Merge3Merger(object):
                     # to go already.
                     continue
             # Move the item into the root
-            self.tt.adjust_path(self.tt.final_name(trans_id),
-                                self.tt.root, trans_id)
+            try:
+                final_name = self.tt.final_name(trans_id)
+            except errors.NoFinalPath:
+                # This file is not present anymore, ignore it.
+                continue
+            self.tt.adjust_path(final_name, self.tt.root, trans_id)
         if other_root_is_present:
             self.tt.cancel_creation(other_root)
             self.tt.cancel_versioning(other_root)

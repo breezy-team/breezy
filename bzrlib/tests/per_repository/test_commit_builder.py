@@ -118,6 +118,20 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         finally:
             tree.unlock()
 
+    def test_commit_lossy(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([], lossy=True)
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
+            rev_id = builder.commit('foo bar blah')
+        finally:
+            tree.unlock()
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual('foo bar blah', rev.message)
+
     def test_commit_message(self):
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
@@ -558,8 +572,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             mini_commit = self.mini_commit
         rev2 = mini_commit(tree, name, name, False, False)
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.inventory[file_id].revision)
-        self.assertEqual(rev1, tree2.inventory[file_id].revision)
+        self.assertEqual(rev1, tree1.get_file_revision(file_id))
+        self.assertEqual(rev1, tree2.get_file_revision(file_id))
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
         self.assertFileGraph(expected_graph, tree, (file_id, rev1))
@@ -588,8 +602,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree.add(['dir/content'], ['contentid'])
         rev2 = tree.commit('')
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.inventory['dirid'].revision)
-        self.assertEqual(rev1, tree2.inventory['dirid'].revision)
+        self.assertEqual(rev1, tree1.get_file_revision('dirid'))
+        self.assertEqual(rev1, tree2.get_file_revision('dirid'))
         file_id = 'dirid'
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
@@ -798,8 +812,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev2 = mini_commit(tree, name, tree.id2path(file_id),
             expect_fs_hash=expect_fs_hash)
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.inventory[file_id].revision)
-        self.assertEqual(rev2, tree2.inventory[file_id].revision)
+        self.assertEqual(rev1, tree1.get_file_revision(file_id))
+        self.assertEqual(rev2, tree2.get_file_revision(file_id))
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
         expected_graph[(file_id, rev2)] = ((file_id, rev1),)
@@ -1059,7 +1073,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev4 = mini_commit(tree1, 'new_' + name, 'new_' + name,
             expect_fs_hash=expect_fs_hash)
         tree3, = self._get_revtrees(tree1, [rev4])
-        self.assertEqual(rev4, tree3.inventory[name + 'id'].revision)
+        self.assertEqual(rev4, tree3.get_file_revision(name + 'id'))
         file_id = name + 'id'
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
@@ -1125,7 +1139,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             rev3 = mini_commit(in_tree, name, 'new_' + name, False,
                 delta_against_basis=changed_in_tree)
             tree3, = self._get_revtrees(in_tree, [rev2])
-            self.assertEqual(rev2, tree3.inventory[name + 'id'].revision)
+            self.assertEqual(rev2, tree3.get_file_revision(name + 'id'))
             file_id = name + 'id'
             expected_graph = {}
             expected_graph[(file_id, rev1)] = ()
@@ -1157,7 +1171,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev3 = mini_commit(tree1, None, 'name', False)
         tree3, = self._get_revtrees(tree1, [rev2])
         # in rev2, name should be only changed in rev2
-        self.assertEqual(rev2, tree3.inventory[file_id].revision)
+        self.assertEqual(rev2, tree3.get_file_revision(file_id))
         expected_graph = {}
         expected_graph[(file_id, rev2)] = ()
         self.assertFileGraph(expected_graph, tree1, (file_id, rev2))

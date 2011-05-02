@@ -7,7 +7,7 @@ Turning a branch into a checkout
 If you have a local branch and wish to make it a checkout, use the
 ``bind`` command like this::
 
-  bzr bind sftp://centralhost/srv/bzr/PROJECT/trunk
+  bzr bind bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
 
 This is necessary, for example, after creating a central branch using
 ``push`` as illustrated in the previous section.
@@ -56,7 +56,7 @@ as doing so:
 To get a history-less checkout in Bazaar, use the ``--lightweight``
 option like this::
 
-  bzr checkout --lightweight sftp://centralhost/srv/bzr/PROJECT/trunk
+  bzr checkout --lightweight bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
 
 Of course, many of the benefits of a normal checkout are lost by doing
 this but that's a tradeoff you can make if and when it makes sense.
