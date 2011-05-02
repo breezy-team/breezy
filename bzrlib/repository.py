@@ -30,11 +30,10 @@ from bzrlib import (
     lockdir,
     osutils,
     revision as _mod_revision,
+    testament as _mod_testament,
     tsort,
     )
 from bzrlib.bundle import serializer
-from bzrlib.store.versioned import VersionedFileStore
-from bzrlib.testament import Testament
 """)
 
 from bzrlib import (
@@ -1179,7 +1178,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
 
     @needs_write_lock
     def sign_revision(self, revision_id, gpg_strategy):
-        plaintext = Testament.from_revision(self, revision_id).as_short_text()
+        testament = _mod_testament.Testament.from_revision(self, revision_id)
+        plaintext = testament.as_short_text()
         self.store_revision_signature(gpg_strategy, plaintext, revision_id)
 
     def has_signature_for_revision_id(self, revision_id):
