@@ -42,8 +42,13 @@ from bzrlib import (
 from bzrlib.config import extract_email_address
 from bzrlib.repository import _strip_NULL_ghosts
 from bzrlib.revision import CURRENT_REVISION, Revision
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 
+@deprecated_function(deprecated_in((2, 4, 0)))
 def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
                   to_file=None, show_ids=False):
     """Annotate file_id at revision rev_id in branch.
