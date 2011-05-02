@@ -44,9 +44,9 @@ class TestExecutable(TestCaseWithWorkingTree):
     def check_exist(self, tree):
         """Just check that both files have the right executable bits set"""
         tree.lock_read()
-        self.failUnless(tree.is_executable(self.a_id),
+        self.assertTrue(tree.is_executable(self.a_id),
                         "'a' lost the execute bit")
-        self.failIf(tree.is_executable(self.b_id),
+        self.assertFalse(tree.is_executable(self.b_id),
                     "'b' gained an execute bit")
         tree.unlock()
 
@@ -61,10 +61,10 @@ class TestExecutable(TestCaseWithWorkingTree):
             self.assertEqual(
                 [('', tree.inventory.root)],
                 list(tree.inventory.iter_entries()))
-        self.failIf(tree.has_id(self.a_id))
-        self.failIf(tree.has_filename('a'))
-        self.failIf(tree.has_id(self.b_id))
-        self.failIf(tree.has_filename('b'))
+        self.assertFalse(tree.has_id(self.a_id))
+        self.assertFalse(tree.has_filename('a'))
+        self.assertFalse(tree.has_id(self.b_id))
+        self.assertFalse(tree.has_filename('b'))
         tree.unlock()
 
     def commit_and_branch(self):

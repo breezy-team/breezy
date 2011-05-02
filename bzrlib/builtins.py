@@ -1205,6 +1205,8 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
+
+    The synonyms 'clone' and 'get' for this command are deprecated.
     """
 
     _see_also = ['checkout']
@@ -1240,6 +1242,12 @@ class cmd_branch(Command):
             files_from=None):
         from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
+        if self.invoked_as in ['get', 'clone']:
+            ui.ui_factory.show_user_warning(
+                'deprecated_command',
+                deprecated_name=self.invoked_as,
+                recommended_name='branch',
+                deprecated_in_version='2.4')
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
         if not (hardlink or files_from):
@@ -3144,6 +3152,10 @@ class cmd_commit(Command):
              Option('show-diff', short_name='p',
                     help='When no message is supplied, show the diff along'
                     ' with the status summary in the message editor.'),
+             Option('lossy', 
+                    help='When committing to a foreign version control '
+                    'system do not push data that can not be natively '
+                    'represented.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -3168,7 +3180,8 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None, show_diff=False, exclude=None, commit_time=None):
+            author=None, show_diff=False, exclude=None, commit_time=None,
+            lossy=False):
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -3270,10 +3283,12 @@ class cmd_commit(Command):
                         reporter=None, verbose=verbose, revprops=properties,
                         authors=author, timestamp=commit_stamp,
                         timezone=offset,
-                        exclude=tree.safe_relpath_files(exclude))
+                        exclude=tree.safe_relpath_files(exclude),
+                        lossy=lossy)
         except PointlessCommit:
             raise errors.BzrCommandError("No changes to commit."
-                              " Use --unchanged to commit anyhow.")
+                " Please 'bzr add' the files you want to commit, or use"
+                " --unchanged to force an empty commit.")
         except ConflictsInTree:
             raise errors.BzrCommandError('Conflicts detected in working '
                 'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
@@ -3984,7 +3999,7 @@ class cmd_merge(Command):
             merger.other_rev_id is not None):
             note('Nothing to do.')
             return 0
-        if pull:
+        if pull and not preview:
             if merger.interesting_files is not None:
                 raise errors.BzrCommandError('Cannot pull individual files')
             if (merger.base_rev_id == tree.last_revision()):
@@ -4699,7 +4714,7 @@ class cmd_annotate(Command):
             annotate_file_tree(wt, file_id, self.outf, long, all,
                 show_ids=show_ids)
         else:
-            file_version = tree.inventory[file_id].revision
+            file_version = tree.get_file_revision(file_id)
             annotate_file(branch, file_version, file_id, long, all, self.outf,
                           show_ids=show_ids)
 

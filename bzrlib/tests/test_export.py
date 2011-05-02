@@ -40,8 +40,8 @@ class TestDirExport(tests.TestCaseWithTransport):
         wt.add(['a', 'a/b', 'a/c'])
         os.unlink('a/c')
         export.export(wt, 'target', format="dir")
-        self.failUnlessExists('target/a/b')
-        self.failIfExists('target/a/c')
+        self.assertPathExists('target/a/b')
+        self.assertPathDoesNotExist('target/a/c')
 
     def test_empty(self):
         wt = self.make_branch_and_tree('.')
@@ -54,7 +54,7 @@ class TestDirExport(tests.TestCaseWithTransport):
         os.symlink('source', 'link')
         wt.add(['link'])
         export.export(wt, 'target', format="dir")
-        self.failUnlessExists('target/link')
+        self.assertPathExists('target/link')
 
     def test_to_existing_empty_dir_success(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
@@ -63,9 +63,9 @@ class TestDirExport(tests.TestCaseWithTransport):
         wt.commit('1')
         self.build_tree(['target/'])
         export.export(wt, 'target', format="dir")
-        self.failUnlessExists('target/a')
-        self.failUnlessExists('target/b')
-        self.failUnlessExists('target/b/c')
+        self.assertPathExists('target/a')
+        self.assertPathExists('target/b')
+        self.assertPathExists('target/b/c')
 
     def test_to_existing_nonempty_dir_fail(self):
         self.build_tree(['source/', 'source/a', 'source/b/', 'source/b/c'])
@@ -81,9 +81,9 @@ class TestDirExport(tests.TestCaseWithTransport):
         wtree.add(['dir2', 'first', 'dir2/second'])
         wtree.commit('1')
         export.export(wtree, 'target1', format='dir', subdir='first')
-        self.failUnlessExists('target1/first')
+        self.assertPathExists('target1/first')
         export.export(wtree, 'target2', format='dir', subdir='dir2/second')
-        self.failUnlessExists('target2/second')
+        self.assertPathExists('target2/second')
 
     def test_files_same_timestamp(self):
         builder = self.make_branch_builder('source')

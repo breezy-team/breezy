@@ -67,7 +67,7 @@ class TestHasSameLocation(TestCaseWithRepository):
         """Different repository objects for the same location are the same."""
         repo = self.make_repository('.')
         reopened_repo = repo.bzrdir.open_repository()
-        self.failIf(
+        self.assertFalse(
             repo is reopened_repo,
             "This test depends on reopened_repo being a different instance of "
             "the same repo.")

@@ -135,7 +135,7 @@ class TestPush(tests.TestCaseWithTransport):
         out, err = self.run_bzr('push --no-tree -d push-from push-to')
         self.assertEqual('', out)
         self.assertEqual('Created new branch.\n', err)
-        self.failIfExists('push-to/file')
+        self.assertPathDoesNotExist('push-to/file')
 
     def test_push_new_branch_revision_count(self):
         # bzr push of a branch with revisions to a new location
@@ -199,10 +199,10 @@ class TestPush(tests.TestCaseWithTransport):
         t.commit(allow_pointless=True,
                 message='first commit')
         self.run_bzr('push -d from to-one')
-        self.failUnlessExists('to-one')
+        self.assertPathExists('to-one')
         self.run_bzr('push -d %s %s'
             % tuple(map(urlutils.local_path_to_url, ['from', 'to-two'])))
-        self.failUnlessExists('to-two')
+        self.assertPathExists('to-two')
 
     def test_push_repository_no_branch_doesnt_fetch_all_revs(self):
         # See https://bugs.launchpad.net/bzr/+bug/465517
@@ -324,7 +324,7 @@ class TestPush(tests.TestCaseWithTransport):
                      working_dir='tree')
         new_tree = workingtree.WorkingTree.open('new/tree')
         self.assertEqual(tree.last_revision(), new_tree.last_revision())
-        self.failUnlessExists('new/tree/a')
+        self.assertPathExists('new/tree/a')
 
     def test_push_use_existing(self):
         """'bzr push --use-existing-dir' can push into an existing dir.
@@ -345,7 +345,7 @@ class TestPush(tests.TestCaseWithTransport):
         new_tree = workingtree.WorkingTree.open('target')
         self.assertEqual(tree.last_revision(), new_tree.last_revision())
         # The push should have created target/a
-        self.failUnlessExists('target/a')
+        self.assertPathExists('target/a')
 
     def test_push_use_existing_into_empty_bzrdir(self):
         """'bzr push --use-existing-dir' into a dir with an empty .bzr dir
