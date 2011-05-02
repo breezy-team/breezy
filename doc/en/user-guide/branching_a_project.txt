@@ -9,14 +9,15 @@ agree on a transfer technology.
 You may decide to make the top level directory of your branch
 a network share, an approach familiar to Windows users.
 Unix users might prefer access to be
-via SFTP, a secure protocol built-in to most SSH servers.
+via SSH, a secure protocol built-in to most SSH servers.
 Bazaar is *very* flexible in this regard with support for
 lots of protocols some of which are given below.
 
   ===========         ======================================================
   Prefix              Description
   ===========         ======================================================
-  \file://            Access using the standard filesystem (default)
+  \file://            Access using the standard filesystem (default).
+  \bzr+ssh:/          Access over SSH (best remote option).
   \sftp://            Access using SFTP (most SSH servers provide SFTP).
   \bzr://             Fast access using the Bazaar smart server.
   \ftp://             Access using passive FTP.
@@ -39,7 +40,7 @@ look at the server configuration to find out which URL corresponds to
 which directory.)
 
 To address a path relative to your home directory on the server, use a
-tilde like so: ``sftp://example.com/~/public_html`` should map to
+tilde like so: ``bzr+ssh://example.com/~/public_html`` should map to
 ``public_html`` within your home directory.
 
 .. note:: Access over HTTP or HTTPS is read-only by default.

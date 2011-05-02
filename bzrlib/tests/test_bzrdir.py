@@ -65,7 +65,7 @@ from bzrlib.transport import (
 from bzrlib.transport.http._urllib import HttpTransport_urllib
 from bzrlib.transport.nosmart import NoSmartTransportDecorator
 from bzrlib.transport.readonly import ReadonlyTransportDecorator
-from bzrlib.repofmt import knitrepo, pack_repo
+from bzrlib.repofmt import knitrepo, knitpack_repo
 
 
 class TestDefaultFormat(TestCase):
@@ -73,12 +73,12 @@ class TestDefaultFormat(TestCase):
     def test_get_set_default_format(self):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         # default is BzrDirMetaFormat1
-        self.failUnless(isinstance(old_format, bzrdir.BzrDirMetaFormat1))
+        self.assertIsInstance(old_format, bzrdir.BzrDirMetaFormat1)
         controldir.ControlDirFormat._set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
         try:
             result = bzrdir.BzrDir.create('memory:///')
-            self.failUnless(isinstance(result, SampleBzrDir))
+            self.assertIsInstance(result, SampleBzrDir)
         finally:
             controldir.ControlDirFormat._set_default_format(old_format)
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
@@ -286,7 +286,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
             format.initialize(url)
             t = _mod_transport.get_transport(url)
             found_format = bzrdir.BzrDirFormat.find_format(t)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(BzrDirFormatTest1(), "foo")
         check_format(BzrDirFormatTest2(), "bar")
 
@@ -501,7 +501,7 @@ class TestRepositoryAcquisitionPolicy(TestCaseWithTransport):
     def test_default_stacking_with_stackable_branch_unstackable_repo(self):
         # Make stackable source branch with an unstackable repo format.
         source_bzrdir = self.make_bzrdir('source')
-        pack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
+        knitpack_repo.RepositoryFormatKnitPack1().initialize(source_bzrdir)
         source_branch = bzrlib.branch.BzrBranchFormat7().initialize(
             source_bzrdir)
         # Make a directory with a default stacking policy
@@ -797,7 +797,7 @@ class ChrootedTests(TestCaseWithTransport):
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
-        self.failUnlessExists('tree2/subtree/file')
+        self.assertPathExists('tree2/subtree/file')
         self.assertEqual('tree-reference', tree2.kind('subtree-root'))
 
     def test_cloning_metadir(self):
@@ -837,8 +837,8 @@ class ChrootedTests(TestCaseWithTransport):
         # #634470.  -- vila 20100909
         self.assertRaises(errors.NotBranchError,
                           tree.bzrdir.sprout, 'repo/tree2')
-#        self.failUnlessExists('repo/tree2/subtree')
-#        self.failIfExists('repo/tree2/subtree/file')
+#        self.assertPathExists('repo/tree2/subtree')
+#        self.assertPathDoesNotExist('repo/tree2/subtree/file')
 
     def make_foo_bar_baz(self):
         foo = bzrdir.BzrDir.create_branch_convenience('foo').bzrdir

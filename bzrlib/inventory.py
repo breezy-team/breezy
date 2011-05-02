@@ -822,14 +822,6 @@ class CommonInventory(object):
                     file_id, self[file_id]))
         return delta
 
-    def _get_mutable_inventory(self):
-        """Returns a mutable copy of the object.
-
-        Some inventories are immutable, yet working trees, for example, needs
-        to mutate exisiting inventories instead of creating a new one.
-        """
-        raise NotImplementedError(self._get_mutable_inventory)
-
     def make_entry(self, kind, name, parent_id, file_id=None):
         """Simple thunk to bzrlib.inventory.make_entry."""
         return make_entry(kind, name, parent_id, file_id)
@@ -1132,10 +1124,6 @@ class Inventory(CommonInventory):
         for path, entry in entries:
             other.add(entry.copy())
         return other
-
-    def _get_mutable_inventory(self):
-        """See CommonInventory._get_mutable_inventory."""
-        return copy.deepcopy(self)
 
     def __iter__(self):
         """Iterate over all file-ids."""
@@ -1618,14 +1606,6 @@ class CHKInventory(CommonInventory):
             result.parent_id = None
         self._fileid_to_entry_cache[result.file_id] = result
         return result
-
-    def _get_mutable_inventory(self):
-        """See CommonInventory._get_mutable_inventory."""
-        entries = self.iter_entries()
-        inv = Inventory(None, self.revision_id)
-        for path, inv_entry in entries:
-            inv.add(inv_entry.copy())
-        return inv
 
     def create_by_apply_delta(self, inventory_delta, new_revision_id,
         propagate_caches=False):
@@ -2400,3 +2380,15 @@ def _check_delta_new_path_entry_both_or_None(delta):
             raise errors.InconsistentDelta(new_path, item[1],
                 "new_path with no entry")
         yield item
+
+
+def mutable_inventory_from_tree(tree):
+    """Create a new inventory that has the same contents as a specified tree.
+
+    :param tree: Revision tree to create inventory from
+    """
+    entries = tree.iter_entries_by_dir()
+    inv = Inventory(None, tree.get_revision_id())
+    for path, inv_entry in entries:
+        inv.add(inv_entry.copy())
+    return inv

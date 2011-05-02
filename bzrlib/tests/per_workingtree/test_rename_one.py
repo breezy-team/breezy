@@ -91,7 +91,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
                               tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
                               tree.basis_tree())
-        self.failIfExists('a')
+        self.assertPathDoesNotExist('a')
         self.assertFileEqual(a_contents, 'foo')
 
     def test_rename_one_not_localdir(self):
@@ -107,7 +107,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
                               tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id')],
                               tree.basis_tree())
-        self.failIfExists('tree/a')
+        self.assertPathDoesNotExist('tree/a')
         self.assertFileEqual(a_contents, 'tree/b/foo')
 
     def test_rename_one_subdir(self):
@@ -126,7 +126,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
                                ('b/d', 'a-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                ('b/c', 'c-id')], tree.basis_tree())
-        self.failIfExists('a')
+        self.assertPathDoesNotExist('a')
         self.assertFileEqual(a_contents, 'b/d')
 
     def test_rename_one_parent_dir(self):
@@ -141,7 +141,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
                                ('d', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                ('b/c', 'c-id')], tree.basis_tree())
-        self.failIfExists('b/c')
+        self.assertPathDoesNotExist('b/c')
         self.assertFileEqual(c_contents, 'd')
 
     def test_rename_one_fail_consistent(self):

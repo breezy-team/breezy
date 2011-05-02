@@ -19,6 +19,7 @@
 from StringIO import StringIO
 
 from bzrlib import errors, tests, ui
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests.per_branch import TestCaseWithBranch
 
 
@@ -44,7 +45,8 @@ class TestBranchCheck(TestCaseWithBranch):
         r5 = tree.commit('five')
         # Now, try to set an invalid history
         try:
-            tree.branch.set_revision_history([r1, r2b, r5])
+            self.applyDeprecated(deprecated_in((2, 4, 0)),
+                tree.branch.set_revision_history, [r1, r2b, r5])
             if tree.branch.last_revision_info() != (3, r5):
                 # RemoteBranch silently corrects an impossible revision
                 # history given to set_revision_history.  It can be tricked
