@@ -64,7 +64,9 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         to_file = sys.stdout
 
     # Handle the show_ids case
-    annotations = _annotations(branch.repository, file_id, rev_id)
+    annotations = branch.repository.texts.annotate((file_id, rev_id))
+    annotations = [(key[-1], line) for (key, line) in annotations]
+
     if show_ids:
         return _show_id_annotations(annotations, to_file, full)
 
@@ -183,13 +185,6 @@ def _show_id_annotations(annotations, to_file, full):
         to_file.write('%*s | %s' % (max_origin_len, this, text))
         last_rev_id = origin
     return
-
-
-def _annotations(repo, file_id, rev_id):
-    """Return the list of (origin_revision_id, line_text) for a revision of a file in a repository."""
-    annotations = repo.texts.annotate((file_id, rev_id))
-    #
-    return [(key[-1], line) for (key, line) in annotations]
 
 
 def _expand_annotations(annotations, branch, current_rev=None):
