@@ -411,25 +411,33 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
+
+        revtree_1 = tree1.branch.repository.revision_tree('rev-1')
+        revtree_2 = tree1.branch.repository.revision_tree('rev-2')
+
         # this passes if no exception is raised
         to_file = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-1', 'a-id', to_file=to_file)
+        annotate.annotate_file_revision_tree(revtree_1, 'a-id',
+            to_file=to_file, branch=tree1.branch)
 
         sio = StringIO()
         to_file = codecs.getwriter('ascii')(sio)
         to_file.encoding = 'ascii' # codecs does not set it
-        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
+        annotate.annotate_file_revision_tree(revtree_2, 'b-id',
+            to_file=to_file, branch=tree1.branch)
         self.assertEqualDiff('2   p?rez   | bye\n', sio.getvalue())
 
         # test now with to_file.encoding = None
         to_file = tests.StringIOWrapper()
         to_file.encoding = None
-        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
+        annotate.annotate_file_revision_tree(revtree_2, 'b-id',
+            to_file=to_file, branch=tree1.branch)
         self.assertContainsRe('2   p.rez   | bye\n', to_file.getvalue())
 
         # and when it does not exist
         to_file = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
+        annotate.annotate_file_revision_tree(revtree_2, 'b-id',
+            to_file=to_file, branch=tree1.branch)
         self.assertContainsRe('2   p.rez   | bye\n', to_file.getvalue())
 
     def test_annotate_author_or_committer(self):
