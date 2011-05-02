@@ -20,7 +20,6 @@ from bzrlib import (
     bzrdir,
     errors,
     gpg,
-    graph,
     remote,
     repository,
     tests,
@@ -356,29 +355,3 @@ class TestFetchSameRepository(TestCaseWithRepository):
         self.addCleanup(source.unlock)
         target.fetch(source, revision_id='B-id')
 
-
-class TestSource(TestCaseWithRepository):
-    """Tests for/about the results of Repository._get_source."""
-
-    def test_no_absent_records_in_stream_with_ghosts(self):
-        # XXX: Arguably should be in per_interrepository but
-        # doesn't actually gain coverage there; need a specific set of
-        # permutations to cover it.
-        # bug lp:376255 was reported about this.
-        builder = self.make_branch_builder('repo')
-        builder.start_series()
-        builder.build_snapshot('tip', ['ghost'],
-            [('add', ('', 'ROOT_ID', 'directory', ''))],
-            allow_leftmost_as_ghost=True)
-        builder.finish_series()
-        b = builder.get_branch()
-        b.lock_read()
-        self.addCleanup(b.unlock)
-        repo = b.repository
-        source = repo._get_source(repo._format)
-        search = graph.PendingAncestryResult(['tip'], repo)
-        stream = source.get_stream(search)
-        for substream_type, substream in stream:
-            for record in substream:
-                self.assertNotEqual('absent', record.storage_kind,
-                    "Absent record for %s" % (((substream_type,) + record.key),))
