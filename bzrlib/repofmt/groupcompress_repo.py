@@ -26,7 +26,6 @@ from bzrlib import (
     errors,
     index as _mod_index,
     inventory,
-    knit,
     osutils,
     pack,
     revision as _mod_revision,
@@ -44,15 +43,18 @@ from bzrlib.groupcompress import (
     GroupCompressVersionedFiles,
     )
 from bzrlib.repofmt.pack_repo import (
+    _DirectPackAccess,
     Pack,
     NewPack,
-    KnitPackRepository,
-    KnitPackStreamSource,
+    PackRepository,
     PackRootCommitBuilder,
     RepositoryPackCollection,
     RepositoryFormatPack,
     ResumedPack,
     Packer,
+    )
+from bzrlib.repository import (
+    StreamSource,
     )
 from bzrlib.static_tuple import StaticTuple
 
@@ -352,8 +354,8 @@ class GCCHKPacker(Packer):
         """Build a VersionedFiles instance on top of this group of packs."""
         index_name = index_name + '_index'
         index_to_pack = {}
-        access = knit._DirectPackAccess(index_to_pack,
-                                        reload_func=self._reload_func)
+        access = _DirectPackAccess(index_to_pack,
+                                   reload_func=self._reload_func)
         if for_write:
             # Use new_pack
             if self.new_pack is None:
@@ -603,10 +605,10 @@ class GCCHKCanonicalizingPacker(GCCHKPacker):
     def __init__(self, *args, **kwargs):
         super(GCCHKCanonicalizingPacker, self).__init__(*args, **kwargs)
         self._data_changed = False
-    
+
     def _exhaust_stream(self, source_vf, keys, message, vf_to_stream, pb_offset):
         """Create and exhaust a stream, but don't insert it.
-        
+
         This is useful to get the side-effects of generating a stream.
         """
         self.pb.update('scanning %s' % (message,), pb_offset)
@@ -701,6 +703,8 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
 
     pack_factory = GCPack
     resumed_pack_factory = ResumedGCPack
+    normal_packer_class = GCCHKPacker
+    optimising_packer_class = GCCHKPacker
 
     def _check_new_inventories(self):
         """Detect missing inventories or chk root entries for the new revisions
@@ -788,56 +792,15 @@ class GCRepositoryPackCollection(RepositoryPackCollection):
                 % (sorted(missing_text_keys),))
         return problems
 
-    def _execute_pack_operations(self, pack_operations,
-                                 _packer_class=GCCHKPacker,
-                                 reload_func=None):
-        """Execute a series of pack operations.
 
-        :param pack_operations: A list of [revision_count, packs_to_combine].
-        :param _packer_class: The class of packer to use (default: Packer).
-        :return: None.
-        """
-        # XXX: Copied across from RepositoryPackCollection simply because we
-        #      want to override the _packer_class ... :(
-        for revision_count, packs in pack_operations:
-            # we may have no-ops from the setup logic
-            if len(packs) == 0:
-                continue
-            packer = GCCHKPacker(self, packs, '.autopack',
-                                 reload_func=reload_func)
-            try:
-                result = packer.pack()
-            except errors.RetryWithNewPacks:
-                # An exception is propagating out of this context, make sure
-                # this packer has cleaned up. Packer() doesn't set its new_pack
-                # state into the RepositoryPackCollection object, so we only
-                # have access to it directly here.
-                if packer.new_pack is not None:
-                    packer.new_pack.abort()
-                raise
-            if result is None:
-                return
-            for pack in packs:
-                self._remove_pack_from_memory(pack)
-        # record the newly available packs and stop advertising the old
-        # packs
-        to_be_obsoleted = []
-        for _, packs in pack_operations:
-            to_be_obsoleted.extend(packs)
-        result = self._save_pack_names(clear_obsolete_packs=True,
-                                       obsolete_packs=to_be_obsoleted)
-        return result
-
-
-class CHKInventoryRepository(KnitPackRepository):
-    """subclass of KnitPackRepository that uses CHK based inventories."""
+class CHKInventoryRepository(PackRepository):
+    """subclass of PackRepository that uses CHK based inventories."""
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
         """Overridden to change pack collection class."""
-        KnitPackRepository.__init__(self, _format, a_bzrdir, control_files,
-            _commit_builder_class, _serializer)
-        # and now replace everything it did :)
+        super(CHKInventoryRepository, self).__init__(_format, a_bzrdir,
+            control_files, _commit_builder_class, _serializer)
         index_transport = self._transport.clone('indices')
         self._pack_collection = GCRepositoryPackCollection(self,
             self._transport, index_transport,
@@ -1146,8 +1109,39 @@ class CHKInventoryRepository(KnitPackRepository):
             return GroupCHKStreamSource(self, to_format)
         return super(CHKInventoryRepository, self)._get_source(to_format)
 
+    def _find_inconsistent_revision_parents(self, revisions_iterator=None):
+        """Find revisions with different parent lists in the revision object
+        and in the index graph.
 
-class GroupCHKStreamSource(KnitPackStreamSource):
+        :param revisions_iterator: None, or an iterator of (revid,
+            Revision-or-None). This iterator controls the revisions checked.
+        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
+            parents-in-revision).
+        """
+        if not self.is_locked():
+            raise AssertionError()
+        vf = self.revisions
+        if revisions_iterator is None:
+            revisions_iterator = self._iter_revisions(None)
+        for revid, revision in revisions_iterator:
+            if revision is None:
+                pass
+            parent_map = vf.get_parent_map([(revid,)])
+            parents_according_to_index = tuple(parent[-1] for parent in
+                parent_map[(revid,)])
+            parents_according_to_revision = tuple(revision.parent_ids)
+            if parents_according_to_index != parents_according_to_revision:
+                yield (revid, parents_according_to_index,
+                    parents_according_to_revision)
+
+    def _check_for_inconsistent_revision_parents(self):
+        inconsistencies = list(self._find_inconsistent_revision_parents())
+        if inconsistencies:
+            raise errors.BzrCheckError(
+                "Revision index has inconsistent parents.")
+
+
+class GroupCHKStreamSource(StreamSource):
     """Used when both the source and target repo are GroupCHK repos."""
 
     def __init__(self, from_repository, to_format):
@@ -1239,6 +1233,13 @@ class GroupCHKStreamSource(KnitPackStreamSource):
             # Consumed
             self._chk_p_id_roots = None
         yield 'chk_bytes', _get_parent_id_basename_to_file_id_pages()
+
+    def _get_text_stream(self):
+        # Note: We know we don't have to handle adding root keys, because both
+        # the source and target are the identical network name.
+        text_stream = self.from_repository.texts.get_record_stream(
+                        self._text_keys, self._text_fetch_order, False)
+        return ('texts', text_stream)
 
     def get_stream(self, search):
         def wrap_and_count(pb, rc, stream):

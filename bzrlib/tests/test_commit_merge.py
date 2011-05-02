@@ -89,9 +89,8 @@ class TestCommitMerge(TestCaseWithTransport):
 
         wty.commit('merge from x', rev_id='y@u-0-2', allow_pointless=False)
         tree = by.repository.revision_tree('y@u-0-2')
-        inv = tree.inventory
-        self.assertEquals(inv['ecks-id'].revision, 'x@u-0-1')
-        self.assertEquals(inv['why-id'].revision, 'y@u-0-1')
+        self.assertEquals(tree.get_file_revision('ecks-id'), 'x@u-0-1')
+        self.assertEquals(tree.get_file_revision('why-id'), 'y@u-0-1')
 
         check.check_dwim(bx.base, False, True, True)
         check.check_dwim(by.base, False, True, True)
