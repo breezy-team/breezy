@@ -232,42 +232,6 @@ class KnitRepository(MetaDirRepository):
     def _make_parents_provider(self):
         return _KnitsParentsProvider(self.revisions)
 
-    def _find_inconsistent_revision_parents(self, revisions_iterator=None):
-        """Find revisions with different parent lists in the revision object
-        and in the index graph.
-
-        :param revisions_iterator: None, or an iterator of (revid,
-            Revision-or-None). This iterator controls the revisions checked.
-        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
-            parents-in-revision).
-        """
-        if not self.is_locked():
-            raise AssertionError()
-        vf = self.revisions
-        if revisions_iterator is None:
-            revisions_iterator = self._iter_revisions(None)
-        for revid, revision in revisions_iterator:
-            if revision is None:
-                pass
-            parent_map = vf.get_parent_map([(revid,)])
-            parents_according_to_index = tuple(parent[-1] for parent in
-                parent_map[(revid,)])
-            parents_according_to_revision = tuple(revision.parent_ids)
-            if parents_according_to_index != parents_according_to_revision:
-                yield (revid, parents_according_to_index,
-                    parents_according_to_revision)
-
-    def _check_for_inconsistent_revision_parents(self):
-        inconsistencies = list(self._find_inconsistent_revision_parents())
-        if inconsistencies:
-            raise errors.BzrCheckError(
-                "Revision knit has inconsistent parents.")
-
-    def revision_graph_can_have_wrong_parents(self):
-        # The revision.kndx could potentially claim a revision has a different
-        # parent to the revision text.
-        return True
-
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
     """Bzr repository knit format (generalized).
@@ -306,6 +270,9 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     fast_deltas = False
     supports_funky_characters = True
     supports_full_versioned_files = True
+    # The revision.kndx could potentially claim a revision has a different
+    # parent to the revision text.
+    revision_graph_can_have_wrong_parents = True
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)

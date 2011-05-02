@@ -17,18 +17,14 @@
 """Tests for interface conformance of inventories of trees."""
 
 
-from cStringIO import StringIO
-import os
-
 from bzrlib import (
     tests,
     )
 from bzrlib.tests import (
-    features,
     per_tree,
     )
 from bzrlib.mutabletree import MutableTree
-from bzrlib.tests import SymlinkFeature, TestSkipped
+from bzrlib.tests import TestSkipped
 from bzrlib.transform import _PreviewTree
 from bzrlib.uncommit import uncommit
 

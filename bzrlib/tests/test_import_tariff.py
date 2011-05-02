@@ -96,23 +96,31 @@ class TestImportTariffs(TestCaseWithTransport):
         # 'st' in a default format working tree shouldn't need many modules
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'], [
+            'bzrlib.annotate',
             'bzrlib.atomicfile',
             'bzrlib.bugtracker',
             'bzrlib.bundle.commands',
             'bzrlib.cmd_version_info',
             'bzrlib.externalcommand',
+            'bzrlib.filters',
             # foreign branch plugins import the foreign_vcs_registry from 
             # bzrlib.foreign so it can't be blacklisted
             'bzrlib.gpg',
             'bzrlib.info',
+            'bzrlib.knit',
             'bzrlib.merge3',
             'bzrlib.merge_directive',
             'bzrlib.msgeditor',
             'bzrlib.patiencediff',
             'bzrlib.remote',
+            'bzrlib.repofmt.knitrepo',
+            'bzrlib.repofmt.knitpack_repo',
+            'bzrlib.rules',
             'bzrlib.sign_my_commits',
             'bzrlib.smart',
             'bzrlib.smart.client',
+            'bzrlib.smart.medium',
+            'bzrlib.smart.server',
             'bzrlib.transform',
             'bzrlib.version_info_formats.format_rio',
             'bzrlib.plugins.weave_fmt.branch',

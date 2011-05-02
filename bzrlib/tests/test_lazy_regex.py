@@ -130,7 +130,7 @@ class TestInstallLazyCompile(tests.TestCase):
         lazy_regex.install_lazy_compile()
         lazy_regex.reset_compile()
         pattern = re.compile('foo')
-        self.failIf(isinstance(pattern, lazy_regex.LazyRegex),
+        self.assertFalse(isinstance(pattern, lazy_regex.LazyRegex),
                     'lazy_regex.reset_compile() did not restore the original'
                     ' compile() function %s' % (type(pattern),))
         # but the returned object should still support regex operations

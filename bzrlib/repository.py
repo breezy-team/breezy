@@ -41,7 +41,7 @@ from bzrlib import (
     )
 from bzrlib.bundle import serializer
 from bzrlib.recordcounter import RecordCounter
-from bzrlib.revisiontree import RevisionTree
+from bzrlib.revisiontree import InventoryRevisionTree
 from bzrlib.store.versioned import VersionedFileStore
 from bzrlib.testament import Testament
 """)
@@ -93,7 +93,7 @@ class CommitBuilder(object):
 
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
-                 revision_id=None):
+                 revision_id=None, lossy=False):
         """Initiate a CommitBuilder.
 
         :param repository: Repository to commit to.
@@ -103,8 +103,11 @@ class CommitBuilder(object):
         :param committer: Optional committer to set for commit.
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
+        :param lossy: Whether to discard data that can not be natively
+            represented, when pushing to a foreign VCS 
         """
         self._config = config
+        self._lossy = lossy
 
         if committer is None:
             self._committer = self._config.username()
@@ -233,16 +236,16 @@ class CommitBuilder(object):
     def revision_tree(self):
         """Return the tree that was just committed.
 
-        After calling commit() this can be called to get a RevisionTree
-        representing the newly committed tree. This is preferred to
-        calling Repository.revision_tree() because that may require
-        deserializing the inventory, while we already have a copy in
+        After calling commit() this can be called to get a
+        InventoryRevisionTree representing the newly committed tree. This is
+        preferred to calling Repository.revision_tree() because that may
+        require deserializing the inventory, while we already have a copy in
         memory.
         """
         if self.new_inventory is None:
             self.new_inventory = self.repository.get_inventory(
                 self._new_revision_id)
-        return RevisionTree(self.repository, self.new_inventory,
+        return InventoryRevisionTree(self.repository, self.new_inventory,
             self._new_revision_id)
 
     def finish_inventory(self):
@@ -1160,7 +1163,9 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         if config is not None and config.signature_needed():
             if inv is None:
                 inv = self.get_inventory(revision_id)
-            plaintext = Testament(rev, inv).as_short_text()
+            tree = InventoryRevisionTree(self, inv, revision_id)
+            testament = Testament(rev, tree)
+            plaintext = testament.as_short_text()
             self.store_revision_signature(
                 gpg.GPGStrategy(config), plaintext, revision_id)
         # check inventory present
@@ -1782,7 +1787,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
-                           revision_id=None):
+                           revision_id=None, lossy=False):
         """Obtain a CommitBuilder for this repository.
 
         :param branch: Branch to commit to.
@@ -1793,13 +1798,16 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param committer: Optional committer to set for commit.
         :param revprops: Optional dictionary of revision properties.
         :param revision_id: Optional revision id.
+        :param lossy: Whether to discard data that can not be natively
+            represented, when pushing to a foreign VCS
         """
         if self._fallback_repositories and not self._format.supports_chks:
             raise errors.BzrError("Cannot commit directly to a stacked branch"
                 " in pre-2a formats. See "
                 "https://bugs.launchpad.net/bzr/+bug/375013 for details.")
         result = self._commit_builder_class(self, parents, config,
-            timestamp, timezone, committer, revprops, revision_id)
+            timestamp, timezone, committer, revprops, revision_id,
+            lossy)
         self.start_write_group()
         return result
 
@@ -2507,11 +2515,11 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         # TODO: refactor this to use an existing revision object
         # so we don't need to read it in twice.
         if revision_id == _mod_revision.NULL_REVISION:
-            return RevisionTree(self, Inventory(root_id=None),
-                                _mod_revision.NULL_REVISION)
+            return InventoryRevisionTree(self,
+                Inventory(root_id=None), _mod_revision.NULL_REVISION)
         else:
             inv = self.get_inventory(revision_id)
-            return RevisionTree(self, inv, revision_id)
+            return InventoryRevisionTree(self, inv, revision_id)
 
     def revision_trees(self, revision_ids):
         """Return Trees for revisions in this repository.
@@ -2521,7 +2529,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
         inventories = self.iter_inventories(revision_ids)
         for inv in inventories:
-            yield RevisionTree(self, inv, inv.revision_id)
+            yield InventoryRevisionTree(self, inv, inv.revision_id)
 
     def _filtered_revision_trees(self, revision_ids, file_ids):
         """Return Tree for a revision on this branch with only some files.
@@ -2537,7 +2545,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
             # Should we introduce a FilteredRevisionTree class rather
             # than pre-filter the inventory here?
             filtered_inv = inv.filter(file_ids)
-            yield RevisionTree(self, filtered_inv, filtered_inv.revision_id)
+            yield InventoryRevisionTree(self, filtered_inv, filtered_inv.revision_id)
 
     @needs_read_lock
     def get_ancestry(self, revision_id, topo_sorted=True):
@@ -2765,16 +2773,36 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 except UnicodeDecodeError:
                     raise errors.NonAsciiRevisionId(method, self)
 
-    def revision_graph_can_have_wrong_parents(self):
-        """Is it possible for this repository to have a revision graph with
-        incorrect parents?
+    def _find_inconsistent_revision_parents(self, revisions_iterator=None):
+        """Find revisions with different parent lists in the revision object
+        and in the index graph.
 
-        If True, then this repository must also implement
-        _find_inconsistent_revision_parents so that check and reconcile can
-        check for inconsistencies before proceeding with other checks that may
-        depend on the revision index being consistent.
+        :param revisions_iterator: None, or an iterator of (revid,
+            Revision-or-None). This iterator controls the revisions checked.
+        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
+            parents-in-revision).
         """
-        raise NotImplementedError(self.revision_graph_can_have_wrong_parents)
+        if not self.is_locked():
+            raise AssertionError()
+        vf = self.revisions
+        if revisions_iterator is None:
+            revisions_iterator = self._iter_revisions(None)
+        for revid, revision in revisions_iterator:
+            if revision is None:
+                pass
+            parent_map = vf.get_parent_map([(revid,)])
+            parents_according_to_index = tuple(parent[-1] for parent in
+                parent_map[(revid,)])
+            parents_according_to_revision = tuple(revision.parent_ids)
+            if parents_according_to_index != parents_according_to_revision:
+                yield (revid, parents_according_to_index,
+                    parents_according_to_revision)
+
+    def _check_for_inconsistent_revision_parents(self):
+        inconsistencies = list(self._find_inconsistent_revision_parents())
+        if inconsistencies:
+            raise errors.BzrCheckError(
+                "Revision knit has inconsistent parents.")
 
 
 def install_revision(repository, rev, revision_tree):
@@ -2839,7 +2867,7 @@ def _install_revision(repository, rev, revision_tree, signature,
         for revision, tree in parent_trees.iteritems():
             if ie.file_id not in tree:
                 continue
-            parent_id = tree.inventory[ie.file_id].revision
+            parent_id = tree.get_file_revision(ie.file_id)
             if parent_id in text_parents:
                 continue
             text_parents.append((ie.file_id, parent_id))
@@ -3017,6 +3045,10 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_leaving_lock = None
     # Does this format support the full VersionedFiles interface?
     supports_full_versioned_files = None
+    # Does this format support signing revision signatures?
+    supports_revision_signatures = True
+    # Can the revision graph have incorrect parents?
+    revision_graph_can_have_wrong_parents = None
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -3242,42 +3274,42 @@ format_registry.register_lazy(
 # NOTE: These are experimental in 0.92. Stable in 1.0 and above
 format_registry.register_lazy(
     'Bazaar pack repository format 1 (needs bzr 0.92)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack1',
     )
 format_registry.register_lazy(
     'Bazaar pack repository format 1 with subtree support (needs bzr 0.92)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack3',
     )
 format_registry.register_lazy(
     'Bazaar pack repository format 1 with rich root (needs bzr 1.0)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack4',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5 (bzr 1.6)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack5',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6.1)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack5RichRoot',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack5RichRoot (bzr 1.6)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack5RichRootBroken',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack6 (bzr 1.9)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack6',
     )
 format_registry.register_lazy(
     'Bazaar RepositoryFormatKnitPack6RichRoot (bzr 1.9)\n',
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatKnitPack6RichRoot',
     )
 format_registry.register_lazy(
@@ -3291,7 +3323,7 @@ format_registry.register_lazy(
 format_registry.register_lazy(
     ("Bazaar development format 2 with subtree support "
         "(needs bzr.dev from before 1.8)\n"),
-    'bzrlib.repofmt.pack_repo',
+    'bzrlib.repofmt.knitpack_repo',
     'RepositoryFormatPackDevelopment2Subtree',
     )
 format_registry.register_lazy(
