@@ -66,14 +66,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('repo')
         self.assertSubset([getattr(repo._format, attribute)], allowed_values)
 
-    def test_attribute__fetch_order(self):
-        """Test the _fetch_order attribute."""
-        self.assertFormatAttribute('_fetch_order', ('topological', 'unordered'))
-
-    def test_attribute__fetch_uses_deltas(self):
-        """Test the _fetch_uses_deltas attribute."""
-        self.assertFormatAttribute('_fetch_uses_deltas', (True, False))
-
     def test_attribute_fast_deltas(self):
         """Test the format.fast_deltas attribute."""
         self.assertFormatAttribute('fast_deltas', (True, False))
@@ -759,27 +751,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEquals(inv_sha1, repo.get_revision('A').inventory_sha1)
         repo.unlock()
 
-    def test_install_revisions(self):
-        wt = self.make_branch_and_tree('source')
-        wt.commit('A', allow_pointless=True, rev_id='A')
-        repo = wt.branch.repository
-        repo.lock_write()
-        repo.start_write_group()
-        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
-        repo.commit_write_group()
-        repo.unlock()
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
-        repo2 = self.make_repository('repo2')
-        revision = repo.get_revision('A')
-        tree = repo.revision_tree('A')
-        signature = repo.get_signature_text('A')
-        repo2.lock_write()
-        self.addCleanup(repo2.unlock)
-        vf_repository.install_revisions(repo2, [(revision, tree, signature)])
-        self.assertEqual(revision, repo2.get_revision('A'))
-        self.assertEqual(signature, repo2.get_signature_text('A'))
-
     # XXX: this helper duplicated from tests.test_repository
     def make_remote_repository(self, path, shared=False):
         """Make a RemoteRepository object backed by a real repository that will
@@ -922,11 +893,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.assertEqual(repo._format, target_repo._format)
         else:
             self.assertEqual(stack_on.repository._format, target_repo._format)
-
-    def test__get_sink(self):
-        repo = self.make_repository('repo')
-        sink = repo._get_sink()
-        self.assertIsInstance(sink, repository.StreamSink)
 
     def test__make_parents_provider(self):
         """Repositories must have a _make_parents_provider method that returns

@@ -51,10 +51,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     InterRepository,
     InterSameDataRepository,
-    MetaDirVersionedFileRepository,
-    MetaDirRepositoryFormat,
     Repository,
-    RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
 from bzrlib.versionedfile import (
@@ -64,6 +61,9 @@ from bzrlib.versionedfile import (
     )
 from bzrlib.vf_repository import (
     VersionedFileCommitBuilder,
+    VersionedFileRepositoryFormat,
+    MetaDirVersionedFileRepository,
+    MetaDirVersionedFileRepositoryFormat,
     )
 
 from bzrlib.plugins.weave_fmt import bzrdir as weave_bzrdir
@@ -261,7 +261,7 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
             check_content=check_content)[0]
 
 
-class PreSplitOutRepositoryFormat(RepositoryFormat):
+class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
     """Base class for the pre split out repository formats."""
 
     rich_root_data = False
@@ -482,7 +482,7 @@ class RepositoryFormat6(PreSplitOutRepositoryFormat):
             weave.WeaveFile, mapper, repo.is_locked)
 
 
-class RepositoryFormat7(MetaDirRepositoryFormat):
+class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     """Bzr repository 7.
 
     This repository format has:

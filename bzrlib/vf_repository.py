@@ -60,12 +60,29 @@ from bzrlib.repository import (
     CommitBuilder,
     InterRepository,
     MetaDirRepository,
+    MetaDirRepositoryFormat,
     Repository,
+    RepositoryFormat,
     )
 
 from bzrlib.trace import (
     mutter,
     )
+
+
+class VersionedFileRepositoryFormat(RepositoryFormat):
+
+    # Should commit add an inventory, or an inventory delta to the repository.
+    _commit_inv_deltas = True
+    # What order should fetch operations request streams in?
+    # The default is unordered as that is the cheapest for an origin to
+    # provide.
+    _fetch_order = 'unordered'
+    # Does this repository format use deltas that can be fetched as-deltas ?
+    # (E.g. knits, where the knit deltas can be transplanted intact.
+    # We default to False, which will ensure that enough data to get
+    # a full text out of any fetch stream will be grabbed.
+    _fetch_uses_deltas = False
 
 
 class VersionedFileCommitBuilder(CommitBuilder):
@@ -1862,6 +1879,11 @@ class MetaDirVersionedFileRepository(MetaDirRepository,
     def __init__(self, _format, a_bzrdir, control_files):
         super(MetaDirVersionedFileRepository, self).__init__(_format, a_bzrdir,
             control_files)
+
+
+class MetaDirVersionedFileRepositoryFormat(MetaDirRepositoryFormat,
+        VersionedFileRepositoryFormat):
+    """Base class for repository formats using versioned files in metadirs."""
 
 
 class StreamSink(object):

@@ -37,11 +37,11 @@ from bzrlib.repository import (
     InterRepository,
     InterSameDataRepository,
     IsInWriteGroupError,
-    MetaDirRepositoryFormat,
     RepositoryFormat,
     )
 from bzrlib.vf_repository import (
     MetaDirVersionedFileRepository,
+    MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,
     VersionedFileRootCommitBuilder,
     )
@@ -235,7 +235,7 @@ class KnitRepository(MetaDirVersionedFileRepository):
         return _KnitsParentsProvider(self.revisions)
 
 
-class RepositoryFormatKnit(MetaDirRepositoryFormat):
+class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
     """Bzr repository knit format (generalized).
 
     This repository format has:

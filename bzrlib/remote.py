@@ -701,7 +701,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return RemoteBzrDirConfig(self)
 
 
-class RemoteRepositoryFormat(_mod_repository.RepositoryFormat):
+class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     """Format for repositories accessed over a _SmartClient.
 
     Instances of this repository are represented by RemoteRepository

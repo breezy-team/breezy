@@ -53,12 +53,12 @@ from bzrlib.decorators import (
 from bzrlib.lock import LogicalLockResult
 from bzrlib.repository import (
     MetaDirRepository,
-    MetaDirRepositoryFormat,
     RepositoryFormat,
     RepositoryWriteLockResult,
     )
 from bzrlib.vf_repository import (
     MetaDirVersionedFileRepository,
+    MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,
     VersionedFileRootCommitBuilder,
     )
@@ -1810,7 +1810,7 @@ class PackRepository(MetaDirVersionedFileRepository):
                 repo.unlock()
 
 
-class RepositoryFormatPack(MetaDirRepositoryFormat):
+class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     """Format logic for pack structured repositories.
 
     This repository format has:

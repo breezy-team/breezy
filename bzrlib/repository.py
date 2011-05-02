@@ -1360,17 +1360,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     # Does this format support CHK bytestring lookups. Set to True or False in
     # derived classes.
     supports_chks = None
-    # Should commit add an inventory, or an inventory delta to the repository.
-    _commit_inv_deltas = True
-    # What order should fetch operations request streams in?
-    # The default is unordered as that is the cheapest for an origin to
-    # provide.
-    _fetch_order = 'unordered'
-    # Does this repository format use deltas that can be fetched as-deltas ?
-    # (E.g. knits, where the knit deltas can be transplanted intact.
-    # We default to False, which will ensure that enough data to get
-    # a full text out of any fetch stream will be grabbed.
-    _fetch_uses_deltas = False
     # Should fetch trigger a reconcile after the fetch? Only needed for
     # some repository formats that can suffer internal inconsistencies.
     _fetch_reconcile = False
@@ -1386,8 +1375,9 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_tree_reference = None
     # Is the format experimental ?
     experimental = False
-    # Does this repository format escape funky characters, or does it create files with
-    # similar names as the versioned files in its contents on disk ?
+    # Does this repository format escape funky characters, or does it create
+    # files with similar names as the versioned files in its contents on disk
+    # ?
     supports_funky_characters = None
     # Does this repository format support leaving locks?
     supports_leaving_lock = None

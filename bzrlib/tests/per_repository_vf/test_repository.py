@@ -18,8 +18,10 @@
 
 from bzrlib import (
     errors,
+    gpg,
     tests,
     versionedfile,
+    vf_repository,
     )
 
 from bzrlib.tests.per_repository_vf import (
@@ -35,6 +37,19 @@ load_tests = load_tests_apply_scenarios
 class TestRepository(TestCaseWithRepository):
 
     scenarios = all_repository_vf_format_scenarios()
+
+    def assertFormatAttribute(self, attribute, allowed_values):
+        """Assert that the format has an attribute 'attribute'."""
+        repo = self.make_repository('repo')
+        self.assertSubset([getattr(repo._format, attribute)], allowed_values)
+
+    def test_attribute__fetch_order(self):
+        """Test the _fetch_order attribute."""
+        self.assertFormatAttribute('_fetch_order', ('topological', 'unordered'))
+
+    def test_attribute__fetch_uses_deltas(self):
+        """Test the _fetch_uses_deltas attribute."""
+        self.assertFormatAttribute('_fetch_uses_deltas', (True, False))
 
     def test_attribute_inventories_store(self):
         """Test the existence of the inventories attribute."""
@@ -111,6 +126,32 @@ class TestRepository(TestCaseWithRepository):
             revisions.add_lines, ('foo',), [], [])
         self.assertRaises(errors.ObjectNotLocked,
             inventories.add_lines, ('foo',), [], [])
+
+    def test__get_sink(self):
+        repo = self.make_repository('repo')
+        sink = repo._get_sink()
+        self.assertIsInstance(sink, vf_repository.StreamSink)
+
+    def test_install_revisions(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo2 = self.make_repository('repo2')
+        revision = repo.get_revision('A')
+        tree = repo.revision_tree('A')
+        signature = repo.get_signature_text('A')
+        repo2.lock_write()
+        self.addCleanup(repo2.unlock)
+        vf_repository.install_revisions(repo2, [(revision, tree, signature)])
+        self.assertEqual(revision, repo2.get_revision('A'))
+        self.assertEqual(signature, repo2.get_signature_text('A'))
 
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
