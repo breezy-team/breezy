@@ -3106,28 +3106,6 @@ class RepositoryFormat(controldir.ControlComponentFormat):
         """Return the short description for this format."""
         raise NotImplementedError(self.get_format_description)
 
-    # TODO: this shouldn't be in the base class, it's specific to things that
-    # use weaves or knits -- mbp 20070207
-    def _get_versioned_file_store(self,
-                                  name,
-                                  transport,
-                                  control_files,
-                                  prefixed=True,
-                                  versionedfile_class=None,
-                                  versionedfile_kwargs={},
-                                  escaped=False):
-        if versionedfile_class is None:
-            versionedfile_class = self._versionedfile_class
-        weave_transport = control_files._transport.clone(name)
-        dir_mode = control_files._dir_mode
-        file_mode = control_files._file_mode
-        return VersionedFileStore(weave_transport, prefixed=prefixed,
-                                  dir_mode=dir_mode,
-                                  file_mode=file_mode,
-                                  versionedfile_class=versionedfile_class,
-                                  versionedfile_kwargs=versionedfile_kwargs,
-                                  escaped=escaped)
-
     def initialize(self, a_bzrdir, shared=False):
         """Initialize a repository of this format in a_bzrdir.
 
