@@ -2098,7 +2098,8 @@ class ReadOnlySection(object):
     """A section defines a dict of options.
 
     This is merely a read-only dict which can add some knowledge about the
-    options.
+    options. It is *not* a python dict object though and doesn't try to mimic
+    its API.
     """
 
     def __init__(self, section_id, options):

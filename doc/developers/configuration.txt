@@ -18,6 +18,6 @@ known dict objects:
 - you can get, set and remove an option,
 - the value is a unicode string.
 
-MutableSection are needed to set or remove an option, ReadOnlySection should
+MutableSection is needed to set or remove an option, ReadOnlySection should
 be used otherwise.
 

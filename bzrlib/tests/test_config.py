@@ -1824,7 +1824,7 @@ class TestConfigReadOnlySection(tests.TestCase):
         section = config.ReadOnlySection('myID', a_dict)
         self.assertEquals('bar', section.get('foo'))
 
-    def test_get_unkown_option(self):
+    def test_get_unknown_option(self):
         a_dict = dict()
         section = config.ReadOnlySection('myID', a_dict)
         self.assertEquals('out of thin air',
@@ -1838,7 +1838,7 @@ class TestConfigReadOnlySection(tests.TestCase):
 
 class TestConfigMutableSection(tests.TestCase):
 
-    # FIXME: Parametrize so that all sections (includind os.envrion and the
+    # FIXME: Parametrize so that all sections (including os.environ and the
     # ones produced by Stores) run these tests -- vila 2011-04-01
 
     def test_set(self):
