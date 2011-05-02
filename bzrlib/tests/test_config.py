@@ -510,7 +510,7 @@ class TestIniConfigBuilding(TestIniConfig):
     def test_cached(self):
         my_config = config.IniBasedConfig.from_string(sample_config_text)
         parser = my_config._get_parser()
-        self.failUnless(my_config._get_parser() is parser)
+        self.assertTrue(my_config._get_parser() is parser)
 
     def _dummy_chown(self, path, uid, gid):
         self.path, self.uid, self.gid = path, uid, gid
@@ -962,7 +962,7 @@ class TestGetConfig(tests.TestCase):
             parser = my_config._get_parser()
         finally:
             config.ConfigObj = oldparserclass
-        self.failUnless(isinstance(parser, InstrumentedConfigObj))
+        self.assertIsInstance(parser, InstrumentedConfigObj)
         self.assertEqual(parser._calls, [('__init__', config.config_filename(),
                                           'utf-8')])
 
@@ -979,7 +979,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         my_config = config.BranchConfig(branch)
         location_config = my_config._get_location_config()
         self.assertEqual(branch.base, location_config.location)
-        self.failUnless(location_config is my_config._get_location_config())
+        self.assertIs(location_config, my_config._get_location_config())
 
     def test_get_config(self):
         """The Branch.get_config method works properly"""
@@ -1253,7 +1253,7 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
             parser = my_config._get_parser()
         finally:
             config.ConfigObj = oldparserclass
-        self.failUnless(isinstance(parser, InstrumentedConfigObj))
+        self.assertIsInstance(parser, InstrumentedConfigObj)
         self.assertEqual(parser._calls,
                          [('__init__', config.locations_config_filename(),
                            'utf-8')])
@@ -1261,8 +1261,8 @@ class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
     def test_get_global_config(self):
         my_config = config.BranchConfig(FakeBranch('http://example.com'))
         global_config = my_config._get_global_config()
-        self.failUnless(isinstance(global_config, config.GlobalConfig))
-        self.failUnless(global_config is my_config._get_global_config())
+        self.assertIsInstance(global_config, config.GlobalConfig)
+        self.assertIs(global_config, my_config._get_global_config())
 
     def assertLocationMatching(self, expected):
         self.assertEqual(expected,
@@ -2759,8 +2759,8 @@ class TestAutoUserId(tests.TestCase):
             raise TestSkipped("User name inference not implemented on win32")
         realname, address = config._auto_user_id()
         if os.path.exists('/etc/mailname'):
-            self.assertTrue(realname)
-            self.assertTrue(address)
+            self.assertIsNot(None, realname)
+            self.assertIsNot(None, address)
         else:
             self.assertEquals((None, None), (realname, address))
 

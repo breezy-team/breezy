@@ -49,7 +49,7 @@ class TestUncommit(tests.TestCaseWithTransport):
         self.assertEqual((1, history[0]), tree.branch.last_revision_info())
 
         # The file should not be removed
-        self.failUnlessExists('tree/two')
+        self.assertPathExists('tree/two')
         # And it should still be listed as added
         self.assertIsNot(None, tree.path2id('two'))
 

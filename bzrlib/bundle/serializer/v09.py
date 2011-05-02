@@ -63,8 +63,8 @@ class BundleInfo09(BundleInfo):
         testament = StrictTestament3.from_revision(repository, revision_id)
         return testament.as_sha1()
 
-    def _testament_sha1(self, revision, inventory):
-        return StrictTestament3(revision, inventory).as_sha1()
+    def _testament_sha1(self, revision, tree):
+        return StrictTestament3(revision, tree).as_sha1()
 
 
 class BundleReaderV09(BundleReader):

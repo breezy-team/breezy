@@ -102,6 +102,8 @@ class TreeTransformBase(object):
         self._new_parent = {}
         # mapping of trans_id with new contents -> new file_kind
         self._new_contents = {}
+        # mapping of trans_id => (sha1 of content, stat_value)
+        self._observed_sha1s = {}
         # Set of trans_ids whose contents will be removed
         self._removed_contents = set()
         # Mapping of trans_id -> new execute-bit value
@@ -751,7 +753,7 @@ class TreeTransformBase(object):
         return trans_id
 
     def new_file(self, name, parent_id, contents, file_id=None,
-                 executable=None):
+                 executable=None, sha1=None):
         """Convenience method to create files.
 
         name is the name of the file to create.
@@ -764,7 +766,7 @@ class TreeTransformBase(object):
         trans_id = self._new_entry(name, parent_id, file_id)
         # TODO: rather than scheduling a set_executable call,
         # have create_file create the file with the right mode.
-        self.create_file(contents, trans_id)
+        self.create_file(contents, trans_id, sha1=sha1)
         if executable is not None:
             self.set_executability(executable, trans_id)
         return trans_id
@@ -1246,16 +1248,19 @@ class DiskTreeTransform(TreeTransformBase):
             descendants.update(self._limbo_descendants(descendant))
         return descendants
 
-    def create_file(self, contents, trans_id, mode_id=None):
+    def create_file(self, contents, trans_id, mode_id=None, sha1=None):
         """Schedule creation of a new file.
 
-        See also new_file.
+        :seealso: new_file.
 
-        Contents is an iterator of strings, all of which will be written
-        to the target destination.
-
-        New file takes the permissions of any existing file with that id,
-        unless mode_id is specified.
+        :param contents: an iterator of strings, all of which will be written
+            to the target destination.
+        :param trans_id: TreeTransform handle
+        :param mode_id: If not None, force the mode of the target file to match
+            the mode of the object referenced by mode_id.
+            Otherwise, we will try to preserve mode bits of an existing file.
+        :param sha1: If the sha1 of this content is already known, pass it in.
+            We can use it to prevent future sha1 computations.
         """
         name = self._limbo_name(trans_id)
         f = open(name, 'wb')
@@ -1268,12 +1273,16 @@ class DiskTreeTransform(TreeTransformBase):
                 f.close()
                 os.unlink(name)
                 raise
-
             f.writelines(contents)
         finally:
             f.close()
         self._set_mtime(name)
         self._set_mode(trans_id, mode_id, S_ISREG)
+        # It is unfortunate we have to use lstat instead of fstat, but we just
+        # used utime and chmod on the file, so we need the accurate final
+        # details.
+        if sha1 is not None:
+            self._observed_sha1s[trans_id] = (sha1, osutils.lstat(name))
 
     def _read_file_chunks(self, trans_id):
         cur_file = open(self._limbo_name(trans_id), 'rb')
@@ -1338,6 +1347,8 @@ class DiskTreeTransform(TreeTransformBase):
     def cancel_creation(self, trans_id):
         """Cancel the creation of new file contents."""
         del self._new_contents[trans_id]
+        if trans_id in self._observed_sha1s:
+            del self._observed_sha1s[trans_id]
         children = self._limbo_children.get(trans_id)
         # if this is a limbo directory with children, move them before removing
         # the directory
@@ -1699,6 +1710,7 @@ class TreeTransform(DiskTreeTransform):
         finally:
             child_pb.finished()
         self._tree.apply_inventory_delta(inventory_delta)
+        self._apply_observed_sha1s()
         self._done = True
         self.finalize()
         return _TransformResults(modified_paths, self.rename_count)
@@ -1824,16 +1836,46 @@ class TreeTransform(DiskTreeTransform):
                             raise
                     else:
                         self.rename_count += 1
+                    # TODO: if trans_id in self._observed_sha1s, we should
+                    #       re-stat the final target, since ctime will be
+                    #       updated by the change.
                 if (trans_id in self._new_contents or
                     self.path_changed(trans_id)):
                     if trans_id in self._new_contents:
                         modified_paths.append(full_path)
                 if trans_id in self._new_executability:
                     self._set_executability(path, trans_id)
+                if trans_id in self._observed_sha1s:
+                    o_sha1, o_st_val = self._observed_sha1s[trans_id]
+                    st = osutils.lstat(full_path)
+                    self._observed_sha1s[trans_id] = (o_sha1, st)
         finally:
             child_pb.finished()
         self._new_contents.clear()
         return modified_paths
+
+    def _apply_observed_sha1s(self):
+        """After we have finished renaming everything, update observed sha1s
+
+        This has to be done after self._tree.apply_inventory_delta, otherwise
+        it doesn't know anything about the files we are updating. Also, we want
+        to do this as late as possible, so that most entries end up cached.
+        """
+        # TODO: this doesn't update the stat information for directories. So
+        #       the first 'bzr status' will still need to rewrite
+        #       .bzr/checkout/dirstate. However, we at least don't need to
+        #       re-read all of the files.
+        # TODO: If the operation took a while, we could do a time.sleep(3) here
+        #       to allow the clock to tick over and ensure we won't have any
+        #       problems. (we could observe start time, and finish time, and if
+        #       it is less than eg 10% overhead, add a sleep call.)
+        paths = FinalPaths(self)
+        for trans_id, observed in self._observed_sha1s.iteritems():
+            path = paths.get_path(trans_id)
+            # We could get the file_id, but dirstate prefers to use the path
+            # anyway, and it is 'cheaper' to determine.
+            # file_id = self._new_id[trans_id]
+            self._tree._observed_sha1(None, path, observed)
 
 
 class TransformPreview(DiskTreeTransform):
@@ -1890,7 +1932,7 @@ class TransformPreview(DiskTreeTransform):
         raise NotImplementedError(self.new_orphan)
 
 
-class _PreviewTree(tree.Tree):
+class _PreviewTree(tree.InventoryTree):
     """Partial implementation of Tree to support show_diff_trees"""
 
     def __init__(self, transform):
@@ -1925,7 +1967,7 @@ class _PreviewTree(tree.Tree):
                 yield self._get_repository().revision_tree(revision_id)
 
     def _get_file_revision(self, file_id, vf, tree_revision):
-        parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
+        parent_keys = [(file_id, t.get_file_revision(file_id)) for t in
                        self._iter_parent_trees()]
         vf.add_lines((file_id, tree_revision), parent_keys,
                      self.get_file_lines(file_id))
@@ -2499,7 +2541,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
                     executable = tree.is_executable(file_id, tree_path)
                     if executable:
                         tt.set_executability(executable, trans_id)
-                    trans_data = (trans_id, tree_path)
+                    trans_data = (trans_id, tree_path, entry.text_sha1)
                     deferred_contents.append((file_id, trans_data))
                 else:
                     file_trans_id[file_id] = new_by_entry(tt, entry, parent_id,
@@ -2550,10 +2592,11 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
         unchanged = dict(unchanged)
         new_desired_files = []
         count = 0
-        for file_id, (trans_id, tree_path) in desired_files:
+        for file_id, (trans_id, tree_path, text_sha1) in desired_files:
             accelerator_path = unchanged.get(file_id)
             if accelerator_path is None:
-                new_desired_files.append((file_id, (trans_id, tree_path)))
+                new_desired_files.append((file_id,
+                    (trans_id, tree_path, text_sha1)))
                 continue
             pb.update('Adding file contents', count + offset, total)
             if hardlink:
@@ -2566,7 +2609,7 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                     contents = filtered_output_bytes(contents, filters,
                         ContentFilterContext(tree_path, tree))
                 try:
-                    tt.create_file(contents, trans_id)
+                    tt.create_file(contents, trans_id, sha1=text_sha1)
                 finally:
                     try:
                         contents.close()
@@ -2575,13 +2618,13 @@ def _create_files(tt, tree, desired_files, pb, offset, accelerator_tree,
                         pass
             count += 1
         offset += count
-    for count, ((trans_id, tree_path), contents) in enumerate(
+    for count, ((trans_id, tree_path, text_sha1), contents) in enumerate(
             tree.iter_files_bytes(new_desired_files)):
         if wt.supports_content_filtering():
             filters = wt._content_filter_stack(tree_path)
             contents = filtered_output_bytes(contents, filters,
                 ContentFilterContext(tree_path, tree))
-        tt.create_file(contents, trans_id)
+        tt.create_file(contents, trans_id, sha1=text_sha1)
         pb.update('Adding file contents', count + offset, total)
 
 
@@ -2996,7 +3039,8 @@ def conflict_pass(tt, conflicts, path_tree=None):
                         file_id = tt.final_file_id(trans_id)
                         if file_id is None:
                             file_id = tt.inactive_file_id(trans_id)
-                        entry = path_tree.inventory[file_id]
+                        _, entry = path_tree.iter_entries_by_dir(
+                            [file_id]).next()
                         # special-case the other tree root (move its
                         # children to current root)
                         if entry.parent_id is None:
