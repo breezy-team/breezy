@@ -43,6 +43,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* New method ``Repository.get_file_graph`` which can return the
+  per-file revision graph. (Jelmer Vernooij, #775578)
+
 Internals
 *********
 
