@@ -88,14 +88,11 @@ def annotate_file_revision_tree(tree, file_id, to_file, verbose=False,
     :param show_ids: Show revision ids in the annotation output.
     :param branch: Branch to use for revno lookups.
     """
-    file_version = tree.get_file_revision(file_id)
     if to_file is None:
         to_file = sys.stdout
 
     # Handle the show_ids case
-    annotations = branch.repository.texts.annotate((file_id, file_version))
-    annotations = [(key[-1], line) for (key, line) in annotations]
-
+    annotations = list(tree.annotate_iter(file_id))
     if show_ids:
         return _show_id_annotations(annotations, to_file, full)
 
