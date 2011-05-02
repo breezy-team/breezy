@@ -38,10 +38,12 @@ from bzrlib.repository import (
     InterRepository,
     InterSameDataRepository,
     IsInWriteGroupError,
-    MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
     RootCommitBuilder,
+    )
+from bzrlib.vf_repository import (
+    MetaDirVersionedFileRepository,
     )
 from bzrlib import symbol_versioning
 
@@ -103,7 +105,7 @@ class _KnitsParentsProvider(object):
         return result
 
 
-class KnitRepository(MetaDirRepository):
+class KnitRepository(MetaDirVersionedFileRepository):
     """Knit format repository."""
 
     # These attributes are inherited from the Repository base class. Setting
@@ -115,7 +117,7 @@ class KnitRepository(MetaDirRepository):
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
-        MetaDirRepository.__init__(self, _format, a_bzrdir, control_files)
+        super(KnitRepository, self).__init__(_format, a_bzrdir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True

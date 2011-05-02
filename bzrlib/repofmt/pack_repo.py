@@ -59,6 +59,9 @@ from bzrlib.repository import (
     RepositoryWriteLockResult,
     RootCommitBuilder,
     )
+from bzrlib.vf_repository import (
+    MetaDirVersionedFileRepository,
+    )
 from bzrlib.trace import (
     mutter,
     note,
@@ -1622,7 +1625,7 @@ class RepositoryPackCollection(object):
             self._resume_pack(token)
 
 
-class PackRepository(MetaDirRepository):
+class PackRepository(MetaDirVersionedFileRepository):
     """Repository with knit objects stored inside pack containers.
 
     The layering for a KnitPackRepository is:

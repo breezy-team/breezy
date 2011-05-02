@@ -53,7 +53,7 @@ from bzrlib.repofmt.pack_repo import (
     ResumedPack,
     Packer,
     )
-from bzrlib.repository import (
+from bzrlib.vf_repository import (
     StreamSource,
     )
 from bzrlib.static_tuple import StaticTuple
