@@ -52,15 +52,15 @@ from bzrlib.decorators import (
     )
 from bzrlib.lock import LogicalLockResult
 from bzrlib.repository import (
-    CommitBuilder,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
     RepositoryWriteLockResult,
-    RootCommitBuilder,
     )
 from bzrlib.vf_repository import (
     MetaDirVersionedFileRepository,
+    VersionedFileCommitBuilder,
+    VersionedFileRootCommitBuilder,
     )
 from bzrlib.trace import (
     mutter,
@@ -69,8 +69,8 @@ from bzrlib.trace import (
     )
 
 
-class PackCommitBuilder(CommitBuilder):
-    """A subclass of CommitBuilder to add texts with pack semantics.
+class PackCommitBuilder(VersionedFileCommitBuilder):
+    """Subclass of VersionedFileCommitBuilder to add texts with pack semantics.
 
     Specifically this uses one knit object rather than one knit object per
     added text, reducing memory and object pressure.
@@ -79,7 +79,7 @@ class PackCommitBuilder(CommitBuilder):
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False):
-        CommitBuilder.__init__(self, repository, parents, config,
+        VersionedFileCommitBuilder.__init__(self, repository, parents, config,
             timestamp=timestamp, timezone=timezone, committer=committer,
             revprops=revprops, revision_id=revision_id, lossy=lossy)
         self._file_graph = graph.Graph(
@@ -90,7 +90,7 @@ class PackCommitBuilder(CommitBuilder):
         return set([key[1] for key in self._file_graph.heads(keys)])
 
 
-class PackRootCommitBuilder(RootCommitBuilder):
+class PackRootCommitBuilder(VersionedFileRootCommitBuilder):
     """A subclass of RootCommitBuilder to add texts with pack semantics.
 
     Specifically this uses one knit object rather than one knit object per
@@ -100,9 +100,10 @@ class PackRootCommitBuilder(RootCommitBuilder):
     def __init__(self, repository, parents, config, timestamp=None,
                  timezone=None, committer=None, revprops=None,
                  revision_id=None, lossy=False):
-        CommitBuilder.__init__(self, repository, parents, config,
-            timestamp=timestamp, timezone=timezone, committer=committer,
-            revprops=revprops, revision_id=revision_id, lossy=lossy)
+        super(PackRootCommitBuilder, self).__init__(repository, parents,
+            config, timestamp=timestamp, timezone=timezone,
+            committer=committer, revprops=revprops, revision_id=revision_id,
+            lossy=lossy)
         self._file_graph = graph.Graph(
             repository._pack_collection.text_index.combined_index)
 

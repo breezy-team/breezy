@@ -34,6 +34,7 @@ from bzrlib import (
     transport,
     upgrade,
     versionedfile,
+    vf_repository,
     workingtree,
     )
 from bzrlib.repofmt import (
@@ -775,7 +776,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
         signature = repo.get_signature_text('A')
         repo2.lock_write()
         self.addCleanup(repo2.unlock)
-        repository.install_revisions(repo2, [(revision, tree, signature)])
+        vf_repository.install_revisions(repo2, [(revision, tree, signature)])
         self.assertEqual(revision, repo2.get_revision('A'))
         self.assertEqual(signature, repo2.get_signature_text('A'))
 

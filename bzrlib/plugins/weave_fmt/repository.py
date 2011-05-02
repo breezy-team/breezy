@@ -49,7 +49,6 @@ from bzrlib import (
     )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
-    CommitBuilder,
     InterRepository,
     InterSameDataRepository,
     MetaDirVersionedFileRepository,
@@ -62,6 +61,9 @@ from bzrlib.versionedfile import (
     AbsentContentFactory,
     FulltextContentFactory,
     VersionedFiles,
+    )
+from bzrlib.vf_repository import (
+    VersionedFileCommitBuilder,
     )
 
 from bzrlib.plugins.weave_fmt import bzrdir as weave_bzrdir
@@ -147,8 +149,8 @@ class AllInOneRepository(Repository):
                            timezone=None, committer=None, revprops=None,
                            revision_id=None, lossy=False):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        result = CommitBuilder(self, parents, config, timestamp, timezone,
-                              committer, revprops, revision_id, lossy=lossy)
+        result = VersionedFileCommitBuilder(self, parents, config, timestamp,
+            timezone, committer, revprops, revision_id, lossy=lossy)
         self.start_write_group()
         return result
 
@@ -236,8 +238,8 @@ class WeaveMetaDirRepository(MetaDirVersionedFileRepository):
                            timezone=None, committer=None, revprops=None,
                            revision_id=None, lossy=False):
         self._check_ascii_revisionid(revision_id, self.get_commit_builder)
-        result = CommitBuilder(self, parents, config, timestamp, timezone,
-                              committer, revprops, revision_id, lossy=lossy)
+        result = VersionedFileCommitBuilder(self, parents, config, timestamp,
+            timezone, committer, revprops, revision_id, lossy=lossy)
         self.start_write_group()
         return result
 

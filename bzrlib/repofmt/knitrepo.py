@@ -34,16 +34,16 @@ from bzrlib import (
 """)
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
-    CommitBuilder,
     InterRepository,
     InterSameDataRepository,
     IsInWriteGroupError,
     MetaDirRepositoryFormat,
     RepositoryFormat,
-    RootCommitBuilder,
     )
 from bzrlib.vf_repository import (
     MetaDirVersionedFileRepository,
+    VersionedFileCommitBuilder,
+    VersionedFileRootCommitBuilder,
     )
 from bzrlib import symbol_versioning
 
@@ -383,7 +383,7 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = CommitBuilder
+    _commit_builder_class = VersionedFileCommitBuilder
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -417,7 +417,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = RootCommitBuilder
+    _commit_builder_class = VersionedFileRootCommitBuilder
     rich_root_data = True
     experimental = True
     supports_tree_reference = True
@@ -459,7 +459,7 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = RootCommitBuilder
+    _commit_builder_class = VersionedFileRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
     @property
