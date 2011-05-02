@@ -458,13 +458,13 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
         tree1.lock_read()
         self.addCleanup(tree1.unlock)
-        to_file = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-1', 'a-id', to_file=to_file)
-        self.assertEqual('1   committ | hello\n', to_file.getvalue())
+
+        self.assertBranchAnnotate('1   committ | hello\n', tree1.branch,
+            'a-id', 'rev-1')
 
         to_file = StringIO()
-        annotate.annotate_file(tree1.branch, 'rev-2', 'b-id', to_file=to_file)
-        self.assertEqual('2   author@ | bye\n', to_file.getvalue())
+        self.assertBranchAnnotate('2   author@ | bye\n', tree1.branch,
+            'b-id', 'rev-2')
 
 
 class TestReannotate(tests.TestCase):
