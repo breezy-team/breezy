@@ -267,6 +267,14 @@ class TestAnnotate(tests.TestCaseWithTransport):
             self.assertEqualDiff(''.join('\t'.join(l) for l in expected),
                                  ''.join('\t'.join(l) for l in actual))
 
+    def assertBranchAnnotate(self, expected, branch, file_id, revision_id,
+            verbose=False, full=False, show_ids=False):
+        tree = branch.repository.revision_tree(revision_id)
+        to_file = StringIO()
+        annotate.annotate_file_revision_tree(tree, file_id, to_file,
+            verbose=verbose, full=full, show_ids=show_ids, branch=branch)
+        self.assertAnnotateEqualDiff(to_file.getvalue(), expected)
+
     def assertRepoAnnotate(self, expected, repo, file_id, revision_id):
         """Assert that the revision is properly annotated."""
         actual = list(repo.revision_tree(revision_id).annotate_iter(file_id))
@@ -288,13 +296,10 @@ class TestAnnotate(tests.TestCaseWithTransport):
     def test_annotate_shows_dotted_revnos(self):
         builder = self.create_merged_trees()
 
-        sio = StringIO()
-        annotate.annotate_file(builder.get_branch(), 'rev-3', 'a-id',
-                               to_file=sio)
-        self.assertEqualDiff('1     joe@foo | first\n'
+        self.assertBranchAnnotate('1     joe@foo | first\n'
                              '2     joe@foo | second\n'
                              '1.1.1 barry@f | third\n',
-                             sio.getvalue())
+                             builder.get_branch(), 'a-id', 'rev-3')
 
     def test_annotate_limits_dotted_revnos(self):
         """Annotate should limit dotted revnos to a depth of 12"""
