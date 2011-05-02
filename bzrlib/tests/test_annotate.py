@@ -260,14 +260,17 @@ class TestAnnotate(tests.TestCaseWithTransport):
             ('modify', ('file-id', e_text))])
         return builder
 
-    def assertRepoAnnotate(self, expected, repo, file_id, revision_id):
-        """Assert that the revision is properly annotated."""
-        actual = list(repo.revision_tree(revision_id).annotate_iter(file_id))
+    def assertAnnotateEqualDiff(self, actual, expected):
         if actual != expected:
             # Create an easier to understand diff when the lines don't actually
             # match
             self.assertEqualDiff(''.join('\t'.join(l) for l in expected),
                                  ''.join('\t'.join(l) for l in actual))
+
+    def assertRepoAnnotate(self, expected, repo, file_id, revision_id):
+        """Assert that the revision is properly annotated."""
+        actual = list(repo.revision_tree(revision_id).annotate_iter(file_id))
+        self.assertAnnotateEqualDiff(actual, expected)
 
     def test_annotate_duplicate_lines(self):
         # XXX: Should this be a per_repository test?
