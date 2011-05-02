@@ -2094,7 +2094,7 @@ class TransportConfig(object):
         self._transport.put_file(self._filename, out_file)
 
 
-class ReadOnlySection(object):
+class Section(object):
     """A section defines a dict of options.
 
     This is merely a read-only dict which can add some knowledge about the
@@ -2115,7 +2115,7 @@ _NewlyCreatedOption = object()
 """Was the option created during the MutableSection lifetime"""
 
 
-class MutableSection(ReadOnlySection):
+class MutableSection(Section):
     """A section allowing changes and keeping track of the original values."""
 
     def __init__(self, section_id, options):

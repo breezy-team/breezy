@@ -1821,18 +1821,18 @@ class TestConfigReadOnlySection(tests.TestCase):
 
     def test_get_a_value(self):
         a_dict = dict(foo='bar')
-        section = config.ReadOnlySection('myID', a_dict)
+        section = config.Section('myID', a_dict)
         self.assertEquals('bar', section.get('foo'))
 
     def test_get_unknown_option(self):
         a_dict = dict()
-        section = config.ReadOnlySection('myID', a_dict)
+        section = config.Section('myID', a_dict)
         self.assertEquals('out of thin air',
                           section.get('foo', 'out of thin air'))
 
     def test_options_is_shared(self):
         a_dict = dict()
-        section = config.ReadOnlySection('myID', a_dict)
+        section = config.Section('myID', a_dict)
         self.assertIs(a_dict, section.options)
 
 
