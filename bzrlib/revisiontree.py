@@ -31,14 +31,8 @@ class RevisionTree(tree.Tree):
     File text can be retrieved from the text store.
     """
 
-    def __init__(self, branch, inv, revision_id):
-        # for compatability the 'branch' parameter has not been renamed to
-        # repository at this point. However, we should change RevisionTree's
-        # construction to always be via Repository and not via direct
-        # construction - this will mean that we can change the constructor
-        # with much less chance of breaking client code.
-        self._repository = branch
-        self._inventory = inv
+    def __init__(self, repository, revision_id):
+        self._repository = repository
         self._revision_id = revision_id
         self._rules_searcher = None
 
@@ -62,6 +56,10 @@ class RevisionTree(tree.Tree):
         """Return the revision id associated with this tree."""
         return self._revision_id
 
+    def get_file_revision(self, file_id, path=None):
+        """Return the revision id in which a file was last changed."""
+        raise NotImplementedError(self.get_file_revision)
+
     def get_file_text(self, file_id, path=None):
         _, content = list(self.iter_files_bytes([(file_id, None)]))[0]
         return ''.join(content)
@@ -69,35 +67,33 @@ class RevisionTree(tree.Tree):
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
 
-    def iter_files_bytes(self, desired_files):
-        """See Tree.iter_files_bytes.
+    def is_locked(self):
+        return self._repository.is_locked()
 
-        This version is implemented on top of Repository.extract_files_bytes"""
-        repo_desired_files = [(f, self.inventory[f].revision, i)
-                              for f, i in desired_files]
-        try:
-            for result in self._repository.iter_files_bytes(repo_desired_files):
-                yield result
-        except errors.RevisionNotPresent, e:
-            raise errors.NoSuchFile(e.revision_id)
+    def lock_read(self):
+        self._repository.lock_read()
+        return self
 
-    def annotate_iter(self, file_id,
-                      default_revision=revision.CURRENT_REVISION):
-        """See Tree.annotate_iter"""
-        text_key = (file_id, self.inventory[file_id].revision)
-        annotator = self._repository.texts.get_annotator()
-        annotations = annotator.annotate_flat(text_key)
-        return [(key[-1], line) for key, line in annotations]
+    def __repr__(self):
+        return '<%s instance at %x, rev_id=%r>' % (
+            self.__class__.__name__, id(self), self._revision_id)
 
-    def get_file_size(self, file_id):
-        """See Tree.get_file_size"""
-        return self._inventory[file_id].text_size
+    def unlock(self):
+        self._repository.unlock()
 
-    def get_file_sha1(self, file_id, path=None, stat_value=None):
-        ie = self._inventory[file_id]
-        if ie.kind == "file":
-            return ie.text_sha1
-        return None
+    def _get_rules_searcher(self, default_searcher):
+        """See Tree._get_rules_searcher."""
+        if self._rules_searcher is None:
+            self._rules_searcher = super(RevisionTree,
+                self)._get_rules_searcher(default_searcher)
+        return self._rules_searcher
+
+
+class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
+
+    def __init__(self, repository, inv, revision_id):
+        RevisionTree.__init__(self, repository, revision_id)
+        self._inventory = inv
 
     def get_file_mtime(self, file_id, path=None):
         ie = self._inventory[file_id]
@@ -106,6 +102,19 @@ class RevisionTree(tree.Tree):
         except errors.NoSuchRevision:
             raise errors.FileTimestampUnavailable(self.id2path(file_id))
         return revision.timestamp
+
+    def get_file_size(self, file_id):
+        return self._inventory[file_id].text_size
+
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
+        ie = self._inventory[file_id]
+        if ie.kind == "file":
+            return ie.text_sha1
+        return None
+
+    def get_file_revision(self, file_id, path=None):
+        ie = self._inventory[file_id]
+        return ie.revision
 
     def is_executable(self, file_id, path=None):
         ie = self._inventory[file_id]
@@ -174,20 +183,6 @@ class RevisionTree(tree.Tree):
         return set(self._repository.get_ancestry(self._revision_id,
                                                  topo_sorted=False))
 
-    def is_locked(self):
-        return self._repository.is_locked()
-
-    def lock_read(self):
-        self._repository.lock_read()
-        return self
-
-    def __repr__(self):
-        return '<%s instance at %x, rev_id=%r>' % (
-            self.__class__.__name__, id(self), self._revision_id)
-
-    def unlock(self):
-        self._repository.unlock()
-
     def walkdirs(self, prefix=""):
         _directory = 'directory'
         inv = self.inventory
@@ -217,12 +212,25 @@ class RevisionTree(tree.Tree):
                 if dir[2] == _directory:
                     pending.append(dir)
 
-    def _get_rules_searcher(self, default_searcher):
-        """See Tree._get_rules_searcher."""
-        if self._rules_searcher is None:
-            self._rules_searcher = super(RevisionTree,
-                self)._get_rules_searcher(default_searcher)
-        return self._rules_searcher
+    def iter_files_bytes(self, desired_files):
+        """See Tree.iter_files_bytes.
+
+        This version is implemented on top of Repository.extract_files_bytes"""
+        repo_desired_files = [(f, self.get_file_revision(f), i)
+                              for f, i in desired_files]
+        try:
+            for result in self._repository.iter_files_bytes(repo_desired_files):
+                yield result
+        except errors.RevisionNotPresent, e:
+            raise errors.NoSuchFile(e.revision_id)
+
+    def annotate_iter(self, file_id,
+                      default_revision=revision.CURRENT_REVISION):
+        """See Tree.annotate_iter"""
+        text_key = (file_id, self.get_file_revision(file_id))
+        annotator = self._repository.texts.get_annotator()
+        annotations = annotator.annotate_flat(text_key)
+        return [(key[-1], line) for key, line in annotations]
 
 
 class InterCHKRevisionTree(tree.InterTree):

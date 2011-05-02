@@ -563,7 +563,7 @@ class ReadonlyDecoratorTransportTest(tests.TestCase):
         server = HttpServer()
         self.start_server(server)
         t = transport.get_transport('readonly+' + server.get_url())
-        self.failUnless(isinstance(t, readonly.ReadonlyTransportDecorator))
+        self.assertIsInstance(t, readonly.ReadonlyTransportDecorator)
         self.assertEqual(False, t.listable())
         self.assertEqual(True, t.is_readonly())
 
@@ -746,8 +746,8 @@ class TestConnectedTransport(tests.TestCase):
         self.assertEquals(t._host, 'simple.example.com')
         self.assertEquals(t._port, None)
         self.assertEquals(t._path, '/home/source/')
-        self.failUnless(t._user is None)
-        self.failUnless(t._password is None)
+        self.assertTrue(t._user is None)
+        self.assertTrue(t._password is None)
 
         self.assertEquals(t.base, 'http://simple.example.com/home/source/')
 

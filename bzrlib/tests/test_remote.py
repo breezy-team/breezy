@@ -56,7 +56,7 @@ from bzrlib.remote import (
     RemoteRepository,
     RemoteRepositoryFormat,
     )
-from bzrlib.repofmt import groupcompress_repo, pack_repo
+from bzrlib.repofmt import groupcompress_repo, knitpack_repo
 from bzrlib.revision import NULL_REVISION
 from bzrlib.smart import medium, request
 from bzrlib.smart.client import _SmartClient
@@ -1377,7 +1377,7 @@ class TestBranch_get_stacked_on_url(TestRemote):
 class TestBranchSetLastRevision(RemoteBranchTestCase):
 
     def test_set_empty(self):
-        # set_revision_history([]) is translated to calling
+        # _set_last_revision_info('null:') is translated to calling
         # Branch.set_last_revision(path, '') on the wire.
         transport = MemoryTransport()
         transport.mkdir('branch')
@@ -1405,13 +1405,13 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         # unnecessarily invokes _ensure_real upon a call to lock_write.
         branch._ensure_real = lambda: None
         branch.lock_write()
-        result = branch.set_revision_history([])
+        result = branch._set_last_revision(NULL_REVISION)
         branch.unlock()
         self.assertEqual(None, result)
         self.assertFinished(client)
 
     def test_set_nonempty(self):
-        # set_revision_history([rev-id1, ..., rev-idN]) is translated to calling
+        # set_last_revision_info(N, rev-idN) is translated to calling
         # Branch.set_last_revision(path, rev-idN) on the wire.
         transport = MemoryTransport()
         transport.mkdir('branch')
@@ -1443,7 +1443,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         branch._ensure_real = lambda: None
         # Lock the branch, reset the record of remote calls.
         branch.lock_write()
-        result = branch.set_revision_history(['rev-id1', 'rev-id2'])
+        result = branch._set_last_revision('rev-id2')
         branch.unlock()
         self.assertEqual(None, result)
         self.assertFinished(client)
@@ -1479,7 +1479,7 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         branch = self.make_remote_branch(transport, client)
         branch.lock_write()
         self.assertRaises(
-            errors.NoSuchRevision, branch.set_revision_history, ['rev-id'])
+            errors.NoSuchRevision, branch._set_last_revision, 'rev-id')
         branch.unlock()
         self.assertFinished(client)
 
@@ -1516,9 +1516,10 @@ class TestBranchSetLastRevision(RemoteBranchTestCase):
         branch._ensure_real = lambda: None
         branch.lock_write()
         # The 'TipChangeRejected' error response triggered by calling
-        # set_revision_history causes a TipChangeRejected exception.
+        # set_last_revision_info causes a TipChangeRejected exception.
         err = self.assertRaises(
-            errors.TipChangeRejected, branch.set_revision_history, ['rev-id'])
+            errors.TipChangeRejected,
+            branch._set_last_revision, 'rev-id')
         # The UTF-8 message from the response has been decoded into a unicode
         # object.
         self.assertIsInstance(err.msg, unicode)
@@ -1966,7 +1967,7 @@ class TestRepositoryFormat(TestRemoteRepository):
         true_format = RemoteRepositoryFormat()
         true_format._network_name = true_name
         self.assertEqual(True, true_format.fast_deltas)
-        false_name = pack_repo.RepositoryFormatKnitPack1().network_name()
+        false_name = knitpack_repo.RepositoryFormatKnitPack1().network_name()
         false_format = RemoteRepositoryFormat()
         false_format._network_name = false_name
         self.assertEqual(False, false_format.fast_deltas)

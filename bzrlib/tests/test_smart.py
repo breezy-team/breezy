@@ -932,7 +932,7 @@ class TestSetLastRevisionVerbMixin(object):
         # its repository.
         self.make_tree_with_two_commits()
         rev_id_utf8 = u'\xc8'.encode('utf-8')
-        self.tree.branch.set_revision_history([])
+        self.tree.branch.set_last_revision_info(0, 'null:')
         self.assertEqual(
             (0, 'null:'), self.tree.branch.last_revision_info())
         # We can update the branch to a revision that is present in the
