@@ -2635,6 +2635,12 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
         return graph.GraphThunkIdsToKeys(known_graph)
 
+    def get_file_graph(self, file_id):
+        """Return the graph walker for a specific file."""
+        parents_provider = versionedfile.PerFileParentsProvider(self.texts,
+            file_id)
+        return graph.Graph(parents_provider)
+
     def get_graph(self, other_repository=None):
         """Return the graph walker for this repository format"""
         parents_provider = self._make_parents_provider()

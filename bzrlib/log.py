@@ -1191,7 +1191,8 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     """
     # Lookup all possible text keys to determine which ones actually modified
     # the file.
-    text_keys = [(file_id, rev_id) for rev_id, revno, depth in view_revisions]
+    graph = branch.repository.get_file_graph(file_id)
+    text_keys = [rev_id for rev_id, revno, depth in view_revisions]
     next_keys = None
     # Looking up keys in batches of 1000 can cut the time in half, as well as
     # memory consumption. GraphIndex *does* like to look for a few keys in
@@ -1200,14 +1201,13 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     #       indexing layer. We might consider passing in hints as to the known
     #       access pattern (sparse/clustered, high success rate/low success
     #       rate). This particular access is clustered with a low success rate.
-    get_parent_map = branch.repository.texts.get_parent_map
     modified_text_revisions = set()
     chunk_size = 1000
     for start in xrange(0, len(text_keys), chunk_size):
         next_keys = text_keys[start:start + chunk_size]
         # Only keep the revision_id portion of the key
         modified_text_revisions.update(
-            [k[1] for k in get_parent_map(next_keys)])
+            [k for k in graph.get_parent_map(next_keys)])
     del text_keys, next_keys
 
     result = []
