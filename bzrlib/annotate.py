@@ -65,19 +65,9 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         used.
     :param show_ids: Show revision ids in the annotation output.
     """
-    if to_file is None:
-        to_file = sys.stdout
-
-    # Handle the show_ids case
-    annotations = branch.repository.texts.annotate((file_id, rev_id))
-    annotations = [(key[-1], line) for (key, line) in annotations]
-
-    if show_ids:
-        return _show_id_annotations(annotations, to_file, full)
-
-    # Calculate the lengths of the various columns
-    annotation = list(_expand_annotations(annotations, branch))
-    _print_annotations(annotation, verbose, to_file, full)
+    tree = branch.repository.revision_tree(rev_id)
+    annotate_file_revision_tree(tree, file_id, to_file, verbose=verbose,
+        full=full, show_ids=show_ids, branch=branch)
 
 
 def annotate_file_revision_tree(tree, file_id, to_file, verbose=False,
