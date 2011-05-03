@@ -14,7 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Some commands for debugging and repairing bzr repositories."""
+"""Some commands for debugging and repairing bzr repositories.
+
+Some of these commands may be good candidates for adding to bzr itself, perhaps
+as hidden commands.
+"""
 
 from bzrlib.commands import plugin_cmds
 
