@@ -63,9 +63,10 @@ class TestImportTariffs(TestCaseWithTransport):
         # explicitly do want to test against things installed there, therefore
         # we pass it through.
         env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
-        out, err = self.run_bzr_subprocess(args,
-            allow_plugins=(not are_plugins_disabled()),
-            env_changes=env_changes)
+        process = self.start_bzr_subprocess(args, env_changes=env_changes,
+                                            allow_plugins=(not are_plugins_disabled()))
+        (out, err) = self.finish_bzr_subprocess(process,
+            universal_newlines=False, process_args=args)
 
         self.addDetail('subprocess_stderr',
             content.Content(content.ContentType("text", "plain"),
