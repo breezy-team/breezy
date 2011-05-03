@@ -2110,6 +2110,11 @@ class Section(object):
     def get(self, name, default=None):
         return self.options.get(name, default)
 
+    def __repr__(self):
+        # Mostly for debugging use
+        return "<%s.%s id=%s>" % (self.__module__, self.__class__.__name__,
+                                  self.id)
+
 
 _NewlyCreatedOption = object()
 """Was the option created during the MutableSection lifetime"""

@@ -1814,7 +1814,7 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
-class TestConfigReadOnlySection(tests.TestCase):
+class TestSection(tests.TestCase):
 
     # FIXME: Parametrize so that all sections produced by Stores run these
     # tests -- vila 2011-04-01
@@ -1836,7 +1836,7 @@ class TestConfigReadOnlySection(tests.TestCase):
         self.assertIs(a_dict, section.options)
 
 
-class TestConfigMutableSection(tests.TestCase):
+class TestMutableSection(tests.TestCase):
 
     # FIXME: Parametrize so that all sections (including os.environ and the
     # ones produced by Stores) run these tests -- vila 2011-04-01
