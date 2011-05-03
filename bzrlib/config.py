@@ -998,6 +998,12 @@ def _iter_for_location_by_parts(sections, location):
         # the other hand, this means 'file://' urls *can't* be used in sections
         # so more work is probably needed -- vila 2011-04-07
 
+        # FIXME: And last one: LocationStore allows a no-name section which
+        # always matches as the most generic one, this is not supposed to
+        # happen with LocationConfig but doesn't hurt either
+        if section is None:
+            yield section, location, 0
+            continue
         if section.startswith('file://'):
             section_path = urlutils.local_path_from_url(section)
         else:
@@ -2270,7 +2276,11 @@ class IniFileStore(Store):
         :returns: An iterable of (name, dict).
         """
         # We need a loaded store
-        self.load()
+        try:
+            self.load()
+        except errors.NoSuchFile:
+            # If the file doesn't exist, there is no sections
+            return
         cobj = self._config_obj
         if cobj.scalars:
             yield self.readonly_section_class(None, cobj)
@@ -2415,7 +2425,7 @@ class LocationMatcher(SectionMatcher):
         # Override the default implementation as we want to change the order
 
         # The following is a bit hackish but ensures compatibility with
-        # LocationConfig by reusing the same code
+        # LocationConfig by reusing the same code (_iter_for_location_by_parts)
         sections = list(self.store.get_sections())
         filtered_sections = _iter_for_location_by_parts(
             [s.id for s in sections], self.location)
@@ -2477,7 +2487,7 @@ class Stack(object):
         # FIXME: No caching of options nor sections yet -- vila 20110503
 
         # Ensuring lazy loading is achieved by delaying section matching until
-        # it can be avoided anymore by using callables to describe (possibly
+        # it can't be avoided anymore by using callables to describe (possibly
         # empty) section lists.
         for section_or_callable in self.sections_def:
             # Each section can expand to multiple ones when a callable is used
@@ -2498,7 +2508,7 @@ class Stack(object):
         This is where we guarantee that the mutable section is lazily loaded:
         this means we won't load the corresponding store before setting a value
         or deleting an option. In practice the store will often be loaded but
-        this allows catching some programming errors.
+        this allows helps catching some programming errors.
         """
         section = self.store.get_mutable_section(self.mutable_section_name)
         return section
@@ -2523,8 +2533,7 @@ class GlobalStack(Stack):
     def __init__(self):
         # Get a GlobalStore
         gstore = GlobalStore()
-        super(GlobalStack, self).__init__([gstore.get_sections],
-                                          gstore.get_mutable_section)
+        super(GlobalStack, self).__init__([gstore.get_sections], gstore)
 
 
 class LocationStack(Stack):
@@ -2534,8 +2543,7 @@ class LocationStack(Stack):
         matcher = LocationMatcher(lstore, location)
         gstore = GlobalStore()
         super(LocationStack, self).__init__(
-            [matcher.get_sections, gstore.get_sections],
-            lstore.get_mutable_section)
+            [matcher.get_sections, gstore.get_sections], lstore)
 
 
 class BranchStack(Stack):
@@ -2547,7 +2555,7 @@ class BranchStack(Stack):
         gstore = GlobalStore()
         super(BranchStack, self).__init__(
             [matcher.get_sections, bstore.get_sections, gstore.get_sections],
-            bstore.get_mutable_section)
+            bstore)
 
 
 class cmd_config(commands.Command):
