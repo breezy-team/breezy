@@ -85,6 +85,14 @@ test_store_builder_registry.register(
 test_store_builder_registry.register(
     'branch', lambda test: config.BranchStore(test.branch))
 
+# FIXME: Same remark as above for the following registry -- vila 20110503
+test_stack_builder_registry = registry.Registry()
+test_stack_builder_registry.register(
+    'bazaar', lambda test: config.GlobalStack())
+test_stack_builder_registry.register(
+    'location', lambda test: config.LocationStack('.'))
+test_stack_builder_registry.register(
+    'branch', lambda test: config.BranchStack(test.branch))
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -2257,17 +2265,15 @@ class TestStackRemove(tests.TestCaseWithTransport):
 
 class TestConcreteStacks(tests.TestCaseWithTransport):
 
-    # basic smoke tests
+    scenarios = [(key, {'get_stack': builder})
+                 for key, builder in test_stack_builder_registry.iteritems()]
 
-    def test_global_stack(self):
-        stack = config.GlobalStack()
+    def setUp(self):
+        super(TestConcreteStacks, self).setUp()
+        self.branch = self.make_branch('branch')
 
-    def test_location_store(self):
-        stack = config.LocationStack('.')
-
-    def test_branch_store(self):
-        b = self.make_branch('.')
-        stack = config.BranchStack(b)
+    def test_build_stack(self):
+        stack = self.get_stack(self)
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):

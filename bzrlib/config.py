@@ -2511,7 +2511,7 @@ class Stack(object):
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
 
-class GlobalStack(ConfigStack):
+class GlobalStack(Stack):
 
     def __init__(self):
         # Get a GlobalStore
@@ -2520,7 +2520,7 @@ class GlobalStack(ConfigStack):
                                           gstore.get_mutable_section)
 
 
-class LocationStack(ConfigStack):
+class LocationStack(Stack):
 
     def __init__(self, location):
         lstore = LocationStore()
@@ -2531,7 +2531,7 @@ class LocationStack(ConfigStack):
             lstore.get_mutable_section)
 
 
-class BranchStack(ConfigStack):
+class BranchStack(Stack):
 
     def __init__(self, branch):
         bstore = BranchStore(branch)
