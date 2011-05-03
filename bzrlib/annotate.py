@@ -97,7 +97,7 @@ def annotate_file_revision_tree(tree, file_id, to_file, verbose=False,
 
 
 def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
-    show_ids=False):
+    show_ids=False, branch=None):
     """Annotate file_id in a tree.
 
     The tree should already be read_locked() when annotate_file_tree is called.
@@ -109,7 +109,13 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
         reasonable text width.
     :param full: XXXX Not sure what this does.
     :param show_ids: Show revision ids in the annotation output.
+    :param branch: Branch to use for revision revno lookups
     """
+    if branch is None:
+        branch = tree.branch
+    if to_file is None:
+        to_file = sys.stdout
+
     # Handle the show_ids case
     annotations = list(tree.annotate_iter(file_id))
     if show_ids:
@@ -120,11 +126,11 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
     # bugfixes etc.
     current_rev = Revision(CURRENT_REVISION)
     current_rev.parent_ids = tree.get_parent_ids()
-    current_rev.committer = tree.branch.get_config().username()
+    current_rev.committer = branch.get_config().username()
     current_rev.message = "?"
     current_rev.timestamp = round(time.time(), 3)
     current_rev.timezone = osutils.local_time_offset()
-    annotation = list(_expand_annotations(annotations, tree.branch,
+    annotation = list(_expand_annotations(annotations, branch,
         current_rev))
     _print_annotations(annotation, verbose, to_file, full)
 
