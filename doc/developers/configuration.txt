@@ -18,21 +18,21 @@ known dict objects:
 - you can get, set and remove an option,
 - the value is a unicode string.
 
-MutableSection are needed to set or remove an option, ReadOnlySection should
+MutableSection is needed to set or remove an option, ReadOnlySection should
 be used otherwise.
 
 Stores
 ------
 
-Options can persistent in which case they are saved into Stores.
+Options can be persistent in which case they are saved into Stores.
 
 ``config.Store`` defines the abstract interface that all stores should
 implement.
 
-This object doesn't provide a direct access to the options, it only provides
-access to Sections. This is deliberate to ensure that sections can be properly
-shared by reusing the same underlying objects. Accessing options should be
-done via the ``Section`` objects.
+This object doesn't provide direct access to the options, it only provides
+access to Sections. This is deliberate to ensure that sections can be
+properly shared by reusing the same underlying objects. Accessing options
+should be done via the ``Section`` objects.
 
 A ``Store`` can contain one or more sections, each section is uniquely
 identified by a unicode string.
