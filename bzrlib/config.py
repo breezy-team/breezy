@@ -2192,7 +2192,8 @@ class Store(object):
 
     def __repr__(self):
         # Mostly for debugging use
-        return "<config.%s id=%s>" % (self.__class__.__name__, self.id)
+        return "<config.%s(%s)>" % (self.__class__.__name__,
+                                    self.external_url()))
 
 
 class IniFileStore(Store):
