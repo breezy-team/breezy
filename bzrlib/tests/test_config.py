@@ -2179,9 +2179,9 @@ section=/foo/bar
 
 
 
-class TestConfigStackGet(tests.TestCase):
+class TestStackGet(tests.TestCase):
 
-    # FIXME: This should be parametrized for all known ConfigStack or dedicated
+    # FIXME: This should be parametrized for all known Stack or dedicated
     # paramerized tests created to avoid bloating -- vila 2011-03-31
 
     def test_single_config_get(self):
@@ -2209,10 +2209,15 @@ class TestConfigStackGet(tests.TestCase):
         conf_stack = config.Stack([lambda : []])
         self.assertEquals(None, conf_stack.get('foo'))
 
+    def test_get_for_broken_callable(self):
+        # Trying to use and invalid callable raises an exception on first use
+        conf_stack = config.Stack([lambda : object()])
+        self.assertRaises(TypeError, conf_stack.get, 'foo')
 
-class TestConfigStackSet(tests.TestCaseWithTransport):
 
-    # FIXME: This should be parametrized for all known ConfigStack or dedicated
+class TestStackSet(tests.TestCaseWithTransport):
+
+    # FIXME: This should be parametrized for all known Stack or dedicated
     # paramerized tests created to avoid bloating -- vila 2011-04-05
 
     def test_simple_set(self):
@@ -2231,9 +2236,9 @@ class TestConfigStackSet(tests.TestCaseWithTransport):
         self.assertEquals, 'baz', conf.get('foo')
 
 
-class TestConfigStackRemove(tests.TestCaseWithTransport):
+class TestStackRemove(tests.TestCaseWithTransport):
 
-    # FIXME: This should be parametrized for all known ConfigStack or dedicated
+    # FIXME: This should be parametrized for all known Stack or dedicated
     # paramerized tests created to avoid bloating -- vila 2011-04-06
 
     def test_remove_existing(self):

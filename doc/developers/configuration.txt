@@ -88,9 +88,10 @@ Many sections (or even stores) are aimed at providing default values for an
 option but these sections shouldn't be modified lightly as modifying an option
 used for different contexts will indeed be seen by all these contexts.
 
-Default values in configuration files are defined by users, developers
+Default values in configuration files are defined by users. Developers
 shouldn't have to modify them, as such, no mechanism nor heuristics are used
-to find which section (or sections) should be modified, a ``Stack`` defines a
-mutable section when there is no ambiguity, if there is one, then the *user*
-should be able to decide and this case a new ``Stack`` can be created cheaply.
+to find which section (or sections) should be modified.
 
+A ``Stack`` defines a mutable section when there is no ambiguity.  If there
+is one, then the *user* should be able to decide and in this case a new
+``Stack`` can be created cheaply.
