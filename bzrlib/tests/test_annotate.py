@@ -272,7 +272,7 @@ class TestAnnotate(tests.TestCaseWithTransport):
             verbose=False, full=False, show_ids=False):
         tree = branch.repository.revision_tree(revision_id)
         to_file = StringIO()
-        annotate.annotate_file_revision_tree(tree, file_id, to_file,
+        annotate.annotate_file_tree(tree, file_id, to_file,
             verbose=verbose, full=full, show_ids=show_ids, branch=branch)
         self.assertAnnotateEqualDiff(to_file.getvalue(), expected)
 
@@ -417,26 +417,26 @@ class TestAnnotate(tests.TestCaseWithTransport):
 
         # this passes if no exception is raised
         to_file = StringIO()
-        annotate.annotate_file_revision_tree(revtree_1, 'a-id',
+        annotate.annotate_file_tree(revtree_1, 'a-id',
             to_file=to_file, branch=tree1.branch)
 
         sio = StringIO()
         to_file = codecs.getwriter('ascii')(sio)
         to_file.encoding = 'ascii' # codecs does not set it
-        annotate.annotate_file_revision_tree(revtree_2, 'b-id',
+        annotate.annotate_file_tree(revtree_2, 'b-id',
             to_file=to_file, branch=tree1.branch)
         self.assertEqualDiff('2   p?rez   | bye\n', sio.getvalue())
 
         # test now with to_file.encoding = None
         to_file = tests.StringIOWrapper()
         to_file.encoding = None
-        annotate.annotate_file_revision_tree(revtree_2, 'b-id',
+        annotate.annotate_file_tree(revtree_2, 'b-id',
             to_file=to_file, branch=tree1.branch)
         self.assertContainsRe('2   p.rez   | bye\n', to_file.getvalue())
 
         # and when it does not exist
         to_file = StringIO()
-        annotate.annotate_file_revision_tree(revtree_2, 'b-id',
+        annotate.annotate_file_tree(revtree_2, 'b-id',
             to_file=to_file, branch=tree1.branch)
         self.assertContainsRe('2   p.rez   | bye\n', to_file.getvalue())
 
