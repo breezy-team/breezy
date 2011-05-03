@@ -41,7 +41,10 @@ from bzrlib import (
     )
 from bzrlib.config import extract_email_address
 from bzrlib.repository import _strip_NULL_ghosts
-from bzrlib.revision import CURRENT_REVISION, Revision
+from bzrlib.revision import (
+    CURRENT_REVISION,
+    Revision,
+    )
 from bzrlib.symbol_versioning import (
     deprecated_function,
     deprecated_in,
@@ -208,8 +211,8 @@ def _expand_annotations(annotations, branch, current_rev=None):
     """
     repository = branch.repository
     if current_rev is not None:
-        # This can probably become a function on MutableTree, get_revno_map there,
-        # or something.
+        # This can probably become a function on MutableTree, get_revno_map
+        # there, or something.
         last_revision = current_rev.revision_id
         # XXX: Partially Cloned from branch, uses the old_get_graph, eep.
         # XXX: The main difficulty is that we need to inject a single new node
