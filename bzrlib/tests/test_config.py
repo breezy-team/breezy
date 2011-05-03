@@ -2209,7 +2209,7 @@ class TestStackGet(tests.TestCase):
         self.assertEquals('baz', conf_stack.get('foo'))
 
     def test_get_for_empty_stack(self):
-        conf_stack = config.Stack()
+        conf_stack = config.Stack([])
         self.assertEquals(None, conf_stack.get('foo'))
 
     def test_get_for_empty_section_callable(self):
