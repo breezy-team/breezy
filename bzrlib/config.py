@@ -2112,8 +2112,7 @@ class Section(object):
 
     def __repr__(self):
         # Mostly for debugging use
-        return "<%s.%s id=%s>" % (self.__module__, self.__class__.__name__,
-                                  self.id)
+        return "<config.%s id=%s>" % (self.__class__.__name__, self.id)
 
 
 _NewlyCreatedOption = object()
@@ -2144,14 +2143,19 @@ class MutableSection(Section):
 class Store(object):
     """Abstract interface to persistent storage for configuration options."""
 
-    readonly_section_class = ReadOnlySection
+    readonly_section_class = Section
     mutable_section_class = MutableSection
 
-    @property
-    def loaded(self):
-        raise NotImplementedError(self.loaded)
+    def is_loaded(self):
+        """Returns True if the Store has been loaded.
+
+        This is used to implement lazy loading and ensure the persistent
+        storage is queried only when needed.
+        """
+        raise NotImplementedError(self.is_loaded)
 
     def load(self):
+        """Loads the Store from persistent storage."""
         raise NotImplementedError(self.load)
 
     def _load_from_string(self, str_or_unicode):
@@ -2166,6 +2170,7 @@ class Store(object):
         raise NotImplementedError(self._load_from_string)
 
     def save(self):
+        """Saves the Store to persistent storage."""
         raise NotImplementedError(self.save)
 
     def get_sections(self):
@@ -2182,8 +2187,21 @@ class Store(object):
         """
         raise NotImplementedError(self.get_mutable_section)
 
+    def __repr__(self):
+        # Mostly for debugging use
+        return "<config.%s id=%s>" % (self.__class__.__name__, self.id)
 
-class ConfigObjStore(Store):
+
+class IniFileStore(Store):
+    """A config Store using ConfigObj for storage.
+
+    :ivar transport: The transport object where the config file is located.
+
+    :ivar file_name: The config file basename in the transport directory.
+
+    :ivar _config_obj: Private member to hold the ConfigObj instance used to
+        serialize/deserialize the config file.
+    """
 
     def __init__(self, transport, file_name):
         """A config Store using ConfigObj for storage.
@@ -2192,18 +2210,17 @@ class ConfigObjStore(Store):
 
         :param file_name: The config file basename in the transport directory.
         """
-        super(ConfigObjStore, self).__init__()
+        super(IniFileStore, self).__init__()
         self.transport = transport
         self.file_name = file_name
         self._config_obj = None
 
-    @property
-    def loaded(self):
+    def is_loaded(self):
         return self._config_obj != None
 
     def load(self):
         """Load the store from the associated file."""
-        if self.loaded:
+        if self.is_loaded():
             return
         content = self.transport.get_bytes(self.file_name)
         self._load_from_string(content)
@@ -2217,7 +2234,7 @@ class ConfigObjStore(Store):
         This is for tests and should not be used in production unless a
         convincing use case can be demonstrated :)
         """
-        if self.loaded:
+        if self.is_loaded():
             raise AssertionError('Already loaded: %r' % (self._config_obj,))
         co_input = StringIO(str_or_unicode.encode('utf-8'))
         try:
@@ -2230,12 +2247,12 @@ class ConfigObjStore(Store):
             # The following will do in the interim but maybe we don't want to
             # expose a path here but rather a config ID and its associated
             # object </hand wawe>.
-            file_path = os.path.join(self.transport.external_url(),
-                                     self.file_name)
+            file_path = urlutils.join(self.transport.external_url(),
+                                      self.file_name)
             raise errors.ParseConfigError(e.errors, file_path)
 
     def save(self):
-        if not self.loaded:
+        if not self.is_loaded():
             # Nothing to save
             return
         out = StringIO()
@@ -2275,7 +2292,7 @@ class ConfigObjStore(Store):
 # they may face the same issue.
 
 
-class LockableConfigObjStore(ConfigObjStore):
+class LockableIniFileStore(IniFileStore):
     """A ConfigObjStore using locks on save to ensure store integrity."""
 
     def __init__(self, transport, file_name, lock_dir_name=None):
@@ -2288,7 +2305,7 @@ class LockableConfigObjStore(ConfigObjStore):
         if lock_dir_name is None:
             lock_dir_name = 'lock'
         self.lock_dir_name = lock_dir_name
-        super(LockableConfigObjStore, self).__init__(transport, file_name)
+        super(LockableIniFileStore, self).__init__(transport, file_name)
         self._lock = lockdir.LockDir(self.transport, self.lock_dir_name)
 
     def lock_write(self, token=None):
@@ -2310,7 +2327,7 @@ class LockableConfigObjStore(ConfigObjStore):
 
     @needs_write_lock
     def save(self):
-        super(LockableConfigObjStore, self).save()
+        super(LockableIniFileStore, self).save()
 
 
 class cmd_config(commands.Command):

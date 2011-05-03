@@ -1886,8 +1886,8 @@ class TestMutableSection(tests.TestCase):
         self.assertEquals(config._NewlyCreatedOption, section.orig['foo'])
 
 
-def get_ConfigObjStore(transport, file_name, content=None):
-    """Build a ConfigObjStore.
+def get_IniFileStore(transport, file_name, content=None):
+    """Build a IniFileStore.
 
     :param transport: The transport where the store lives.
 
@@ -1902,7 +1902,7 @@ def get_ConfigObjStore(transport, file_name, content=None):
     implementations can rely on ConfigObj to parse the content and get the
     option definitions and values from it.
     """
-    store = config.ConfigObjStore(transport, file_name)
+    store = config.IniFileStore(transport, file_name)
     if content is not None:
         store._load_from_string(content)
     return store
@@ -1921,7 +1921,7 @@ class TestStore(tests.TestCaseWithTransport):
 
 class TestReadonlyStore(TestStore):
 
-    scenarios = [('configobj', {'_get_store': get_ConfigObjStore})]
+    scenarios = [('configobj', {'_get_store': get_IniFileStore})]
 
     def get_store(self, file_name, content=None):
         return self._get_store(
@@ -1930,9 +1930,9 @@ class TestReadonlyStore(TestStore):
     def test_delayed_load(self):
         self.build_tree_contents([('foo.conf', '')])
         store = self.get_store('foo.conf')
-        self.assertEquals(False, store.loaded)
+        self.assertEquals(False, store.is_loaded())
         store.load()
-        self.assertEquals(True, store.loaded)
+        self.assertEquals(True, store.is_loaded())
 
     def test_get_no_sections_for_empty(self):
         store = self.get_store('foo.conf', '')
@@ -1958,7 +1958,7 @@ class TestReadonlyStore(TestStore):
 
 class TestMutableStore(TestStore):
 
-    scenarios = [('configobj', {'_get_store': get_ConfigObjStore})]
+    scenarios = [('configobj', {'_get_store': get_IniFileStore})]
 
     def get_store(self, file_name, content=None):
         return self._get_store(
@@ -2021,28 +2021,28 @@ class TestMutableStore(TestStore):
         self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
 
 
-class TestConfigObjStore(TestStore):
+class TestIniFileStore(TestStore):
 
     def test_loading_unknown_file_fails(self):
-        store = config.ConfigObjStore(self.get_transport(), 'I-do-not-exist')
+        store = config.IniFileStore(self.get_transport(), 'I-do-not-exist')
         self.assertRaises(errors.NoSuchFile, store.load)
 
     def test_invalid_content(self):
-        store = config.ConfigObjStore(self.get_transport(), 'foo.conf', )
-        self.assertEquals(False, store.loaded)
+        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
+        self.assertEquals(False, store.is_loaded())
         exc = self.assertRaises(
             errors.ParseConfigError, store._load_from_string,
             'this is invalid !')
         self.assertEndsWith(exc.filename, 'foo.conf')
         # And the load failed
-        self.assertEquals(False, store.loaded)
+        self.assertEquals(False, store.is_loaded())
 
     def test_get_embedded_sections(self):
         # A more complicated example (which also shows that section names and
         # option names share the same name space...)
         # FIXME: This should be fixed by forbidding dicts as values ?
         # -- vila 2011-04-05
-        store = config.ConfigObjStore(self.get_transport(), 'foo.conf', )
+        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
         store._load_from_string('''
 foo=bar
 l=1,2
@@ -2071,17 +2071,17 @@ foo_in_qux=quux
             sections[3])
 
 
-class TestLockableConfigObjStore(TestStore):
+class TestLockableIniFileStore(TestStore):
 
     def test_create_store_in_created_dir(self):
         t = self.get_transport('dir/subdir')
-        store = config.LockableConfigObjStore(t, 'foo.conf')
+        store = config.LockableIniFileStore(t, 'foo.conf')
         store.get_mutable_section(None).set('foo', 'bar')
         store.save()
 
     # FIXME: We should adapt the tests in TestLockableConfig about concurrent
     # writes. Since this requires a clearer rewrite, I'll just rely on using
-    # the same code in LockableConfigObjStore (copied from LockableConfig, but
+    # the same code in LockableIniFileStore (copied from LockableConfig, but
     # trivial enough, the main difference is that we add @needs_write_lock on
     # save() instead of set_user_option() and remove_user_option()). The intent
     # is to ensure that we always get a valid content for the store even when
