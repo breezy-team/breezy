@@ -206,6 +206,7 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.bugtracker',
             'bzrlib.bundle.commands',
             'bzrlib.cmd_version_info',
+            'bzrlib.dirstate',
             'bzrlib.externalcommand',
             'bzrlib.filters',
             # foreign branch plugins import the foreign_vcs_registry from 
@@ -223,6 +224,7 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.smart.client',
             'bzrlib.transform',
             'bzrlib.version_info_formats.format_rio',
+            'bzrlib.workingtree_4',
             'getpass',
             'kerberos',
             'smtplib',
