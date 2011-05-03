@@ -32,5 +32,7 @@ plugin_cmds.register_lazy(
     'bzrlib.plugins.repodebug.missing_keys_for_stacking_fixer')
 plugin_cmds.register_lazy(
     'cmd_repo_has_key', [], 'bzrlib.plugins.repodebug.repo_has_key')
+plugin_cmds.register_lazy(
+    'cmd_repo_keys', [], 'bzrlib.plugins.repodebug.repo_keys')
 
 
