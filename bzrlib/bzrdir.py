@@ -1252,15 +1252,12 @@ class BzrDirMeta1(BzrDir):
     def has_workingtree(self):
         """Tell if this bzrdir contains a working tree.
 
-        This will still raise an exception if the bzrdir has a workingtree that
-        is remote & inaccessible.
-
         Note: if you're going to open the working tree, you should just go
         ahead and try, and not ask permission first.
         """
         from bzrlib.workingtree import WorkingTreeFormat
         try:
-            WorkingTreeFormat.find_format(self)
+            WorkingTreeFormat.find_format_string(self)
         except errors.NoWorkingTree:
             return False
         return True

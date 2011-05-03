@@ -3019,14 +3019,20 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     """If this format supports missing parent conflicts."""
 
     @classmethod
+    def find_format_string(klass, a_bzrdir):
+        """Return format name for the working tree object in a_bzrdir."""
+        try:
+            transport = a_bzrdir.get_workingtree_transport(None)
+            return transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NoWorkingTree(base=transport.base)
+
+    @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the working tree object in a_bzrdir."""
         try:
-            transport = a_bzrdir.get_workingtree_transport(None)
-            format_string = transport.get_bytes("format")
+            format_string = klass.find_format_string(a_bzrdir)
             return format_registry.get(format_string)
-        except errors.NoSuchFile:
-            raise errors.NoWorkingTree(base=transport.base)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string,
                                             kind="working tree")

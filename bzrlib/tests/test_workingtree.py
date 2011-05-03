@@ -166,6 +166,19 @@ class SampleExtraTreeFormat(workingtree.WorkingTreeFormat):
 class TestWorkingTreeFormat(TestCaseWithTransport):
     """Tests for the WorkingTreeFormat facility."""
 
+    def test_find_format_string(self):
+        # is the right format object found for a working tree?
+        branch = self.make_branch('branch')
+        self.assertRaises(errors.NoWorkingTree,
+            workingtree.WorkingTreeFormat.find_format_string, branch.bzrdir)
+        transport = branch.bzrdir.get_workingtree_transport(None)
+        transport.mkdir('.')
+        transport.put_bytes("format", "some format name")
+        # The format does not have to be known by Bazaar,
+        # find_format_string just retrieves the name
+        self.assertEquals("some format name",
+            workingtree.WorkingTreeFormat.find_format_string(branch.bzrdir))
+
     def test_find_format(self):
         # is the right format object found for a working tree?
         # create a branch with a few known format objects.

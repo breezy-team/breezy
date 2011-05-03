@@ -207,6 +207,8 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.bundle.commands',
             'bzrlib.cmd_version_info',
             'bzrlib.dirstate',
+            'bzrlib._dirstate_helpers_py',
+            'bzrlib._dirstate_helpers_pyx',
             'bzrlib.externalcommand',
             'bzrlib.filters',
             # foreign branch plugins import the foreign_vcs_registry from 
