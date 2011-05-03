@@ -63,19 +63,12 @@ class TestImportTariffs(TestCaseWithTransport):
         return self.start_bzr_subprocess(args, env_changes=env_changes,
             allow_plugins=(not are_plugins_disabled()))
 
-    def run_command_check_imports(self, args, forbidden_imports):
-        """Run bzr ARGS in a subprocess and check its imports.
+    def check_forbidden_modules(self, err, forbidden_imports):
+        """Check for forbidden modules in stderr.
 
-        This is fairly expensive because we start a subprocess, so we aim to
-        cover representative rather than exhaustive cases.
-
-        :param forbidden_imports: List of fully-qualified Python module names
-            that should not be loaded while running this command.
+        :param err: Standard error
+        :param forbidden_imports: List of forbidden modules
         """
-        process = self.start_bzr_subprocess_with_import_check(args)
-        (out, err) = self.finish_bzr_subprocess(process,
-            universal_newlines=False, process_args=args)
-
         self.addDetail('subprocess_stderr',
             content.Content(content.ContentType("text", "plain"),
                 lambda:[err]))
@@ -86,9 +79,34 @@ class TestImportTariffs(TestCaseWithTransport):
                 bad_modules.append(module_name)
 
         if bad_modules:
-            self.fail("command %r loaded forbidden modules %r"
-                % (args, bad_modules))
+            self.fail("command loaded forbidden modules %r"
+                % (bad_modules,))
+
+    def finish_bzr_subprocess_with_import_check(self, process,
+            args, forbidden_imports):
+        """Finish subprocess and check specific modules have not been
+        imported.
+
+        :param forbidden_imports: List of fully-qualified Python module names
+            that should not be loaded while running this command.
+        """
+        (out, err) = self.finish_bzr_subprocess(process,
+            universal_newlines=False, process_args=args)
+        self.check_forbidden_modules(err, forbidden_imports)
         return out, err
+
+    def run_command_check_imports(self, args, forbidden_imports):
+        """Run bzr ARGS in a subprocess and check its imports.
+
+        This is fairly expensive because we start a subprocess, so we aim to
+        cover representative rather than exhaustive cases.
+
+        :param forbidden_imports: List of fully-qualified Python module names
+            that should not be loaded while running this command.
+        """
+        process = self.start_bzr_subprocess_with_import_check(args)
+        self.finish_bzr_subprocess_with_import_check(process, args,
+            forbidden_imports)
 
     def test_import_tariffs_working(self):
         # check some guaranteed-true and false imports to be sure we're
