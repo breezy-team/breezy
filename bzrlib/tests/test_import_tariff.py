@@ -20,6 +20,10 @@
 import os
 from testtools import content
 
+from bzrlib.bzrdir import BzrDir
+from bzrlib.smart import medium
+from bzrlib.transport import remote
+
 from bzrlib.plugin import (
     are_plugins_disabled,
     )
@@ -27,6 +31,21 @@ from bzrlib.plugin import (
 from bzrlib.tests import (
     TestCaseWithTransport,
     )
+
+old_format_modules = [
+    'bzrlib.repofmt.knitrepo',
+    'bzrlib.repofmt.knitpack_repo',
+    'bzrlib.plugins.weave_fmt.branch',
+    'bzrlib.plugins.weave_fmt.bzrdir',
+    'bzrlib.plugins.weave_fmt.repository',
+    'bzrlib.plugins.weave_fmt.workingtree',
+    'bzrlib.weave',
+    'bzrlib.weavefile',
+    'bzrlib.xml4',
+    'bzrlib.xml5',
+    'bzrlib.xml6',
+    'bzrlib.xml7',
+    ]
 
 
 class TestImportTariffs(TestCaseWithTransport):
@@ -140,8 +159,6 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.msgeditor',
             'bzrlib.patiencediff',
             'bzrlib.remote',
-            'bzrlib.repofmt.knitrepo',
-            'bzrlib.repofmt.knitpack_repo',
             'bzrlib.rules',
             'bzrlib.sign_my_commits',
             'bzrlib.smart',
@@ -150,22 +167,12 @@ class TestImportTariffs(TestCaseWithTransport):
             'bzrlib.smart.server',
             'bzrlib.transform',
             'bzrlib.version_info_formats.format_rio',
-            'bzrlib.plugins.weave_fmt.branch',
-            'bzrlib.plugins.weave_fmt.bzrdir',
-            'bzrlib.plugins.weave_fmt.repository',
-            'bzrlib.plugins.weave_fmt.workingtree',
-            'bzrlib.weave',
-            'bzrlib.weavefile',
-            'bzrlib.xml4',
-            'bzrlib.xml5',
-            'bzrlib.xml6',
-            'bzrlib.xml7',
             'getpass',
             'kerberos',
             'smtplib',
             'tarfile',
             'tempfile',
-            ])
+            ] + old_format_modules)
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff
         #
@@ -176,3 +183,49 @@ class TestImportTariffs(TestCaseWithTransport):
         self.run_command_check_imports(['help', 'commands'], [
             'testtools',
             ])
+
+    def test_simple_serve(self):
+        # 'serve' in a default format working tree shouldn't need many modules
+        tree = self.make_branch_and_tree('.')
+        process = self.start_bzr_subprocess_with_import_check(['serve',
+            '--inet', '-d', tree.basedir])
+        url = 'bzr://localhost/'
+        self.permit_url(url)
+        client_medium = medium.SmartSimplePipesClientMedium(
+            process.stdout, process.stdin, url)
+        transport = remote.RemoteTransport(url, medium=client_medium)
+        branch = BzrDir.open_from_transport(transport).open_branch()
+        process.stdin.close()
+        # Hide stdin from the subprocess module, so it won't fail to close it.
+        process.stdin = None
+        (out, err) = self.finish_bzr_subprocess(process,
+            universal_newlines=False)
+        self.check_forbidden_modules(err,
+            ['bzrlib.annotate',
+            'bzrlib.atomicfile',
+            'bzrlib.bugtracker',
+            'bzrlib.bundle.commands',
+            'bzrlib.cmd_version_info',
+            'bzrlib.externalcommand',
+            'bzrlib.filters',
+            # foreign branch plugins import the foreign_vcs_registry from 
+            # bzrlib.foreign so it can't be blacklisted
+            'bzrlib.gpg',
+            'bzrlib.info',
+            'bzrlib.knit',
+            'bzrlib.merge3',
+            'bzrlib.merge_directive',
+            'bzrlib.msgeditor',
+            'bzrlib.patiencediff',
+            'bzrlib.remote',
+            'bzrlib.rules',
+            'bzrlib.sign_my_commits',
+            'bzrlib.smart.client',
+            'bzrlib.transform',
+            'bzrlib.version_info_formats.format_rio',
+            'getpass',
+            'kerberos',
+            'smtplib',
+            'tarfile',
+            'tempfile',
+            ] + old_format_modules)
