@@ -43,14 +43,11 @@ class TestImportTariffs(TestCaseWithTransport):
             self.preserved_env_vars[name] = os.environ.get(name)
         super(TestImportTariffs, self).setUp()
 
-    def run_command_check_imports(self, args, forbidden_imports):
-        """Run bzr ARGS in a subprocess and check its imports.
+    def start_bzr_subprocess_with_import_check(self, args):
+        """Run a bzr process and capture the imports.
 
         This is fairly expensive because we start a subprocess, so we aim to
         cover representative rather than exhaustive cases.
-
-        :param forbidden_imports: List of fully-qualified Python module names
-            that should not be loaded while running this command.
         """
         # We use PYTHON_VERBOSE rather than --profile-importts because in
         # experimentation the profile-imports output seems to not always show
@@ -63,8 +60,19 @@ class TestImportTariffs(TestCaseWithTransport):
         # explicitly do want to test against things installed there, therefore
         # we pass it through.
         env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
-        process = self.start_bzr_subprocess(args, env_changes=env_changes,
-                                            allow_plugins=(not are_plugins_disabled()))
+        return self.start_bzr_subprocess(args, env_changes=env_changes,
+            allow_plugins=(not are_plugins_disabled()))
+
+    def run_command_check_imports(self, args, forbidden_imports):
+        """Run bzr ARGS in a subprocess and check its imports.
+
+        This is fairly expensive because we start a subprocess, so we aim to
+        cover representative rather than exhaustive cases.
+
+        :param forbidden_imports: List of fully-qualified Python module names
+            that should not be loaded while running this command.
+        """
+        process = self.start_bzr_subprocess_with_import_check(args)
         (out, err) = self.finish_bzr_subprocess(process,
             universal_newlines=False, process_args=args)
 
