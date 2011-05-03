@@ -2447,19 +2447,23 @@ class LocationMatcher(SectionMatcher):
 class Stack(object):
     """A stack of configurations where an option can be defined"""
 
-    def __init__(self, sections_def, mutable_section_def=None):
+    def __init__(self, sections_def, store=None, mutable_section_name=None):
         """Creates a stack of sections with an optional store for changes.
 
         :param sections_def: A list of Section or callables that returns an
             iterable of Section. This defines the Sections for the Stack and
             can be called repeatedly if needed.
 
-        :param mutable_section_def: A callable that returns a MutableSection
-            where changes are recorded. This defines the MutableSection and can
-            be called repeatedly.
+        :param store: The optional Store where modifications will be
+            recorded. If none is specified, no modifications can be done.
+
+        :param mutable_section_name: The name of the MutableSection where
+            changes are recorded. This requires the ``store`` parameter to be
+            specified.
         """
         self.sections_def = sections_def
-        self.mutable_section_def = mutable_section_def
+        self.store = store
+        self.mutable_section_name = mutable_section_name
 
     def get(self, name):
         """Return the *first* option value found in the sections.
@@ -2488,24 +2492,25 @@ class Stack(object):
         # No definition was found
         return None
 
-    def set(self, name, value):
-        """Set a new value for the option.
+    def _get_mutable_section(self):
+        """Get the MutableSection for the Stack.
 
         This is where we guarantee that the mutable section is lazily loaded:
-        this means we won't load the corresponding store before setting a value.
+        this means we won't load the corresponding store before setting a value
+        or deleting an option. In practice the store will often be loaded but
+        this allows catching some programming errors.
         """
-        section = self.mutable_section_def()
+        section = self.store.get_mutable_section(self.mutable_section_name)
+        return section
+
+    def set(self, name, value):
+        """Set a new value for the option."""
+        section = self._get_mutable_section()
         section.set(name, value)
 
     def remove(self, name):
-        """Remove an existing option.
-
-        This is where we guarantee that the mutable section is lazily loaded:
-        this means we won't load the correspoding store before trying to delete
-        an option. In practice the store will often be loaded but this allows
-        catching some programming errors.
-        """
-        section = self.mutable_section_def()
+        """Remove an existing option."""
+        section = self._get_mutable_section()
         section.remove(name)
 
     def __repr__(self):
