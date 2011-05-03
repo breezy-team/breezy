@@ -2094,11 +2094,12 @@ class TransportConfig(object):
         self._transport.put_file(self._filename, out_file)
 
 
-class ReadOnlySection(object):
+class Section(object):
     """A section defines a dict of options.
 
     This is merely a read-only dict which can add some knowledge about the
-    options.
+    options. It is *not* a python dict object though and doesn't try to mimic
+    its API.
     """
 
     def __init__(self, section_id, options):
@@ -2109,12 +2110,17 @@ class ReadOnlySection(object):
     def get(self, name, default=None):
         return self.options.get(name, default)
 
+    def __repr__(self):
+        # Mostly for debugging use
+        return "<%s.%s id=%s>" % (self.__module__, self.__class__.__name__,
+                                  self.id)
+
 
 _NewlyCreatedOption = object()
 """Was the option created during the MutableSection lifetime"""
 
 
-class MutableSection(ReadOnlySection):
+class MutableSection(Section):
     """A section allowing changes and keeping track of the original values."""
 
     def __init__(self, section_id, options):

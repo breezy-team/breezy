@@ -1814,29 +1814,29 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
-class TestConfigReadOnlySection(tests.TestCase):
+class TestSection(tests.TestCase):
 
     # FIXME: Parametrize so that all sections produced by Stores run these
     # tests -- vila 2011-04-01
 
     def test_get_a_value(self):
         a_dict = dict(foo='bar')
-        section = config.ReadOnlySection('myID', a_dict)
+        section = config.Section('myID', a_dict)
         self.assertEquals('bar', section.get('foo'))
 
-    def test_get_unkown_option(self):
+    def test_get_unknown_option(self):
         a_dict = dict()
-        section = config.ReadOnlySection('myID', a_dict)
+        section = config.Section('myID', a_dict)
         self.assertEquals('out of thin air',
                           section.get('foo', 'out of thin air'))
 
     def test_options_is_shared(self):
         a_dict = dict()
-        section = config.ReadOnlySection('myID', a_dict)
+        section = config.Section('myID', a_dict)
         self.assertIs(a_dict, section.options)
 
 
-class TestConfigMutableSection(tests.TestCase):
+class TestMutableSection(tests.TestCase):
 
     # FIXME: Parametrize so that all sections (including os.environ and the
     # ones produced by Stores) run these tests -- vila 2011-04-01
