@@ -63,11 +63,17 @@ def lockable_config_scenarios():
 
 load_tests = scenarios.load_tests_apply_scenarios
 
-# We need adpaters that can build a config store in a test context. Test
+# We need adapters that can build a config store in a test context. Test
 # classes, based on TestCaseWithTransport, can use the registry to parametrize
 # themselves. The builder will receive a test instance and should return a
 # ready-to-use store.  Plugins that defines new stores can also register
 # themselves here to be tested against the tests defined below.
+
+# FIXME: plugins should *not* need to import test_config to register their
+# helpers (or selftest -s xxx will be broken), the following registry should be
+# moved to bzrlib.config instead so that selftest -s bt.test_config also runs
+# the plugin specific tests (selftest -s bp.xxx won't, that would be against
+# the spirit of '-s') -- vila 20110503
 test_store_builder_registry = registry.Registry()
 test_store_builder_registry.register(
     'configobj', lambda test: config.IniFileStore(test.get_transport(),
