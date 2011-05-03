@@ -2337,6 +2337,11 @@ class LockableIniFileStore(IniFileStore):
 # FIXME: global, bazaar, shouldn't that be 'user' instead or even
 # 'user_defaults' as opposed to 'user_overrides', 'system_defaults'
 # (/etc/bzr/bazaar.conf) and 'system_overrides' ? -- vila 2011-04-05
+
+# FIXME: Moreover, we shouldn't need classes for these stores either, factory
+# functions or a registry will make it easier and clearer for tests, focusing
+# on the relevant parts of the API that needs testing -- vila 20110503 (based
+# on a poolie's remark)
 class GlobalStore(LockableIniFileStore):
 
     def __init__(self, possible_transports=None):
