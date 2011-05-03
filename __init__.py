@@ -29,6 +29,8 @@ plugin_cmds.register_lazy(
 plugin_cmds.register_lazy(
     'cmd_fetch_all_records', [], 'bzrlib.plugins.repodebug.fetch_all_records')
 plugin_cmds.register_lazy(
+    'cmd_file_refs', [], 'bzrlib.plugins.repodebug.file_refs')
+plugin_cmds.register_lazy(
     'cmd_fix_missing_keys_for_stacking', [],
     'bzrlib.plugins.repodebug.missing_keys_for_stacking_fixer')
 plugin_cmds.register_lazy(
