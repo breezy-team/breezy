@@ -98,15 +98,18 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
     if show_ids:
         return _show_id_annotations(annotations, to_file, full)
 
-    # Create a virtual revision to represent the current tree state.
-    # Should get some more pending commit attributes, like pending tags,
-    # bugfixes etc.
-    current_rev = Revision(CURRENT_REVISION)
-    current_rev.parent_ids = tree.get_parent_ids()
-    current_rev.committer = branch.get_config().username()
-    current_rev.message = "?"
-    current_rev.timestamp = round(time.time(), 3)
-    current_rev.timezone = osutils.local_time_offset()
+    if not getattr(tree, "get_revision_id", False):
+        # Create a virtual revision to represent the current tree state.
+        # Should get some more pending commit attributes, like pending tags,
+        # bugfixes etc.
+        current_rev = Revision(CURRENT_REVISION)
+        current_rev.parent_ids = tree.get_parent_ids()
+        current_rev.committer = branch.get_config().username()
+        current_rev.message = "?"
+        current_rev.timestamp = round(time.time(), 3)
+        current_rev.timezone = osutils.local_time_offset()
+    else:
+        current_rev = None
     annotation = list(_expand_annotations(annotations, branch,
         current_rev))
     _print_annotations(annotation, verbose, to_file, full)
