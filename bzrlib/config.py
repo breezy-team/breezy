@@ -2444,7 +2444,7 @@ class LocationMatcher(SectionMatcher):
             yield section
 
 
-class ConfigStack(object):
+class Stack(object):
     """A stack of configurations where an option can be defined"""
 
     def __init__(self, sections=None, get_mutable_section=None):
@@ -2505,6 +2505,10 @@ class ConfigStack(object):
         """
         section = self.get_mutable_section()
         section.remove(name)
+
+    def __repr__(self):
+        # Mostly for debugging use
+        return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
 
 class cmd_config(commands.Command):
