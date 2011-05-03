@@ -2387,7 +2387,7 @@ class SectionMatcher(object):
         raise NotImplementedError(self.match)
 
 
-class LocationSection(ReadOnlySection):
+class LocationSection(Section):
 
     def __init__(self, section, length, extra_path):
         super(LocationSection, self).__init__(section.id, section.options)
