@@ -23,6 +23,8 @@ as hidden commands.
 from bzrlib.commands import plugin_cmds
 
 plugin_cmds.register_lazy(
+    'cmd_check_chk', [], 'bzrlib.plugins.repodebug.check_chk')
+plugin_cmds.register_lazy(
     'cmd_fetch_all_records', [], 'bzrlib.plugins.repodebug.fetch_all_records')
 plugin_cmds.register_lazy(
     'cmd_fix_missing_keys_for_stacking', [],
