@@ -2230,7 +2230,7 @@ class TestStackSet(tests.TestCaseWithTransport):
     def test_simple_set(self):
         store = config.IniFileStore(self.get_transport(), 'test.conf')
         store._load_from_string('foo=bar')
-        conf = config.Stack([store.get_sections], store.get_mutable_section)
+        conf = config.Stack([store.get_sections], store)
         self.assertEquals('bar', conf.get('foo'))
         conf.set('foo', 'baz')
         # Did we get it back ?
@@ -2238,7 +2238,7 @@ class TestStackSet(tests.TestCaseWithTransport):
 
     def test_set_creates_a_new_section(self):
         store = config.IniFileStore(self.get_transport(), 'test.conf')
-        conf = config.Stack([store.get_sections], store.get_mutable_section)
+        conf = config.Stack([store.get_sections], store)
         conf.set('foo', 'baz')
         self.assertEquals, 'baz', conf.get('foo')
 
@@ -2251,7 +2251,7 @@ class TestStackRemove(tests.TestCaseWithTransport):
     def test_remove_existing(self):
         store = config.IniFileStore(self.get_transport(), 'test.conf')
         store._load_from_string('foo=bar')
-        conf = config.Stack([store.get_sections], store.get_mutable_section)
+        conf = config.Stack([store.get_sections], store)
         self.assertEquals('bar', conf.get('foo'))
         conf.remove('foo')
         # Did we get it back ?
@@ -2259,7 +2259,7 @@ class TestStackRemove(tests.TestCaseWithTransport):
 
     def test_remove_unknown(self):
         store = config.IniFileStore(self.get_transport(), 'test.conf')
-        conf = config.Stack([store.get_sections], store.get_mutable_section)
+        conf = config.Stack([store.get_sections], store)
         self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
 
 
