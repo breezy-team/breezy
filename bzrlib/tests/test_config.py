@@ -63,15 +63,21 @@ def lockable_config_scenarios():
 
 load_tests = scenarios.load_tests_apply_scenarios
 
-# We need adpaters that can build a config store in a test context. Test
+# We need adapters that can build a config store in a test context. Test
 # classes, based on TestCaseWithTransport, can use the registry to parametrize
 # themselves. The builder will receive a test instance and should return a
 # ready-to-use store.  Plugins that defines new stores can also register
 # themselves here to be tested against the tests defined below.
+
+# FIXME: plugins should *not* need to import test_config to register their
+# helpers (or selftest -s xxx will be broken), the following registry should be
+# moved to bzrlib.config instead so that selftest -s bt.test_config also runs
+# the plugin specific tests (selftest -s bp.xxx won't, that would be against
+# the spirit of '-s') -- vila 20110503
 test_store_builder_registry = registry.Registry()
 test_store_builder_registry.register(
-    'configobj', lambda test: config.ConfigObjStore(test.get_transport(),
-                                                    'configobj.conf'))
+    'configobj', lambda test: config.IniFileStore(test.get_transport(),
+                                                  'configobj.conf'))
 test_store_builder_registry.register(
     'bazaar', lambda test: config.GlobalStore())
 test_store_builder_registry.register(
@@ -1832,29 +1838,29 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
-class TestConfigReadOnlySection(tests.TestCase):
+class TestSection(tests.TestCase):
 
     # FIXME: Parametrize so that all sections produced by Stores run these
     # tests -- vila 2011-04-01
 
     def test_get_a_value(self):
         a_dict = dict(foo='bar')
-        section = config.ReadOnlySection('myID', a_dict)
+        section = config.Section('myID', a_dict)
         self.assertEquals('bar', section.get('foo'))
 
-    def test_get_unkown_option(self):
+    def test_get_unknown_option(self):
         a_dict = dict()
-        section = config.ReadOnlySection(None, a_dict)
+        section = config.Section(None, a_dict)
         self.assertEquals('out of thin air',
                           section.get('foo', 'out of thin air'))
 
     def test_options_is_shared(self):
         a_dict = dict()
-        section = config.ReadOnlySection(None, a_dict)
+        section = config.Section(None, a_dict)
         self.assertIs(a_dict, section.options)
 
 
-class TestConfigMutableSection(tests.TestCase):
+class TestMutableSection(tests.TestCase):
 
     # FIXME: Parametrize so that all sections (including os.environ and the
     # ones produced by Stores) run these tests -- vila 2011-04-01
@@ -1926,9 +1932,9 @@ class TestReadonlyStore(TestStore):
 
     def test_building_delays_load(self):
         store = self.get_store(self)
-        self.assertEquals(False, store.loaded)
+        self.assertEquals(False, store.is_loaded())
         store._load_from_string('')
-        self.assertEquals(True, store.loaded)
+        self.assertEquals(True, store.is_loaded())
 
     def test_get_no_sections_for_empty(self):
         store = self.get_store(self)
@@ -2036,28 +2042,28 @@ class TestMutableStore(TestStore):
         self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
 
 
-class TestConfigObjStore(TestStore):
+class TestIniFileStore(TestStore):
 
     def test_loading_unknown_file_fails(self):
-        store = config.ConfigObjStore(self.get_transport(), 'I-do-not-exist')
+        store = config.IniFileStore(self.get_transport(), 'I-do-not-exist')
         self.assertRaises(errors.NoSuchFile, store.load)
 
     def test_invalid_content(self):
-        store = config.ConfigObjStore(self.get_transport(), 'foo.conf', )
-        self.assertEquals(False, store.loaded)
+        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
+        self.assertEquals(False, store.is_loaded())
         exc = self.assertRaises(
             errors.ParseConfigError, store._load_from_string,
             'this is invalid !')
         self.assertEndsWith(exc.filename, 'foo.conf')
         # And the load failed
-        self.assertEquals(False, store.loaded)
+        self.assertEquals(False, store.is_loaded())
 
     def test_get_embedded_sections(self):
         # A more complicated example (which also shows that section names and
         # option names share the same name space...)
         # FIXME: This should be fixed by forbidding dicts as values ?
         # -- vila 2011-04-05
-        store = config.ConfigObjStore(self.get_transport(), 'foo.conf', )
+        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
         store._load_from_string('''
 foo=bar
 l=1,2
@@ -2086,17 +2092,17 @@ foo_in_qux=quux
             sections[3])
 
 
-class TestLockableConfigObjStore(TestStore):
+class TestLockableIniFileStore(TestStore):
 
     def test_create_store_in_created_dir(self):
         t = self.get_transport('dir/subdir')
-        store = config.LockableConfigObjStore(t, 'foo.conf')
+        store = config.LockableIniFileStore(t, 'foo.conf')
         store.get_mutable_section(None).set('foo', 'bar')
         store.save()
 
     # FIXME: We should adapt the tests in TestLockableConfig about concurrent
     # writes. Since this requires a clearer rewrite, I'll just rely on using
-    # the same code in LockableConfigObjStore (copied from LockableConfig, but
+    # the same code in LockableIniFileStore (copied from LockableConfig, but
     # trivial enough, the main difference is that we add @needs_write_lock on
     # save() instead of set_user_option() and remove_user_option()). The intent
     # is to ensure that we always get a valid content for the store even when
@@ -2110,7 +2116,7 @@ class TestSectionMatcher(TestStore):
     scenarios = [('location', {'matcher': config.LocationMatcher})]
 
     def get_store(self, file_name):
-        return config.ConfigObjStore(self.get_readonly_transport(), file_name)
+        return config.IniFileStore(self.get_readonly_transport(), file_name)
 
     def test_no_matches_for_empty_stores(self):
         store = self.get_store('foo.conf')
@@ -2121,13 +2127,13 @@ class TestSectionMatcher(TestStore):
     def test_build_doesnt_load_store(self):
         store = self.get_store('foo.conf')
         matcher = self.matcher(store, '/bar')
-        self.assertFalse(store.loaded)
+        self.assertFalse(store.is_loaded())
 
 
 class TestLocationSection(tests.TestCase):
 
     def get_section(self, options, extra_path):
-        section = config.ReadOnlySection('foo', options)
+        section = config.Section('foo', options)
         # We don't care about the length so we use '0'
         return config.LocationSection(section, 0, extra_path)
 
@@ -2150,7 +2156,7 @@ class TestLocationSection(tests.TestCase):
 class TestLocationMatcher(TestStore):
 
     def get_store(self, file_name):
-        return config.ConfigObjStore(self.get_readonly_transport(), file_name)
+        return config.IniFileStore(self.get_readonly_transport(), file_name)
 
     def test_more_specific_sections_first(self):
         store = self.get_store('foo.conf')
@@ -2172,79 +2178,80 @@ section=/foo/bar
                           [section.extra_path for section in sections])
 
 
-class TestConfigStackGet(tests.TestCase):
+class TestStackGet(tests.TestCase):
 
-    # FIXME: This should be parametrized for all known ConfigStack or dedicated
+    # FIXME: This should be parametrized for all known Stack or dedicated
     # paramerized tests created to avoid bloating -- vila 2011-03-31
 
     def test_single_config_get(self):
         conf = dict(foo='bar')
-        conf_stack = config.ConfigStack([conf])
+        conf_stack = config.Stack([conf])
         self.assertEquals('bar', conf_stack.get('foo'))
 
     def test_get_first_definition(self):
         conf1 = dict(foo='bar')
         conf2 = dict(foo='baz')
-        conf_stack = config.ConfigStack([conf1, conf2])
+        conf_stack = config.Stack([conf1, conf2])
         self.assertEquals('bar', conf_stack.get('foo'))
 
     def test_get_embedded_definition(self):
         conf1 = dict(yy='12')
-        conf2 = config.ConfigStack([dict(xx='42'), dict(foo='baz')])
-        conf_stack = config.ConfigStack([conf1, conf2])
+        conf2 = config.Stack([dict(xx='42'), dict(foo='baz')])
+        conf_stack = config.Stack([conf1, conf2])
         self.assertEquals('baz', conf_stack.get('foo'))
 
     def test_get_for_empty_stack(self):
-        conf_stack = config.ConfigStack()
+        conf_stack = config.Stack()
         self.assertEquals(None, conf_stack.get('foo'))
 
     def test_get_for_empty_section_callable(self):
-        conf_stack = config.ConfigStack([lambda : []])
+        conf_stack = config.Stack([lambda : []])
         self.assertEquals(None, conf_stack.get('foo'))
 
+    def test_get_for_broken_callable(self):
+        # Trying to use and invalid callable raises an exception on first use
+        conf_stack = config.Stack([lambda : object()])
+        self.assertRaises(TypeError, conf_stack.get, 'foo')
 
-class TestConfigStackSet(tests.TestCaseWithTransport):
 
-    # FIXME: This should be parametrized for all known ConfigStack or dedicated
+class TestStackSet(tests.TestCaseWithTransport):
+
+    # FIXME: This should be parametrized for all known Stack or dedicated
     # paramerized tests created to avoid bloating -- vila 2011-04-05
 
     def test_simple_set(self):
-        store = config.ConfigObjStore(self.get_transport(), 'test.conf')
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
         store._load_from_string('foo=bar')
-        conf = config.ConfigStack(
-            [store.get_sections], store.get_mutable_section)
+        conf = config.Stack([store.get_sections], store.get_mutable_section)
         self.assertEquals('bar', conf.get('foo'))
         conf.set('foo', 'baz')
         # Did we get it back ?
         self.assertEquals('baz', conf.get('foo'))
 
     def test_set_creates_a_new_section(self):
-        store = config.ConfigObjStore(self.get_transport(), 'test.conf')
-        conf = config.ConfigStack(
-            [store.get_sections], store.get_mutable_section)
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
+        conf = config.Stack([store.get_sections], store.get_mutable_section)
         conf.set('foo', 'baz')
         self.assertEquals, 'baz', conf.get('foo')
 
 
-class TestConfigStackRemove(tests.TestCaseWithTransport):
+class TestStackRemove(tests.TestCaseWithTransport):
 
-    # FIXME: This should be parametrized for all known ConfigStack or dedicated
+    # FIXME: This should be parametrized for all known Stack or dedicated
     # paramerized tests created to avoid bloating -- vila 2011-04-06
 
     def test_remove_existing(self):
-        store = config.ConfigObjStore(self.get_transport(), 'test.conf')
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
         store._load_from_string('foo=bar')
-        conf = config.ConfigStack(
-            [store.get_sections], store.get_mutable_section)
+        conf = config.Stack([store.get_sections], store.get_mutable_section)
         self.assertEquals('bar', conf.get('foo'))
         conf.remove('foo')
         # Did we get it back ?
         self.assertEquals(None, conf.get('foo'))
 
     def test_remove_unknown(self):
-        store = config.ConfigObjStore(self.get_transport(), 'test.conf')
-        conf = config.ConfigStack(
-            [store.get_sections], store.get_mutable_section)
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
+        conf = config.Stack([store.get_sections], store.get_mutable_section)
         self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
 
 
