@@ -2447,19 +2447,19 @@ class LocationMatcher(SectionMatcher):
 class Stack(object):
     """A stack of configurations where an option can be defined"""
 
-    def __init__(self, sections=None, get_mutable_section=None):
+    def __init__(self, sections_def, mutable_section_def=None):
         """Creates a stack of sections with an optional store for changes.
 
-        :param sections: A list of ReadOnlySection or callables that returns an
-            iterable of ReadOnlySection.
+        :param sections_def: A list of Section or callables that returns an
+            iterable of Section. This defines the Sections for the Stack and
+            can be called repeatedly if needed.
 
-        :param get_mutable_section: A callable that returns a MutableSection
-            where changes are recorded.
+        :param mutable_section_def: A callable that returns a MutableSection
+            where changes are recorded. This defines the MutableSection and can
+            be called repeatedly.
         """
-        if sections is None:
-            sections = []
-        self.sections = sections
-        self.get_mutable_section = get_mutable_section
+        self.sections_def = sections_def
+        self.mutable_section_def = mutable_section_def
 
     def get(self, name):
         """Return the *first* option value found in the sections.
@@ -2470,10 +2470,12 @@ class Stack(object):
         in which sections it can be defined. Both of these (section and option
         existence) require loading the store (even partially).
         """
+        # FIXME: No caching of options nor sections yet -- vila 20110503
+
         # Ensuring lazy loading is achieved by delaying section matching until
         # it can be avoided anymore by using callables to describe (possibly
         # empty) section lists.
-        for section_or_callable in self.sections:
+        for section_or_callable in self.sections_def:
             # Each section can expand to multiple ones when a callable is used
             if callable(section_or_callable):
                 sections = section_or_callable()
@@ -2492,7 +2494,7 @@ class Stack(object):
         This is where we guarantee that the mutable section is lazily loaded:
         this means we won't load the corresponding store before setting a value.
         """
-        section = self.get_mutable_section()
+        section = self.mutable_section_def()
         section.set(name, value)
 
     def remove(self, name):
@@ -2503,7 +2505,7 @@ class Stack(object):
         an option. In practice the store will often be loaded but this allows
         catching some programming errors.
         """
-        section = self.get_mutable_section()
+        section = self.mutable_section_def()
         section.remove(name)
 
     def __repr__(self):
