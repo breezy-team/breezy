@@ -22,6 +22,7 @@ from bzrlib import (
     symbol_versioning,
     transport,
     workingtree,
+    workingtree_3,
     )
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -63,7 +64,7 @@ class TestDefaultFormat(TestCaseWithTransport):
     def test_get_set_default_format(self):
         old_format = workingtree.format_registry.get_default()
         # default is 3
-        self.assertTrue(isinstance(old_format, workingtree.WorkingTreeFormat3))
+        self.assertTrue(isinstance(old_format, workingtree.WorkingTreeFormat6))
         workingtree.format_registry.set_default(SampleTreeFormat())
         try:
             # the default branch format is used by the meta dir format
@@ -157,7 +158,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             t = transport.get_transport(url)
             found_format = workingtree.WorkingTreeFormat.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
-        check_format(workingtree.WorkingTreeFormat3(), "bar")
+        check_format(workingtree_3.WorkingTreeFormat3(), "bar")
 
     def test_find_format_no_tree(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize('.')
@@ -241,7 +242,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         control.create_repository()
         control.create_branch()
-        tree = workingtree.WorkingTreeFormat3().initialize(control)
+        tree = workingtree_3.WorkingTreeFormat3().initialize(control)
         # we want:
         # format 'Bazaar-NG Working Tree format 3'
         # inventory = blank inventory
@@ -275,7 +276,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         repo = dir.create_repository()
         branch = dir.create_branch()
         try:
-            tree = workingtree.WorkingTreeFormat3().initialize(dir)
+            tree = workingtree_3.WorkingTreeFormat3().initialize(dir)
         except errors.NotLocalUrl:
             raise TestSkipped('Not a local URL')
         self.assertIsDirectory('.bzr', t)
@@ -292,7 +293,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         control.create_repository()
         control.create_branch()
-        tree = workingtree.WorkingTreeFormat3().initialize(control)
+        tree = workingtree_3.WorkingTreeFormat3().initialize(control)
         tree._transport.delete("pending-merges")
         self.assertEqual([], tree.get_parent_ids())
 
