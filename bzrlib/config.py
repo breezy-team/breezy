@@ -2189,7 +2189,7 @@ class Store(object):
 
     def __repr__(self):
         # Mostly for debugging use
-        return "<config.%s id=%s>" % (self.__class__.__name__, self.id)
+        return "<config.%s id=%s>" % (self.__class__.__name__, id(self)))
 
 
 class IniFileStore(Store):
