@@ -2978,10 +2978,12 @@ class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
         return self._default_format
 
     def set_default(self, format):
+        """Set the default format."""
         self._default_format = format
         self._default_format_key = None
 
     def set_default_key(self, format_string):
+        """Set the default format by its format string."""
         self._default_format_key = format_string
         self._default_format = None
 
