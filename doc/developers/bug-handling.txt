@@ -43,7 +43,7 @@ couple than to leave them lie.
 When you file a bug as a Bazaar developer or active user, if you feel
 confident in doing so, make an assessment of status and importance at the
 time you file it, rather than leaving it for someone else.  It's more
-efficient to change the importance if someone else feel's it's higher or
+efficient to change the importance if someone else feels it's higher or
 lower, than to have someone else edit all bugs.
 
 It's more useful to actually ship bug fixes than to garden the bug
