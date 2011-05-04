@@ -174,7 +174,7 @@ def wrap(text, width=None, **kwargs):
     wrapping behaviour.
     """
     if width is None:
-        width = osutils.terminal_width()
+        width = osutils.terminal_width() - 1
     w = UTextWrapper(width=width, **kwargs)
     return w.wrap(text)
 
@@ -188,7 +188,7 @@ def fill(text, width=None, **kwargs):
     available keyword args to customize wrapping behaviour.
     """
     if width is None:
-        width = osutils.terminal_width()
+        width = osutils.terminal_width() - 1
     w = UTextWrapper(width=width, **kwargs)
     return w.fill(text)
 
