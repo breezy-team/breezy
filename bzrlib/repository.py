@@ -2623,8 +2623,37 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 result[revision_id] = (_mod_revision.NULL_REVISION,)
         return result
 
+    def _get_parent_map_no_fallbacks(self, revision_ids):
+        """Same as Repository.get_parent_map except doesn't query fallbacks."""
+        # revisions index works in keys; this just works in revisions
+        # therefore wrap and unwrap
+        query_keys = []
+        result = {}
+        for revision_id in revision_ids:
+            if revision_id == _mod_revision.NULL_REVISION:
+                result[revision_id] = ()
+            elif revision_id is None:
+                raise ValueError('get_parent_map(None) is not valid')
+            else:
+                query_keys.append((revision_id ,))
+        vf = self.revisions.without_fallbacks()
+        for ((revision_id,), parent_keys) in \
+                vf.get_parent_map(query_keys).iteritems():
+            if parent_keys:
+                result[revision_id] = tuple([parent_revid
+                    for (parent_revid,) in parent_keys])
+            else:
+                result[revision_id] = (_mod_revision.NULL_REVISION,)
+        return result
+
     def _make_parents_provider(self):
-        return self
+        if not self._format.supports_external_lookups:
+            return self
+        return graph.StackedParentsProvider(_FallbacksList(self))
+
+    def _make_parents_provider_with_no_fallbacks(self):
+        return graph.CallableToParentsProviderAdapter(
+            self._get_parent_map_no_fallbacks)
 
     @needs_read_lock
     def get_known_graph_ancestry(self, revision_ids):
@@ -4517,3 +4546,27 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
     except StopIteration:
         # No more history
         return
+
+
+class _FallbacksList(object):
+    """An iterable yielding a repo followed by its fallbacks.
+
+    Each iterator made from this will reflect the current list of
+    fallbacks at the time the iterator is made.
+    
+    i.e. if a _make_parents_provider implementation uses
+    StackedParentsProvider(_FallbacksList(self)), then it is safe to do::
+
+      pp = repo._make_parents_provider()
+      pp.add_fallback_repository(other_repo)
+      result = pp.get_parent_map(...)
+      # The result will include revs from other_repo
+    """
+
+    def __init__(self, repo):
+        self.repo = repo
+
+    def __iter__(self):
+        repo_pp = self.repo._make_parents_provider_with_no_fallbacks()
+        return iter([repo_pp] + self.repo._fallback_repositories)
+

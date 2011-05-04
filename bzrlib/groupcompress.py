@@ -48,7 +48,7 @@ from bzrlib.versionedfile import (
     AbsentContentFactory,
     ChunkedContentFactory,
     FulltextContentFactory,
-    VersionedFiles,
+    VersionedFilesWithFallbacks,
     )
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
@@ -1174,7 +1174,7 @@ class _BatchingBlockFetcher(object):
         self.total_bytes = 0
 
 
-class GroupCompressVersionedFiles(VersionedFiles):
+class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     """A group-compress based VersionedFiles implementation."""
 
     def __init__(self, index, access, delta=True, _unadded_refs=None):

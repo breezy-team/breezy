@@ -53,6 +53,7 @@ from bzrlib.decorators import (
 from bzrlib.lock import LogicalLockResult
 from bzrlib.repository import (
     CommitBuilder,
+    _FallbacksList,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
@@ -1671,7 +1672,11 @@ class PackRepository(MetaDirRepository):
         self._pack_collection._abort_write_group()
 
     def _make_parents_provider(self):
-        return graph.CachingParentsProvider(self)
+        if not self._format.supports_external_lookups:
+            provider = self
+        else:
+            provider = graph.StackedParentsProvider(_FallbacksList(self))
+        return graph.CachingParentsProvider(provider)
 
     def _refresh_data(self):
         if not self.is_locked():

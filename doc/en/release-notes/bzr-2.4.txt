@@ -26,6 +26,10 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr branch --stacked`` from a smart server uses the network a little
+  more efficiently.  For a simple branch it reduces the number of
+  round-trips by about 20%.  (Andrew Bennetts)
+
 Bug Fixes
 *********
 

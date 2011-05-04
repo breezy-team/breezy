@@ -478,6 +478,25 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(9, self.hpss_calls)
 
+    def test_branch_to_stacked_from_trivial_branch_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', '--stacked', self.get_url('from'),
+            'local-target'])
+        # XXX: the number of hpss calls for this case isn't yet deterministic,
+        # so we can't easily assert about the number of calls.
+        #self.assertLength(XXX, self.hpss_calls)
+        # We can assert that none of the calls were readv requests for rix
+        # files, though (demonstrating that at least get_parent_map calls are
+        # not using VFS RPCs).
+        readvs_of_rix_files = [
+            c for c in self.hpss_calls
+            if c.call.method == 'readv' and c.call.args[-1].endswith('.rix')]
+        self.assertLength(0, readvs_of_rix_files)
+
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
 
