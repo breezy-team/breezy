@@ -331,6 +331,8 @@ class GitBranch(ForeignBranch):
         else:
             # FIXME: Check that old_revid is in the ancestry of revid
             newhead, self.mapping = self.mapping.revision_id_bzr_to_foreign(revid)
+            if self.mapping is None:
+                raise AssertionError
         self._set_head(newhead)
 
     def lock_write(self, token=None):
@@ -447,8 +449,13 @@ class LocalGitBranch(GitBranch):
         self.set_last_revision(revid)
 
     def set_last_revision(self, revid):
-        (newhead, self.mapping) = self.repository.lookup_bzr_revision_id(revid)
-        self.head = newhead
+        if revid == NULL_REVISION:
+            newhead = ZERO_SHA
+        else:
+            (newhead, self.mapping) = self.repository.lookup_bzr_revision_id(revid)
+            if self.mapping is None:
+                raise AssertionError
+        self._set_head(newhead)
 
     def _set_head(self, value):
         self._head = value
