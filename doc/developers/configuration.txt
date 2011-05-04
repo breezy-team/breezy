@@ -97,7 +97,7 @@ is one, then the *user* should be able to decide and in this case a new
 ``Stack`` can be created cheaply.
 
 Different stacks can be created for different purposes, the existing
-``Global.Stack``, ``LocationStack`` and ``BranchStack`` can be used as basis
+``GlobalStack``, ``LocationStack`` and ``BranchStack`` can be used as basis
 or examples. These classes are the only ones that should be used in code,
 ``Stores`` can be used to build them but shouldn't be used otherwise, ditto
 for sections. Again, the associated tests could and should be used against the
