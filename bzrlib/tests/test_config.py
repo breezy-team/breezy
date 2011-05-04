@@ -2185,6 +2185,19 @@ section=/foo/bar
         self.assertEquals(['baz', 'bar/baz'],
                           [section.extra_path for section in sections])
 
+    def test_appendpath_in_no_name_section(self):
+        # It's a bit weird to allow appendpath in a no-name section, but
+        # someone may found a use for it
+        store = self.get_store('foo.conf')
+        store._load_from_string('''
+foo=bar
+foo:policy = appendpath
+''')
+        matcher = config.LocationMatcher(store, 'dir/subdir')
+        sections = list(matcher.get_sections())
+        self.assertLength(1, sections)
+        self.assertEquals('bar/dir/subdir', sections[0].get('foo'))
+
 
 class TestStackGet(tests.TestCase):
 
