@@ -1286,7 +1286,11 @@ class Branch(controldir.ControlComponent):
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
             self.copy_content_into(result, revision_id=revision_id)
-            result.set_parent(self.bzrdir.root_transport.base)
+            bound_branch = self.get_master_branch()
+            if bound_branch is None:
+                result.set_parent(self.bzrdir.root_transport.base)
+            else:
+                result.set_parent(bound_branch.bzrdir.root_transport.base)
         finally:
             result.unlock()
         return result
