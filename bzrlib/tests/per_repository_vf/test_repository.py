@@ -18,7 +18,9 @@
 
 from bzrlib import (
     errors,
+    gpg,
     inventory,
+    repository as _mod_repository,
     revision as _mod_revision,
     tests,
     versionedfile,
@@ -146,6 +148,27 @@ class TestRepository(TestCaseWithRepository):
         repo.lock_read()
         self.assertEquals(inv_sha1, repo.get_revision('A').inventory_sha1)
         repo.unlock()
+
+    def test_install_revisions(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo2 = self.make_repository('repo2')
+        revision = repo.get_revision('A')
+        tree = repo.revision_tree('A')
+        signature = repo.get_signature_text('A')
+        repo2.lock_write()
+        self.addCleanup(repo2.unlock)
+        _mod_repository.install_revisions(repo2, [(revision, tree, signature)])
+        self.assertEqual(revision, repo2.get_revision('A'))
+        self.assertEqual(signature, repo2.get_signature_text('A'))
 
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):

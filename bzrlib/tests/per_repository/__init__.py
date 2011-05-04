@@ -110,7 +110,6 @@ def load_tests(standard_tests, module, loader):
     prefix = 'bzrlib.tests.per_repository.'
     test_repository_modules = [
         'test_add_fallback_repository',
-        'test_add_inventory_by_delta',
         'test_break_lock',
         'test_check',
         'test_commit_builder',
