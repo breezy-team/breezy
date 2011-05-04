@@ -38,7 +38,7 @@ from bzrlib import (
     transport as _mod_transport,
     urlutils,
     win32utils,
-    workingtree,
+    workingtree_3,
     )
 import bzrlib.branch
 from bzrlib.errors import (
@@ -807,7 +807,7 @@ class ChrootedTests(TestCaseWithTransport):
         branch = self.make_branch('branch', format='knit')
         format = branch.bzrdir.cloning_metadir()
         self.assertIsInstance(format.workingtree_format,
-            workingtree.WorkingTreeFormat3)
+            workingtree_3.WorkingTreeFormat3)
 
     def test_sprout_recursive_treeless(self):
         tree = self.make_branch_and_tree('tree1',
@@ -963,7 +963,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         checkout_base = t.clone('checkout').base
         self.assertEqual(checkout_base, dir.get_workingtree_transport(None).base)
         self.assertEqual(checkout_base,
-                         dir.get_workingtree_transport(workingtree.WorkingTreeFormat3()).base)
+                         dir.get_workingtree_transport(workingtree_3.WorkingTreeFormat3()).base)
 
     def test_meta1dir_uses_lockdir(self):
         """Meta1 format uses a LockDir to guard the whole directory, not a file."""
@@ -1057,7 +1057,7 @@ class NonLocalTests(TestCaseWithTransport):
         my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit2'))
         checkout_format = my_bzrdir.checkout_metadir()
         self.assertIsInstance(checkout_format.workingtree_format,
-                              workingtree.WorkingTreeFormat3)
+                              workingtree_3.WorkingTreeFormat3)
 
 
 class TestHTTPRedirections(object):
