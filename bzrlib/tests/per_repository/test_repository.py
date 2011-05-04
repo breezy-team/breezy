@@ -210,8 +210,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(second_revision)
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        inv = rev_tree.inventory
-        rich_root = (inv.root.revision != second_revision)
+        root_id = rev_tree.get_root_id()
+        rich_root = (rev_tree.get_file_revision(root_id) != second_revision)
         self.assertEqual(rich_root,
                          tree.branch.repository.supports_rich_root())
 
@@ -320,7 +320,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree = wt.branch.repository.revision_tree('revision-1')
         tree.lock_read()
         try:
-            self.assertEqual('revision-1', tree.inventory.root.revision)
+            self.assertEqual('revision-1',
+                tree.get_file_revision(tree.get_root_id()))
             expected = inventory.InventoryDirectory('fixed-root', '', None)
             expected.revision = 'revision-1'
             self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
@@ -545,7 +546,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        self.assertEqual('rev_id', rev_tree.inventory.root.revision)
+        self.assertEqual('rev_id',
+            rev_tree.get_file_revision(rev_tree.get_root_id()))
 
     def test_pointless_commit(self):
         tree = self.make_branch_and_tree('.')
