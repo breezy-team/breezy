@@ -308,15 +308,15 @@ class TestSwitchParentLocation(TestCaseWithTransport):
         actual_parent = osutils.splitpath(parent.rstrip(r'\/'))[-len(expected_parent):]
         self.assertEquals(expected_parent, actual_parent, "Parent set incorrectly")
 
-    def _create_checkout_and_switch(self, **kwargs):
+    def _create_checkout_and_switch(self, option, suffix):
         self.script_runner.run_script(self, '''
                 $ bzr checkout %(option)s repo/trunk work_%(suffix)s_switch
                 $ cd work_%(suffix)s_switch
                 $ bzr switch --create-branch switched_%(suffix)s
                 2>Tree is up to date at revision 0.
                 2>Switched to branch:...switched_%(suffix)s...
-                ''' % kwargs)
-        return branch.Branch.open_containing('work_%(suffix)s_switch' % kwargs)[0]
+                ''' % locals())
+        return branch.Branch.open_containing('work_%(suffix)s_switch' % locals())[0]
 
     def test_switch_parent_lightweight(self):
         """Verify parent directory for lightweight checkout using bzr switch."""
