@@ -18,6 +18,8 @@
 
 from bzrlib import (
     errors,
+    inventory,
+    revision as _mod_revision,
     tests,
     versionedfile,
     )
