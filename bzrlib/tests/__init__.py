@@ -2125,18 +2125,20 @@ class TestCase(testtools.TestCase):
                       % (process_args, retcode, process.returncode))
         return [out, err]
 
-    def check_inventory_shape(self, inv, shape):
-        """Compare an inventory to a list of expected names.
+    def check_tree_shape(self, tree, shape):
+        """Compare a tree to a list of expected names.
 
         Fail if they are not precisely equal.
         """
         extras = []
         shape = list(shape)             # copy
-        for path, ie in inv.entries():
+        for path, ie in tree.iter_entries_by_dir():
             name = path.replace('\\', '/')
             if ie.kind == 'directory':
                 name = name + '/'
-            if name in shape:
+            if name == "/":
+                pass # ignore root entry
+            elif name in shape:
                 shape.remove(name)
             else:
                 extras.append(name)

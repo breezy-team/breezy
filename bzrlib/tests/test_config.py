@@ -2483,8 +2483,8 @@ class TestAutoUserId(tests.TestCase):
             raise TestSkipped("User name inference not implemented on win32")
         realname, address = config._auto_user_id()
         if os.path.exists('/etc/mailname'):
-            self.assertTrue(realname)
-            self.assertTrue(address)
+            self.assertIsNot(None, realname)
+            self.assertIsNot(None, address)
         else:
             self.assertEquals((None, None), (realname, address))
 

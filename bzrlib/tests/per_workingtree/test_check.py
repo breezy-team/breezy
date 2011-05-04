@@ -16,9 +16,6 @@
 
 """Tests for checking of trees."""
 
-from bzrlib import (
-    tests,
-    )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
