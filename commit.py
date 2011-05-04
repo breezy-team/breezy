@@ -23,6 +23,9 @@ from dulwich.index import (
     )
 import stat
 
+from bzrlib import (
+    revision as _mod_revision,
+    )
 from bzrlib.errors import (
     RootMissing,
     )
@@ -107,10 +110,15 @@ class GitCommitBuilder(CommitBuilder):
             yield file_id, path[1], (file_sha1, st)
         if not seen_root and len(self.parents) == 0:
             raise RootMissing()
+        if getattr(workingtree, "basis_tree", False):
+            basis_tree = workingtree.basis_tree()
+        else:
+            if len(self.parents) == 0:
+                basis_revid = _mod_revision.NULL_REVISION
+            else:
+                basis_revid = self.parents[0]
+            basis_tree = self.repository.revision_tree(basis_revid)
         # Fill in entries that were not changed
-        basis_tree = workingtree.basis_tree()
-        assert basis_tree.get_revision_id() == basis_revid, "expected %r == %r" % (
-            basis_tree.get_revision_id(), basis_revid)
         for path, entry in basis_tree.iter_entries_by_dir():
             if entry.kind not in ("file", "symlink"):
                 continue
