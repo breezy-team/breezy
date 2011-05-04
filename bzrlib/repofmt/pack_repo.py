@@ -53,7 +53,7 @@ from bzrlib.decorators import (
 from bzrlib.lock import LogicalLockResult
 from bzrlib.repository import (
     CommitBuilder,
-    _FallbacksList,
+    _LazyListJoin,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
@@ -1661,6 +1661,12 @@ class PackRepository(MetaDirRepository):
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
+        if self._format.supports_external_lookups:
+            self._unstacked_provider = graph.CachingParentsProvider(
+                self._make_parents_provider_unstacked())
+            self._unstacked_provider.disable_cache()
+        else:
+            self._unstacked_provider = graph.CachingParentsProvider(self)
 
     @needs_read_lock
     def _all_revision_ids(self):
@@ -1673,15 +1679,16 @@ class PackRepository(MetaDirRepository):
 
     def _make_parents_provider(self):
         if not self._format.supports_external_lookups:
-            provider = self
-        else:
-            provider = graph.StackedParentsProvider(_FallbacksList(self))
-        return graph.CachingParentsProvider(provider)
+            return self._unstacked_provider
+        return graph.StackedParentsProvider(_LazyListJoin(
+            [self._unstacked_provider], self._fallback_repositories))
 
     def _refresh_data(self):
         if not self.is_locked():
             return
         self._pack_collection.reload_pack_names()
+        self._unstacked_provider.disable_cache()
+        self._unstacked_provider.enable_cache()
 
     def _start_write_group(self):
         self._pack_collection._start_write_group()
@@ -1735,6 +1742,7 @@ class PackRepository(MetaDirRepository):
             if 'relock' in debug.debug_flags and self._prev_lock == 'w':
                 note('%r was write locked again', self)
             self._prev_lock = 'w'
+            self._unstacked_provider.enable_cache()
             for repo in self._fallback_repositories:
                 # Writes don't affect fallback repos
                 repo.lock_read()
@@ -1755,6 +1763,7 @@ class PackRepository(MetaDirRepository):
             if 'relock' in debug.debug_flags and self._prev_lock == 'r':
                 note('%r was read locked again', self)
             self._prev_lock = 'r'
+            self._unstacked_provider.enable_cache()
             for repo in self._fallback_repositories:
                 repo.lock_read()
             self._refresh_data()
@@ -1793,6 +1802,7 @@ class PackRepository(MetaDirRepository):
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()
             self._transaction = None
+            self._unstacked_provider.disable_cache()
             self._write_lock_count = 0
             raise errors.BzrError(
                 'Must end write group before releasing write lock on %s'
@@ -1807,6 +1817,7 @@ class PackRepository(MetaDirRepository):
             self.control_files.unlock()
 
         if not self.is_locked():
+            self._unstacked_provider.disable_cache()
             for repo in self._fallback_repositories:
                 repo.unlock()
 

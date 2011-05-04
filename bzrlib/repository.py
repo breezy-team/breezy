@@ -2649,9 +2649,11 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     def _make_parents_provider(self):
         if not self._format.supports_external_lookups:
             return self
-        return graph.StackedParentsProvider(_FallbacksList(self))
+        return graph.StackedParentsProvider(_LazyListJoin(
+            [self._make_parents_provider_unstacked()],
+            self._fallback_repositories))
 
-    def _make_parents_provider_with_no_fallbacks(self):
+    def _make_parents_provider_unstacked(self):
         return graph.CallableToParentsProviderAdapter(
             self._get_parent_map_no_fallbacks)
 
@@ -4548,25 +4550,27 @@ def _iter_for_revno(repo, partial_history_cache, stop_index=None,
         return
 
 
-class _FallbacksList(object):
-    """An iterable yielding a repo followed by its fallbacks.
+class _LazyListJoin(object):
+    """An iterable yielding the contents of many lists as one list.
 
-    Each iterator made from this will reflect the current list of
-    fallbacks at the time the iterator is made.
+    Each iterator made from this will reflect the current contents of the lists
+    at the time the iterator is made.
     
-    i.e. if a _make_parents_provider implementation uses
-    StackedParentsProvider(_FallbacksList(self)), then it is safe to do::
+    This is used by Repository's _make_parents_provider implementation so that
+    it is safe to do::
 
-      pp = repo._make_parents_provider()
-      pp.add_fallback_repository(other_repo)
+      pp = repo._make_parents_provider()      # uses a list of fallback repos
+      pp.add_fallback_repository(other_repo)  # appends to that list
       result = pp.get_parent_map(...)
       # The result will include revs from other_repo
     """
 
-    def __init__(self, repo):
-        self.repo = repo
+    def __init__(self, *list_parts):
+        self.list_parts = list_parts
 
     def __iter__(self):
-        repo_pp = self.repo._make_parents_provider_with_no_fallbacks()
-        return iter([repo_pp] + self.repo._fallback_repositories)
+        full_list = []
+        for list_part in self.list_parts:
+            full_list.extend(list_part)
+        return iter(full_list)
 
