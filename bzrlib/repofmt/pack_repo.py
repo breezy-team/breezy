@@ -1805,6 +1805,7 @@ class PackRepository(MetaDirRepository):
     def unlock(self):
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()
+            self._unstacked_provider.disable_cache()
             self._transaction = None
             self._write_lock_count = 0
             raise errors.BzrError(

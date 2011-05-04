@@ -486,7 +486,7 @@ class TestSmartServerBranching(TestCaseWithTransport):
         self.reset_smart_call_log()
         out, err = self.run_bzr(['branch', '--stacked', self.get_url('from'),
             'local-target'])
-        # XXX: the number of hpss calls for this case isn't yet deterministic,
+        # XXX: the number of hpss calls for this case isn't deterministic yet,
         # so we can't easily assert about the number of calls.
         #self.assertLength(XXX, self.hpss_calls)
         # We can assert that none of the calls were readv requests for rix
