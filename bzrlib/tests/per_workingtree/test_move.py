@@ -24,7 +24,6 @@ from bzrlib import (
     tests,
     )
 
-from bzrlib.workingtree_4 import DirStateWorkingTreeFormat
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
