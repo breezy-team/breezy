@@ -270,39 +270,3 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr('checkout --lightweight a checkout')
         self.run_bzr('switch --directory checkout b')
         self.assertFileEqual('initial\nmore\n', 'checkout/a')
-
-    def test_switch_parent_lightweight(self):
-        """Verify parent directory for lightweight checkout."""
-        self._test_switch_parent(lightweight=True)
-
-    def test_switch_parent(self):
-        """Verify parent directory for heavyweight checkout."""
-        self._test_switch_parent(lightweight=False)
-
-    def _test_switch_parent(self, lightweight):
-        """Verify parent directory after switch -b checkout."""
-        if lightweight:
-            suffix = 'lw'
-            option = '--lightweight'
-        else:
-            suffix = 'hw'
-            option = ''
-        # Create the tree-less repository
-        out, err = self.run_bzr('init-repo --no-trees repo_%s' % suffix)
-        # Create a branch called trunk
-        out, err = self.run_bzr('init repo_%s/trunk' % suffix)
-        # Create a checkout in work_dir
-        out, err = self.run_bzr('checkout %s repo_%s/trunk work_dir_%s' % (option, suffix, suffix))
-        # Switch the checkout to create a new branch
-        os.chdir('work_dir_%s' % suffix)
-        out, err = self.run_bzr('switch --create-branch switched_%s' % suffix)
-        # Open the branch and verify that the path is correct
-        b = branch.Branch.open_containing('.')[0]
-        parent = b.get_parent()
-        # Check that there is a parent
-        self.assertIsNot(parent, None, "Parent not set")
-        # Check that it's set correctly
-        head, branch_name = os.path.split(parent.rstrip(r'\/'))
-        head, repo_name = os.path.split(head)
-        self.assertEquals('repo_%s' % suffix, repo_name, "Parent repository set incorrectly")
-        self.assertEquals('trunk', branch_name, "Parent branch set incorrectly")
