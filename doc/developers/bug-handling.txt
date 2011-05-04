@@ -255,11 +255,11 @@ This bug task then has a separate status and importance to indicate the
 separate work to get it into that release.
 
 
-The News File
+Release Notes
 *************
 
-Most bugs that are fixed should be mentioned in a `NEWS
-<../en/release-notes/NEWS.html>`_ file entry,
+Most bugs that are fixed should be mentioned in the `Release Notes
+<../en/release-notes/>`_ for the forthcoming version,
 including the bug number.
 (Exceptions might be bugs that are not at all user visible.)
 
