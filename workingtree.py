@@ -37,6 +37,7 @@ import os
 import posix
 import posixpath
 import stat
+import sys
 
 from bzrlib import (
     errors,
@@ -46,6 +47,7 @@ from bzrlib import (
     lockable_files,
     lockdir,
     osutils,
+    trace,
     transport,
     tree,
     workingtree,
@@ -138,10 +140,88 @@ class GitWorkingTree(workingtree.WorkingTree):
                 stat_val.st_mode, stat_val.st_uid, stat_val.st_gid,
                 stat_val.st_size, blob.id, flags)
 
+    def _unversion_path(self, path):
+        encoded_path = path.encode("utf-8")
+        try:
+            del self.index[encoded_path]
+        except KeyError:
+            # A directory, perhaps?
+            for p in list(self.index):
+                if p.startswith(encoded_path+"/"):
+                    del self.index[p]
+
     def unversion(self, file_ids):
         for file_id in file_ids:
             path = self.id2path(file_id)
-            del self.index[path.encode("utf-8")]
+            self._unversion_path(path)
+
+    def remove(self, files, verbose=False, to_file=None, keep_files=True,
+        force=False):
+        """Remove nominated files from the working tree metadata.
+
+        :param files: File paths relative to the basedir.
+        :param keep_files: If true, the files will also be kept.
+        :param force: Delete files and directories, even if they are changed
+            and even if the directories are not empty.
+        """
+        all_files = set() # specified and nested files 
+
+        if isinstance(files, basestring):
+            files = [files]
+
+        if to_file is None:
+            to_file = sys.stdout
+
+        files = list(all_files)
+
+        if len(files) == 0:
+            return # nothing to do
+
+        # Sort needed to first handle directory content before the directory
+        files.sort(reverse=True)
+
+        def backup(file_to_backup):
+            abs_path = self.abspath(file_to_backup)
+            backup_name = self.bzrdir._available_backup_name(file_to_backup)
+            osutils.rename(abs_path, self.abspath(backup_name))
+            return "removed %s (but kept a copy: %s)" % (
+                file_to_backup, backup_name)
+
+        for f in files:
+            fid = self.path2id(f)
+            if not fid:
+                message = "%s is not versioned." % (f,)
+            else:
+                abs_path = self.abspath(f)
+                if verbose:
+                    # having removed it, it must be either ignored or unknown
+                    if self.is_ignored(f):
+                        new_status = 'I'
+                    else:
+                        new_status = '?'
+                    # XXX: Really should be a more abstract reporter interface
+                    kind_ch = osutils.kind_marker(self.kind(fid))
+                    to_file.write(new_status + '       ' + f + kind_ch + '\n')
+                # Unversion file
+                # FIXME: _unversion_path() is O(size-of-index) for directories
+                self._unversion_path(f)
+                message = "removed %s" % (f,)
+                if osutils.lexists(abs_path):
+                    if (osutils.isdir(abs_path) and
+                        len(os.listdir(abs_path)) > 0):
+                        if force:
+                            osutils.rmtree(abs_path)
+                            message = "deleted %s" % (f,)
+                        else:
+                            message = backup(f)
+                    else:
+                        if not keep_files:
+                            osutils.delete_any(abs_path)
+                            message = "deleted %s" % (f,)
+
+            # print only one message (if any) per file.
+            if message is not None:
+                trace.note(message)
 
     def _add(self, files, ids, kinds):
         for (path, file_id, kind) in zip(files, ids, kinds):
