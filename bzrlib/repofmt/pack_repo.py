@@ -1664,9 +1664,9 @@ class PackRepository(MetaDirRepository):
         if self._format.supports_external_lookups:
             self._unstacked_provider = graph.CachingParentsProvider(
                 self._make_parents_provider_unstacked())
-            self._unstacked_provider.disable_cache()
         else:
             self._unstacked_provider = graph.CachingParentsProvider(self)
+        self._unstacked_provider.disable_cache()
 
     @needs_read_lock
     def _all_revision_ids(self):
@@ -1802,7 +1802,6 @@ class PackRepository(MetaDirRepository):
         if self._write_lock_count == 1 and self._write_group is not None:
             self.abort_write_group()
             self._transaction = None
-            self._unstacked_provider.disable_cache()
             self._write_lock_count = 0
             raise errors.BzrError(
                 'Must end write group before releasing write lock on %s'
