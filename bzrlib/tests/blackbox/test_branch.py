@@ -537,13 +537,13 @@ class TestBranchParentLocation(TestCaseWithTransport):
                 Using shared repository: ...
                 ''')
 
-    def assertParentCorrect(self, branch, expected_parent):
+    def assertParentCorrect(self, branch, expected_parent, name):
         """Verify that the parent is not None and is set correctly."""
         actual_parent = branch.get_parent()
-        self.assertIsNot(actual_parent, None, "Parent not set")
+        self.assertIsNot(actual_parent, None, name + "Parent not set")
         expected = urlutils.strip_trailing_slash(urlutils.normalize_url(expected_parent))
         actual = urlutils.strip_trailing_slash(urlutils.normalize_url(actual_parent))
-        self.assertEquals(expected, actual, "Parent set incorrectly")
+        self.assertEquals(expected, actual, name + "Parent set incorrectly")
 
     def _create_checkout_and_branch(self, option, suffix):
         self.script_runner.run_script(self, '''
@@ -555,14 +555,18 @@ class TestBranchParentLocation(TestCaseWithTransport):
                 2>Switched to branch:...branched_%(suffix)s...
                 $ cd ..
                 ''' % locals())
-        return branch.Branch.open_containing('work_%(suffix)s_branch' % locals())[0]
+        bound_branch = branch.Branch.open_containing('work_%(suffix)s_branch' % locals())[0]
+        master_branch = branch.Branch.open_containing('repo/branched_%(suffix)s' % locals())[0]
+        return (bound_branch, master_branch)
 
     def test_branch_switch_parent_lightweight(self):
         """Verify parent directory for lightweight checkout using bzr branch --switch."""
-        b = self._create_checkout_and_branch(option='--lightweight', suffix='lw')
-        self.assertParentCorrect(b, urlutils.local_path_to_url('repo/trunk'))
+        bb, mb = self._create_checkout_and_branch(option='--lightweight', suffix='lw')
+        self.assertParentCorrect(bb, urlutils.local_path_to_url('repo/trunk'), "Checkout")
+        self.assertParentCorrect(mb, urlutils.local_path_to_url('repo/trunk'), "Master Branch")
 
     def test_branch_switch_parent_heavyweight(self):
         """Verify parent directory for heavyweight checkout using bzr branch --switch."""
-        b = self._create_checkout_and_branch(option='', suffix='hw')
-        self.assertParentCorrect(b, urlutils.local_path_to_url('repo/trunk'))
+        bb, mb = self._create_checkout_and_branch(option='', suffix='hw')
+        self.assertParentCorrect(bb, urlutils.local_path_to_url('repo/trunk'), "Bound Branch")
+        self.assertParentCorrect(mb, urlutils.local_path_to_url('repo/trunk'), "Master Branch")
