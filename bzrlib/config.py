@@ -997,13 +997,6 @@ def _iter_for_location_by_parts(sections, location):
         # components, so we *should* take only the relevant part of the url. On
         # the other hand, this means 'file://' urls *can't* be used in sections
         # so more work is probably needed -- vila 2011-04-07
-
-        # FIXME: And last one: LocationStore allows a no-name section which
-        # always matches as the most generic one, this is not supposed to
-        # happen with LocationConfig but doesn't hurt either
-        if section is None:
-            yield section, location, 0
-            continue
         if section.startswith('file://'):
             section_path = urlutils.local_path_from_url(section)
         else:
@@ -2421,16 +2414,30 @@ class LocationMatcher(SectionMatcher):
         super(LocationMatcher, self).__init__(store)
         self.location = location
 
-    def get_sections(self):
-        # Override the default implementation as we want to change the order
-
-        # The following is a bit hackish but ensures compatibility with
-        # LocationConfig by reusing the same code (_iter_for_location_by_parts)
-        sections = list(self.store.get_sections())
+    def _get_matching_sections(self):
+        """Get all sections matching ``location``."""
+        # We slightly diverge from LocalConfig here by allowing the no-name
+        # section as the most generic one and the lower priority.
+        no_name_section = None
+        sections = []
+        # Filter out the no_name_section so _iter_for_location_by_parts can be
+        # used (it assumes all sections have a name).
+        for section in self.store.get_sections():
+            if section.id is None:
+                no_name_section = section
+            else:
+                sections.append(section)
+        # Unfortunately _iter_for_location_by_parts deals with section names so
+        # we have to resync.
         filtered_sections = _iter_for_location_by_parts(
             [s.id for s in sections], self.location)
         iter_sections = iter(sections)
         matching_sections = []
+        if no_name_section is not None:
+            matching_sections.append(
+                # FIXME: ``location`` may need to be normalized for appendpath
+                # to work correctly ? -- vila 20110504
+                LocationSection(no_name_section, 0, self.location))
         for section_id, extra_path, length in filtered_sections:
             # a section id is unique for a given store so it's safe to iterate
             # again
@@ -2438,6 +2445,11 @@ class LocationMatcher(SectionMatcher):
             if section_id == section.id:
                 matching_sections.append(
                     LocationSection(section, length, extra_path))
+        return matching_sections
+
+    def get_sections(self):
+        # Override the default implementation as we want to change the order
+        matching_sections = self._get_matching_sections()
         # We want the longest (aka more specific) locations first
         sections = sorted(matching_sections,
                           key=lambda section: (section.length, section.id),
