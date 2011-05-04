@@ -174,6 +174,10 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Branch.update_revisions`` has been made private and should no
+  longer be used by external users. Use ``Branch.pull`` or ``Branch.push``
+  instead. (Jelmer Vernooij, #771765)
+
 * Commands now have an `invoked_as` attribute, showing the name under
   which they were called before alias expansion.
   (Martin Pool)
@@ -427,6 +431,9 @@ API Changes
 * ``BranchFormat.supports_leaving_lock()`` and
   ``RepositoryFormat.supports_leaving_lock`` flags have been added.
   (Jelmer Vernooij)
+
+* ``Branch.fetch`` implementations must now accept an optional
+  ``fetch_tags`` keyword argument. (Andrew Bennetts)
 
 * ``Branch.import_last_revision_info`` is deprecated.  Use the
   ``import_last_revision_info_and_tags`` method instead.
