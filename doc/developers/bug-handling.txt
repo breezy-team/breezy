@@ -184,7 +184,7 @@ Fix Released
     time updating this if you don't immediately know: its not critical
     that it be set.
 
-.. _`bug 163694`: https://bugs.launchpad.net/malone/+bug/163694
+.. _`bug 163694`: https://bugs.launchpad.net/launchpad/+bug/163694
 
 
 Bug Importance
@@ -267,7 +267,7 @@ including the bug number.
 Tags
 ****
 
-Here are some bug tags we use.  In Malone tags are currently of limited use, so don't feel obliged to tag bugs unless you're finding it useful.
+Here are some bug tags we use.  In Launchpad Bugs tags are currently of limited use, so don't feel obliged to tag bugs unless you're finding it useful.
 
 
 authentication
