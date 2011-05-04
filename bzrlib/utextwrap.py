@@ -168,16 +168,3 @@ def fill(text, width=None, **kwargs):
     w = UTextWrapper(width=width, **kwargs)
     return w.fill(text)
 
-
-if __name__ == '__main__':
-    test_str = u'\u304a\u306f\u3088\u3046' # Japanese "good morning".
-    assert _width(test_str) == 8
-    assert _width(test_str+ u'hello') == 13
-    assert _break_cjkword(u"hello", 3) == None
-    assert _break_cjkword(test_str, 1) == None
-    assert _break_cjkword(test_str, 4) == (test_str[:2], test_str[2:])
-    assert _break_cjkword(test_str, 5) == (test_str[:2], test_str[2:])
-    assert _break_cjkword(test_str + u"hello", 10) == (test_str, u"hello")
-
-    assert wrap(test_str, 1) == list(test_str)
-    assert wrap(test_str, 2) == list(test_str)
