@@ -551,28 +551,23 @@ class TestBranchParentLocation(TestCaseWithTransport):
         actual_parent = osutils.splitpath(parent.rstrip(r'\/'))[-len(expected_parent):]
         self.assertEquals(expected_parent, actual_parent, "Parent set incorrectly")
 
-    def test_branch_switch_parent_lightweight(self):
-        """Verify parent directory for lightweight checkout using bzr branch --switch."""
+    def _create_checkout_and_branch(self, **kwargs):
         self.script_runner.run_script(self, '''
-                $ bzr checkout --lightweight repo/trunk work_lw_branch
-                $ cd work_lw_branch
-                $ bzr branch --switch ../repo/trunk ../repo/branched_lw
+                $ bzr checkout %(option)s repo/trunk work_%(suffix)s_branch
+                $ cd work_%(suffix)s_branch
+                $ bzr branch --switch ../repo/trunk ../repo/branched_%(suffix)s
                 2>Branched 0 revision(s).
                 2>Tree is up to date at revision 0.
-                2>Switched to branch:...branched_lw...
-                ''')
-        b = branch.Branch.open_containing('work_lw_branch')[0]
+                2>Switched to branch:...branched_%(suffix)s...
+                ''' % kwargs)
+        return branch.Branch.open_containing('work_%(suffix)s_branch' % kwargs)[0]
+
+    def test_branch_switch_parent_lightweight(self):
+        """Verify parent directory for lightweight checkout using bzr branch --switch."""
+        b = self._create_checkout_and_branch(option='--lightweight', suffix='lw')
         self.assertParentCorrect(b, ['repo','trunk'])
 
     def test_branch_switch_parent_heavyweight(self):
         """Verify parent directory for heavyweight checkout using bzr branch --switch."""
-        self.script_runner.run_script(self, '''
-                $ bzr checkout repo/trunk work_hw_branch
-                $ cd work_hw_branch
-                $ bzr branch --switch ../repo/trunk ../repo/branched_hw
-                2>Branched 0 revision(s).
-                2>Tree is up to date at revision 0.
-                2>Switched to branch:...branched_hw...
-                ''')
-        b = branch.Branch.open_containing('work_hw_branch')[0]
+        b = self._create_checkout_and_branch(option='', suffix='hw')
         self.assertParentCorrect(b, ['repo','trunk'])

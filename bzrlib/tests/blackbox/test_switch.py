@@ -308,26 +308,22 @@ class TestSwitchParentLocation(TestCaseWithTransport):
         actual_parent = osutils.splitpath(parent.rstrip(r'\/'))[-len(expected_parent):]
         self.assertEquals(expected_parent, actual_parent, "Parent set incorrectly")
 
+    def _create_checkout_and_switch(self, **kwargs):
+        self.script_runner.run_script(self, '''
+                $ bzr checkout %(option)s repo/trunk work_%(suffix)s_switch
+                $ cd work_%(suffix)s_switch
+                $ bzr switch --create-branch switched_%(suffix)s
+                2>Tree is up to date at revision 0.
+                2>Switched to branch:...switched_%(suffix)s...
+                ''' % kwargs)
+        return branch.Branch.open_containing('work_%(suffix)s_switch' % kwargs)[0]
+
     def test_switch_parent_lightweight(self):
         """Verify parent directory for lightweight checkout using bzr switch."""
-        self.script_runner.run_script(self, '''
-                $ bzr checkout --lightweight repo/trunk work_lw_switch
-                $ cd work_lw_switch
-                $ bzr switch --create-branch switched_lw
-                2>Tree is up to date at revision 0.
-                2>Switched to branch:...switched_lw...
-                ''')
-        b = branch.Branch.open_containing('work_lw_switch')[0]
+        b = self._create_checkout_and_switch(option='--lightweight', suffix='lw')
         self.assertParentCorrect(b, ['repo','trunk'])
 
     def test_switch_parent_heavyweight(self):
         """Verify parent directory for heavyweight checkout using bzr switch."""
-        self.script_runner.run_script(self, '''
-                $ bzr checkout repo/trunk work_hw_switch
-                $ cd work_hw_switch
-                $ bzr switch --create-branch switched_hw
-                2>Tree is up to date at revision 0.
-                2>Switched to branch:...switched_hw...
-                ''')
-        b = branch.Branch.open_containing('work_hw_switch')[0]
+        b = self._create_checkout_and_switch(option='', suffix='hw')
         self.assertParentCorrect(b, ['repo','trunk'])
