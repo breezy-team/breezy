@@ -27,7 +27,6 @@ from bzrlib import (
 from bzrlib.tests import script
 
 class TestParentLocation(tests.TestCaseWithTransport):
-
     def setUp(self):
         """Set up a repository and branch ready for testing."""
         super(TestParentLocation, self).setUp()
@@ -42,12 +41,20 @@ class TestParentLocation(tests.TestCaseWithTransport):
                 Using shared repository: ...
                 ''')
 
-    def assertParentCorrect(self, branch, expected_repo_name, expected_branch_name):
+    def assertParentCorrect(self, branch, expected_parent):
+        """Verify that the parent is not None and is set correctly.
+        
+        @param branch: Branch for which to check parent.
+        @param expected_parent: Expected parent as a list of strings for each component:
+            each element in the list is compared.
+        """
         parent = branch.get_parent()
         self.assertIsNot(parent, None, "Parent not set")
-        (actual_repo_name, actual_branch_name) = osutils.splitpath(parent.rstrip(r'\/'))[-2:]
-        self.assertEquals(expected_repo_name, actual_repo_name, "Parent repository set incorrectly")
-        self.assertEquals(expected_branch_name, actual_branch_name, "Parent branch set incorrectly")
+        # Get the last 'n' path elements from the parent where 'n' is the length of
+        # the expected_parent, so if ['repo', 'branch'] is passed, get the last two
+        # components for comparison.
+        actual_parent = osutils.splitpath(parent.rstrip(r'\/'))[-len(expected_parent):]
+        self.assertEquals(expected_parent, actual_parent, "Parent set incorrectly")
 
     def test_switch_parent_lightweight(self):
         """Verify parent directory for lightweight checkout."""
@@ -59,7 +66,7 @@ class TestParentLocation(tests.TestCaseWithTransport):
                 2>Switched to branch:...switched_lw...
                 ''')
         b = branch.Branch.open_containing('work_lw')[0]
-        self.assertParentCorrect(b, 'repo', 'trunk')
+        self.assertParentCorrect(b, ['repo','trunk'])
 
     def test_switch_parent_heavyweight(self):
         """Verify parent directory for heavyweight checkout."""
@@ -71,4 +78,4 @@ class TestParentLocation(tests.TestCaseWithTransport):
                 2>Switched to branch:...switched_hw...
                 ''')
         b = branch.Branch.open_containing('work_hw')[0]
-        self.assertParentCorrect(b, 'repo', 'trunk')
+        self.assertParentCorrect(b, ['repo','trunk'])
