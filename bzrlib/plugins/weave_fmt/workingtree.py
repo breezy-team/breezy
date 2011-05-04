@@ -227,4 +227,8 @@ class WorkingTree2(InventoryWorkingTree):
                              file_id=self.path2id(conflicted)))
         return conflicts
 
+    def set_conflicts(self, arg):
+        raise errors.UnsupportedOperation(self.set_conflicts, self)
 
+    def add_conflicts(self, arg):
+        raise errors.UnsupportedOperation(self.add_conflicts, self)
