@@ -42,8 +42,8 @@ class TestUTextWrap(tests.TestCase):
         self.assertWidth(_str_SD, 13)
 
     def test__break_cjkword(self):
-        self.assertEqual(utextwrap._break_cjkword(u"hello", 3), None)
-        self.assertEqual(utextwrap._break_cjkword(_str_D, 1), None)
+        self.assertEqual(utextwrap._break_cjkword(u"hello", 3), ('', _str_S))
+        self.assertEqual(utextwrap._break_cjkword(_str_D, 1), ('', _str_D))
 
         half = _str_D[:2], _str_D[2:]
         self.assertEqual(utextwrap._break_cjkword(_str_D, 4), half)
@@ -54,6 +54,33 @@ class TestUTextWrap(tests.TestCase):
         self.assertEqual(utextwrap._break_cjkword(_str_DS, 10),
                          (_str_D, _str_S))
 
+        self.assertEqual(utextwrap._break_cjkword(_str_D, 8), (_str_D, ''))
+
     def test_wrap(self):
         self.assertEqual(utextwrap.wrap(_str_D, 1), list(_str_D))
         self.assertEqual(utextwrap.wrap(_str_D, 2), list(_str_D))
+        self.assertEqual(utextwrap.wrap(_str_D, 3), list(_str_D))
+        self.assertEqual(utextwrap.wrap(_str_D, 3, break_long_words=False),
+                list(_str_D))
+
+
+# Regression test with Python's test_textwrap
+# Note that some distribution including Ubuntu doesn't install
+# Python's test suite.
+try:
+    import test.test_textwrap as _test_textwrap
+
+    # replace test_textwrap's TextWrapper with UTextWrapper
+    _test_textwrap.TextWrapper = utextwrap.UTextWrapper
+    _test_textwrap.wrap = utextwrap.wrap
+    _test_textwrap.fill = utextwrap.fill
+
+    class TestWrap(_test_textwrap.WrapTestCase):
+        pass
+    class TestLongWord(_test_textwrap.LongWordTestCase):
+        pass
+    class TestIndent(_test_textwrap.IndentTestCases):
+        pass
+except ImportError:
+    pass
+
