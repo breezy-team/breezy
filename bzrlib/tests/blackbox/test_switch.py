@@ -20,7 +20,7 @@
 
 import os
 
-from bzrlib import osutils, branch
+from bzrlib import osutils
 from bzrlib.workingtree import WorkingTree
 from bzrlib.tests import TestCaseWithTransport
 from bzrlib.directory_service import directories
