@@ -68,6 +68,34 @@ class TestUTextWrap(tests.TestCase):
         self.assertEqual(utextwrap.fill(_str_D, 4),
                 "%s\n%s" % (_str_D[:2], _str_D[2:]))
 
+        # Demonstrate complicated case.
+        text = u"spam ham egg spamhamegg" + _str_D + u" spam" + _str_D*2
+        self.assertEqual(
+                utextwrap.fill(text, 8),
+                u'\n'.join([
+                    "spam ham",
+                    "egg spam",
+                    "hamegg" + _str_D[0],
+                    _str_D[1:],
+                    "spam" + _str_D[:2],
+                    _str_D[2:]+_str_D[:2],
+                    _str_D[2:]
+                    ]))
+
+        self.assertEqual(
+                utextwrap.fill(text, 8, break_long_words=False),
+                u'\n'.join([
+                    "spam ham",
+                    "egg",
+                    "spamhamegg", 
+                    # border between single width and double width.
+                    _str_D,
+                    "spam" + _str_D[:2],
+                    _str_D[2:]+_str_D[:2],
+                    _str_D[2:]
+                    ]))
+
+
 # Regression test with Python's test_textwrap
 # Note that some distribution including Ubuntu doesn't install
 # Python's test suite.
