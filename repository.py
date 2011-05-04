@@ -266,6 +266,7 @@ class LocalGitRepository(GitRepository):
         raise NotImplementedError(self.get_inventory)
 
     def set_make_working_trees(self, trees):
+        # TODO: Set bare= in the configuration bug=777065
         raise NotImplementedError(self.set_make_working_trees)
 
     def fetch_objects(self, determine_wants, graph_walker, resolve_ext_ref,
