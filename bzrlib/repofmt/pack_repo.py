@@ -1696,6 +1696,10 @@ class PackRepository(MetaDirRepository):
     def _commit_write_group(self):
         hint = self._pack_collection._commit_write_group()
         self.revisions._index._key_dependencies.clear()
+        # The commit may have added keys that were previously cached as
+        # missing, so reset the cache.
+        self._unstacked_provider.disable_cache()
+        self._unstacked_provider.enable_cache()
         return hint
 
     def suspend_write_group(self):
