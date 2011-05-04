@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import osutils
 import textwrap
 from unicodedata import east_asian_width as _eawidth
 
@@ -138,7 +139,7 @@ class UTextWrapper(textwrap.TextWrapper):
 
 # -- Convenience interface ---------------------------------------------
 
-def wrap(text, width=70, **kwargs):
+def wrap(text, width=None, **kwargs):
     """Wrap a single paragraph of text, returning a list of wrapped lines.
 
     Reformat the single paragraph in 'text' so it fits in lines of no
@@ -148,10 +149,12 @@ def wrap(text, width=70, **kwargs):
     space.  See TextWrapper class for available keyword args to customize
     wrapping behaviour.
     """
+    if width is None:
+        width = osutils.terminal_width()
     w = UTextWrapper(width=width, **kwargs)
     return w.wrap(text)
 
-def fill(text, width=70, **kwargs):
+def fill(text, width=None, **kwargs):
     """Fill a single paragraph of text, returning a new string.
 
     Reformat the single paragraph in 'text' to fit in lines of no more
@@ -160,6 +163,8 @@ def fill(text, width=70, **kwargs):
     whitespace characters converted to space.  See TextWrapper class for
     available keyword args to customize wrapping behaviour.
     """
+    if width is None:
+        width = osutils.terminal_width()
     w = UTextWrapper(width=width, **kwargs)
     return w.fill(text)
 
