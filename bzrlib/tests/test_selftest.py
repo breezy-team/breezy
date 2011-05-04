@@ -52,6 +52,7 @@ from bzrlib import (
     tests,
     transport,
     workingtree,
+    workingtree_4,
     )
 from bzrlib.repofmt import (
     groupcompress_repo,
@@ -338,7 +339,7 @@ class TestWorkingTreeScenarios(tests.TestCase):
         from bzrlib.tests.per_workingtree import make_scenarios
         server1 = "a"
         server2 = "b"
-        formats = [workingtree.WorkingTreeFormat4(),
+        formats = [workingtree_4.WorkingTreeFormat4(),
                    workingtree.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
@@ -375,13 +376,13 @@ class TestTreeScenarios(tests.TestCase):
             )
         server1 = "a"
         server2 = "b"
-        formats = [workingtree.WorkingTreeFormat4(),
+        formats = [workingtree_4.WorkingTreeFormat4(),
                    workingtree.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual(7, len(scenarios))
         default_wt_format = workingtree.format_registry.get_default()
-        wt4_format = workingtree.WorkingTreeFormat4()
-        wt5_format = workingtree.WorkingTreeFormat5()
+        wt4_format = workingtree_4.WorkingTreeFormat4()
+        wt5_format = workingtree_4.WorkingTreeFormat5()
         expected_scenarios = [
             ('WorkingTreeFormat4',
              {'bzrdir_format': formats[0]._matchingbzrdir,
@@ -453,7 +454,8 @@ class TestInterTreeScenarios(tests.TestCase):
         from bzrlib.tests.per_intertree import (
             make_scenarios,
             )
-        from bzrlib.workingtree import WorkingTreeFormat3, WorkingTreeFormat4
+        from bzrlib.workingtree import WorkingTreeFormat3
+        from bzrlib.workingtree_4 import WorkingTreeFormat4
         input_test = TestInterTreeScenarios(
             "test_scenarios")
         server1 = "a"
