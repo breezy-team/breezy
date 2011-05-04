@@ -63,7 +63,7 @@ class TestDefaultFormat(TestCaseWithTransport):
 
     def test_get_set_default_format(self):
         old_format = workingtree.format_registry.get_default()
-        # default is 3
+        # default is 6
         self.assertTrue(isinstance(old_format, workingtree.WorkingTreeFormat6))
         workingtree.format_registry.set_default(SampleTreeFormat())
         try:
