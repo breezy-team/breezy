@@ -55,7 +55,7 @@ class TestExceptionReporting(TestCase):
         if os.name != "posix":
             raise tests.TestNotApplicable("Needs system beholden to C locales")
         out, err = self.run_bzr_subprocess(["\xa0"],
-            env_changes={"LANG": "C"},
+            env_changes={"LANG": "C", "LC_ALL": "C"},
             universal_newlines=True,
             retcode=errors.EXIT_ERROR)
         self.assertContainsRe(err, r"^bzr: ERROR: .*'\\xa0'.* unsupported")
@@ -102,7 +102,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         bzrdir.register_metadir(controldir.format_registry, "testobsolete",
             "bzrlib.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
             branch_format='bzrlib.branch.BzrBranchFormat7',
-            tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+            tree_format='bzrlib.workingtree_4.WorkingTreeFormat6',
             deprecated=True,
             help='Same as 2a, but with an obsolete repo format.')
         self.disable_deprecation_warning()

@@ -68,11 +68,6 @@ from bzrlib import (
     xml5,
     xml7,
     )
-from bzrlib.workingtree_4 import (
-    WorkingTreeFormat4,
-    WorkingTreeFormat5,
-    WorkingTreeFormat6,
-    )
 """)
 
 from bzrlib import symbol_versioning
@@ -756,36 +751,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             self.set_last_revision(_mod_revision.NULL_REVISION)
 
         self._set_merges_from_parent_ids(revision_ids)
-
-    @needs_tree_write_lock
-    def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
-        """See MutableTree.set_parent_trees."""
-        parent_ids = [rev for (rev, tree) in parents_list]
-        for revision_id in parent_ids:
-            _mod_revision.check_not_reserved_id(revision_id)
-
-        self._check_parents_for_ghosts(parent_ids,
-            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
-
-        parent_ids = self._filter_parent_ids_by_ancestry(parent_ids)
-
-        if len(parent_ids) == 0:
-            leftmost_parent_id = _mod_revision.NULL_REVISION
-            leftmost_parent_tree = None
-        else:
-            leftmost_parent_id, leftmost_parent_tree = parents_list[0]
-
-        if self._change_last_revision(leftmost_parent_id):
-            if leftmost_parent_tree is None:
-                # If we don't have a tree, fall back to reading the
-                # parent tree from the repository.
-                self._cache_basis_inventory(leftmost_parent_id)
-            else:
-                inv = leftmost_parent_tree.inventory
-                xml = self._create_basis_xml_from_inventory(
-                                        leftmost_parent_id, inv)
-                self._write_basis_inventory(xml)
-        self._set_merges_from_parent_ids(parent_ids)
 
     @needs_tree_write_lock
     def set_pending_merges(self, rev_list):
@@ -1985,6 +1950,36 @@ class InventoryWorkingTree(WorkingTree,
         """See Tree.iter_all_file_ids"""
         return set(self.inventory)
 
+    @needs_tree_write_lock
+    def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
+        """See MutableTree.set_parent_trees."""
+        parent_ids = [rev for (rev, tree) in parents_list]
+        for revision_id in parent_ids:
+            _mod_revision.check_not_reserved_id(revision_id)
+
+        self._check_parents_for_ghosts(parent_ids,
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+        parent_ids = self._filter_parent_ids_by_ancestry(parent_ids)
+
+        if len(parent_ids) == 0:
+            leftmost_parent_id = _mod_revision.NULL_REVISION
+            leftmost_parent_tree = None
+        else:
+            leftmost_parent_id, leftmost_parent_tree = parents_list[0]
+
+        if self._change_last_revision(leftmost_parent_id):
+            if leftmost_parent_tree is None:
+                # If we don't have a tree, fall back to reading the
+                # parent tree from the repository.
+                self._cache_basis_inventory(leftmost_parent_id)
+            else:
+                inv = leftmost_parent_tree.inventory
+                xml = self._create_basis_xml_from_inventory(
+                                        leftmost_parent_id, inv)
+                self._write_basis_inventory(xml)
+        self._set_merges_from_parent_ids(parent_ids)
+
     def _cache_basis_inventory(self, new_revision):
         """Cache new_revision as the basis inventory."""
         # TODO: this should allow the ready-to-use inventory to be passed in,
@@ -2973,13 +2968,24 @@ class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
     def __init__(self, other_registry=None):
         super(WorkingTreeFormatRegistry, self).__init__(other_registry)
         self._default_format = None
+        self._default_format_key = None
 
     def get_default(self):
         """Return the current default format."""
+        if (self._default_format_key is not None and
+            self._default_format is None):
+            self._default_format = self.get(self._default_format_key)
         return self._default_format
 
     def set_default(self, format):
+        """Set the default format."""
         self._default_format = format
+        self._default_format_key = None
+
+    def set_default_key(self, format_string):
+        """Set the default format by its format string."""
+        self._default_format_key = format_string
+        self._default_format = None
 
 
 format_registry = WorkingTreeFormatRegistry()
@@ -3015,14 +3021,20 @@ class WorkingTreeFormat(controldir.ControlComponentFormat):
     """If this format supports missing parent conflicts."""
 
     @classmethod
+    def find_format_string(klass, a_bzrdir):
+        """Return format name for the working tree object in a_bzrdir."""
+        try:
+            transport = a_bzrdir.get_workingtree_transport(None)
+            return transport.get_bytes("format")
+        except errors.NoSuchFile:
+            raise errors.NoWorkingTree(base=transport.base)
+
+    @classmethod
     def find_format(klass, a_bzrdir):
         """Return the format for the working tree object in a_bzrdir."""
         try:
-            transport = a_bzrdir.get_workingtree_transport(None)
-            format_string = transport.get_bytes("format")
+            format_string = klass.find_format_string(a_bzrdir)
             return format_registry.get(format_string)
-        except errors.NoSuchFile:
-            raise errors.NoWorkingTree(base=transport.base)
         except KeyError:
             raise errors.UnknownFormatError(format=format_string,
                                             kind="working tree")
@@ -3252,7 +3264,6 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return self.get_format_string()
 
 
-__default_format = WorkingTreeFormat6()
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
     "bzrlib.workingtree_4", "WorkingTreeFormat4")
 format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
@@ -3260,4 +3271,4 @@ format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
 format_registry.register_lazy("Bazaar Working Tree Format 6 (bzr 1.14)\n",
     "bzrlib.workingtree_4", "WorkingTreeFormat6")
 format_registry.register(WorkingTreeFormat3())
-format_registry.set_default(__default_format)
+format_registry.set_default_key("Bazaar Working Tree Format 6 (bzr 1.14)\n")
