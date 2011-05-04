@@ -753,36 +753,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self._set_merges_from_parent_ids(revision_ids)
 
     @needs_tree_write_lock
-    def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
-        """See MutableTree.set_parent_trees."""
-        parent_ids = [rev for (rev, tree) in parents_list]
-        for revision_id in parent_ids:
-            _mod_revision.check_not_reserved_id(revision_id)
-
-        self._check_parents_for_ghosts(parent_ids,
-            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
-
-        parent_ids = self._filter_parent_ids_by_ancestry(parent_ids)
-
-        if len(parent_ids) == 0:
-            leftmost_parent_id = _mod_revision.NULL_REVISION
-            leftmost_parent_tree = None
-        else:
-            leftmost_parent_id, leftmost_parent_tree = parents_list[0]
-
-        if self._change_last_revision(leftmost_parent_id):
-            if leftmost_parent_tree is None:
-                # If we don't have a tree, fall back to reading the
-                # parent tree from the repository.
-                self._cache_basis_inventory(leftmost_parent_id)
-            else:
-                inv = leftmost_parent_tree.inventory
-                xml = self._create_basis_xml_from_inventory(
-                                        leftmost_parent_id, inv)
-                self._write_basis_inventory(xml)
-        self._set_merges_from_parent_ids(parent_ids)
-
-    @needs_tree_write_lock
     def set_pending_merges(self, rev_list):
         parents = self.get_parent_ids()
         leftmost = parents[:1]
@@ -1979,6 +1949,36 @@ class InventoryWorkingTree(WorkingTree,
     def all_file_ids(self):
         """See Tree.iter_all_file_ids"""
         return set(self.inventory)
+
+    @needs_tree_write_lock
+    def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
+        """See MutableTree.set_parent_trees."""
+        parent_ids = [rev for (rev, tree) in parents_list]
+        for revision_id in parent_ids:
+            _mod_revision.check_not_reserved_id(revision_id)
+
+        self._check_parents_for_ghosts(parent_ids,
+            allow_leftmost_as_ghost=allow_leftmost_as_ghost)
+
+        parent_ids = self._filter_parent_ids_by_ancestry(parent_ids)
+
+        if len(parent_ids) == 0:
+            leftmost_parent_id = _mod_revision.NULL_REVISION
+            leftmost_parent_tree = None
+        else:
+            leftmost_parent_id, leftmost_parent_tree = parents_list[0]
+
+        if self._change_last_revision(leftmost_parent_id):
+            if leftmost_parent_tree is None:
+                # If we don't have a tree, fall back to reading the
+                # parent tree from the repository.
+                self._cache_basis_inventory(leftmost_parent_id)
+            else:
+                inv = leftmost_parent_tree.inventory
+                xml = self._create_basis_xml_from_inventory(
+                                        leftmost_parent_id, inv)
+                self._write_basis_inventory(xml)
+        self._set_merges_from_parent_ids(parent_ids)
 
     def _cache_basis_inventory(self, new_revision):
         """Cache new_revision as the basis inventory."""

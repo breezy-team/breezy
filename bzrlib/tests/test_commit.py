@@ -262,18 +262,16 @@ class TestCommit(TestCaseWithTransport):
         eq(tree1.id2path('hello-id'), 'hello')
         eq(tree1.get_file_text('hello-id'), 'contents of hello\n')
         self.assertFalse(tree1.has_filename('fruity'))
-        self.check_inventory_shape(tree1.inventory, ['hello'])
-        ie = tree1.inventory['hello-id']
-        eq(ie.revision, 'test@rev-1')
+        self.check_tree_shape(tree1, ['hello'])
+        eq(tree1.get_file_revision('hello-id'), 'test@rev-1')
 
         tree2 = b.repository.revision_tree('test@rev-2')
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
         eq(tree2.id2path('hello-id'), 'fruity')
         eq(tree2.get_file_text('hello-id'), 'contents of hello\n')
-        self.check_inventory_shape(tree2.inventory, ['fruity'])
-        ie = tree2.inventory['hello-id']
-        eq(ie.revision, 'test@rev-2')
+        self.check_tree_shape(tree2, ['fruity'])
+        eq(tree2.get_file_revision('hello-id'), 'test@rev-2')
 
     def test_reused_rev_id(self):
         """Test that a revision id cannot be reused in a branch"""
@@ -300,8 +298,7 @@ class TestCommit(TestCaseWithTransport):
         wt.commit('two', rev_id=r2, allow_pointless=False)
         wt.lock_read()
         try:
-            self.check_inventory_shape(wt.read_working_inventory(),
-                                       ['a/', 'a/hello', 'b/'])
+            self.check_tree_shape(wt, ['a/', 'a/hello', 'b/'])
         finally:
             wt.unlock()
 
@@ -310,9 +307,9 @@ class TestCommit(TestCaseWithTransport):
         wt.commit('three', rev_id=r3, allow_pointless=False)
         wt.lock_read()
         try:
-            self.check_inventory_shape(wt.read_working_inventory(),
+            self.check_tree_shape(wt,
                                        ['a/', 'a/hello', 'a/b/'])
-            self.check_inventory_shape(b.repository.get_inventory(r3),
+            self.check_tree_shape(b.repository.revision_tree(r3),
                                        ['a/', 'a/hello', 'a/b/'])
         finally:
             wt.unlock()
@@ -322,8 +319,7 @@ class TestCommit(TestCaseWithTransport):
         wt.commit('four', rev_id=r4, allow_pointless=False)
         wt.lock_read()
         try:
-            self.check_inventory_shape(wt.read_working_inventory(),
-                                       ['a/', 'a/b/hello', 'a/b/'])
+            self.check_tree_shape(wt, ['a/', 'a/b/hello', 'a/b/'])
         finally:
             wt.unlock()
 
