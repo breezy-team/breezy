@@ -43,6 +43,9 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``annotate_file`` has been deprecated in favor of
+  ``annotate_file_revision_tree``. (Jelmer Vernooij, #775598)
+
 Internals
 *********
 
