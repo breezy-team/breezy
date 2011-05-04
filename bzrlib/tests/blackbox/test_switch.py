@@ -22,6 +22,7 @@ import os
 
 from bzrlib import (
         osutils,
+        urlutils,
         branch,
         )
 from bzrlib.workingtree import WorkingTree
@@ -294,19 +295,12 @@ class TestSwitchParentLocation(TestCaseWithTransport):
                 ''')
 
     def assertParentCorrect(self, branch, expected_parent):
-        """Verify that the parent is not None and is set correctly.
-        
-        @param branch: Branch for which to check parent.
-        @param expected_parent: Expected parent as a list of strings for each component:
-            each element in the list is compared.
-        """
-        parent = branch.get_parent()
-        self.assertIsNot(parent, None, "Parent not set")
-        # Get the last 'n' path elements from the parent where 'n' is the length of
-        # the expected_parent, so if ['repo', 'branch'] is passed, get the last two
-        # components for comparison.
-        actual_parent = osutils.splitpath(parent.rstrip(r'\/'))[-len(expected_parent):]
-        self.assertEquals(expected_parent, actual_parent, "Parent set incorrectly")
+        """Verify that the parent is not None and is set correctly."""
+        actual_parent = branch.get_parent()
+        self.assertIsNot(actual_parent, None, "Parent not set")
+        expected = urlutils.strip_trailing_slash(urlutils.normalize_url(expected_parent))
+        actual = urlutils.strip_trailing_slash(urlutils.normalize_url(actual_parent))
+        self.assertEquals(expected, actual, "Parent set incorrectly")
 
     def _create_checkout_and_switch(self, option, suffix):
         self.script_runner.run_script(self, '''
@@ -315,15 +309,17 @@ class TestSwitchParentLocation(TestCaseWithTransport):
                 $ bzr switch --create-branch switched_%(suffix)s
                 2>Tree is up to date at revision 0.
                 2>Switched to branch:...switched_%(suffix)s...
+                $ cd ..
                 ''' % locals())
         return branch.Branch.open_containing('work_%(suffix)s_switch' % locals())[0]
 
     def test_switch_parent_lightweight(self):
         """Verify parent directory for lightweight checkout using bzr switch."""
         b = self._create_checkout_and_switch(option='--lightweight', suffix='lw')
-        self.assertParentCorrect(b, ['repo','trunk'])
+        self.assertParentCorrect(b, urlutils.local_path_to_url('repo/trunk'))
 
     def test_switch_parent_heavyweight(self):
         """Verify parent directory for heavyweight checkout using bzr switch."""
         b = self._create_checkout_and_switch(option='', suffix='hw')
-        self.assertParentCorrect(b, ['repo','trunk'])
+        self.assertParentCorrect(b, urlutils.local_path_to_url('repo/trunk'))
+
