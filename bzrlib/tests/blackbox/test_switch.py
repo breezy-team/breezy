@@ -32,6 +32,7 @@ from bzrlib.tests import (
         )
 from bzrlib.directory_service import directories
 
+
 class TestSwitch(TestCaseWithTransport):
 
     def _create_sample_tree(self):
