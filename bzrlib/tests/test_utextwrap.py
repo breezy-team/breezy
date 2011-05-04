@@ -63,6 +63,10 @@ class TestUTextWrap(tests.TestCase):
         self.assertEqual(utextwrap.wrap(_str_D, 3, break_long_words=False),
                 list(_str_D))
 
+    def test_fill(self):
+        # Test only can call fill() because it's just '\n'.join(wrap(text)).
+        self.assertEqual(utextwrap.fill(_str_D, 4),
+                "%s\n%s" % (_str_D[:2], _str_D[2:]))
 
 # Regression test with Python's test_textwrap
 # Note that some distribution including Ubuntu doesn't install
