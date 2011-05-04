@@ -68,11 +68,6 @@ from bzrlib import (
     xml5,
     xml7,
     )
-from bzrlib.workingtree_4 import (
-    WorkingTreeFormat4,
-    WorkingTreeFormat5,
-    WorkingTreeFormat6,
-    )
 """)
 
 from bzrlib import symbol_versioning
@@ -2973,13 +2968,24 @@ class WorkingTreeFormatRegistry(controldir.ControlComponentFormatRegistry):
     def __init__(self, other_registry=None):
         super(WorkingTreeFormatRegistry, self).__init__(other_registry)
         self._default_format = None
+        self._default_format_key = None
 
     def get_default(self):
         """Return the current default format."""
+        if (self._default_format_key is not None and
+            self._default_format is None):
+            self._default_format = self.get(self._default_format_key)
         return self._default_format
 
     def set_default(self, format):
+        """Set the default format."""
         self._default_format = format
+        self._default_format_key = None
+
+    def set_default_key(self, format_string):
+        """Set the default format by its format string."""
+        self._default_format_key = format_string
+        self._default_format = None
 
 
 format_registry = WorkingTreeFormatRegistry()
@@ -3252,7 +3258,6 @@ class WorkingTreeFormat3(WorkingTreeFormat):
         return self.get_format_string()
 
 
-__default_format = WorkingTreeFormat6()
 format_registry.register_lazy("Bazaar Working Tree Format 4 (bzr 0.15)\n",
     "bzrlib.workingtree_4", "WorkingTreeFormat4")
 format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
@@ -3260,4 +3265,4 @@ format_registry.register_lazy("Bazaar Working Tree Format 5 (bzr 1.11)\n",
 format_registry.register_lazy("Bazaar Working Tree Format 6 (bzr 1.14)\n",
     "bzrlib.workingtree_4", "WorkingTreeFormat6")
 format_registry.register(WorkingTreeFormat3())
-format_registry.set_default(__default_format)
+format_registry.set_default_key("Bazaar Working Tree Format 6 (bzr 1.14)\n")

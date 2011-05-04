@@ -102,7 +102,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         bzrdir.register_metadir(controldir.format_registry, "testobsolete",
             "bzrlib.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
             branch_format='bzrlib.branch.BzrBranchFormat7',
-            tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+            tree_format='bzrlib.workingtree_4.WorkingTreeFormat6',
             deprecated=True,
             help='Same as 2a, but with an obsolete repo format.')
         self.disable_deprecation_warning()
