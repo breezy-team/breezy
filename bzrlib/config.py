@@ -2498,9 +2498,10 @@ class Stack(object):
         """
         # FIXME: No caching of options nor sections yet -- vila 20110503
 
-        # Ensuring lazy loading is achieved by delaying section matching until
-        # it can't be avoided anymore by using callables to describe (possibly
-        # empty) section lists.
+        # Ensuring lazy loading is achieved by delaying section matching (which
+        # implies querying the persistent storage) until it can't be avoided
+        # anymore by using callables to describe (possibly empty) section
+        # lists.
         for section_or_callable in self.sections_def:
             # Each section can expand to multiple ones when a callable is used
             if callable(section_or_callable):
