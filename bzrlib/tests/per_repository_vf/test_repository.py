@@ -112,6 +112,11 @@ class TestRepository(TestCaseWithRepository):
         self.assertRaises(errors.ObjectNotLocked,
             inventories.add_lines, ('foo',), [], [])
 
+    def test_get_serializer_format(self):
+        repo = self.make_repository('.')
+        format = repo.get_serializer_format()
+        self.assertEqual(repo._serializer.format_num, format)
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 

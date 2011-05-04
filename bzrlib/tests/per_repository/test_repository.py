@@ -561,11 +561,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo._format.rich_root_data
         repo._format.supports_tree_reference
 
-    def test_get_serializer_format(self):
-        repo = self.make_repository('.')
-        format = repo.get_serializer_format()
-        self.assertEqual(repo._serializer.format_num, format)
-
     def test_iter_files_bytes(self):
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/file1', 'foo'),
