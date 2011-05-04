@@ -1231,6 +1231,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         if _mod_revision.is_null(new_revision):
             self.branch.set_last_revision_info(0, new_revision)
             return False
+        _mod_revision.check_not_reserved_id(new_revision)
         try:
             self.branch.generate_revision_history(new_revision)
         except errors.NoSuchRevision:
@@ -2903,13 +2904,15 @@ class WorkingTree3(InventoryWorkingTree):
 
     def _change_last_revision(self, revision_id):
         """See WorkingTree._change_last_revision."""
-        if revision_id is None or revision_id == _mod_revision.NULL_REVISION:
+        revision_id = _mod_revision.ensure_null(revision_id)
+        if revision_id == _mod_revision.NULL_REVISION:
             try:
                 self._transport.delete('last-revision')
             except errors.NoSuchFile:
                 pass
             return False
         else:
+            _mod_revision.check_not_reserved_id(revision_id)
             self._transport.put_bytes('last-revision', revision_id,
                 mode=self.bzrdir._get_file_mode())
             return True
