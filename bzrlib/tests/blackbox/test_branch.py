@@ -551,7 +551,7 @@ class TestBranchParentLocation(TestCaseWithTransport):
         actual_parent = osutils.splitpath(parent.rstrip(r'\/'))[-len(expected_parent):]
         self.assertEquals(expected_parent, actual_parent, "Parent set incorrectly")
 
-    def _create_checkout_and_branch(self, **kwargs):
+    def _create_checkout_and_branch(self, option, suffix):
         self.script_runner.run_script(self, '''
                 $ bzr checkout %(option)s repo/trunk work_%(suffix)s_branch
                 $ cd work_%(suffix)s_branch
@@ -559,8 +559,8 @@ class TestBranchParentLocation(TestCaseWithTransport):
                 2>Branched 0 revision(s).
                 2>Tree is up to date at revision 0.
                 2>Switched to branch:...branched_%(suffix)s...
-                ''' % kwargs)
-        return branch.Branch.open_containing('work_%(suffix)s_branch' % kwargs)[0]
+                ''' % locals())
+        return branch.Branch.open_containing('work_%(suffix)s_branch' % locals())[0]
 
     def test_branch_switch_parent_lightweight(self):
         """Verify parent directory for lightweight checkout using bzr branch --switch."""
