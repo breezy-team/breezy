@@ -153,6 +153,13 @@ class TestRepository(TestCaseWithRepository):
         self.assertEqual(revision, repo2.get_revision('A'))
         self.assertEqual(signature, repo2.get_signature_text('A'))
 
+    def test_attribute_text_store(self):
+        """Test the existence of the texts attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertIsInstance(repo.texts,
+            versionedfile.VersionedFiles)
+
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
 

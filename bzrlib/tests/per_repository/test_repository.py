@@ -160,13 +160,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertEqual(keys, set(repo.texts.keys()))
         self.assertEqual(parents, repo.texts.get_parent_map(repo.texts.keys()))
 
-    def test_attribute_text_store(self):
-        """Test the existence of the texts attribute."""
-        tree = self.make_branch_and_tree('tree')
-        repo = tree.branch.repository
-        self.assertIsInstance(repo.texts,
-            versionedfile.VersionedFiles)
-
     def test_clone_to_default_format(self):
         #TODO: Test that cloning a repository preserves all the information
         # such as signatures[not tested yet] etc etc.
