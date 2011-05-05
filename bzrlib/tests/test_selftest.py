@@ -52,6 +52,7 @@ from bzrlib import (
     tests,
     transport,
     workingtree,
+    workingtree_3,
     workingtree_4,
     )
 from bzrlib.repofmt import (
@@ -340,7 +341,7 @@ class TestWorkingTreeScenarios(tests.TestCase):
         server1 = "a"
         server2 = "b"
         formats = [workingtree_4.WorkingTreeFormat4(),
-                   workingtree.WorkingTreeFormat3(),]
+                   workingtree_3.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
             ('WorkingTreeFormat4',
@@ -377,7 +378,7 @@ class TestTreeScenarios(tests.TestCase):
         server1 = "a"
         server2 = "b"
         formats = [workingtree_4.WorkingTreeFormat4(),
-                   workingtree.WorkingTreeFormat3(),]
+                   workingtree_3.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual(7, len(scenarios))
         default_wt_format = workingtree.format_registry.get_default()
@@ -454,7 +455,7 @@ class TestInterTreeScenarios(tests.TestCase):
         from bzrlib.tests.per_intertree import (
             make_scenarios,
             )
-        from bzrlib.workingtree import WorkingTreeFormat3
+        from bzrlib.workingtree_3 import WorkingTreeFormat3
         from bzrlib.workingtree_4 import WorkingTreeFormat4
         input_test = TestInterTreeScenarios(
             "test_scenarios")
@@ -2812,16 +2813,16 @@ class TestSelftestFiltering(tests.TestCase):
         self.assertEqual(remaining_names, _test_ids(split_suite[1]))
 
 
-class TestCheckInventoryShape(tests.TestCaseWithTransport):
+class TestCheckTreeShape(tests.TestCaseWithTransport):
 
-    def test_check_inventory_shape(self):
+    def test_check_tree_shape(self):
         files = ['a', 'b/', 'b/c']
         tree = self.make_branch_and_tree('.')
         self.build_tree(files)
         tree.add(files)
         tree.lock_read()
         try:
-            self.check_inventory_shape(tree.inventory, files)
+            self.check_tree_shape(tree, files)
         finally:
             tree.unlock()
 

@@ -16,14 +16,6 @@
 
 """Tests for interface conformance of 'WorkingTree.annotate_iter'"""
 
-import os
-
-from bzrlib import (
-    errors,
-    inventory,
-    osutils,
-    tests,
-    )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
