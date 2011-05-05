@@ -2198,6 +2198,11 @@ foo:policy = appendpath
         self.assertLength(1, sections)
         self.assertEquals('bar/dir/subdir', sections[0].get('foo'))
 
+    def test_file_urls_are_normalized(self):
+        store = self.get_store('foo.conf')
+        matcher = config.LocationMatcher(store, 'file:///dir/subdir')
+        self.assertEquals('/dir/subdir', matcher.location)
+
 
 class TestStackGet(tests.TestCase):
 

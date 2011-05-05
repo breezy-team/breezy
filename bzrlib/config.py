@@ -978,25 +978,22 @@ def _iter_for_location_by_parts(sections, location):
         number of path components in the section name, section is the section
         name and extra_path is the difference between location and the section
         name.
+
+    ``location`` will always be a local path and never a 'file://' url but the
+    section names themselves can be in either form.
     """
     location_parts = location.rstrip('/').split('/')
 
     for section in sections:
-        # location is a local path if possible, so we need
-        # to convert 'file://' urls to local paths if necessary.
-
-        # FIXME: I don't think the above comment is still up to date,
-        # LocationConfig is always instantiated with an url -- vila 2011-04-07
+        # location is a local path if possible, so we need to convert 'file://'
+        # urls in section names to local paths if necessary.
 
         # This also avoids having file:///path be a more exact
         # match than '/path'.
 
-        # FIXME: Not sure about the above either, but since the path components
-        # are compared in sync, adding two empty components (//) is likely to
-        # trick the comparison and also trick the check on the number of
-        # components, so we *should* take only the relevant part of the url. On
-        # the other hand, this means 'file://' urls *can't* be used in sections
-        # so more work is probably needed -- vila 2011-04-07
+        # FIXME: This still raises an issue if a user defines both file:///path
+        # *and* /path. Should we raise an error in this case -- vila 20110505
+
         if section.startswith('file://'):
             section_path = urlutils.local_path_from_url(section)
         else:
@@ -2412,6 +2409,8 @@ class LocationMatcher(SectionMatcher):
 
     def __init__(self, store, location):
         super(LocationMatcher, self).__init__(store)
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
         self.location = location
 
     def _get_matching_sections(self):
@@ -2435,8 +2434,6 @@ class LocationMatcher(SectionMatcher):
         matching_sections = []
         if no_name_section is not None:
             matching_sections.append(
-                # FIXME: ``location`` may need to be normalized for appendpath
-                # to work correctly ? -- vila 20110504
                 LocationSection(no_name_section, 0, self.location))
         for section_id, extra_path, length in filtered_sections:
             # a section id is unique for a given store so it's safe to iterate
