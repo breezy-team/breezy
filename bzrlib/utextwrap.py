@@ -78,6 +78,11 @@ class UTextWrapper(textwrap.TextWrapper):
     even if !break_long_words when word contains double width
     characters.
     """
+    def __init__(self, width=None, **kwargs):
+        if width is None:
+            width = (osutils.terminal_width() or
+                        osutils.default_terminal_width) - 1
+        textwrap.TextWrapper.__init__(self, width, **kwargs)
 
     def _handle_long_word(self, chunks, cur_line, cur_len, width):
         head, rest = _break_cjkword(chunks[-1], width)
@@ -173,10 +178,7 @@ def wrap(text, width=None, **kwargs):
     space.  See TextWrapper class for available keyword args to customize
     wrapping behaviour.
     """
-    if width is None:
-        width = osutils.terminal_width() - 1
-    w = UTextWrapper(width=width, **kwargs)
-    return w.wrap(text)
+    return UTextWrapper(width=width, **kwargs).wrap(text)
 
 def fill(text, width=None, **kwargs):
     """Fill a single paragraph of text, returning a new string.
@@ -187,8 +189,5 @@ def fill(text, width=None, **kwargs):
     whitespace characters converted to space.  See TextWrapper class for
     available keyword args to customize wrapping behaviour.
     """
-    if width is None:
-        width = osutils.terminal_width() - 1
-    w = UTextWrapper(width=width, **kwargs)
-    return w.fill(text)
+    return UTextWrapper(width=width, **kwargs).fill(text)
 
