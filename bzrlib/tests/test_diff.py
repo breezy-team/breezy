@@ -40,8 +40,9 @@ import bzrlib.revision as _mod_revision
 import bzrlib.transform as transform
 import bzrlib.patiencediff
 import bzrlib._patiencediff_py
-from bzrlib.tests import (Feature, TestCase, TestCaseWithTransport,
-                          TestCaseInTempDir, TestSkipped)
+from bzrlib.tests import (EncodingAdapter, Feature, TestCase,
+                          TestCaseWithTransport, TestCaseInTempDir,
+                          TestSkipped)
 from bzrlib.revisiontree import RevisionTree
 from bzrlib.revisionspec import RevisionSpec
 
@@ -1392,6 +1393,57 @@ class TestDiffFromTool(TestCaseWithTransport):
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
         diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')
+
+
+class TestDiffFromToolEncodedFilename(TestCaseWithTransport):
+
+    def check_filename_passed(self, filename):
+        output = StringIO()
+        tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/'+filename, 'oldcontent')])
+        tree.add('oldname', 'file-id')
+        tree.commit('old tree', timestamp=0)
+        self.build_tree_contents([('tree/'+filename, 'newcontent')])
+        old_tree = tree.basis_tree()
+        old_tree.lock_read()
+        self.addCleanup(old_tree.unlock)
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        diff_obj = DiffFromTool(
+                    ['python', '-c',
+                     ('import sys;'
+                      'sys.stdout.write('
+                      '  open(sys.argv[1], "rb").read()+":"+'
+                      '  open(sys.argv[2], "rb").read())'),
+                     '@old_path', '@new_path'],
+                    old_tree, tree, output)
+        self.addCleanup(diff_obj.finish)
+        diff_obj.diff('file-id', filename, filename)
+        self.assertEqual(
+                "oldcontent:newcontent",
+                output.getvalue()
+                )
+
+    def test_encodable_filename(self):
+        import sys
+        for _, scenario in EncodingAdapter.encoding_scenarios:
+            encoding = scenario['encoding']
+            filename = scenario['info']['filename']
+            self.overrideAttr(sys, 'getfilesystemencoding', lambda: encoding)
+            check_filename_passed(filename)
+
+    def test_unencodable_filename(self):
+        import sys
+        for _, scenario in EncodingAdapter.encoding_scenarios:
+            encoding = scenario['encoding']
+            filename = scenario['info']['filename']
+
+            if encoding == 'iso-8859-1':
+                encoding = 'iso-8859-2'
+            else:
+                encoding = 'iso-8859-1'
+            self.overrideAttr(sys, 'getfilesystemencoding', lambda: encoding)
+            check_filename_passed(filename)
 
 
 class TestGetTreesAndBranchesToDiff(TestCaseWithTransport):
