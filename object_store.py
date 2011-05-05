@@ -496,11 +496,14 @@ class BazaarObjectStore(BaseObjectStore):
             self.mapping.BZR_DUMMY_FILE)
         if (inv.root.file_id == fileid and
             self.mapping.BZR_FILE_IDS_FILE is not None):
+            if tree is None:
+                tree = Tree()
             b = self._create_fileid_map_blob(inv)
             # If this is the root tree, add the file ids
             tree[self.mapping.BZR_FILE_IDS_FILE] = (
                 (stat.S_IFREG | 0644), b.id)
-        _check_expected_sha(expected_sha, tree)
+        if tree is not None:
+            _check_expected_sha(expected_sha, tree)
         return tree
 
     def get_parents(self, sha):
