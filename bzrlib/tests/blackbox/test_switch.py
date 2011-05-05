@@ -278,12 +278,11 @@ class TestSwitch(TestCaseWithTransport):
         self.run_bzr('switch --directory checkout b')
         self.assertFileEqual('initial\nmore\n', 'checkout/a')
 
-
-class TestSwitchParentLocation(TestCaseWithTransport):
+class TestSwitchParentLocationBase(TestCaseWithTransport):
 
     def setUp(self):
         """Set up a repository and branch ready for testing."""
-        super(TestSwitchParentLocation, self).setUp()
+        super(TestSwitchParentLocationBase, self).setUp()
         self.script_runner = script.ScriptRunner()
         self.script_runner.run_script(self, '''
                 $ bzr init-repo --no-trees repo
@@ -295,36 +294,37 @@ class TestSwitchParentLocation(TestCaseWithTransport):
                 Using shared repository: ...
                 ''')
 
-    def assertParentCorrect(self, branch, expected_parent, name):
+    def assertParent(self, expected_parent, branch):
         """Verify that the parent is not None and is set correctly."""
         actual_parent = branch.get_parent()
-        self.assertIsNot(actual_parent, None, name + "Parent not set")
-        expected = urlutils.strip_trailing_slash(urlutils.normalize_url(expected_parent))
-        actual = urlutils.strip_trailing_slash(urlutils.normalize_url(actual_parent))
-        self.assertEquals(expected, actual, name + "Parent set incorrectly")
+        self.assertIsSameRealPath(urlutils.local_path_to_url(expected_parent),
+                                  branch.get_parent())
 
-    def _create_checkout_and_switch(self, option, suffix):
+
+class TestSwitchParentLocation(TestSwitchParentLocationBase):
+
+    def _checkout_and_switch(self, option=''):
         self.script_runner.run_script(self, '''
-                $ bzr checkout %(option)s repo/trunk work_%(suffix)s_switch
-                $ cd work_%(suffix)s_switch
-                $ bzr switch --create-branch switched_%(suffix)s
+                $ bzr checkout %(option)s repo/trunk checkout
+                $ cd checkout
+                $ bzr switch --create-branch switched
                 2>Tree is up to date at revision 0.
-                2>Switched to branch:...switched_%(suffix)s...
+                2>Switched to branch:...switched...
                 $ cd ..
                 ''' % locals())
-        bound_branch = branch.Branch.open_containing('work_%(suffix)s_switch' % locals())[0]
-        master_branch = branch.Branch.open_containing('repo/switched_%(suffix)s' % locals())[0]
+        bound_branch = branch.Branch.open_containing('checkout')[0]
+        master_branch = branch.Branch.open_containing('repo/switched')[0]
         return (bound_branch, master_branch)
 
     def test_switch_parent_lightweight(self):
-        """Verify parent directory for lightweight checkout using bzr switch."""
-        bb, mb = self._create_checkout_and_switch(option='--lightweight', suffix='lw')
-        self.assertParentCorrect(bb, urlutils.local_path_to_url('repo/trunk'), "Checkout")
-        self.assertParentCorrect(mb, urlutils.local_path_to_url('repo/trunk'), "Master Branch")
+        """Lightweight checkout using bzr switch."""
+        bb, mb = self._checkout_and_switch(option='--lightweight')
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)
 
     def test_switch_parent_heavyweight(self):
-        """Verify parent directory for heavyweight checkout using bzr switch."""
-        bb, mb = self._create_checkout_and_switch(option='', suffix='hw')
-        self.assertParentCorrect(bb, urlutils.local_path_to_url('repo/trunk'), "Bound Branch")
-        self.assertParentCorrect(mb, urlutils.local_path_to_url('repo/trunk'), "Master Branch")
+        """Heavyweight checkout using bzr switch."""
+        bb, mb = self._checkout_and_switch()
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)
 
