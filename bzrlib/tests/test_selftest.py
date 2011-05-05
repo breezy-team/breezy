@@ -455,7 +455,7 @@ class TestInterTreeScenarios(tests.TestCase):
         from bzrlib.tests.per_intertree import (
             make_scenarios,
             )
-        from bzrlib.workingtree import WorkingTreeFormat3
+        from bzrlib.workingtree_3 import WorkingTreeFormat3
         from bzrlib.workingtree_4 import WorkingTreeFormat4
         input_test = TestInterTreeScenarios(
             "test_scenarios")

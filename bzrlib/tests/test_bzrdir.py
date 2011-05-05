@@ -1058,7 +1058,7 @@ class NonLocalTests(TestCaseWithTransport):
         my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit2'))
         checkout_format = my_bzrdir.checkout_metadir()
         self.assertIsInstance(checkout_format.workingtree_format,
-                              workingtree_3.WorkingTreeFormat3)
+                              workingtree_4.WorkingTreeFormat4)
 
 
 class TestHTTPRedirections(object):
