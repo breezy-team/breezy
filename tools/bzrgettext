@@ -58,15 +58,25 @@ def normalize(s):
     return s
 
 
-def poentry(path, lineno, s):
-    return ('#: %s:%d\n' % (path, lineno) +
-            'msgid %s\n' % normalize(s) +
-            'msgstr ""\n')
+MSGID_FOUND = set()
+
+def poentry(path, lineno, s, comment=None):
+    if s in MSGID_FOUND:
+        return
+    MSGID_FOUND.add(s)
+    if comment is None:
+        comment = ''
+    else:
+        comment = "# %s\n" % comment
+    print ('#: %s:%d\n' % (path, lineno) +
+           comment+
+           'msgid %s\n' % normalize(s) +
+           'msgstr ""\n')
 
 def poentry_per_paragraph(path, lineno, msgid):
     paragraphs = msgid.split('\n\n')
     for p in paragraphs:
-        print poentry(path, lineno, p)
+        poentry(path, lineno, p)
         lineno += p.count('\n') + 2
 
 def offset(src, doc, name, default):
@@ -96,6 +106,12 @@ def importpath(path):
         mod = getattr(mod, comp)
     return mod
 
+def options(path, lineno, cmdklass):
+    cmd = cmdklass()
+    for name, opt in cmd.options().iteritems():
+        poentry(path, lineno, opt.help,
+                "help of '%s' option of '%s' command" % (name, cmd.name()))
+
 
 def docstrings(path):
     """Extract docstrings from path.
@@ -119,7 +135,9 @@ def docstrings(path):
             continue
         if (inspect.isclass(obj) and issubclass(obj, cmd_klass)
                 and not obj is cmd_klass):
-            poentry_per_paragraph(path, inspect.findsource(obj)[1], doc)
+            lineno = inspect.findsource(obj)[1]
+            poentry_per_paragraph(path, lineno, doc)
+            options(path, lineno, obj)
 
 def bzrerrors():
     """Extract fmt string from bzrlib.errors."""
@@ -137,8 +155,7 @@ def bzrerrors():
             continue
         fmt = getattr(klass, "_fmt", None)
         if fmt:
-            print poentry('bzrlib/erros.py',
-                    inspect.findsource(klass)[1], fmt)
+            poentry('bzrlib/erros.py', inspect.findsource(klass)[1], fmt)
 
 
 def rawtext(path):
