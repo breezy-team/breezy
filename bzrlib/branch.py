@@ -754,6 +754,8 @@ class Branch(controldir.ControlComponent):
             revid = _mod_revision.NULL_REVISION
         else:
             revid = rev_history[-1]
+        if rev_history != self._lefthand_history(revid):
+            raise errors.NotLefthandHistory(rev_history)
         self.set_last_revision_info(len(rev_history), revid)
         self._cache_revision_history(rev_history)
 
