@@ -425,10 +425,10 @@ clean-win32: clean-docs
 .PHONY: update-pot po/bzr.pot
 update-pot: po/bzr.pot
 
-PYFILES:=$(shell find bzrlib -name '*.py')
+PYFILES:=$(shell find bzrlib -name '*.py' | grep -v '/tests/')
 
 po/bzr.pot: $(PYFILES) $(DOCFILES)
-	$(PYTHON) tools/bzrgettext bzrlib/*.py \
+	$(PYTHON) tools/bzrgettext.py bzrlib/*.py \
 	  bzrlib/plugins/*.py \
 	  > po/bzr.pot
 	echo $(PYFILES) | xargs \
