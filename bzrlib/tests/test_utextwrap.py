@@ -57,6 +57,7 @@ class TestUTextWrap(tests.TestCase):
         self.check_cut(s, 12, 8)
         self.check_cut(s, 13, 9)
         self.check_cut(s, 14, 9)
+        self.check_cut('A'*5, 3, 3)
 
     def test_split(self):
         w = utextwrap.UTextWrapper()
@@ -101,6 +102,38 @@ class TestUTextWrap(tests.TestCase):
                     "spam" + _str_D[:2],
                     _str_D[2:]+_str_D[:2],
                     _str_D[2:]
+                    ]))
+
+    def test_fill_indent(self):
+        w = utextwrap.UTextWrapper(8,
+                initial_indent=' '*4, subsequent_indent=' '*4)
+
+        self.assertEqual(w.fill(_str_SD),
+                u'\n'.join([
+                    "    hell",
+                    "    o" + _str_D[0],
+                    "    " + _str_D[1:3],
+                    "    " + _str_D[3]
+                    ]))
+
+        w.break_long_words = False
+
+        self.assertEqual(w.fill(_str_SD),
+                u'\n'.join([
+                    "    hello",
+                    "    " + _str_D[:2],
+                    "    " + _str_D[2:],
+                    ]))
+
+        w.width = 3
+
+        self.assertEqual(w.fill(_str_SD),
+                u'\n'.join([
+                    "    hello",
+                    "    " + _str_D[0],
+                    "    " + _str_D[1],
+                    "    " + _str_D[2],
+                    "    " + _str_D[3],
                     ]))
 
 
