@@ -642,10 +642,15 @@ class InterRemoteGitNonGitRepository(InterGitNonGitRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
-        return (isinstance(source, RemoteGitRepository) and
-                target.supports_rich_root() and
-                not isinstance(target, GitRepository) and
-                target.texts is not None)
+        if not isinstance(source, RemoteGitRepository):
+            return False
+        if not target.supports_rich_root():
+            return False
+        if isinstance(target, GitRepository):
+            return False
+        if not target._format.supports_full_versioned_files:
+            return False
+        return True
 
 
 class InterLocalGitNonGitRepository(InterGitNonGitRepository):
@@ -676,10 +681,15 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
     @staticmethod
     def is_compatible(source, target):
         """Be compatible with GitRepository."""
-        return (isinstance(source, LocalGitRepository) and
-                target.supports_rich_root() and
-                not isinstance(target, GitRepository) and
-                target.texts is not None)
+        if not isinstance(source, LocalGitRepository):
+            return False
+        if not target.supports_rich_root():
+            return False
+        if isinstance(target, GitRepository):
+            return False
+        if not target._format.supports_full_versioned_files:
+            return False
+        return True
 
 
 class InterGitGitRepository(InterGitRepository):

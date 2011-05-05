@@ -578,9 +578,15 @@ class InterFromGitBranch(branch.GenericInterBranch):
 
     @classmethod
     def is_compatible(cls, source, target):
-        return (isinstance(source, GitBranch) and
-                not isinstance(target, GitBranch) and
-                (getattr(cls._get_interrepo(source, target), "fetch_objects", None) is not None))
+        if not isinstance(source, GitBranch):
+            return False
+        if isinstance(target, GitBranch):
+            # InterLocalGitRemoteGitBranch or InterToGitBranch should be used
+            return False
+        if getattr(cls._get_interrepo(source, target), "fetch_objects", None) is None:
+            # fetch_objects is necessary for this to work
+            return False
+        return True
 
     def fetch(self, stop_revision=None, fetch_tags=True):
         self.fetch_objects(stop_revision, fetch_tags=fetch_tags)
