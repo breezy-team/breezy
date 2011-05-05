@@ -139,19 +139,39 @@ class TestUTextFill(tests.TestCase):
 # Note that some distribution including Ubuntu doesn't install
 # Python's test suite.
 try:
-    import test.test_textwrap as _test_textwrap
+    from test import test_textwrap
 
-    # replace test_textwrap's TextWrapper with UTextWrapper
-    _test_textwrap.TextWrapper = utextwrap.UTextWrapper
-    _test_textwrap.wrap = utextwrap.wrap
-    _test_textwrap.fill = utextwrap.fill
+    def override_textwrap_symbols(testcase):
+        # Override the symbols imported by test_textwrap so it uses our own
+        # replacements.
+        testcase.overrideAttr(test_textwrap, 'TextWrapper',
+                              utextwrap.UTextWrapper)
+        testcase.overrideAttr(test_textwrap, 'wrap', utextwrap.wrap)
+        testcase.overrideAttr(test_textwrap, 'fill', utextwrap.fill)
 
-    class TestWrap(_test_textwrap.WrapTestCase):
-        pass
-    class TestLongWord(_test_textwrap.LongWordTestCase):
-        pass
-    class TestIndent(_test_textwrap.IndentTestCases):
-        pass
+
+    def setup_both(testcase, base_class, reused_class):
+        super(base_class, testcase).setUp()
+        override_textwrap_symbols(testcase)
+        reused_class.setUp(testcase)
+
+
+    class TestWrap(tests.TestCase, test_textwrap.WrapTestCase):
+
+        def setUp(self):
+            setup_both(self, TestWrap, test_textwrap.WrapTestCase)
+
+
+    class TestLongWord(tests.TestCase, test_textwrap.LongWordTestCase):
+
+        def setUp(self):
+            setup_both(self, TestLongWord, test_textwrap.LongWordTestCase)
+
+
+    class TestIndent(tests.TestCase, test_textwrap.IndentTestCases):
+
+        def setUp(self):
+            setup_both(self, TestIndent, test_textwrap.IndentTestCases)
+
 except ImportError:
     pass
-
