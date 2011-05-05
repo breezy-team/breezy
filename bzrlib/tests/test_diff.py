@@ -1427,28 +1427,34 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
         output = StringIO()
         tree = self.make_branch_and_tree('tree')
         self.build_tree_contents([('tree/'+filename, 'oldcontent')])
-        tree.add('oldname', 'file-id')
+        tree.add(filename, 'file-id')
         tree.commit('old tree', timestamp=0)
         self.build_tree_contents([('tree/'+filename, 'newcontent')])
         old_tree = tree.basis_tree()
         old_tree.lock_read()
-        self.addCleanup(old_tree.unlock)
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        diff_obj = DiffFromTool(
-                    ['python', '-c',
-                     ('import sys;'
-                      'sys.stdout.write('
-                      '  open(sys.argv[1], "rb").read()+":"+'
-                      '  open(sys.argv[2], "rb").read())'),
-                     '@old_path', '@new_path'],
-                    old_tree, tree, output)
-        self.addCleanup(diff_obj.finish)
-        diff_obj.diff('file-id', filename, filename)
-        self.assertEqual(
-                "oldcontent:newcontent",
-                output.getvalue()
-                )
+        try:
+            tree.lock_read()
+            try:
+                diff_obj = diff.DiffFromTool(
+                            ['python', '-c',
+                             ('import sys;'
+                              'sys.stdout.write('
+                              '  open(sys.argv[1], "rb").read()+":"+'
+                              '  open(sys.argv[2], "rb").read())'),
+                             '@old_path', '@new_path'],
+                            old_tree, tree, output)
+                self.addCleanup(diff_obj.finish)
+                diff_obj.diff('file-id', filename, filename, 'file', 'file')
+                self.assertEqual(
+                        "oldcontent:newcontent",
+                        output.getvalue()
+                        )
+            finally:
+                tree.unlock()
+        finally:
+            old_tree.unlock()
+        import shutil
+        shutil.rmtree(self.test_dir + '/tree')
 
     def test_encodable_filename(self):
         import sys
