@@ -2850,22 +2850,6 @@ class BzrBranch8(BzrBranch):
         self._extend_partial_history(stop_index=last_revno-1)
         return list(reversed(self._partial_revision_history_cache))
 
-    def _write_revision_history(self, history):
-        """Factored out of set_revision_history.
-
-        This performs the actual writing to disk, with format-specific checks.
-        It is intended to be called by BzrBranch5.set_revision_history.
-        """
-        if len(history) == 0:
-            last_revision = 'null:'
-        else:
-            if history != self._lefthand_history(history[-1]):
-                raise errors.NotLefthandHistory(history)
-            last_revision = history[-1]
-        if self._get_append_revisions_only():
-            self._check_history_violation(last_revision)
-        self._write_last_revision_info(len(history), last_revision)
-
     @needs_write_lock
     def _set_parent_location(self, url):
         """Set the parent branch"""
