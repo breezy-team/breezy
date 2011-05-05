@@ -420,6 +420,25 @@ clean-win32: clean-docs
 	$(PYTHON) tools/win32/ostools.py remove dist
 
 
+# i18n targets
+
+.PHONY: update-pot po/bzr.pot
+update-pot: po/bzr.pot
+
+PYFILES:=$(shell find bzrlib -name '*.py')
+
+po/bzr.pot: $(PYFILES) $(DOCFILES)
+	$(PYTHON) tools/bzrgettext bzrlib/*.py \
+	  bzrlib/plugins/*.py \
+	  > po/bzr.pot
+	echo $(PYFILES) | xargs \
+	  xgettext --package-name "Bazaar" \
+	  --msgid-bugs-address "<bazaar@canonical.com>" \
+	  --copyright-holder "Canonical" \
+	  --from-code ISO-8859-1 --join --sort-by-file --add-comments=i18n: \
+	  -d bzr -p po -o bzr.pot
+
+
 ### Packaging Targets ###
 
 .PHONY: dist check-dist-tarball
