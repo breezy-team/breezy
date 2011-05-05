@@ -69,7 +69,8 @@ PKG_DATA = {# install files from selftest suite
                                         'tests/ssl_certs/ca.crt',
                                         'tests/ssl_certs/server_without_pass.key',
                                         'tests/ssl_certs/server_with_pass.key',
-                                        'tests/ssl_certs/server.crt'
+                                        'tests/ssl_certs/server.crt',
+                                        'locale/*/LC_MESSAGES/*.mo',
                                        ]},
            }
 
@@ -163,8 +164,12 @@ class bzr_build(build):
 ## Setup
 ########################
 
+from tools.build_mo import build_mo
+
 command_classes = {'install_scripts': my_install_scripts,
-                   'build': bzr_build}
+                   'build': bzr_build,
+                   'build_mo': build_mo,
+                   }
 from distutils import log
 from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
