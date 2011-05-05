@@ -26,6 +26,9 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Slightly reduced memory consumption when fetching into a 2a repository
+  by reusing existing caching a little better.  (Andrew Bennetts)
+
 Bug Fixes
 *********
 
