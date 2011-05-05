@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,28 +15,60 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """Black box tests for the upgrade ui."""
+import os
+import stat
 
 from bzrlib import (
     bzrdir,
-    repository,
+    controldir,
+    lockable_files,
+    ui,
     )
 from bzrlib.tests import (
-    TestCaseInTempDir,
+    features,
     TestCaseWithTransport,
     )
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
-from bzrlib.transport import get_transport
-from bzrlib.repofmt.knitrepo import (
-    RepositoryFormatKnit1,
-    )
+from bzrlib.repofmt.knitpack_repo import RepositoryFormatKnitPack1
+
+
+class OldBzrDir(bzrdir.BzrDirMeta1):
+    """An test bzr dir implementation"""
+
+    def needs_format_conversion(self, format):
+        return not isinstance(format, self.__class__)
+
+
+class ConvertOldTestToMeta(controldir.Converter):
+    """A trivial converter, used for testing."""
+
+    def convert(self, to_convert, pb):
+        ui.ui_factory.note('starting upgrade from old test format to 2a')
+        to_convert.control_transport.put_bytes(
+            'branch-format',
+            bzrdir.BzrDirMetaFormat1().get_format_string(),
+            mode=to_convert._get_file_mode())
+        return bzrdir.BzrDir.open(to_convert.user_url)
+
+
+class OldBzrDirFormat(bzrdir.BzrDirMetaFormat1):
+
+    _lock_class = lockable_files.TransportLock
+
+    def get_converter(self, format=None):
+        return ConvertOldTestToMeta()
+
+    def get_format_string(self):
+        return "Ancient Test Format"
+
+    def _open(self, transport):
+        return OldBzrDir(transport, self)
 
 
 class TestWithUpgradableBranches(TestCaseWithTransport):
 
     def setUp(self):
         super(TestWithUpgradableBranches, self).setUp()
-        self.addCleanup(bzrdir.BzrDirFormat._set_default_format,
-                        bzrdir.BzrDirFormat.get_default_format())
 
     def make_current_format_branch_and_checkout(self):
         current_tree = self.make_branch_and_tree('current_format_branch',
@@ -44,43 +76,43 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         current_tree.branch.create_checkout(
             self.get_url('current_format_checkout'), lightweight=True)
 
-    def make_format_5_branch(self):
-        # setup a format 5 branch we can upgrade from.
-        self.make_branch_and_tree('format_5_branch',
-                                  format=bzrdir.BzrDirFormat5())
-
-    def make_metadir_weave_branch(self):
-        self.make_branch_and_tree('metadir_weave_branch', format='metaweave')
-
     def test_readonly_url_error(self):
-        self.make_format_5_branch()
+        self.make_branch_and_tree("old_format_branch", format="knit")
         (out, err) = self.run_bzr(
-            ['upgrade', self.get_readonly_url('format_5_branch')], retcode=3)
-        self.assertEqual(out, "")
-        self.assertEqual(err, "bzr: ERROR: Upgrade URL cannot work with readonly URLs.\n")
+            ['upgrade', self.get_readonly_url("old_format_branch")], retcode=3)
+        err_msg = 'Upgrade URL cannot work with readonly URLs.'
+        self.assertEqualDiff('conversion error: %s\nbzr: ERROR: %s\n'
+                             % (err_msg, err_msg),
+                             err)
 
     def test_upgrade_up_to_date(self):
         self.make_current_format_branch_and_checkout()
         # when up to date we should get a message to that effect
         (out, err) = self.run_bzr('upgrade current_format_branch', retcode=3)
-        self.assertEqual("", out)
-        self.assertEqualDiff("bzr: ERROR: The branch format Meta "
-                             "directory format 1 is already at the most "
-                             "recent format.\n", err)
+        err_msg = ('The branch format %s is already at the most recent format.'
+                   % ('Meta directory format 1'))
+        self.assertEqualDiff('conversion error: %s\nbzr: ERROR: %s\n'
+                             % (err_msg, err_msg),
+                             err)
 
     def test_upgrade_up_to_date_checkout_warns_branch_left_alone(self):
         self.make_current_format_branch_and_checkout()
         # when upgrading a checkout, the branch location and a suggestion
         # to upgrade it should be emitted even if the checkout is up to
         # date
+        burl = self.get_transport('current_format_branch').base
+        curl = self.get_transport('current_format_checkout').base
         (out, err) = self.run_bzr('upgrade current_format_checkout', retcode=3)
-        self.assertEqual("This is a checkout. The branch (%s) needs to be "
-                         "upgraded separately.\n"
-                         % get_transport(self.get_url('current_format_branch')).base,
-                         out)
-        self.assertEqualDiff("bzr: ERROR: The branch format Meta "
-                             "directory format 1 is already at the most "
-                             "recent format.\n", err)
+        self.assertEqual(
+            'Upgrading branch %s ...\nThis is a checkout.'
+            ' The branch (%s) needs to be upgraded separately.\n'
+            % (curl, burl),
+            out)
+        msg = 'The branch format %s is already at the most recent format.' % (
+            'Meta directory format 1')
+        self.assertEqualDiff('conversion error: %s\nbzr: ERROR: %s\n'
+                             % (msg, msg),
+                             err)
 
     def test_upgrade_checkout(self):
         # upgrading a checkout should work
@@ -91,106 +123,146 @@ class TestWithUpgradableBranches(TestCaseWithTransport):
         # anonymous branch
         pass
 
-    def test_ugrade_branch_in_repo(self):
+    def test_upgrade_branch_in_repo(self):
         # upgrading a branch in a repo should warn about not upgrading the repo
         pass
 
-    def test_upgrade_explicit_metaformat(self):
-        # users can force an upgrade to metadir format.
-        self.make_format_5_branch()
-        url = get_transport(self.get_url('format_5_branch')).base
+    def test_upgrade_control_dir(self):
+        old_format = OldBzrDirFormat()
+        self.addCleanup(bzrdir.BzrProber.formats.remove,
+            old_format.get_format_string())
+        bzrdir.BzrProber.formats.register(old_format.get_format_string(),
+            old_format)
+        self.addCleanup(controldir.ControlDirFormat._set_default_format,
+                        controldir.ControlDirFormat.get_default_format())
+
+        # setup an old format branch we can upgrade from.
+        path = 'old_format_branch'
+        self.make_branch_and_tree(path, format=old_format)
+        url = self.get_transport(path).base
         # check --format takes effect
-        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
+        controldir.ControlDirFormat._set_default_format(old_format)
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
-            ['upgrade', '--format=metaweave', url])
-        self.assertEqualDiff("""starting upgrade of %s
+            ['upgrade', '--format=2a', url])
+        self.assertEqualDiff("""Upgrading branch %s ...
+starting upgrade of %s
 making backup of %s.bzr
   to %s%s
-starting upgrade from format 5 to 6
-adding prefixes to weaves
-adding prefixes to revision-store
-starting upgrade from format 6 to metadir
+starting upgrade from old test format to 2a
 finished
-""" % (url, url, url, backup_dir), out)
+""" % (url, url, url, url, backup_dir), out)
         self.assertEqualDiff("", err)
         self.assertTrue(isinstance(
-            bzrdir.BzrDir.open(self.get_url('format_5_branch'))._format,
+            bzrdir.BzrDir.open(self.get_url(path))._format,
             bzrdir.BzrDirMetaFormat1))
 
     def test_upgrade_explicit_knit(self):
-        # users can force an upgrade to knit format from a metadir weave
-        # branch
-        self.make_metadir_weave_branch()
-        url = get_transport(self.get_url('metadir_weave_branch')).base
+        # users can force an upgrade to knit format from a metadir pack 0.92
+        # branch to a 2a branch.
+        self.make_branch_and_tree('branch', format='knit')
+        url = self.get_transport('branch').base
         # check --format takes effect
-        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
         backup_dir = 'backup.bzr.~1~'
         (out, err) = self.run_bzr(
-            ['upgrade', '--format=knit', url])
-        self.assertEqualDiff("""starting upgrade of %s
+            ['upgrade', '--format=pack-0.92', url])
+        self.assertEqualDiff("""Upgrading branch %s ...
+starting upgrade of %s
 making backup of %s.bzr
   to %s%s
 starting repository conversion
 repository converted
 finished
-""" % (url, url, url, backup_dir), out)
+""" % (url, url, url, url, backup_dir),
+                             out)
         self.assertEqualDiff("", err)
-        converted_dir = bzrdir.BzrDir.open(self.get_url('metadir_weave_branch'))
+        converted_dir = bzrdir.BzrDir.open(self.get_url('branch'))
         self.assertTrue(isinstance(converted_dir._format,
                                    bzrdir.BzrDirMetaFormat1))
         self.assertTrue(isinstance(converted_dir.open_repository()._format,
-                                   RepositoryFormatKnit1))
+                                   RepositoryFormatKnitPack1))
 
     def test_upgrade_repo(self):
-        self.run_bzr('init-repository --format=metaweave repo')
-        self.run_bzr('upgrade --format=knit repo')
+        self.run_bzr('init-repository --format=pack-0.92 repo')
+        self.run_bzr('upgrade --format=2a repo')
 
+    def assertLegalOption(self, option_str):
+        # Confirm that an option is legal. (Lower level tests are
+        # expected to validate the actual functionality.)
+        self.run_bzr('init --format=pack-0.92 branch-foo')
+        self.run_bzr('upgrade --format=2a branch-foo %s' % (option_str,))
+
+    def assertBranchFormat(self, dir, format):
+        branch = bzrdir.BzrDir.open_tree_or_branch(self.get_url(dir))[1]
+        branch_format = branch._format
+        meta_format = bzrdir.format_registry.make_bzrdir(format)
+        expected_format = meta_format.get_branch_format()
+        self.assertEqual(expected_format, branch_format)
+
+    def test_upgrade_clean_supported(self):
+        self.assertLegalOption('--clean')
+        self.assertBranchFormat('branch-foo', '2a')
+        backup_bzr_dir = os.path.join("branch-foo", "backup.bzr.~1~")
+        self.assertFalse(os.path.exists(backup_bzr_dir))
+
+    def test_upgrade_dry_run_supported(self):
+        self.assertLegalOption('--dry-run')
+        self.assertBranchFormat('branch-foo', 'pack-0.92')
+
+    def test_upgrade_permission_check(self):
+        """'backup.bzr' should retain permissions of .bzr. Bug #262450"""
+        self.requireFeature(features.posix_permissions_feature)
+        old_perms = stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR
+        backup_dir = 'backup.bzr.~1~'
+        self.run_bzr('init --format=1.6')
+        os.chmod('.bzr', old_perms)
+        self.run_bzr('upgrade')
+        new_perms = os.stat(backup_dir).st_mode & 0777
+        self.assertTrue(new_perms == old_perms)
 
     def test_upgrade_with_existing_backup_dir(self):
-        self.make_format_5_branch()
-        transport = get_transport(self.get_url('format_5_branch'))
-        url = transport.base
-        bzrdir.BzrDirFormat._set_default_format(bzrdir.BzrDirFormat5())
+        self.make_branch_and_tree("old_format_branch", format="knit")
+        t = self.get_transport("old_format_branch")
+        url = t.base
         backup_dir1 = 'backup.bzr.~1~'
         backup_dir2 = 'backup.bzr.~2~'
         # explicitly create backup_dir1. bzr should create the .~2~ directory
         # as backup
-        transport.mkdir(backup_dir1)
+        t.mkdir(backup_dir1)
         (out, err) = self.run_bzr(
-            ['upgrade', '--format=metaweave', url])
-        self.assertEqualDiff("""starting upgrade of %s
+            ['upgrade', '--format=2a', url])
+        self.assertEqualDiff("""Upgrading branch %s ...
+starting upgrade of %s
 making backup of %s.bzr
   to %s%s
-starting upgrade from format 5 to 6
-adding prefixes to weaves
-adding prefixes to revision-store
-starting upgrade from format 6 to metadir
+starting repository conversion
+repository converted
 finished
-""" % (url, url, url, backup_dir2), out)
+""" % (url, url, url, url, backup_dir2), out)
         self.assertEqualDiff("", err)
         self.assertTrue(isinstance(
-            bzrdir.BzrDir.open(self.get_url('format_5_branch'))._format,
+            bzrdir.BzrDir.open(self.get_url("old_format_branch"))._format,
             bzrdir.BzrDirMetaFormat1))
-        self.assertTrue(transport.has(backup_dir2))
+        self.assertTrue(t.has(backup_dir2))
+
 
 class SFTPTests(TestCaseWithSFTPServer):
     """Tests for upgrade over sftp."""
 
     def test_upgrade_url(self):
-        self.run_bzr('init --format=weave')
-        t = get_transport(self.get_url())
+        self.run_bzr('init --format=pack-0.92')
+        t = self.get_transport()
         url = t.base
-        out, err = self.run_bzr(['upgrade', '--format=knit', url])
+        out, err = self.run_bzr(['upgrade', '--format=2a', url])
         backup_dir = 'backup.bzr.~1~'
-        self.assertEqualDiff("""starting upgrade of %s
+        self.assertEqualDiff("""Upgrading branch %s ...
+starting upgrade of %s
 making backup of %s.bzr
   to %s%s
-starting upgrade from format 6 to metadir
 starting repository conversion
 repository converted
 finished
-""" % (url, url, url,backup_dir), out)
+""" % (url, url, url, url,backup_dir), out)
         self.assertEqual('', err)
 
 

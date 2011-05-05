@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@
 A crash is an exception propagated up almost to the top level of Bazaar.
 
 If we have apport <https://launchpad.net/apport/>, we store a report of the
-crash using apport into it's /var/crash spool directory, from where the user
+crash using apport into its /var/crash spool directory, from where the user
 can either manually send it to Launchpad.  In some cases (at least Ubuntu
 development releases), Apport may pop up a window asking if they want
 to send it.
@@ -33,7 +33,7 @@ We never send crash data across the network without user opt-in.
 In principle apport can run on any platform though as of Feb 2010 there seem
 to be some portability bugs.
 
-To force this off in bzr turn set APPORT_DISBLE in the environment or 
+To force this off in bzr turn set APPORT_DISABLE in the environment or 
 -Dno_apport.
 """
 
@@ -84,19 +84,27 @@ def report_bug_legacy(exc_info, err_file):
     """Report a bug by just printing a message to the user."""
     trace.print_exception(exc_info, err_file)
     err_file.write('\n')
-    err_file.write('bzr %s on python %s (%s)\n' % \
-                       (bzrlib.__version__,
-                        bzrlib._format_version_tuple(sys.version_info),
-                        platform.platform(aliased=1)))
-    err_file.write('arguments: %r\n' % sys.argv)
-    err_file.write(
+    import textwrap
+    def print_wrapped(l):
+        err_file.write(textwrap.fill(l,
+            width=78, subsequent_indent='    ') + '\n')
+    print_wrapped('bzr %s on python %s (%s)\n' % \
+        (bzrlib.__version__,
+        bzrlib._format_version_tuple(sys.version_info),
+        platform.platform(aliased=1)))
+    print_wrapped('arguments: %r\n' % sys.argv)
+    print_wrapped(textwrap.fill(
+        'plugins: ' + plugin.format_concise_plugin_list(),
+        width=78,
+        subsequent_indent='    ',
+        ) + '\n')
+    print_wrapped(
         'encoding: %r, fsenc: %r, lang: %r\n' % (
             osutils.get_user_encoding(), sys.getfilesystemencoding(),
             os.environ.get('LANG')))
-    err_file.write("plugins:\n")
-    err_file.write(_format_plugin_list())
+    # We used to show all the plugins here, but it's too verbose.
     err_file.write(
-        "\n\n"
+        "\n"
         "*** Bazaar has encountered an internal error.  This probably indicates a\n"
         "    bug in Bazaar.  You can help us fix it by filing a bug report at\n"
         "        https://bugs.launchpad.net/bzr/+filebug\n"
@@ -143,9 +151,11 @@ def _write_apport_report_to_file(exc_info):
     exc_type, exc_object, exc_tb = exc_info
 
     pr = Report()
-    # add_proc_info gets the executable and interpreter path, which is needed,
-    # plus some less useful stuff like the memory map
+    # add_proc_info sets the ExecutablePath, InterpreterPath, etc.
     pr.add_proc_info()
+    # It also adds ProcMaps which for us is rarely useful and mostly noise, so
+    # let's remove it.
+    del pr['ProcMaps']
     pr.add_user_info()
 
     # Package and SourcePackage are needed so that apport will report about even
@@ -164,6 +174,19 @@ def _write_apport_report_to_file(exc_info):
     pr['BzrPlugins'] = _format_plugin_list()
     pr['PythonLoadedModules'] = _format_module_list()
     pr['BzrDebugFlags'] = pprint.pformat(debug.debug_flags)
+
+    # actually we'd rather file directly against the upstream product, but
+    # apport does seem to count on there being one in there; we might need to
+    # redirect it elsewhere anyhow
+    pr['SourcePackage'] = 'bzr'
+    pr['Package'] = 'bzr'
+
+    # tell apport to file directly against the bzr package using 
+    # <https://bugs.launchpad.net/bzr/+bug/391015>
+    #
+    # XXX: unfortunately apport may crash later if the crashdb definition
+    # file isn't present
+    pr['CrashDb'] = 'bzr'
 
     tb_file = StringIO()
     traceback.print_exception(exc_type, exc_object, exc_tb, file=tb_file)
@@ -240,11 +263,7 @@ def _open_crash_file():
 
 
 def _format_plugin_list():
-    plugin_lines = []
-    for name, a_plugin in sorted(plugin.plugins().items()):
-        plugin_lines.append("  %-20s %s [%s]" %
-            (name, a_plugin.path(), a_plugin.__version__))
-    return '\n'.join(plugin_lines)
+    return ''.join(plugin.describe_plugins(show_paths=True))
 
 
 def _format_module_list():

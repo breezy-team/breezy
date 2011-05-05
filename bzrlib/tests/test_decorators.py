@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,11 +27,13 @@ class SampleUnlockError(Exception):
     pass
 
 
-def create_decorator_sample(style, unlock_error=None):
+def create_decorator_sample(style, unlock_error=None, meth=None):
     """Create a DecoratorSample object, using specific lock operators.
 
     :param style: The type of lock decorators to use (fast/pretty/None)
     :param unlock_error: If specified, an error to raise from unlock.
+    :param meth: a function to be decorated and added as a 'meth_read' and
+        'meth_write' to the object.
     :return: An instantiated DecoratorSample object.
     """
 
@@ -92,6 +94,10 @@ def create_decorator_sample(style, unlock_error=None):
             self.actions.append('fail_during_write')
             raise TypeError('during write')
 
+        if meth is not None:
+            meth_read = needs_read_lock(meth)
+            meth_write = needs_write_lock(meth)
+
     return DecoratorSample()
 
 
@@ -149,6 +155,20 @@ class TestDecoratorActions(TestCase):
         self.assertEqual(['lock_write', ('bank', 'bar', 'bing'),
                           'unlock_fail'], sam.actions)
 
+    def test_read_lock_preserves_default_str_kwarg_identity(self):
+        a_constant = 'A str used as a constant'
+        def meth(self, param=a_constant):
+            return param
+        sam = create_decorator_sample(self._decorator_style, meth=meth)
+        self.assertIs(a_constant, sam.meth_read())
+
+    def test_write_lock_preserves_default_str_kwarg_identity(self):
+        a_constant = 'A str used as a constant'
+        def meth(self, param=a_constant):
+            return param
+        sam = create_decorator_sample(self._decorator_style, meth=meth)
+        self.assertIs(a_constant, sam.meth_write())
+
 
 class TestFastDecoratorActions(TestDecoratorActions):
 
@@ -167,14 +187,14 @@ class TestDecoratorDocs(TestCase):
         """@needs_read_lock exposes underlying name and doc."""
         sam = create_decorator_sample(None)
         self.assertEqual('frob', sam.frob.__name__)
-        self.assertEqual('Frob the sample object', sam.frob.__doc__)
+        self.assertDocstring('Frob the sample object', sam.frob)
 
     def test_write_lock_passthrough(self):
         """@needs_write_lock exposes underlying name and doc."""
         sam = create_decorator_sample(None)
         self.assertEqual('bank', sam.bank.__name__)
-        self.assertEqual('Bank the sample, but using bar and biz.',
-                         sam.bank.__doc__)
+        self.assertDocstring('Bank the sample, but using bar and biz.',
+                             sam.bank)
 
     def test_argument_passthrough(self):
         """Test that arguments get passed around properly."""
@@ -208,8 +228,8 @@ class TestPrettyDecorators(TestCase):
                          my_function.func_code.co_name)
         self.assertEqual('(foo, bar, baz=None, biz=1)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test__fast_needs_read_lock(self):
         """Test the output of _fast_needs_read_lock."""
@@ -222,8 +242,8 @@ class TestPrettyDecorators(TestCase):
         self.assertEqual('read_locked', my_function.func_code.co_name)
         self.assertEqual('(self, *args, **kwargs)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test__pretty_needs_write_lock(self):
         """Test that _pretty_needs_write_lock generates a nice wrapper."""
@@ -237,8 +257,8 @@ class TestPrettyDecorators(TestCase):
                          my_function.func_code.co_name)
         self.assertEqual('(foo, bar, baz=None, biz=1)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test__fast_needs_write_lock(self):
         """Test the output of _fast_needs_write_lock."""
@@ -251,8 +271,8 @@ class TestPrettyDecorators(TestCase):
         self.assertEqual('write_locked', my_function.func_code.co_name)
         self.assertEqual('(self, *args, **kwargs)',
                          self.get_formatted_args(my_function))
-        self.assertEqual('Just a function that supplies several arguments.',
-                         inspect.getdoc(my_function))
+        self.assertDocstring(
+            'Just a function that supplies several arguments.', my_function)
 
     def test_use_decorators(self):
         """Test that you can switch the type of the decorators."""

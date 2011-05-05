@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,7 @@ import os
 import sys
 
 from bzrlib import (
-    errors,
+    branch,
     osutils,
     registry,
     tests,
@@ -39,7 +39,7 @@ class TestRegistry(tests.TestCase):
         a_registry = registry.Registry()
         self.register_stuff(a_registry)
 
-        self.failUnless(a_registry.default_key is None)
+        self.assertTrue(a_registry.default_key is None)
 
         # test get() (self.default_key is None)
         self.assertRaises(KeyError, a_registry.get)
@@ -49,7 +49,7 @@ class TestRegistry(tests.TestCase):
 
         # test _set_default_key
         a_registry.default_key = 'five'
-        self.failUnless(a_registry.default_key == 'five')
+        self.assertTrue(a_registry.default_key == 'five')
         self.assertEqual(5, a_registry.get())
         self.assertEqual(5, a_registry.get(None))
         # If they ask for a specific entry, they should get KeyError
@@ -64,9 +64,9 @@ class TestRegistry(tests.TestCase):
         a_registry = registry.Registry()
         self.register_stuff(a_registry)
 
-        self.failUnless('one' in a_registry)
+        self.assertTrue('one' in a_registry)
         a_registry.remove('one')
-        self.failIf('one' in a_registry)
+        self.assertFalse('one' in a_registry)
         self.assertRaises(KeyError, a_registry.get, 'one')
 
         a_registry.register('one', 'one')
@@ -286,6 +286,13 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
             '\n\n'
         )
 
+    def test_lazy_import_registry_foo(self):
+        a_registry = registry.Registry()
+        a_registry.register_lazy('foo', 'bzrlib.branch', 'Branch')
+        a_registry.register_lazy('bar', 'bzrlib.branch', 'Branch.hooks')
+        self.assertEqual(branch.Branch, a_registry.get('foo'))
+        self.assertEqual(branch.Branch.hooks, a_registry.get('bar'))
+
     def test_lazy_import_registry(self):
         plugin_name = self.create_simple_plugin()
         a_registry = registry.Registry()
@@ -297,7 +304,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         self.assertEqual(['function', 'klass', 'module', 'obj'],
                          sorted(a_registry.keys()))
         # The plugin should not be loaded until we grab the first object
-        self.failIf(plugin_name in sys.modules)
+        self.assertFalse(plugin_name in sys.modules)
 
         # By default the plugin won't be in the search path
         self.assertRaises(ImportError, a_registry.get, 'obj')
@@ -307,7 +314,7 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         try:
             obj = a_registry.get('obj')
             self.assertEqual('foo', obj)
-            self.failUnless(plugin_name in sys.modules)
+            self.assertTrue(plugin_name in sys.modules)
 
             # Now grab another object
             func = a_registry.get('function')
@@ -331,3 +338,17 @@ class TestRegistryWithDirs(tests.TestCaseInTempDir):
         finally:
             sys.path.remove(plugin_path)
 
+    def test_lazy_import_get_module(self):
+        a_registry = registry.Registry()
+        a_registry.register_lazy('obj', "bzrlib.tests.test_registry",
+            'object1')
+        self.assertEquals("bzrlib.tests.test_registry",
+            a_registry._get_module("obj"))
+
+    def test_normal_get_module(self):
+        class AThing(object):
+            """Something"""
+        a_registry = registry.Registry()
+        a_registry.register("obj", AThing())
+        self.assertEquals("bzrlib.tests.test_registry",
+            a_registry._get_module("obj"))

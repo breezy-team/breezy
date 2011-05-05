@@ -16,13 +16,13 @@
 
 """UI tests for the test framework."""
 
+import os
+
 from bzrlib import (
-    benchmarks,
     tests,
     )
 from bzrlib.tests import (
     features,
-    stub_sftp,
     )
 from bzrlib.transport import memory
 
@@ -47,24 +47,6 @@ class SelfTestPatch:
             tests.selftest = original_selftest
 
 
-class TestOptionsWritingToDisk(tests.TestCaseInTempDir, SelfTestPatch):
-
-    def test_benchmark_runs_benchmark_tests(self):
-        """selftest --benchmark should change the suite factory."""
-        params = self.get_params_passed_to_core('selftest --benchmark')
-        self.assertEqual(benchmarks.test_suite,
-            params[1]['test_suite_factory'])
-        self.assertNotEqual(None, params[1]['bench_history'])
-        benchfile = open(".perf_history", "rt")
-        try:
-            lines = benchfile.readlines()
-        finally:
-            benchfile.close()
-        # Because we don't run the actual test code no output is made to the
-        # file.
-        self.assertEqual(0, len(lines))
-
-
 class TestOptions(tests.TestCase, SelfTestPatch):
 
     def test_load_list(self):
@@ -75,6 +57,7 @@ class TestOptions(tests.TestCase, SelfTestPatch):
         # Test that we can pass a transport to the selftest core - sftp
         # version.
         self.requireFeature(features.paramiko)
+        from bzrlib.tests import stub_sftp
         params = self.get_params_passed_to_core('selftest --transport=sftp')
         self.assertEqual(stub_sftp.SFTPAbsoluteServer,
             params[1]["transport"])
@@ -167,3 +150,12 @@ class TestOptions(tests.TestCase, SelfTestPatch):
     def test_lsprof_tests(self):
         params = self.get_params_passed_to_core('selftest --lsprof-tests')
         self.assertEqual(True, params[1]["lsprof_tests"])
+
+    def test_parallel_fork_unsupported(self):
+        if getattr(os, "fork", None) is not None:
+            self.addCleanup(setattr, os, "fork", os.fork)
+            del os.fork
+        out, err = self.run_bzr(["selftest", "--parallel=fork", "-s", "bt.x"],
+            retcode=3)
+        self.assertIn("platform does not support fork", err)
+        self.assertFalse(out)

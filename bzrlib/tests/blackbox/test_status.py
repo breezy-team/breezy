@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ from bzrlib import (
     conflicts,
     errors,
     osutils,
+    status,
     )
 import bzrlib.branch
 from bzrlib.osutils import pathjoin
@@ -43,6 +44,14 @@ from bzrlib.workingtree import WorkingTree
 
 
 class BranchStatus(TestCaseWithTransport):
+
+    def setUp(self):
+        super(BranchStatus, self).setUp()
+        # As TestCase.setUp clears all hooks, we install this default
+        # post_status hook handler for the test.
+        status.hooks.install_named_hook('post_status',
+            status._show_shelve_summary,
+            'bzr status')
 
     def assertStatus(self, expected_lines, working_tree,
         revision=None, short=False, pending=True, verbose=False):
@@ -202,12 +211,18 @@ class BranchStatus(TestCaseWithTransport):
         wt = self.make_branch_and_tree('.')
         b = wt.branch
 
-        self.build_tree(['directory/','directory/hello.c', 'bye.c','test.c','dir2/'])
+        self.build_tree(['directory/','directory/hello.c',
+                         'bye.c','test.c','dir2/',
+                         'missing.c'])
         wt.add('directory')
         wt.add('test.c')
         wt.commit('testing')
+        wt.add('missing.c')
+        unlink('missing.c')
 
         self.assertStatus([
+                'missing:\n',
+                '  missing.c\n',
                 'unknown:\n',
                 '  bye.c\n',
                 '  dir2/\n',
@@ -218,6 +233,7 @@ class BranchStatus(TestCaseWithTransport):
         self.assertStatus([
                 '?   bye.c\n',
                 '?   dir2/\n',
+                '+!  missing.c\n',
                 '?   directory/hello.c\n'
                 ],
                 wt, short=True)
@@ -259,6 +275,20 @@ class BranchStatus(TestCaseWithTransport):
                          short=True, revision=revs)
         tof.seek(0)
         self.assertEquals(tof.readlines(), ['+N  test.c\n'])
+
+        tof = StringIO()
+        show_tree_status(wt, specific_files=['missing.c'], to_file=tof)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['missing:\n',
+                           '  missing.c\n'])
+
+        tof = StringIO()
+        show_tree_status(wt, specific_files=['missing.c'], to_file=tof,
+                         short=True)
+        tof.seek(0)
+        self.assertEquals(tof.readlines(),
+                          ['+!  missing.c\n'])
 
     def test_specific_files_conflicts(self):
         tree = self.make_branch_and_tree('.')
@@ -472,6 +502,39 @@ class BranchStatus(TestCaseWithTransport):
         self.assertEqual("working tree is out of date, run 'bzr update'\n",
                          err)
 
+    def test_status_on_ignored(self):
+        """Tests branch status on an unversioned file which is considered ignored.
+
+        See https://bugs.launchpad.net/bzr/+bug/40103
+        """
+        tree = self.make_branch_and_tree('.')
+
+        self.build_tree(['test1.c', 'test1.c~', 'test2.c~'])
+        result = self.run_bzr('status')[0]
+        self.assertContainsRe(result, "unknown:\n  test1.c\n")
+        short_result = self.run_bzr('status --short')[0]
+        self.assertContainsRe(short_result, "\?   test1.c\n")
+
+        result = self.run_bzr('status test1.c')[0]
+        self.assertContainsRe(result, "unknown:\n  test1.c\n")
+        short_result = self.run_bzr('status --short test1.c')[0]
+        self.assertContainsRe(short_result, "\?   test1.c\n")
+
+        result = self.run_bzr('status test1.c~')[0]
+        self.assertContainsRe(result, "ignored:\n  test1.c~\n")
+        short_result = self.run_bzr('status --short test1.c~')[0]
+        self.assertContainsRe(short_result, "I   test1.c~\n")
+
+        result = self.run_bzr('status test1.c~ test2.c~')[0]
+        self.assertContainsRe(result, "ignored:\n  test1.c~\n  test2.c~\n")
+        short_result = self.run_bzr('status --short test1.c~ test2.c~')[0]
+        self.assertContainsRe(short_result, "I   test1.c~\nI   test2.c~\n")
+
+        result = self.run_bzr('status test1.c test1.c~ test2.c~')[0]
+        self.assertContainsRe(result, "unknown:\n  test1.c\nignored:\n  test1.c~\n  test2.c~\n")
+        short_result = self.run_bzr('status --short test1.c test1.c~ test2.c~')[0]
+        self.assertContainsRe(short_result, "\?   test1.c\nI   test1.c~\nI   test2.c~\n")
+
     def test_status_write_lock(self):
         """Test that status works without fetching history and
         having a write lock.
@@ -487,6 +550,31 @@ class BranchStatus(TestCaseWithTransport):
         out, err = self.run_bzr('status branch1 -rbranch:branch2')
         self.assertEqual('', out)
 
+    def test_status_with_shelves(self):
+        """Ensure that _show_shelve_summary handler works.
+        """
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['hello.c'])
+        wt.add('hello.c')
+        self.run_bzr(['shelve', '--all', '-m', 'foo'])
+        self.build_tree(['bye.c'])
+        wt.add('bye.c')
+        self.assertStatus([
+                'added:\n',
+                '  bye.c\n',
+                '1 shelf exists. See "bzr shelve --list" for details.\n',
+            ],
+            wt)
+        self.run_bzr(['shelve', '--all', '-m', 'bar'])
+        self.build_tree(['spam.c'])
+        wt.add('spam.c')
+        self.assertStatus([
+                'added:\n',
+                '  spam.c\n',
+                '2 shelves exist. See "bzr shelve --list" for details.\n',
+            ],
+            wt)
+
 
 class CheckoutStatus(BranchStatus):
 
@@ -498,7 +586,8 @@ class CheckoutStatus(BranchStatus):
     def make_branch_and_tree(self, relpath):
         source = self.make_branch(pathjoin('..', relpath))
         checkout = bzrdir.BzrDirMetaFormat1().initialize(relpath)
-        bzrlib.branch.BranchReferenceFormat().initialize(checkout, source)
+        bzrlib.branch.BranchReferenceFormat().initialize(checkout,
+            target_branch=source)
         return checkout.create_workingtree()
 
 
@@ -595,10 +684,27 @@ class TestStatus(TestCaseWithTransport):
         result2 = self.run_bzr("status -SV -r 0..")[0]
         self.assertEquals(result2, result)
 
-    def assertStatusContains(self, pattern):
+    def assertStatusContains(self, pattern, short=False):
         """Run status, and assert it contains the given pattern"""
-        result = self.run_bzr("status --short")[0]
+        if short:
+            result = self.run_bzr("status --short")[0]
+        else:
+            result = self.run_bzr("status")[0]
         self.assertContainsRe(result, pattern)
+
+    def test_kind_change_plain(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['file'])
+        tree.add('file')
+        tree.commit('added file')
+        unlink('file')
+        self.build_tree(['file/'])
+        self.assertStatusContains('kind changed:\n  file \(file => directory\)')
+        tree.rename_one('file', 'directory')
+        self.assertStatusContains('renamed:\n  file/ => directory/\n' \
+                                  'modified:\n  directory/\n')
+        rmdir('directory')
+        self.assertStatusContains('removed:\n  file\n')
 
     def test_kind_change_short(self):
         tree = self.make_branch_and_tree('.')
@@ -607,11 +713,14 @@ class TestStatus(TestCaseWithTransport):
         tree.commit('added file')
         unlink('file')
         self.build_tree(['file/'])
-        self.assertStatusContains('K  file => file/')
+        self.assertStatusContains('K  file => file/',
+                                   short=True)
         tree.rename_one('file', 'directory')
-        self.assertStatusContains('RK  file => directory/')
+        self.assertStatusContains('RK  file => directory/',
+                                   short=True)
         rmdir('directory')
-        self.assertStatusContains('RD  file => directory')
+        self.assertStatusContains('RD  file => directory',
+                                   short=True)
 
     def test_status_illegal_revision_specifiers(self):
         out, err = self.run_bzr('status -r 1..23..123', retcode=3)
@@ -650,16 +759,6 @@ class TestStatus(TestCaseWithTransport):
 
 class TestStatusEncodings(TestCaseWithTransport):
 
-    def setUp(self):
-        TestCaseWithTransport.setUp(self)
-        self.user_encoding = osutils._cached_user_encoding
-        self.stdout = sys.stdout
-
-    def tearDown(self):
-        osutils._cached_user_encoding = self.user_encoding
-        sys.stdout = self.stdout
-        TestCaseWithTransport.tearDown(self)
-
     def make_uncommitted_tree(self):
         """Build a branch with uncommitted unicode named changes in the cwd."""
         working_tree = self.make_branch_and_tree(u'.')
@@ -673,8 +772,7 @@ class TestStatusEncodings(TestCaseWithTransport):
         return working_tree
 
     def test_stdout_ascii(self):
-        sys.stdout = StringIO()
-        osutils._cached_user_encoding = 'ascii'
+        self.overrideAttr(osutils, '_cached_user_encoding', 'ascii')
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr("status")
 
@@ -684,8 +782,7 @@ added:
 """)
 
     def test_stdout_latin1(self):
-        sys.stdout = StringIO()
-        osutils._cached_user_encoding = 'latin-1'
+        self.overrideAttr(osutils, '_cached_user_encoding', 'latin-1')
         working_tree = self.make_uncommitted_tree()
         stdout, stderr = self.run_bzr('status')
 

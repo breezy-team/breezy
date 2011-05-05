@@ -18,6 +18,7 @@ import os
 from cStringIO import StringIO
 
 from bzrlib import (
+    branchbuilder,
     errors,
     log,
     registry,
@@ -115,6 +116,7 @@ class TestCaseForLogFormatter(tests.TestCaseWithTransport, TestLogMixin):
             branch.tags.set_tag('v1.0rc1', 'rev-3')
             branch.tags.set_tag('v1.0', 'rev-3')
         return wt
+
 
 class LogCatcher(log.LogFormatter):
     """Pull log messages into a list rather than displaying them.
@@ -369,6 +371,32 @@ Use --include-merges or -n0 to see merged revisions.
 """,
             wt.branch, log.ShortLogFormatter,
             show_log_kwargs=dict(start_revision=rev, end_revision=rev))
+
+    def test_show_ids(self):
+        wt = self.make_branch_and_tree('parent')
+        self.build_tree(['parent/f1', 'parent/f2'])
+        wt.add(['f1','f2'])
+        self.wt_commit(wt, 'first post', rev_id='a')
+        child_wt = wt.bzrdir.sprout('child').open_workingtree()
+        self.wt_commit(child_wt, 'branch 1 changes', rev_id='b')
+        wt.merge_from_branch(child_wt.branch)
+        self.wt_commit(wt, 'merge branch 1', rev_id='c')
+        self.assertFormatterResult("""\
+    2 Joe Foo\t2005-11-22 [merge]
+      revision-id:c
+      merge branch 1
+
+          1.1.1 Joe Foo\t2005-11-22
+                revision-id:b
+                branch 1 changes
+
+    1 Joe Foo\t2005-11-22
+      revision-id:a
+      first post
+
+""",
+            wt.branch, log.ShortLogFormatter,
+            formatter_kwargs=dict(levels=0,show_ids=True))
 
 
 class TestShortLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
@@ -658,6 +686,47 @@ message:
         self.assertEqualDiff('''custom_prop_name: test_value\n''',
                              sio.getvalue())
 
+    def test_show_ids(self):
+        wt = self.make_branch_and_tree('parent')
+        self.build_tree(['parent/f1', 'parent/f2'])
+        wt.add(['f1','f2'])
+        self.wt_commit(wt, 'first post', rev_id='a')
+        child_wt = wt.bzrdir.sprout('child').open_workingtree()
+        self.wt_commit(child_wt, 'branch 1 changes', rev_id='b')
+        wt.merge_from_branch(child_wt.branch)
+        self.wt_commit(wt, 'merge branch 1', rev_id='c')
+        self.assertFormatterResult("""\
+------------------------------------------------------------
+revno: 2 [merge]
+revision-id: c
+parent: a
+parent: b
+committer: Joe Foo <joe@foo.com>
+branch nick: parent
+timestamp: Tue 2005-11-22 00:00:02 +0000
+message:
+  merge branch 1
+    ------------------------------------------------------------
+    revno: 1.1.1
+    revision-id: b
+    parent: a
+    committer: Joe Foo <joe@foo.com>
+    branch nick: child
+    timestamp: Tue 2005-11-22 00:00:01 +0000
+    message:
+      branch 1 changes
+------------------------------------------------------------
+revno: 1
+revision-id: a
+committer: Joe Foo <joe@foo.com>
+branch nick: parent
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  first post
+""",
+            wt.branch, log.LongLogFormatter,
+            formatter_kwargs=dict(levels=0,show_ids=True))
+
 
 class TestLongLogFormatterWithoutMergeRevisions(TestCaseForLogFormatter):
 
@@ -876,6 +945,43 @@ class TestLineLogFormatterWithMergeRevisions(TestCaseForLogFormatter):
             wt.branch, log.LineLogFormatter,
             formatter_kwargs=dict(levels=0))
 
+
+class TestGnuChangelogFormatter(TestCaseForLogFormatter):
+
+    def test_gnu_changelog(self):
+        wt = self.make_standard_commit('nicky', authors=[])
+        self.assertFormatterResult('''\
+2005-11-22  Lorem Ipsum  <test@example.com>
+
+\tadd a
+
+''',
+            wt.branch, log.GnuChangelogLogFormatter)
+
+    def test_with_authors(self):
+        wt = self.make_standard_commit('nicky',
+            authors=['Fooa Fooz <foo@example.com>',
+                     'Bari Baro <bar@example.com>'])
+        self.assertFormatterResult('''\
+2005-11-22  Fooa Fooz  <foo@example.com>
+
+\tadd a
+
+''',
+            wt.branch, log.GnuChangelogLogFormatter)
+
+    def test_verbose(self):
+        wt = self.make_standard_commit('nicky')
+        self.assertFormatterResult('''\
+2005-11-22  John Doe  <jdoe@example.com>
+
+\t* a:
+
+\tadd a
+
+''',
+            wt.branch, log.GnuChangelogLogFormatter,
+            show_log_kwargs=dict(verbose=True))
 
 class TestGetViewRevisions(tests.TestCaseWithTransport, TestLogMixin):
 
@@ -1425,6 +1531,124 @@ class TestHistoryChange(tests.TestCaseWithTransport):
         self.assertNotContainsRe(s.getvalue(), 'Added Revisions:')
 
 
+class TestRevisionNotInBranch(TestCaseForLogFormatter):
+
+    def setup_a_tree(self):
+        tree = self.make_branch_and_tree('tree')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        kwargs = {
+            'committer': 'Joe Foo <joe@foo.com>',
+            'timestamp': 1132617600, # Mon 2005-11-22 00:00:00 +0000
+            'timezone': 0, # UTC
+        }
+        tree.commit('commit 1a', rev_id='1a', **kwargs)
+        tree.commit('commit 2a', rev_id='2a', **kwargs)
+        tree.commit('commit 3a', rev_id='3a', **kwargs)
+        return tree
+
+    def setup_ab_tree(self):
+        tree = self.setup_a_tree()
+        tree.set_last_revision('1a')
+        tree.branch.set_last_revision_info(1, '1a')
+        kwargs = {
+            'committer': 'Joe Foo <joe@foo.com>',
+            'timestamp': 1132617600, # Mon 2005-11-22 00:00:00 +0000
+            'timezone': 0, # UTC
+        }
+        tree.commit('commit 2b', rev_id='2b', **kwargs)
+        tree.commit('commit 3b', rev_id='3b', **kwargs)
+        return tree
+
+    def test_one_revision(self):
+        tree = self.setup_ab_tree()
+        lf = LogCatcher()
+        rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        log.show_log(tree.branch, lf, verbose=True, start_revision=rev,
+                     end_revision=rev)
+        self.assertEqual(1, len(lf.revisions))
+        self.assertEqual(None, lf.revisions[0].revno)   # Out-of-branch
+        self.assertEqual('3a', lf.revisions[0].rev.revision_id)
+
+    def test_many_revisions(self):
+        tree = self.setup_ab_tree()
+        lf = LogCatcher()
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        log.show_log(tree.branch, lf, verbose=True, start_revision=start_rev,
+                     end_revision=end_rev)
+        self.assertEqual(3, len(lf.revisions))
+        self.assertEqual(None, lf.revisions[0].revno)   # Out-of-branch
+        self.assertEqual('3a', lf.revisions[0].rev.revision_id)
+        self.assertEqual(None, lf.revisions[1].revno)   # Out-of-branch
+        self.assertEqual('2a', lf.revisions[1].rev.revision_id)
+        self.assertEqual('1', lf.revisions[2].revno)    # In-branch
+
+    def test_long_format(self):
+        tree = self.setup_ab_tree()
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        self.assertFormatterResult("""\
+------------------------------------------------------------
+revision-id: 3a
+committer: Joe Foo <joe@foo.com>
+branch nick: tree
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  commit 3a
+------------------------------------------------------------
+revision-id: 2a
+committer: Joe Foo <joe@foo.com>
+branch nick: tree
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  commit 2a
+------------------------------------------------------------
+revno: 1
+committer: Joe Foo <joe@foo.com>
+branch nick: tree
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  commit 1a
+""",
+            tree.branch, log.LongLogFormatter, show_log_kwargs={
+                'start_revision': start_rev, 'end_revision': end_rev
+            })
+
+    def test_short_format(self):
+        tree = self.setup_ab_tree()
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        self.assertFormatterResult("""\
+      Joe Foo\t2005-11-22
+      revision-id:3a
+      commit 3a
+
+      Joe Foo\t2005-11-22
+      revision-id:2a
+      commit 2a
+
+    1 Joe Foo\t2005-11-22
+      commit 1a
+
+""",
+            tree.branch, log.ShortLogFormatter, show_log_kwargs={
+                'start_revision': start_rev, 'end_revision': end_rev
+            })
+
+    def test_line_format(self):
+        tree = self.setup_ab_tree()
+        start_rev = revisionspec.RevisionInfo(tree.branch, None, '1a')
+        end_rev = revisionspec.RevisionInfo(tree.branch, None, '3a')
+        self.assertFormatterResult("""\
+Joe Foo 2005-11-22 commit 3a
+Joe Foo 2005-11-22 commit 2a
+1: Joe Foo 2005-11-22 commit 1a
+""",
+            tree.branch, log.LineLogFormatter, show_log_kwargs={
+                'start_revision': start_rev, 'end_revision': end_rev
+            })
+
 
 class TestLogWithBugs(TestCaseForLogFormatter, TestLogMixin):
 
@@ -1504,3 +1728,216 @@ message:
 
     def test_bugs_handler_present(self):
         self.properties_handler_registry.get('bugs_properties_handler')
+
+
+class TestLogForAuthors(TestCaseForLogFormatter):
+
+    def setUp(self):
+        TestCaseForLogFormatter.setUp(self)
+        self.wt = self.make_standard_commit('nicky',
+            authors=['John Doe <jdoe@example.com>',
+                     'Jane Rey <jrey@example.com>'])
+
+    def assertFormatterResult(self, formatter, who, result):
+        formatter_kwargs = dict()
+        if who is not None:
+            author_list_handler = log.author_list_registry.get(who)
+            formatter_kwargs['author_list_handler'] = author_list_handler
+        TestCaseForLogFormatter.assertFormatterResult(self, result,
+            self.wt.branch, formatter, formatter_kwargs=formatter_kwargs)
+
+    def test_line_default(self):
+        self.assertFormatterResult(log.LineLogFormatter, None, """\
+1: John Doe 2005-11-22 add a
+""")
+
+    def test_line_committer(self):
+        self.assertFormatterResult(log.LineLogFormatter, 'committer', """\
+1: Lorem Ipsum 2005-11-22 add a
+""")
+
+    def test_line_first(self):
+        self.assertFormatterResult(log.LineLogFormatter, 'first', """\
+1: John Doe 2005-11-22 add a
+""")
+
+    def test_line_all(self):
+        self.assertFormatterResult(log.LineLogFormatter, 'all', """\
+1: John Doe, Jane Rey 2005-11-22 add a
+""")
+
+
+    def test_short_default(self):
+        self.assertFormatterResult(log.ShortLogFormatter, None, """\
+    1 John Doe\t2005-11-22
+      add a
+
+""")
+
+    def test_short_committer(self):
+        self.assertFormatterResult(log.ShortLogFormatter, 'committer', """\
+    1 Lorem Ipsum\t2005-11-22
+      add a
+
+""")
+
+    def test_short_first(self):
+        self.assertFormatterResult(log.ShortLogFormatter, 'first', """\
+    1 John Doe\t2005-11-22
+      add a
+
+""")
+
+    def test_short_all(self):
+        self.assertFormatterResult(log.ShortLogFormatter, 'all', """\
+    1 John Doe, Jane Rey\t2005-11-22
+      add a
+
+""")
+
+    def test_long_default(self):
+        self.assertFormatterResult(log.LongLogFormatter, None, """\
+------------------------------------------------------------
+revno: 1
+author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
+committer: Lorem Ipsum <test@example.com>
+branch nick: nicky
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  add a
+""")
+
+    def test_long_committer(self):
+        self.assertFormatterResult(log.LongLogFormatter, 'committer', """\
+------------------------------------------------------------
+revno: 1
+committer: Lorem Ipsum <test@example.com>
+branch nick: nicky
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  add a
+""")
+
+    def test_long_first(self):
+        self.assertFormatterResult(log.LongLogFormatter, 'first', """\
+------------------------------------------------------------
+revno: 1
+author: John Doe <jdoe@example.com>
+committer: Lorem Ipsum <test@example.com>
+branch nick: nicky
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  add a
+""")
+
+    def test_long_all(self):
+        self.assertFormatterResult(log.LongLogFormatter, 'all', """\
+------------------------------------------------------------
+revno: 1
+author: John Doe <jdoe@example.com>, Jane Rey <jrey@example.com>
+committer: Lorem Ipsum <test@example.com>
+branch nick: nicky
+timestamp: Tue 2005-11-22 00:00:00 +0000
+message:
+  add a
+""")
+
+    def test_gnu_changelog_default(self):
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, None, """\
+2005-11-22  John Doe  <jdoe@example.com>
+
+\tadd a
+
+""")
+
+    def test_gnu_changelog_committer(self):
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'committer', """\
+2005-11-22  Lorem Ipsum  <test@example.com>
+
+\tadd a
+
+""")
+
+    def test_gnu_changelog_first(self):
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'first', """\
+2005-11-22  John Doe  <jdoe@example.com>
+
+\tadd a
+
+""")
+
+    def test_gnu_changelog_all(self):
+        self.assertFormatterResult(log.GnuChangelogLogFormatter, 'all', """\
+2005-11-22  John Doe  <jdoe@example.com>, Jane Rey  <jrey@example.com>
+
+\tadd a
+
+""")
+
+
+class TestLogExcludeAncestry(tests.TestCaseWithTransport):
+
+    def make_branch_with_alternate_ancestries(self, relpath='.'):
+        # See test_merge_sorted_exclude_ancestry below for the difference with
+        # bt.per_branch.test_iter_merge_sorted_revision.
+        # TestIterMergeSortedRevisionsBushyGraph. 
+        # make_branch_with_alternate_ancestries
+        # and test_merge_sorted_exclude_ancestry
+        # See the FIXME in assertLogRevnos too.
+        builder = branchbuilder.BranchBuilder(self.get_transport(relpath))
+        # 1
+        # |\
+        # 2 \
+        # |  |
+        # |  1.1.1
+        # |  | \
+        # |  |  1.2.1
+        # |  | /
+        # |  1.1.2
+        # | /
+        # 3
+        builder.start_series()
+        builder.build_snapshot('1', None, [
+            ('add', ('', 'TREE_ROOT', 'directory', '')),])
+        builder.build_snapshot('1.1.1', ['1'], [])
+        builder.build_snapshot('2', ['1'], [])
+        builder.build_snapshot('1.2.1', ['1.1.1'], [])
+        builder.build_snapshot('1.1.2', ['1.1.1', '1.2.1'], [])
+        builder.build_snapshot('3', ['2', '1.1.2'], [])
+        builder.finish_series()
+        br = builder.get_branch()
+        br.lock_read()
+        self.addCleanup(br.unlock)
+        return br
+
+    def assertLogRevnos(self, expected_revnos, b, start, end,
+                        exclude_common_ancestry, generate_merge_revisions=True):
+        # FIXME: the layering in log makes it hard to test intermediate levels,
+        # I wish adding filters with their parameters were easier...
+        # -- vila 20100413
+        iter_revs = log._calc_view_revisions(
+            b, start, end, direction='reverse',
+            generate_merge_revisions=generate_merge_revisions,
+            exclude_common_ancestry=exclude_common_ancestry)
+        self.assertEqual(expected_revnos,
+                         [revid for revid, revno, depth in iter_revs])
+
+    def test_merge_sorted_exclude_ancestry(self):
+        b = self.make_branch_with_alternate_ancestries()
+        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2', '1'],
+                             b, '1', '3', exclude_common_ancestry=False)
+        # '2' is part of the '3' ancestry but not part of '1.1.1' ancestry so
+        # it should be mentioned even if merge_sort order will make it appear
+        # after 1.1.1
+        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '2'],
+                             b, '1.1.1', '3', exclude_common_ancestry=True)
+
+    def test_merge_sorted_simple_revnos_exclude_ancestry(self):
+        b = self.make_branch_with_alternate_ancestries()
+        self.assertLogRevnos(['3', '2'],
+                             b, '1', '3', exclude_common_ancestry=True,
+                             generate_merge_revisions=False)
+        self.assertLogRevnos(['3', '1.1.2', '1.2.1', '1.1.1', '2'],
+                             b, '1', '3', exclude_common_ancestry=True,
+                             generate_merge_revisions=True)
+

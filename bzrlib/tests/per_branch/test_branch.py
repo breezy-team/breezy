@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,21 +19,20 @@
 from bzrlib import (
     branch as _mod_branch,
     bzrdir,
+    config,
     delta as _mod_delta,
     errors,
     gpg,
     merge,
     urlutils,
-    transactions,
     transport,
     remote,
     repository,
     revision,
+    symbol_versioning,
     tests,
     )
-from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import (
-    http_server,
     per_branch,
     )
 from bzrlib.tests.http_server import HttpServer
@@ -76,7 +75,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
 
         br = self.get_branch()
         br.fetch(wt.branch)
-        br.set_revision_history(['rev1', 'rev2', 'rev3'])
+        br.generate_revision_history('rev3')
         rh = br.revision_history()
         self.assertEqual(['rev1', 'rev2', 'rev3'], rh)
         for revision_id in rh:
@@ -186,7 +185,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(branch_b.get_parent(), branch_c.get_parent())
 
         # We can also set a specific parent, and it should be honored
-        random_parent = 'http://bazaar-vcs.org/path/to/branch'
+        random_parent = 'http://example.com/path/to/branch'
         branch_b.set_parent(random_parent)
         repo_d = self.make_repository('d')
         branch_b.repository.copy_content_into(repo_d)
@@ -309,36 +308,6 @@ class TestBranch(per_branch.TestCaseWithBranch):
         self.assertEqual(repo.get_signature_text('A'),
                          d2.open_repository().get_signature_text('A'))
 
-    def test_missing_revisions(self):
-        t1 = self.make_branch_and_tree('b1')
-        rev1 = t1.commit('one')
-        t2 = t1.bzrdir.sprout('b2').open_workingtree()
-        rev2 = t1.commit('two')
-        rev3 = t1.commit('three')
-
-        self.assertEqual([rev2, rev3],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch))
-
-        self.assertEqual([],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=1))
-        self.assertEqual([rev2],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=2))
-        self.assertEqual([rev2, rev3],
-            self.applyDeprecated(deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=3))
-
-        self.assertRaises(errors.NoSuchRevision,
-            self.applyDeprecated, deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch, stop_revision=4)
-
-        rev4 = t2.commit('four')
-        self.assertRaises(errors.DivergedBranches,
-            self.applyDeprecated, deprecated_in((1, 6, 0)),
-            t2.branch.missing_revisions, t1.branch)
-
     def test_nicks(self):
         """Test explicit and implicit branch nicknames.
 
@@ -346,7 +315,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         explicit nickname is set.  That is, an explicit nickname always
         overrides the implicit one.
         """
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         branch = self.make_branch('bzr.dev')
         # The nick will be 'bzr.dev', because there is no explicit nick set.
         self.assertEqual(branch.nick, 'bzr.dev')
@@ -359,7 +328,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         # config file in the branch.
         branch.nick = "Aaron's branch"
         if not isinstance(branch, remote.RemoteBranch):
-            self.failUnless(branch._transport.has("branch.conf"))
+            self.assertTrue(branch._transport.has("branch.conf"))
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
@@ -378,6 +347,23 @@ class TestBranch(per_branch.TestCaseWithBranch):
         committed = branch.repository.get_revision(branch.last_revision())
         self.assertEqual(committed.properties["branch-nick"],
                          "My happy branch")
+
+    def test_create_colocated(self):
+        try:
+            repo = self.make_repository('.', shared=True)
+        except errors.IncompatibleFormat:
+            return
+        self.assertEquals(0, len(repo.bzrdir.list_branches()))
+        try:
+            child_branch1 = self.branch_format.initialize(repo.bzrdir, 
+                name='branch1')
+        except (errors.UninitializableFormat, errors.NoColocatedBranchSupport):
+            # branch references are not default init'able and
+            # not all bzrdirs support colocated branches.
+            return
+        self.assertEquals(1, len(repo.bzrdir.list_branches()))
+        self.branch_format.initialize(repo.bzrdir, name='branch2')
+        self.assertEquals(2, len(repo.bzrdir.list_branches()))
 
     def test_create_open_branch_uses_repository(self):
         try:
@@ -401,7 +387,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_format_description(self):
         tree = self.make_branch_and_tree('tree')
         text = tree.branch._format.get_format_description()
-        self.failUnless(len(text))
+        self.assertTrue(len(text))
 
     def test_get_commit_builder(self):
         branch = self.make_branch(".")
@@ -474,10 +460,32 @@ class TestBranch(per_branch.TestCaseWithBranch):
         tree = self.make_branch_and_tree('a')
         tree.commit('a commit', rev_id='rev1')
         br = tree.branch
-        br.set_revision_history(["rev1"])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            br.set_revision_history, ["rev1"])
         self.assertEquals(br.revision_history(), ["rev1"])
-        br.set_revision_history([])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            br.set_revision_history, [])
         self.assertEquals(br.revision_history(), [])
+
+    def test_heads_to_fetch(self):
+        # heads_to_fetch is a method that returns a collection of revids that
+        # need to be fetched to copy this branch into another repo.  At a
+        # minimum this will include the tip.
+        # (In native formats, this is the tip + tags, but other formats may
+        # have other revs needed)
+        tree = self.make_branch_and_tree('a')
+        tree.commit('first commit', rev_id='rev1')
+        tree.commit('second commit', rev_id='rev2')
+        must_fetch, should_fetch = tree.branch.heads_to_fetch()
+        self.assertTrue('rev2' in must_fetch)
+
+    def test_heads_to_fetch_not_null_revision(self):
+        # NULL_REVISION does not appear in the result of heads_to_fetch, even
+        # for an empty branch.
+        tree = self.make_branch_and_tree('a')
+        must_fetch, should_fetch = tree.branch.heads_to_fetch()
+        self.assertFalse(revision.NULL_REVISION in must_fetch)
+        self.assertFalse(revision.NULL_REVISION in should_fetch)
 
 
 class TestBranchFormat(per_branch.TestCaseWithBranch):
@@ -600,13 +608,9 @@ class TestBranchPushLocations(per_branch.TestCaseWithBranch):
         self.assertEqual(None, self.get_branch().get_push_location())
 
     def test_get_push_location_exact(self):
-        from bzrlib.config import (locations_config_filename,
-                                   ensure_config_dir_exists)
-        ensure_config_dir_exists()
-        fn = locations_config_filename()
-        open(fn, 'wt').write(("[%s]\n"
-                                  "push_location=foo\n" %
-                                  self.get_branch().base[:-1]))
+        b = self.get_branch()
+        config.LocationConfig.from_string(
+            '[%s]\npush_location=foo\n' % (b.base,), b.base, save=True)
         self.assertEqual("foo", self.get_branch().get_push_location())
 
     def test_set_push_location(self):
@@ -651,7 +655,8 @@ class TestFormat(per_branch.TestCaseWithBranch):
         this_branch = self.make_branch('this')
         other_branch = self.make_branch('other')
         try:
-            this_branch._format.set_reference(this_branch.bzrdir, other_branch)
+            this_branch._format.set_reference(this_branch.bzrdir, None,
+                other_branch)
         except NotImplementedError:
             # that's ok
             pass
@@ -667,22 +672,22 @@ class TestFormat(per_branch.TestCaseWithBranch):
             # they may not be initializable.
             return
         # supported formats must be able to init and open
-        t = transport.get_transport(self.get_url())
+        t = self.get_transport()
         readonly_t = transport.get_transport(self.get_readonly_url())
         made_branch = self.make_branch('.')
-        self.failUnless(isinstance(made_branch, _mod_branch.Branch))
+        self.assertIsInstance(made_branch, _mod_branch.Branch)
 
         # find it via bzrdir opening:
         opened_control = bzrdir.BzrDir.open(readonly_t.base)
         direct_opened_branch = opened_control.open_branch()
         self.assertEqual(direct_opened_branch.__class__, made_branch.__class__)
         self.assertEqual(opened_control, direct_opened_branch.bzrdir)
-        self.failUnless(isinstance(direct_opened_branch._format,
-                        self.branch_format.__class__))
+        self.assertIsInstance(direct_opened_branch._format,
+            self.branch_format.__class__)
 
         # find it via Branch.open
         opened_branch = _mod_branch.Branch.open(readonly_t.base)
-        self.failUnless(isinstance(opened_branch, made_branch.__class__))
+        self.assertIsInstance(opened_branch, made_branch.__class__)
         self.assertEqual(made_branch._format.__class__,
                          opened_branch._format.__class__)
         # if it has a unique id string, can we probe for it ?
@@ -730,6 +735,66 @@ class TestBound(per_branch.TestCaseWithBranch):
             tree_b.branch.bind(tree_a.branch)
         except errors.UpgradeRequired:
             raise tests.TestNotApplicable('Format does not support binding')
+
+    def test_unbind_clears_cached_master_branch(self):
+        """b.unbind clears any cached value of b.get_master_branch."""
+        master = self.make_branch('master')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.unbind()
+        self.assertEqual(None, branch.get_master_branch())
+
+    def test_unlocked_does_not_cache_master_branch(self):
+        """Unlocked branches do not cache the result of get_master_branch."""
+        master = self.make_branch('master')
+        branch1 = self.make_branch('branch')
+        try:
+            branch1.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        # Open branch1 again
+        branch2 = branch1.bzrdir.open_branch()
+        self.assertNotEqual(None, branch1.get_master_branch())
+        # Unbind the branch via branch2.  branch1 isn't locked so will
+        # immediately return the new value for get_master_branch.
+        branch2.unbind()
+        self.assertEqual(None, branch1.get_master_branch())
+
+    def test_bind_clears_cached_master_branch(self):
+        """b.bind clears any cached value of b.get_master_branch."""
+        master1 = self.make_branch('master1')
+        master2 = self.make_branch('master2')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master1)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.bind(master2)
+        self.assertEqual('.', urlutils.relative_url(self.get_url('master2'),
+                branch.get_master_branch().base))
+
+    def test_set_bound_location_clears_cached_master_branch(self):
+        """b.set_bound_location clears any cached value of b.get_master_branch.
+        """
+        master1 = self.make_branch('master1')
+        master2 = self.make_branch('master2')
+        branch = self.make_branch('branch')
+        try:
+            branch.bind(master1)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable('Format does not support binding')
+        self.addCleanup(branch.lock_write().unlock)
+        self.assertNotEqual(None, branch.get_master_branch())
+        branch.set_bound_location(self.get_url('master2'))
+        self.assertEqual('.', urlutils.relative_url(self.get_url('master2'),
+                branch.get_master_branch().base))
 
 
 class TestStrict(per_branch.TestCaseWithBranch):
@@ -971,3 +1036,16 @@ class TestReferenceLocation(per_branch.TestCaseWithBranch):
         merger.do_merge()
         self.assertEqual('../branch/reference',
                          tree.branch.get_reference_info('file-id')[1])
+
+
+class TestBranchControlComponent(per_branch.TestCaseWithBranch):
+    """Branch implementations adequately implement ControlComponent."""
+    
+    def test_urls(self):
+        br = self.make_branch('branch')
+        self.assertIsInstance(br.user_url, str)
+        self.assertEqual(br.user_url, br.user_transport.base)
+        # for all current bzrdir implementations the user dir must be 
+        # above the control dir but we might need to relax that?
+        self.assertEqual(br.control_url.find(br.user_url), 0)
+        self.assertEqual(br.control_url, br.control_transport.base)

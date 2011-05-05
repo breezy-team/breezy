@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@
 These tests are repeated for all pack-based repository formats.
 """
 
-from cStringIO import StringIO
 from stat import S_ISDIR
 
 from bzrlib.btree_index import BTreeGraphIndex
@@ -29,35 +28,24 @@ from bzrlib import (
     errors,
     inventory,
     osutils,
-    progress,
     repository,
     revision as _mod_revision,
-    symbol_versioning,
     tests,
+    transport,
     ui,
-    upgrade,
-    workingtree,
-    )
-from bzrlib.repofmt import (
-    pack_repo,
-    groupcompress_repo,
     )
 from bzrlib.repofmt.groupcompress_repo import RepositoryFormat2a
 from bzrlib.smart import (
     client,
     )
 from bzrlib.tests import (
-    TestCase,
     TestCaseWithTransport,
     TestNotApplicable,
-    TestSkipped,
     )
 from bzrlib.transport import (
-    get_transport,
     memory,
     )
 from bzrlib.tests import test_server
-from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
 class TestPackRepository(TestCaseWithTransport):
@@ -278,8 +266,8 @@ class TestPackRepository(TestCaseWithTransport):
         format = self.get_format()
         server = test_server.FakeNFSServer()
         self.start_server(server)
-        transport = get_transport(server.get_url())
-        bzrdir = self.get_format().initialize_on_transport(transport)
+        t = transport.get_transport(server.get_url())
+        bzrdir = self.get_format().initialize_on_transport(t)
         repo = bzrdir.create_repository()
         repo_transport = bzrdir.get_repository_transport(None)
         self.assertTrue(repo_transport.has('obsolete_packs'))
@@ -287,6 +275,23 @@ class TestPackRepository(TestCaseWithTransport):
         repo_transport.put_bytes('obsolete_packs/.nfsblahblah', 'contents')
         repo._pack_collection._clear_obsolete_packs()
         self.assertTrue(repo_transport.has('obsolete_packs/.nfsblahblah'))
+
+    def test_pack_collection_sets_sibling_indices(self):
+        """The CombinedGraphIndex objects in the pack collection are all
+        siblings of each other, so that search-order reorderings will be copied
+        to each other.
+        """
+        repo = self.make_repository('repo')
+        pack_coll = repo._pack_collection
+        indices = set([pack_coll.revision_index, pack_coll.inventory_index,
+                pack_coll.text_index, pack_coll.signature_index])
+        if pack_coll.chk_index is not None:
+            indices.add(pack_coll.chk_index)
+        combined_indices = set(idx.combined_index for idx in indices)
+        for combined_index in combined_indices:
+            self.assertEqual(
+                combined_indices.difference([combined_index]),
+                combined_index._sibling_indices)
 
     def test_pack_after_two_commits_packs_everything(self):
         format = self.get_format()
@@ -703,6 +708,16 @@ class TestPackRepository(TestCaseWithTransport):
         self.assertEqual(self.format_supports_external_lookups,
             repo._format.supports_external_lookups)
 
+    def _lock_write(self, write_lockable):
+        """Lock write_lockable, add a cleanup and return the result.
+        
+        :param write_lockable: An object with a lock_write method.
+        :return: The result of write_lockable.lock_write().
+        """
+        result = write_lockable.lock_write()
+        self.addCleanup(result.unlock)
+        return result
+
     def test_abort_write_group_does_not_raise_when_suppressed(self):
         """Similar to per_repository.test_write_group's test of the same name.
 
@@ -710,8 +725,7 @@ class TestPackRepository(TestCaseWithTransport):
         """
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         # Damage the repository on the filesystem
         self.get_transport('').rename('repo', 'foo')
@@ -727,8 +741,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_abort_write_group_does_raise_when_not_suppressed(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         # Damage the repository on the filesystem
         self.get_transport('').rename('repo', 'foo')
@@ -740,8 +753,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_suspend_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         repo.texts.add_lines(('file-id', 'revid'), (), ['lines'])
         wg_tokens = repo.suspend_write_group()
@@ -762,8 +774,7 @@ class TestPackRepository(TestCaseWithTransport):
         repo = self.make_repository('repo', format=self.get_format())
         if repo.chk_bytes is None:
             raise TestNotApplicable('no chk_bytes for this repository')
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         text = 'a bit of text\n'
         key = ('sha1:' + osutils.sha_string(text),)
@@ -784,8 +795,7 @@ class TestPackRepository(TestCaseWithTransport):
         # Create a repo, start a write group, insert some data, suspend.
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
@@ -805,8 +815,7 @@ class TestPackRepository(TestCaseWithTransport):
     def test_commit_resumed_write_group(self):
         self.vfs_transport_factory = memory.MemoryServer
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
@@ -834,16 +843,14 @@ class TestPackRepository(TestCaseWithTransport):
         self.vfs_transport_factory = memory.MemoryServer
         # Make a repository with a suspended write group
         repo = self.make_repository('repo', format=self.get_format())
-        token = repo.lock_write()
-        self.addCleanup(repo.unlock)
+        token = self._lock_write(repo).repository_token
         repo.start_write_group()
         text_key = ('file-id', 'revid')
         repo.texts.add_lines(text_key, (), ['lines'])
         wg_tokens = repo.suspend_write_group()
         # Make a new repository
         new_repo = self.make_repository('new_repo', format=self.get_format())
-        token = new_repo.lock_write()
-        self.addCleanup(new_repo.unlock)
+        token = self._lock_write(new_repo).repository_token
         hacked_wg_token = (
             '../../../../repo/.bzr/repository/upload/' + wg_tokens[0])
         self.assertRaises(

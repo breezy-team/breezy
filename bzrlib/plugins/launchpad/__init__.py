@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,12 +14,31 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-"""Launchpad.net integration plugin for Bazaar."""
+"""Launchpad.net integration plugin for Bazaar.
+
+This plugin provides facilities for working with Bazaar branches that are
+hosted on Launchpad (http://launchpad.net).  It provides a directory service 
+for referring to Launchpad branches using the "lp:" prefix.  For example,
+lp:bzr refers to the Bazaar's main development branch and
+lp:~username/project/branch-name can be used to refer to a specific branch.
+
+This plugin provides a bug tracker so that "bzr commit --fixes lp:1234" will
+record that revision as fixing Launchpad's bug 1234.
+
+The plugin also provides the following commands:
+
+    launchpad-login: Show or set the Launchpad user ID
+    launchpad-open: Open a Launchpad branch page in your web browser
+    lp-propose-merge: Propose merging a branch on Launchpad
+    register-branch: Register a branch with launchpad.net
+    launchpad-mirror: Ask Launchpad to mirror a branch now
+
+"""
 
 # The XMLRPC server address can be overridden by setting the environment
 # variable $BZR_LP_XMLRPC_URL
 
-# see http://bazaar-vcs.org/Specs/BranchRegistrationTool
+# see http://wiki.bazaar.canonical.com/Specs/BranchRegistrationTool
 
 # Since we are a built-in plugin we share the bzrlib version
 from bzrlib import version_info
@@ -28,19 +47,20 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     branch as _mod_branch,
+    ui,
     trace,
     )
 """)
 
 from bzrlib import bzrdir
 from bzrlib.commands import (
-        Command,
-        register_command,
-)
+    Command,
+    register_command,
+    )
 from bzrlib.directory_service import directories
 from bzrlib.errors import (
     BzrCommandError,
-    DependencyNotPresent,
+    InvalidRevisionSpec,
     InvalidURL,
     NoPublicBranch,
     NotBranchError,
@@ -53,7 +73,7 @@ from bzrlib.option import (
 
 
 class cmd_register_branch(Command):
-    """Register a branch with launchpad.net.
+    __doc__ = """Register a branch with launchpad.net.
 
     This command lists a bzr branch in the directory of branches on
     launchpad.net.  Registration allows the branch to be associated with
@@ -161,7 +181,7 @@ register_command(cmd_register_branch)
 
 
 class cmd_launchpad_open(Command):
-    """Open a Launchpad branch page in your web browser."""
+    __doc__ = """Open a Launchpad branch page in your web browser."""
 
     aliases = ['lp-open']
     takes_options = [
@@ -211,7 +231,7 @@ register_command(cmd_launchpad_open)
 
 
 class cmd_launchpad_login(Command):
-    """Show or set the Launchpad user ID.
+    __doc__ = """Show or set the Launchpad user ID.
 
     When communicating with Launchpad, some commands need to know your
     Launchpad user ID.  This command can be used to set or show the
@@ -267,7 +287,7 @@ register_command(cmd_launchpad_login)
 
 # XXX: cmd_launchpad_mirror is untested
 class cmd_launchpad_mirror(Command):
-    """Ask Launchpad to mirror a branch now."""
+    __doc__ = """Ask Launchpad to mirror a branch now."""
 
     aliases = ['lp-mirror']
     takes_args = ['location?']
@@ -275,18 +295,19 @@ class cmd_launchpad_mirror(Command):
     def run(self, location='.'):
         from bzrlib.plugins.launchpad import lp_api
         from bzrlib.plugins.launchpad.lp_registration import LaunchpadService
-        branch = _mod_branch.Branch.open(location)
+        branch, _ = _mod_branch.Branch.open_containing(location)
         service = LaunchpadService()
         launchpad = lp_api.login(service)
-        lp_branch = lp_api.load_branch(launchpad, branch)
-        lp_branch.requestMirror()
+        lp_branch = lp_api.LaunchpadBranch.from_bzr(launchpad, branch,
+                create_missing=False)
+        lp_branch.lp.requestMirror()
 
 
 register_command(cmd_launchpad_mirror)
 
 
 class cmd_lp_propose_merge(Command):
-    """Propose merging a branch on Launchpad.
+    __doc__ = """Propose merging a branch on Launchpad.
 
     This will open your usual editor to provide the initial comment.  When it
     has created the proposal, it will open it in your default web browser.
@@ -310,6 +331,8 @@ class cmd_lp_propose_merge(Command):
                             help='Propose the merge on staging.'),
                      Option('message', short_name='m', type=unicode,
                             help='Commit message.'),
+                     Option('approve',
+                            help='Mark the proposal as approved immediately.'),
                      ListOption('review', short_name='R', type=unicode,
                             help='Requested reviewer and optional type.')]
 
@@ -318,7 +341,7 @@ class cmd_lp_propose_merge(Command):
     aliases = ['lp-submit', 'lp-propose']
 
     def run(self, submit_branch=None, review=None, staging=False,
-            message=None):
+            message=None, approve=False):
         from bzrlib.plugins.launchpad import lp_propose
         tree, branch, relpath = bzrdir.BzrDir.open_containing_tree_or_branch(
             '.')
@@ -338,7 +361,7 @@ class cmd_lp_propose_merge(Command):
         else:
             target = _mod_branch.Branch.open(submit_branch)
         proposer = lp_propose.Proposer(tree, branch, target, message,
-                                       reviews, staging)
+                                       reviews, staging, approve=approve)
         proposer.check_proposal()
         proposer.create_proposal()
 
@@ -346,10 +369,97 @@ class cmd_lp_propose_merge(Command):
 register_command(cmd_lp_propose_merge)
 
 
+class cmd_lp_find_proposal(Command):
+
+    __doc__ = """Find the proposal to merge this revision.
+
+    Finds the merge proposal(s) that discussed landing the specified revision.
+    This works only if the selected branch was the merge proposal target, and
+    if the merged_revno is recorded for the merge proposal.  The proposal(s)
+    are opened in a web browser.
+
+    Any revision involved in the merge may be specified-- the revision in
+    which the merge was performed, or one of the revisions that was merged.
+
+    So, to find the merge proposal that reviewed line 1 of README::
+
+      bzr lp-find-proposal -r annotate:README:1
+    """
+
+    takes_options = ['revision']
+
+    def run(self, revision=None):
+        from bzrlib.plugins.launchpad import lp_api
+        import webbrowser
+        b = _mod_branch.Branch.open_containing('.')[0]
+        pb = ui.ui_factory.nested_progress_bar()
+        b.lock_read()
+        try:
+            revno = self._find_merged_revno(revision, b, pb)
+            merged = self._find_proposals(revno, b, pb)
+            if len(merged) == 0:
+                raise BzrCommandError('No review found.')
+            trace.note('%d proposals(s) found.' % len(merged))
+            for mp in merged:
+                webbrowser.open(lp_api.canonical_url(mp))
+        finally:
+            b.unlock()
+            pb.finished()
+
+    def _find_merged_revno(self, revision, b, pb):
+        if revision is None:
+            return b.revno()
+        pb.update('Finding revision-id')
+        revision_id = revision[0].as_revision_id(b)
+        # a revno spec is necessarily on the mainline.
+        if self._is_revno_spec(revision[0]):
+            merging_revision = revision_id
+        else:
+            graph = b.repository.get_graph()
+            pb.update('Finding merge')
+            merging_revision = graph.find_lefthand_merger(
+                revision_id, b.last_revision())
+            if merging_revision is None:
+                raise InvalidRevisionSpec(revision[0].user_spec, b)
+        pb.update('Finding revno')
+        return b.revision_id_to_revno(merging_revision)
+
+    def _find_proposals(self, revno, b, pb):
+        launchpad = lp_api.login(lp_registration.LaunchpadService())
+        pb.update('Finding Launchpad branch')
+        lpb = lp_api.LaunchpadBranch.from_bzr(launchpad, b,
+                                              create_missing=False)
+        pb.update('Finding proposals')
+        return list(lpb.lp.getMergeProposals(status=['Merged'],
+                                             merged_revnos=[revno]))
+
+
+    @staticmethod
+    def _is_revno_spec(spec):
+        try:
+            int(spec.user_spec)
+        except ValueError:
+            return False
+        else:
+            return True
+
+
+register_command(cmd_lp_find_proposal)
+
+
 def _register_directory():
     directories.register_lazy('lp:', 'bzrlib.plugins.launchpad.lp_directory',
                               'LaunchpadDirectory',
                               'Launchpad-based directory service',)
+    directories.register_lazy(
+        'debianlp:', 'bzrlib.plugins.launchpad.lp_directory',
+        'LaunchpadDirectory',
+        'debianlp: shortcut')
+    directories.register_lazy(
+        'ubuntu:', 'bzrlib.plugins.launchpad.lp_directory',
+        'LaunchpadDirectory',
+        'ubuntu: shortcut')
+
 _register_directory()
 
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,19 +18,18 @@ from bzrlib.lazy_import import lazy_import
 
 lazy_import(globals(), """
 import errno
+import gzip
 import itertools
 import os
 from StringIO import StringIO
 
 from bzrlib import (
+    bencode,
     errors,
     patiencediff,
-    trace,
     ui,
     )
-from bzrlib import bencode
 """)
-from bzrlib.tuned_gzip import GzipFile
 
 
 def topo_iter_keys(vf, keys=None):
@@ -75,6 +74,8 @@ def _topo_iter(parents, versions):
 
 class MultiParent(object):
     """A multi-parent diff"""
+
+    __slots__ = ['hunks']
 
     def __init__(self, hunks=None):
         if hunks is not None:
@@ -258,6 +259,8 @@ class MultiParent(object):
 class NewText(object):
     """The contents of text that is introduced by this text"""
 
+    __slots__ = ['lines']
+
     def __init__(self, lines):
         self.lines = lines
 
@@ -279,24 +282,30 @@ class NewText(object):
 class ParentText(object):
     """A reference to text present in a parent text"""
 
+    __slots__ = ['parent', 'parent_pos', 'child_pos', 'num_lines']
+
     def __init__(self, parent, parent_pos, child_pos, num_lines):
         self.parent = parent
         self.parent_pos = parent_pos
         self.child_pos = child_pos
         self.num_lines = num_lines
 
+    def _as_dict(self):
+        return dict(parent=self.parent, parent_pos=self.parent_pos,
+                    child_pos=self.child_pos, num_lines=self.num_lines)
+
     def __repr__(self):
-        return 'ParentText(%(parent)r, %(parent_pos)r, %(child_pos)r,'\
-            ' %(num_lines)r)' % self.__dict__
+        return ('ParentText(%(parent)r, %(parent_pos)r, %(child_pos)r,'
+                ' %(num_lines)r)' % self._as_dict())
 
     def __eq__(self, other):
         if self.__class__ is not other.__class__:
             return False
-        return (self.__dict__ == other.__dict__)
+        return self._as_dict() == other._as_dict()
 
     def to_patch(self):
-        yield 'c %(parent)d %(parent_pos)d %(child_pos)d %(num_lines)d\n'\
-            % self.__dict__
+        yield ('c %(parent)d %(parent_pos)d %(child_pos)d %(num_lines)d\n'
+               % self._as_dict())
 
 
 class BaseVersionedFile(object):
@@ -551,10 +560,11 @@ class MultiVersionedFile(BaseVersionedFile):
             sio = StringIO(infile.read(count))
         finally:
             infile.close()
-        zip_file = GzipFile(None, mode='rb', fileobj=sio)
+        zip_file = gzip.GzipFile(None, mode='rb', fileobj=sio)
         try:
             file_version_id = zip_file.readline()
-            return MultiParent.from_patch(zip_file.read())
+            content = zip_file.read()
+            return MultiParent.from_patch(content)
         finally:
             zip_file.close()
 
@@ -566,7 +576,7 @@ class MultiVersionedFile(BaseVersionedFile):
                                     # before any write returns 0
             start = outfile.tell()
             try:
-                zipfile = GzipFile(None, mode='ab', fileobj=outfile)
+                zipfile = gzip.GzipFile(None, mode='ab', fileobj=outfile)
                 zipfile.writelines(itertools.chain(
                     ['version %s\n' % version_id], diff.to_patch()))
             finally:
@@ -663,7 +673,7 @@ class _Reconstructor(object):
 
 def gzip_string(lines):
     sio = StringIO()
-    data_file = GzipFile(None, mode='wb', fileobj=sio)
+    data_file = gzip.GzipFile(None, mode='wb', fileobj=sio)
     data_file.writelines(lines)
     data_file.close()
     return sio.getvalue()

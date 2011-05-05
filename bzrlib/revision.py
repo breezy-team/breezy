@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,7 +20,6 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-from bzrlib import deprecated_graph
 from bzrlib import bugtracker
 """)
 from bzrlib import (
@@ -120,21 +119,6 @@ class Revision(object):
             return self.message.lstrip().split('\n', 1)[0]
         else:
             return ''
-
-    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((1, 13, 0)))
-    def get_apparent_author(self):
-        """Return the apparent author of this revision.
-
-        This method is deprecated in favour of get_apparent_authors.
-
-        If the revision properties contain any author names,
-        return the first. Otherwise return the committer name.
-        """
-        authors = self.get_apparent_authors()
-        if authors:
-            return authors[0]
-        else:
-            return None
 
     def get_apparent_authors(self):
         """Return the apparent authors of this revision.

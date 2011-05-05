@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2008, 2010 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -118,6 +118,11 @@ cdef extern from "string.h":
     # ??? memrchr is a GNU extension :(
     # void *memrchr(void *s, int c, size_t len)
 
+# cimport all of the definitions we will need to access
+from _static_tuple_c cimport import_static_tuple_c, StaticTuple, \
+    StaticTuple_New, StaticTuple_SET_ITEM
+
+import_static_tuple_c()
 
 cdef void* _my_memrchr(void *s, int c, size_t n): # cannot_raise
     # memrchr seems to be a GNU extension, so we have to implement it ourselves
@@ -610,7 +615,8 @@ cdef class Reader:
         :param new_block: This is to let the caller know that it needs to
             create a new directory block to store the next entry.
         """
-        cdef object path_name_file_id_key
+        cdef StaticTuple path_name_file_id_key
+        cdef StaticTuple tmp
         cdef char *entry_size_cstr
         cdef unsigned long int entry_size
         cdef char* executable_cstr
@@ -650,10 +656,20 @@ cdef class Reader:
         # Build up the key that will be used.
         # By using <object>(void *) Pyrex will automatically handle the
         # Py_INCREF that we need.
-        path_name_file_id_key = (<object>p_current_dirname[0],
-                                 self.get_next_str(),
-                                 self.get_next_str(),
-                                )
+        cur_dirname = <object>p_current_dirname[0]
+        # Use StaticTuple_New to pre-allocate, rather than creating a regular
+        # tuple and passing it to the StaticTuple constructor.
+        # path_name_file_id_key = StaticTuple(<object>p_current_dirname[0],
+        #                          self.get_next_str(),
+        #                          self.get_next_str(),
+        #                         )
+        tmp = StaticTuple_New(3)
+        Py_INCREF(cur_dirname); StaticTuple_SET_ITEM(tmp, 0, cur_dirname)
+        cur_basename = self.get_next_str()
+        cur_file_id = self.get_next_str()
+        Py_INCREF(cur_basename); StaticTuple_SET_ITEM(tmp, 1, cur_basename)
+        Py_INCREF(cur_file_id); StaticTuple_SET_ITEM(tmp, 2, cur_file_id)
+        path_name_file_id_key = tmp
 
         # Parse all of the per-tree information. current has the information in
         # the same location as parent trees. The only difference is that 'info'
@@ -677,7 +693,20 @@ cdef class Reader:
             executable_cstr = self.get_next(&cur_size)
             is_executable = (executable_cstr[0] == c'y')
             info = self.get_next_str()
-            PyList_Append(trees, (
+            # TODO: If we want to use StaticTuple_New here we need to be pretty
+            #       careful. We are relying on a bit of Pyrex
+            #       automatic-conversion from 'int' to PyInt, and that doesn't
+            #       play well with the StaticTuple_SET_ITEM macro.
+            #       Timing doesn't (yet) show a worthwile improvement in speed
+            #       versus complexity and maintainability.
+            # tmp = StaticTuple_New(5)
+            # Py_INCREF(minikind); StaticTuple_SET_ITEM(tmp, 0, minikind)
+            # Py_INCREF(fingerprint); StaticTuple_SET_ITEM(tmp, 1, fingerprint)
+            # Py_INCREF(entry_size); StaticTuple_SET_ITEM(tmp, 2, entry_size)
+            # Py_INCREF(is_executable); StaticTuple_SET_ITEM(tmp, 3, is_executable)
+            # Py_INCREF(info); StaticTuple_SET_ITEM(tmp, 4, info)
+            # PyList_Append(trees, tmp)
+            PyList_Append(trees, StaticTuple(
                 minikind,     # minikind
                 fingerprint,  # fingerprint
                 entry_size,   # size
@@ -837,6 +866,7 @@ cdef _update_entry(self, entry, abspath, stat_value):
     # _st mode of the compiled stat objects.
     cdef int minikind, saved_minikind
     cdef void * details
+    cdef int worth_saving
     minikind = minikind_from_mode(stat_value.st_mode)
     if 0 == minikind:
         return None
@@ -871,6 +901,7 @@ cdef _update_entry(self, entry, abspath, stat_value):
     # If we have gotten this far, that means that we need to actually
     # process this entry.
     link_or_sha1 = None
+    worth_saving = 1
     if minikind == c'f':
         executable = self._is_executable(stat_value.st_mode,
                                          saved_executable)
@@ -887,10 +918,15 @@ cdef _update_entry(self, entry, abspath, stat_value):
             entry[1][0] = ('f', link_or_sha1, stat_value.st_size,
                            executable, packed_stat)
         else:
-            entry[1][0] = ('f', '', stat_value.st_size,
-                           executable, DirState.NULLSTAT)
+            # This file is not worth caching the sha1. Either it is too new, or
+            # it is newly added. Regardless, the only things we are changing
+            # are derived from the stat, and so are not worth caching. So we do
+            # *not* set the IN_MEMORY_MODIFIED flag. (But we'll save the
+            # updated values if there is *other* data worth saving.)
+            entry[1][0] = ('f', '', stat_value.st_size, executable,
+                           DirState.NULLSTAT)
+            worth_saving = 0
     elif minikind == c'd':
-        link_or_sha1 = None
         entry[1][0] = ('d', '', 0, False, packed_stat)
         if saved_minikind != c'd':
             # This changed from something into a directory. Make sure we
@@ -900,6 +936,10 @@ cdef _update_entry(self, entry, abspath, stat_value):
                 self._get_block_entry_index(entry[0][0], entry[0][1], 0)
             self._ensure_block(block_index, entry_index,
                                pathjoin(entry[0][0], entry[0][1]))
+        else:
+            # Any changes are derived trivially from the stat object, not worth
+            # re-writing a dirstate for just this
+            worth_saving = 0
     elif minikind == c'l':
         link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
         if self._cutoff_time is None:
@@ -911,7 +951,8 @@ cdef _update_entry(self, entry, abspath, stat_value):
         else:
             entry[1][0] = ('l', '', stat_value.st_size,
                            False, DirState.NULLSTAT)
-    self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+    if worth_saving:
+        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
     return link_or_sha1
 
 
@@ -1219,7 +1260,7 @@ cdef class ProcessEntryC:
             else:
                 try:
                     source_parent_id = self.old_dirname_to_file_id[old_dirname]
-                except KeyError:
+                except KeyError, _:
                     source_parent_entry = self.state._get_entry(self.source_index,
                                                            path_utf8=old_dirname)
                     source_parent_id = source_parent_entry[0][2]
@@ -1236,7 +1277,7 @@ cdef class ProcessEntryC:
             else:
                 try:
                     target_parent_id = self.new_dirname_to_file_id[new_dirname]
-                except KeyError:
+                except KeyError, _:
                     # TODO: We don't always need to do the lookup, because the
                     #       parent entry will be the same as the source entry.
                     target_parent_entry = self.state._get_entry(self.target_index,
@@ -1478,7 +1519,7 @@ cdef class ProcessEntryC:
             # interface doesn't require it.
             try:
                 self.current_root = self.search_specific_files.pop()
-            except KeyError:
+            except KeyError, _:
                 raise StopIteration()
             self.searched_specific_files.add(self.current_root)
             # process the entries for this containing directory: the rest will be
@@ -1567,7 +1608,7 @@ cdef class ProcessEntryC:
                         #            and e.winerror == ERROR_DIRECTORY
                         try:
                             e_winerror = e.winerror
-                        except AttributeError:
+                        except AttributeError, _:
                             e_winerror = None
                         win_errors = (ERROR_DIRECTORY, ERROR_PATH_NOT_FOUND)
                         if (e.errno in win_errors or e_winerror in win_errors):
@@ -1656,7 +1697,7 @@ cdef class ProcessEntryC:
                     try:
                         self.current_dir_info = self.dir_iterator.next()
                         self.current_dir_list = self.current_dir_info[1]
-                    except StopIteration:
+                    except StopIteration, _:
                         self.current_dir_info = None
                 else: #(dircmp > 0)
                     # We have a dirblock entry for this location, but there
@@ -1803,7 +1844,7 @@ cdef class ProcessEntryC:
                                 and stat.S_IEXEC & current_path_info[3].st_mode)
                             try:
                                 relpath_unicode = self.utf8_decode(current_path_info[0])[0]
-                            except UnicodeDecodeError:
+                            except UnicodeDecodeError, _:
                                 raise errors.BadFilenameEncoding(
                                     current_path_info[0], osutils._fs_enc)
                             if changed is not None:
@@ -1851,7 +1892,7 @@ cdef class ProcessEntryC:
                 try:
                     self.current_dir_info = self.dir_iterator.next()
                     self.current_dir_list = self.current_dir_info[1]
-                except StopIteration:
+                except StopIteration, _:
                     self.current_dir_info = None
 
     cdef object _next_consistent_entries(self):

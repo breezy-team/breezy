@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -680,7 +680,7 @@ class PathNotChild(PathError):
 
     _fmt = 'Path "%(path)s" is not a child of path "%(base)s"%(extra)s'
 
-    internal_error = True
+    internal_error = False
 
     def __init__(self, path, base, extra=None):
         BzrError.__init__(self)
@@ -713,6 +713,9 @@ class NotBranchError(PathError):
        self.bzrdir = bzrdir
        PathError.__init__(self, path=path)
 
+    def __repr__(self):
+        return '<%s %r>' % (self.__class__.__name__, self.__dict__)
+
     def _format(self):
         # XXX: Ideally self.detail would be a property, but Exceptions in
         # Python 2.4 have to be old-style classes so properties don't work.
@@ -722,6 +725,15 @@ class NotBranchError(PathError):
                 try:
                     self.bzrdir.open_repository()
                 except NoRepositoryPresent:
+                    self.detail = ''
+                except Exception:
+                    # Just ignore unexpected errors.  Raising arbitrary errors
+                    # during str(err) can provoke strange bugs.  Concretely
+                    # Launchpad's codehosting managed to raise NotBranchError
+                    # here, and then get stuck in an infinite loop/recursion
+                    # trying to str() that error.  All this error really cares
+                    # about that there's no working repository there, and if
+                    # open_repository() fails, there probably isn't.
                     self.detail = ''
                 else:
                     self.detail = ': location is a repository'
@@ -782,6 +794,8 @@ class FileInWrongBranch(BzrError):
 
     _fmt = 'File "%(path)s" is not in branch %(branch_base)s.'
 
+    # use PathNotChild instead
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 3, 0)))
     def __init__(self, branch, path):
         BzrError.__init__(self)
         self.branch = branch
@@ -947,11 +961,8 @@ class LockError(InternalBzrError):
     # original exception is available as e.original_error
     #
     # New code should prefer to raise specific subclasses
-    def __init__(self, message):
-        # Python 2.5 uses a slot for StandardError.message,
-        # so use a different variable name.  We now work around this in
-        # BzrError.__str__, but this member name is kept for compatability.
-        self.msg = message
+    def __init__(self, msg):
+        self.msg = msg
 
 
 class LockActive(LockError):
@@ -1041,8 +1052,6 @@ class UnlockableTransport(LockError):
 class LockContention(LockError):
 
     _fmt = 'Could not acquire lock "%(lock)s": %(msg)s'
-    # TODO: show full url for lock, combining the transport and relative
-    # bits?
 
     internal_error = False
 
@@ -1073,6 +1082,18 @@ class LockBreakMismatch(LockError):
         self.lock = lock
         self.holder = holder
         self.target = target
+
+
+class LockCorrupt(LockError):
+
+    _fmt = ("Lock is apparently held, but corrupted: %(corruption_info)s\n"
+            "Use 'bzr break-lock' to clear it")
+
+    internal_error = False
+
+    def __init__(self, corruption_info, file_data=None):
+        self.corruption_info = corruption_info
+        self.file_data = file_data
 
 
 class LockNotHeld(LockError):
@@ -1117,6 +1138,15 @@ class CannotCommitSelectedFileMerge(BzrError):
     def __init__(self, files):
         files_str = ', '.join(files)
         BzrError.__init__(self, files=files, files_str=files_str)
+
+
+class ExcludesUnsupported(BzrError):
+
+    _fmt = ('Excluding paths during commit is not supported by '
+            'repository at %(repository)r.')
+
+    def __init__(self, repository):
+        BzrError.__init__(self, repository=repository)
 
 
 class BadCommitMessageEncoding(BzrError):
@@ -1179,11 +1209,12 @@ class NoSuchRevisionInTree(NoSuchRevision):
 
 class InvalidRevisionSpec(BzrError):
 
-    _fmt = ("Requested revision: %(spec)r does not exist in branch:"
-            " %(branch)s%(extra)s")
+    _fmt = ("Requested revision: '%(spec)s' does not exist in branch:"
+            " %(branch_url)s%(extra)s")
 
     def __init__(self, spec, branch, extra=None):
         BzrError.__init__(self, branch=branch, spec=spec)
+        self.branch_url = getattr(branch, 'user_url', str(branch))
         if extra:
             self.extra = '\n' + str(extra)
         else:
@@ -1380,12 +1411,12 @@ class WeaveFormatError(WeaveError):
 
 class WeaveParentMismatch(WeaveError):
 
-    _fmt = "Parents are mismatched between two revisions. %(message)s"
+    _fmt = "Parents are mismatched between two revisions. %(msg)s"
 
 
 class WeaveInvalidChecksum(WeaveError):
 
-    _fmt = "Text did not match it's checksum: %(message)s"
+    _fmt = "Text did not match its checksum: %(msg)s"
 
 
 class WeaveTextDiffers(WeaveError):
@@ -1439,7 +1470,7 @@ class RevisionAlreadyPresent(VersionedFileError):
 
 class VersionedFileInvalidChecksum(VersionedFileError):
 
-    _fmt = "Text did not match its checksum: %(message)s"
+    _fmt = "Text did not match its checksum: %(msg)s"
 
 
 class KnitError(InternalBzrError):
@@ -1735,12 +1766,12 @@ class ConflictsInTree(BzrError):
 
 class ParseConfigError(BzrError):
 
+    _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
+
     def __init__(self, errors, filename):
-        if filename is None:
-            filename = ""
-        message = "Error(s) parsing config file %s:\n%s" % \
-            (filename, ('\n'.join(e.msg for e in errors)))
-        BzrError.__init__(self, message)
+        BzrError.__init__(self)
+        self.filename = filename
+        self.errors = '\n'.join(e.msg for e in errors)
 
 
 class NoEmailInUsername(BzrError):
@@ -1925,17 +1956,29 @@ class CantMoveRoot(BzrError):
     _fmt = "Moving the root directory is not supported at this time"
 
 
+class TransformRenameFailed(BzrError):
+
+    _fmt = "Failed to rename %(from_path)s to %(to_path)s: %(why)s"
+
+    def __init__(self, from_path, to_path, why, errno):
+        self.from_path = from_path
+        self.to_path = to_path
+        self.why = why
+        self.errno = errno
+
+
 class BzrMoveFailedError(BzrError):
 
-    _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
+    _fmt = ("Could not move %(from_path)s%(operator)s %(to_path)s"
+        "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path='', to_path='', extra=None):
         from bzrlib.osutils import splitpath
         BzrError.__init__(self)
         if extra:
-            self.extra = ': ' + str(extra)
+            self.extra, self._has_extra = extra, ': '
         else:
-            self.extra = ''
+            self.extra = self._has_extra = ''
 
         has_from = len(from_path) > 0
         has_to = len(to_path) > 0
@@ -1962,10 +2005,12 @@ class BzrMoveFailedError(BzrError):
 
 class BzrRenameFailedError(BzrMoveFailedError):
 
-    _fmt = "Could not rename %(from_path)s%(operator)s %(to_path)s%(extra)s"
+    _fmt = ("Could not rename %(from_path)s%(operator)s %(to_path)s"
+        "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
+
 
 class BzrRemoveChangedFilesError(BzrError):
     """Used when user is trying to remove changed files."""
@@ -1975,6 +2020,8 @@ class BzrRemoveChangedFilesError(BzrError):
         "Use --keep to not delete them, or --force to delete them regardless.")
 
     def __init__(self, tree_delta):
+        symbol_versioning.warn(symbol_versioning.deprecated_in((2, 3, 0)) %
+            "BzrRemoveChangedFilesError", DeprecationWarning, stacklevel=2)
         BzrError.__init__(self)
         self.changes_as_text = tree_delta.get_changes_as_text()
         #self.paths_as_string = '\n'.join(changed_files)
@@ -1988,7 +2035,7 @@ class BzrBadParameterNotString(BzrBadParameter):
 
 class BzrBadParameterMissing(BzrBadParameter):
 
-    _fmt = "Parameter $(param)s is required but not present."
+    _fmt = "Parameter %(param)s is required but not present."
 
 
 class BzrBadParameterUnicode(BzrBadParameter):
@@ -2176,7 +2223,7 @@ class CorruptRepository(BzrError):
 
     def __init__(self, repo):
         BzrError.__init__(self)
-        self.repo_path = repo.bzrdir.root_transport.base
+        self.repo_path = repo.user_url
 
 
 class InconsistentDelta(BzrError):
@@ -2754,7 +2801,7 @@ class BzrDirError(BzrError):
 
     def __init__(self, bzrdir):
         import bzrlib.urlutils as urlutils
-        display_url = urlutils.unescape_for_display(bzrdir.root_transport.base,
+        display_url = urlutils.unescape_for_display(bzrdir.user_url,
                                                     'ascii')
         BzrError.__init__(self, bzrdir=bzrdir, display_url=display_url)
 
@@ -2834,9 +2881,18 @@ class UncommittedChanges(BzrError):
         else:
             more = ' ' + more
         import bzrlib.urlutils as urlutils
-        display_url = urlutils.unescape_for_display(
-            tree.bzrdir.root_transport.base, 'ascii')
+        user_url = getattr(tree, "user_url", None)
+        if user_url is None:
+            display_url = str(tree)
+        else:
+            display_url = urlutils.unescape_for_display(user_url, 'ascii')
         BzrError.__init__(self, tree=tree, display_url=display_url, more=more)
+
+
+class ShelvedChanges(UncommittedChanges):
+
+    _fmt = ('Working tree "%(display_url)s" has shelved changes'
+            ' (See bzr shelve --list).%(more)s')
 
 
 class MissingTemplateVariable(BzrError):
@@ -2911,6 +2967,22 @@ class UnableEncodePath(BzrError):
         self.path = path
         self.kind = kind
         self.user_encoding = osutils.get_user_encoding()
+
+
+class NoSuchConfig(BzrError):
+
+    _fmt = ('The "%(config_id)s" configuration does not exist.')
+
+    def __init__(self, config_id):
+        BzrError.__init__(self, config_id=config_id)
+
+
+class NoSuchConfigOption(BzrError):
+
+    _fmt = ('The "%(option_name)s" configuration option does not exist.')
+
+    def __init__(self, option_name):
+        BzrError.__init__(self, option_name=option_name)
 
 
 class NoSuchAlias(BzrError):
@@ -3134,3 +3206,46 @@ class NoColocatedBranchSupport(BzrError):
     def __init__(self, bzrdir):
         self.bzrdir = bzrdir
 
+
+class NoWhoami(BzrError):
+
+    _fmt = ('Unable to determine your name.\n'
+        "Please, set your name with the 'whoami' command.\n"
+        'E.g. bzr whoami "Your Name <name@example.com>"')
+
+
+class InvalidPattern(BzrError):
+
+    _fmt = ('Invalid pattern(s) found. %(msg)s')
+
+    def __init__(self, msg):
+        self.msg = msg
+
+
+class RecursiveBind(BzrError):
+
+    _fmt = ('Branch "%(branch_url)s" appears to be bound to itself. '
+        'Please use `bzr unbind` to fix.')
+
+    def __init__(self, branch_url):
+        self.branch_url = branch_url
+
+
+# FIXME: I would prefer to define the config related exception classes in
+# config.py but the lazy import mechanism proscribes this -- vila 20101222
+class OptionExpansionLoop(BzrError):
+
+    _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
+
+    def __init__(self, string, refs):
+        self.string = string
+        self.refs = '->'.join(refs)
+
+
+class ExpandingUnknownOption(BzrError):
+
+    _fmt = 'Option %(name)s is not defined while expanding "%(string)s".'
+
+    def __init__(self, name, string):
+        self.name = name
+        self.string = string

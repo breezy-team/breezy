@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,15 +25,11 @@ Tests for low-level protocol encoding are found in test_smart_transport.
 """
 
 import bz2
-from cStringIO import StringIO
-import tarfile
 
 from bzrlib import (
-    bencode,
     branch as _mod_branch,
     bzrdir,
     errors,
-    pack,
     tests,
     transport,
     urlutils,
@@ -214,7 +210,7 @@ class TestSmartServerBzrDirRequestCloningMetaDir(
         dir = self.make_bzrdir('.')
         local_result = dir.cloning_metadir()
         reference = _mod_branch.BranchReferenceFormat().initialize(
-            dir, referenced_branch)
+            dir, target_branch=referenced_branch)
         reference_url = _mod_branch.BranchReferenceFormat().get_reference(dir)
         # The server shouldn't try to follow the branch reference, so it's fine
         # if the referenced branch isn't reachable.
@@ -767,8 +763,8 @@ class TestSmartServerBranchRequestGetConfigFile(
 class TestLockedBranch(tests.TestCaseWithMemoryTransport):
 
     def get_lock_tokens(self, branch):
-        branch_token = branch.lock_write()
-        repo_token = branch.repository.lock_write()
+        branch_token = branch.lock_write().branch_token
+        repo_token = branch.repository.lock_write().repository_token
         branch.repository.unlock()
         return branch_token, repo_token
 
@@ -798,6 +794,44 @@ class TestSmartServerBranchRequestSetConfigOption(TestLockedBranch):
             'gam')
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), result)
         self.assertEqual('bar', config.get_option('foo', 'gam'))
+        # Cleanup
+        branch.unlock()
+
+
+class TestSmartServerBranchRequestSetConfigOptionDict(TestLockedBranch):
+
+    def setUp(self):
+        TestLockedBranch.setUp(self)
+        # A dict with non-ascii keys and values to exercise unicode
+        # roundtripping.
+        self.encoded_value_dict = (
+            'd5:ascii1:a11:unicode \xe2\x8c\x9a3:\xe2\x80\xbde')
+        self.value_dict = {
+            'ascii': 'a', u'unicode \N{WATCH}': u'\N{INTERROBANG}'}
+
+    def test_value_name(self):
+        branch = self.make_branch('.')
+        request = smart_branch.SmartServerBranchRequestSetConfigOptionDict(
+            branch.bzrdir.root_transport)
+        branch_token, repo_token = self.get_lock_tokens(branch)
+        config = branch._get_config()
+        result = request.execute('', branch_token, repo_token,
+            self.encoded_value_dict, 'foo', '')
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), result)
+        self.assertEqual(self.value_dict, config.get_option('foo'))
+        # Cleanup
+        branch.unlock()
+
+    def test_value_name_section(self):
+        branch = self.make_branch('.')
+        request = smart_branch.SmartServerBranchRequestSetConfigOptionDict(
+            branch.bzrdir.root_transport)
+        branch_token, repo_token = self.get_lock_tokens(branch)
+        config = branch._get_config()
+        result = request.execute('', branch_token, repo_token,
+            self.encoded_value_dict, 'foo', 'gam')
+        self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), result)
+        self.assertEqual(self.value_dict, config.get_option('foo', 'gam'))
         # Cleanup
         branch.unlock()
 
@@ -898,7 +932,7 @@ class TestSetLastRevisionVerbMixin(object):
         # its repository.
         self.make_tree_with_two_commits()
         rev_id_utf8 = u'\xc8'.encode('utf-8')
-        self.tree.branch.set_revision_history([])
+        self.tree.branch.set_last_revision_info(0, 'null:')
         self.assertEqual(
             (0, 'null:'), self.tree.branch.last_revision_info())
         # We can update the branch to a revision that is present in the
@@ -1073,7 +1107,7 @@ class TestSmartServerBranchRequestGetParent(tests.TestCaseWithMemoryTransport):
             response)
 
 
-class TestSmartServerBranchRequestSetParent(tests.TestCaseWithMemoryTransport):
+class TestSmartServerBranchRequestSetParent(TestLockedBranch):
 
     def test_set_parent_none(self):
         branch = self.make_branch('base', format="1.9")
@@ -1082,12 +1116,10 @@ class TestSmartServerBranchRequestSetParent(tests.TestCaseWithMemoryTransport):
         branch.unlock()
         request = smart_branch.SmartServerBranchRequestSetParentLocation(
             self.get_transport())
-        branch_token = branch.lock_write()
-        repo_token = branch.repository.lock_write()
+        branch_token, repo_token = self.get_lock_tokens(branch)
         try:
             response = request.execute('base', branch_token, repo_token, '')
         finally:
-            branch.repository.unlock()
             branch.unlock()
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), response)
         self.assertEqual(None, branch.get_parent())
@@ -1096,13 +1128,11 @@ class TestSmartServerBranchRequestSetParent(tests.TestCaseWithMemoryTransport):
         branch = self.make_branch('base', format="1.9")
         request = smart_branch.SmartServerBranchRequestSetParentLocation(
             self.get_transport())
-        branch_token = branch.lock_write()
-        repo_token = branch.repository.lock_write()
+        branch_token, repo_token = self.get_lock_tokens(branch)
         try:
             response = request.execute('base', branch_token, repo_token,
             'http://bar/')
         finally:
-            branch.repository.unlock()
             branch.unlock()
         self.assertEqual(smart_req.SuccessfulSmartServerResponse(()), response)
         self.assertEqual('http://bar/', branch.get_parent())
@@ -1137,7 +1167,7 @@ class TestSmartServerBranchRequestGetStackedOnURL(tests.TestCaseWithMemoryTransp
             response)
 
 
-class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
+class TestSmartServerBranchRequestLockWrite(TestLockedBranch):
 
     def setUp(self):
         tests.TestCaseWithMemoryTransport.setUp(self)
@@ -1165,7 +1195,7 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestLockWrite(backing)
         branch = self.make_branch('.')
-        branch_token = branch.lock_write()
+        branch_token = branch.lock_write().branch_token
         branch.leave_lock_in_place()
         branch.unlock()
         response = request.execute('')
@@ -1180,9 +1210,7 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestLockWrite(backing)
         branch = self.make_branch('.', format='knit')
-        branch_token = branch.lock_write()
-        repo_token = branch.repository.lock_write()
-        branch.repository.unlock()
+        branch_token, repo_token = self.get_lock_tokens(branch)
         branch.leave_lock_in_place()
         branch.repository.leave_lock_in_place()
         branch.unlock()
@@ -1203,9 +1231,7 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_branch.SmartServerBranchRequestLockWrite(backing)
         branch = self.make_branch('.', format='knit')
-        branch_token = branch.lock_write()
-        repo_token = branch.repository.lock_write()
-        branch.repository.unlock()
+        branch_token, repo_token = self.get_lock_tokens(branch)
         branch.leave_lock_in_place()
         branch.repository.leave_lock_in_place()
         branch.unlock()
@@ -1226,7 +1252,7 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
         request = smart_branch.SmartServerBranchRequestLockWrite(backing)
         branch = self.make_branch('.', format='knit')
         repo = branch.repository
-        repo_token = repo.lock_write()
+        repo_token = repo.lock_write().repository_token
         repo.leave_lock_in_place()
         repo.unlock()
         response = request.execute('')
@@ -1249,7 +1275,7 @@ class TestSmartServerBranchRequestLockWrite(tests.TestCaseWithMemoryTransport):
         self.assertEqual('LockFailed', error_name)
 
 
-class TestSmartServerBranchRequestUnlock(tests.TestCaseWithMemoryTransport):
+class TestSmartServerBranchRequestUnlock(TestLockedBranch):
 
     def setUp(self):
         tests.TestCaseWithMemoryTransport.setUp(self)
@@ -1259,9 +1285,7 @@ class TestSmartServerBranchRequestUnlock(tests.TestCaseWithMemoryTransport):
         request = smart_branch.SmartServerBranchRequestUnlock(backing)
         branch = self.make_branch('.', format='knit')
         # Lock the branch
-        branch_token = branch.lock_write()
-        repo_token = branch.repository.lock_write()
-        branch.repository.unlock()
+        branch_token, repo_token = self.get_lock_tokens(branch)
         # Unlock the branch (and repo) object, leaving the physical locks
         # in place.
         branch.leave_lock_in_place()
@@ -1291,13 +1315,12 @@ class TestSmartServerBranchRequestUnlock(tests.TestCaseWithMemoryTransport):
         request = smart_branch.SmartServerBranchRequestUnlock(backing)
         branch = self.make_branch('.', format='knit')
         # Lock the repository.
-        repo_token = branch.repository.lock_write()
+        repo_token = branch.repository.lock_write().repository_token
         branch.repository.leave_lock_in_place()
         branch.repository.unlock()
         # Issue branch lock_write request on the unlocked branch (with locked
         # repo).
-        response = request.execute(
-            '', 'branch token', repo_token)
+        response = request.execute('', 'branch token', repo_token)
         self.assertEqual(
             smart_req.SmartServerResponse(('TokenMismatch',)), response)
         # Cleanup
@@ -1447,7 +1470,7 @@ class TestSmartServerRepositoryGetRevIdForRevno(
             request.execute('stacked', 1, (3, r3)))
 
 
-class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
+class GetStreamTestBase(tests.TestCaseWithMemoryTransport):
 
     def make_two_commit_repo(self):
         tree = self.make_branch_and_memory_tree('.')
@@ -1458,6 +1481,9 @@ class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
         tree.unlock()
         repo = tree.branch.repository
         return repo, r1, r2
+
+
+class TestSmartServerRepositoryGetStream(GetStreamTestBase):
 
     def test_ancestry_of(self):
         """The search argument may be a 'ancestry-of' some heads'."""
@@ -1481,6 +1507,18 @@ class TestSmartServerRepositoryGetStream(tests.TestCaseWithMemoryTransport):
         lines = '\n'.join(fetch_spec)
         request.execute('', repo._format.network_name())
         response = request.do_body(lines)
+        self.assertEqual(('ok',), response.args)
+        stream_bytes = ''.join(response.body_stream)
+        self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
+
+    def test_search_everything(self):
+        """A search of 'everything' returns a stream."""
+        backing = self.get_transport()
+        request = smart_repo.SmartServerRepositoryGetStream_1_19(backing)
+        repo, r1, r2 = self.make_two_commit_repo()
+        serialised_fetch_spec = 'everything'
+        request.execute('', repo._format.network_name())
+        response = request.do_body(serialised_fetch_spec)
         self.assertEqual(('ok',), response.args)
         stream_bytes = ''.join(response.body_stream)
         self.assertStartsWith(stream_bytes, 'Bazaar pack format 1')
@@ -1610,7 +1648,7 @@ class TestSmartServerRepositoryLockWrite(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryLockWrite(backing)
         repository = self.make_repository('.', format='knit')
-        repo_token = repository.lock_write()
+        repo_token = repository.lock_write().repository_token
         repository.leave_lock_in_place()
         repository.unlock()
         response = request.execute('')
@@ -1658,7 +1696,7 @@ class TestSmartServerRepositoryInsertStreamLocked(TestInsertStreamBase):
         request = smart_repo.SmartServerRepositoryInsertStreamLocked(
             backing)
         repository = self.make_repository('.', format='knit')
-        lock_token = repository.lock_write()
+        lock_token = repository.lock_write().repository_token
         response = request.execute('', '', lock_token)
         self.assertEqual(None, response)
         response = request.do_chunk(self.make_empty_byte_stream(repository))
@@ -1672,7 +1710,7 @@ class TestSmartServerRepositoryInsertStreamLocked(TestInsertStreamBase):
         request = smart_repo.SmartServerRepositoryInsertStreamLocked(
             backing)
         repository = self.make_repository('.', format='knit')
-        lock_token = repository.lock_write()
+        lock_token = repository.lock_write().repository_token
         self.assertRaises(
             errors.TokenMismatch, request.execute, '', '', 'wrong-token')
         repository.unlock()
@@ -1687,7 +1725,7 @@ class TestSmartServerRepositoryUnlock(tests.TestCaseWithMemoryTransport):
         backing = self.get_transport()
         request = smart_repo.SmartServerRepositoryUnlock(backing)
         repository = self.make_repository('.', format='knit')
-        token = repository.lock_write()
+        token = repository.lock_write().repository_token
         repository.leave_lock_in_place()
         repository.unlock()
         response = request.execute('', token)
@@ -1884,6 +1922,8 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryGetRevisionGraph)
         self.assertHandlerEqual('Repository.get_stream',
             smart_repo.SmartServerRepositoryGetStream)
+        self.assertHandlerEqual('Repository.get_stream_1.19',
+            smart_repo.SmartServerRepositoryGetStream_1_19)
         self.assertHandlerEqual('Repository.has_revision',
             smart_repo.SmartServerRequestHasRevision)
         self.assertHandlerEqual('Repository.insert_stream',
@@ -1900,3 +1940,50 @@ class TestHandlers(tests.TestCase):
             smart_repo.SmartServerRepositoryUnlock)
         self.assertHandlerEqual('Transport.is_readonly',
             smart_req.SmartServerIsReadonly)
+
+
+class SmartTCPServerHookTests(tests.TestCaseWithMemoryTransport):
+    """Tests for SmartTCPServer hooks."""
+
+    def setUp(self):
+        super(SmartTCPServerHookTests, self).setUp()
+        self.server = server.SmartTCPServer(self.get_transport())
+
+    def test_run_server_started_hooks(self):
+        """Test the server started hooks get fired properly."""
+        started_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_started',
+            lambda backing_urls, url: started_calls.append((backing_urls, url)),
+            None)
+        started_ex_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_started_ex',
+            lambda backing_urls, url: started_ex_calls.append((backing_urls, url)),
+            None)
+        self.server._sockname = ('example.com', 42)
+        self.server.run_server_started_hooks()
+        self.assertEquals(started_calls,
+            [([self.get_transport().base], 'bzr://example.com:42/')])
+        self.assertEquals(started_ex_calls,
+            [([self.get_transport().base], self.server)])
+
+    def test_run_server_started_hooks_ipv6(self):
+        """Test that socknames can contain 4-tuples."""
+        self.server._sockname = ('::', 42, 0, 0)
+        started_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_started',
+            lambda backing_urls, url: started_calls.append((backing_urls, url)),
+            None)
+        self.server.run_server_started_hooks()
+        self.assertEquals(started_calls,
+                [([self.get_transport().base], 'bzr://:::42/')])
+
+    def test_run_server_stopped_hooks(self):
+        """Test the server stopped hooks."""
+        self.server._sockname = ('example.com', 42)
+        stopped_calls = []
+        server.SmartTCPServer.hooks.install_named_hook('server_stopped',
+            lambda backing_urls, url: stopped_calls.append((backing_urls, url)),
+            None)
+        self.server.run_server_stopped_hooks()
+        self.assertEquals(stopped_calls,
+            [([self.get_transport().base], 'bzr://example.com:42/')])

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,25 +17,31 @@
 
 """Tests for the commit CLI of bzr."""
 
+import doctest
 import os
+import re
 import sys
 
+from testtools.matchers import DocTestMatches
+
 from bzrlib import (
+    config,
     osutils,
     ignores,
     msgeditor,
-    osutils,
     tests,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
     probe_bad_non_ascii,
+    test_foreign,
     TestSkipped,
+    UnicodeFilenameFeature,
     )
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 
 
-class TestCommit(ExternalBase):
+class TestCommit(TestCaseWithTransport):
 
     def test_05_empty_commit(self):
         """Commit of tree with no versioned files should fail"""
@@ -44,8 +50,18 @@ class TestCommit(ExternalBase):
         self.build_tree(['hello.txt'])
         out,err = self.run_bzr('commit -m empty', retcode=3)
         self.assertEqual('', out)
-        self.assertContainsRe(err, 'bzr: ERROR: No changes to commit\.'
-                                  ' Use --unchanged to commit anyhow.\n')
+        # Two ugly bits here.
+        # 1) We really don't want 'aborting commit write group' anymore.
+        # 2) bzr: ERROR: is a really long line, so we wrap it with '\'
+        self.assertThat(
+            err,
+            DocTestMatches("""\
+Committing to: ...
+aborting commit write group: PointlessCommit(No changes to commit)
+bzr: ERROR: No changes to commit.\
+ Please 'bzr add' the files you want to commit,\
+ or use --unchanged to force an empty commit.
+""", flags=doctest.ELLIPSIS|doctest.REPORT_UDIFF))
 
     def test_commit_success(self):
         """Successful commit should not leave behind a bzr-commit-* file"""
@@ -56,6 +72,20 @@ class TestCommit(ExternalBase):
         # same for unicode messages
         self.run_bzr(["commit", "--unchanged", "-m", u'foo\xb5'])
         self.assertEqual('', self.run_bzr('unknowns')[0])
+
+    def test_commit_lossy_native(self):
+        """A --lossy option to commit is supported."""
+        self.make_branch_and_tree('.')
+        self.run_bzr('commit --lossy --unchanged -m message')
+        self.assertEqual('', self.run_bzr('unknowns')[0])
+
+    def test_commit_lossy_foreign(self):
+        test_foreign.register_dummy_foreign_for_test(self)
+        self.make_branch_and_tree('.',
+            format=test_foreign.DummyForeignVcsDirFormat())
+        self.run_bzr('commit --lossy --unchanged -m message')
+        output = self.run_bzr('revision-info')[0]
+        self.assertTrue(output.startswith('1 dummy-'))
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
@@ -75,7 +105,6 @@ class TestCommit(ExternalBase):
         self.assertEqual(len(b_tree.conflicts()), 1)
         self.run_bzr('resolved b/a_file')
         self.run_bzr(['commit', '-m', 'merge into b', 'b'])
-
 
     def test_10_verbose_commit(self):
         """Add one file and examine verbose commit output"""
@@ -106,6 +135,41 @@ class TestCommit(ExternalBase):
         self.assertContainsRe(err, '^Committing to: .*\n'
                               'modified hello\.txt\n'
                               'Committed revision 2\.\n$')
+
+    def test_unicode_commit_message_is_filename(self):
+        """Unicode commit message same as a filename (Bug #563646).
+        """
+        self.requireFeature(UnicodeFilenameFeature)
+        file_name = u'\N{euro sign}'
+        self.run_bzr(['init'])
+        open(file_name, 'w').write('hello world')
+        self.run_bzr(['add'])
+        out, err = self.run_bzr(['commit', '-m', file_name])
+        reflags = re.MULTILINE|re.DOTALL|re.UNICODE
+        te = osutils.get_terminal_encoding()
+        self.assertContainsRe(err.decode(te),
+            u'The commit message is a file name:',
+            flags=reflags)
+
+        # Run same test with a filename that causes encode
+        # error for the terminal encoding. We do this
+        # by forcing terminal encoding of ascii for
+        # osutils.get_terminal_encoding which is used
+        # by ui.text.show_warning
+        default_get_terminal_enc = osutils.get_terminal_encoding
+        try:
+            osutils.get_terminal_encoding = lambda trace=None: 'ascii'
+            file_name = u'foo\u1234'
+            open(file_name, 'w').write('hello world')
+            self.run_bzr(['add'])
+            out, err = self.run_bzr(['commit', '-m', file_name])
+            reflags = re.MULTILINE|re.DOTALL|re.UNICODE
+            te = osutils.get_terminal_encoding()
+            self.assertContainsRe(err.decode(te, 'replace'),
+                u'The commit message is a file name:',
+                flags=reflags)
+        finally:
+            osutils.get_terminal_encoding = default_get_terminal_enc
 
     def test_warn_about_forgotten_commit_message(self):
         """Test that the lack of -m parameter is caught"""
@@ -270,26 +334,6 @@ class TestCommit(ExternalBase):
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
         self.run_bzr('commit -m ""', retcode=3)
-
-    def test_unsupported_encoding_commit_message(self):
-        if sys.platform == 'win32':
-            raise tests.TestNotApplicable('Win32 parses arguments directly'
-                ' as Unicode, so we can\'t pass invalid non-ascii')
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('foo.c', 'int main() {}')])
-        tree.add('foo.c')
-        # LANG env variable has no effect on Windows
-        # but some characters anyway cannot be represented
-        # in default user encoding
-        char = probe_bad_non_ascii(osutils.get_user_encoding())
-        if char is None:
-            raise TestSkipped('Cannot find suitable non-ascii character'
-                'for user_encoding (%s)' % osutils.get_user_encoding())
-        out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
-                                          retcode=1,
-                                          env_changes={'LANG': 'C'})
-        self.assertContainsRe(err, r'bzrlib.errors.BzrError: Parameter.*is '
-                                    'unsupported by the current encoding.')
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
@@ -663,7 +707,7 @@ altered in u2
         self.assertContainsRe(err, r'modified test\nCommitted revision 2.')
 
     def test_commit_readonly_checkout(self):
-        # https://bugs.edge.launchpad.net/bzr/+bug/129701
+        # https://bugs.launchpad.net/bzr/+bug/129701
         # "UnlockableTransport error trying to commit in checkout of readonly
         # branch"
         self.make_branch('master')
@@ -675,24 +719,68 @@ altered in u2
         self.assertContainsRe(err,
             r'^bzr: ERROR: Cannot lock.*readonly transport')
 
-    def test_commit_hook_template(self):
+    def setup_editor(self):
         # Test that commit template hooks work
         if sys.platform == "win32":
             f = file('fed.bat', 'w')
             f.write('@rem dummy fed')
             f.close()
-            osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
+            self.overrideEnv('BZR_EDITOR', "fed.bat")
         else:
             f = file('fed.sh', 'wb')
             f.write('#!/bin/sh\n')
             f.close()
             os.chmod('fed.sh', 0755)
-            osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
+            self.overrideEnv('BZR_EDITOR', "./fed.sh")
+
+    def setup_commit_with_template(self):
+        self.setup_editor()
         msgeditor.hooks.install_named_hook("commit_message_template",
                 lambda commit_obj, msg: "save me some typing\n", None)
         tree = self.make_branch_and_tree('tree')
         self.build_tree(['tree/hello.txt'])
         tree.add('hello.txt')
-        out, err = self.run_bzr("commit tree/hello.txt")
+        return tree
+
+    def test_commit_hook_template_accepted(self):
+        tree = self.setup_commit_with_template()
+        out, err = self.run_bzr("commit tree/hello.txt", stdin="y\n")
         last_rev = tree.branch.repository.get_revision(tree.last_revision())
         self.assertEqual('save me some typing\n', last_rev.message)
+
+    def test_commit_hook_template_rejected(self):
+        tree = self.setup_commit_with_template()
+        expected = tree.last_revision()
+        out, err = self.run_bzr_error(["empty commit message"],
+            "commit tree/hello.txt", stdin="n\n")
+        self.assertEqual(expected, tree.last_revision())
+
+    def test_commit_without_username(self):
+        """Ensure commit error if username is not set.
+        """
+        self.run_bzr(['init', 'foo'])
+        os.chdir('foo')
+        open('foo.txt', 'w').write('hello')
+        self.run_bzr(['add'])
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
+        # Also, make sure that it's not inferred from mailname.
+        self.overrideAttr(config, '_auto_user_id',
+            lambda: (None, None))
+        out, err = self.run_bzr(['commit', '-m', 'initial'], 3)
+        self.assertContainsRe(err, 'Unable to determine your name')
+
+    def test_commit_recursive_checkout(self):
+        """Ensure that a commit to a recursive checkout fails cleanly.
+        """
+        self.run_bzr(['init', 'test_branch'])
+        self.run_bzr(['checkout', 'test_branch', 'test_checkout'])
+        os.chdir('test_checkout')
+        self.run_bzr(['bind', '.']) # bind to self
+        open('foo.txt', 'w').write('hello')
+        self.run_bzr(['add'])
+        out, err = self.run_bzr(['commit', '-m', 'addedfoo'], 3)
+        self.assertEqual(out, '')
+        self.assertContainsRe(err,
+            'Branch.*test_checkout.*appears to be bound to itself')
+

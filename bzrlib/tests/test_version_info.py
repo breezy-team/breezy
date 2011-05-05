@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,6 @@ import sys
 from bzrlib import (
     errors,
     registry,
-    symbol_versioning,
     tests,
     version_info_formats,
     )
@@ -137,8 +136,8 @@ class TestVersionInfo(TestCaseWithTransport):
             return new_stanzas[0]
 
         stanza = regen()
-        self.failUnless('date' in stanza)
-        self.failUnless('build-date' in stanza)
+        self.assertTrue('date' in stanza)
+        self.assertTrue('build-date' in stanza)
         self.assertEqual(['3'], stanza.get_all('revno'))
         self.assertEqual(['r3'], stanza.get_all('revision-id'))
 
@@ -193,6 +192,7 @@ class TestVersionInfo(TestCaseWithTransport):
         val = sio.getvalue()
         self.assertContainsRe(val, "'revision_id': None")
         self.assertContainsRe(val, "'revno': 0")
+        self.assertNotContainsString(val, '\n\n\n\n')
 
     def test_python_version(self):
         wt = self.create_branch()
@@ -225,7 +225,7 @@ class TestVersionInfo(TestCaseWithTransport):
         tvi = regen()
         self.assertEqual(3, tvi.version_info['revno'])
         self.assertEqual('r3', tvi.version_info['revision_id'])
-        self.failUnless(tvi.version_info.has_key('date'))
+        self.assertTrue(tvi.version_info.has_key('date'))
         self.assertEqual(None, tvi.version_info['clean'])
 
         tvi = regen(check_for_clean=True)

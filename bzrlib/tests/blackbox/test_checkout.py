@@ -28,8 +28,8 @@ from bzrlib import (
     errors,
     workingtree,
     )
-from bzrlib.tests.blackbox import (
-    ExternalBase,
+from bzrlib.tests import (
+    TestCaseWithTransport,
     )
 from bzrlib.tests import (
     HardlinkFeature,
@@ -37,7 +37,7 @@ from bzrlib.tests import (
     )
 
 
-class TestCheckout(ExternalBase):
+class TestCheckout(TestCaseWithTransport):
 
     def setUp(self):
         super(TestCheckout, self).setUp()
@@ -64,20 +64,21 @@ class TestCheckout(ExternalBase):
                          result.open_branch().bzrdir.root_transport.base)
 
     def test_checkout_dash_r(self):
-        self.run_bzr('checkout -r -2 branch checkout')
+        out, err = self.run_bzr(['checkout', '-r', '-2', 'branch', 'checkout'])
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
         self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
-        self.failIfExists('checkout/added_in_2')
+        self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_light_dash_r(self):
-        self.run_bzr('checkout --lightweight -r -2 branch checkout')
+        out, err = self.run_bzr(['checkout','--lightweight', '-r', '-2',
+            'branch', 'checkout'])
         # the working tree should now be at revision '1' with the content
         # from 1.
         result = bzrdir.BzrDir.open('checkout')
         self.assertEqual(['1'], result.open_workingtree().get_parent_ids())
-        self.failIfExists('checkout/added_in_2')
+        self.assertPathDoesNotExist('checkout/added_in_2')
 
     def test_checkout_reconstitutes_working_trees(self):
         # doing a 'bzr checkout' in the directory of a branch with no tree
@@ -123,9 +124,9 @@ class TestCheckout(ExternalBase):
             cmd.append('--lightweight')
         self.run_bzr('checkout source target')
         # files with unique content should be moved
-        self.failUnlessExists('target/file2.moved')
+        self.assertPathExists('target/file2.moved')
         # files with content matching tree should not be moved
-        self.failIfExists('target/file1.moved')
+        self.assertPathDoesNotExist('target/file1.moved')
 
     def test_checkout_existing_dir_heavy(self):
         self._test_checkout_existing_dir(False)
@@ -155,9 +156,20 @@ class TestCheckout(ExternalBase):
         self.build_tree(['source/file1'])
         source.add('file1')
         source.commit('added file')
-        out, err = self.run_bzr(['checkout', 'source', 'target',
-            '--files-from', 'source',
-            '--hardlink'])
+        out, err = self.run_bzr('checkout source target --hardlink')
         source_stat = os.stat('source/file1')
         target_stat = os.stat('target/file1')
         self.assertEqual(source_stat, target_stat)
+
+    def test_checkout_hardlink_files_from(self):
+        self.requireFeature(HardlinkFeature)
+        source = self.make_branch_and_tree('source')
+        self.build_tree(['source/file1'])
+        source.add('file1')
+        source.commit('added file')
+        source.bzrdir.sprout('second')
+        out, err = self.run_bzr('checkout source target --hardlink'
+                                ' --files-from second')
+        second_stat = os.stat('second/file1')
+        target_stat = os.stat('target/file1')
+        self.assertEqual(second_stat, target_stat)

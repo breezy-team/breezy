@@ -46,17 +46,15 @@ check_refs are tuples (kind, value). Currently defined kinds are:
   indicating that the revision was found/not found.
 """
 
-from bzrlib import errors, osutils
-from bzrlib import repository as _mod_repository
-from bzrlib import revision
+from bzrlib import (
+    errors,
+    ui,
+    )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
-from bzrlib.errors import BzrCheckError
-from bzrlib.repository import Repository
 from bzrlib.revision import NULL_REVISION
 from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import note
-import bzrlib.ui
 from bzrlib.workingtree import WorkingTree
 
 class Check(object):
@@ -92,7 +90,7 @@ class Check(object):
         if callback_refs is None:
             callback_refs = {}
         self.repository.lock_read()
-        self.progress = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.progress = ui.ui_factory.nested_progress_bar()
         try:
             self.progress.update('check', 0, 4)
             if self.check_repo:
@@ -174,7 +172,7 @@ class Check(object):
         # - we can fill out existence flags at this point
         # - we can read the revision inventory sha at this point
         # - we can check properties and serialisers etc.
-        if not self.repository.revision_graph_can_have_wrong_parents():
+        if not self.repository._format.revision_graph_can_have_wrong_parents:
             # The check against the index isn't needed.
             self.revs_with_bad_parents_in_index = None
             for thing in revision_iterator:
@@ -192,8 +190,8 @@ class Check(object):
 
     def _report_repo_results(self, verbose):
         note('checked repository %s format %s',
-             self.repository.bzrdir.root_transport,
-             self.repository._format)
+            self.repository.user_url,
+            self.repository._format)
         note('%6d revisions', self.checked_rev_cnt)
         note('%6d file-ids', len(self.checked_weaves))
         if verbose:
@@ -291,7 +289,7 @@ class Check(object):
         """Check all the weaves we can get our hands on.
         """
         weave_ids = []
-        storebar = bzrlib.ui.ui_factory.nested_progress_bar()
+        storebar = ui.ui_factory.nested_progress_bar()
         try:
             self._check_weaves(storebar)
         finally:
@@ -330,39 +328,6 @@ class Check(object):
         self.text_key_references.setdefault(key, False)
         if entry.revision == inv.revision_id:
             self.text_key_references[key] = True
-
-
-@deprecated_function(deprecated_in((1,6,0)))
-def check(branch, verbose):
-    """Run consistency checks on a branch.
-
-    Results are reported through logging.
-
-    Deprecated in 1.6.  Please use check_dwim instead.
-
-    :raise BzrCheckError: if there's a consistency error.
-    """
-    check_branch(branch, verbose)
-
-
-@deprecated_function(deprecated_in((1,16,0)))
-def check_branch(branch, verbose):
-    """Run consistency checks on a branch.
-
-    Results are reported through logging.
-
-    :raise BzrCheckError: if there's a consistency error.
-    """
-    branch.lock_read()
-    try:
-        needed_refs = {}
-        for ref in branch._get_check_refs():
-            needed_refs.setdefault(ref, []).append(branch)
-        result = branch.repository.check([branch.last_revision()], needed_refs)
-        branch_result = result.other_results[0]
-    finally:
-        branch.unlock()
-    branch_result.report_results(verbose)
 
 
 def scan_branch(branch, needed_refs, to_unlock):
@@ -451,7 +416,7 @@ def check_dwim(path, verbose, do_branch=False, do_repo=False, do_tree=False):
             if do_repo or do_branch or do_tree:
                 if do_repo:
                     note("Checking repository at '%s'."
-                         % (repo.bzrdir.root_transport.base,))
+                         % (repo.user_url,))
                 result = repo.check(None, callback_refs=needed_refs,
                     check_repo=do_repo)
                 result.report_results(verbose)

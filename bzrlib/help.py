@@ -30,7 +30,6 @@ from bzrlib import (
     help_topics,
     osutils,
     plugin,
-    symbol_versioning,
     )
 
 
@@ -45,9 +44,9 @@ def help(topic=None, outfile=None):
     try:
         topics = indices.search(topic)
         shadowed_terms = []
-        for index, topic in topics[1:]:
+        for index, topic_obj in topics[1:]:
             shadowed_terms.append('%s%s' % (index.prefix,
-                topic.get_help_topic()))
+                topic_obj.get_help_topic()))
         source = topics[0][1]
         outfile.write(source.get_help_text(shadowed_terms))
     except errors.NoHelpTopic:

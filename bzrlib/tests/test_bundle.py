@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,21 +27,19 @@ from bzrlib import (
     inventory,
     merge,
     osutils,
-    repository,
     revision as _mod_revision,
+    symbol_versioning,
     tests,
     treebuilder,
     )
 from bzrlib.bundle import read_mergeable_from_url
 from bzrlib.bundle.apply_bundle import install_bundle, merge_bundle
 from bzrlib.bundle.bundle_data import BundleTree
-from bzrlib.bzrdir import BzrDir
 from bzrlib.directory_service import directories
 from bzrlib.bundle.serializer import write_bundle, read_bundle, v09, v4
 from bzrlib.bundle.serializer.v08 import BundleSerializerV08
 from bzrlib.bundle.serializer.v09 import BundleSerializerV09
 from bzrlib.bundle.serializer.v4 import BundleSerializerV4
-from bzrlib.branch import Branch
 from bzrlib.repofmt import knitrepo
 from bzrlib.tests import (
     test_read_bundle,
@@ -114,12 +112,12 @@ class MockTree(object):
             ie = InventoryDirectory(file_id, name, parent_id)
         elif kind == 'file':
             ie = InventoryFile(file_id, name, parent_id)
+            ie.text_sha1 = text_sha_1
+            ie.text_size = text_size
         elif kind == 'symlink':
             ie = InventoryLink(file_id, name, parent_id)
         else:
             raise errors.BzrError('unknown kind %r' % kind)
-        ie.text_sha1 = text_sha_1
-        ie.text_size = text_size
         return ie
 
     def add_dir(self, file_id, path):
@@ -144,6 +142,9 @@ class MockTree(object):
         result.write(self.contents[file_id])
         result.seek(0,0)
         return result
+
+    def get_file_revision(self, file_id):
+        return self.inventory[file_id].revision
 
     def contents_stats(self, file_id):
         if file_id not in self.contents:
@@ -506,7 +507,8 @@ class BundleTester(object):
                 old.unlock()
         if not _mod_revision.is_null(rev_id):
             rh = self.b1.revision_history()
-            tree.branch.set_revision_history(rh[:rh.index(rev_id)+1])
+            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+                tree.branch.set_revision_history, rh[:rh.index(rev_id)+1])
             tree.update()
             delta = tree.changes_from(self.b1.repository.revision_tree(rev_id))
             self.assertFalse(delta.has_changed(),
@@ -1412,7 +1414,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         branch = tree_a.branch
         repo_a = branch.repository
         tree_a.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.has_signature_for_revision_id('A'))
+        self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism
@@ -1440,12 +1442,6 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         s.seek(0)
         # ensure repeat installs are harmless
         install_bundle(repo_b, serializer.read(s))
-
-
-class V4WeaveBundleTester(V4BundleTester):
-
-    def bzrdir_format(self):
-        return 'metaweave'
 
 
 class V4_2aBundleTester(V4BundleTester):

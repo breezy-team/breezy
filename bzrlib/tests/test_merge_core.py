@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,7 +24,11 @@ from bzrlib import (
     merge_directive,
     osutils,
     )
-from bzrlib.conflicts import ContentsConflict, TextConflict, PathConflict
+from bzrlib.conflicts import (
+    ContentsConflict,
+    TextConflict,
+    PathConflict,
+    )
 from bzrlib.merge import (
     Merge3Merger,
     Diff3Merger,
@@ -32,7 +36,6 @@ from bzrlib.merge import (
     Merger,
     )
 from bzrlib.osutils import getcwd, pathjoin
-from bzrlib import progress
 from bzrlib.transform import TreeTransform
 from bzrlib.tests import TestCaseWithTransport, TestSkipped
 from bzrlib.workingtree import WorkingTree
@@ -490,16 +493,16 @@ class FunctionalMergeTest(TestCaseWithTransport):
         wtb = d_b.open_workingtree()
         wtb.commit('this revision', allow_pointless=False)
         self.assertEqual(1, wtb.merge_from_branch(wta.branch))
-        self.failUnlessExists('b/file.THIS')
-        self.failUnlessExists('b/file.BASE')
-        self.failUnlessExists('b/file.OTHER')
+        self.assertPathExists('b/file.THIS')
+        self.assertPathExists('b/file.BASE')
+        self.assertPathExists('b/file.OTHER')
         wtb.revert()
         self.assertEqual(1, wtb.merge_from_branch(wta.branch,
                                                   merge_type=WeaveMerger))
-        self.failUnlessExists('b/file')
-        self.failUnlessExists('b/file.THIS')
-        self.failUnlessExists('b/file.BASE')
-        self.failUnlessExists('b/file.OTHER')
+        self.assertPathExists('b/file')
+        self.assertPathExists('b/file.THIS')
+        self.assertPathExists('b/file.BASE')
+        self.assertPathExists('b/file.OTHER')
 
     def test_weave_conflicts_not_in_base(self):
         builder = self.make_branch_builder('source')
@@ -529,11 +532,11 @@ class FunctionalMergeTest(TestCaseWithTransport):
         self.assertEqual(1, tree.merge_from_branch(tree.branch,
                                                    to_revision='D-id',
                                                    merge_type=WeaveMerger))
-        self.failUnlessExists('tree/foo.THIS')
-        self.failUnlessExists('tree/foo.OTHER')
+        self.assertPathExists('tree/foo.THIS')
+        self.assertPathExists('tree/foo.OTHER')
         self.expectFailure('fail to create .BASE in some criss-cross merges',
-            self.failUnlessExists, 'tree/foo.BASE')
-        self.failUnlessExists('tree/foo.BASE')
+            self.assertPathExists, 'tree/foo.BASE')
+        self.assertPathExists('tree/foo.BASE')
 
     def test_merge_unrelated(self):
         """Sucessfully merges unrelated branches with no common names"""
@@ -581,7 +584,7 @@ class FunctionalMergeTest(TestCaseWithTransport):
         wtb.commit('changed file', allow_pointless=False)
         wtb.merge_from_branch(wta.branch, wta.branch.last_revision(),
                               wta.branch.get_rev_id(1))
-        self.failIf(os.path.lexists('b/file'))
+        self.assertFalse(os.path.lexists('b/file'))
 
     def test_merge_metadata_vs_deletion(self):
         """Conflict deletion vs metadata change"""
@@ -615,8 +618,8 @@ class FunctionalMergeTest(TestCaseWithTransport):
         b_wt.commit('r1', rev_id='r1')
         self.assertEqual(0, a_wt.merge_from_branch(b_wt.branch,
             b_wt.branch.last_revision(), b_wt.branch.get_rev_id(1)))
-        self.failUnlessExists('a/un')
-        self.failUnless('a/deux')
+        self.assertPathExists('a/un')
+        self.assertTrue('a/deux')
         self.assertFalse(os.path.exists('a/tmp'))
         self.assertEqual(file('a/un').read(),'DEUX')
         self.assertEqual(file('a/deux').read(),'UN')

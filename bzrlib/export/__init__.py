@@ -1,4 +1,4 @@
-# Copyright (C) 2005 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,9 +19,13 @@
 Such as non-controlled directories, tarfiles, zipfiles, etc.
 """
 
-from bzrlib.trace import mutter
 import os
-import bzrlib.errors as errors
+import time
+from bzrlib import (
+    errors,
+    pyutils,
+    trace,
+    )
 
 # Maps format name => export function
 _exporters = {}
@@ -55,14 +59,15 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
 
     When requesting a specific type of export, load the respective path.
     """
-    def _loader(tree, dest, root, subdir, filtered):
-        mod = __import__(module, globals(), locals(), [funcname])
-        func = getattr(mod, funcname)
-        return func(tree, dest, root, subdir, filtered=filtered)
+    def _loader(tree, dest, root, subdir, filtered, force_mtime):
+        func = pyutils.get_named_object(module, funcname)
+        return func(tree, dest, root, subdir, filtered=filtered,
+                    force_mtime=force_mtime)
     register_exporter(scheme, extensions, _loader)
 
 
-def export(tree, dest, format=None, root=None, subdir=None, filtered=False):
+def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
+           per_file_timestamps=False):
     """Export the given Tree to the specific destination.
 
     :param tree: A Tree (such as RevisionTree) to export
@@ -81,6 +86,9 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False):
         a directory to start exporting from.
     :param filtered: If True, content filtering is applied to the
                      files exported.
+    :param per_file_timestamps: Whether to use the timestamp stored in the 
+        tree rather than now(). This will do a revision lookup 
+        for every file so will be significantly slower.
     """
     global _exporters, _exporter_extensions
 
@@ -97,9 +105,18 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False):
 
     if format not in _exporters:
         raise errors.NoSuchExportFormat(format)
+
+    if not per_file_timestamps:
+        force_mtime = time.time()
+    else:
+        force_mtime = None
+
+    trace.mutter('export version %r', tree)
+
     tree.lock_read()
     try:
-        return _exporters[format](tree, dest, root, subdir, filtered=filtered)
+        return _exporters[format](tree, dest, root, subdir, filtered=filtered,
+                                  force_mtime=force_mtime)
     finally:
         tree.unlock()
 
@@ -107,26 +124,11 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False):
 def get_root_name(dest):
     """Get just the root name for an export.
 
-    >>> get_root_name('../mytest.tar')
-    'mytest'
-    >>> get_root_name('mytar.tar')
-    'mytar'
-    >>> get_root_name('mytar.tar.bz2')
-    'mytar'
-    >>> get_root_name('tar.tar.tar.tgz')
-    'tar.tar.tar'
-    >>> get_root_name('bzr-0.0.5.tar.gz')
-    'bzr-0.0.5'
-    >>> get_root_name('bzr-0.0.5.zip')
-    'bzr-0.0.5'
-    >>> get_root_name('bzr-0.0.5')
-    'bzr-0.0.5'
-    >>> get_root_name('a/long/path/mytar.tgz')
-    'mytar'
-    >>> get_root_name('../parent/../dir/other.tbz2')
-    'other'
     """
     global _exporter_extensions
+    if dest == '-':
+        # Exporting to -/foo doesn't make sense so use relative paths.
+        return ''
     dest = os.path.basename(dest)
     for ext in _exporter_extensions:
         if dest.endswith(ext):
@@ -134,11 +136,12 @@ def get_root_name(dest):
     return dest
 
 
-def _export_iter_entries(tree, subdir):
+def _export_iter_entries(tree, subdir, skip_special=True):
     """Iter the entries for tree suitable for exporting.
 
     :param tree: A tree object.
     :param subdir: None or the path of an entry to start exporting from.
+    :param skip_special: Whether to skip .bzr files.
     """
     inv = tree.inventory
     if subdir is None:
@@ -160,7 +163,7 @@ def _export_iter_entries(tree, subdir):
     for entry in entries:
         # The .bzr* namespace is reserved for "magic" files like
         # .bzrignore and .bzrrules - do not export these
-        if entry[0].startswith(".bzr"):
+        if skip_special and entry[0].startswith(".bzr"):
             continue
         if subdir is None:
             if not tree.has_filename(entry[0]):
@@ -173,8 +176,10 @@ def _export_iter_entries(tree, subdir):
 
 register_lazy_exporter(None, [], 'bzrlib.export.dir_exporter', 'dir_exporter')
 register_lazy_exporter('dir', [], 'bzrlib.export.dir_exporter', 'dir_exporter')
-register_lazy_exporter('tar', ['.tar'], 'bzrlib.export.tar_exporter', 'tar_exporter')
+register_lazy_exporter('tar', ['.tar'], 'bzrlib.export.tar_exporter', 'plain_tar_exporter')
 register_lazy_exporter('tgz', ['.tar.gz', '.tgz'], 'bzrlib.export.tar_exporter', 'tgz_exporter')
 register_lazy_exporter('tbz2', ['.tar.bz2', '.tbz2'], 'bzrlib.export.tar_exporter', 'tbz_exporter')
+register_lazy_exporter('tlzma', ['.tar.lzma'], 'bzrlib.export.tar_exporter', 'tar_lzma_exporter')
+register_lazy_exporter('txz', ['.tar.xz'], 'bzrlib.export.tar_exporter', 'tar_xz_exporter')
 register_lazy_exporter('zip', ['.zip'], 'bzrlib.export.zip_exporter', 'zip_exporter')
 

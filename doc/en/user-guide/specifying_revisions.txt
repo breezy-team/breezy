@@ -65,7 +65,7 @@ A brief introduction to some of these formats is given below.
 For complete details, see `Revision Identifiers`_ in the
 Bazaar User Reference.
 
-.. _Revision Identifiers: ../user-reference/bzr_man.html#revision-identifiers
+.. _Revision Identifiers: ../user-reference/index.html#revision-identifiers
 
 Numbers
 ~~~~~~~
@@ -86,7 +86,7 @@ To display the log for the last ten revisions::
 revid
 ~~~~~
 
-**revid** allows specifying a an internal revision ID, as shown by ``bzr
+**revid** allows specifying an internal revision ID, as shown by ``bzr
 log --show-ids`` and some other commands.
 
 For example::

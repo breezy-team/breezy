@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,32 +18,31 @@
 """Tests of the bzr serve command."""
 
 import os
-import os.path
 import signal
-import subprocess
-import sys
 import thread
 import threading
 
 from bzrlib import (
     builtins,
-    debug,
     errors,
     osutils,
     revision as _mod_revision,
+    transport,
     urlutils,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.smart import client, medium
-from bzrlib.smart.server import BzrServerFactory, SmartTCPServer
+from bzrlib.smart.server import (
+    BzrServerFactory,
+    SmartTCPServer,
+    )
 from bzrlib.tests import (
     TestCaseWithMemoryTransport,
     TestCaseWithTransport,
-    TestSkipped,
     )
 from bzrlib.trace import mutter
-from bzrlib.transport import get_transport, remote
+from bzrlib.transport import remote
 
 
 class TestBzrServeBase(TestCaseWithTransport):
@@ -52,9 +51,9 @@ class TestBzrServeBase(TestCaseWithTransport):
                                 *func_args, **func_kwargs):
         """Run 'bzr serve', and run the given func in a thread once the server
         has started.
-        
+
         When 'func' terminates, the server will be terminated too.
-        
+
         Returns stdout and stderr.
         """
         # install hook
@@ -163,7 +162,7 @@ class TestBzrServe(TestBzrServeBase):
         url = 'bzr://localhost:%d/' % port
         self.permit_url(url)
         return process, url
-    
+
     def test_bzr_serve_quiet(self):
         self.make_branch('.')
         args = ['--port', 'localhost:0', '--quiet']
@@ -192,8 +191,8 @@ class TestBzrServe(TestBzrServeBase):
     def test_bzr_serve_port_readonly(self):
         """bzr server should provide a read only filesystem by default."""
         process, url = self.start_server_port()
-        transport = get_transport(url)
-        self.assertRaises(errors.TransportNotPossible, transport.mkdir, 'adir')
+        t = transport.get_transport(url)
+        self.assertRaises(errors.TransportNotPossible, t.mkdir, 'adir')
         self.assertServerFinishesCleanly(process)
 
     def test_bzr_serve_port_readwrite(self):
@@ -224,7 +223,7 @@ class TestBzrServe(TestBzrServeBase):
         # -Dhpss, and does drop some hpss logging to the file.
         self.make_branch('.')
         log_fname = os.getcwd() + '/server.log'
-        self._captureVar('BZR_LOG', log_fname)
+        self.overrideEnv('BZR_LOG', log_fname)
         process, transport = self.start_server_inet(['-Dhpss'])
         branch = BzrDir.open_from_transport(transport).open_branch()
         self.make_read_requests(branch)
@@ -333,4 +332,3 @@ class TestUserdirExpansion(TestCaseWithMemoryTransport):
         self.assertEqual(base_url, self.bzr_serve_transport.base)
         self.assertEqual(base_dir,
             server_maker.get_base_path(self.bzr_serve_transport))
-

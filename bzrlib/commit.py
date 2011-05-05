@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,20 +49,13 @@
 # TODO: Change the parameter 'rev_id' to 'revision_id' to be consistent with
 # the rest of the code; add a deprecation of the old name.
 
-import os
-import re
-import sys
-import time
-
-from cStringIO import StringIO
-
 from bzrlib import (
     debug,
     errors,
     revision,
     trace,
     tree,
-    xml_serializer,
+    ui,
     )
 from bzrlib.branch import Branch
 from bzrlib.cleanup import OperationWithCleanups
@@ -72,22 +65,14 @@ from bzrlib.errors import (BzrError, PointlessCommit,
                            StrictCommitFailed
                            )
 from bzrlib.osutils import (get_user_encoding,
-                            kind_marker, isdir,isfile, is_inside_any,
-                            is_inside_or_parent_of_any,
+                            is_inside_any,
                             minimum_path_selection,
-                            quotefn, sha_file, split_lines,
                             splitpath,
                             )
-from bzrlib.testament import Testament
-from bzrlib.trace import mutter, note, warning, is_quiet
+from bzrlib.trace import mutter, note, is_quiet
 from bzrlib.inventory import Inventory, InventoryEntry, make_entry
 from bzrlib import symbol_versioning
-from bzrlib.symbol_versioning import (deprecated_passed,
-        deprecated_function,
-        DEPRECATED_PARAMETER)
-from bzrlib.workingtree import WorkingTree
 from bzrlib.urlutils import unescape_for_display
-import bzrlib.ui
 
 
 class NullCommitReporter(object):
@@ -147,6 +132,12 @@ class ReportCommitToLog(NullCommitReporter):
 
     def completed(self, revno, rev_id):
         self._note('Committed revision %d.', revno)
+        # self._note goes to the console too; so while we want to log the
+        # rev_id, we can't trivially only log it. (See bug 526425). Long
+        # term we should rearrange the reporting structure, but for now
+        # we just mutter seperately. We mutter the revid and revno together
+        # so that concurrent bzr invocations won't lead to confusion.
+        mutter('Committed revid %s as revno %d.', rev_id, revno)
 
     def deleted(self, path):
         self._note('deleted %s', path)
@@ -183,6 +174,43 @@ class Commit(object):
         self.reporter = reporter
         self.config = config
 
+    @staticmethod
+    def update_revprops(revprops, branch, authors=None, author=None,
+                        local=False, possible_master_transports=None):
+        if revprops is None:
+            revprops = {}
+        if possible_master_transports is None:
+            possible_master_transports = []
+        if not 'branch-nick' in revprops:
+            revprops['branch-nick'] = branch._get_nick(
+                local,
+                possible_master_transports)
+        if authors is not None:
+            if author is not None:
+                raise AssertionError('Specifying both author and authors '
+                        'is not allowed. Specify just authors instead')
+            if 'author' in revprops or 'authors' in revprops:
+                # XXX: maybe we should just accept one of them?
+                raise AssertionError('author property given twice')
+            if authors:
+                for individual in authors:
+                    if '\n' in individual:
+                        raise AssertionError('\\n is not a valid character '
+                                'in an author identity')
+                revprops['authors'] = '\n'.join(authors)
+        if author is not None:
+            symbol_versioning.warn('The parameter author was deprecated'
+                   ' in version 1.13. Use authors instead',
+                   DeprecationWarning)
+            if 'author' in revprops or 'authors' in revprops:
+                # XXX: maybe we should just accept one of them?
+                raise AssertionError('author property given twice')
+            if '\n' in author:
+                raise AssertionError('\\n is not a valid character '
+                        'in an author identity')
+            revprops['authors'] = author
+        return revprops
+
     def commit(self,
                message=None,
                timestamp=None,
@@ -201,7 +229,8 @@ class Commit(object):
                message_callback=None,
                recursive='down',
                exclude=None,
-               possible_master_transports=None):
+               possible_master_transports=None,
+               lossy=False):
         """Commit working copy as a new revision.
 
         :param message: the commit message (it or message_callback is required)
@@ -234,8 +263,13 @@ class Commit(object):
         :param exclude: None or a list of relative paths to exclude from the
             commit. Pending changes to excluded files will be ignored by the
             commit.
+        :param lossy: When committing to a foreign VCS, ignore any
+            data that can not be natively represented.
         """
         operation = OperationWithCleanups(self._commit)
+        self.revprops = revprops or {}
+        # XXX: Can be set on __init__ or passed in - this is a bit ugly.
+        self.config = config or self.config
         return operation.run(
                message=message,
                timestamp=timestamp,
@@ -246,20 +280,19 @@ class Commit(object):
                allow_pointless=allow_pointless,
                strict=strict,
                verbose=verbose,
-               revprops=revprops,
                working_tree=working_tree,
                local=local,
                reporter=reporter,
-               config=config,
                message_callback=message_callback,
                recursive=recursive,
                exclude=exclude,
-               possible_master_transports=possible_master_transports)
+               possible_master_transports=possible_master_transports,
+               lossy=lossy)
 
     def _commit(self, operation, message, timestamp, timezone, committer,
-            specific_files, rev_id, allow_pointless, strict, verbose, revprops,
-            working_tree, local, reporter, config, message_callback, recursive,
-            exclude, possible_master_transports):
+            specific_files, rev_id, allow_pointless, strict, verbose,
+            working_tree, local, reporter, message_callback, recursive,
+            exclude, possible_master_transports, lossy):
         mutter('preparing to commit')
 
         if working_tree is None:
@@ -297,9 +330,8 @@ class Commit(object):
                 minimum_path_selection(specific_files))
         else:
             self.specific_files = None
-            
+
         self.allow_pointless = allow_pointless
-        self.revprops = revprops
         self.message_callback = message_callback
         self.timestamp = timestamp
         self.timezone = timezone
@@ -318,7 +350,7 @@ class Commit(object):
             not self.branch.repository._format.supports_tree_reference and
             (self.branch.repository._format.fast_deltas or
              len(self.parents) < 2))
-        self.pb = bzrlib.ui.ui_factory.nested_progress_bar()
+        self.pb = ui.ui_factory.nested_progress_bar()
         operation.add_cleanup(self.pb.finished)
         self.basis_revid = self.work_tree.last_revision()
         self.basis_tree = self.work_tree.basis_tree()
@@ -352,7 +384,9 @@ class Commit(object):
         self.pb_stage_count = 0
         self.pb_stage_total = 5
         if self.bound_branch:
-            self.pb_stage_total += 1
+            # 2 extra stages: "Uploading data to master branch" and "Merging
+            # tags to master branch"
+            self.pb_stage_total += 2
         self.pb.show_pct = False
         self.pb.show_spinner = False
         self.pb.show_eta = False
@@ -370,8 +404,13 @@ class Commit(object):
 
         # Collect the changes
         self._set_progress_stage("Collecting changes", counter=True)
+        self._lossy = lossy
         self.builder = self.branch.get_commit_builder(self.parents,
-            self.config, timestamp, timezone, committer, revprops, rev_id)
+            self.config, timestamp, timezone, committer, self.revprops,
+            rev_id, lossy=lossy)
+        if not self.builder.supports_record_entry_contents and self.exclude:
+            self.builder.abort()
+            raise errors.ExcludesUnsupported(self.branch.repository)
 
         try:
             self.builder.will_record_deletes()
@@ -416,11 +455,22 @@ class Commit(object):
             self._set_progress_stage("Uploading data to master branch")
             # 'commit' to the master first so a timeout here causes the
             # local branch to be out of date
-            self.master_branch.import_last_revision_info(
-                self.branch.repository, new_revno, self.rev_id)
+            (new_revno, self.rev_id) = self.master_branch.import_last_revision_info_and_tags(
+                self.branch, new_revno, self.rev_id, lossy=lossy)
+            if lossy:
+                self.branch.fetch(self.master_branch, self.rev_id)
 
         # and now do the commit locally.
         self.branch.set_last_revision_info(new_revno, self.rev_id)
+
+        # Merge local tags to remote
+        if self.bound_branch:
+            self._set_progress_stage("Merging tags to master branch")
+            tag_conflicts = self.branch.tags.merge_to(self.master_branch.tags)
+            if tag_conflicts:
+                warning_lines = ['    ' + name for name, _, _ in tag_conflicts]
+                note("Conflicting tags in bound branch:\n" +
+                    "\n".join(warning_lines))
 
         # Make the working tree be up to date with the branch. This
         # includes automatic changes scheduled to be made to the tree, such

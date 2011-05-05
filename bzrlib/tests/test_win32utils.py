@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,8 +14,9 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+"""Tests for win32utils."""
+
 import os
-import sys
 
 from bzrlib import (
     osutils,
@@ -29,23 +30,8 @@ from bzrlib.tests import (
     TestSkipped,
     UnicodeFilenameFeature,
     )
+from bzrlib.tests.features import backslashdir_feature
 from bzrlib.win32utils import glob_expand, get_app_path
-
-
-class _BackslashDirSeparatorFeature(tests.Feature):
-
-    def _probe(self):
-        try:
-            os.lstat(os.getcwd() + '\\')
-        except OSError:
-            return False
-        else:
-            return True
-
-    def feature_name(self):
-        return "Filesystem treats '\\' as a directory separator."
-
-BackslashDirSeparatorFeature = _BackslashDirSeparatorFeature()
 
 
 class _RequiredModuleFeature(Feature):
@@ -67,6 +53,7 @@ class _RequiredModuleFeature(Feature):
 Win32RegistryFeature = _RequiredModuleFeature('_winreg')
 CtypesFeature = _RequiredModuleFeature('ctypes')
 Win32comShellFeature = _RequiredModuleFeature('win32com.shell')
+Win32ApiFeature = _RequiredModuleFeature('win32api') 
 
 
 # Tests
@@ -121,7 +108,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             ])
 
     def test_backslash_globbing(self):
-        self.requireFeature(BackslashDirSeparatorFeature)
+        self.requireFeature(backslashdir_feature)
         self.build_ascii_tree()
         self._run_testset([
             [[u'd\\'], [u'd/']],
@@ -132,7 +119,8 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             ])
 
     def test_case_insensitive_globbing(self):
-        self.requireFeature(tests.CaseInsCasePresFilenameFeature)
+        if os.path.normcase("AbC") == "AbC":
+            self.skip("Test requires case insensitive globbing function")
         self.build_ascii_tree()
         self._run_testset([
             [[u'A'], [u'A']],
@@ -164,7 +152,7 @@ class TestWin32UtilsGlobExpand(TestCaseInTempDir):
             ])
 
     def test_unicode_backslashes(self):
-        self.requireFeature(BackslashDirSeparatorFeature)
+        self.requireFeature(backslashdir_feature)
         self.build_unicode_tree()
         self._run_testset([
             # no wildcards
@@ -202,6 +190,7 @@ class TestAppPaths(TestCase):
         # typical windows users should have wordpad in the system
         # but there is problem: its path has the format REG_EXPAND_SZ
         # so naive attempt to get the path is not working
+        self.requireFeature(Win32ApiFeature)
         for a in ('wordpad', 'wordpad.exe'):
             p = get_app_path(a)
             d, b = os.path.split(p)
@@ -227,7 +216,7 @@ class TestLocationsCtypes(TestCase):
     def test_appdata_not_using_environment(self):
         # Test that we aren't falling back to the environment
         first = win32utils.get_appdata_location()
-        self._captureVar("APPDATA", None)
+        self.overrideEnv("APPDATA", None)
         self.assertPathsEqual(first, win32utils.get_appdata_location())
 
     def test_appdata_matches_environment(self):
@@ -244,7 +233,7 @@ class TestLocationsCtypes(TestCase):
     def test_local_appdata_not_using_environment(self):
         # Test that we aren't falling back to the environment
         first = win32utils.get_local_appdata_location()
-        self._captureVar("LOCALAPPDATA", None)
+        self.overrideEnv("LOCALAPPDATA", None)
         self.assertPathsEqual(first, win32utils.get_local_appdata_location())
 
     def test_local_appdata_matches_environment(self):
@@ -287,14 +276,15 @@ class TestSetHidden(TestCaseInTempDir):
         win32utils.set_file_attr_hidden(path)
 
 
-
-
 class Test_CommandLineToArgv(tests.TestCaseInTempDir):
 
-    def assertCommandLine(self, expected, line, single_quotes_allowed=False):
+    def assertCommandLine(self, expected, line, argv=None,
+            single_quotes_allowed=False):
         # Strictly speaking we should respect parameter order versus glob
         # expansions, but it's not really worth the effort here
-        argv = win32utils._command_line_to_argv(line,
+        if argv is None:
+            argv = [line]
+        argv = win32utils._command_line_to_argv(line, argv,
                 single_quotes_allowed=single_quotes_allowed)
         self.assertEqual(expected, sorted(argv))
 
@@ -328,16 +318,28 @@ class Test_CommandLineToArgv(tests.TestCaseInTempDir):
 
     def test_single_quote_support(self):
         self.assertCommandLine(["add", "let's-do-it.txt"],
-            "add let's-do-it.txt")
-        self.assertCommandLine(["add", "lets do it.txt"],
-            "add 'lets do it.txt'", single_quotes_allowed=True)
+            "add let's-do-it.txt",
+            ["add", "let's-do-it.txt"])
+        self.expectFailure("Using single quotes breaks trimming from argv",
+            self.assertCommandLine, ["add", "lets do it.txt"],
+            "add 'lets do it.txt'", ["add", "'lets", "do", "it.txt'"],
+            single_quotes_allowed=True)
 
     def test_case_insensitive_globs(self):
-        self.requireFeature(tests.CaseInsCasePresFilenameFeature)
+        if os.path.normcase("AbC") == "AbC":
+            self.skip("Test requires case insensitive globbing function")
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
         self.assertCommandLine([u'A/b.c'], 'A/B*')
 
     def test_backslashes(self):
-        self.requireFeature(BackslashDirSeparatorFeature)
+        self.requireFeature(backslashdir_feature)
         self.build_tree(['a/', 'a/b.c', 'a/c.c', 'a/c.h'])
         self.assertCommandLine([u'a/b.c'], 'a\\b*')
+
+    def test_with_pdb(self):
+        """Check stripping Python arguments before bzr script per lp:587868"""
+        self.assertCommandLine([u"rocks"], "-m pdb rocks", ["rocks"])
+        self.build_tree(['d/', 'd/f1', 'd/f2'])
+        self.assertCommandLine([u"rm", u"x*"], "-m pdb rm x*", ["rm", u"x*"])
+        self.assertCommandLine([u"add", u"d/f1", u"d/f2"], "-m pdb add d/*",
+            ["add", u"d/*"])

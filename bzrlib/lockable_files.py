@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,11 +14,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
-
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 import warnings
 
 from bzrlib import (
@@ -33,10 +30,6 @@ from bzrlib import (
 
 from bzrlib.decorators import (
     only_raises,
-    )
-from bzrlib.symbol_versioning import (
-    deprecated_in,
-    deprecated_method,
     )
 
 

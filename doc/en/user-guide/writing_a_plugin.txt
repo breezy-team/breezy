@@ -22,6 +22,14 @@ Once you've created a command you must register the command with
 ``bzrlib.commands.register_command(cmd_foo)``.  You must register the
 command when your file is imported, otherwise bzr will not see it.
 
+Installing a hook
+-----------------
+
+See `Using hooks`_.
+
+ .. _Using hooks: hooks.txt
+
+
 Specifying a plugin version number
 ----------------------------------
 Simply define ``version_info`` to be a tuple defining the current version
@@ -34,8 +42,8 @@ Plugin searching rules
 
 Bzr will scan ``~/.bazaar/plugins``  and ``bzrlib/plugins`` for plugins
 by default.  You can override this with  ``BZR_PLUGIN_PATH``
-(see `User Reference <../user-reference/bzr_man.html#bzr-plugin-path>`_
-for details).
+(see `User Reference 
+<../user-reference/configuration-help.html#bzr-plugin-path>`_ for details).
 
 Plugins may be either modules or packages.  If your plugin is a single
 file, you can structure it as a module.  If it has multiple files, or if

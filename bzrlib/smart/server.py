@@ -22,18 +22,17 @@ import socket
 import sys
 import threading
 
-from bzrlib.hooks import HookPoint, Hooks
+from bzrlib.hooks import Hooks
 from bzrlib import (
     errors,
     trace,
-    transport,
+    transport as _mod_transport,
 )
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.smart import medium
 from bzrlib.transport import (
     chroot,
-    get_transport,
     pathfilter,
     )
 from bzrlib import (
@@ -51,18 +50,24 @@ class SmartTCPServer(object):
     hooks: An instance of SmartServerHooks.
     """
 
-    def __init__(self, backing_transport, host='127.0.0.1', port=0,
-                 root_client_path='/'):
+    def __init__(self, backing_transport, root_client_path='/'):
         """Construct a new server.
 
         To actually start it running, call either start_background_thread or
         serve.
 
         :param backing_transport: The transport to serve.
-        :param host: Name of the interface to listen on.
-        :param port: TCP port to listen on, or 0 to allocate a transient port.
         :param root_client_path: The client path that will correspond to root
             of backing_transport.
+        """
+        self.backing_transport = backing_transport
+        self.root_client_path = root_client_path
+
+    def start_server(self, host, port):
+        """Create the server listening socket.
+
+        :param host: Name of the interface to listen on.
+        :param port: TCP port to listen on, or 0 to allocate a transient port.
         """
         # let connections timeout so that we get a chance to terminate
         # Keep a reference to the exceptions we want to catch because the socket
@@ -89,21 +94,16 @@ class SmartTCPServer(object):
         self.port = self._sockname[1]
         self._server_socket.listen(1)
         self._server_socket.settimeout(1)
-        self.backing_transport = backing_transport
         self._started = threading.Event()
         self._stopped = threading.Event()
-        self.root_client_path = root_client_path
 
-    def serve(self, thread_name_suffix=''):
-        self._should_terminate = False
-        # for hooks we are letting code know that a server has started (and
-        # later stopped).
+    def _backing_urls(self):
         # There are three interesting urls:
         # The URL the server can be contacted on. (e.g. bzr://host/)
         # The URL that a commit done on the same machine as the server will
         # have within the servers space. (e.g. file:///home/user/source)
         # The URL that will be given to other hooks in the same process -
-        # the URL of the backing transport itself. (e.g. chroot+:///)
+        # the URL of the backing transport itself. (e.g. filtered-36195:///)
         # We need all three because:
         #  * other machines see the first
         #  * local commits on this machine should be able to be mapped to
@@ -113,15 +113,32 @@ class SmartTCPServer(object):
         # The latter two urls are different aliases to the servers url,
         # so we group those in a list - as there might be more aliases
         # in the future.
-        backing_urls = [self.backing_transport.base]
+        urls = [self.backing_transport.base]
         try:
-            backing_urls.append(self.backing_transport.external_url())
+            urls.append(self.backing_transport.external_url())
         except errors.InProcessTransport:
             pass
+        return urls
+
+    def run_server_started_hooks(self, backing_urls=None):
+        if backing_urls is None:
+            backing_urls = self._backing_urls()
         for hook in SmartTCPServer.hooks['server_started']:
             hook(backing_urls, self.get_url())
         for hook in SmartTCPServer.hooks['server_started_ex']:
             hook(backing_urls, self)
+
+    def run_server_stopped_hooks(self, backing_urls=None):
+        if backing_urls is None:
+            backing_urls = self._backing_urls()
+        for hook in SmartTCPServer.hooks['server_stopped']:
+            hook(backing_urls, self.get_url())
+
+    def serve(self, thread_name_suffix=''):
+        self._should_terminate = False
+        # for hooks we are letting code know that a server has started (and
+        # later stopped).
+        self.run_server_started_hooks()
         self._started.set()
         try:
             try:
@@ -138,6 +155,8 @@ class SmartTCPServer(object):
                         if e.args[0] != errno.EBADF:
                             trace.warning("listening socket error: %s", e)
                     else:
+                        if self._should_terminate:
+                            break
                         self.serve_conn(conn, thread_name_suffix)
             except KeyboardInterrupt:
                 # dont log when CTRL-C'd.
@@ -153,12 +172,11 @@ class SmartTCPServer(object):
             except self._socket_error:
                 # ignore errors on close
                 pass
-            for hook in SmartTCPServer.hooks['server_stopped']:
-                hook(backing_urls, self.get_url())
+            self.run_server_stopped_hooks()
 
     def get_url(self):
         """Return the url of the server"""
-        return "bzr://%s:%d/" % self._sockname
+        return "bzr://%s:%s/" % (self._sockname[0], self._sockname[1])
 
     def serve_conn(self, conn, thread_name_suffix):
         # For WIN32, where the timeout value from the listening socket
@@ -170,8 +188,12 @@ class SmartTCPServer(object):
         thread_name = 'smart-server-child' + thread_name_suffix
         connection_thread = threading.Thread(
             None, handler.serve, name=thread_name)
+        # FIXME: This thread is never joined, it should at least be collected
+        # somewhere so that tests that want to check for leaked threads can get
+        # rid of them -- vila 20100531
         connection_thread.setDaemon(True)
         connection_thread.start()
+        return connection_thread
 
     def start_background_thread(self, thread_name_suffix=''):
         self._started.clear()
@@ -217,21 +239,21 @@ class SmartServerHooks(Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        Hooks.__init__(self)
-        self.create_hook(HookPoint('server_started',
+        Hooks.__init__(self, "bzrlib.smart.server", "SmartTCPServer.hooks")
+        self.add_hook('server_started',
             "Called by the bzr server when it starts serving a directory. "
             "server_started is called with (backing urls, public url), "
             "where backing_url is a list of URLs giving the "
             "server-specific directory locations, and public_url is the "
-            "public URL for the directory being served.", (0, 16), None))
-        self.create_hook(HookPoint('server_started_ex',
+            "public URL for the directory being served.", (0, 16))
+        self.add_hook('server_started_ex',
             "Called by the bzr server when it starts serving a directory. "
             "server_started is called with (backing_urls, server_obj).",
-            (1, 17), None))
-        self.create_hook(HookPoint('server_stopped',
+            (1, 17))
+        self.add_hook('server_stopped',
             "Called by the bzr server when it stops serving a directory. "
             "server_stopped is called with the same parameters as the "
-            "server_started hook: (backing_urls, public_url).", (0, 16), None))
+            "server_started hook: (backing_urls, public_url).", (0, 16))
 
 SmartTCPServer.hooks = SmartServerHooks()
 
@@ -303,14 +325,14 @@ class BzrServerFactory(object):
         chroot_server = chroot.ChrootServer(transport)
         chroot_server.start_server()
         self.cleanups.append(chroot_server.stop_server)
-        transport = get_transport(chroot_server.get_url())
+        transport = _mod_transport.get_transport(chroot_server.get_url())
         if self.base_path is not None:
             # Decorate the server's backing transport with a filter that can
             # expand homedirs.
             expand_userdirs = self._make_expand_userdirs_filter(transport)
             expand_userdirs.start_server()
             self.cleanups.append(expand_userdirs.stop_server)
-            transport = get_transport(expand_userdirs.get_url())
+            transport = _mod_transport.get_transport(expand_userdirs.get_url())
         self.transport = transport
 
     def _make_smart_server(self, host, port, inet):
@@ -322,7 +344,8 @@ class BzrServerFactory(object):
                 host = medium.BZR_DEFAULT_INTERFACE
             if port is None:
                 port = medium.BZR_DEFAULT_PORT
-            smart_server = SmartTCPServer(self.transport, host=host, port=port)
+            smart_server = SmartTCPServer(self.transport)
+            smart_server.start_server(host, port)
             trace.note('listening on port: %s' % smart_server.port)
         self.smart_server = smart_server
 

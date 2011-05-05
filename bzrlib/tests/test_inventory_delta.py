@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@ See doc/developer/inventory.txt for more information.
 from cStringIO import StringIO
 
 from bzrlib import (
-    errors,
     inventory,
     inventory_delta,
     )
@@ -387,9 +386,10 @@ class TestSerialization(TestCase):
         root = new_inv.make_entry('directory', '', None, 'my-rich-root-id')
         root.revision = 'changed'
         new_inv.add(root)
-        non_root = new_inv.make_entry('directory', 'foo', root.file_id, 'id')
+        class StrangeInventoryEntry(inventory.InventoryEntry):
+            kind = 'strange'
+        non_root = StrangeInventoryEntry('id', 'foo', root.file_id)
         non_root.revision = 'changed'
-        non_root.kind = 'strangelove'
         new_inv.add(non_root)
         delta = new_inv._make_delta(old_inv)
         serializer = inventory_delta.InventoryDeltaSerializer(
@@ -398,7 +398,7 @@ class TestSerialization(TestCase):
         # This test aims to prove that it errors more than how it errors.
         err = self.assertRaises(KeyError,
             serializer.delta_to_lines, NULL_REVISION, 'entry-version', delta)
-        self.assertEqual(('strangelove',), err.args)
+        self.assertEqual(('strange',), err.args)
 
     def test_tree_reference_disabled(self):
         old_inv = Inventory(None)

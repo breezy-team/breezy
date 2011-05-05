@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,20 +25,22 @@ from bzrlib import (
     osutils,
     timestamp,
     )
-import bzrlib.errors
 from bzrlib.bundle import apply_bundle
-from bzrlib.errors import (TestamentMismatch, BzrError,
-                           MalformedHeader, MalformedPatches, NotABundle)
-from bzrlib.inventory import (Inventory, InventoryEntry,
-                              InventoryDirectory, InventoryFile,
-                              InventoryLink)
-from bzrlib.osutils import sha_file, sha_string, pathjoin
+from bzrlib.errors import (
+    TestamentMismatch,
+    BzrError,
+    )
+from bzrlib.inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    )
+from bzrlib.osutils import sha_string, pathjoin
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.testament import StrictTestament
 from bzrlib.trace import mutter, warning
-import bzrlib.transport
 from bzrlib.tree import Tree
-import bzrlib.urlutils
 from bzrlib.xml5 import serializer_v5
 
 
@@ -206,7 +208,7 @@ class BundleInfo(object):
 
         inv = bundle_tree.inventory
         self._validate_inventory(inv, revision_id)
-        self._validate_revision(inv, revision_id)
+        self._validate_revision(bundle_tree, revision_id)
 
         return bundle_tree
 
@@ -278,14 +280,18 @@ class BundleInfo(object):
         if rev.revision_id != revision_id:
             raise AssertionError()
         if sha1 != rev.inventory_sha1:
-            open(',,bogus-inv', 'wb').write(s)
+            f = open(',,bogus-inv', 'wb')
+            try:
+                f.write(s)
+            finally:
+                f.close()
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
-    def _validate_revision(self, inventory, revision_id):
+    def _validate_revision(self, tree, revision_id):
         """Make sure all revision entries match their checksum."""
 
-        # This is a mapping from each revision id to it's sha hash
+        # This is a mapping from each revision id to its sha hash
         rev_to_sha1 = {}
 
         rev = self.get_revision(revision_id)
@@ -294,7 +300,7 @@ class BundleInfo(object):
             raise AssertionError()
         if not (rev.revision_id == revision_id):
             raise AssertionError()
-        sha1 = self._testament_sha1(rev, inventory)
+        sha1 = self._testament_sha1(rev, tree)
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:
@@ -327,7 +333,7 @@ class BundleInfo(object):
                 try:
                     name, value = info_item.split(':', 1)
                 except ValueError:
-                    raise 'Value %r has no colon' % info_item
+                    raise ValueError('Value %r has no colon' % info_item)
                 if name == 'last-changed':
                     last_changed = value
                 elif name == 'executable':
@@ -458,6 +464,7 @@ class BundleInfo(object):
 
 
 class BundleTree(Tree):
+
     def __init__(self, base_tree, revision_id):
         self.base_tree = base_tree
         self._renamed = {} # Mapping from old_path => new_path
@@ -657,7 +664,7 @@ class BundleTree(Tree):
         path = self.id2path(file_id)
         if path in self._last_changed:
             return self._last_changed[path]
-        return self.base_tree.inventory[file_id].revision
+        return self.base_tree.get_file_revision(file_id)
 
     def get_size_and_sha1(self, file_id):
         """Return the size and sha1 hash of the given file id.
@@ -711,12 +718,11 @@ class BundleTree(Tree):
                 ie.symlink_target = self.get_symlink_target(file_id)
             ie.revision = revision_id
 
-            if kind in ('directory', 'symlink'):
-                ie.text_size, ie.text_sha1 = None, None
-            else:
+            if kind == 'file':
                 ie.text_size, ie.text_sha1 = self.get_size_and_sha1(file_id)
-            if (ie.text_size is None) and (kind == 'file'):
-                raise BzrError('Got a text_size of None for file_id %r' % file_id)
+                if ie.text_size is None:
+                    raise BzrError(
+                        'Got a text_size of None for file_id %r' % file_id)
             inv.add(ie)
 
         sorted_entries = self.sorted_path_id()
@@ -735,6 +741,23 @@ class BundleTree(Tree):
     def __iter__(self):
         for path, entry in self.inventory.iter_entries():
             yield entry.file_id
+
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        # The only files returned by this are those from the version
+        inv = self.inventory
+        if from_dir is None:
+            from_dir_id = None
+        else:
+            from_dir_id = inv.path2id(from_dir)
+            if from_dir_id is None:
+                # Directory not versioned
+                return
+        entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
+        if inv.root is not None and not include_root and from_dir is None:
+            # skip the root for compatability with the current apis.
+            entries.next()
+        for path, entry in entries:
+            yield path, 'V', entry.kind, entry.file_id, entry
 
     def sorted_path_id(self):
         paths = []

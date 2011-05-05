@@ -16,7 +16,7 @@
 
 
 from bzrlib.errors import BzrError
-from bzrlib.inventory import InventoryEntry, Inventory
+from bzrlib.inventory import Inventory
 
 
 START_MARK = "# bzr inventory format 3\n"

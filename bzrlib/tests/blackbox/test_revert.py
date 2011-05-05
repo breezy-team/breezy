@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2007 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,12 +19,12 @@
 import os
 
 import bzrlib.osutils
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.trace import mutter
 from bzrlib.workingtree import WorkingTree
 
 
-class TestRevert(ExternalBase):
+class TestRevert(TestCaseWithTransport):
 
     def _prepare_tree(self):
         self.run_bzr('init')
@@ -93,17 +93,17 @@ class TestRevert(ExternalBase):
         """Test that revert DIRECTORY does what's expected"""
         self._prepare_rename_mod_tree()
         self.run_bzr('revert a')
-        self.failUnlessExists('a/b')
-        self.failUnlessExists('a/d')
-        self.failIfExists('a/g')
+        self.assertPathExists('a/b')
+        self.assertPathExists('a/d')
+        self.assertPathDoesNotExist('a/g')
         self.expectFailure(
             "j is in the delta revert applies because j was renamed too",
-            self.failUnlessExists, 'j')
-        self.failUnlessExists('h')
+            self.assertPathExists, 'j')
+        self.assertPathExists('h')
         self.run_bzr('revert f')
-        self.failIfExists('j')
-        self.failIfExists('h')
-        self.failUnlessExists('a/d/e')
+        self.assertPathDoesNotExist('j')
+        self.assertPathDoesNotExist('h')
+        self.assertPathExists('a/d/e')
 
     def test_revert_chatter(self):
         self._prepare_rename_mod_tree()
@@ -148,7 +148,7 @@ class TestRevert(ExternalBase):
             self.run_bzr('commit -m f')
             os.unlink('symlink')
             self.run_bzr('revert')
-            self.failUnlessExists('symlink')
+            self.assertPathExists('symlink')
             os.unlink('symlink')
             os.symlink('a-different-path', 'symlink')
             self.run_bzr('revert')

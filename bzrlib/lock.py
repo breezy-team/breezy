@@ -45,22 +45,22 @@ from bzrlib import (
     osutils,
     trace,
     )
-from bzrlib.hooks import HookPoint, Hooks
+from bzrlib.hooks import Hooks
 
 
 class LockHooks(Hooks):
 
     def __init__(self):
-        Hooks.__init__(self)
-        self.create_hook(HookPoint('lock_acquired',
+        Hooks.__init__(self, "bzrlib.lock", "Lock.hooks")
+        self.add_hook('lock_acquired',
             "Called with a bzrlib.lock.LockResult when a physical lock is "
-            "acquired.", (1, 8), None))
-        self.create_hook(HookPoint('lock_released',
+            "acquired.", (1, 8))
+        self.add_hook('lock_released',
             "Called with a bzrlib.lock.LockResult when a physical lock is "
-            "released.", (1, 8), None))
-        self.create_hook(HookPoint('lock_broken',
+            "released.", (1, 8))
+        self.add_hook('lock_broken',
             "Called with a bzrlib.lock.LockResult when a physical lock is "
-            "broken.", (1, 15), None))
+            "broken.", (1, 15))
 
 
 class Lock(object):
@@ -84,8 +84,22 @@ class LockResult(object):
         return self.lock_url == other.lock_url and self.details == other.details
 
     def __repr__(self):
-        return '%s(%s%s)' % (self.__class__.__name__,
+        return '%s(%s, %s)' % (self.__class__.__name__,
                              self.lock_url, self.details)
+
+
+class LogicalLockResult(object):
+    """The result of a lock_read/lock_write/lock_tree_write call on lockables.
+
+    :ivar unlock: A callable which will unlock the lock.
+    """
+
+    def __init__(self, unlock):
+        self.unlock = unlock
+
+    def __repr__(self):
+        return "LogicalLockResult(%s)" % (self.unlock)
+
 
 
 def cant_unlock_not_held(locked_object):

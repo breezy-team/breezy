@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,10 +17,13 @@
 
 """Tests of the 'bzr alias' command."""
 
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib import (
+    config,
+    tests,
+    )
 
 
-class TestAlias(ExternalBase):
+class TestAlias(tests.TestCaseWithTransport):
 
     def test_list_alias_with_none(self):
         """Calling alias with no parameters lists existing aliases."""
@@ -40,6 +43,25 @@ class TestAlias(ExternalBase):
         self.run_bzr('alias commit="commit --strict"')
         out, err = self.run_bzr('alias commit')
         self.assertEquals('bzr alias commit="commit --strict"\n', out)
+
+    def test_unicode_alias(self):
+        """Unicode aliases should work (Bug #529930)"""
+        # XXX: strictly speaking, lack of unicode filenames doesn't imply that
+        # unicode command lines aren't available.
+        self.requireFeature(tests.UnicodeFilenameFeature)
+        file_name = u'foo\xb6'
+
+        tree = self.make_branch_and_tree('.')
+        self.build_tree([file_name])
+        tree.add(file_name)
+        tree.commit('added')
+
+        config.GlobalConfig.from_string(
+            u'[ALIASES]\nust=st %s\n' % (file_name,), save=True)
+
+        out, err = self.run_bzr('ust')
+        self.assertEquals(err, '')
+        self.assertEquals(out, '')
 
     def test_alias_listing_alphabetical(self):
         self.run_bzr('alias commit="commit --strict"')

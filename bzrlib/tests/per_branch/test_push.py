@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,19 +24,16 @@ from bzrlib import (
     builtins,
     bzrdir,
     check,
-    debug,
     errors,
     memorytree,
     push,
-    repository,
     revision,
+    symbol_versioning,
     tests,
     transport,
     )
 from bzrlib.smart import (
     client,
-    server,
-    repository as _mod_smart_repo,
     )
 from bzrlib.tests import (
     per_branch,
@@ -61,7 +58,10 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.assertEqual(result.old_revid, 'M1')
         self.assertEqual(result.new_revid, 'P2')
         # and it can be treated as an integer for compatibility
-        self.assertEqual(int(result), 0)
+        self.assertEqual(self.applyDeprecated(
+            symbol_versioning.deprecated_in((2, 3, 0)),
+            result.__int__),
+            0)
 
     def test_push_merged_indirect(self):
         # it should be possible to do a push from one branch into another
@@ -113,6 +113,23 @@ class TestPush(per_branch.TestCaseWithBranch):
         # try to push, which should raise a BoundBranchConnectionFailure.
         self.assertRaises(errors.BoundBranchConnectionFailure,
                 other.branch.push, checkout.branch)
+
+    def test_push_new_tag_to_bound_branch(self):
+        master = self.make_branch('master')
+        bound = self.make_branch('bound')
+        try:
+            bound.bind(master)
+        except errors.UpgradeRequired:
+            raise tests.TestNotApplicable(
+                'Format does not support bound branches')
+        other = bound.bzrdir.sprout('other').open_branch()
+        try:
+            other.tags.set_tag('new-tag', 'some-rev')
+        except errors.TagsNotSupported:
+            raise tests.TestNotApplicable('Format does not support tags')
+        other.push(bound)
+        self.assertEqual({'new-tag': 'some-rev'}, bound.tags.get_tag_dict())
+        self.assertEqual({'new-tag': 'some-rev'}, master.tags.get_tag_dict())
 
     def test_push_uses_read_lock(self):
         """Push should only need a read lock on the source side."""
@@ -170,6 +187,21 @@ class TestPush(per_branch.TestCaseWithBranch):
         self.assertEqual(tree.branch.last_revision(),
                          to_branch.last_revision())
 
+    def test_push_overwrite_with_older_mainline_rev(self):
+        """Pushing an older mainline revision with overwrite.
+
+        This was <https://bugs.launchpad.net/bzr/+bug/386576>.
+        """
+        source = self.make_branch_and_tree('source')
+        target = self.make_branch('target')
+
+        source.commit('1st commit')
+        source.commit('2nd commit', rev_id='rev-2')
+        source.commit('3rd commit')
+        source.branch.push(target)
+        source.branch.push(target, stop_revision='rev-2', overwrite=True)
+        self.assertEqual('rev-2', target.last_revision())
+
     def test_push_overwrite_of_non_tip_with_stop_revision(self):
         """Combining the stop_revision and overwrite options works.
 
@@ -186,6 +218,41 @@ class TestPush(per_branch.TestCaseWithBranch):
         source.branch.push(target, stop_revision='rev-2', overwrite=True)
         self.assertEqual('rev-2', target.last_revision())
 
+    def test_push_repository_no_branch_doesnt_fetch_all_revs(self):
+        # See https://bugs.launchpad.net/bzr/+bug/465517
+        t = self.get_transport('target')
+        t.ensure_base()
+        bzrdir = self.bzrdir_format.initialize_on_transport(t)
+        try:
+            bzrdir.open_branch()
+        except errors.NotBranchError:
+            pass
+        else:
+            raise tests.TestNotApplicable('older formats can\'t have a repo'
+                                          ' without a branch')
+        try:
+            source = self.make_branch_builder('source',
+                                              format=self.bzrdir_format)
+        except errors.UninitializableFormat:
+            raise tests.TestNotApplicable('cannot initialize this format')
+        source.start_series()
+        source.build_snapshot('A', None, [
+            ('add', ('', 'root-id', 'directory', None))])
+        source.build_snapshot('B', ['A'], [])
+        source.build_snapshot('C', ['A'], [])
+        source.finish_series()
+        b = source.get_branch()
+        # Note: We can't read lock the source branch. Some formats take a write
+        # lock to 'set_push_location', which breaks
+        self.addCleanup(b.lock_write().unlock)
+        repo = bzrdir.create_repository()
+        # This means 'push the source branch into this dir'
+        bzrdir.push_branch(b)
+        self.addCleanup(repo.lock_read().unlock)
+        # We should have pushed 'C', but not 'B', since it isn't in the
+        # ancestry
+        self.assertEqual([('A',), ('C',)], sorted(repo.revisions.keys()))
+
     def test_push_with_default_stacking_does_not_create_broken_branch(self):
         """Pushing a new standalone branch works even when there's a default
         stacking policy at the destination.
@@ -194,7 +261,7 @@ class TestPush(per_branch.TestCaseWithBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        if self.bzrdir_format.fixed_components:
             raise tests.TestNotApplicable('Not a metadir format.')
         if isinstance(self.branch_format, branch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
@@ -230,59 +297,6 @@ class TestPush(per_branch.TestCaseWithBranch):
         remote_branch = branch.Branch.open(self.get_url('remote'))
         trunk.push(remote_branch)
         check.check_dwim(remote_branch.base, False, True, True)
-
-    def test_no_get_parent_map_after_insert_stream(self):
-        # Effort test for bug 331823
-        self.setup_smart_server_with_call_log()
-        # Make a local branch with four revisions.  Four revisions because:
-        # one to push, one there for _walk_to_common_revisions to find, one we
-        # don't want to access, one for luck :)
-        if isinstance(self.branch_format, branch.BranchReferenceFormat):
-            # This test could in principle apply to BranchReferenceFormat, but
-            # make_branch_builder doesn't support it.
-            raise tests.TestSkipped(
-                "BranchBuilder can't make reference branches.")
-        try:
-            builder = self.make_branch_builder('local')
-        except (errors.TransportNotPossible, errors.UninitializableFormat):
-            raise tests.TestNotApplicable('format not directly constructable')
-        builder.start_series()
-        builder.build_snapshot('first', None, [
-            ('add', ('', 'root-id', 'directory', ''))])
-        builder.build_snapshot('second', ['first'], [])
-        builder.build_snapshot('third', ['second'], [])
-        builder.build_snapshot('fourth', ['third'], [])
-        builder.finish_series()
-        local = builder.get_branch()
-        local = branch.Branch.open(self.get_vfs_only_url('local'))
-        # Initial push of three revisions
-        remote_bzrdir = local.bzrdir.sprout(
-            self.get_url('remote'), revision_id='third')
-        remote = remote_bzrdir.open_branch()
-        # Push fourth revision
-        self.reset_smart_call_log()
-        self.disableOptimisticGetParentMap()
-        self.assertFalse(local.is_locked())
-        local.push(remote)
-        hpss_call_names = [item.call.method for item in self.hpss_calls]
-        self.assertTrue('Repository.insert_stream_1.19' in hpss_call_names)
-        insert_stream_idx = hpss_call_names.index(
-            'Repository.insert_stream_1.19')
-        calls_after_insert_stream = hpss_call_names[insert_stream_idx:]
-        # After inserting the stream the client has no reason to query the
-        # remote graph any further.
-        self.assertEqual(
-            ['Repository.insert_stream_1.19', 'Repository.insert_stream_1.19',
-             'get', 'Branch.set_last_revision_info', 'Branch.unlock'],
-            calls_after_insert_stream)
-
-    def disableOptimisticGetParentMap(self):
-        # Tweak some class variables to stop remote get_parent_map calls asking
-        # for or receiving more data than the caller asked for.
-        self.overrideAttr(repository.InterRepository,
-                          '_walk_to_common_revisions_batch_size', 1)
-        self.overrideAttr(_mod_smart_repo.SmartServerRepositoryGetParentMap,
-                          'no_extra_results', True)
 
 
 class TestPushHook(per_branch.TestCaseWithBranch):
@@ -382,14 +396,15 @@ class EmptyPushSmartEffortTests(per_branch.TestCaseWithBranch):
 
     def setUp(self):
         # Skip some scenarios that don't apply to these tests.
-        if (self.transport_server is not None and
-            issubclass(self.transport_server, server.SmartTCPServer)):
+        if (self.transport_server is not None
+            and issubclass(self.transport_server,
+                           test_server.SmartTCPServer_for_testing)):
             raise tests.TestNotApplicable(
                 'Does not apply when remote backing branch is also '
                 'a smart branch')
-        if isinstance(self.branch_format, branch.BzrBranchFormat4):
+        if not self.branch_format.supports_leaving_lock():
             raise tests.TestNotApplicable(
-                'Branch format 4 is not usable via HPSS.')
+                'Branch format is not usable via HPSS.')
         super(EmptyPushSmartEffortTests, self).setUp()
         # Create a smart server that publishes whatever the backing VFS server
         # does.

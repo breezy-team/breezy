@@ -1,4 +1,4 @@
-# Copyright (C) 2009 Canonical Ltd
+# Copyright (C) 2009, 2010 Canonical Ltd
 # -*- coding: utf-8 -*-
 #
 # This program is free software; you can redistribute it and/or modify
@@ -37,16 +37,10 @@ from bzrlib.bzrdir import (
     BzrDirFormat,
     BzrDirMetaFormat1,
     )
-from bzrlib.errors import (
-    FileExists,
-    NotBranchError,
-    UninitializableFormat,
-    )
 from bzrlib.tests import (
     TestCaseWithTransport,
     multiply_tests,
     )
-from bzrlib.transport import get_transport
 
 
 def make_scenarios(test_list):
@@ -76,11 +70,9 @@ def default_test_list():
     # test the default InterBranch between format 6 and the current
     # default format.
     for optimiser_class in InterBranch._optimisers:
-        format_from_test, format_to_test = \
-            optimiser_class._get_branch_formats_to_test()
-        if format_to_test is not None:
-            result.append((optimiser_class,
-                           format_from_test, format_to_test))
+        for format_from_test, format_to_test in \
+            optimiser_class._get_branch_formats_to_test():
+            result.append((optimiser_class, format_from_test, format_to_test))
     # if there are specific combinations we want to use, we can add them
     # here.
     return result
@@ -89,7 +81,7 @@ def default_test_list():
 class TestCaseWithInterBranch(TestCaseWithTransport):
 
     def make_from_branch(self, relpath):
-        repo = self.make_repository(relpath)
+        repo = self.make_repository(relpath, format=self.branch_format_from._matchingbzrdir)
         return self.branch_format_from.initialize(repo.bzrdir)
 
     def make_from_branch_and_memory_tree(self, relpath):
@@ -112,7 +104,7 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
             format=format)
 
     def make_to_branch(self, relpath):
-        repo = self.make_repository(relpath)
+        repo = self.make_repository(relpath, format=self.branch_format_to._matchingbzrdir)
         return self.branch_format_to.initialize(repo.bzrdir)
 
     def make_to_branch_and_memory_tree(self, relpath):
@@ -144,11 +136,41 @@ class TestCaseWithInterBranch(TestCaseWithTransport):
         return newbranch.bzrdir
 
 
+class StubWithFormat(object):
+    """A stub object used to check that convenience methods call Inter's."""
+
+    _format = object()
+
+
+class StubMatchingInter(object):
+    """An inter for tests.
+
+    This is not a subclass of InterBranch so that missing methods are caught
+    and added rather than actually trying to do something.
+    """
+
+    _uses = []
+
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target
+
+    @classmethod
+    def is_compatible(klass, source, target):
+        return StubWithFormat._format in (source._format, target._format)
+
+    def copy_content_into(self, *args, **kwargs):
+        self.__class__._uses.append(
+            (self, 'copy_content_into', args, kwargs))
+
+
 def load_tests(standard_tests, module, loader):
     submod_tests = loader.loadTestsFromModuleNames([
+        'bzrlib.tests.per_interbranch.test_fetch',
+        'bzrlib.tests.per_interbranch.test_get',
+        'bzrlib.tests.per_interbranch.test_copy_content_into',
         'bzrlib.tests.per_interbranch.test_pull',
         'bzrlib.tests.per_interbranch.test_push',
-        'bzrlib.tests.per_interbranch.test_update_revisions',
         ])
     scenarios = make_scenarios(default_test_list())
     return multiply_tests(submod_tests, scenarios, standard_tests)

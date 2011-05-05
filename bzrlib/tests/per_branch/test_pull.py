@@ -25,7 +25,11 @@ from bzrlib import (
     memorytree,
     revision,
     )
-from bzrlib.tests import per_branch
+from bzrlib.tests import (
+    fixtures,
+    per_branch,
+    TestNotApplicable,
+    )
 
 
 class TestPull(per_branch.TestCaseWithBranch):
@@ -98,17 +102,6 @@ class TestPull(per_branch.TestCaseWithBranch):
                           master_tree.branch.pull, other.branch, local = True)
         self.assertEqual([rev1], master_tree.branch.revision_history())
 
-    def test_pull_raises_specific_error_on_master_connection_error(self):
-        master_tree = self.make_branch_and_tree('master')
-        checkout = master_tree.branch.create_checkout('checkout')
-        other = master_tree.branch.bzrdir.sprout('other').open_workingtree()
-        # move the branch out of the way on disk to cause a connection
-        # error.
-        os.rename('master', 'master_gone')
-        # try to pull, which should raise a BoundBranchConnectionFailure.
-        self.assertRaises(errors.BoundBranchConnectionFailure,
-                checkout.branch.pull, other.branch)
-
     def test_pull_returns_result(self):
         parent = self.make_branch_and_tree('parent')
         parent.commit('1st post', rev_id='P1')
@@ -145,6 +138,49 @@ class TestPull(per_branch.TestCaseWithBranch):
         self.assertEqual('rev2b', tree_a.branch.last_revision())
         self.assertEqual(tree_b.branch.revision_history(),
                          tree_a.branch.revision_history())
+
+    def test_pull_merges_and_fetches_tags(self):
+        """Tags are updated by br.pull(source), and revisions named in those
+        tags are fetched.
+        """
+        # Make a source, sprout a target off it
+        try:
+            builder = self.make_branch_builder('source')
+        except errors.UninitializableFormat:
+            raise TestNotApplicable('uninitializeable format')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        target = source.bzrdir.sprout('target').open_branch()
+        # Add a tag to the source, then pull from source
+        try:
+            source.tags.set_tag('tag-a', 'rev-2')
+        except errors.TagsNotSupported:
+            raise TestNotApplicable('format does not support tags.')
+        source.tags.set_tag('tag-a', 'rev-2')
+        target.pull(source)
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision('rev-2')
+
+    def test_pull_stop_revision_merges_and_fetches_tags(self):
+        """br.pull(source, stop_revision=REV) updates and fetches tags."""
+        # Make a source, sprout a target off it
+        try:
+            builder = self.make_branch_builder('source')
+        except errors.UninitializableFormat:
+            raise TestNotApplicable('uninitializeable format')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        target = source.bzrdir.sprout('target').open_branch()
+        # Add a new commit to the ancestry
+        builder.build_commit(message="Rev 2 again", rev_id='rev-2-again')
+        # Add a tag to the source, then pull rev-2-again from source
+        try:
+            source.tags.set_tag('tag-a', 'rev-2')
+        except errors.TagsNotSupported:
+            raise TestNotApplicable('format does not support tags.')
+        target.pull(source, 'rev-2-again')
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision('rev-2')
 
 
 class TestPullHook(per_branch.TestCaseWithBranch):

@@ -131,7 +131,7 @@ class TestReconfigure(tests.TestCaseWithTransport):
         tree.add('foo')
         self.run_bzr('reconfigure --with-no-trees --force',
             working_dir='repo/branch')
-        self.failUnlessExists('repo/branch/foo')
+        self.assertPathExists('repo/branch/foo')
         tree = workingtree.WorkingTree.open('repo/branch')
 
     def test_shared_format_to_standalone(self, format=None):
@@ -197,7 +197,7 @@ class TestReconfigureStacking(tests.TestCaseWithTransport):
          * then make the second unstacked, so it has to fill in history from
            the original fallback lying underneath its original content
 
-        See discussion in <https://bugs.edge.launchpad.net/bzr/+bug/391411>
+        See discussion in <https://bugs.launchpad.net/bzr/+bug/391411>
         """
         # there are also per_branch tests that exercise remote operation etc
         tree_1 = self.make_branch_and_tree('b1', format='2a')

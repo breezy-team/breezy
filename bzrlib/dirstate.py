@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -220,6 +220,7 @@ from bzrlib import (
     inventory,
     lock,
     osutils,
+    static_tuple,
     trace,
     )
 
@@ -262,6 +263,17 @@ else:
         #      st.st_dev, st.st_ino, st.st_mode)
         # Similar to the _encode(_pack('>LL'))
         # return '%X.%X' % (int(st.st_mtime), st.st_mode)
+
+
+def _unpack_stat(packed_stat):
+    """Turn a packed_stat back into the stat fields.
+
+    This is meant as a debugging tool, should not be used in real code.
+    """
+    (st_size, st_mtime, st_ctime, st_dev, st_ino,
+     st_mode) = struct.unpack('>LLLLLL', binascii.a2b_base64(packed_stat))
+    return dict(st_size=st_size, st_mtime=st_mtime, st_ctime=st_ctime,
+                st_dev=st_dev, st_ino=st_ino, st_mode=st_mode)
 
 
 class SHA1Provider(object):
@@ -548,7 +560,7 @@ class DirState(object):
            self._ensure_block(block_index, entry_index, utf8path)
         self._dirblock_state = DirState.IN_MEMORY_MODIFIED
         if self._id_index:
-            self._id_index.setdefault(entry_key[2], set()).add(entry_key)
+            self._add_to_id_index(self._id_index, entry_key)
 
     def _bisect(self, paths):
         """Bisect through the disk structure for specific rows.
@@ -1566,7 +1578,7 @@ class DirState(object):
             return
         id_index = self._get_id_index()
         for file_id in new_ids:
-            for key in id_index.get(file_id, []):
+            for key in id_index.get(file_id, ()):
                 block_i, entry_i, d_present, f_present = \
                     self._get_block_entry_index(key[0], key[1], tree_index)
                 if not f_present:
@@ -1733,8 +1745,8 @@ class DirState(object):
                 self._sha_cutoff_time()
             if (stat_value.st_mtime < self._cutoff_time
                 and stat_value.st_ctime < self._cutoff_time):
-                entry[1][0] = ('f', sha1, entry[1][0][2], entry[1][0][3],
-                    packed_stat)
+                entry[1][0] = ('f', sha1, stat_value.st_size, entry[1][0][3],
+                               packed_stat)
                 self._dirblock_state = DirState.IN_MEMORY_MODIFIED
 
     def _sha_cutoff_time(self):
@@ -1980,7 +1992,7 @@ class DirState(object):
                                           ' tree_index, file_id and path')
             return entry
         else:
-            possible_keys = self._get_id_index().get(fileid_utf8, None)
+            possible_keys = self._get_id_index().get(fileid_utf8, ())
             if not possible_keys:
                 return None, None
             for key in possible_keys:
@@ -2143,13 +2155,47 @@ class DirState(object):
                 yield entry
 
     def _get_id_index(self):
-        """Get an id index of self._dirblocks."""
+        """Get an id index of self._dirblocks.
+        
+        This maps from file_id => [(directory, name, file_id)] entries where
+        that file_id appears in one of the trees.
+        """
         if self._id_index is None:
             id_index = {}
             for key, tree_details in self._iter_entries():
-                id_index.setdefault(key[2], set()).add(key)
+                self._add_to_id_index(id_index, key)
             self._id_index = id_index
         return self._id_index
+
+    def _add_to_id_index(self, id_index, entry_key):
+        """Add this entry to the _id_index mapping."""
+        # This code used to use a set for every entry in the id_index. However,
+        # it is *rare* to have more than one entry. So a set is a large
+        # overkill. And even when we do, we won't ever have more than the
+        # number of parent trees. Which is still a small number (rarely >2). As
+        # such, we use a simple tuple, and do our own uniqueness checks. While
+        # the 'in' check is O(N) since N is nicely bounded it shouldn't ever
+        # cause quadratic failure.
+        # TODO: This should use StaticTuple
+        file_id = entry_key[2]
+        entry_key = static_tuple.StaticTuple.from_sequence(entry_key)
+        if file_id not in id_index:
+            id_index[file_id] = static_tuple.StaticTuple(entry_key,)
+        else:
+            entry_keys = id_index[file_id]
+            if entry_key not in entry_keys:
+                id_index[file_id] = entry_keys + (entry_key,)
+
+    def _remove_from_id_index(self, id_index, entry_key):
+        """Remove this entry from the _id_index mapping.
+
+        It is an programming error to call this when the entry_key is not
+        already present.
+        """
+        file_id = entry_key[2]
+        entry_keys = list(id_index[file_id])
+        entry_keys.remove(entry_key)
+        id_index[file_id] = static_tuple.StaticTuple.from_sequence(entry_keys)
 
     def _get_output_lines(self, lines):
         """Format lines for final output.
@@ -2414,7 +2460,9 @@ class DirState(object):
                 continue
             by_path[entry[0]] = [entry[1][0]] + \
                 [DirState.NULL_PARENT_DETAILS] * parent_count
-            id_index[entry[0][2]] = set([entry[0]])
+            # TODO: Possibly inline this, since we know it isn't present yet
+            #       id_index[entry[0][2]] = (entry[0],)
+            self._add_to_id_index(id_index, entry[0])
 
         # now the parent trees:
         for tree_index, tree in enumerate(parent_trees):
@@ -2426,7 +2474,7 @@ class DirState(object):
             # the suffix is from tree_index+1:parent_count+1.
             new_location_suffix = [DirState.NULL_PARENT_DETAILS] * (parent_count - tree_index)
             # now stitch in all the entries from this tree
-            for path, entry in tree.inventory.iter_entries_by_dir():
+            for path, entry in tree.iter_entries_by_dir():
                 # here we process each trees details for each item in the tree.
                 # we first update any existing entries for the id at other paths,
                 # then we either create or update the entry for the id at the
@@ -2442,7 +2490,7 @@ class DirState(object):
                 new_entry_key = (dirname, basename, file_id)
                 # tree index consistency: All other paths for this id in this tree
                 # index must point to the correct path.
-                for entry_key in id_index.setdefault(file_id, set()):
+                for entry_key in id_index.get(file_id, ()):
                     # TODO:PROFILING: It might be faster to just update
                     # rather than checking if we need to, and then overwrite
                     # the one we are located at.
@@ -2454,7 +2502,8 @@ class DirState(object):
                         by_path[entry_key][tree_index] = ('r', path_utf8, 0, False, '')
                 # by path consistency: Insert into an existing path record (trivial), or
                 # add a new one with relocation pointers for the other tree indexes.
-                if new_entry_key in id_index[file_id]:
+                entry_keys = id_index.get(file_id, ())
+                if new_entry_key in entry_keys:
                     # there is already an entry where this data belongs, just insert it.
                     by_path[new_entry_key][tree_index] = \
                         self._inv_entry_to_details(entry)
@@ -2465,16 +2514,16 @@ class DirState(object):
                     new_details = []
                     for lookup_index in xrange(tree_index):
                         # boundary case: this is the first occurence of file_id
-                        # so there are no id_indexs, possibly take this out of
+                        # so there are no id_indexes, possibly take this out of
                         # the loop?
-                        if not len(id_index[file_id]):
+                        if not len(entry_keys):
                             new_details.append(DirState.NULL_PARENT_DETAILS)
                         else:
                             # grab any one entry, use it to find the right path.
                             # TODO: optimise this to reduce memory use in highly
                             # fragmented situations by reusing the relocation
                             # records.
-                            a_key = iter(id_index[file_id]).next()
+                            a_key = iter(entry_keys).next()
                             if by_path[a_key][lookup_index][0] in ('r', 'a'):
                                 # its a pointer or missing statement, use it as is.
                                 new_details.append(by_path[a_key][lookup_index])
@@ -2485,7 +2534,7 @@ class DirState(object):
                     new_details.append(self._inv_entry_to_details(entry))
                     new_details.extend(new_location_suffix)
                     by_path[new_entry_key] = new_details
-                    id_index[file_id].add(new_entry_key)
+                    self._add_to_id_index(id_index, new_entry_key)
         # --- end generation of full tree mappings
 
         # sort and output all the entries
@@ -2643,6 +2692,23 @@ class DirState(object):
         if tracing:
             trace.mutter("set_state_from_inventory complete.")
 
+    def set_state_from_scratch(self, working_inv, parent_trees, parent_ghosts):
+        """Wipe the currently stored state and set it to something new.
+
+        This is a hard-reset for the data we are working with.
+        """
+        # Technically, we really want a write lock, but until we write, we
+        # don't really need it.
+        self._requires_lock()
+        # root dir and root dir contents with no children. We have to have a
+        # root for set_state_from_inventory to work correctly.
+        empty_root = (('', '', inventory.ROOT_ID),
+                      [('d', '', 0, False, DirState.NULLSTAT)])
+        empty_tree_dirblocks = [('', [empty_root]), ('', [])]
+        self._set_data([], empty_tree_dirblocks)
+        self.set_state_from_inventory(working_inv)
+        self.set_parent_trees(parent_trees, parent_ghosts)
+
     def _make_absent(self, current_old):
         """Mark current_old - an entry - as absent for tree 0.
 
@@ -2673,7 +2739,7 @@ class DirState(object):
             block[1].pop(entry_index)
             # if we have an id_index in use, remove this key from it for this id.
             if self._id_index is not None:
-                self._id_index[current_old[0][2]].remove(current_old[0])
+                self._remove_from_id_index(self._id_index, current_old[0])
         # update all remaining keys for this id to record it as absent. The
         # existing details may either be the record we are marking as deleted
         # (if there were other trees with the id present at this path), or may
@@ -2748,7 +2814,7 @@ class DirState(object):
                     else:
                         break
             # new entry, synthesis cross reference here,
-            existing_keys = id_index.setdefault(key[2], set())
+            existing_keys = id_index.get(key[2], ())
             if not existing_keys:
                 # not currently in the state, simplest case
                 new_entry = key, [new_details] + self._empty_parent_info()
@@ -2785,8 +2851,11 @@ class DirState(object):
                     # loop.
                     other_entry = other_block[other_entry_index]
                     other_entry[1][0] = ('r', path_utf8, 0, False, '')
-                    self._maybe_remove_row(other_block, other_entry_index,
-                        id_index)
+                    if self._maybe_remove_row(other_block, other_entry_index,
+                                              id_index):
+                        # If the row holding this was removed, we need to
+                        # recompute where this entry goes
+                        entry_index, _ = self._find_entry_index(key, block)
 
                 # This loop:
                 # adds a tuple to the new details for each column
@@ -2794,6 +2863,8 @@ class DirState(object):
                 #  - or by creating a new pointer to the right row inside that column
                 num_present_parents = self._num_present_parents()
                 if num_present_parents:
+                    # TODO: This re-evaluates the existing_keys set, do we need
+                    #       to do that ourselves?
                     other_key = list(existing_keys)[0]
                 for lookup_index in xrange(1, num_present_parents + 1):
                     # grab any one entry, use it to find the right path.
@@ -2818,7 +2889,7 @@ class DirState(object):
                         pointer_path = osutils.pathjoin(*other_key[0:2])
                         new_entry[1].append(('r', pointer_path, 0, False, ''))
             block.insert(entry_index, new_entry)
-            existing_keys.add(key)
+            self._add_to_id_index(id_index, key)
         else:
             # Does the new state matter?
             block[entry_index][1][0] = new_details
@@ -2833,7 +2904,12 @@ class DirState(object):
             # converted to relocated.
             if path_utf8 is None:
                 raise AssertionError('no path')
-            for entry_key in id_index.setdefault(key[2], set()):
+            existing_keys = id_index.get(key[2], ())
+            if key not in existing_keys:
+                raise AssertionError('We found the entry in the blocks, but'
+                    ' the key is not in the id_index.'
+                    ' key: %s, existing_keys: %s' % (key, existing_keys))
+            for entry_key in existing_keys:
                 # TODO:PROFILING: It might be faster to just update
                 # rather than checking if we need to, and then overwrite
                 # the one we are located at.
@@ -2863,6 +2939,7 @@ class DirState(object):
         """Remove index if it is absent or relocated across the row.
         
         id_index is updated accordingly.
+        :return: True if we removed the row, False otherwise
         """
         present_in_row = False
         entry = block[index]
@@ -2872,7 +2949,9 @@ class DirState(object):
                 break
         if not present_in_row:
             block.pop(index)
-            id_index[entry[0][2]].remove(entry[0])
+            self._remove_from_id_index(id_index, entry[0])
+            return True
+        return False
 
     def _validate(self):
         """Check that invariants on the dirblock are correct.
@@ -3020,6 +3099,10 @@ class DirState(object):
                         raise AssertionError(
                             'file_id %r did not match entry key %s'
                             % (file_id, entry_key))
+                if len(entry_keys) != len(set(entry_keys)):
+                    raise AssertionError(
+                        'id_index contained non-unique data for %s'
+                        % (entry_keys,))
 
     def _wipe_state(self):
         """Forget all state information about the dirstate."""
@@ -3122,6 +3205,7 @@ def py_update_entry(state, entry, abspath, stat_value,
     # If we have gotten this far, that means that we need to actually
     # process this entry.
     link_or_sha1 = None
+    worth_saving = True
     if minikind == 'f':
         executable = state._is_executable(stat_value.st_mode,
                                          saved_executable)
@@ -3143,6 +3227,7 @@ def py_update_entry(state, entry, abspath, stat_value,
         else:
             entry[1][0] = ('f', '', stat_value.st_size,
                            executable, DirState.NULLSTAT)
+            worth_saving = False
     elif minikind == 'd':
         link_or_sha1 = None
         entry[1][0] = ('d', '', 0, False, packed_stat)
@@ -3154,6 +3239,8 @@ def py_update_entry(state, entry, abspath, stat_value,
                 state._get_block_entry_index(entry[0][0], entry[0][1], 0)
             state._ensure_block(block_index, entry_index,
                                osutils.pathjoin(entry[0][0], entry[0][1]))
+        else:
+            worth_saving = False
     elif minikind == 'l':
         link_or_sha1 = state._read_link(abspath, saved_link_or_sha1)
         if state._cutoff_time is None:
@@ -3165,7 +3252,8 @@ def py_update_entry(state, entry, abspath, stat_value,
         else:
             entry[1][0] = ('l', '', stat_value.st_size,
                            False, DirState.NULLSTAT)
-    state._dirblock_state = DirState.IN_MEMORY_MODIFIED
+    if worth_saving:
+        state._dirblock_state = DirState.IN_MEMORY_MODIFIED
     return link_or_sha1
 
 

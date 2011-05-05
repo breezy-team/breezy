@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,7 +21,10 @@ import base64
 from StringIO import StringIO
 import re
 
-import bzrlib.errors as errors
+from bzrlib import (
+    errors,
+    pyutils,
+    )
 from bzrlib.diff import internal_diff
 from bzrlib.revision import NULL_REVISION
 # For backwards-compatibility
@@ -151,17 +154,6 @@ class BundleSerializer(object):
         """
         raise NotImplementedError
 
-    def write(self, source, revision_ids, forced_bases, f):
-        """Write the bundle to the supplied file.
-
-        DEPRECATED: see write_bundle
-        :param source: A source for revision information
-        :param revision_ids: The list of revision ids to serialize
-        :param forced_bases: A dict of revision -> base that overrides default
-        :param f: The file to output to
-        """
-        raise NotImplementedError
-
     def _write_bundle(self, repository, revision_id, base_revision_id, out):
         """Helper function for translating write_bundle to write"""
         forced_bases = {revision_id:base_revision_id}
@@ -202,8 +194,7 @@ def register_lazy(version, module, classname, overwrite=False):
     :param overwrite: Should this version override a default
     """
     def _loader(version):
-        mod = __import__(module, globals(), locals(), [classname])
-        klass = getattr(mod, classname)
+        klass = pyutils.get_named_object(module, classname)
         return klass(version)
     register(version, _loader, overwrite=overwrite)
 

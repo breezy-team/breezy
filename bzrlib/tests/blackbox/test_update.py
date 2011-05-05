@@ -90,7 +90,7 @@ All changes applied successfully.
 Updated to revision 1 of branch %s
 """ % osutils.pathjoin(self.test_dir, 'branch',),
                          err)
-        self.failUnlessExists('branch/file')
+        self.assertPathExists('branch/file')
 
     def test_update_out_of_date_light_checkout(self):
         self.make_branch_and_tree('branch')
@@ -179,9 +179,9 @@ Your local commits will now show as pending merges with 'bzr status', and can be
 """ % osutils.pathjoin(self.test_dir, 'master',),
                          err)
         self.assertEqual([master_tip, child_tip], wt.get_parent_ids())
-        self.failUnlessExists('checkout/file')
-        self.failUnlessExists('checkout/file_b')
-        self.failUnlessExists('checkout/file_c')
+        self.assertPathExists('checkout/file')
+        self.assertPathExists('checkout/file_b')
+        self.assertPathExists('checkout/file_c')
         self.assertTrue(wt.has_filename('file_c'))
 
     def test_update_with_merges(self):
@@ -195,7 +195,8 @@ Your local commits will now show as pending merges with 'bzr status', and can be
 
         self.build_tree(['checkout1/'])
         checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
-        branch.BranchReferenceFormat().initialize(checkout_dir, master.branch)
+        branch.BranchReferenceFormat().initialize(checkout_dir,
+            target_branch=master.branch)
         checkout1 = checkout_dir.create_workingtree('m1')
 
         # Create a second branch, with an extra commit
@@ -240,6 +241,47 @@ Updated to revision 2 of branch %s
         tree.commit('empty commit')
         self.run_bzr('update checkout')
 
+    def test_update_with_merge_merged_to_master(self):
+        # Test that 'bzr update' works correctly when you have
+        # an update in the master tree, and a [lightweight or otherwise]
+        # checkout which has merge a revision merged to master already.
+        master = self.make_branch_and_tree('master')
+        self.build_tree(['master/file'])
+        master.add(['file'])
+        master.commit('one', rev_id='m1')
+
+        self.build_tree(['checkout1/'])
+        checkout_dir = bzrdir.BzrDirMetaFormat1().initialize('checkout1')
+        branch.BranchReferenceFormat().initialize(checkout_dir,
+            target_branch=master.branch)
+        checkout1 = checkout_dir.create_workingtree('m1')
+
+        # Create a second branch, with an extra commit
+        other = master.bzrdir.sprout('other').open_workingtree()
+        self.build_tree(['other/file2'])
+        other.add(['file2'])
+        other.commit('other2', rev_id='o2')
+
+        # Merge the other branch into checkout -  'start reviewing a patch'
+        checkout1.merge_from_branch(other.branch)
+        self.assertEqual(['o2'], checkout1.get_parent_ids()[1:])
+
+        # Create a new commit in the master branch - 'someone else lands its'
+        master.merge_from_branch(other.branch)
+        master.commit('f3', rev_id='m2')
+
+        # This should not report about local commits being pending
+        # merges, because they were real merges (but are now gone).
+        # It should perhaps report on them.
+        out, err = self.run_bzr('update', working_dir='checkout1')
+        self.assertEqual('', out)
+        self.assertEqualDiff('''All changes applied successfully.
+Updated to revision 2 of branch %s
+''' % osutils.pathjoin(self.test_dir, 'master',),
+                         err)
+        # The pending merges should still be there
+        self.assertEqual([], checkout1.get_parent_ids()[1:])
+
     def test_update_dash_r(self):
         master = self.make_branch_and_tree('master')
         os.chdir('master')
@@ -257,33 +299,41 @@ $ bzr update -r 1
 2>All changes applied successfully.
 2>Updated to revision 1 of .../master
 ''')
-        self.failUnlessExists('./file1')
-        self.failIfExists('./file2')
+        self.assertPathExists('./file1')
+        self.assertPathDoesNotExist('./file2')
         self.assertEquals(['m1'], master.get_parent_ids())
 
     def test_update_dash_r_outside_history(self):
+        """Ensure that we can update -r to dotted revisions.
+        """
         master = self.make_branch_and_tree('master')
         self.build_tree(['master/file1'])
         master.add(['file1'])
         master.commit('one', rev_id='m1')
 
-        # Create a second branch, with an extra commit
+        # Create a second branch, with extra commits
         other = master.bzrdir.sprout('other').open_workingtree()
-        self.build_tree(['other/file2'])
+        self.build_tree(['other/file2', 'other/file3'])
         other.add(['file2'])
         other.commit('other2', rev_id='o2')
+        other.add(['file3'])
+        other.commit('other3', rev_id='o3')
 
         os.chdir('master')
         self.run_bzr('merge ../other')
         master.commit('merge', rev_id='merge')
 
-        out, err = self.run_bzr('update -r revid:o2',
-                                retcode=3)
-        self.assertEqual('', out)
-        self.assertEqual('bzr: ERROR: branch has no revision o2\n'
-                         'bzr update --revision only works'
-                         ' for a revision in the branch history\n',
-                         err)
+        # Switch to o2. file3 was added only in o3 and should be deleted.
+        out, err = self.run_bzr('update -r revid:o2')
+        self.assertContainsRe(err, '-D\s+file3')
+        self.assertContainsRe(err, 'All changes applied successfully\.')
+        self.assertContainsRe(err, 'Updated to revision 1.1.1 of branch .*')
+
+        # Switch back to latest
+        out, err = self.run_bzr('update')
+        self.assertContainsRe(err, '\+N\s+file3')
+        self.assertContainsRe(err, 'All changes applied successfully\.')
+        self.assertContainsRe(err, 'Updated to revision 2 of branch .*')
 
     def test_update_dash_r_in_master(self):
         # Test that 'bzr update' works correctly when you have
@@ -308,6 +358,44 @@ $ bzr update -r revid:m2
 2>All changes applied successfully.
 2>Updated to revision 2 of branch .../master
 ''')
+
+    def test_update_show_base(self):
+        """bzr update support --show-base
+
+        see https://bugs.launchpad.net/bzr/+bug/202374"""
+
+        tree=self.make_branch_and_tree('.')
+
+        f = open('hello','wt')
+        f.write('foo')
+        f.close()
+        tree.add('hello')
+        tree.commit('fie')
+
+        f = open('hello','wt')
+        f.write('fee')
+        f.close()
+        tree.commit('fee')
+
+        #tree.update() gives no such revision, so ...
+        self.run_bzr(['update','-r1'])
+
+        #create conflict
+        f = open('hello','wt')
+        f.write('fie')
+        f.close()
+
+        out, err = self.run_bzr(['update','--show-base'],retcode=1)
+
+        # check for conflict notification
+        self.assertContainsString(err,
+                                  ' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
+        
+        self.assertEqualDiff('<<<<<<< TREE\n'
+                             'fie||||||| BASE-REVISION\n'
+                             'foo=======\n'
+                             'fee>>>>>>> MERGE-SOURCE\n',
+                             open('hello').read())
 
     def test_update_checkout_prevent_double_merge(self):
         """"Launchpad bug 113809 in bzr "update performs two merges"

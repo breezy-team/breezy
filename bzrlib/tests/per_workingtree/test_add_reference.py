@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,12 +16,8 @@
 
 import os
 
-from bzrlib import errors, tests, workingtree, workingtree_4
+from bzrlib import errors, tests, workingtree
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
-
-TREES_NOT_SUPPORTING_REFERENCES = (workingtree.WorkingTree2,
-                                   workingtree.WorkingTree3,
-                                   workingtree_4.WorkingTree4)
 
 
 class TestBasisInventory(TestCaseWithWorkingTree):
@@ -37,7 +33,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         return tree, sub_tree
 
     def _references_unsupported(self, tree):
-        if tree.__class__ in TREES_NOT_SUPPORTING_REFERENCES:
+        if not tree.supports_tree_reference():
             raise tests.TestSkipped('Tree format does not support references')
         else:
             self.fail('%r does not support references but should'
@@ -57,8 +53,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         tree.lock_write()
         try:
             self.assertEqual(tree.path2id('sub-tree'), 'sub-tree-root-id')
-            self.assertEqual(tree.inventory['sub-tree-root-id'].kind,
-                             'tree-reference')
+            self.assertEqual(tree.kind('sub-tree-root-id'), 'tree-reference')
             tree.commit('commit reference')
             basis = tree.basis_tree()
             basis.lock_read()

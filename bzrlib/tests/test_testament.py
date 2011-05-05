@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,11 @@ import os
 
 from bzrlib import osutils
 from bzrlib.tests import SymlinkFeature, TestCaseWithTransport
-from bzrlib.testament import Testament, StrictTestament, StrictTestament3
+from bzrlib.testament import (
+    Testament,
+    StrictTestament,
+    StrictTestament3,
+    )
 from bzrlib.transform import TreeTransform
 
 
@@ -129,17 +133,25 @@ class TestamentTests(TestamentSetup):
             timestamp=1129025493,
             timezone=36000,
             rev_id='test@user-3',
-            committer='Erik B\xe5gfors <test@user>',
+            committer=u'Erik B\xe5gfors <test@user>',
             revprops={'uni':u'\xb5'}
             )
         t = self.from_revision(self.b.repository, 'test@user-3')
         self.assertEqualDiff(
             self.expected('sample_unicode').encode('utf-8'), t.as_text())
 
+    def test_from_tree(self):
+        tree = self.b.repository.revision_tree('test@user-2')
+        testament = self.testament_class().from_revision_tree(tree)
+        text_1 = testament.as_short_text()
+        text_2 = self.from_revision(self.b.repository,
+                                    'test@user-2').as_short_text()
+        self.assertEqual(text_1, text_2)
+
     def test___init__(self):
         revision = self.b.repository.get_revision('test@user-2')
-        inventory = self.b.repository.get_inventory('test@user-2')
-        testament_1 = self.testament_class()(revision, inventory)
+        tree = self.b.repository.revision_tree('test@user-2')
+        testament_1 = self.testament_class()(revision, tree)
         text_1 = testament_1.as_short_text()
         text_2 = self.from_revision(self.b.repository,
                                     'test@user-2').as_short_text()

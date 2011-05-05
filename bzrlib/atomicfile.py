@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005 Canonical Ltd
+# Copyright (C) 2005, 2006, 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 
 import os
-import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
@@ -60,7 +59,7 @@ class AtomicFile(object):
 
         self.realfilename = filename
 
-        flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY
+        flags = os.O_EXCL | os.O_CREAT | os.O_WRONLY | osutils.O_NOINHERIT
         if mode == 'wb':
             flags |= osutils.O_BINARY
         elif mode != 'wt':

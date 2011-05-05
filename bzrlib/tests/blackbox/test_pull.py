@@ -29,12 +29,15 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.directory_service import directories
 from bzrlib.osutils import pathjoin
-from bzrlib.tests.blackbox import ExternalBase
+from bzrlib.tests import (
+    fixtures,
+    TestCaseWithTransport,
+    )
 from bzrlib.uncommit import uncommit
 from bzrlib.workingtree import WorkingTree
 
 
-class TestPull(ExternalBase):
+class TestPull(TestCaseWithTransport):
 
     def example_branch(self, path='.'):
         tree = self.make_branch_and_tree(path)
@@ -142,6 +145,21 @@ class TestPull(ExternalBase):
         self.run_bzr('pull -r 4')
         self.assertEqual(a.revision_history(), b.revision_history())
 
+    def test_pull_tags(self):
+        """Tags are updated by pull, and revisions named in those tags are
+        fetched.
+        """
+        # Make a source, sprout a target off it
+        builder = self.make_branch_builder('source')
+        source = fixtures.build_branch_with_non_ancestral_rev(builder)
+        target_bzrdir = source.bzrdir.sprout('target')
+        source.tags.set_tag('tag-a', 'rev-2')
+        # Pull from source
+        self.run_bzr('pull -d target source')
+        target = target_bzrdir.open_branch()
+        # The tag is present, and so is its revision.
+        self.assertEqual('rev-2', target.tags.lookup_tag('tag-a'))
+        target.repository.get_revision('rev-2')
 
     def test_overwrite_uptodate(self):
         # Make sure pull --overwrite overwrites
@@ -453,3 +471,55 @@ class TestPull(ExternalBase):
         out, err = self.run_bzr(['pull', '-d', 'to', 'from'])
         self.assertContainsRe(err,
             "(?m)Fetching into experimental format")
+
+    def test_pull_show_base(self):
+        """bzr pull supports --show-base
+
+        see https://bugs.launchpad.net/bzr/+bug/202374"""
+        # create two trees with conflicts, setup conflict, check that
+        # conflicted file looks correct
+        a_tree = self.example_branch('a')
+        b_tree = a_tree.bzrdir.sprout('b').open_workingtree()
+
+        f = open(pathjoin('a', 'hello'),'wt')
+        f.write('fee')
+        f.close()
+        a_tree.commit('fee')
+
+        f = open(pathjoin('b', 'hello'),'wt')
+        f.write('fie')
+        f.close()
+
+        out,err=self.run_bzr(['pull','-d','b','a','--show-base'])
+
+        # check for message here
+        self.assertEqual(err,
+                         ' M  hello\nText conflict in hello\n1 conflicts encountered.\n')
+
+        self.assertEqualDiff('<<<<<<< TREE\n'
+                             'fie||||||| BASE-REVISION\n'
+                             'foo=======\n'
+                             'fee>>>>>>> MERGE-SOURCE\n',
+                             open(pathjoin('b', 'hello')).read())
+
+    def test_pull_show_base_working_tree_only(self):
+        """--show-base only allowed if there's a working tree
+
+        see https://bugs.launchpad.net/bzr/+bug/202374"""
+        # create a branch, see that --show-base fails
+        self.make_branch('from')
+        self.make_branch('to')
+        out=self.run_bzr(['pull','-d','to','from','--show-base'],retcode=3)
+        self.assertEqual(out,
+                         ('','bzr: ERROR: Need working tree for --show-base.\n'))
+
+    def test_pull_tag_conflicts(self):
+        """pulling tags with conflicts will change the exit code"""
+        # create a branch, see that --show-base fails
+        from_tree = self.make_branch_and_tree('from')
+        from_tree.branch.tags.set_tag("mytag", "somerevid")
+        to_tree = self.make_branch_and_tree('to')
+        to_tree.branch.tags.set_tag("mytag", "anotherrevid")
+        out = self.run_bzr(['pull','-d','to','from'],retcode=1)
+        self.assertEqual(out,
+            ('No revisions to pull.\nConflicting tags:\n    mytag\n', ''))

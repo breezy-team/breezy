@@ -1,4 +1,4 @@
-# Copyright (C) 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2008-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,21 +23,27 @@ try:
 except ImportError:
     pylzma = None
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     annotate,
     debug,
     errors,
     graph as _mod_graph,
-    knit,
     osutils,
     pack,
     static_tuple,
     trace,
+    tsort,
     )
+
+from bzrlib.repofmt import pack_repo
+""")
+
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
-from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
+    _KeyRefs,
     adapter_registry,
     AbsentContentFactory,
     ChunkedContentFactory,
@@ -77,7 +83,7 @@ def sort_gc_optimal(parent_map):
 
     present_keys = []
     for prefix in sorted(per_prefix_map):
-        present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
+        present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
     return present_keys
 
 
@@ -101,7 +107,7 @@ class GroupCompressBlock(object):
     def __init__(self):
         # map by key? or just order in file?
         self._compressor_name = None
-        self._z_content = None
+        self._z_content_chunks = None
         self._z_content_decompressor = None
         self._z_content_length = None
         self._content_length = None
@@ -135,26 +141,30 @@ class GroupCompressBlock(object):
                 self._content = ''.join(self._content_chunks)
                 self._content_chunks = None
         if self._content is None:
-            if self._z_content is None:
+            # We join self._z_content_chunks here, because if we are
+            # decompressing, then it is *very* likely that we have a single
+            # chunk
+            if self._z_content_chunks is None:
                 raise AssertionError('No content to decompress')
-            if self._z_content == '':
+            z_content = ''.join(self._z_content_chunks)
+            if z_content == '':
                 self._content = ''
             elif self._compressor_name == 'lzma':
                 # We don't do partial lzma decomp yet
-                self._content = pylzma.decompress(self._z_content)
+                self._content = pylzma.decompress(z_content)
             elif self._compressor_name == 'zlib':
                 # Start a zlib decompressor
                 if num_bytes * 4 > self._content_length * 3:
                     # If we are requesting more that 3/4ths of the content,
                     # just extract the whole thing in a single pass
                     num_bytes = self._content_length
-                    self._content = zlib.decompress(self._z_content)
+                    self._content = zlib.decompress(z_content)
                 else:
                     self._z_content_decompressor = zlib.decompressobj()
                     # Seed the decompressor with the uncompressed bytes, so
                     # that the rest of the code is simplified
                     self._content = self._z_content_decompressor.decompress(
-                        self._z_content, num_bytes + _ZLIB_DECOMP_WINDOW)
+                        z_content, num_bytes + _ZLIB_DECOMP_WINDOW)
                     if not self._z_content_decompressor.unconsumed_tail:
                         self._z_content_decompressor = None
             else:
@@ -207,7 +217,17 @@ class GroupCompressBlock(object):
             # XXX: Define some GCCorrupt error ?
             raise AssertionError('Invalid bytes: (%d) != %d + %d' %
                                  (len(bytes), pos, self._z_content_length))
-        self._z_content = bytes[pos:]
+        self._z_content_chunks = (bytes[pos:],)
+
+    @property
+    def _z_content(self):
+        """Return z_content_chunks as a simple string.
+
+        Meant only to be used by the test suite.
+        """
+        if self._z_content_chunks is not None:
+            return ''.join(self._z_content_chunks)
+        return None
 
     @classmethod
     def from_bytes(cls, bytes):
@@ -269,13 +289,13 @@ class GroupCompressBlock(object):
         self._content_length = length
         self._content_chunks = content_chunks
         self._content = None
-        self._z_content = None
+        self._z_content_chunks = None
 
     def set_content(self, content):
         """Set the content of this block."""
         self._content_length = len(content)
         self._content = content
-        self._z_content = None
+        self._z_content_chunks = None
 
     def _create_z_content_using_lzma(self):
         if self._content_chunks is not None:
@@ -283,39 +303,49 @@ class GroupCompressBlock(object):
             self._content_chunks = None
         if self._content is None:
             raise AssertionError('Nothing to compress')
-        self._z_content = pylzma.compress(self._content)
-        self._z_content_length = len(self._z_content)
+        z_content = pylzma.compress(self._content)
+        self._z_content_chunks = (z_content,)
+        self._z_content_length = len(z_content)
 
-    def _create_z_content_from_chunks(self):
+    def _create_z_content_from_chunks(self, chunks):
         compressor = zlib.compressobj(zlib.Z_DEFAULT_COMPRESSION)
-        compressed_chunks = map(compressor.compress, self._content_chunks)
+        # Peak in this point is 1 fulltext, 1 compressed text, + zlib overhead
+        # (measured peak is maybe 30MB over the above...)
+        compressed_chunks = map(compressor.compress, chunks)
         compressed_chunks.append(compressor.flush())
-        self._z_content = ''.join(compressed_chunks)
-        self._z_content_length = len(self._z_content)
+        # Ignore empty chunks
+        self._z_content_chunks = [c for c in compressed_chunks if c]
+        self._z_content_length = sum(map(len, self._z_content_chunks))
 
     def _create_z_content(self):
-        if self._z_content is not None:
+        if self._z_content_chunks is not None:
             return
         if _USE_LZMA:
             self._create_z_content_using_lzma()
             return
         if self._content_chunks is not None:
-            self._create_z_content_from_chunks()
-            return
-        self._z_content = zlib.compress(self._content)
-        self._z_content_length = len(self._z_content)
+            chunks = self._content_chunks
+        else:
+            chunks = (self._content,)
+        self._create_z_content_from_chunks(chunks)
 
-    def to_bytes(self):
-        """Encode the information into a byte stream."""
+    def to_chunks(self):
+        """Create the byte stream as a series of 'chunks'"""
         self._create_z_content()
         if _USE_LZMA:
             header = self.GCB_LZ_HEADER
         else:
             header = self.GCB_HEADER
-        chunks = [header,
-                  '%d\n%d\n' % (self._z_content_length, self._content_length),
-                  self._z_content,
+        chunks = ['%s%d\n%d\n'
+                  % (header, self._z_content_length, self._content_length),
                  ]
+        chunks.extend(self._z_content_chunks)
+        total_len = sum(map(len, chunks))
+        return total_len, chunks
+
+    def to_bytes(self):
+        """Encode the information into a byte stream."""
+        total_len, chunks = self.to_chunks()
         return ''.join(chunks)
 
     def _dump(self, include_text=False):
@@ -679,18 +709,21 @@ class _LazyGroupContentManager(object):
         z_header_bytes = zlib.compress(header_bytes)
         del header_bytes
         z_header_bytes_len = len(z_header_bytes)
-        block_bytes = self._block.to_bytes()
+        block_bytes_len, block_chunks = self._block.to_chunks()
         lines.append('%d\n%d\n%d\n' % (z_header_bytes_len, header_bytes_len,
-                                       len(block_bytes)))
+                                       block_bytes_len))
         lines.append(z_header_bytes)
-        lines.append(block_bytes)
-        del z_header_bytes, block_bytes
+        lines.extend(block_chunks)
+        del z_header_bytes, block_chunks
+        # TODO: This is a point where we will double the memory consumption. To
+        #       avoid this, we probably have to switch to a 'chunked' api
         return ''.join(lines)
 
     @classmethod
     def from_bytes(cls, bytes):
         # TODO: This does extra string copying, probably better to do it a
-        #       different way
+        #       different way. At a minimum this creates 2 copies of the
+        #       compressed content
         (storage_kind, z_header_len, header_len,
          block_len, rest) = bytes.split('\n', 4)
         del bytes
@@ -854,14 +887,6 @@ class _CommonGroupCompressor(object):
 
         After calling this, the compressor should no longer be used
         """
-        # TODO: this causes us to 'bloat' to 2x the size of content in the
-        #       group. This has an impact for 'commit' of large objects.
-        #       One possibility is to use self._content_chunks, and be lazy and
-        #       only fill out self._content as a full string when we actually
-        #       need it. That would at least drop the peak memory consumption
-        #       for 'commit' down to ~1x the size of the largest file, at a
-        #       cost of increased complexity within this code. 2x is still <<
-        #       3x the size of the largest file, so we are doing ok.
         self._block.set_chunked_content(self.chunks, self.endpoint)
         self.chunks = None
         self._delta_index = None
@@ -1027,7 +1052,7 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
         index = _GCGraphIndex(graph_index, lambda:True, parents=parents,
             add_callback=graph_index.add_nodes,
             inconsistency_fatal=inconsistency_fatal)
-        access = knit._DirectPackAccess({})
+        access = pack_repo._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
         result.stream = stream
@@ -1152,13 +1177,15 @@ class _BatchingBlockFetcher(object):
 class GroupCompressVersionedFiles(VersionedFiles):
     """A group-compress based VersionedFiles implementation."""
 
-    def __init__(self, index, access, delta=True, _unadded_refs=None):
+    def __init__(self, index, access, delta=True, _unadded_refs=None,
+            _group_cache=None):
         """Create a GroupCompressVersionedFiles object.
 
         :param index: The index object storing access and graph data.
         :param access: The access object storing raw data.
         :param delta: Whether to delta compress or just entropy compress.
         :param _unadded_refs: private parameter, don't use.
+        :param _group_cache: private parameter, don't use.
         """
         self._index = index
         self._access = access
@@ -1166,13 +1193,16 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if _unadded_refs is None:
             _unadded_refs = {}
         self._unadded_refs = _unadded_refs
-        self._group_cache = LRUSizeCache(max_size=50*1024*1024)
-        self._fallback_vfs = []
+        if _group_cache is None:
+            _group_cache = LRUSizeCache(max_size=50*1024*1024)
+        self._group_cache = _group_cache
+        self._immediate_fallback_vfs = []
 
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
         return GroupCompressVersionedFiles(self._index, self._access,
-            self._delta, _unadded_refs=dict(self._unadded_refs))
+            self._delta, _unadded_refs=dict(self._unadded_refs),
+            _group_cache=self._group_cache)
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
@@ -1247,7 +1277,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
 
         :param a_versioned_files: A VersionedFiles object.
         """
-        self._fallback_vfs.append(a_versioned_files)
+        self._immediate_fallback_vfs.append(a_versioned_files)
 
     def annotate(self, key):
         """See VersionedFiles.annotate."""
@@ -1293,7 +1323,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         # KnitVersionedFiles.get_known_graph_ancestry, but they don't share
         # ancestry.
         parent_map, missing_keys = self._index.find_ancestry(keys)
-        for fallback in self._fallback_vfs:
+        for fallback in self._transitive_fallbacks():
             if not missing_keys:
                 break
             (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
@@ -1323,7 +1353,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             and so on.
         """
         result = {}
-        sources = [self._index] + self._fallback_vfs
+        sources = [self._index] + self._immediate_fallback_vfs
         source_results = []
         missing = set(keys)
         for source in sources:
@@ -1430,7 +1460,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
         parent_map = {}
         key_to_source_map = {}
         source_results = []
-        for source in self._fallback_vfs:
+        for source in self._immediate_fallback_vfs:
             if not missing:
                 break
             source_parents = source.get_parent_map(missing)
@@ -1451,7 +1481,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             the defined order, regardless of source.
         """
         if ordering == 'topological':
-            present_keys = topo_sort(parent_map)
+            present_keys = tsort.topo_sort(parent_map)
         else:
             # ordering == 'groupcompress'
             # XXX: This only optimizes for the target ordering. We may need
@@ -1630,7 +1660,19 @@ class GroupCompressVersionedFiles(VersionedFiles):
         self._unadded_refs = {}
         keys_to_add = []
         def flush():
-            bytes = self._compressor.flush().to_bytes()
+            bytes_len, chunks = self._compressor.flush().to_chunks()
+            self._compressor = GroupCompressor()
+            # Note: At this point we still have 1 copy of the fulltext (in
+            #       record and the var 'bytes'), and this generates 2 copies of
+            #       the compressed text (one for bytes, one in chunks)
+            # TODO: Push 'chunks' down into the _access api, so that we don't
+            #       have to double compressed memory here
+            # TODO: Figure out how to indicate that we would be happy to free
+            #       the fulltext content at this point. Note that sometimes we
+            #       will want it later (streaming CHK pages), but most of the
+            #       time we won't (everything else)
+            bytes = ''.join(chunks)
+            del chunks
             index, start, length = self._access.add_raw_records(
                 [(None, len(bytes))], bytes)[0]
             nodes = []
@@ -1639,7 +1681,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
             self._index.add_records(nodes, random_id=random_id)
             self._unadded_refs = {}
             del keys_to_add[:]
-            self._compressor = GroupCompressor()
 
         last_prefix = None
         max_fulltext_len = 0
@@ -1802,11 +1843,59 @@ class GroupCompressVersionedFiles(VersionedFiles):
         """See VersionedFiles.keys."""
         if 'evil' in debug.debug_flags:
             trace.mutter_callsite(2, "keys scales with size of history")
-        sources = [self._index] + self._fallback_vfs
+        sources = [self._index] + self._immediate_fallback_vfs
         result = set()
         for source in sources:
             result.update(source.keys())
         return result
+
+
+class _GCBuildDetails(object):
+    """A blob of data about the build details.
+
+    This stores the minimal data, which then allows compatibility with the old
+    api, without taking as much memory.
+    """
+
+    __slots__ = ('_index', '_group_start', '_group_end', '_basis_end',
+                 '_delta_end', '_parents')
+
+    method = 'group'
+    compression_parent = None
+
+    def __init__(self, parents, position_info):
+        self._parents = parents
+        (self._index, self._group_start, self._group_end, self._basis_end,
+         self._delta_end) = position_info
+
+    def __repr__(self):
+        return '%s(%s, %s)' % (self.__class__.__name__,
+            self.index_memo, self._parents)
+
+    @property
+    def index_memo(self):
+        return (self._index, self._group_start, self._group_end,
+                self._basis_end, self._delta_end)
+
+    @property
+    def record_details(self):
+        return static_tuple.StaticTuple(self.method, None)
+
+    def __getitem__(self, offset):
+        """Compatibility thunk to act like a tuple."""
+        if offset == 0:
+            return self.index_memo
+        elif offset == 1:
+            return self.compression_parent # Always None
+        elif offset == 2:
+            return self._parents
+        elif offset == 3:
+            return self.record_details
+        else:
+            raise IndexError('offset out of range')
+            
+    def __len__(self):
+        return 4
 
 
 class _GCGraphIndex(object):
@@ -1843,7 +1932,7 @@ class _GCGraphIndex(object):
         # repeated over and over, this creates a surplus of ints
         self._int_cache = {}
         if track_external_parent_refs:
-            self._key_dependencies = knit._KeyRefs(
+            self._key_dependencies = _KeyRefs(
                 track_new_keys=track_new_keys)
         else:
             self._key_dependencies = None
@@ -2009,9 +2098,8 @@ class _GCGraphIndex(object):
                 parents = None
             else:
                 parents = entry[3][0]
-            method = 'group'
-            result[key] = (self._node_to_position(entry),
-                                  None, parents, (method, None))
+            details = _GCBuildDetails(parents, self._node_to_position(entry))
+            result[key] = details
         return result
 
     def keys(self):
@@ -2033,7 +2121,7 @@ class _GCGraphIndex(object):
         # each, or about 7MB. Note that it might be even more when you consider
         # how PyInt is allocated in separate slabs. And you can't return a slab
         # to the OS if even 1 int on it is in use. Note though that Python uses
-        # a LIFO when re-using PyInt slots, which probably causes more
+        # a LIFO when re-using PyInt slots, which might cause more
         # fragmentation.
         start = int(bits[0])
         start = self._int_cache.setdefault(start, start)

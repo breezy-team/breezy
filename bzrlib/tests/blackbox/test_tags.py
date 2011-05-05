@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,27 +16,21 @@
 
 """Tests for commands related to tags"""
 
-from bzrlib import bzrdir
+from bzrlib import (
+    branchbuilder,
+    tag,
+    )
 from bzrlib.branch import (
     Branch,
     )
-from bzrlib.bzrdir import BzrDir
-from bzrlib.tests import TestCaseWithTransport
-from bzrlib.repository import (
-    Repository,
+from bzrlib.tests import (
+    script,
+    TestCaseWithTransport,
     )
 from bzrlib.workingtree import WorkingTree
 
 
 class TestTagging(TestCaseWithTransport):
-
-    # as of 0.14, the default format doesn't do tags so we need to use a
-    # specific format
-
-    def make_branch_and_tree(self, relpath):
-        format = bzrdir.format_registry.make_bzrdir('dirstate-with-subtree')
-        return TestCaseWithTransport.make_branch_and_tree(self, relpath,
-            format=format)
 
     def test_tag_command_help(self):
         out, err = self.run_bzr('help tag')
@@ -47,13 +41,25 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(err,
             "Tags can only be placed on a single revision")
 
+    def test_no_tag_name(self):
+        out, err = self.run_bzr('tag -d branch', retcode=3)
+        self.assertContainsRe(err, 'Please specify a tag name.')
+
+    def test_automatic_tag_name(self):
+        def get_tag_name(branch, revid):
+            return "mytag"
+        Branch.hooks.install_named_hook('automatic_tag_name',
+            get_tag_name, 'get tag name')
+        out, err = self.run_bzr('tag -d branch')
+        self.assertContainsRe(err, 'Created tag mytag.')
+
     def test_tag_current_rev(self):
         t = self.make_branch_and_tree('branch')
         t.commit(allow_pointless=True, message='initial commit',
             rev_id='first-revid')
         # make a tag through the command line
         out, err = self.run_bzr('tag -d branch NEWTAG')
-        self.assertContainsRe(out, 'Created tag NEWTAG.')
+        self.assertContainsRe(err, 'Created tag NEWTAG.')
         # tag should be observable through the api
         self.assertEquals(t.branch.tags.get_tag_dict(),
                 dict(NEWTAG='first-revid'))
@@ -72,6 +78,10 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(err, 'Tag NEWTAG already exists\\.')
         # ... but can if you use --force
         out, err = self.run_bzr('tag -d branch NEWTAG --force')
+
+    def test_tag_delete_requires_name(self):
+        out, err = self.run_bzr('tag -d branch', retcode=3)
+        self.assertContainsRe(err, 'Please specify a tag name\\.')
 
     def test_branch_push_pull_merge_copies_tags(self):
         t = self.make_branch_and_tree('branch1')
@@ -104,6 +114,79 @@ class TestTagging(TestCaseWithTransport):
         b3 = Branch.open('branch3')
         self.assertEquals(b3.tags.lookup_tag('tag1'), 'first-revid')
 
+    def make_master_and_checkout(self):
+        builder = self.make_branch_builder('master')
+        builder.build_commit(message='Initial commit.', rev_id='rev-1')
+        master = builder.get_branch()
+        child = master.create_checkout(self.get_url('child'))
+        return master, child
+
+    def make_fork(self, branch):
+        fork = branch.create_clone_on_transport(self.get_transport('fork'))
+        builder = branchbuilder.BranchBuilder(branch=fork)
+        builder.build_commit(message='Commit in fork.', rev_id='fork-0')
+        fork.set_last_revision_info(1, 'rev-1')
+        builder.build_commit(message='Commit in fork.', rev_id='fork-1')
+        return fork
+
+    def test_merge_without_commit_does_not_propagate_tags_to_master(self):
+        """'bzr merge' alone does not propagate tags to a master branch.
+
+        (If the user runs 'bzr commit', then that is when the tags from the
+        merge are propagated.)
+        """
+        master, child = self.make_master_and_checkout()
+        fork = self.make_fork(master)
+        fork.tags.set_tag('new-tag', fork.last_revision())
+        self.run_bzr(['merge', '../fork'], working_dir='child')
+        self.assertEqual({}, master.tags.get_tag_dict())
+
+    def test_commit_in_heavyweight_checkout_copies_tags_to_master(self):
+        master, child = self.make_master_and_checkout()
+        fork = self.make_fork(master)
+        fork.tags.set_tag('new-tag', fork.last_revision())
+        fork.tags.set_tag('non-ancestry-tag', 'fork-0')
+        fork.tags.set_tag('absent-tag', 'absent-rev')
+        script.run_script(self, """
+            $ cd child
+            $ bzr merge ../fork
+            $ bzr commit -m "Merge fork."
+            2>Committing to: .../master/
+            2>Committed revision 2.
+            """, null_output_matches_anything=True)
+        # Merge copied the tag to child and commit propagated it to master
+        expected_tag_dict = {
+            'new-tag': fork.last_revision(),
+            'non-ancestry-tag': 'fork-0',
+            'absent-tag': 'absent-rev',
+            }
+        self.assertEqual(expected_tag_dict, child.branch.tags.get_tag_dict())
+        self.assertEqual(expected_tag_dict, master.tags.get_tag_dict())
+        # Revisions not in ancestry but named in tags are present
+        child.branch.repository.get_revision('fork-0')
+        master.repository.get_revision('fork-0')
+
+    def test_commit_in_heavyweight_checkout_reports_tag_conflict(self):
+        master, child = self.make_master_and_checkout()
+        fork = self.make_fork(master)
+        fork.tags.set_tag('new-tag', fork.last_revision())
+        master_r1 = master.last_revision()
+        master.tags.set_tag('new-tag', master_r1)
+        script.run_script(self, """
+            $ cd child
+            $ bzr merge ../fork
+            $ bzr commit -m "Merge fork."
+            2>Committing to: .../master/
+            2>Conflicting tags in bound branch:
+            2>    new-tag
+            2>Committed revision 2.
+            """, null_output_matches_anything=True)
+        # Merge copied the tag to child.  master's conflicting tag is unchanged.
+        self.assertEqual(
+            {'new-tag': fork.last_revision()}, child.branch.tags.get_tag_dict())
+        self.assertEqual(
+            {'new-tag': master_r1}, master.tags.get_tag_dict())
+
     def test_list_tags(self):
         tree1 = self.make_branch_and_tree('branch1')
         tree1.commit(allow_pointless=True, message='revision 1',
@@ -113,33 +196,42 @@ class TestTagging(TestCaseWithTransport):
 
         b1 = tree1.branch
         # note how the tag for revid-1 sorts after the one for revid-2
-        b1.tags.set_tag(u'tagA\u30d0', 'revid-2')
-        b1.tags.set_tag(u'tagB\u30d0', 'missing') # not present in repository
-        b1.tags.set_tag(u'tagC\u30d0', 'revid-1')
+        b1.tags.set_tag(u'tag1\u30d0', 'revid-2')
+        b1.tags.set_tag(u'tag10\u30d0', 'missing') # not present in repository
+        b1.tags.set_tag(u'tag2\u30d0', 'revid-1')
+
+        # natural order
+        out, err = self.run_bzr('tags -d branch1',
+                                encoding='utf-8')
+        self.assertEquals(err, '')
+        self.assertContainsRe(out, (u'^tag1\u30d0  *2\ntag2\u30d0  *1\n' +
+            u'tag10\u30d0 *\\?\n').encode('utf-8'))
 
         # lexicographical order
-        out, err = self.run_bzr('tags -d branch1', encoding='utf-8')
+        out, err = self.run_bzr('tags --sort=alpha -d branch1',
+                                encoding='utf-8')
         self.assertEquals(err, '')
-        self.assertContainsRe(out, (u'^tagA\u30d0  *2\ntagB\u30d0  *\\?\n' +
-            u'tagC\u30d0 *1\n').encode('utf-8'))
+        self.assertContainsRe(out, (u'^tag10\u30d0  *\\?\ntag1\u30d0  *2\n' +
+            u'tag2\u30d0 *1\n').encode('utf-8'))
 
-        out, err = self.run_bzr('tags --show-ids -d branch1', encoding='utf-8')
+        out, err = self.run_bzr('tags --sort=alpha --show-ids -d branch1',
+                                encoding='utf-8')
         self.assertEquals(err, '')
-        self.assertContainsRe(out, (u'^tagA\u30d0  *revid-2\n' +
-            u'tagB\u30d0  *missing\ntagC\u30d0 *revid-1\n').encode('utf-8'))
+        self.assertContainsRe(out, (u'^tag10\u30d0  *missing\n' +
+            u'tag1\u30d0  *revid-2\ntag2\u30d0 *revid-1\n').encode('utf-8'))
 
         # chronological order
         out, err = self.run_bzr('tags --sort=time -d branch1',
                 encoding='utf-8')
         self.assertEquals(err, '')
-        self.assertContainsRe(out, (u'^tagC\u30d0  *1\ntagA\u30d0  *2\n' +
-            u'tagB\u30d0 *\\?\n').encode('utf-8'))
+        self.assertContainsRe(out, (u'^tag2\u30d0  *1\ntag1\u30d0  *2\n' +
+            u'tag10\u30d0 *\\?\n').encode('utf-8'))
 
         out, err = self.run_bzr('tags --sort=time --show-ids -d branch1',
                 encoding='utf-8')
         self.assertEquals(err, '')
-        self.assertContainsRe(out, (u'^tagC\u30d0  *revid-1\n' +
-            u'tagA\u30d0  *revid-2\ntagB\u30d0 *missing\n').encode('utf-8'))
+        self.assertContainsRe(out, (u'^tag2\u30d0  *revid-1\n' +
+            u'tag1\u30d0  *revid-2\ntag10\u30d0 *missing\n').encode('utf-8'))
 
         # now test dotted revnos
         tree2 = tree1.bzrdir.sprout('branch2').open_workingtree()
@@ -191,6 +283,40 @@ class TestTagging(TestCaseWithTransport):
             error_regexes=["bzr: ERROR: Requested revision: '123.123' "
                 "does not exist in branch:"])
 
+    def test_sort_tags_custom(self):
+        def sort_by_dots(branch, tags):
+            def sort_key((tag, revid)):
+                return tag.count(".")
+            tags.sort(key=sort_key)
+
+        # Register a custom sort method
+        tag.tag_sort_methods.register("dots", sort_by_dots, "Sort by dots.")
+        self.addCleanup(tag.tag_sort_methods.remove, "dots")
+
+        tree1 = self.make_branch_and_tree('branch1')
+        tree1.commit(allow_pointless=True, message='revision 1',
+                rev_id='revid-1', timestamp=10)
+        tree1.commit(allow_pointless=True, message='revision 2',
+                rev_id='revid-2', timestamp=15)
+
+        b1 = tree1.branch
+
+        b1.tags.set_tag(u'tag..', 'revid-2')
+        b1.tags.set_tag(u'tag....', 'missing') # not present in repository
+        b1.tags.set_tag(u'tag.', 'revid-1')
+        b1.tags.set_tag(u'tag...', 'revid-1')
+        b1.tags.set_tag(u'tag....', 'revid-1')
+
+        # sorted by number of dots
+        out, err = self.run_bzr('tags --sort=dots -d branch1')
+        self.assertEquals(err, '')
+        self.assertEquals([
+            'tag.                 1',
+            'tag..                2',
+            'tag...               1',
+            'tag....              1'],
+            out.splitlines())
+
     def _check_tag_filter(self, argstr, expected_revnos):
         #upper bound of laziness
         out, err = self.run_bzr('tags ' + argstr)
@@ -212,10 +338,43 @@ class TestTagging(TestCaseWithTransport):
         self.assertContainsRe(out,
                 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
         # pull should give a warning about the tags
-        out, err = self.run_bzr('pull -d one two', encoding='utf-8')
+        out, err = self.run_bzr('pull -d one two', encoding='utf-8',
+            retcode=1)
         self.assertContainsRe(out,
                 'Conflicting tags:\n.*' + tagname.encode('utf-8'))
         # merge should give a warning about the tags -- not implemented yet
         ## out, err = self.run_bzr('merge -d one two', encoding='utf-8')
         ## self.assertContainsRe(out,
         ##         'Conflicting tags:\n.*' + tagname.encode('utf-8'))
+
+    def test_tag_quiet(self):
+        t1 = self.make_branch_and_tree('')
+        out, err = self.run_bzr('tag --quiet test1')
+        self.assertEqual('', out)
+        self.assertEqual('', err)
+
+    def test_tag_delete_quiet(self):
+        t1 = self.make_branch_and_tree('')
+        self.run_bzr('tag test1')
+        out, err = self.run_bzr('tag --delete --quiet test1')
+        self.assertEqual('', out)
+        self.assertEqual('', err)
+
+    def test_tags_with_mainline_ghosts(self):
+        tree = self.make_branch_and_tree('tree1')
+        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.add('')
+        tree.commit('msg1', rev_id='rev1')
+        tree.commit('msg2', rev_id='rev2')
+        tree.branch.tags.set_tag('unknown', 'out-of-mainline')
+        tree.branch.tags.set_tag('ghost', 'spooky')
+        tree.branch.tags.set_tag('tag1', 'rev1')
+        tree.branch.tags.set_tag('tag2', 'rev2')
+
+        out, err = self.run_bzr('tags -d tree1', encoding='utf-8')
+        self.assertEqual(out,
+            'ghost                ?\n'
+            'tag1                 1\n'
+            'tag2                 2\n'
+            'unknown              ?\n')
+        self.assertEqual('', err)

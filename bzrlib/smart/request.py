@@ -31,8 +31,6 @@ Interesting module attributes:
 # of a SmartServerRequest subclass.
 
 
-import tempfile
-import thread
 import threading
 
 from bzrlib import (
@@ -48,6 +46,9 @@ from bzrlib import (
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.bundle import serializer
+
+import tempfile
+import thread
 """)
 
 
@@ -446,9 +447,13 @@ def _translate_error(err):
         return ('TokenMismatch', err.given_token, err.lock_token)
     elif isinstance(err, errors.LockContention):
         return ('LockContention',)
+    elif isinstance(err, MemoryError):
+        # GZ 2011-02-24: Copy bzrlib.trace -Dmem_dump functionality here?
+        return ('MemoryError',)
     # Unserialisable error.  Log it, and return a generic error
     trace.log_exception_quietly()
-    return ('error', str(err))
+    return ('error', trace._qualified_exception_name(err.__class__, True),
+        str(err))
 
 
 class HelloRequest(SmartServerRequest):
@@ -501,6 +506,9 @@ request_handlers.register_lazy(
     'Branch.set_tags_bytes', 'bzrlib.smart.branch',
     'SmartServerBranchSetTagsBytes')
 request_handlers.register_lazy(
+    'Branch.heads_to_fetch', 'bzrlib.smart.branch',
+    'SmartServerBranchHeadsToFetch')
+request_handlers.register_lazy(
     'Branch.get_stacked_on_url', 'bzrlib.smart.branch', 'SmartServerBranchRequestGetStackedOnURL')
 request_handlers.register_lazy(
     'Branch.last_revision_info', 'bzrlib.smart.branch', 'SmartServerBranchRequestLastRevisionInfo')
@@ -510,6 +518,8 @@ request_handlers.register_lazy( 'Branch.revision_history',
     'bzrlib.smart.branch', 'SmartServerRequestRevisionHistory')
 request_handlers.register_lazy( 'Branch.set_config_option',
     'bzrlib.smart.branch', 'SmartServerBranchRequestSetConfigOption')
+request_handlers.register_lazy( 'Branch.set_config_option_dict',
+    'bzrlib.smart.branch', 'SmartServerBranchRequestSetConfigOptionDict')
 request_handlers.register_lazy( 'Branch.set_last_revision',
     'bzrlib.smart.branch', 'SmartServerBranchRequestSetLastRevision')
 request_handlers.register_lazy(

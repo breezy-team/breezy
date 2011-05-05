@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,9 +30,9 @@ from bzrlib import (
     bzrdir,
     errors,
     hooks,
+    inventory as _mod_inventory,
     osutils,
     revisiontree,
-    symbol_versioning,
     trace,
     tree,
     )
@@ -78,6 +78,18 @@ class MutableTree(tree.Tree):
         # Sub-classes may initialize to False if they detect they are being
         # used on media which doesn't differentiate the case of names.
         self.case_sensitive = True
+
+    def is_control_filename(self, filename):
+        """True if filename is the name of a control file in this tree.
+
+        :param filename: A filename within the tree. This is a relative path
+        from the root of this tree.
+
+        This is true IF and ONLY IF the filename is part of the meta data
+        that bzr controls in this tree. I.E. a random .bzr directory placed
+        on disk will not be a control file for this tree.
+        """
+        raise NotImplementedError(self.is_control_filename)
 
     @needs_tree_write_lock
     def add(self, files, ids=None, kinds=None):
@@ -148,7 +160,7 @@ class MutableTree(tree.Tree):
         if sub_tree_id == self.get_root_id():
             raise errors.BadReferenceTarget(self, sub_tree,
                                      'Trees have the same root id.')
-        if sub_tree_id in self.inventory:
+        if sub_tree_id in self:
             raise errors.BadReferenceTarget(self, sub_tree,
                                             'Root id already present in tree')
         self._add([sub_tree_path], [sub_tree_id], ['tree-reference'])
@@ -163,7 +175,6 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self._add)
 
-    @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
         """Apply changes to the inventory as an atomic operation.
 
@@ -172,49 +183,21 @@ class MutableTree(tree.Tree):
         :return None:
         :seealso Inventory.apply_delta: For details on the changes parameter.
         """
-        self.flush()
-        inv = self.inventory
-        inv.apply_delta(changes)
-        self._write_inventory(inv)
+        raise NotImplementedError(self.apply_inventory_delta)
 
     @needs_write_lock
     def commit(self, message=None, revprops=None, *args,
                **kwargs):
         # avoid circular imports
         from bzrlib import commit
-        if revprops is None:
-            revprops = {}
         possible_master_transports=[]
-        if not 'branch-nick' in revprops:
-            revprops['branch-nick'] = self.branch._get_nick(
+        revprops = commit.Commit.update_revprops(
+                revprops,
+                self.branch,
+                kwargs.pop('authors', None),
+                kwargs.pop('author', None),
                 kwargs.get('local', False),
                 possible_master_transports)
-        authors = kwargs.pop('authors', None)
-        author = kwargs.pop('author', None)
-        if authors is not None:
-            if author is not None:
-                raise AssertionError('Specifying both author and authors '
-                        'is not allowed. Specify just authors instead')
-            if 'author' in revprops or 'authors' in revprops:
-                # XXX: maybe we should just accept one of them?
-                raise AssertionError('author property given twice')
-            if authors:
-                for individual in authors:
-                    if '\n' in individual:
-                        raise AssertionError('\\n is not a valid character '
-                                'in an author identity')
-                revprops['authors'] = '\n'.join(authors)
-        if author is not None:
-            symbol_versioning.warn('The parameter author was deprecated'
-                   ' in version 1.13. Use authors instead',
-                   DeprecationWarning)
-            if 'author' in revprops or 'authors' in revprops:
-                # XXX: maybe we should just accept one of them?
-                raise AssertionError('author property given twice')
-            if '\n' in author:
-                raise AssertionError('\\n is not a valid character '
-                        'in an author identity')
-            revprops['authors'] = author
         # args for wt.commit start at message from the Commit.commit method,
         args = (message, ) + args
         for hook in MutableTree.hooks['start_commit']:
@@ -256,6 +239,44 @@ class MutableTree(tree.Tree):
         except StopIteration:
             # No changes
             return False
+
+    @needs_read_lock
+    def check_changed_or_out_of_date(self, strict, opt_name,
+                                     more_error, more_warning):
+        """Check the tree for uncommitted changes and branch synchronization.
+
+        If strict is None and not set in the config files, a warning is issued.
+        If strict is True, an error is raised.
+        If strict is False, no checks are done and no warning is issued.
+
+        :param strict: True, False or None, searched in branch config if None.
+
+        :param opt_name: strict option name to search in config file.
+
+        :param more_error: Details about how to avoid the check.
+
+        :param more_warning: Details about what is happening.
+        """
+        if strict is None:
+            strict = self.branch.get_config().get_user_option_as_bool(opt_name)
+        if strict is not False:
+            err_class = None
+            if (self.has_changes()):
+                err_class = errors.UncommittedChanges
+            elif self.last_revision() != self.branch.last_revision():
+                # The tree has lost sync with its branch, there is little
+                # chance that the user is aware of it but he can still force
+                # the action with --no-strict
+                err_class = errors.OutOfDateTree
+            if err_class is not None:
+                if strict is None:
+                    err = err_class(self, more=more_warning)
+                    # We don't want to interrupt the user if he expressed no
+                    # preference about strict.
+                    trace.warning('%s', err._format())
+                else:
+                    err = err_class(self, more=more_error)
+                    raise err
 
     @needs_read_lock
     def last_revision(self):
@@ -320,12 +341,6 @@ class MutableTree(tree.Tree):
         :return: None
         """
 
-    def _fix_case_of_inventory_path(self, path):
-        """If our tree isn't case sensitive, return the canonical path"""
-        if not self.case_sensitive:
-            path = self.get_canonical_inventory_path(path)
-        return path
-
     @needs_write_lock
     def put_file_bytes_non_atomic(self, file_id, bytes):
         """Update the content of a file in the tree.
@@ -355,6 +370,75 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.set_parent_trees)
 
+    def smart_add(self, file_list, recurse=True, action=None, save=True):
+        """Version file_list, optionally recursing into directories.
+
+        This is designed more towards DWIM for humans than API clarity.
+        For the specific behaviour see the help for cmd_add().
+
+        :param file_list: List of zero or more paths.  *NB: these are 
+            interpreted relative to the process cwd, not relative to the 
+            tree.*  (Add and most other tree methods use tree-relative
+            paths.)
+        :param action: A reporter to be called with the inventory, parent_ie,
+            path and kind of the path being added. It may return a file_id if
+            a specific one should be used.
+        :param save: Save the inventory after completing the adds. If False
+            this provides dry-run functionality by doing the add and not saving
+            the inventory.
+        :return: A tuple - files_added, ignored_files. files_added is the count
+            of added files, and ignored_files is a dict mapping files that were
+            ignored to the rule that caused them to be ignored.
+        """
+        raise NotImplementedError(self.smart_add)
+
+    def update_basis_by_delta(self, new_revid, delta):
+        """Update the parents of this tree after a commit.
+
+        This gives the tree one parent, with revision id new_revid. The
+        inventory delta is applied to the current basis tree to generate the
+        inventory for the parent new_revid, and all other parent trees are
+        discarded.
+
+        All the changes in the delta should be changes synchronising the basis
+        tree with some or all of the working tree, with a change to a directory
+        requiring that its contents have been recursively included. That is,
+        this is not a general purpose tree modification routine, but a helper
+        for commit which is not required to handle situations that do not arise
+        outside of commit.
+
+        See the inventory developers documentation for the theory behind
+        inventory deltas.
+
+        :param new_revid: The new revision id for the trees parent.
+        :param delta: An inventory delta (see apply_inventory_delta) describing
+            the changes from the current left most parent revision to new_revid.
+        """
+        raise NotImplementedError(self.update_basis_by_delta)
+
+
+class MutableInventoryTree(MutableTree,tree.InventoryTree):
+
+    @needs_tree_write_lock
+    def apply_inventory_delta(self, changes):
+        """Apply changes to the inventory as an atomic operation.
+
+        :param changes: An inventory delta to apply to the working tree's
+            inventory.
+        :return None:
+        :seealso Inventory.apply_delta: For details on the changes parameter.
+        """
+        self.flush()
+        inv = self.inventory
+        inv.apply_delta(changes)
+        self._write_inventory(inv)
+
+    def _fix_case_of_inventory_path(self, path):
+        """If our tree isn't case sensitive, return the canonical path"""
+        if not self.case_sensitive:
+            path = self.get_canonical_inventory_path(path)
+        return path
+
     @needs_tree_write_lock
     def smart_add(self, file_list, recurse=True, action=None, save=True):
         """Version file_list, optionally recursing into directories.
@@ -362,6 +446,10 @@ class MutableTree(tree.Tree):
         This is designed more towards DWIM for humans than API clarity.
         For the specific behaviour see the help for cmd_add().
 
+        :param file_list: List of zero or more paths.  *NB: these are 
+            interpreted relative to the process cwd, not relative to the 
+            tree.*  (Add and most other tree methods use tree-relative
+            paths.)
         :param action: A reporter to be called with the inventory, parent_ie,
             path and kind of the path being added. It may return a file_id if
             a specific one should be used.
@@ -397,6 +485,12 @@ class MutableTree(tree.Tree):
             # than trying to find the relevant conflict for each added file.
             for c in self.conflicts():
                 conflicts_related.update(c.associated_filenames())
+
+        # expand any symlinks in the directory part, while leaving the
+        # filename alone
+        # only expanding if symlinks are supported avoids windows path bugs
+        if osutils.has_symlinks():
+            file_list = map(osutils.normalizepath, file_list)
 
         # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
@@ -523,6 +617,13 @@ class MutableTree(tree.Tree):
                         this_ie = None
                     else:
                         this_ie = inv[this_id]
+                        # Same as in _add_one below, if the inventory doesn't
+                        # think this is a directory, update the inventory
+                        if this_ie.kind != 'directory':
+                            this_ie = _mod_inventory.make_entry('directory',
+                                this_ie.name, this_ie.parent_id, this_id)
+                            del inv[this_id]
+                            inv.add(this_ie)
 
                 for subf in sorted(os.listdir(abspath)):
                     # here we could use TreeDirectory rather than
@@ -592,10 +693,10 @@ class MutableTree(tree.Tree):
         # TODO: Consider re-evaluating the need for this with CHKInventory
         # we don't strictly need to mutate an inventory for this
         # it only makes sense when apply_delta is cheaper than get_inventory()
-        inventory = basis.inventory._get_mutable_inventory()
+        inventory = _mod_inventory.mutable_inventory_from_tree(basis)
         basis.unlock()
         inventory.apply_delta(delta)
-        rev_tree = revisiontree.RevisionTree(self.branch.repository,
+        rev_tree = revisiontree.InventoryRevisionTree(self.branch.repository,
                                              inventory, new_revid)
         self.set_parent_trees([(new_revid, rev_tree)])
 
@@ -609,17 +710,17 @@ class MutableTreeHooks(hooks.Hooks):
         """Create the default hooks.
 
         """
-        hooks.Hooks.__init__(self)
-        self.create_hook(hooks.HookPoint('start_commit',
+        hooks.Hooks.__init__(self, "bzrlib.mutabletree", "MutableTree.hooks")
+        self.add_hook('start_commit',
             "Called before a commit is performed on a tree. The start commit "
             "hook is able to change the tree before the commit takes place. "
             "start_commit is called with the bzrlib.mutabletree.MutableTree "
-            "that the commit is being performed on.", (1, 4), None))
-        self.create_hook(hooks.HookPoint('post_commit',
+            "that the commit is being performed on.", (1, 4))
+        self.add_hook('post_commit',
             "Called after a commit is performed on a tree. The hook is "
             "called with a bzrlib.mutabletree.PostCommitHookParams object. "
             "The mutable tree the commit was performed on is available via "
-            "the mutable_tree attribute of that object.", (2, 0), None))
+            "the mutable_tree attribute of that object.", (2, 0))
 
 
 # install the default hooks into the MutableTree class.
@@ -702,6 +803,17 @@ def _add_one(tree, inv, parent_ie, path, kind, file_id_callback):
         file_id or None to generate a new file id
     :returns: None
     """
+    # if the parent exists, but isn't a directory, we have to do the
+    # kind change now -- really the inventory shouldn't pretend to know
+    # the kind of wt files, but it does.
+    if parent_ie.kind != 'directory':
+        # nb: this relies on someone else checking that the path we're using
+        # doesn't contain symlinks.
+        new_parent_ie = _mod_inventory.make_entry('directory', parent_ie.name,
+            parent_ie.parent_id, parent_ie.file_id)
+        del inv[parent_ie.file_id]
+        inv.add(new_parent_ie)
+        parent_ie = new_parent_ie
     file_id = file_id_callback(inv, parent_ie, path, kind)
     entry = inv.make_entry(kind, path.base_path, parent_ie.file_id,
         file_id=file_id)

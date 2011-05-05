@@ -17,13 +17,11 @@
 __all__ = ['show_bzrdir_info']
 
 from cStringIO import StringIO
-import os
 import time
 import sys
 
 from bzrlib import (
     bzrdir,
-    diff,
     errors,
     hooks as _mod_hooks,
     osutils,
@@ -80,9 +78,9 @@ class LocationList(object):
 
 def gather_location_info(repository, branch=None, working=None):
     locs = {}
-    repository_path = repository.bzrdir.root_transport.base
+    repository_path = repository.user_url
     if branch is not None:
-        branch_path = branch.bzrdir.root_transport.base
+        branch_path = branch.user_url
         master_path = branch.get_bound_location()
         if master_path is None:
             master_path = branch_path
@@ -90,7 +88,7 @@ def gather_location_info(repository, branch=None, working=None):
         branch_path = None
         master_path = None
     if working:
-        working_path = working.bzrdir.root_transport.base
+        working_path = working.user_url
         if working_path != branch_path:
             locs['light checkout root'] = working_path
         if master_path != branch_path:
@@ -223,7 +221,6 @@ def _show_missing_revisions_working(working, outfile):
     """Show missing revisions in working tree."""
     branch = working.branch
     basis = working.basis_tree()
-    work_inv = working.inventory
     branch_revno, branch_last_revision = branch.last_revision_info()
     try:
         tree_last_id = working.get_parent_ids()[0]
@@ -241,7 +238,6 @@ def _show_missing_revisions_working(working, outfile):
 def _show_working_stats(working, outfile):
     """Show statistics about a working tree."""
     basis = working.basis_tree()
-    work_inv = working.inventory
     delta = working.changes_from(basis, want_unchanged=True)
 
     outfile.write('\n')
@@ -262,9 +258,9 @@ def _show_working_stats(working, outfile):
     outfile.write('  %8d ignored\n' % ignore_cnt)
 
     dir_cnt = 0
-    for file_id in work_inv:
-        if (work_inv.get_file_kind(file_id) == 'directory' and
-            not work_inv.is_root(file_id)):
+    root_id = working.get_root_id()
+    for path, entry in working.iter_entries_by_dir():
+        if entry.kind == 'directory' and entry.file_id != root_id:
             dir_cnt += 1
     outfile.write('  %8d versioned %s\n' % (dir_cnt,
         plural(dir_cnt, 'subdirectory', 'subdirectories')))
@@ -420,8 +416,8 @@ def describe_layout(repository=None, branch=None, tree=None):
         if branch is None and tree is not None:
             phrase = "branchless tree"
         else:
-            if (tree is not None and tree.bzrdir.root_transport.base !=
-                branch.bzrdir.root_transport.base):
+            if (tree is not None and tree.user_url !=
+                branch.user_url):
                 independence = ''
                 phrase = "Lightweight checkout"
             elif branch.get_bound_location() is not None:
@@ -446,8 +442,7 @@ def describe_format(control, repository, branch, tree):
     """
     candidates  = []
     if (branch is not None and tree is not None and
-        branch.bzrdir.root_transport.base !=
-        tree.bzrdir.root_transport.base):
+        branch.user_url != tree.user_url):
         branch = None
         repository = None
     non_aliases = set(bzrdir.format_registry.keys())
@@ -484,12 +479,11 @@ class InfoHooks(_mod_hooks.Hooks):
     """Hooks for the info command."""
 
     def __init__(self):
-        super(InfoHooks, self).__init__()
-        self.create_hook(_mod_hooks.HookPoint('repository',
+        super(InfoHooks, self).__init__("bzrlib.info", "hooks")
+        self.add_hook('repository',
             "Invoked when displaying the statistics for a repository. "
             "repository is called with a statistics dictionary as returned "
-            "by the repository and a file-like object to write to.", (1, 15), 
-            None))
+            "by the repository and a file-like object to write to.", (1, 15))
 
 
 hooks = InfoHooks()

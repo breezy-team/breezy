@@ -1,4 +1,5 @@
 #!/bin/bash
+# Helper to insert a new entry in debian/changelog
 
 if [ -z "$UBUNTU_RELEASES" ]; then
     echo "Configure the distro platforms that you want to"
@@ -27,7 +28,7 @@ for DISTRO in $UBUNTU_RELEASES; do
     (
         echo "Updating changelog for $DISTRO"
         cd "$PACKAGE-$DISTRO" &&
-            dch -v $PPAVERSION -D $DISTRO -c changelog "$MSG." &&
+            dch -v $PPAVERSION -D $DISTRO "$MSG." &&
             bzr commit -m "$MSG: $PPAVERSION"
     )
 done

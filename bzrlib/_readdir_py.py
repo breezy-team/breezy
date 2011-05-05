@@ -17,7 +17,6 @@
 """Python implementation of readdir interface."""
 
 
-import os
 import stat
 
 

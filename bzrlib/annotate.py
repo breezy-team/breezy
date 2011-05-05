@@ -1,4 +1,4 @@
-# Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,17 +28,30 @@
 import sys
 import time
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
-    errors,
-    osutils,
     patiencediff,
     tsort,
     )
+""")
+from bzrlib import (
+    errors,
+    osutils,
+    )
 from bzrlib.config import extract_email_address
 from bzrlib.repository import _strip_NULL_ghosts
-from bzrlib.revision import CURRENT_REVISION, Revision
+from bzrlib.revision import (
+    CURRENT_REVISION,
+    Revision,
+    )
+from bzrlib.symbol_versioning import (
+    deprecated_function,
+    deprecated_in,
+    )
 
 
+@deprecated_function(deprecated_in((2, 4, 0)))
 def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
                   to_file=None, show_ids=False):
     """Annotate file_id at revision rev_id in branch.
@@ -55,21 +68,13 @@ def annotate_file(branch, rev_id, file_id, verbose=False, full=False,
         used.
     :param show_ids: Show revision ids in the annotation output.
     """
-    if to_file is None:
-        to_file = sys.stdout
-
-    # Handle the show_ids case
-    annotations = _annotations(branch.repository, file_id, rev_id)
-    if show_ids:
-        return _show_id_annotations(annotations, to_file, full)
-
-    # Calculate the lengths of the various columns
-    annotation = list(_expand_annotations(annotations, branch))
-    _print_annotations(annotation, verbose, to_file, full)
+    tree = branch.repository.revision_tree(rev_id)
+    annotate_file_tree(tree, file_id, to_file, verbose=verbose,
+        full=full, show_ids=show_ids, branch=branch)
 
 
 def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
-    show_ids=False):
+    show_ids=False, branch=None):
     """Annotate file_id in a tree.
 
     The tree should already be read_locked() when annotate_file_tree is called.
@@ -81,25 +86,31 @@ def annotate_file_tree(tree, file_id, to_file, verbose=False, full=False,
         reasonable text width.
     :param full: XXXX Not sure what this does.
     :param show_ids: Show revision ids in the annotation output.
+    :param branch: Branch to use for revision revno lookups
     """
-    rev_id = tree.last_revision()
-    branch = tree.branch
+    if branch is None:
+        branch = tree.branch
+    if to_file is None:
+        to_file = sys.stdout
 
     # Handle the show_ids case
     annotations = list(tree.annotate_iter(file_id))
     if show_ids:
         return _show_id_annotations(annotations, to_file, full)
 
-    # Create a virtual revision to represent the current tree state.
-    # Should get some more pending commit attributes, like pending tags,
-    # bugfixes etc.
-    current_rev = Revision(CURRENT_REVISION)
-    current_rev.parent_ids = tree.get_parent_ids()
-    current_rev.committer = tree.branch.get_config().username()
-    current_rev.message = "?"
-    current_rev.timestamp = round(time.time(), 3)
-    current_rev.timezone = osutils.local_time_offset()
-    annotation = list(_expand_annotations(annotations, tree.branch,
+    if not getattr(tree, "get_revision_id", False):
+        # Create a virtual revision to represent the current tree state.
+        # Should get some more pending commit attributes, like pending tags,
+        # bugfixes etc.
+        current_rev = Revision(CURRENT_REVISION)
+        current_rev.parent_ids = tree.get_parent_ids()
+        current_rev.committer = branch.get_config().username()
+        current_rev.message = "?"
+        current_rev.timestamp = round(time.time(), 3)
+        current_rev.timezone = osutils.local_time_offset()
+    else:
+        current_rev = None
+    annotation = list(_expand_annotations(annotations, branch,
         current_rev))
     _print_annotations(annotation, verbose, to_file, full)
 
@@ -165,13 +176,6 @@ def _show_id_annotations(annotations, to_file, full):
     return
 
 
-def _annotations(repo, file_id, rev_id):
-    """Return the list of (origin_revision_id, line_text) for a revision of a file in a repository."""
-    annotations = repo.texts.annotate((file_id, rev_id))
-    #
-    return [(key[-1], line) for (key, line) in annotations]
-
-
 def _expand_annotations(annotations, branch, current_rev=None):
     """Expand a file's annotations into command line UI ready tuples.
 
@@ -184,8 +188,8 @@ def _expand_annotations(annotations, branch, current_rev=None):
     """
     repository = branch.repository
     if current_rev is not None:
-        # This can probably become a function on MutableTree, get_revno_map there,
-        # or something.
+        # This can probably become a function on MutableTree, get_revno_map
+        # there, or something.
         last_revision = current_rev.revision_id
         # XXX: Partially Cloned from branch, uses the old_get_graph, eep.
         # XXX: The main difficulty is that we need to inject a single new node
@@ -312,8 +316,7 @@ def _reannotate(parent_lines, new_lines, new_revision_id,
 
 
 def _get_matching_blocks(old, new):
-    matcher = patiencediff.PatienceSequenceMatcher(None,
-        old, new)
+    matcher = patiencediff.PatienceSequenceMatcher(None, old, new)
     return matcher.get_matching_blocks()
 
 

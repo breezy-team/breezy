@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2009 Canonical Ltd
+# Copyright (C) 2005-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@
 
 import os
 
+from bzrlib import ignores
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -40,25 +41,50 @@ class TestBzrTools(TestCaseWithTransport):
         self.run_bzr('ignore *.pyc')
         self.touch('name')
         self.touch('name~')
-        self.failUnlessExists('name~')
+        self.assertPathExists('name~')
         self.touch('name.pyc')
         self.run_bzr('clean-tree --force')
-        self.failUnlessExists('name~')
-        self.failIfExists('name')
+        self.assertPathExists('name~')
+        self.assertPathDoesNotExist('name')
         self.touch('name')
         self.run_bzr('clean-tree --detritus --force')
-        self.failUnlessExists('name')
-        self.failIfExists('name~')
-        self.failUnlessExists('name.pyc')
+        self.assertPathExists('name')
+        self.assertPathDoesNotExist('name~')
+        self.assertPathExists('name.pyc')
         self.run_bzr('clean-tree --ignored --force')
-        self.failUnlessExists('name')
-        self.failIfExists('name.pyc')
+        self.assertPathExists('name')
+        self.assertPathDoesNotExist('name.pyc')
         self.run_bzr('clean-tree --unknown --force')
-        self.failIfExists('name')
+        self.assertPathDoesNotExist('name')
         self.touch('name')
         self.touch('name~')
         self.touch('name.pyc')
         self.run_bzr('clean-tree --unknown --ignored --force')
-        self.failIfExists('name')
-        self.failIfExists('name~')
-        self.failIfExists('name.pyc')
+        self.assertPathDoesNotExist('name')
+        self.assertPathDoesNotExist('name~')
+        self.assertPathDoesNotExist('name.pyc')
+
+    def test_clean_tree_nested_bzrdir(self):
+        # clean-tree should not blindly delete nested bzrdirs (branches)
+        # bug https://bugs.launchpad.net/bzr/+bug/572098
+        # so it will play well with scmproj/bzr-externals plugins.
+        wt1 = self.make_branch_and_tree('.')
+        wt2 = self.make_branch_and_tree('foo')
+        wt3 = self.make_branch_and_tree('bar')
+        ignores.tree_ignores_add_patterns(wt1, ['./foo'])
+        self.run_bzr(['clean-tree', '--unknown', '--force'])
+        self.assertPathExists('foo')
+        self.assertPathExists('bar')
+        self.run_bzr(['clean-tree', '--ignored', '--force'])
+        self.assertPathExists('foo')
+        self.assertPathExists('bar')
+
+    def test_clean_tree_directory(self):
+        """Test --directory option"""
+        tree = self.make_branch_and_tree('a')
+        self.build_tree(['a/added', 'a/unknown', 'a/ignored'])
+        tree.add('added')
+        self.run_bzr('clean-tree -d a --unknown --ignored --force')
+        self.assertPathDoesNotExist('a/unknown')
+        self.assertPathDoesNotExist('a/ignored')
+        self.assertPathExists('a/added')

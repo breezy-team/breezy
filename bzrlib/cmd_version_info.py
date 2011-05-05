@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,7 +22,6 @@ lazy_import(globals(), """
 from bzrlib import (
     branch,
     errors,
-    ui,
     version_info_formats,
     workingtree,
     )
@@ -48,7 +47,7 @@ def _parse_version_info_format(format):
 
 
 class cmd_version_info(Command):
-    """Show version information about this tree.
+    __doc__ = """Show version information about this tree.
 
     You can use this command to add information about version into
     source code of an application. The output can be in one of the
@@ -116,4 +115,4 @@ class cmd_version_info(Command):
                 include_revision_history=include_history,
                 include_file_revisions=include_file_revisions,
                 template=template)
-        builder.generate(ui.ui_factory.make_output_stream())
+        builder.generate(self.outf)

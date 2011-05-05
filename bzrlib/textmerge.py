@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006 Canonical Ltd
+# Copyright (C) 2006, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,10 @@
 #         Aaron Bentley <aaron.bentley@utoronto.ca>
 
 
-import bzrlib.patiencediff
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+from bzrlib import patiencediff
+""")
 
 
 class TextMerge(object):
@@ -131,7 +134,8 @@ class Merge2(TextMerge):
         """Return structured merge info.
         See TextMerge docstring.
         """
-        sm = bzrlib.patiencediff.PatienceSequenceMatcher(None, self.lines_a, self.lines_b)
+        sm = patiencediff.PatienceSequenceMatcher(
+            None, self.lines_a, self.lines_b)
         pos_a = 0
         pos_b = 0
         for ai, bi, l in sm.get_matching_blocks():

@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,18 +15,16 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+import doctest
+import os
 from StringIO import StringIO
 import sys
-
-
-import os
-
 
 from bzrlib import (
     config,
     crash,
     osutils,
-    symbol_versioning,
+    plugin,
     tests,
     )
 
@@ -40,8 +38,13 @@ class TestApportReporting(tests.TestCaseInTempDir):
     def test_apport_report(self):
         crash_dir = osutils.joinpath((self.test_base_dir, 'crash'))
         os.mkdir(crash_dir)
-        os.environ['APPORT_CRASH_DIR'] = crash_dir
+        self.overrideEnv('APPORT_CRASH_DIR', crash_dir)
         self.assertEquals(crash_dir, config.crash_dir())
+
+        self.overrideAttr(
+            plugin,
+            'plugin_warnings',
+            {'example': ['Failed to load plugin foo']})
 
         stderr = StringIO()
 
@@ -67,6 +70,43 @@ class TestApportReporting(tests.TestCaseInTempDir):
             '(?m)^BzrVersion:') # should be in the traceback
         self.assertContainsRe(report, 'my error')
         self.assertContainsRe(report, 'AssertionError')
+        # see https://bugs.launchpad.net/bzr/+bug/528114
+        self.assertContainsRe(report, 'ExecutablePath')
         self.assertContainsRe(report, 'test_apport_report')
         # should also be in there
         self.assertContainsRe(report, '(?m)^CommandLine:')
+        self.assertContainsRe(
+            report,
+            'Failed to load plugin foo')
+
+
+class TestNonApportReporting(tests.TestCase):
+    """Reporting of crash-type bugs without apport.
+    
+    This should work in all environments.
+    """
+
+    def setup_fake_plugins(self):
+        def fake_plugins():
+            fake = plugin.PlugIn('fake_plugin', plugin)
+            fake.version_info = lambda: (1, 2, 3)
+            return {"fake_plugin": fake}
+        self.overrideAttr(plugin, 'plugins', fake_plugins)
+
+    def test_report_bug_legacy(self):
+        self.setup_fake_plugins()
+        err_file = StringIO()
+        try:
+            raise AssertionError("my error")
+        except AssertionError, e:
+            pass
+        crash.report_bug_legacy(sys.exc_info(), err_file)
+        report = err_file.getvalue()
+        for needle in [
+            "bzr: ERROR: exceptions.AssertionError: my error",
+            r"Traceback \(most recent call last\):",
+            r"plugins: fake_plugin\[1\.2\.3\]",
+            ]:
+            self.assertContainsRe(
+                    report,
+                    needle)

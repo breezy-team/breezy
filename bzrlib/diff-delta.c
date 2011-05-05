@@ -4,7 +4,7 @@
  * This code was greatly inspired by parts of LibXDiff from Davide Libenzi
  * http://www.xmailserver.org/xdiff-lib.html
  *
- * Rewritten for GIT by Nicolas Pitre <nico@cam.org>, (C) 2005-2007
+ * Rewritten for GIT by Nicolas Pitre <nico@fluxnic.net>, (C) 2005-2007
  * Adapted for Bazaar by John Arbash Meinel <john@arbash-meinel.com> (C) 2009
  *
  * This program is free software; you can redistribute it and/or modify
@@ -280,8 +280,11 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
         if (fit_in_old) {
             // fprintf(stderr, "Fit all %d entries into old index\n",
             //                 copied_count);
-            /* No need to allocate a new buffer */
-            return NULL;
+            /*
+             * No need to allocate a new buffer, but return old_index ptr so
+             * callers can distinguish this from an OOM failure.
+             */
+            return old_index;
         } else {
             // fprintf(stderr, "Fit only %d entries into old index,"
             //                 " reallocating\n", copied_count);
@@ -370,9 +373,10 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 }
 
 
-struct delta_index *
+delta_result
 create_delta_index(const struct source_info *src,
-                   struct delta_index *old)
+                   struct delta_index *old,
+                   struct delta_index **fresh)
 {
     unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
     unsigned int total_num_entries;
@@ -383,7 +387,7 @@ create_delta_index(const struct source_info *src,
     unsigned long memsize;
 
     if (!src->buf || !src->size)
-        return NULL;
+        return DELTA_SOURCE_EMPTY;
     buffer = src->buf;
 
     /* Determine index hash size.  Note that indexing skips the
@@ -408,7 +412,7 @@ create_delta_index(const struct source_info *src,
           sizeof(*entry) * total_num_entries;
     mem = malloc(memsize);
     if (!mem)
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
     hash = mem;
     mem = hash + hsize;
     entry = mem;
@@ -419,7 +423,7 @@ create_delta_index(const struct source_info *src,
     hash_count = calloc(hsize, sizeof(*hash_count));
     if (!hash_count) {
         free(hash);
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
     }
 
     /* then populate the index for the new data */
@@ -450,16 +454,15 @@ create_delta_index(const struct source_info *src,
     total_num_entries = limit_hash_buckets(hash, hash_count, hsize,
                                            total_num_entries);
     free(hash_count);
-    if (old) {
-        old->last_src = src;
-    }
     index = pack_delta_index(hash, hsize, total_num_entries, old);
     free(hash);
+    /* pack_delta_index only returns NULL on malloc failure */
     if (!index) {
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
     }
     index->last_src = src;
-    return index;
+    *fresh = index;
+    return DELTA_OK;
 }
 
 /* Take some entries, and put them into a custom hash.
@@ -679,9 +682,10 @@ get_text(char buff[128], const unsigned char *ptr)
     }
 }
 
-struct delta_index *
+delta_result
 create_delta_index_from_delta(const struct source_info *src,
-                              struct delta_index *old_index)
+                              struct delta_index *old_index,
+                              struct delta_index **fresh)
 {
     unsigned int i, num_entries, max_num_entries, prev_val, num_inserted;
     unsigned int hash_offset;
@@ -690,8 +694,10 @@ create_delta_index_from_delta(const struct source_info *src,
     struct delta_index *new_index;
     struct index_entry *entry, *entries;
 
+    if (!old_index)
+        return DELTA_INDEX_NEEDED;
     if (!src->buf || !src->size)
-        return NULL;
+        return DELTA_SOURCE_EMPTY;
     buffer = src->buf;
     top = buffer + src->size;
 
@@ -707,7 +713,7 @@ create_delta_index_from_delta(const struct source_info *src,
     /* allocate an array to hold whatever entries we find */
     entries = malloc(sizeof(*entry) * max_num_entries);
     if (!entries) /* malloc failure */
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
 
     /* then populate the index for the new data */
     prev_val = ~0;
@@ -774,16 +780,16 @@ create_delta_index_from_delta(const struct source_info *src,
         }
     }
     if (data != top) {
-        /* Something was wrong with this delta */
+        /* The source_info data passed was corrupted or otherwise invalid */
         free(entries);
-        return NULL;
+        return DELTA_SOURCE_BAD;
     }
     if (num_entries == 0) {
         /** Nothing to index **/
         free(entries);
-        return NULL;
+        *fresh = old_index;
+        return DELTA_OK;
     }
-    assert(old_index != NULL);
     old_index->last_src = src;
     /* See if we can fill in these values into the holes in the array */
     entry = entries;
@@ -841,11 +847,15 @@ create_delta_index_from_delta(const struct source_info *src,
         new_index = create_index_from_old_and_new_entries(old_index,
             entry, num_entries);
     } else {
-        new_index = NULL;
+        new_index = old_index;
         // fprintf(stderr, "inserted %d without resizing\n", num_inserted);
     }
     free(entries);
-    return new_index;
+    /* create_index_from_old_and_new_entries returns NULL on malloc failure */
+    if (!new_index)
+        return DELTA_OUT_OF_MEMORY;
+    *fresh = new_index;
+    return DELTA_OK;
 }
 
 void free_delta_index(struct delta_index *index)
@@ -853,7 +863,8 @@ void free_delta_index(struct delta_index *index)
     free(index);
 }
 
-unsigned long sizeof_delta_index(struct delta_index *index)
+unsigned long
+sizeof_delta_index(struct delta_index *index)
 {
     if (index)
         return index->memsize;
@@ -867,12 +878,14 @@ unsigned long sizeof_delta_index(struct delta_index *index)
  */
 #define MAX_OP_SIZE (5 + 5 + 1 + RABIN_WINDOW + 7)
 
-void *
+delta_result
 create_delta(const struct delta_index *index,
              const void *trg_buf, unsigned long trg_size,
-             unsigned long *delta_size, unsigned long max_size)
+             unsigned long *delta_size, unsigned long max_size,
+             void **delta_data)
 {
-    unsigned int i, outpos, outsize, moff, msize, val;
+    unsigned int i, outpos, outsize, moff, val;
+    int msize;
     const struct source_info *msource;
     int inscnt;
     const unsigned char *ref_data, *ref_top, *data, *top;
@@ -880,9 +893,9 @@ create_delta(const struct delta_index *index,
     unsigned long source_size;
 
     if (!trg_buf || !trg_size)
-        return NULL;
+        return DELTA_BUFFER_EMPTY;
     if (index == NULL)
-        return NULL;
+        return DELTA_INDEX_NEEDED;
 
     outpos = 0;
     outsize = 8192;
@@ -890,7 +903,7 @@ create_delta(const struct delta_index *index,
         outsize = max_size + MAX_OP_SIZE + 1;
     out = malloc(outsize);
     if (!out)
-        return NULL;
+        return DELTA_OUT_OF_MEMORY;
 
     source_size = index->last_src->size + index->last_src->agg_offset;
 
@@ -943,7 +956,7 @@ create_delta(const struct delta_index *index,
                  entry++) {
                 const unsigned char *ref;
                 const unsigned char *src;
-                unsigned int ref_size;
+                int ref_size;
                 if (entry->val != val)
                     continue;
                 ref = entry->ptr;
@@ -956,14 +969,14 @@ create_delta(const struct delta_index *index,
                  * match more bytes with this location that we have already
                  * matched.
                  */
-                if (ref_size > top - src)
+                if (ref_size > (top - src))
                     ref_size = top - src;
                 if (ref_size <= msize)
                     break;
                 /* See how many bytes actually match at this location. */
                 while (ref_size-- && *src++ == *ref)
                     ref++;
-                if (msize < ref - entry->ptr) {
+                if (msize < (ref - entry->ptr)) {
                     /* this is our best match so far */
                     msize = ref - entry->ptr;
                     msource = entry->src;
@@ -1069,7 +1082,7 @@ create_delta(const struct delta_index *index,
             out = realloc(out, outsize);
             if (!out) {
                 free(tmp);
-                return NULL;
+                return DELTA_OUT_OF_MEMORY;
             }
         }
     }
@@ -1079,11 +1092,12 @@ create_delta(const struct delta_index *index,
 
     if (max_size && outpos > max_size) {
         free(out);
-        return NULL;
+        return DELTA_SIZE_TOO_BIG;
     }
 
     *delta_size = outpos;
-    return out;
+    *delta_data = out;
+    return DELTA_OK;
 }
 
 /* vim: et ts=4 sw=4 sts=4

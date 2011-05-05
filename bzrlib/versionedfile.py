@@ -1,7 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
-#
-# Authors:
-#   Johan Rydberg <jrydberg@gnu.org>
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +28,7 @@ import urllib
 
 from bzrlib import (
     annotate,
+    bencode,
     errors,
     graph as _mod_graph,
     groupcompress,
@@ -40,16 +38,10 @@ from bzrlib import (
     multiparent,
     tsort,
     revision,
-    ui,
     )
-from bzrlib.graph import DictParentsProvider, Graph, StackedParentsProvider
-from bzrlib.transport.memory import MemoryTransport
 """)
-from bzrlib.inter import InterObject
 from bzrlib.registry import Registry
-from bzrlib.symbol_versioning import *
 from bzrlib.textmerge import TextMerge
-from bzrlib import bencode
 
 
 adapter_registry = Registry()
@@ -207,6 +199,138 @@ def filter_absent(record_stream):
             yield record
 
 
+class _MPDiffGenerator(object):
+    """Pull out the functionality for generating mp_diffs."""
+
+    def __init__(self, vf, keys):
+        self.vf = vf
+        # This is the order the keys were requested in
+        self.ordered_keys = tuple(keys)
+        # keys + their parents, what we need to compute the diffs
+        self.needed_keys = ()
+        # Map from key: mp_diff
+        self.diffs = {}
+        # Map from key: parents_needed (may have ghosts)
+        self.parent_map = {}
+        # Parents that aren't present
+        self.ghost_parents = ()
+        # Map from parent_key => number of children for this text
+        self.refcounts = {}
+        # Content chunks that are cached while we still need them
+        self.chunks = {}
+
+    def _find_needed_keys(self):
+        """Find the set of keys we need to request.
+
+        This includes all the original keys passed in, and the non-ghost
+        parents of those keys.
+
+        :return: (needed_keys, refcounts)
+            needed_keys is the set of all texts we need to extract
+            refcounts is a dict of {key: num_children} letting us know when we
+                no longer need to cache a given parent text
+        """
+        # All the keys and their parents
+        needed_keys = set(self.ordered_keys)
+        parent_map = self.vf.get_parent_map(needed_keys)
+        self.parent_map = parent_map
+        # TODO: Should we be using a different construct here? I think this
+        #       uses difference_update internally, and we expect the result to
+        #       be tiny
+        missing_keys = needed_keys.difference(parent_map)
+        if missing_keys:
+            raise errors.RevisionNotPresent(list(missing_keys)[0], self.vf)
+        # Parents that might be missing. They are allowed to be ghosts, but we
+        # should check for them
+        refcounts = {}
+        setdefault = refcounts.setdefault
+        just_parents = set()
+        for child_key, parent_keys in parent_map.iteritems():
+            if not parent_keys:
+                # parent_keys may be None if a given VersionedFile claims to
+                # not support graph operations.
+                continue
+            just_parents.update(parent_keys)
+            needed_keys.update(parent_keys)
+            for p in parent_keys:
+                refcounts[p] = setdefault(p, 0) + 1
+        just_parents.difference_update(parent_map)
+        # Remove any parents that are actually ghosts from the needed set
+        self.present_parents = set(self.vf.get_parent_map(just_parents))
+        self.ghost_parents = just_parents.difference(self.present_parents)
+        needed_keys.difference_update(self.ghost_parents)
+        self.needed_keys = needed_keys
+        self.refcounts = refcounts
+        return needed_keys, refcounts
+
+    def _compute_diff(self, key, parent_lines, lines):
+        """Compute a single mp_diff, and store it in self._diffs"""
+        if len(parent_lines) > 0:
+            # XXX: _extract_blocks is not usefully defined anywhere...
+            #      It was meant to extract the left-parent diff without
+            #      having to recompute it for Knit content (pack-0.92,
+            #      etc). That seems to have regressed somewhere
+            left_parent_blocks = self.vf._extract_blocks(key,
+                parent_lines[0], lines)
+        else:
+            left_parent_blocks = None
+        diff = multiparent.MultiParent.from_lines(lines,
+                    parent_lines, left_parent_blocks)
+        self.diffs[key] = diff
+
+    def _process_one_record(self, key, this_chunks):
+        parent_keys = None
+        if key in self.parent_map:
+            # This record should be ready to diff, since we requested
+            # content in 'topological' order
+            parent_keys = self.parent_map.pop(key)
+            # If a VersionedFile claims 'no-graph' support, then it may return
+            # None for any parent request, so we replace it with an empty tuple
+            if parent_keys is None:
+                parent_keys = ()
+            parent_lines = []
+            for p in parent_keys:
+                # Alternatively we could check p not in self.needed_keys, but
+                # ghost_parents should be tiny versus huge
+                if p in self.ghost_parents:
+                    continue
+                refcount = self.refcounts[p]
+                if refcount == 1: # Last child reference
+                    self.refcounts.pop(p)
+                    parent_chunks = self.chunks.pop(p)
+                else:
+                    self.refcounts[p] = refcount - 1
+                    parent_chunks = self.chunks[p]
+                p_lines = osutils.chunks_to_lines(parent_chunks)
+                # TODO: Should we cache the line form? We did the
+                #       computation to get it, but storing it this way will
+                #       be less memory efficient...
+                parent_lines.append(p_lines)
+                del p_lines
+            lines = osutils.chunks_to_lines(this_chunks)
+            # Since we needed the lines, we'll go ahead and cache them this way
+            this_chunks = lines
+            self._compute_diff(key, parent_lines, lines)
+            del lines
+        # Is this content required for any more children?
+        if key in self.refcounts:
+            self.chunks[key] = this_chunks
+
+    def _extract_diffs(self):
+        needed_keys, refcounts = self._find_needed_keys()
+        for record in self.vf.get_record_stream(needed_keys,
+                                                'topological', True):
+            if record.storage_kind == 'absent':
+                raise errors.RevisionNotPresent(record.key, self.vf)
+            self._process_one_record(record.key,
+                                     record.get_bytes_as('chunked'))
+        
+    def compute_diffs(self):
+        self._extract_diffs()
+        dpop = self.diffs.pop
+        return [dpop(k) for k in self.ordered_keys]
+
+
 class VersionedFile(object):
     """Versioned text file storage.
 
@@ -349,6 +473,10 @@ class VersionedFile(object):
 
     def make_mpdiffs(self, version_ids):
         """Create multiparent diffs for specified versions."""
+        # XXX: Can't use _MPDiffGenerator just yet. This is because version_ids
+        #      is a list of strings, not keys. And while self.get_record_stream
+        #      is supported, it takes *keys*, while self.get_parent_map() takes
+        #      strings... *sigh*
         knit_versions = set()
         knit_versions.update(version_ids)
         parent_map = self.get_parent_map(version_ids)
@@ -796,6 +924,10 @@ class VersionedFiles(object):
 
     The use of tuples allows a single code base to support several different
     uses with only the mapping logic changing from instance to instance.
+
+    :ivar _immediate_fallback_vfs: For subclasses that support stacking,
+        this is a list of other VersionedFiles immediately underneath this
+        one.  They may in turn each have further fallbacks.
     """
 
     def add_lines(self, key, parents, lines, parent_texts=None,
@@ -1048,48 +1180,29 @@ class VersionedFiles(object):
 
     def make_mpdiffs(self, keys):
         """Create multiparent diffs for specified keys."""
-        keys_order = tuple(keys)
-        keys = frozenset(keys)
-        knit_keys = set(keys)
-        parent_map = self.get_parent_map(keys)
-        for parent_keys in parent_map.itervalues():
-            if parent_keys:
-                knit_keys.update(parent_keys)
-        missing_keys = keys - set(parent_map)
-        if missing_keys:
-            raise errors.RevisionNotPresent(list(missing_keys)[0], self)
-        # We need to filter out ghosts, because we can't diff against them.
-        maybe_ghosts = knit_keys - keys
-        ghosts = maybe_ghosts - set(self.get_parent_map(maybe_ghosts))
-        knit_keys.difference_update(ghosts)
-        lines = {}
-        chunks_to_lines = osutils.chunks_to_lines
-        for record in self.get_record_stream(knit_keys, 'topological', True):
-            lines[record.key] = chunks_to_lines(record.get_bytes_as('chunked'))
-            # line_block_dict = {}
-            # for parent, blocks in record.extract_line_blocks():
-            #   line_blocks[parent] = blocks
-            # line_blocks[record.key] = line_block_dict
-        diffs = []
-        for key in keys_order:
-            target = lines[key]
-            parents = parent_map[key] or []
-            # Note that filtering knit_keys can lead to a parent difference
-            # between the creation and the application of the mpdiff.
-            parent_lines = [lines[p] for p in parents if p in knit_keys]
-            if len(parent_lines) > 0:
-                left_parent_blocks = self._extract_blocks(key, parent_lines[0],
-                    target)
-            else:
-                left_parent_blocks = None
-            diffs.append(multiparent.MultiParent.from_lines(target,
-                parent_lines, left_parent_blocks))
-        return diffs
+        generator = _MPDiffGenerator(self, keys)
+        return generator.compute_diffs()
+
+    def get_annotator(self):
+        return annotate.Annotator(self)
 
     missing_keys = index._missing_keys_from_parent_map
 
     def _extract_blocks(self, version_id, source, target):
         return None
+
+    def _transitive_fallbacks(self):
+        """Return the whole stack of fallback versionedfiles.
+
+        This VersionedFiles may have a list of fallbacks, but it doesn't
+        necessarily know about the whole stack going down, and it can't know
+        at open time because they may change after the objects are opened.
+        """
+        all_fallbacks = []
+        for a_vfs in self._immediate_fallback_vfs:
+            all_fallbacks.append(a_vfs)
+            all_fallbacks.extend(a_vfs._transitive_fallbacks())
+        return all_fallbacks
 
 
 class ThunkedVersionedFiles(VersionedFiles):
@@ -1159,9 +1272,6 @@ class ThunkedVersionedFiles(VersionedFiles):
         for origin, line in origins:
             result.append((prefix + (origin,), line))
         return result
-
-    def get_annotator(self):
-        return annotate.Annotator(self)
 
     def check(self, progress_bar=None, keys=None):
         """See VersionedFiles.check()."""
@@ -1338,7 +1448,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         # line data for locally held keys.
         self._lines = {}
         # key lookup providers
-        self._providers = [DictParentsProvider(self._parents)]
+        self._providers = [_mod_graph.DictParentsProvider(self._parents)]
 
     def plan_merge(self, ver_a, ver_b, base=None):
         """See VersionedFile.plan_merge"""
@@ -1351,7 +1461,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
 
     def plan_lca_merge(self, ver_a, ver_b, base=None):
         from bzrlib.merge import _PlanLCAMerge
-        graph = Graph(self)
+        graph = _mod_graph.Graph(self)
         new_plan = _PlanLCAMerge(ver_a, ver_b, self, (self._file_id,), graph).plan_merge()
         if base is None:
             return new_plan
@@ -1409,7 +1519,8 @@ class _PlanMergeVersionedFile(VersionedFiles):
             result[revision.NULL_REVISION] = ()
         self._providers = self._providers[:1] + self.fallback_versionedfiles
         result.update(
-            StackedParentsProvider(self._providers).get_parent_map(keys))
+            _mod_graph.StackedParentsProvider(
+                self._providers).get_parent_map(keys))
         for key, parents in result.iteritems():
             if parents == ():
                 result[key] = (revision.NULL_REVISION,)
@@ -1625,6 +1736,46 @@ class VirtualVersionedFiles(VersionedFiles):
                 yield (l, key)
 
 
+class NoDupeAddLinesDecorator(object):
+    """Decorator for a VersionedFiles that skips doing an add_lines if the key
+    is already present.
+    """
+
+    def __init__(self, store):
+        self._store = store
+
+    def add_lines(self, key, parents, lines, parent_texts=None,
+            left_matching_blocks=None, nostore_sha=None, random_id=False,
+            check_content=True):
+        """See VersionedFiles.add_lines.
+        
+        This implementation may return None as the third element of the return
+        value when the original store wouldn't.
+        """
+        if nostore_sha:
+            raise NotImplementedError(
+                "NoDupeAddLinesDecorator.add_lines does not implement the "
+                "nostore_sha behaviour.")
+        if key[-1] is None:
+            sha1 = osutils.sha_strings(lines)
+            key = ("sha1:" + sha1,)
+        else:
+            sha1 = None
+        if key in self._store.get_parent_map([key]):
+            # This key has already been inserted, so don't do it again.
+            if sha1 is None:
+                sha1 = osutils.sha_strings(lines)
+            return sha1, sum(map(len, lines)), None
+        return self._store.add_lines(key, parents, lines,
+                parent_texts=parent_texts,
+                left_matching_blocks=left_matching_blocks,
+                nostore_sha=nostore_sha, random_id=random_id,
+                check_content=check_content)
+
+    def __getattr__(self, name):
+        return getattr(self._store, name)
+
+
 def network_bytes_to_kind_and_offset(network_bytes):
     """Strip of a record kind from the front of network_bytes.
 
@@ -1721,3 +1872,64 @@ def sort_groupcompress(parent_map):
     for prefix in sorted(per_prefix_map):
         present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
     return present_keys
+
+
+class _KeyRefs(object):
+
+    def __init__(self, track_new_keys=False):
+        # dict mapping 'key' to 'set of keys referring to that key'
+        self.refs = {}
+        if track_new_keys:
+            # set remembering all new keys
+            self.new_keys = set()
+        else:
+            self.new_keys = None
+
+    def clear(self):
+        if self.refs:
+            self.refs.clear()
+        if self.new_keys:
+            self.new_keys.clear()
+
+    def add_references(self, key, refs):
+        # Record the new references
+        for referenced in refs:
+            try:
+                needed_by = self.refs[referenced]
+            except KeyError:
+                needed_by = self.refs[referenced] = set()
+            needed_by.add(key)
+        # Discard references satisfied by the new key
+        self.add_key(key)
+
+    def get_new_keys(self):
+        return self.new_keys
+    
+    def get_unsatisfied_refs(self):
+        return self.refs.iterkeys()
+
+    def _satisfy_refs_for_key(self, key):
+        try:
+            del self.refs[key]
+        except KeyError:
+            # No keys depended on this key.  That's ok.
+            pass
+
+    def add_key(self, key):
+        # satisfy refs for key, and remember that we've seen this key.
+        self._satisfy_refs_for_key(key)
+        if self.new_keys is not None:
+            self.new_keys.add(key)
+
+    def satisfy_refs_for_keys(self, keys):
+        for key in keys:
+            self._satisfy_refs_for_key(key)
+
+    def get_referrers(self):
+        result = set()
+        for referrers in self.refs.itervalues():
+            result.update(referrers)
+        return result
+
+
+

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007 Canonical Ltd
+# Copyright (C) 2007-2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ from bzrlib import (
     lockdir,
     osutils,
     revision as _mod_revision,
+    trace,
     transactions,
     versionedfile,
     xml5,
@@ -31,18 +32,18 @@ from bzrlib import (
     xml7,
     )
 """)
-from bzrlib import (
-    symbol_versioning,
-    )
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     CommitBuilder,
+    InterRepository,
+    InterSameDataRepository,
+    IsInWriteGroupError,
     MetaDirRepository,
     MetaDirRepositoryFormat,
     RepositoryFormat,
     RootCommitBuilder,
     )
-from bzrlib.trace import mutter, mutter_callsite
+from bzrlib import symbol_versioning
 
 
 class _KnitParentsProvider(object):
@@ -210,6 +211,8 @@ class KnitRepository(MetaDirRepository):
     def _refresh_data(self):
         if not self.is_locked():
             return
+        if self.is_in_write_group():
+            raise IsInWriteGroupError(self)
         # Create a new transaction to force all knits to see the scope change.
         # This is safe because we're outside a write group.
         self.control_files._finish_transaction()
@@ -228,42 +231,6 @@ class KnitRepository(MetaDirRepository):
 
     def _make_parents_provider(self):
         return _KnitsParentsProvider(self.revisions)
-
-    def _find_inconsistent_revision_parents(self, revisions_iterator=None):
-        """Find revisions with different parent lists in the revision object
-        and in the index graph.
-
-        :param revisions_iterator: None, or an iterator of (revid,
-            Revision-or-None). This iterator controls the revisions checked.
-        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
-            parents-in-revision).
-        """
-        if not self.is_locked():
-            raise AssertionError()
-        vf = self.revisions
-        if revisions_iterator is None:
-            revisions_iterator = self._iter_revisions(None)
-        for revid, revision in revisions_iterator:
-            if revision is None:
-                pass
-            parent_map = vf.get_parent_map([(revid,)])
-            parents_according_to_index = tuple(parent[-1] for parent in
-                parent_map[(revid,)])
-            parents_according_to_revision = tuple(revision.parent_ids)
-            if parents_according_to_index != parents_according_to_revision:
-                yield (revid, parents_according_to_index,
-                    parents_according_to_revision)
-
-    def _check_for_inconsistent_revision_parents(self):
-        inconsistencies = list(self._find_inconsistent_revision_parents())
-        if inconsistencies:
-            raise errors.BzrCheckError(
-                "Revision knit has inconsistent parents.")
-
-    def revision_graph_can_have_wrong_parents(self):
-        # The revision.kndx could potentially claim a revision has a different
-        # parent to the revision text.
-        return True
 
 
 class RepositoryFormatKnit(MetaDirRepositoryFormat):
@@ -301,6 +268,11 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     _fetch_order = 'topological'
     _fetch_uses_deltas = True
     fast_deltas = False
+    supports_funky_characters = True
+    supports_full_versioned_files = True
+    # The revision.kndx could potentially claim a revision has a different
+    # parent to the revision text.
+    revision_graph_can_have_wrong_parents = True
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -342,7 +314,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         :param shared: If true the repository will be initialized as a shared
                        repository.
         """
-        mutter('creating repository in %s.', a_bzrdir.transport.base)
+        trace.mutter('creating repository in %s.', a_bzrdir.transport.base)
         dirs = ['knits']
         files = []
         utf8_files = [('format', self.get_format_string())]
@@ -360,6 +332,7 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
         result.revisions.get_parent_map([('A',)])
         result.signatures.get_parent_map([('A',)])
         result.unlock()
+        self._run_post_repo_init_hooks(result, a_bzrdir, shared)
         return result
 
     def open(self, a_bzrdir, _found=False, _override_transport=None):
@@ -506,3 +479,69 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     def get_format_description(self):
         """See RepositoryFormat.get_format_description()."""
         return "Knit repository format 4"
+
+
+class InterKnitRepo(InterSameDataRepository):
+    """Optimised code paths between Knit based repositories."""
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return RepositoryFormatKnit1()
+
+    @staticmethod
+    def is_compatible(source, target):
+        """Be compatible with known Knit formats.
+
+        We don't test for the stores being of specific types because that
+        could lead to confusing results, and there is no need to be
+        overly general.
+        """
+        try:
+            are_knits = (isinstance(source._format, RepositoryFormatKnit) and
+                isinstance(target._format, RepositoryFormatKnit))
+        except AttributeError:
+            return False
+        return are_knits and InterRepository._same_model(source, target)
+
+    @needs_read_lock
+    def search_missing_revision_ids(self,
+            revision_id=symbol_versioning.DEPRECATED_PARAMETER,
+            find_ghosts=True, revision_ids=None, if_present_ids=None):
+        """See InterRepository.search_missing_revision_ids()."""
+        if symbol_versioning.deprecated_passed(revision_id):
+            symbol_versioning.warn(
+                'search_missing_revision_ids(revision_id=...) was '
+                'deprecated in 2.4.  Use revision_ids=[...] instead.',
+                DeprecationWarning, stacklevel=2)
+            if revision_ids is not None:
+                raise AssertionError(
+                    'revision_ids is mutually exclusive with revision_id')
+            if revision_id is not None:
+                revision_ids = [revision_id]
+        del revision_id
+        source_ids_set = self._present_source_revisions_for(
+            revision_ids, if_present_ids)
+        # source_ids is the worst possible case we may need to pull.
+        # now we want to filter source_ids against what we actually
+        # have in target, but don't try to check for existence where we know
+        # we do not have a revision as that would be pointless.
+        target_ids = set(self.target.all_revision_ids())
+        possibly_present_revisions = target_ids.intersection(source_ids_set)
+        actually_present_revisions = set(
+            self.target._eliminate_revisions_not_present(possibly_present_revisions))
+        required_revisions = source_ids_set.difference(actually_present_revisions)
+        if revision_ids is not None:
+            # we used get_ancestry to determine source_ids then we are assured all
+            # revisions referenced are present as they are installed in topological order.
+            # and the tip revision was validated by get_ancestry.
+            result_set = required_revisions
+        else:
+            # if we just grabbed the possibly available ids, then
+            # we only have an estimate of whats available and need to validate
+            # that against the revision records.
+            result_set = set(
+                self.source._eliminate_revisions_not_present(required_revisions))
+        return self.source.revision_ids_to_search_result(result_set)
+
+
+InterRepository.register_optimiser(InterKnitRepo)

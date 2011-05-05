@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2008, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2008-2011 Canonical Ltd
 # Authors:  Robert Collins <robert.collins@canonical.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,8 +21,6 @@ from bzrlib import (
     errors,
     revision,
     )
-import bzrlib
-from bzrlib.inventory import ROOT_ID
 from bzrlib.tests import TestCaseWithTransport
 
 
@@ -61,6 +59,20 @@ class TestTreeWithCommits(TestCaseWithTransport):
         null_tree = self.t.branch.repository.revision_tree(
             revision.NULL_REVISION)
         self.assertIs(None, null_tree.inventory.root)
+        self.assertIs(None, null_tree.get_root_id())
+
+    def test_get_file_revision_root(self):
+        self.assertEquals(self.rev_id,
+            self.rev_tree.get_file_revision(self.rev_tree.get_root_id()))
+
+    def test_get_file_revision(self):
+        self.build_tree_contents([('a', 'initial')])
+        self.t.add(['a'])
+        revid1 = self.t.commit('add a')
+        revid2 = self.t.commit('another change', allow_pointless=True)
+        tree = self.t.branch.repository.revision_tree(revid2)
+        self.assertEquals(revid1,
+            tree.get_file_revision(tree.path2id('a')))
 
     def test_get_file_mtime_ghost(self):
         file_id = iter(self.rev_tree).next()

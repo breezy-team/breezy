@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 
 from cStringIO import StringIO
-import os
 import subprocess
 import sys
 import threading
@@ -31,6 +30,7 @@ from bzrlib import (
 from bzrlib.transport import (
     chroot,
     fakenfs,
+    http,
     local,
     memory,
     pathfilter,
@@ -563,7 +563,7 @@ class ReadonlyDecoratorTransportTest(tests.TestCase):
         server = HttpServer()
         self.start_server(server)
         t = transport.get_transport('readonly+' + server.get_url())
-        self.failUnless(isinstance(t, readonly.ReadonlyTransportDecorator))
+        self.assertIsInstance(t, readonly.ReadonlyTransportDecorator)
         self.assertEqual(False, t.listable())
         self.assertEqual(True, t.is_readonly())
 
@@ -746,8 +746,8 @@ class TestConnectedTransport(tests.TestCase):
         self.assertEquals(t._host, 'simple.example.com')
         self.assertEquals(t._port, None)
         self.assertEquals(t._path, '/home/source/')
-        self.failUnless(t._user is None)
-        self.failUnless(t._password is None)
+        self.assertTrue(t._user is None)
+        self.assertTrue(t._password is None)
 
         self.assertEquals(t.base, 'http://simple.example.com/home/source/')
 
@@ -955,14 +955,18 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         ssh_server = stub_sftp.SFTPFullAbsoluteServer(StubSSHServer)
         # We *don't* want to override the default SSH vendor: the detected one
         # is the one to use.
+
+        # FIXME: I don't understand the above comment, SFTPFullAbsoluteServer
+        # inherits from SFTPServer which forces the SSH vendor to
+        # ssh.ParamikoVendor(). So it's forced, not detected. --vila 20100623
         self.start_server(ssh_server)
-        port = ssh_server._listener.port
+        port = ssh_server.port
 
         if sys.platform == 'win32':
             bzr_remote_path = sys.executable + ' ' + self.get_bzr_path()
         else:
             bzr_remote_path = self.get_bzr_path()
-        os.environ['BZR_REMOTE_PATH'] = bzr_remote_path
+        self.overrideEnv('BZR_REMOTE_PATH', bzr_remote_path)
 
         # Access the branch via a bzr+ssh URL.  The BZR_REMOTE_PATH environment
         # variable is used to tell bzr what command to run on the remote end.
@@ -989,3 +993,14 @@ class TestSSHConnections(tests.TestCaseWithTransport):
         # And the rest are threads
         for t in started[1:]:
             t.join()
+
+
+class TestUnhtml(tests.TestCase):
+
+    """Tests for unhtml_roughly"""
+
+    def test_truncation(self):
+        fake_html = "<p>something!\n" * 1000
+        result = http.unhtml_roughly(fake_html)
+        self.assertEquals(len(result), 1000)
+        self.assertStartsWith(result, " something!")

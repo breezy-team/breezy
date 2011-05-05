@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,47 +20,40 @@ import pprint
 
 from bzrlib import (
     errors,
-    graph as _mod_graph,
     _known_graph_py,
     tests,
     )
 from bzrlib.tests import test_graph
 from bzrlib.revision import NULL_REVISION
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterize tests for all versions of groupcompress."""
+def caching_scenarios():
     scenarios = [
         ('python', {'module': _known_graph_py, 'do_cache': True}),
     ]
-    caching_scenarios = [
-        ('python-nocache', {'module': _known_graph_py, 'do_cache': False}),
-    ]
-    suite = loader.suiteClass()
     if compiled_known_graph_feature.available():
         scenarios.append(('C', {'module': compiled_known_graph_feature.module,
                                 'do_cache': True}))
-        caching_scenarios.append(
+    return scenarios
+
+
+def non_caching_scenarios():
+    scenarios = [
+        ('python-nocache', {'module': _known_graph_py, 'do_cache': False}),
+    ]
+    if compiled_known_graph_feature.available():
+        scenarios.append(
             ('C-nocache', {'module': compiled_known_graph_feature.module,
                            'do_cache': False}))
-    else:
-        # the compiled module isn't available, so we add a failing test
-        class FailWithoutFeature(tests.TestCase):
-            def test_fail(self):
-                self.requireFeature(compiled_known_graph_feature)
-        suite.addTest(loader.loadTestsFromTestCase(FailWithoutFeature))
-    # TestKnownGraphHeads needs to be permutated with and without caching.
-    # All other TestKnownGraph tests only need to be tested across module
-    heads_suite, other_suite = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance(TestKnownGraphHeads))
-    suite = tests.multiply_tests(other_suite, scenarios, suite)
-    suite = tests.multiply_tests(heads_suite, scenarios + caching_scenarios,
-                                 suite)
-    return suite
+    return scenarios
+
+
+load_tests = load_tests_apply_scenarios
 
 
 compiled_known_graph_feature = tests.ModuleAvailableFeature(
-                                    'bzrlib._known_graph_pyx')
+    'bzrlib._known_graph_pyx')
 
 
 #  a
@@ -75,6 +68,7 @@ alt_merge = {'a': [], 'b': ['a'], 'c': ['b'], 'd': ['a', 'c']}
 
 class TestCaseWithKnownGraph(tests.TestCase):
 
+    scenarios = caching_scenarios()
     module = None # Set by load_tests
 
     def make_known_graph(self, ancestry):
@@ -214,6 +208,7 @@ class TestKnownGraph(TestCaseWithKnownGraph):
 
 class TestKnownGraphHeads(TestCaseWithKnownGraph):
 
+    scenarios = caching_scenarios() + non_caching_scenarios()
     do_cache = None # Set by load_tests
 
     def test_heads_null(self):
