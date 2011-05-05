@@ -153,6 +153,10 @@ class bzr_build(build):
     Generate bzr.1.
     """
 
+    sub_commands = build.sub_commands + [
+            ('build_mo', lambda _: True),
+            ]
+
     def run(self):
         build.run(self)
 
