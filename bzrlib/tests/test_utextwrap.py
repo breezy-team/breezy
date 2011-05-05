@@ -69,6 +69,8 @@ class TestUTextWrap(tests.TestCase):
         self.assertEqual(list(_str_D),
                          utextwrap.wrap(_str_D, 3, break_long_words=False))
 
+class TestUTextFill(tests.TestCase):
+
     def test_fill_simple(self):
         # Test only can call fill() because it's just '\n'.join(wrap(text)).
         self.assertEqual("%s\n%s" % (_str_D[:2], _str_D[2:]),
