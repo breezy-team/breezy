@@ -39,6 +39,7 @@ from bzrlib import (
     urlutils,
     win32utils,
     workingtree_3,
+    workingtree_4,
     )
 import bzrlib.branch
 from bzrlib.errors import (
@@ -807,7 +808,7 @@ class ChrootedTests(TestCaseWithTransport):
         branch = self.make_branch('branch', format='knit')
         format = branch.bzrdir.cloning_metadir()
         self.assertIsInstance(format.workingtree_format,
-            workingtree_3.WorkingTreeFormat3)
+            workingtree_4.WorkingTreeFormat6)
 
     def test_sprout_recursive_treeless(self):
         tree = self.make_branch_and_tree('tree1',
