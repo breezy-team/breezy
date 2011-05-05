@@ -31,30 +31,38 @@ _str_DS = _str_D + _str_S
 
 class TestUTextWrap(tests.TestCase):
 
-    def assertWidth(self, text, expected_width):
+    def check_width(self, text, expected_width):
         self.assertEqual(
                 utextwrap._width(text),
                 expected_width,
                 "Width of %r should be %d" % (text, expected_width))
 
     def test__width(self):
-        self.assertWidth(_str_D, 8)
-        self.assertWidth(_str_SD, 13)
+        self.check_width(_str_D, 8)
+        self.check_width(_str_SD, 13)
 
-    def test__break_cjkword(self):
-        self.assertEqual(utextwrap._break_cjkword(u"hello", 3), ('', _str_S))
-        self.assertEqual(utextwrap._break_cjkword(_str_D, 1), ('', _str_D))
+    def check_cut(self, text, width, pos):
+        self.assertEqual(
+                utextwrap._cut(text, width),
+                (text[:pos], text[pos:])
+                )
 
-        half = _str_D[:2], _str_D[2:]
-        self.assertEqual(utextwrap._break_cjkword(_str_D, 4), half)
-        self.assertEqual(utextwrap._break_cjkword(_str_D, 5), half)
+    def test_cut(self):
+        s = _str_SD
+        self.check_cut(s, 0, 0)
+        self.check_cut(s, 1, 1)
+        self.check_cut(s, 5, 5)
+        self.check_cut(s, 6, 5)
+        self.check_cut(s, 7, 6)
+        self.check_cut(s, 12, 8)
+        self.check_cut(s, 13, 9)
+        self.check_cut(s, 14, 9)
 
-        # word should be split between double width character and single
-        # width character.
-        self.assertEqual(utextwrap._break_cjkword(_str_DS, 10),
-                         (_str_D, _str_S))
-
-        self.assertEqual(utextwrap._break_cjkword(_str_D, 8), (_str_D, ''))
+    def test_split(self):
+        w = utextwrap.UTextWrapper()
+        self.assertEqual(w._split(_str_D), list(_str_D))
+        self.assertEqual(w._split(_str_SD), [_str_S]+list(_str_D))
+        self.assertEqual(w._split(_str_DS), list(_str_D)+[_str_S])
 
     def test_wrap(self):
         self.assertEqual(utextwrap.wrap(_str_D, 1), list(_str_D))

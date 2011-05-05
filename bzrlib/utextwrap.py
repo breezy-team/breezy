@@ -15,9 +15,14 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import osutils
+# UTextWrapper._handle_long_word, UTextWrapper._wrap_chunks,
+# wrap and fill is copied from Python's textwrap module
+# (under PSF license) and modified for support CJK.
+
 import textwrap
 from unicodedata import east_asian_width as _eawidth
+
+from bzrlib import osutils
 
 __all__ = ["UTextWrapper", "fill", "wrap"]
 
@@ -38,36 +43,20 @@ def _width(s):
         w += (c in 'FWA' and 2) or 1
     return w
 
-def _break_cjkword(word, width):
-    """Split `word` by `width`.
+def _cut(s, width):
+    """Returns head and rest of s. (head+rest == s).
 
-    Returns a tuple contains 2 strings. First string is head of
-    `word` that's length is less than `width`. Second string is
-    rest of `word`.
-
-    The border of head and rest is next to double width character.
-    Because spaces is not used as word separator on CJK.
-
-    When ``_width(word) < width``, returns ``(word, '')``.
-    When can't split anywhere, returns ``('', word)``.
+    Head is large as long as _width(head) <= width.
     """
+    if isinstance(s, str):
+        return s[:width], s[width:]
+    assert isinstance(s, unicode)
     w = 0
-    for pos, c in enumerate(word):
-        nw = _width(c)
-        if w + nw > width:
-            break
-        w += nw
-    else:
-        return word, ''
-    if pos>0 and _width(word[pos]) == 2:
-        # "sssDDD" and pos=3 => "sss", "DDD" (D is double width)
-        return word[:pos], word[pos:]
-    # "DDDssss" and pos=4 => "DDD", "ssss"
-    while pos > 0 and _width(word[pos-1]) != 2:
-        pos -= 1
-    if pos == 0:
-        return '', word
-    return word[:pos], word[pos:]
+    for pos, c in enumerate(s):
+        w += (_eawidth(c) in 'FWA' and 2) or 1
+        if w > width:
+            return s[:pos], s[pos:]
+    return s, ''
 
 
 class UTextWrapper(textwrap.TextWrapper):
@@ -85,15 +74,34 @@ class UTextWrapper(textwrap.TextWrapper):
         textwrap.TextWrapper.__init__(self, width, **kwargs)
 
     def _handle_long_word(self, chunks, cur_line, cur_len, width):
-        head, rest = _break_cjkword(chunks[-1], width)
-        if head:
-            chunks.pop()
+        # Figure out when indent is larger than the specified width, and make
+        # sure at least one character is stripped off on every pass
+        if width < 2:
+            space_left = chunks[-1] and _width(chunks[-1][0]) or 1
+        else:
+            space_left = width - cur_len
+
+        # If we're allowed to break long words, then do so: put as much
+        # of the next chunk onto the current line as will fit.
+        if self.break_long_words:
+            head, rest = _cut(chunks[-1], space_left)
+            cur_line.append(head)
             if rest:
-                chunks.append(rest)
-            chunks.append(head)
-            return
-        textwrap.TextWrapper._handle_long_word(
-                self, chunks, cur_line, cur_len, width)
+                chunks[-1] = rest
+            else:
+                del chunks[-1]
+
+        # Otherwise, we have to preserve the long word intact.  Only add
+        # it to the current line if there's nothing already there --
+        # that minimizes how much we violate the width constraint.
+        elif not cur_line:
+            cur_line.append(chunks.pop())
+
+        # If we're not allowed to break long words, and there's already
+        # text on the current line, do nothing.  Next time through the
+        # main loop of _wrap_chunks(), we'll wind up here again, but
+        # cur_len will be zero, so the next line will be entirely
+        # devoted to the long word that we can't handle right now.
 
     def _wrap_chunks(self, chunks):
         lines = []
@@ -137,13 +145,6 @@ class UTextWrapper(textwrap.TextWrapper):
 
                 # Nope, this line is full.
                 else:
-                    # break CJK words
-                    head, rest = _break_cjkword(chunks[-1], width-cur_len)
-                    if head:
-                        cur_line.append(head)
-                        cur_len += _width(head)
-                        assert rest
-                        chunks[-1] = rest
                     break
 
             # The current line is full, and the next chunk is too big to
@@ -161,6 +162,26 @@ class UTextWrapper(textwrap.TextWrapper):
                 lines.append(indent + ''.join(cur_line))
 
         return lines
+
+    def _split(self, text):
+        chunks = textwrap.TextWrapper._split(self, unicode(text))
+        cjk_split_chunks = []
+        for chunk in chunks:
+            assert chunk # TextWrapper._split removes empty chunk
+            prev_pos = 0
+            for pos, char in enumerate(chunk):
+                # Treats all asian character are line breakable.
+                # But it is not true because line breaking is
+                # prohibited around some characters.
+                # See UAX # 14 "UNICODE LINE BREAKING ALGORITHM"
+                if _eawidth(char) in 'FWA':
+                    if prev_pos < pos:
+                        cjk_split_chunks.append(chunk[prev_pos:pos])
+                    cjk_split_chunks.append(char)
+                    prev_pos = pos+1
+            if prev_pos < len(chunk):
+                cjk_split_chunks.append(chunk[prev_pos:])
+        return cjk_split_chunks
 
     def wrap(self, text):
         # ensure text is unicode
