@@ -428,7 +428,7 @@ update-pot: po/bzr.pot
 PYFILES:=$(shell find bzrlib -name '*.py')
 
 po/bzr.pot: $(PYFILES) $(DOCFILES)
-	$(PYTHON) tools/bzrgettext bzrlib/*.py \
+	$(PYTHON) tools/bzrgettext.py bzrlib/*.py \
 	  bzrlib/plugins/*.py \
 	  > po/bzr.pot
 	echo $(PYFILES) | xargs \
