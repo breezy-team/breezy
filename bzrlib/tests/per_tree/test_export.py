@@ -62,8 +62,11 @@ class TestTar(ExportTest, TestCaseWithTree):
     exporter = 'tar'
 
     def get_export_names(self):
-        with tarfile.open('output') as tf:
+        tf = tarfile.open('output')
+        try:
             return tf.getnames()
+        finally:
+            tf.close()
 
 
 class TestZip(ExportTest, TestCaseWithTree):
@@ -71,8 +74,11 @@ class TestZip(ExportTest, TestCaseWithTree):
     exporter = 'zip'
 
     def get_export_names(self):
-        with zipfile.ZipFile('output') as zf:
+        zf = zipfile.ZipFile('output')
+        try:
             return zf.namelist()
+        finally:
+            zf.close()
 
     def test_export_symlink(self):
         self.prepare_symlink_export()
