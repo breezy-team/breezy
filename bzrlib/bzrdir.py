@@ -49,7 +49,7 @@ from bzrlib import (
     ui,
     urlutils,
     win32utils,
-    workingtree,
+    workingtree_3,
     workingtree_4,
     )
 from bzrlib.repofmt import knitpack_repo
@@ -1883,7 +1883,7 @@ class ConvertMetaToMeta(controldir.Converter):
         else:
             # TODO: conversions of Branch and Tree should be done by
             # InterXFormat lookups
-            if (isinstance(tree, workingtree.WorkingTree3) and
+            if (isinstance(tree, workingtree_3.WorkingTree3) and
                 not isinstance(tree, workingtree_4.DirStateWorkingTree) and
                 isinstance(self.target_format.workingtree_format,
                     workingtree_4.DirStateWorkingTreeFormat)):
@@ -2110,7 +2110,7 @@ register_metadir(controldir.format_registry, 'knit',
     'bzrlib.repofmt.knitrepo.RepositoryFormatKnit1',
     'Format using knits.  Recommended for interoperation with bzr <= 0.14.',
     branch_format='bzrlib.branch.BzrBranchFormat5',
-    tree_format='bzrlib.workingtree.WorkingTreeFormat3',
+    tree_format='bzrlib.workingtree_3.WorkingTreeFormat3',
     hidden=True,
     deprecated=True)
 register_metadir(controldir.format_registry, 'dirstate',
