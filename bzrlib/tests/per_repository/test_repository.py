@@ -176,19 +176,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree_b.get_file_text('file1')
         rev1 = repo_b.get_revision('rev1')
 
-    def test_iter_inventories_is_ordered(self):
-        # just a smoke test
-        tree = self.make_branch_and_tree('a')
-        first_revision = tree.commit('')
-        second_revision = tree.commit('')
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        revs = (first_revision, second_revision)
-        invs = tree.branch.repository.iter_inventories(revs)
-        for rev_id, inv in zip(revs, invs):
-            self.assertEqual(rev_id, inv.revision_id)
-            self.assertIsInstance(inv, inventory.CommonInventory)
-
     def test_supports_rich_root(self):
         tree = self.make_branch_and_tree('a')
         tree.commit('')
@@ -578,55 +565,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         self.assertRaises((errors.RevisionNotPresent, errors.NoSuchId), list,
                           repository.iter_files_bytes(
                           [('file3-id', 'rev3', 'file1-notpresent')]))
-
-    def test_item_keys_introduced_by(self):
-        # Make a repo with one revision and one versioned file.
-        tree = self.make_branch_and_tree('t')
-        self.build_tree(['t/foo'])
-        tree.add('foo', 'file1')
-        tree.commit('message', rev_id='rev_id')
-        repo = tree.branch.repository
-        repo.lock_write()
-        repo.start_write_group()
-        try:
-            repo.sign_revision('rev_id', gpg.LoopbackGPGStrategy(None))
-        except errors.UnsupportedOperation:
-            signature_texts = []
-        else:
-            signature_texts = ['rev_id']
-        repo.commit_write_group()
-        repo.unlock()
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
-
-        # Item keys will be in this order, for maximum convenience for
-        # generating data to insert into knit repository:
-        #   * files
-        #   * inventory
-        #   * signatures
-        #   * revisions
-        expected_item_keys = [
-            ('file', 'file1', ['rev_id']),
-            ('inventory', None, ['rev_id']),
-            ('signatures', None, signature_texts),
-            ('revisions', None, ['rev_id'])]
-        item_keys = list(repo.item_keys_introduced_by(['rev_id']))
-        item_keys = [
-            (kind, file_id, list(versions))
-            for (kind, file_id, versions) in item_keys]
-
-        if repo.supports_rich_root():
-            # Check for the root versioned file in the item_keys, then remove
-            # it from streamed_names so we can compare that with
-            # expected_record_names.
-            # Note that the file keys can be in any order, so this test is
-            # written to allow that.
-            inv = repo.get_inventory('rev_id')
-            root_item_key = ('file', inv.root.file_id, ['rev_id'])
-            self.assertTrue(root_item_key in item_keys)
-            item_keys.remove(root_item_key)
-
-        self.assertEqual(expected_item_keys, item_keys)
 
     def test_get_graph(self):
         """Bare-bones smoketest that all repositories implement get_graph."""
