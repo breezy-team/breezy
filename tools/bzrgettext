@@ -63,6 +63,11 @@ def poentry(path, lineno, s):
             'msgid %s\n' % normalize(s) +
             'msgstr ""\n')
 
+def poentry_per_paragraph(path, lineno, msgid):
+    paragraphs = msgid.split('\n\n')
+    for p in paragraphs:
+        print poentry(path, lineno, p)
+        lineno += p.count('\n') + 2
 
 def offset(src, doc, name, default):
     """Compute offset or issue a warning on stdout."""
@@ -114,7 +119,7 @@ def docstrings(path):
             continue
         if (inspect.isclass(obj) and issubclass(obj, cmd_klass)
                 and not obj is cmd_klass):
-            print poentry(path, inspect.findsource(obj)[1], doc)
+            poentry_per_paragraph(path, inspect.findsource(obj)[1], doc)
 
 def bzrerrors():
     """Extract fmt string from bzrlib.errors."""
@@ -138,7 +143,7 @@ def bzrerrors():
 
 def rawtext(path):
     src = open(path).read()
-    print poentry(path, 1, src)
+    poentry_per_paragraph(path, 1, src)
 
 
 if __name__ == "__main__":
