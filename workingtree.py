@@ -102,6 +102,9 @@ class GitWorkingTree(workingtree.WorkingTree):
         self._reset_data()
         self._fileid_map = self._basis_fileid_map.copy()
 
+    def set_parent_trees(self, parents_list, allow_leftmost_as_ghost=False):
+        self.set_parent_ids([p for p, t in parents_list])
+
     def _index_add_entry(self, path, file_id, kind):
         assert isinstance(path, basestring)
         assert type(file_id) == str
