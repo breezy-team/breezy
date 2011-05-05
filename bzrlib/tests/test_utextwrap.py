@@ -42,10 +42,7 @@ class TestUTextWrap(tests.TestCase):
         self.check_width(_str_SD, 13)
 
     def check_cut(self, text, width, pos):
-        self.assertEqual(
-                utextwrap._cut(text, width),
-                (text[:pos], text[pos:])
-                )
+        self.assertEqual((text[:pos], text[pos:]), utextwrap._cut(text, width))
 
     def test_cut(self):
         s = _str_SD
@@ -61,80 +58,79 @@ class TestUTextWrap(tests.TestCase):
 
     def test_split(self):
         w = utextwrap.UTextWrapper()
-        self.assertEqual(w._split(_str_D), list(_str_D))
-        self.assertEqual(w._split(_str_SD), [_str_S]+list(_str_D))
-        self.assertEqual(w._split(_str_DS), list(_str_D)+[_str_S])
+        self.assertEqual(list(_str_D), w._split(_str_D))
+        self.assertEqual([_str_S]+list(_str_D), w._split(_str_SD))
+        self.assertEqual(list(_str_D)+[_str_S], w._split(_str_DS))
 
     def test_wrap(self):
-        self.assertEqual(utextwrap.wrap(_str_D, 1), list(_str_D))
-        self.assertEqual(utextwrap.wrap(_str_D, 2), list(_str_D))
-        self.assertEqual(utextwrap.wrap(_str_D, 3), list(_str_D))
-        self.assertEqual(utextwrap.wrap(_str_D, 3, break_long_words=False),
-                list(_str_D))
+        self.assertEqual(list(_str_D), utextwrap.wrap(_str_D, 1))
+        self.assertEqual(list(_str_D), utextwrap.wrap(_str_D, 2))
+        self.assertEqual(list(_str_D), utextwrap.wrap(_str_D, 3))
+        self.assertEqual(list(_str_D),
+                         utextwrap.wrap(_str_D, 3, break_long_words=False))
 
-    def test_fill(self):
+    def test_fill_simple(self):
         # Test only can call fill() because it's just '\n'.join(wrap(text)).
-        self.assertEqual(utextwrap.fill(_str_D, 4),
-                "%s\n%s" % (_str_D[:2], _str_D[2:]))
+        self.assertEqual("%s\n%s" % (_str_D[:2], _str_D[2:]),
+                         utextwrap.fill(_str_D, 4))
 
+    def test_fill_with_breaks(self):
         # Demonstrate complicated case.
         text = u"spam ham egg spamhamegg" + _str_D + u" spam" + _str_D*2
-        self.assertEqual(
-                utextwrap.fill(text, 8),
-                u'\n'.join([
-                    "spam ham",
-                    "egg spam",
-                    "hamegg" + _str_D[0],
-                    _str_D[1:],
-                    "spam" + _str_D[:2],
-                    _str_D[2:]+_str_D[:2],
-                    _str_D[2:]
-                    ]))
+        self.assertEqual(u'\n'.join(["spam ham",
+                                     "egg spam",
+                                     "hamegg" + _str_D[0],
+                                     _str_D[1:],
+                                     "spam" + _str_D[:2],
+                                     _str_D[2:]+_str_D[:2],
+                                     _str_D[2:]]),
+                         utextwrap.fill(text, 8))
 
-        self.assertEqual(
-                utextwrap.fill(text, 8, break_long_words=False),
-                u'\n'.join([
-                    "spam ham",
-                    "egg",
-                    "spamhamegg", 
-                    # border between single width and double width.
-                    _str_D,
-                    "spam" + _str_D[:2],
-                    _str_D[2:]+_str_D[:2],
-                    _str_D[2:]
-                    ]))
+    def test_fill_without_breaks(self):
+        text = u"spam ham egg spamhamegg" + _str_D + u" spam" + _str_D*2
+        self.assertEqual(u'\n'.join(["spam ham",
+                                     "egg",
+                                     "spamhamegg", 
+                                     # border between single width and double
+                                     # width.
+                                     _str_D,
+                                     "spam" + _str_D[:2],
+                                     _str_D[2:]+_str_D[:2],
+                                     _str_D[2:]]),
+                utextwrap.fill(text, 8, break_long_words=False))
 
-    def test_fill_indent(self):
-        w = utextwrap.UTextWrapper(8,
-                initial_indent=' '*4, subsequent_indent=' '*4)
+    def test_fill_indent_with_breaks(self):
+        w = utextwrap.UTextWrapper(8, initial_indent=' '*4,
+                                   subsequent_indent=' '*4)
+        self.assertEqual(u'\n'.join(["    hell",
+                                     "    o" + _str_D[0],
+                                     "    " + _str_D[1:3],
+                                     "    " + _str_D[3]
+                                     ]),
+                         w.fill(_str_SD))
 
-        self.assertEqual(w.fill(_str_SD),
-                u'\n'.join([
-                    "    hell",
-                    "    o" + _str_D[0],
-                    "    " + _str_D[1:3],
-                    "    " + _str_D[3]
-                    ]))
-
+    def test_fill_indent_without_breaks(self):
+        w = utextwrap.UTextWrapper(8, initial_indent=' '*4,
+                                   subsequent_indent=' '*4)
         w.break_long_words = False
+        self.assertEqual(u'\n'.join(["    hello",
+                                     "    " + _str_D[:2],
+                                     "    " + _str_D[2:],
+                                     ]),
+                         w.fill(_str_SD))
 
-        self.assertEqual(w.fill(_str_SD),
-                u'\n'.join([
-                    "    hello",
-                    "    " + _str_D[:2],
-                    "    " + _str_D[2:],
-                    ]))
-
+    def test_fill_indent_without_breaks_with_fixed_width(self):
+        w = utextwrap.UTextWrapper(8, initial_indent=' '*4,
+                                   subsequent_indent=' '*4)
+        w.break_long_words = False
         w.width = 3
-
-        self.assertEqual(w.fill(_str_SD),
-                u'\n'.join([
-                    "    hello",
-                    "    " + _str_D[0],
-                    "    " + _str_D[1],
-                    "    " + _str_D[2],
-                    "    " + _str_D[3],
-                    ]))
+        self.assertEqual(u'\n'.join(["    hello",
+                                     "    " + _str_D[0],
+                                     "    " + _str_D[1],
+                                     "    " + _str_D[2],
+                                     "    " + _str_D[3],
+                                     ]),
+                         w.fill(_str_SD))
 
 
 # Regression test with Python's test_textwrap
