@@ -54,11 +54,18 @@ def get_cache_dir():
     return ret
 
 
-def get_remote_cache_transport():
+def get_remote_cache_transport(repository):
     """Retrieve the transport to use when accessing (unwritable) remote 
     repositories.
     """
-    return get_transport(get_cache_dir())
+    uuid = getattr(repository, "uuid", None)
+    if uuid is None:
+        path = get_cache_dir()
+    else:
+        path = os.path.join(get_cache_dir(), uuid)
+        if not os.path.isdir(path):
+            os.mkdir(path)
+    return get_transport(path)
 
 
 def check_pysqlite_version(sqlite3):
@@ -208,9 +215,10 @@ class BzrGitCacheFormat(object):
         :param repository: Repository to open the cache for
         :return: A `BzrGitCache`
         """
+        from bzrlib.transport.local import LocalTransport
         repo_transport = getattr(repository, "_transport", None)
-        if repo_transport is not None:
-            # Even if we don't write to this repo, we should be able 
+        if repo_transport is not None and isinstance(repo_transport, LocalTransport):
+            # Even if we don't write to this repo, we should be able
             # to update its cache.
             repo_transport = remove_readonly_transport_decorator(repo_transport)
             try:
@@ -219,7 +227,7 @@ class BzrGitCacheFormat(object):
                 pass
             transport = repo_transport.clone('git')
         else:
-            transport = get_remote_cache_transport()
+            transport = get_remote_cache_transport(repository)
         return cls.from_transport(transport)
 
 
@@ -947,12 +955,22 @@ else:
 
 
 def migrate_ancient_formats(repo_transport):
+    # Migrate older cache formats
+    repo_transport = remove_readonly_transport_decorator(repo_transport)
+    has_sqlite = repo_transport.has("git.db")
+    has_tdb = repo_transport.has("git.tdb")
+    if not has_sqlite or has_tdb:
+        return
+    try:
+        repo_transport.mkdir("git")
+    except bzrlib.errors.FileExists:
+        return
     # Prefer migrating git.db over git.tdb, since the latter may not 
     # be openable on some platforms.
-    if repo_transport.has("git.db"):
+    if has_sqlite:
         SqliteGitCacheFormat().initialize(repo_transport.clone("git"))
         repo_transport.rename("git.db", "git/idmap.db")
-    elif repo_transport.has("git.tdb"):
+    elif has_tdb:
         TdbGitCacheFormat().initialize(repo_transport.clone("git"))
         repo_transport.rename("git.tdb", "git/idmap.tdb")
 
@@ -974,12 +992,5 @@ def from_repository(repository):
     """
     repo_transport = getattr(repository, "_transport", None)
     if repo_transport is not None:
-        # Migrate older cache formats
-        repo_transport = remove_readonly_transport_decorator(repo_transport)
-        try:
-            repo_transport.mkdir("git")
-        except bzrlib.errors.FileExists:
-            pass
-        else:
-            migrate_ancient_formats(repo_transport)
+        migrate_ancient_formats(repo_transport)
     return BzrGitCacheFormat.from_repository(repository)
