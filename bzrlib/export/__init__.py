@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -143,35 +143,31 @@ def _export_iter_entries(tree, subdir, skip_special=True):
     :param subdir: None or the path of an entry to start exporting from.
     :param skip_special: Whether to skip .bzr files.
     """
-    inv = tree.inventory
-    if subdir is None:
-        subdir_object = None
-    else:
-        subdir_id = inv.path2id(subdir)
-        if subdir_id is not None:
-            subdir_object = inv[subdir_id]
-        # XXX: subdir is path not an id, so NoSuchId isn't proper error
-        else:
-            raise errors.NoSuchId(tree, subdir)
-    if subdir_object is not None and subdir_object.kind != 'directory':
-        yield subdir_object.name, subdir_object
-        return
-    else:
-        entries = inv.iter_entries(subdir_object)
-    if subdir is None:
-        entries.next() # skip root
-    for entry in entries:
+    if subdir == '':
+        subdir = None
+    if subdir is not None:
+        subdir = subdir.rstrip('/')
+    entries = tree.iter_entries_by_dir()
+    entries.next() # skip root
+    for path, entry in entries:
         # The .bzr* namespace is reserved for "magic" files like
         # .bzrignore and .bzrrules - do not export these
-        if skip_special and entry[0].startswith(".bzr"):
+        if skip_special and path.startswith(".bzr"):
             continue
-        if subdir is None:
-            if not tree.has_filename(entry[0]):
+        if path == subdir:
+            if entry.kind == 'directory':
+                continue
+            final_path = entry.name
+        elif subdir is not None:
+            if path.startswith(subdir + '/'):
+                final_path = path[len(subdir) + 1:]
+            else:
                 continue
         else:
-            if not tree.has_filename(os.path.join(subdir, entry[0])):
-                continue
-        yield entry
+            final_path = path
+        if not tree.has_filename(path):
+            continue
+        yield final_path, entry
 
 
 register_lazy_exporter(None, [], 'bzrlib.export.dir_exporter', 'dir_exporter')
