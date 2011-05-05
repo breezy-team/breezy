@@ -1421,7 +1421,7 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
         diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')
 
 
-class TestDiffFromToolEncodedFilename(TestCaseWithTransport):
+class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
 
     def check_filename_passed(self, filename):
         output = StringIO()
@@ -1456,7 +1456,7 @@ class TestDiffFromToolEncodedFilename(TestCaseWithTransport):
             encoding = scenario['encoding']
             filename = scenario['info']['filename']
             self.overrideAttr(sys, 'getfilesystemencoding', lambda: encoding)
-            check_filename_passed(filename)
+            self.check_filename_passed(filename)
 
     def test_unencodable_filename(self):
         import sys
@@ -1469,7 +1469,7 @@ class TestDiffFromToolEncodedFilename(TestCaseWithTransport):
             else:
                 encoding = 'iso-8859-1'
             self.overrideAttr(sys, 'getfilesystemencoding', lambda: encoding)
-            check_filename_passed(filename)
+            self.check_filename_passed(filename)
 
 
 class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):
