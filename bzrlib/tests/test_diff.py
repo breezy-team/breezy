@@ -1423,56 +1423,44 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
 
 class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
 
-    def check_filename_passed(self, dirname, filename):
-        output = StringIO()
-        tree = self.make_branch_and_tree(dirname)
-        self.build_tree_contents([(dirname+'/'+filename, 'oldcontent')])
-        tree.add(filename, 'file-id')
-        tree.commit('old tree', timestamp=0)
-        self.build_tree_contents([(dirname+'/'+filename, 'newcontent')])
-        old_tree = tree.basis_tree()
-        old_tree.lock_read()
-        self.addCleanup(old_tree.unlock)
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        diff_obj = diff.DiffFromTool(
-                    ['python', '-c',
-                     ('import sys;'
-                      'sys.stdout.write('
-                      '  open(sys.argv[1], "rb").read()+":"+'
-                      '  open(sys.argv[2], "rb").read())'),
-                     '@old_path', '@new_path'],
-                    old_tree, tree, output)
-        self.addCleanup(diff_obj.finish)
-        diff_obj.diff('file-id', filename, filename, 'file', 'file')
-        self.assertEqual(
-                "oldcontent:newcontent",
-                output.getvalue()
-                )
-
     def test_encodable_filename(self):
         import sys
+        diffobj = diff.DiffFromTool(['python', '@old_path', '@new_path'],
+                                    None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
             encoding = scenario['encoding']
+            dirname  = scenario['info']['directory']
             filename = scenario['info']['filename']
-            dirname = 'encodable_' + scenario['info']['directory']
 
             self.overrideAttr(sys, 'getfilesystemencoding', lambda: encoding)
-            self.check_filename_passed(dirname, filename)
+            fullpath = diffobj._safe_filename('safe', dirname + u'/' + filename)
+            self.assertEqual(
+                    fullpath,
+                    fullpath.encode(encoding).decode(encoding)
+                    )
+            self.assert_(fullpath.startswith(diffobj._root + '/safe'))
 
     def test_unencodable_filename(self):
         import sys
+        diffobj = diff.DiffFromTool(['python', '@old_path', '@new_path'],
+                                    None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
             encoding = scenario['encoding']
+            dirname  = scenario['info']['directory']
             filename = scenario['info']['filename']
-            dirname = 'unencodable_' + scenario['info']['directory']
 
             if encoding == 'iso-8859-1':
                 encoding = 'iso-8859-2'
             else:
                 encoding = 'iso-8859-1'
+
             self.overrideAttr(sys, 'getfilesystemencoding', lambda: encoding)
-            self.check_filename_passed(dirname, filename)
+            fullpath = diffobj._safe_filename('safe', dirname + u'/' + filename)
+            self.assertEqual(
+                    fullpath,
+                    fullpath.encode(encoding).decode(encoding)
+                    )
+            self.assert_(fullpath.startswith(diffobj._root + '/safe'))
 
 
 class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):

@@ -782,11 +782,7 @@ class DiffFromTool(DiffPath):
                 raise
         return True
 
-    def _write_file(self, file_id, tree, prefix, relpath, force_temp=False,
-                    allow_write=False):
-        if not force_temp and isinstance(tree, WorkingTree):
-            return tree.abspath(tree.id2path(file_id))
-
+    def _safe_filename(self, prefix, relpath):
         if sys.platform == 'win32':
             fenc = 'mbcs'
         else:
@@ -795,7 +791,14 @@ class DiffFromTool(DiffPath):
         # So we should encode, decode, then replace(u'?', u'_')
         relpath_tmp = relpath.encode(fenc, 'replace').decode(fenc, 'replace')
         relpath_tmp = relpath_tmp.replace(u'?', u'_')
-        full_path = osutils.pathjoin(self._root, prefix, relpath_tmp)
+        return osutils.pathjoin(self._root, prefix, relpath_tmp)
+
+    def _write_file(self, file_id, tree, prefix, relpath, force_temp=False,
+                    allow_write=False):
+        if not force_temp and isinstance(tree, WorkingTree):
+            return tree.abspath(tree.id2path(file_id))
+
+        full_path = self._safe_filename(prefix, relpath)
         if not force_temp and self._try_symlink_root(tree, prefix):
             return full_path
         parent_dir = osutils.dirname(full_path)
