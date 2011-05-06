@@ -120,7 +120,11 @@ def docstrings(path):
     only extract docstrings from functions mentioned in these tables.
     """
     from bzrlib.commands import Command as cmd_klass
-    mod = importpath(path)
+    try:
+        mod = importpath(path)
+    except Exception:
+        # some module raises exception (ex. bzrlib.transport.ftp._gssapi
+        return
     for name in dir(mod):
         if not name.startswith('cmd_'):
             continue
