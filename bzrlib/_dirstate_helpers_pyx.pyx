@@ -941,6 +941,12 @@ cdef _update_entry(self, entry, abspath, stat_value):
             # re-writing a dirstate for just this
             worth_saving = 0
     elif minikind == c'l':
+        if saved_minikind == c'l':
+            # If the object hasn't changed kind, it isn't worth saving the
+            # dirstate just for a symlink. The default is 'fast symlinks' which
+            # save the target in the inode entry, rather than separately. So to
+            # stat, we've already read everything off disk.
+            worth_saving = 0
         link_or_sha1 = self._read_link(abspath, saved_link_or_sha1)
         if self._cutoff_time is None:
             self._sha_cutoff_time()
@@ -952,7 +958,9 @@ cdef _update_entry(self, entry, abspath, stat_value):
             entry[1][0] = ('l', '', stat_value.st_size,
                            False, DirState.NULLSTAT)
     if worth_saving:
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        # Note, even though _mark_modified will only set
+        # IN_MEMORY_HASH_MODIFIED, it still isn't worth 
+        self._mark_modified([entry])
     return link_or_sha1
 
 
