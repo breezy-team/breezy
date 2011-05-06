@@ -122,8 +122,9 @@ def docstrings(path):
     from bzrlib.commands import Command as cmd_klass
     try:
         mod = importpath(path)
-    except Exception:
+    except Exception as e:
         # some module raises exception (ex. bzrlib.transport.ftp._gssapi
+        print >>sys.stderr, "Can't import %r: %s" % (path, e)
         return
     for name in dir(mod):
         if not name.startswith('cmd_'):
