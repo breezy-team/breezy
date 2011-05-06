@@ -1424,8 +1424,10 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
 class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
 
     def test_encodable_filename(self):
+        # Just checks file path for external diff tool.
+        # We cannot change CPython's internal encoding used by os.exec*.
         import sys
-        diffobj = diff.DiffFromTool(['python', '@old_path', '@new_path'],
+        diffobj = diff.DiffFromTool(['dummy', '@old_path', '@new_path'],
                                     None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
             encoding = scenario['encoding']
@@ -1443,7 +1445,7 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
 
     def test_unencodable_filename(self):
         import sys
-        diffobj = diff.DiffFromTool(['python', '@old_path', '@new_path'],
+        diffobj = diff.DiffFromTool(['dummy', '@old_path', '@new_path'],
                                     None, None, None)
         for _, scenario in EncodingAdapter.encoding_scenarios:
             encoding = scenario['encoding']

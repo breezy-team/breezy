@@ -784,6 +784,7 @@ class DiffFromTool(DiffPath):
 
     @staticmethod
     def _fenc():
+        """Returns safe encoding for passing file path to diff tool"""
         if sys.platform == 'win32':
             return 'mbcs'
         else:
