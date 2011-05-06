@@ -21,7 +21,6 @@ import os
 from bzrlib import (
     osutils,
     )
-from bzrlib.inventory import InventoryFile
 from bzrlib.transform import TreeTransform
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 

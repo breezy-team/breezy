@@ -669,20 +669,15 @@ class Branch(controldir.ControlComponent):
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     @needs_write_lock
-    def fetch(self, from_branch, last_revision=None, fetch_spec=None):
+    def fetch(self, from_branch, last_revision=None):
         """Copy revisions from from_branch into this branch.
 
         :param from_branch: Where to copy from.
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
-        :param fetch_spec: If specified, a SearchResult or
-            PendingAncestryResult that describes which revisions to copy.  This
-            allows copying multiple heads at once.  Mutually exclusive with
-            last_revision.
         :return: None
         """
-        return InterBranch.get(from_branch, self).fetch(last_revision,
-            fetch_spec)
+        return InterBranch.get(from_branch, self).fetch(last_revision)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
@@ -999,23 +994,6 @@ class Branch(controldir.ControlComponent):
         else:
             return (0, _mod_revision.NULL_REVISION)
 
-    def update_revisions(self, other, stop_revision=None, overwrite=False,
-                         graph=None, fetch_tags=True):
-        """Pull in new perfect-fit revisions.
-
-        :param other: Another Branch to pull from
-        :param stop_revision: Updated until the given revision
-        :param overwrite: Always set the branch pointer, rather than checking
-            to see if it is a proper descendant.
-        :param graph: A Graph object that can be used to query history
-            information. This can be None.
-        :param fetch_tags: Flag that specifies if tags from other should be
-            fetched too.
-        :return: None
-        """
-        return InterBranch.get(other, self).update_revisions(stop_revision,
-            overwrite, graph, fetch_tags=fetch_tags)
-
     @deprecated_method(deprecated_in((2, 4, 0)))
     def import_last_revision_info(self, source_repo, revno, revid):
         """Set the last revision info, importing from another repo if necessary.
@@ -1045,14 +1023,7 @@ class Branch(controldir.ControlComponent):
             (should only be different from the arguments when lossy=True)
         """
         if not self.repository.has_same_location(source.repository):
-            try:
-                tags_to_fetch = set(source.tags.get_reverse_tag_dict())
-            except errors.TagsNotSupported:
-                tags_to_fetch = set()
-            fetch_spec = _mod_graph.NotInOtherForRevs(self.repository,
-                source.repository, [revid],
-                if_present_ids=tags_to_fetch).execute()
-            self.repository.fetch(source.repository, fetch_spec=fetch_spec)
+            self.fetch(source, revid)
         self.set_last_revision_info(revno, revid)
         return (revno, revid)
 
@@ -1300,7 +1271,11 @@ class Branch(controldir.ControlComponent):
             if repository_policy is not None:
                 repository_policy.configure_branch(result)
             self.copy_content_into(result, revision_id=revision_id)
-            result.set_parent(self.bzrdir.root_transport.base)
+            master_branch = self.get_master_branch()
+            if master_branch is None:
+                result.set_parent(self.bzrdir.root_transport.base)
+            else:
+                result.set_parent(master_branch.bzrdir.root_transport.base)
         finally:
             result.unlock()
         return result
@@ -2625,27 +2600,6 @@ class BzrBranch(Branch, _RelockDebugMixin):
                 pass
         return None
 
-    def _basic_push(self, target, overwrite, stop_revision):
-        """Basic implementation of push without bound branches or hooks.
-
-        Must be called with source read locked and target write locked.
-        """
-        result = BranchPushResult()
-        result.source_branch = self
-        result.target_branch = target
-        result.old_revno, result.old_revid = target.last_revision_info()
-        self.update_references(target)
-        if result.old_revid != stop_revision:
-            # We assume that during 'push' this repository is closer than
-            # the target.
-            graph = self.repository.get_graph(target.repository)
-            target.update_revisions(self, stop_revision,
-                overwrite=overwrite, graph=graph)
-        if self._push_should_merge_tags():
-            result.tag_conflicts = self.tags.merge_to(target.tags, overwrite)
-        result.new_revno, result.new_revid = target.last_revision_info()
-        return result
-
     def get_stacked_on_url(self):
         raise errors.UnstackableBranchFormat(self._format, self.user_url)
 
@@ -3301,22 +3255,6 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.pull)
 
     @needs_write_lock
-    def update_revisions(self, stop_revision=None, overwrite=False,
-                         graph=None, fetch_tags=True):
-        """Pull in new perfect-fit revisions.
-
-        :param stop_revision: Updated until the given revision
-        :param overwrite: Always set the branch pointer, rather than checking
-            to see if it is a proper descendant.
-        :param graph: A Graph object that can be used to query history
-            information. This can be None.
-        :param fetch_tags: Flag that specifies if tags from source should be
-            fetched too.
-        :return: None
-        """
-        raise NotImplementedError(self.update_revisions)
-
-    @needs_write_lock
     def push(self, overwrite=False, stop_revision=None,
              _override_hook_source_branch=None):
         """Mirror the source branch into the target branch.
@@ -3335,11 +3273,10 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.copy_content_into)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None, fetch_spec=None):
+    def fetch(self, stop_revision=None):
         """Fetch revisions.
 
         :param stop_revision: Last revision to fetch
-        :param fetch_spec: Fetch spec.
         """
         raise NotImplementedError(self.fetch)
 
@@ -3383,26 +3320,26 @@ class GenericInterBranch(InterBranch):
             self.source.tags.merge_to(self.target.tags)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None, fetch_spec=None):
-        if fetch_spec is not None and stop_revision is not None:
-            raise AssertionError(
-                "fetch_spec and last_revision are mutually exclusive.")
+    def fetch(self, stop_revision=None):
         if self.target.base == self.source.base:
             return (0, [])
         self.source.lock_read()
         try:
-            if stop_revision is None and fetch_spec is None:
-                stop_revision = self.source.last_revision()
-                stop_revision = _mod_revision.ensure_null(stop_revision)
+            fetch_spec_factory = fetch.FetchSpecFactory()
+            fetch_spec_factory.source_branch = self.source
+            fetch_spec_factory.source_branch_stop_revision_id = stop_revision
+            fetch_spec_factory.source_repo = self.source.repository
+            fetch_spec_factory.target_repo = self.target.repository
+            fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+            fetch_spec = fetch_spec_factory.make_fetch_spec()
             return self.target.repository.fetch(self.source.repository,
-                revision_id=stop_revision, fetch_spec=fetch_spec)
+                fetch_spec=fetch_spec)
         finally:
             self.source.unlock()
 
     @needs_write_lock
-    def update_revisions(self, stop_revision=None, overwrite=False,
-        graph=None, fetch_tags=True):
-        """See InterBranch.update_revisions()."""
+    def _update_revisions(self, stop_revision=None, overwrite=False,
+            graph=None):
         other_revno, other_last_revision = self.source.last_revision_info()
         stop_revno = None # unknown
         if stop_revision is None:
@@ -3419,18 +3356,7 @@ class GenericInterBranch(InterBranch):
         # case of having something to pull, and so that the check for
         # already merged can operate on the just fetched graph, which will
         # be cached in memory.
-        if fetch_tags:
-            fetch_spec_factory = fetch.FetchSpecFactory()
-            fetch_spec_factory.source_branch = self.source
-            fetch_spec_factory.source_branch_stop_revision_id = stop_revision
-            fetch_spec_factory.source_repo = self.source.repository
-            fetch_spec_factory.target_repo = self.target.repository
-            fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
-            fetch_spec = fetch_spec_factory.make_fetch_spec()
-        else:
-            fetch_spec = _mod_graph.NotInOtherForRevs(self.target.repository,
-                self.source.repository, revision_ids=[stop_revision]).execute()
-        self.target.fetch(self.source, fetch_spec=fetch_spec)
+        self.fetch(stop_revision=stop_revision)
         # Check to see if one is an ancestor of the other
         if not overwrite:
             if graph is None:
@@ -3505,6 +3431,28 @@ class GenericInterBranch(InterBranch):
         finally:
             self.source.unlock()
 
+    def _basic_push(self, overwrite, stop_revision):
+        """Basic implementation of push without bound branches or hooks.
+
+        Must be called with source read locked and target write locked.
+        """
+        result = BranchPushResult()
+        result.source_branch = self.source
+        result.target_branch = self.target
+        result.old_revno, result.old_revid = self.target.last_revision_info()
+        self.source.update_references(self.target)
+        if result.old_revid != stop_revision:
+            # We assume that during 'push' this repository is closer than
+            # the target.
+            graph = self.source.repository.get_graph(self.target.repository)
+            self._update_revisions(stop_revision, overwrite=overwrite,
+                    graph=graph)
+        if self.source._push_should_merge_tags():
+            result.tag_conflicts = self.source.tags.merge_to(self.target.tags,
+                overwrite)
+        result.new_revno, result.new_revid = self.target.last_revision_info()
+        return result
+
     def _push_with_bound_branches(self, overwrite, stop_revision,
             _override_hook_source_branch=None):
         """Push from source into target, and into target's master if any.
@@ -3525,12 +3473,12 @@ class GenericInterBranch(InterBranch):
             master_branch.lock_write()
             try:
                 # push into the master from the source branch.
-                self.source._basic_push(master_branch, overwrite, stop_revision)
-                # and push into the target branch from the source. Note that we
-                # push from the source branch again, because it's considered the
-                # highest bandwidth repository.
-                result = self.source._basic_push(self.target, overwrite,
-                    stop_revision)
+                master_inter = InterBranch.get(self.source, master_branch)
+                master_inter._basic_push(overwrite, stop_revision)
+                # and push into the target branch from the source. Note that
+                # we push from the source branch again, because it's considered
+                # the highest bandwidth repository.
+                result = self._basic_push(overwrite, stop_revision)
                 result.master_branch = master_branch
                 result.local_branch = self.target
                 _run_hooks()
@@ -3539,8 +3487,7 @@ class GenericInterBranch(InterBranch):
                 master_branch.unlock()
         else:
             # no master branch
-            result = self.source._basic_push(self.target, overwrite,
-                stop_revision)
+            result = self._basic_push(overwrite, stop_revision)
             # TODO: Why set master_branch and local_branch if there's no
             # binding?  Maybe cleaner to just leave them unset? -- mbp
             # 20070504
@@ -3589,8 +3536,8 @@ class GenericInterBranch(InterBranch):
             # -- JRV20090506
             result.old_revno, result.old_revid = \
                 self.target.last_revision_info()
-            self.target.update_revisions(self.source, stop_revision,
-                overwrite=overwrite, graph=graph)
+            self._update_revisions(stop_revision, overwrite=overwrite,
+                graph=graph)
             # TODO: The old revid should be specified when merging tags, 
             # so a tags implementation that versions tags can only 
             # pull in the most recent changes. -- JRV20090506

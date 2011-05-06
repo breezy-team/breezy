@@ -221,7 +221,7 @@ class TestRenameOne(TestCaseWithWorkingTree):
                               tree.basis_tree())
 
     def test_rename_one_after_source_removed(self):
-        """Rename even if the source was removed from the inventory already"""
+        """Rename even if the source was already unversioned."""
         tree = self.make_branch_and_tree('.')
         self.build_tree(['a', 'b/'])
         tree.add(['a', 'b'], ['a-id', 'b-id'])
