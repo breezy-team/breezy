@@ -20,8 +20,6 @@
 import os
 
 from bzrlib import (
-    osutils,
-    urlutils,
     branch,
     bzrdir,
     errors,
@@ -35,6 +33,7 @@ from bzrlib.tests import (
     script,
     test_server,
     )
+from bzrlib.tests.blackbox import test_switch
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.script import run_script
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
@@ -521,52 +520,30 @@ class TestDeprecatedAliases(TestCaseWithTransport):
             """ % locals())
 
 
-class TestBranchParentLocation(TestCaseWithTransport):
+class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):
 
-    def setUp(self):
-        """Set up a repository and branch ready for testing."""
-        super(TestBranchParentLocation, self).setUp()
-        self.script_runner = script.ScriptRunner()
+    def _checkout_and_branch(self, option=''):
         self.script_runner.run_script(self, '''
-                $ bzr init-repo --no-trees repo
-                Shared repository...
-                Location:
-                  shared repository: repo
-                $ bzr init repo/trunk
-                Created a repository branch...
-                Using shared repository: ...
-                ''')
-
-    def assertParentCorrect(self, branch, expected_parent, name):
-        """Verify that the parent is not None and is set correctly."""
-        actual_parent = branch.get_parent()
-        self.assertIsNot(actual_parent, None, name + "Parent not set")
-        expected = urlutils.strip_trailing_slash(urlutils.normalize_url(expected_parent))
-        actual = urlutils.strip_trailing_slash(urlutils.normalize_url(actual_parent))
-        self.assertEquals(expected, actual, name + "Parent set incorrectly")
-
-    def _create_checkout_and_branch(self, option, suffix):
-        self.script_runner.run_script(self, '''
-                $ bzr checkout %(option)s repo/trunk work_%(suffix)s_branch
-                $ cd work_%(suffix)s_branch
-                $ bzr branch --switch ../repo/trunk ../repo/branched_%(suffix)s
+                $ bzr checkout %(option)s repo/trunk checkout
+                $ cd checkout
+                $ bzr branch --switch ../repo/trunk ../repo/branched
                 2>Branched 0 revision(s).
                 2>Tree is up to date at revision 0.
-                2>Switched to branch:...branched_%(suffix)s...
+                2>Switched to branch:...branched...
                 $ cd ..
                 ''' % locals())
-        bound_branch = branch.Branch.open_containing('work_%(suffix)s_branch' % locals())[0]
-        master_branch = branch.Branch.open_containing('repo/branched_%(suffix)s' % locals())[0]
+        bound_branch = branch.Branch.open_containing('checkout')[0]
+        master_branch = branch.Branch.open_containing('repo/branched')[0]
         return (bound_branch, master_branch)
 
     def test_branch_switch_parent_lightweight(self):
-        """Verify parent directory for lightweight checkout using bzr branch --switch."""
-        bb, mb = self._create_checkout_and_branch(option='--lightweight', suffix='lw')
-        self.assertParentCorrect(bb, urlutils.local_path_to_url('repo/trunk'), "Checkout")
-        self.assertParentCorrect(mb, urlutils.local_path_to_url('repo/trunk'), "Master Branch")
+        """Lightweight checkout using bzr branch --switch."""
+        bb, mb = self._checkout_and_branch(option='--lightweight')
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)
 
     def test_branch_switch_parent_heavyweight(self):
-        """Verify parent directory for heavyweight checkout using bzr branch --switch."""
-        bb, mb = self._create_checkout_and_branch(option='', suffix='hw')
-        self.assertParentCorrect(bb, urlutils.local_path_to_url('repo/trunk'), "Bound Branch")
-        self.assertParentCorrect(mb, urlutils.local_path_to_url('repo/trunk'), "Master Branch")
+        """Heavyweight checkout using bzr branch --switch."""
+        bb, mb = self._checkout_and_branch()
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)
