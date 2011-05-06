@@ -427,8 +427,7 @@ update-pot: po/bzr.pot
 
 TRANSLATABLE_PYFILES:=$(shell find bzrlib -name '*.py' \
     		| grep -v 'bzrlib/tests/' \
-    		| grep -v 'bzrlib/doc'    \
-    		| grep -v 'bzrlib/util'    \
+    		| grep -v 'bzrlib/doc' \
 		)
 
 po/bzr.pot: $(PYFILES) $(DOCFILES)
