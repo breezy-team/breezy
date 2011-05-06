@@ -32,6 +32,9 @@ Bug Fixes
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
+* Correct parent is now set when using 'switch -b' with bound branches.
+  (A. S. Budden, #513709)
+
 Documentation
 *************
 
