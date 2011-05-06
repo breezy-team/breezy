@@ -37,6 +37,9 @@ Bug Fixes
 
 * All Tree types can now be exported as tar.*, zip or directories.
   (Aaron Bentley)
+  
+* Correct parent is now set when using 'switch -b' with bound branches.
+  (A. S. Budden, #513709)
 
 Documentation
 *************
