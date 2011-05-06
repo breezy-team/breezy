@@ -244,12 +244,6 @@ class DirStateWorkingTree(WorkingTree3):
 
         :return: an integer. -1 means never save.
         """
-        # FIXME: File content updates are considered IN_MEMORY_HASH_MODIFIED.
-        #        In this case, we only rewrite the dirstate if *enough* changes
-        #        have been observed. The default value is 10. Other
-        #        possibilities would be number-of-bytes-read vs
-        #        number-of-bytes-to-write sort of threshold (or fraction of
-        #        tree read, etc).
         config = self.branch.get_config()
         val = config.get_user_option('bzr.workingtree.worth_saving_limit')
         if val is None:
