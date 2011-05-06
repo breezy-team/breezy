@@ -782,11 +782,27 @@ class DiffFromTool(DiffPath):
                 raise
         return True
 
-    def _safe_filename(self, prefix, relpath):
+    @staticmethod
+    def _fenc():
         if sys.platform == 'win32':
-            fenc = 'mbcs'
+            return 'mbcs'
         else:
-            fenc = sys.getfilesystemencoding() or 'ascii'
+            # Don't fallback to 'utf-8' because subprocess may not be able to
+            # handle utf-8 correctly when locale is not utf-8.
+            return sys.getfilesystemencoding() or 'ascii'
+
+    def _is_safepath(self, path):
+        """Return true if `path` may be able to pass to subprocess."""
+        fenc = self._fenc()
+        try:
+            return path == path.encode(fenc).decode(fenc)
+        except UnicodeError:
+            return False
+
+    def _safe_filename(self, prefix, relpath):
+        """Replace unsafe character in `relpath` then join `self._root`,
+        `prefix` and `relpath`."""
+        fenc = self._fenc()
         # encoded_str.replace('?', '_') may break multibyte char.
         # So we should encode, decode, then replace(u'?', u'_')
         relpath_tmp = relpath.encode(fenc, 'replace').decode(fenc, 'replace')
@@ -796,7 +812,9 @@ class DiffFromTool(DiffPath):
     def _write_file(self, file_id, tree, prefix, relpath, force_temp=False,
                     allow_write=False):
         if not force_temp and isinstance(tree, WorkingTree):
-            return tree.abspath(tree.id2path(file_id))
+            full_path = tree.abspath(tree.id2path(file_id))
+            if self._is_safepath(full_path):
+                return full_path
 
         full_path = self._safe_filename(prefix, relpath)
         if not force_temp and self._try_symlink_root(tree, prefix):

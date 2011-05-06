@@ -1432,8 +1432,9 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             dirname  = scenario['info']['directory']
             filename = scenario['info']['filename']
 
-            self.overrideAttr(sys, 'getfilesystemencoding', lambda: encoding)
-            fullpath = diffobj._safe_filename('safe', dirname + u'/' + filename)
+            self.overrideAttr(diffobj, '_fenc', lambda: encoding)
+            relpath = dirname + u'/' + filename
+            fullpath = diffobj._safe_filename('safe', relpath)
             self.assertEqual(
                     fullpath,
                     fullpath.encode(encoding).decode(encoding)
@@ -1454,8 +1455,9 @@ class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
             else:
                 encoding = 'iso-8859-1'
 
-            self.overrideAttr(sys, 'getfilesystemencoding', lambda: encoding)
-            fullpath = diffobj._safe_filename('safe', dirname + u'/' + filename)
+            self.overrideAttr(diffobj, '_fenc', lambda: encoding)
+            relpath = dirname + u'/' + filename
+            fullpath = diffobj._safe_filename('safe', relpath)
             self.assertEqual(
                     fullpath,
                     fullpath.encode(encoding).decode(encoding)
