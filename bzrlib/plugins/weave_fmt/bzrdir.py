@@ -599,7 +599,7 @@ class ConvertBzrDir6ToMeta(Converter):
                 if name in bzrcontents:
                     self.bzrdir.transport.delete(name)
         else:
-            from bzrlib.workingtree import WorkingTreeFormat3
+            from bzrlib.workingtree_3 import WorkingTreeFormat3
             self.step('Upgrading working tree')
             self.bzrdir.transport.mkdir('checkout', mode=self.dir_mode)
             self.make_lock('checkout')
