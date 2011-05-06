@@ -433,7 +433,7 @@ TRANSLATABLE_PYFILES:=$(shell find bzrlib -name '*.py' \
 po/bzr.pot: $(PYFILES) $(DOCFILES)
 	$(PYTHON) tools/bzrgettext.py $(TRANSLATABLE_PYFILES) > po/bzr.pot
 	echo $(TRANSLATABLE_PYFILES) | xargs \
-	  xgettext --package-name "Bazaar" \
+	  xgettext --package-name "bzr" \
 	  --msgid-bugs-address "<bazaar@canonical.com>" \
 	  --copyright-holder "Canonical" \
 	  --from-code ISO-8859-1 --join --sort-by-file --add-comments=i18n: \
