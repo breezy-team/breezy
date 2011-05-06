@@ -16,14 +16,12 @@
 
 """Tests of the parent related functions of WorkingTrees."""
 
-from errno import EEXIST
 import os
 
 from bzrlib import (
     errors,
     osutils,
     revision as _mod_revision,
-    symbol_versioning,
     tests,
     )
 from bzrlib.inventory import (

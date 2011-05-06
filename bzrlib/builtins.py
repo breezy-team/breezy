@@ -4693,7 +4693,9 @@ class cmd_annotate(Command):
     @display_command
     def run(self, filename, all=False, long=False, revision=None,
             show_ids=False, directory=None):
-        from bzrlib.annotate import annotate_file, annotate_file_tree
+        from bzrlib.annotate import (
+            annotate_file_tree,
+            )
         wt, branch, relpath = \
             _open_directory_or_containing_tree_or_branch(filename, directory)
         if wt is not None:
@@ -4714,9 +4716,8 @@ class cmd_annotate(Command):
             annotate_file_tree(wt, file_id, self.outf, long, all,
                 show_ids=show_ids)
         else:
-            file_version = tree.get_file_revision(file_id)
-            annotate_file(branch, file_version, file_id, long, all, self.outf,
-                          show_ids=show_ids)
+            annotate_file_tree(tree, file_id, self.outf, long, all,
+                show_ids=show_ids, branch=branch)
 
 
 class cmd_re_sign(Command):
