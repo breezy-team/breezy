@@ -41,6 +41,7 @@ from bzrlib.workingtree import (
     TreeDirectory,
     TreeFile,
     TreeLink,
+    InventoryWorkingTree,
     WorkingTree,
     )
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
@@ -244,21 +245,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         revid = b.revision_history()[0]
         self.log('first revision_id is {%s}' % revid)
 
-        inv = b.repository.get_inventory(revid)
-        self.log('contents of inventory: %r' % inv.entries())
+        tree = b.repository.revision_tree(revid)
+        self.log('contents of tree: %r' % list(tree.iter_entries_by_dir()))
 
-        self.check_inventory_shape(inv,
-                                   ['dir/', 'dir/sub/', 'dir/sub/file'])
+        self.check_tree_shape(tree, ['dir/', 'dir/sub/', 'dir/sub/file'])
         wt.rename_one('dir', 'newdir')
 
         wt.lock_read()
-        self.check_inventory_shape(wt.inventory,
+        self.check_tree_shape(wt,
                                    ['newdir/', 'newdir/sub/', 'newdir/sub/file'])
         wt.unlock()
         wt.rename_one('newdir/sub', 'newdir/newsub')
         wt.lock_read()
-        self.check_inventory_shape(wt.inventory,
-                                   ['newdir/', 'newdir/newsub/',
+        self.check_tree_shape(wt, ['newdir/', 'newdir/newsub/',
                                     'newdir/newsub/file'])
         wt.unlock()
 
@@ -775,7 +774,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.lock_read()
             self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in
-                                tree.inventory.iter_entries()])
+                                tree.iter_entries_by_dir()])
             tree.unlock()
         finally:
             osutils.normalized_filename = orig
@@ -797,6 +796,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test__write_inventory(self):
         # The private interface _write_inventory is currently used by transform.
         tree = self.make_branch_and_tree('.')
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable("_write_inventory does not exist on "
+                "non-inventory working trees")
         # if we write write an inventory then do a walkdirs we should get back
         # missing entries, and actual, and unknowns as appropriate.
         self.build_tree(['present', 'unknown'])

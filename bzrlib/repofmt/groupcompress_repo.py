@@ -1261,17 +1261,17 @@ class GroupCHKStreamSource(StreamSource):
             yield (stream_info[0],
                 wrap_and_count(pb, rc, stream_info[1]))
         self._revision_keys = [(rev_id,) for rev_id in revision_ids]
-        self.from_repository.revisions.clear_cache()
-        self.from_repository.signatures.clear_cache()
-        s = self._get_inventory_stream(self._revision_keys)
-        yield (s[0], wrap_and_count(pb, rc, s[1]))
-        self.from_repository.inventories.clear_cache()
         # TODO: The keys to exclude might be part of the search recipe
         # For now, exclude all parents that are at the edge of ancestry, for
         # which we have inventories
         from_repo = self.from_repository
         parent_keys = from_repo._find_parent_keys_of_revisions(
                         self._revision_keys)
+        self.from_repository.revisions.clear_cache()
+        self.from_repository.signatures.clear_cache()
+        s = self._get_inventory_stream(self._revision_keys)
+        yield (s[0], wrap_and_count(pb, rc, s[1]))
+        self.from_repository.inventories.clear_cache()
         for stream_info in self._get_filtered_chk_streams(parent_keys):
             yield (stream_info[0], wrap_and_count(pb, rc, stream_info[1]))
         self.from_repository.chk_bytes.clear_cache()

@@ -2365,6 +2365,158 @@ class BranchStore(IniFileStore):
         super(BranchStore, self).__init__(branch.control_transport,
                                           'branch.conf')
 
+class SectionMatcher(object):
+    """Select sections into a given Store.
+
+    This intended to be used to postpone getting an iterable of sections from a
+    store.
+    """
+
+    def __init__(self, store):
+        self.store = store
+
+    def get_sections(self):
+        # This is where we require loading the store so we can see all defined
+        # sections.
+        sections = self.store.get_sections()
+        # Walk the revisions in the order provided
+        for s in sections:
+            if self.match(s):
+                yield s
+
+    def match(self, secion):
+        raise NotImplementedError(self.match)
+
+
+class LocationSection(Section):
+
+    def __init__(self, section, length, extra_path):
+        super(LocationSection, self).__init__(section.id, section.options)
+        self.length = length
+        self.extra_path = extra_path
+
+    def get(self, name, default=None):
+        value = super(LocationSection, self).get(name, default)
+        if value is not None:
+            policy_name = self.get(name + ':policy', None)
+            policy = _policy_value.get(policy_name, POLICY_NONE)
+            if policy == POLICY_APPENDPATH:
+                value = urlutils.join(value, self.extra_path)
+        return value
+
+
+class LocationMatcher(SectionMatcher):
+
+    def __init__(self, store, location):
+        super(LocationMatcher, self).__init__(store)
+        self.location = location
+
+    def get_sections(self):
+        # Override the default implementation as we want to change the order
+
+        # The following is a bit hackish but ensures compatibility with
+        # LocationConfig by reusing the same code
+        sections = list(self.store.get_sections())
+        filtered_sections = _iter_for_location_by_parts(
+            [s.id for s in sections], self.location)
+        iter_sections = iter(sections)
+        matching_sections = []
+        for section_id, extra_path, length in filtered_sections:
+            # a section id is unique for a given store so it's safe to iterate
+            # again
+            section = iter_sections.next()
+            if section_id == section.id:
+                matching_sections.append(
+                    LocationSection(section, length, extra_path))
+        # We want the longest (aka more specific) locations first
+        sections = sorted(matching_sections,
+                          key=lambda section: (section.length, section.id),
+                          reverse=True)
+        # Sections mentioning 'ignore_parents' restrict the selection
+        for section in sections:
+            # FIXME: We really want to use as_bool below -- vila 2011-04-07
+            ignore = section.get('ignore_parents', None)
+            if ignore is not None:
+                ignore = ui.bool_from_string(ignore)
+            if ignore:
+                break
+            # Finally, we have a valid section
+            yield section
+
+
+class Stack(object):
+    """A stack of configurations where an option can be defined"""
+
+    def __init__(self, sections_def, store=None, mutable_section_name=None):
+        """Creates a stack of sections with an optional store for changes.
+
+        :param sections_def: A list of Section or callables that returns an
+            iterable of Section. This defines the Sections for the Stack and
+            can be called repeatedly if needed.
+
+        :param store: The optional Store where modifications will be
+            recorded. If none is specified, no modifications can be done.
+
+        :param mutable_section_name: The name of the MutableSection where
+            changes are recorded. This requires the ``store`` parameter to be
+            specified.
+        """
+        self.sections_def = sections_def
+        self.store = store
+        self.mutable_section_name = mutable_section_name
+
+    def get(self, name):
+        """Return the *first* option value found in the sections.
+
+        This is where we guarantee that sections coming from Store are loaded
+        lazily: the loading is delayed until we need to either check that an
+        option exists or get its value, which in turn may require to discover
+        in which sections it can be defined. Both of these (section and option
+        existence) require loading the store (even partially).
+        """
+        # FIXME: No caching of options nor sections yet -- vila 20110503
+
+        # Ensuring lazy loading is achieved by delaying section matching until
+        # it can be avoided anymore by using callables to describe (possibly
+        # empty) section lists.
+        for section_or_callable in self.sections_def:
+            # Each section can expand to multiple ones when a callable is used
+            if callable(section_or_callable):
+                sections = section_or_callable()
+            else:
+                sections = [section_or_callable]
+            for section in sections:
+                value = section.get(name)
+                if value is not None:
+                    return value
+        # No definition was found
+        return None
+
+    def _get_mutable_section(self):
+        """Get the MutableSection for the Stack.
+
+        This is where we guarantee that the mutable section is lazily loaded:
+        this means we won't load the corresponding store before setting a value
+        or deleting an option. In practice the store will often be loaded but
+        this allows catching some programming errors.
+        """
+        section = self.store.get_mutable_section(self.mutable_section_name)
+        return section
+
+    def set(self, name, value):
+        """Set a new value for the option."""
+        section = self._get_mutable_section()
+        section.set(name, value)
+
+    def remove(self, name):
+        """Remove an existing option."""
+        section = self._get_mutable_section()
+        section.remove(name)
+
+    def __repr__(self):
+        # Mostly for debugging use
+        return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
+
 
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.

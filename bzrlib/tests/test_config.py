@@ -2111,13 +2111,157 @@ class TestLockableIniFileStore(TestStore):
     # at possible fallouts for concurrent lockers -- vila 20110-04-06
 
 
+class TestSectionMatcher(TestStore):
+
+    scenarios = [('location', {'matcher': config.LocationMatcher})]
+
+    def get_store(self, file_name):
+        return config.IniFileStore(self.get_readonly_transport(), file_name)
+
+    def test_no_matches_for_empty_stores(self):
+        store = self.get_store('foo.conf')
+        store._load_from_string('')
+        matcher = self.matcher(store, '/bar')
+        self.assertEquals([], list(matcher.get_sections()))
+
+    def test_build_doesnt_load_store(self):
+        store = self.get_store('foo.conf')
+        matcher = self.matcher(store, '/bar')
+        self.assertFalse(store.is_loaded())
+
+
+class TestLocationSection(tests.TestCase):
+
+    def get_section(self, options, extra_path):
+        section = config.Section('foo', options)
+        # We don't care about the length so we use '0'
+        return config.LocationSection(section, 0, extra_path)
+
+    def test_simple_option(self):
+        section = self.get_section({'foo': 'bar'}, '')
+        self.assertEquals('bar', section.get('foo'))
+
+    def test_option_with_extra_path(self):
+        section = self.get_section({'foo': 'bar', 'foo:policy': 'appendpath'},
+                                   'baz')
+        self.assertEquals('bar/baz', section.get('foo'))
+
+    def test_invalid_policy(self):
+        section = self.get_section({'foo': 'bar', 'foo:policy': 'die'},
+                                   'baz')
+        # invalid policies are ignored
+        self.assertEquals('bar', section.get('foo'))
+
+
+class TestLocationMatcher(TestStore):
+
+    def get_store(self, file_name):
+        return config.IniFileStore(self.get_readonly_transport(), file_name)
+
+    def test_more_specific_sections_first(self):
+        store = self.get_store('foo.conf')
+        store._load_from_string('''
+[/foo]
+section=/foo
+[/foo/bar]
+section=/foo/bar
+''')
+        self.assertEquals(['/foo', '/foo/bar'],
+                          [section.id for section in store.get_sections()])
+        matcher = config.LocationMatcher(store, '/foo/bar/baz')
+        sections = list(matcher.get_sections())
+        self.assertEquals([3, 2],
+                          [section.length for section in sections])
+        self.assertEquals(['/foo/bar', '/foo'],
+                          [section.id for section in sections])
+        self.assertEquals(['baz', 'bar/baz'],
+                          [section.extra_path for section in sections])
+
+
+
+class TestStackGet(tests.TestCase):
+
+    # FIXME: This should be parametrized for all known Stack or dedicated
+    # paramerized tests created to avoid bloating -- vila 2011-03-31
+
+    def test_single_config_get(self):
+        conf = dict(foo='bar')
+        conf_stack = config.Stack([conf])
+        self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_first_definition(self):
+        conf1 = dict(foo='bar')
+        conf2 = dict(foo='baz')
+        conf_stack = config.Stack([conf1, conf2])
+        self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_embedded_definition(self):
+        conf1 = dict(yy='12')
+        conf2 = config.Stack([dict(xx='42'), dict(foo='baz')])
+        conf_stack = config.Stack([conf1, conf2])
+        self.assertEquals('baz', conf_stack.get('foo'))
+
+    def test_get_for_empty_stack(self):
+        conf_stack = config.Stack([])
+        self.assertEquals(None, conf_stack.get('foo'))
+
+    def test_get_for_empty_section_callable(self):
+        conf_stack = config.Stack([lambda : []])
+        self.assertEquals(None, conf_stack.get('foo'))
+
+    def test_get_for_broken_callable(self):
+        # Trying to use and invalid callable raises an exception on first use
+        conf_stack = config.Stack([lambda : object()])
+        self.assertRaises(TypeError, conf_stack.get, 'foo')
+
+
+class TestStackSet(tests.TestCaseWithTransport):
+
+    # FIXME: This should be parametrized for all known Stack or dedicated
+    # paramerized tests created to avoid bloating -- vila 2011-04-05
+
+    def test_simple_set(self):
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
+        store._load_from_string('foo=bar')
+        conf = config.Stack([store.get_sections], store)
+        self.assertEquals('bar', conf.get('foo'))
+        conf.set('foo', 'baz')
+        # Did we get it back ?
+        self.assertEquals('baz', conf.get('foo'))
+
+    def test_set_creates_a_new_section(self):
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
+        conf = config.Stack([store.get_sections], store)
+        conf.set('foo', 'baz')
+        self.assertEquals, 'baz', conf.get('foo')
+
+
+class TestStackRemove(tests.TestCaseWithTransport):
+
+    # FIXME: This should be parametrized for all known Stack or dedicated
+    # paramerized tests created to avoid bloating -- vila 2011-04-06
+
+    def test_remove_existing(self):
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
+        store._load_from_string('foo=bar')
+        conf = config.Stack([store.get_sections], store)
+        self.assertEquals('bar', conf.get('foo'))
+        conf.remove('foo')
+        # Did we get it back ?
+        self.assertEquals(None, conf.get('foo'))
+
+    def test_remove_unknown(self):
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
+        conf = config.Stack([store.get_sections], store)
+        self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
+
+
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):
         super(TestConfigGetOptions, self).setUp()
         create_configs(self)
 
-    # One variable in none of the above
     def test_no_variable(self):
         # Using branch should query branch, locations and bazaar
         self.assertOptions([], self.branch_config)
