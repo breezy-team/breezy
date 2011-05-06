@@ -73,6 +73,8 @@ from bzrlib.workingtree import (
 
 class DirStateWorkingTree(WorkingTree3):
 
+    _DEFAULT_WORTH_SAVING_LIMIT = 10
+
     def __init__(self, basedir,
                  branch,
                  _control_files=None,
@@ -242,9 +244,26 @@ class DirStateWorkingTree(WorkingTree3):
 
         :return: an integer. -1 means never save.
         """
-        # XXX: In the future, we could return -1 for logical read-only
-        # operations like status. For now, just use a small number.
-        return 10
+        # FIXME: File content updates are considered IN_MEMORY_HASH_MODIFIED.
+        #        In this case, we only rewrite the dirstate if *enough* changes
+        #        have been observed. The default value is 10. Other
+        #        possibilities would be number-of-bytes-read vs
+        #        number-of-bytes-to-write sort of threshold (or fraction of
+        #        tree read, etc).
+        config = self.branch.get_config()
+        val = config.get_user_option('bzr.workingtree.worth_saving_limit')
+        if val is None:
+            val = self._DEFAULT_WORTH_SAVING_LIMIT
+        else:
+            try:
+                val = int(val)
+            except ValueError, e:
+                trace.warning('Invalid config value for'
+                              ' "bzr.workingtree.worth_saving_limit"'
+                              ' value %r is not an integer.'
+                              % (val,))
+                val = self._DEFAULT_WORTH_SAVING_LIMIT
+        return val
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
