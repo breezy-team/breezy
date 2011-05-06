@@ -535,7 +535,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         self.addCleanup(basis_tree.unlock)
-        self.assertEqual(rev_id, basis_tree.inventory.root.revision)
+        self.assertEqual(rev_id,
+            basis_tree.get_file_revision(basis_tree.get_root_id()))
 
     def _get_revtrees(self, tree, revision_ids):
         tree.lock_read()
@@ -555,11 +556,13 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev1 = tree.commit('')
         rev2 = tree.commit('')
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.inventory.root.revision)
+        self.assertEqual(rev1, tree1.get_file_revision(tree1.get_root_id()))
         if tree.branch.repository.supports_rich_root():
-            self.assertEqual(rev1, tree2.inventory.root.revision)
+            self.assertEqual(rev1,
+                tree2.get_file_revision(tree2.get_root_id()))
         else:
-            self.assertEqual(rev2, tree2.inventory.root.revision)
+            self.assertEqual(rev2,
+                tree2.get_file_revision(tree2.get_root_id()))
 
     def _add_commit_check_unchanged(self, tree, name, mini_commit=None):
         tree.add([name], [name + 'id'])

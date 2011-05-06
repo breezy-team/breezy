@@ -16,12 +16,9 @@
 
 """Tests for interface conformance of 'WorkingTree.add'"""
 
-import os
-
 from bzrlib import (
     errors,
     inventory,
-    osutils,
     tests,
     )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
