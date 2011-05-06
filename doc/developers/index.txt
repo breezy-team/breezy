@@ -36,9 +36,10 @@ Architecture overviews
 .. toctree::
    :maxdepth: 1
 
+   configuration
+   fetch
    transports
    ui
-   fetch
 
 Releasing and Packaging
 =======================

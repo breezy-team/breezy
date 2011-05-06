@@ -17,10 +17,18 @@
 """Tests for Repository.add_inventory_by_delta."""
 
 from bzrlib import errors, revision
-from bzrlib.tests.per_repository import TestCaseWithRepository
+from bzrlib.tests.per_repository_vf import (
+    all_repository_vf_format_scenarios,
+    TestCaseWithRepository
+    )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
+
+load_tests = load_tests_apply_scenarios
 
 
 class TestAddInventoryByDelta(TestCaseWithRepository):
+
+    scenarios = all_repository_vf_format_scenarios()
 
     def _get_repo_in_write_group(self, path='repository'):
         repo = self.make_repository(path)
