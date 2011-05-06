@@ -166,17 +166,16 @@ def bzrerrors():
 def bzr_helptopics():
     from bzrlib.help_topics import topic_registry
     for key in topic_registry.keys():
-        print >>sys.stderr, "Extracting help topic on:", key
         doc = topic_registry.get(key)
         if isinstance(doc, str):
             poentry_per_paragraph(
-                    'detail of help topic about '+key,
-                    0, doc)
+                    'dummy/help_topics/'+key+'/detail.txt',
+                    1, doc)
 
         summary = topic_registry.get_summary(key)
         if summary is not None:
-            poentry('summery of help topic about '+key,
-                    0, summary)
+            poentry('dummy/help_topics/'+key+'/summary.txt',
+                    1, summary)
 
 
 def rawtext(path):
