@@ -2178,6 +2178,84 @@ section=/foo/bar
                           [section.extra_path for section in sections])
 
 
+
+class TestStackGet(tests.TestCase):
+
+    # FIXME: This should be parametrized for all known Stack or dedicated
+    # paramerized tests created to avoid bloating -- vila 2011-03-31
+
+    def test_single_config_get(self):
+        conf = dict(foo='bar')
+        conf_stack = config.Stack([conf])
+        self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_first_definition(self):
+        conf1 = dict(foo='bar')
+        conf2 = dict(foo='baz')
+        conf_stack = config.Stack([conf1, conf2])
+        self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_embedded_definition(self):
+        conf1 = dict(yy='12')
+        conf2 = config.Stack([dict(xx='42'), dict(foo='baz')])
+        conf_stack = config.Stack([conf1, conf2])
+        self.assertEquals('baz', conf_stack.get('foo'))
+
+    def test_get_for_empty_stack(self):
+        conf_stack = config.Stack([])
+        self.assertEquals(None, conf_stack.get('foo'))
+
+    def test_get_for_empty_section_callable(self):
+        conf_stack = config.Stack([lambda : []])
+        self.assertEquals(None, conf_stack.get('foo'))
+
+    def test_get_for_broken_callable(self):
+        # Trying to use and invalid callable raises an exception on first use
+        conf_stack = config.Stack([lambda : object()])
+        self.assertRaises(TypeError, conf_stack.get, 'foo')
+
+
+class TestStackSet(tests.TestCaseWithTransport):
+
+    # FIXME: This should be parametrized for all known Stack or dedicated
+    # paramerized tests created to avoid bloating -- vila 2011-04-05
+
+    def test_simple_set(self):
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
+        store._load_from_string('foo=bar')
+        conf = config.Stack([store.get_sections], store)
+        self.assertEquals('bar', conf.get('foo'))
+        conf.set('foo', 'baz')
+        # Did we get it back ?
+        self.assertEquals('baz', conf.get('foo'))
+
+    def test_set_creates_a_new_section(self):
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
+        conf = config.Stack([store.get_sections], store)
+        conf.set('foo', 'baz')
+        self.assertEquals, 'baz', conf.get('foo')
+
+
+class TestStackRemove(tests.TestCaseWithTransport):
+
+    # FIXME: This should be parametrized for all known Stack or dedicated
+    # paramerized tests created to avoid bloating -- vila 2011-04-06
+
+    def test_remove_existing(self):
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
+        store._load_from_string('foo=bar')
+        conf = config.Stack([store.get_sections], store)
+        self.assertEquals('bar', conf.get('foo'))
+        conf.remove('foo')
+        # Did we get it back ?
+        self.assertEquals(None, conf.get('foo'))
+
+    def test_remove_unknown(self):
+        store = config.IniFileStore(self.get_transport(), 'test.conf')
+        conf = config.Stack([store.get_sections], store)
+        self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
+
+
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):

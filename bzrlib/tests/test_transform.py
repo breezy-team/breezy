@@ -2651,6 +2651,18 @@ class TestTransformPreview(tests.TestCaseWithTransport):
         preview_mtime = preview_tree.get_file_mtime('file-id', 'renamed')
         work_mtime = work_tree.get_file_mtime('file-id', 'file')
 
+    def test_get_file_size(self):
+        work_tree = self.make_branch_and_tree('tree')
+        self.build_tree_contents([('tree/old', 'old')])
+        work_tree.add('old', 'old-id')
+        preview = TransformPreview(work_tree)
+        self.addCleanup(preview.finalize)
+        new_id = preview.new_file('name', preview.root, 'contents', 'new-id',
+                                  'executable')
+        tree = preview.get_preview_tree()
+        self.assertEqual(len('old'), tree.get_file_size('old-id'))
+        self.assertEqual(len('contents'), tree.get_file_size('new-id'))
+
     def test_get_file(self):
         preview = self.get_empty_preview()
         preview.new_file('file', preview.root, 'contents', 'file-id')
@@ -3067,6 +3079,24 @@ class TestTransformPreview(tests.TestCaseWithTransport):
                                          pb, tree.basis_tree())
         merger.merge_type = Merge3Merger
         merger.do_merge()
+
+    def test_has_filename(self):
+        wt = self.make_branch_and_tree('tree')
+        self.build_tree(['tree/unmodified', 'tree/removed', 'tree/modified'])
+        tt = TransformPreview(wt)
+        removed_id = tt.trans_id_tree_path('removed')
+        tt.delete_contents(removed_id)
+        tt.new_file('new', tt.root, 'contents')
+        modified_id = tt.trans_id_tree_path('modified')
+        tt.delete_contents(modified_id)
+        tt.create_file('modified-contents', modified_id)
+        self.addCleanup(tt.finalize)
+        tree = tt.get_preview_tree()
+        self.assertTrue(tree.has_filename('unmodified'))
+        self.assertFalse(tree.has_filename('not-present'))
+        self.assertFalse(tree.has_filename('removed'))
+        self.assertTrue(tree.has_filename('new'))
+        self.assertTrue(tree.has_filename('modified'))
 
     def test_is_executable(self):
         tree = self.make_branch_and_tree('tree')

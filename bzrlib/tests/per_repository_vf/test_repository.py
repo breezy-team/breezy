@@ -18,6 +18,10 @@
 
 from bzrlib import (
     errors,
+    gpg,
+    inventory,
+    repository as _mod_repository,
+    revision as _mod_revision,
     tests,
     versionedfile,
     )
@@ -111,6 +115,60 @@ class TestRepository(TestCaseWithRepository):
             revisions.add_lines, ('foo',), [], [])
         self.assertRaises(errors.ObjectNotLocked,
             inventories.add_lines, ('foo',), [], [])
+
+    def test_get_serializer_format(self):
+        repo = self.make_repository('.')
+        format = repo.get_serializer_format()
+        self.assertEqual(repo._serializer.format_num, format)
+
+    def test_add_revision_inventory_sha1(self):
+        inv = inventory.Inventory(revision_id='A')
+        inv.root.revision = 'A'
+        inv.root.file_id = 'fixed-root'
+        # Insert the inventory on its own to an identical repository, to get
+        # its sha1.
+        reference_repo = self.make_repository('reference_repo')
+        reference_repo.lock_write()
+        reference_repo.start_write_group()
+        inv_sha1 = reference_repo.add_inventory('A', inv, [])
+        reference_repo.abort_write_group()
+        reference_repo.unlock()
+        # Now insert a revision with this inventory, and it should get the same
+        # sha1.
+        repo = self.make_repository('repo')
+        repo.lock_write()
+        repo.start_write_group()
+        root_id = inv.root.file_id
+        repo.texts.add_lines(('fixed-root', 'A'), [], [])
+        repo.add_revision('A', _mod_revision.Revision(
+                'A', committer='B', timestamp=0,
+                timezone=0, message='C'), inv=inv)
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.assertEquals(inv_sha1, repo.get_revision('A').inventory_sha1)
+        repo.unlock()
+
+    def test_install_revisions(self):
+        wt = self.make_branch_and_tree('source')
+        wt.commit('A', allow_pointless=True, rev_id='A')
+        repo = wt.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+        repo2 = self.make_repository('repo2')
+        revision = repo.get_revision('A')
+        tree = repo.revision_tree('A')
+        signature = repo.get_signature_text('A')
+        repo2.lock_write()
+        self.addCleanup(repo2.unlock)
+        _mod_repository.install_revisions(repo2, [(revision, tree, signature)])
+        self.assertEqual(revision, repo2.get_revision('A'))
+        self.assertEqual(signature, repo2.get_signature_text('A'))
 
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):

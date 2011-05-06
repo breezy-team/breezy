@@ -26,11 +26,20 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Slightly reduced memory consumption when fetching into a 2a repository
+  by reusing existing caching a little better.  (Andrew Bennetts)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* All Tree types can now be exported as tar.*, zip or directories.
+  (Aaron Bentley)
+  
+* Correct parent is now set when using 'switch -b' with bound branches.
+  (A. S. Budden, #513709)
 
 Documentation
 *************
@@ -42,6 +51,9 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``annotate_file`` has been deprecated in favor of
+  ``annotate_file_revision_tree``. (Jelmer Vernooij, #775598)
 
 Internals
 *********
@@ -170,6 +182,10 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``Branch.update_revisions`` has been made private and should no
+  longer be used by external users. Use ``Branch.pull`` or ``Branch.push``
+  instead. (Jelmer Vernooij, #771765)
 
 * Commands now have an `invoked_as` attribute, showing the name under
   which they were called before alias expansion.
@@ -424,6 +440,9 @@ API Changes
 * ``BranchFormat.supports_leaving_lock()`` and
   ``RepositoryFormat.supports_leaving_lock`` flags have been added.
   (Jelmer Vernooij)
+
+* ``Branch.fetch`` implementations must now accept an optional
+  ``fetch_tags`` keyword argument. (Andrew Bennetts)
 
 * ``Branch.import_last_revision_info`` is deprecated.  Use the
   ``import_last_revision_info_and_tags`` method instead.
