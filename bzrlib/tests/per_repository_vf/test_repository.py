@@ -350,3 +350,67 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         finally:
             repo.abort_write_group()
             repo.unlock()
+
+
+class TestCaseWithCorruptRepository(per_repository.TestCaseWithRepository):
+
+    def setUp(self):
+        super(TestCaseWithCorruptRepository, self).setUp()
+        # a inventory with no parents and the revision has parents..
+        # i.e. a ghost.
+        repo = self.make_repository('inventory_with_unnecessary_ghost')
+        repo.lock_write()
+        repo.start_write_group()
+        inv = inventory.Inventory(revision_id = 'ghost')
+        inv.root.revision = 'ghost'
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            repo.texts.add_lines((root_id, 'ghost'), [], [])
+        sha1 = repo.add_inventory('ghost', inv, [])
+        rev = _mod_revision.Revision(
+            timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
+            message="Message", inventory_sha1=sha1, revision_id='ghost')
+        rev.parent_ids = ['the_ghost']
+        try:
+            repo.add_revision('ghost', rev)
+        except (errors.NoSuchRevision, errors.RevisionNotPresent):
+            raise tests.TestNotApplicable(
+                "Cannot test with ghosts for this format.")
+
+        inv = inventory.Inventory(revision_id = 'the_ghost')
+        inv.root.revision = 'the_ghost'
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            repo.texts.add_lines((root_id, 'the_ghost'), [], [])
+        sha1 = repo.add_inventory('the_ghost', inv, [])
+        rev = _mod_revision.Revision(
+            timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
+            message="Message", inventory_sha1=sha1, revision_id='the_ghost')
+        rev.parent_ids = []
+        repo.add_revision('the_ghost', rev)
+        # check its setup usefully
+        inv_weave = repo.inventories
+        possible_parents = (None, (('ghost',),))
+        self.assertSubset(inv_weave.get_parent_map([('ghost',)])[('ghost',)],
+            possible_parents)
+        repo.commit_write_group()
+        repo.unlock()
+
+    def test_corrupt_revision_access_asserts_if_reported_wrong(self):
+        repo_url = self.get_url('inventory_with_unnecessary_ghost')
+        repo = _mod_repository.Repository.open(repo_url)
+        reported_wrong = False
+        try:
+            if repo.get_ancestry('ghost') != [None, 'the_ghost', 'ghost']:
+                reported_wrong = True
+        except errors.CorruptRepository:
+            # caught the bad data:
+            return
+        if not reported_wrong:
+            return
+        self.assertRaises(errors.CorruptRepository, repo.get_revision, 'ghost')
+
+    def test_corrupt_revision_get_revision_reconcile(self):
+        repo_url = self.get_url('inventory_with_unnecessary_ghost')
+        repo = _mod_repository.Repository.open(repo_url)
+        repo.get_revision_reconcile('ghost')
