@@ -29,6 +29,13 @@ Improvements
 * Slightly reduced memory consumption when fetching into a 2a repository
   by reusing existing caching a little better.  (Andrew Bennetts)
 
+* Speed up ``bzr status`` by a little bit when there are a couple of
+  modified files. We now track how many files we have seen that need
+  updating, and only rewrite the dirstate file if enough of them have
+  changed. The default is 10, and can be overridden by setting the branch
+  option "``bzr.workingtree.worth_saving_limit``".
+  (Ian Clatworthy, John Arbash Meinel, #380202)
+
 Bug Fixes
 *********
 
