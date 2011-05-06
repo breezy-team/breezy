@@ -25,6 +25,7 @@
 # The normalize function is taken from pygettext which is distributed
 # with Python under the Python License, which is GPL compatible.
 
+from __future__ import with_statement
 
 """Extract docstrings from Bazaar commands.
 """
@@ -162,6 +163,21 @@ def bzrerrors():
         if fmt:
             poentry('bzrlib/erros.py', inspect.findsource(klass)[1], fmt)
 
+def bzr_helptopics():
+    from bzrlib.help_topics import topic_registry
+    for key in topic_registry.keys():
+        print >>sys.stderr, "Extracting help topic on:", key
+        doc = topic_registry.get(key)
+        if isinstance(doc, str):
+            poentry_per_paragraph(
+                    'detail of help topic about '+key,
+                    0, doc)
+
+        summary = topic_registry.get_summary(key)
+        if summary is not None:
+            poentry('summery of help topic about '+key,
+                    0, summary)
+
 
 def rawtext(path):
     src = open(path).read()
@@ -174,10 +190,13 @@ if __name__ == "__main__":
     # accidentally import and extract strings from a Bazaar
     # installation mentioned in PYTHONPATH.
     sys.path.insert(0, os.getcwd())
-    import bzrlib.lazy_import
-    for path in sys.argv[1:]:
-        if path.endswith('.txt'):
-            rawtext(path)
-        else:
-            docstrings(path)
-    bzrerrors()
+    import bzrlib
+
+    with bzrlib.initialize():
+        for path in sys.argv[1:]:
+            if path.endswith('.txt'):
+                rawtext(path)
+            else:
+                docstrings(path)
+        bzrerrors()
+        bzr_helptopics()
