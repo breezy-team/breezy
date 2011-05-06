@@ -210,8 +210,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(second_revision)
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        inv = rev_tree.inventory
-        rich_root = (inv.root.revision != second_revision)
+        root_revision = rev_tree.get_file_revision(rev_tree.get_root_id())
+        rich_root = (root_revision != second_revision)
         self.assertEqual(rich_root,
                          tree.branch.repository.supports_rich_root())
 
@@ -242,7 +242,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
                               self.repository_format.__class__)
         # find it via Repository.open
         opened_repo = repository.Repository.open(readonly_t.base)
-        self.failUnless(isinstance(opened_repo, made_repo.__class__))
+        self.assertIsInstance(opened_repo, made_repo.__class__)
         self.assertEqual(made_repo._format.__class__,
                          opened_repo._format.__class__)
         # if it has a unique id string, can we probe for it ?
@@ -320,7 +320,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         tree = wt.branch.repository.revision_tree('revision-1')
         tree.lock_read()
         try:
-            self.assertEqual('revision-1', tree.inventory.root.revision)
+            self.assertEqual('revision-1',
+                tree.get_file_revision(tree.get_root_id()))
             expected = inventory.InventoryDirectory('fixed-root', '', None)
             expected.revision = 'revision-1'
             self.assertEqual([('', 'V', 'directory', 'fixed-root', expected)],
@@ -472,7 +473,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_format_description(self):
         repo = self.make_repository('.')
         text = repo._format.get_format_description()
-        self.failUnless(len(text))
+        self.assertTrue(len(text))
 
     def test_format_supports_external_lookups(self):
         repo = self.make_repository('.')
@@ -545,7 +546,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
         rev_tree = tree.branch.repository.revision_tree(tree.last_revision())
         rev_tree.lock_read()
         self.addCleanup(rev_tree.unlock)
-        self.assertEqual('rev_id', rev_tree.inventory.root.revision)
+        root_id = rev_tree.get_root_id()
+        self.assertEqual('rev_id', rev_tree.get_file_revision(root_id))
 
     def test_pointless_commit(self):
         tree = self.make_branch_and_tree('.')
@@ -560,11 +562,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
         repo = self.make_repository('.')
         repo._format.rich_root_data
         repo._format.supports_tree_reference
-
-    def test_get_serializer_format(self):
-        repo = self.make_repository('.')
-        format = repo.get_serializer_format()
-        self.assertEqual(repo._serializer.format_num, format)
 
     def test_iter_files_bytes(self):
         tree = self.make_branch_and_tree('tree')
@@ -635,8 +632,8 @@ class TestRepository(per_repository.TestCaseWithRepository):
             # expected_record_names.
             # Note that the file keys can be in any order, so this test is
             # written to allow that.
-            inv = repo.get_inventory('rev_id')
-            root_item_key = ('file', inv.root.file_id, ['rev_id'])
+            rev_tree = repo.revision_tree('rev_id')
+            root_item_key = ('file', rev_tree.get_root_id(), ['rev_id'])
             self.assertTrue(root_item_key in item_keys)
             item_keys.remove(root_item_key)
 
@@ -729,55 +726,6 @@ class TestRepository(per_repository.TestCaseWithRepository):
             self.assertRaises(errors.UnsupportedOperation,
                 b.repository.add_signature_text, 'A',
                 'This might be a signature')
-
-    def test_add_revision_inventory_sha1(self):
-        inv = inventory.Inventory(revision_id='A')
-        inv.root.revision = 'A'
-        inv.root.file_id = 'fixed-root'
-        # Insert the inventory on its own to an identical repository, to get
-        # its sha1.
-        reference_repo = self.make_repository('reference_repo')
-        reference_repo.lock_write()
-        reference_repo.start_write_group()
-        inv_sha1 = reference_repo.add_inventory('A', inv, [])
-        reference_repo.abort_write_group()
-        reference_repo.unlock()
-        # Now insert a revision with this inventory, and it should get the same
-        # sha1.
-        repo = self.make_repository('repo')
-        repo.lock_write()
-        repo.start_write_group()
-        root_id = inv.root.file_id
-        repo.texts.add_lines(('fixed-root', 'A'), [], [])
-        repo.add_revision('A', _mod_revision.Revision(
-                'A', committer='B', timestamp=0,
-                timezone=0, message='C'), inv=inv)
-        repo.commit_write_group()
-        repo.unlock()
-        repo.lock_read()
-        self.assertEquals(inv_sha1, repo.get_revision('A').inventory_sha1)
-        repo.unlock()
-
-    def test_install_revisions(self):
-        wt = self.make_branch_and_tree('source')
-        wt.commit('A', allow_pointless=True, rev_id='A')
-        repo = wt.branch.repository
-        repo.lock_write()
-        repo.start_write_group()
-        repo.sign_revision('A', gpg.LoopbackGPGStrategy(None))
-        repo.commit_write_group()
-        repo.unlock()
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
-        repo2 = self.make_repository('repo2')
-        revision = repo.get_revision('A')
-        tree = repo.revision_tree('A')
-        signature = repo.get_signature_text('A')
-        repo2.lock_write()
-        self.addCleanup(repo2.unlock)
-        repository.install_revisions(repo2, [(revision, tree, signature)])
-        self.assertEqual(revision, repo2.get_revision('A'))
-        self.assertEqual(signature, repo2.get_signature_text('A'))
 
     # XXX: this helper duplicated from tests.test_repository
     def make_remote_repository(self, path, shared=False):

@@ -1444,7 +1444,7 @@ class TestCase(testtools.TestCase):
 
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
-        self.failUnlessExists(path)
+        self.assertPathExists(path)
         f = file(path, 'rb')
         try:
             s = f.read()
@@ -1460,21 +1460,31 @@ class TestCase(testtools.TestCase):
         else:
             self.assertEqual(expected_docstring, obj.__doc__)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failUnlessExists(self, path):
+        return self.assertPathExists(path)
+
+    def assertPathExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
             for p in path:
-                self.failUnlessExists(p)
+                self.assertPathExists(p)
         else:
-            self.failUnless(osutils.lexists(path),path+" does not exist")
+            self.assertTrue(osutils.lexists(path),
+                path + " does not exist")
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failIfExists(self, path):
+        return self.assertPathDoesNotExist(path)
+
+    def assertPathDoesNotExist(self, path):
         """Fail if path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
             for p in path:
-                self.failIfExists(p)
+                self.assertPathDoesNotExist(p)
         else:
-            self.failIf(osutils.lexists(path),path+" exists")
+            self.assertFalse(osutils.lexists(path),
+                path + " exists")
 
     def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
@@ -2115,18 +2125,20 @@ class TestCase(testtools.TestCase):
                       % (process_args, retcode, process.returncode))
         return [out, err]
 
-    def check_inventory_shape(self, inv, shape):
-        """Compare an inventory to a list of expected names.
+    def check_tree_shape(self, tree, shape):
+        """Compare a tree to a list of expected names.
 
         Fail if they are not precisely equal.
         """
         extras = []
         shape = list(shape)             # copy
-        for path, ie in inv.entries():
+        for path, ie in tree.iter_entries_by_dir():
             name = path.replace('\\', '/')
             if ie.kind == 'directory':
                 name = name + '/'
-            if name in shape:
+            if name == "/":
+                pass # ignore root entry
+            elif name in shape:
                 shape.remove(name)
             else:
                 extras.append(name)
@@ -4355,7 +4367,7 @@ class ModuleAvailableFeature(Feature):
         try:
             self._module = __import__(self.module_name, {}, {}, [''])
             return True
-        except (ImportError, ImportWarning):
+        except ImportError:
             return False
 
     @property

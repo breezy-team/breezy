@@ -25,6 +25,7 @@ from bzrlib.tests import (
     )
 from bzrlib.mutabletree import MutableTree
 from bzrlib.tests import TestSkipped
+from bzrlib.tree import InventoryTree
 from bzrlib.transform import _PreviewTree
 from bzrlib.uncommit import uncommit
 
@@ -101,32 +102,49 @@ class TestInventory(per_tree.TestCaseWithTree):
 
     def test_canonical_path(self):
         work_tree = self._make_canonical_test_tree()
+        if not isinstance(work_tree, InventoryTree):
+            raise tests.TestNotApplicable(
+                "test not applicable on non-inventory tests")
         self.assertEqual('dir/file',
                          work_tree.get_canonical_inventory_path('Dir/File'))
 
     def test_canonical_path_before_commit(self):
         work_tree = self._make_canonical_test_tree(False)
-        # note: not committed.
+        if not isinstance(work_tree, InventoryTree):
+            raise tests.TestNotApplicable(
+                "test not applicable on non-inventory tests")        # note: not committed.
         self.assertEqual('dir/file',
                          work_tree.get_canonical_inventory_path('Dir/File'))
 
     def test_canonical_path_dir(self):
         # check it works when asked for just the directory portion.
         work_tree = self._make_canonical_test_tree()
+        if not isinstance(work_tree, InventoryTree):
+            raise tests.TestNotApplicable(
+                "test not applicable on non-inventory tests")
         self.assertEqual('dir', work_tree.get_canonical_inventory_path('Dir'))
 
     def test_canonical_path_root(self):
         work_tree = self._make_canonical_test_tree()
+        if not isinstance(work_tree, InventoryTree):
+            raise tests.TestNotApplicable(
+                "test not applicable on non-inventory tests")
         self.assertEqual('', work_tree.get_canonical_inventory_path(''))
         self.assertEqual('/', work_tree.get_canonical_inventory_path('/'))
 
     def test_canonical_path_invalid_all(self):
         work_tree = self._make_canonical_test_tree()
+        if not isinstance(work_tree, InventoryTree):
+            raise tests.TestNotApplicable(
+                "test not applicable on non-inventory tests")
         self.assertEqual('foo/bar',
                          work_tree.get_canonical_inventory_path('foo/bar'))
 
     def test_canonical_invalid_child(self):
         work_tree = self._make_canonical_test_tree()
+        if not isinstance(work_tree, InventoryTree):
+            raise tests.TestNotApplicable(
+                "test not applicable on non-inventory tests")
         self.assertEqual('dir/None',
                          work_tree.get_canonical_inventory_path('Dir/None'))
 
@@ -141,6 +159,9 @@ class TestInventory(per_tree.TestCaseWithTree):
         work_tree.add(['test/', 'test/file', 'Test'])
 
         test_tree = self._convert_tree(work_tree)
+        if not isinstance(test_tree, InventoryTree):
+            raise tests.TestNotApplicable(
+                "test not applicable on non-inventory tests")
         test_tree.lock_read()
         self.addCleanup(test_tree.unlock)
 

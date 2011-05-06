@@ -145,6 +145,10 @@ class UIFactory(object):
             "This may take some time. Upgrade the repositories to the "
             "same format for better performance."
             ),
+        deprecated_command=(
+            "The command 'bzr %(deprecated_name)s' "
+            "has been deprecated in bzr %(deprecated_in_version)s. "
+            "Please use 'bzr %(recommended_name)s' instead."),
         recommend_upgrade=("%(current_format_name)s is deprecated "
             "and a better format is available.\n"
             "It is recommended that you upgrade by "

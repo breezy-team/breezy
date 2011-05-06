@@ -5,10 +5,10 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.4b2
+bzr 2.4b3
 #########
 
-:2.4b2: NOT RELEASED YET
+:2.4b3: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -19,6 +19,86 @@ New Features
 ************
 
 .. New commands, options, etc that users may wish to try out.
+
+Improvements
+************
+
+.. Improvements to existing commands, especially improved performance 
+   or memory usage, or better results.
+
+* Slightly reduced memory consumption when fetching into a 2a repository
+  by reusing existing caching a little better.  (Andrew Bennetts)
+
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+* All Tree types can now be exported as tar.*, zip or directories.
+  (Aaron Bentley)
+  
+* Correct parent is now set when using 'switch -b' with bound branches.
+  (A. S. Budden, #513709)
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+* ``annotate_file`` has been deprecated in favor of
+  ``annotate_file_revision_tree``. (Jelmer Vernooij, #775598)
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.4b2
+#########
+
+:2.4b2: 2011-04-28
+
+This is the second beta of the 2.4 series, leading to a 2.4.0 release in
+August 2011. Beta releases are suitable for everyday use but may cause some
+incompatibilities with plugins.
+
+This release includes all bug fixed in previous series known at the time of
+this release.
+
+
+External Compatibility Breaks
+*****************************
+
+.. These may require users to change the way they use Bazaar.
+
+* Two command synonyms for ``bzr branch`` have been deprecated, to avoid
+  confusion and to allow the names to later be reused.  The removed names
+  are: ``get`` and ``clone``.   (Martin Pool, #506265)
+
+New Features
+************
+
+.. New commands, options, etc that users may wish to try out.
+
+* ``bzr commit`` now supports a ``--lossy`` argument that can be used
+  to discard any data that can not be natively represented when committing
+  to a foreign VCS. (Jelmer Vernooij, #587721)
 
 Improvements
 ************
@@ -52,6 +132,9 @@ Bug Fixes
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* Arguments that can't be decoded to unicode in the current posix locale give
+  a clearer error message without a traceback. (Martin [gz], #745712)
 
 * ``bzrlib.log._DEFAULT_REQUEST_PARAMS`` is no longer accidentally
   mutated by ``bzrlib.log._apply_log_request_defaults``.  In practice
@@ -100,6 +183,14 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``Branch.update_revisions`` has been made private and should no
+  longer be used by external users. Use ``Branch.pull`` or ``Branch.push``
+  instead. (Jelmer Vernooij, #771765)
+
+* Commands now have an `invoked_as` attribute, showing the name under
+  which they were called before alias expansion.
+  (Martin Pool)
+
 * ``Hooks.create_hook`` is now deprecated in favour of ``Hooks.add_hook``.
   (Jelmer Vernooij)
 
@@ -113,11 +204,23 @@ API Changes
   a new ``InventoryTree`` class. Tree instances no longer
   necessarily provide an ``inventory`` attribute. (Jelmer Vernooij)
 
+* Inventory-specific functionality has been split out of ``RevisionTree``
+  into a new ``InventoryRevisionTree`` class. RevisionTree instances no
+  longer necessarily provide an ``inventory`` attribute. (Jelmer Vernooij)
+
 * New method ``Hooks.uninstall_named_hook``. (Jelmer Vernooij, #301472)
 
 * ``revision_graph_can_have_wrong_parents`` is now an attribute
   on ``RepositoryFormat`` rather than a method on ``Repository``.
   (Jelmer Vernooij)
+
+* ``Testament`` now takes a ``tree`` rather than an
+  ``inventory``. (Jelmer Vernooij, #762608)
+
+* ``TestCase.failUnlessExists`` and ``failIfExists`` are deprecated in
+  favour of ``assertPathExists`` and ``assertPathDoesNotExist`` 
+  respectively.
+  (Martin Pool)
 
 * The ``revno`` parameter of ``log.LogRevision`` may now be None,
   representing a revision which is not in the current branch.
@@ -126,6 +229,14 @@ API Changes
 * The various knit pack repository format classes have been moved
   from ``bzrlib.repofmt.pack_repo`` to
   ``bzrlib.repofmt.knitpack_repo``. (Jelmer Vernooij)
+
+* ``RevisionTree`` now has a new method ``get_file_revision``.
+  (Jelmer Vernooij)
+
+* ``WorkingTree`` no longer provides an ``inventory``. Instead,
+  all inventory-related functionality is now on the subclass
+  ``InventoryWorkingTree`` that all native Bazaar working tree
+  implementations derive from. (Jelmer Vernooij)
 
 Internals
 *********
@@ -150,11 +261,15 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Stop using `failIf`, `failUnless`, `failIfEqual`, etc, that give
+  `PendingDeprecationWarnings` on Python2.7. 
+  (Martin Pool, #760435)
+
 
 bzr 2.4b1
 #########
 
-:2.4b1: 2011-04-17
+:2.4b1: 2011-03-17
 
 This is the first beta of the 2.4 series, leading up to a 2.4.0
 release in August 2011.  Beta releases are suitable for everyday use
@@ -269,6 +384,12 @@ Bug Fixes
 * ``bzr serve`` no longer crashes when a server_started hook is installed and
   IPv6 support is available on the system. (Jelmer Vernooij, #293697)
 
+* ``bzr status`` will not rewrite the dirstate file if it only has
+  'trivial' changes. (Currently limited to dir updates and newly-added
+  files changing state.) This saves a bit of time for regular operations.
+  eg. ``bzr status`` in a 100k tree takes 1.4s to compute the status, but 1s
+  to re-save the dirstate file. (John Arbash Meinel, #765881)
+
 * ``bzr tags`` will no longer choke on branches with ghost revisions in
   their mainline and tags on revisions not in the branch ancestry. 
   (Jelmer Vernooij, #397556)
@@ -317,12 +438,15 @@ API Changes
   (``bzrlib.branch.format_registry``) rather than using the class
   methods on ``BranchFormat``. (Jelmer Vernooij, #714729)
 
+* ``Branch.set_revision_history`` is now deprecated.
+  (Jelmer Vernooij)
+
 * ``BranchFormat.supports_leaving_lock()`` and
   ``RepositoryFormat.supports_leaving_lock`` flags have been added.
   (Jelmer Vernooij)
 
 * ``Branch.fetch`` implementations must now accept an optional
-  ``fetch_spec`` keyword argument. (Andrew Bennetts)
+  ``fetch_tags`` keyword argument. (Andrew Bennetts)
 
 * ``Branch.import_last_revision_info`` is deprecated.  Use the
   ``import_last_revision_info_and_tags`` method instead.

@@ -1,0 +1,97 @@
+Configuring Bazaar
+==================
+
+A configuration option has:
+
+- a name: a valid python identifier (even if it's not used as an
+  identifier in python itself)
+
+- a value: a unicode string
+
+Sections
+--------
+
+Options are grouped into sections which share some properties with the well
+known dict objects:
+
+- the key is the name,
+- you can get, set and remove an option,
+- the value is a unicode string.
+
+MutableSection is needed to set or remove an option, ReadOnlySection should
+be used otherwise.
+
+Stores
+------
+
+Options can be persistent in which case they are saved into Stores.
+
+``config.Store`` defines the abstract interface that all stores should
+implement.
+
+This object doesn't provide direct access to the options, it only provides
+access to Sections. This is deliberate to ensure that sections can be
+properly shared by reusing the same underlying objects. Accessing options
+should be done via the ``Section`` objects.
+
+A ``Store`` can contain one or more sections, each section is uniquely
+identified by a unicode string.
+
+``config.ConfigObjStore`` is an implementation that use ``ConfigObj``.
+
+Depending on the object it is associated with (or not) a ``Store`` also needs
+to implement a locking mechanism. ``LockableConfigObjStore`` implements such a
+mechanism for ``ConfigObj`` based stores.
+
+Classes are provided for the usual Bazaar configuration files and could be
+used as examples to define new ones if needed. The associated tests provides a
+basis for new classes which only need to register themselves in the right
+places to inherit from the existing basic tests and add their own specific
+ones.
+
+Filtering sections
+------------------
+
+For some contexts, only some sections from a given store will apply. Defining
+which is what the ``SectionMatcher`` are about.
+
+The main constraint here is that a ``SectionMatcher`` should delay the loading
+of the associated store as long as possible. The constructor should collect
+all data needed for the selection and uses it while processing the sections in
+``get_sections``.
+
+Only ``ReadOnlySection`` objects are manipulated here but a ``SectionMatcher``
+can return dedicated ``Section`` to provide additional context (the
+``LocationSection`` add an ``extra_path`` attribute to implement the
+``appendpath`` policy for example).
+
+.. FIXME: Replace the appendpath example if/when it's deprecated ;)
+
+Stacks
+------
+
+An option can take different values depending on the context it is used. Such
+a context can involve configuration files, options from the command line,
+default values in bzrlib and then some.
+
+Such a context is implemented by creating a list of ``Section`` stacked upon
+each other. A ``Stack`` can then be asked for an option value and returns the
+first definition found.
+
+This provides a great flexibility to decide priorities between sections when
+the stack is defined without to worry about them in the code itself.
+
+A stack also defines a mutable section (which can be None) to handle
+modifications.
+
+Many sections (or even stores) are aimed at providing default values for an
+option but these sections shouldn't be modified lightly as modifying an option
+used for different contexts will indeed be seen by all these contexts.
+
+Default values in configuration files are defined by users. Developers
+shouldn't have to modify them, as such, no mechanism nor heuristics are used
+to find which section (or sections) should be modified.
+
+A ``Stack`` defines a mutable section when there is no ambiguity.  If there
+is one, then the *user* should be able to decide and in this case a new
+``Stack`` can be created cheaply.

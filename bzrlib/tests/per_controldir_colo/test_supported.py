@@ -55,5 +55,5 @@ class TestColocatedBranchSupport(per_controldir.TestCaseWithControlDir):
                 'Control dir does not support creating new branches.')
         made_repo = made_control.create_repository()
         made_branch = made_control.create_branch("colo")
-        self.failUnless(isinstance(made_branch, bzrlib.branch.Branch))
+        self.assertIsInstance(made_branch, bzrlib.branch.Branch)
         self.assertEqual(made_control, made_branch.bzrdir)

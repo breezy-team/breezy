@@ -54,8 +54,7 @@ class TestBasisInventory(TestCaseWithWorkingTree):
         tree.lock_write()
         try:
             self.assertEqual(tree.path2id('sub-tree'), 'sub-tree-root-id')
-            self.assertEqual(tree.inventory['sub-tree-root-id'].kind,
-                             'tree-reference')
+            self.assertEqual(tree.kind('sub-tree-root-id'), 'tree-reference')
             tree.commit('commit reference')
             basis = tree.basis_tree()
             basis.lock_read()

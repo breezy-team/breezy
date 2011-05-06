@@ -30,9 +30,12 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
     fixtures,
     HardlinkFeature,
+    script,
     test_server,
     )
+from bzrlib.tests.blackbox import test_switch
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
+from bzrlib.tests.script import run_script
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
 from bzrlib.workingtree import WorkingTree
 
@@ -179,7 +182,7 @@ class TestBranch(TestCaseWithTransport):
         source.add('file1')
         source.commit('added file')
         out, err = self.run_bzr('branch source target --files-from source')
-        self.failUnlessExists('target/file1')
+        self.assertPathExists('target/file1')
 
     def test_branch_files_from_hardlink(self):
         self.requireFeature(HardlinkFeature)
@@ -208,8 +211,8 @@ class TestBranch(TestCaseWithTransport):
     def test_branch_no_tree(self):
         self.example_branch('source')
         self.run_bzr('branch --no-tree source target')
-        self.failIfExists('target/hello')
-        self.failIfExists('target/goodbye')
+        self.assertPathDoesNotExist('target/hello')
+        self.assertPathDoesNotExist('target/goodbye')
 
     def test_branch_into_existing_dir(self):
         self.example_branch('a')
@@ -225,8 +228,8 @@ class TestBranch(TestCaseWithTransport):
         # force operation
         self.run_bzr('branch a b --use-existing-dir')
         # check conflicts
-        self.failUnlessExists('b/hello.moved')
-        self.failIfExists('b/godbye.moved')
+        self.assertPathExists('b/hello.moved')
+        self.assertPathDoesNotExist('b/godbye.moved')
         # we can't branch into branch
         out,err = self.run_bzr('branch a b --use-existing-dir', retcode=3)
         self.assertEqual('', out)
@@ -501,3 +504,46 @@ class TestRemoteBranch(TestCaseWithSFTPServer):
         # Ensure that no working tree what created remotely
         self.assertFalse(t.has('remote/file'))
 
+
+class TestDeprecatedAliases(TestCaseWithTransport):
+
+    def test_deprecated_aliases(self):
+        """bzr branch can be called clone or get, but those names are deprecated.
+
+        See bug 506265.
+        """
+        for command in ['clone', 'get']:
+            run_script(self, """
+            $ bzr %(command)s A B
+            2>The command 'bzr %(command)s' has been deprecated in bzr 2.4. Please use 'bzr branch' instead.
+            2>bzr: ERROR: Not a branch...
+            """ % locals())
+
+
+class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):
+
+    def _checkout_and_branch(self, option=''):
+        self.script_runner.run_script(self, '''
+                $ bzr checkout %(option)s repo/trunk checkout
+                $ cd checkout
+                $ bzr branch --switch ../repo/trunk ../repo/branched
+                2>Branched 0 revision(s).
+                2>Tree is up to date at revision 0.
+                2>Switched to branch:...branched...
+                $ cd ..
+                ''' % locals())
+        bound_branch = branch.Branch.open_containing('checkout')[0]
+        master_branch = branch.Branch.open_containing('repo/branched')[0]
+        return (bound_branch, master_branch)
+
+    def test_branch_switch_parent_lightweight(self):
+        """Lightweight checkout using bzr branch --switch."""
+        bb, mb = self._checkout_and_branch(option='--lightweight')
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)
+
+    def test_branch_switch_parent_heavyweight(self):
+        """Heavyweight checkout using bzr branch --switch."""
+        bb, mb = self._checkout_and_branch()
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)

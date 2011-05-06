@@ -40,14 +40,16 @@ from bzrlib.knit import (
     KnitVersionedFiles,
     PlainKnitContent,
     _VFContentMapGenerator,
-    _DirectPackAccess,
     _KndxIndex,
     _KnitGraphIndex,
     _KnitKeyAccess,
     make_file_factory,
     )
 from bzrlib.patiencediff import PatienceSequenceMatcher
-from bzrlib.repofmt import pack_repo
+from bzrlib.repofmt import (
+    knitpack_repo,
+    pack_repo,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithMemoryTransport,
@@ -397,7 +399,7 @@ class TestPackKnitAccess(TestCaseWithMemoryTransport, KnitRecordAccessTestsMixin
         collection = repo._pack_collection
         collection.ensure_loaded()
         orig_packs = collection.packs
-        packer = pack_repo.Packer(collection, orig_packs, '.testpack')
+        packer = knitpack_repo.KnitPacker(collection, orig_packs, '.testpack')
         new_pack = packer.pack()
         # forget about the new pack
         collection.reset()

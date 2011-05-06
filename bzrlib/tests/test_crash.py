@@ -20,8 +20,6 @@ import os
 from StringIO import StringIO
 import sys
 
-from testtools.matchers import DocTestMatches
-
 from bzrlib import (
     config,
     crash,
@@ -103,22 +101,12 @@ class TestNonApportReporting(tests.TestCase):
         except AssertionError, e:
             pass
         crash.report_bug_legacy(sys.exc_info(), err_file)
-        self.assertThat(
-            err_file.getvalue(),
-            DocTestMatches("""\
-bzr: ERROR: exceptions.AssertionError: my error
-
-Traceback (most recent call last):
-  ...
-AssertionError: my error
-
-bzr ... on python ...
-arguments: ...
-plugins: fake_plugin[1.2.3]
-encoding: ...
-
-*** Bazaar has encountered an internal error.  This probably indicates a
-    bug in Bazaar.  You can help us fix it by filing a bug report at
-        https://bugs.launchpad.net/bzr/+filebug
-    including this traceback and a description of the problem.
-""", flags=doctest.ELLIPSIS|doctest.REPORT_UDIFF))
+        report = err_file.getvalue()
+        for needle in [
+            "bzr: ERROR: exceptions.AssertionError: my error",
+            r"Traceback \(most recent call last\):",
+            r"plugins: fake_plugin\[1\.2\.3\]",
+            ]:
+            self.assertContainsRe(
+                    report,
+                    needle)

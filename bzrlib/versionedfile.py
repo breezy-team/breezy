@@ -1872,3 +1872,64 @@ def sort_groupcompress(parent_map):
     for prefix in sorted(per_prefix_map):
         present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
     return present_keys
+
+
+class _KeyRefs(object):
+
+    def __init__(self, track_new_keys=False):
+        # dict mapping 'key' to 'set of keys referring to that key'
+        self.refs = {}
+        if track_new_keys:
+            # set remembering all new keys
+            self.new_keys = set()
+        else:
+            self.new_keys = None
+
+    def clear(self):
+        if self.refs:
+            self.refs.clear()
+        if self.new_keys:
+            self.new_keys.clear()
+
+    def add_references(self, key, refs):
+        # Record the new references
+        for referenced in refs:
+            try:
+                needed_by = self.refs[referenced]
+            except KeyError:
+                needed_by = self.refs[referenced] = set()
+            needed_by.add(key)
+        # Discard references satisfied by the new key
+        self.add_key(key)
+
+    def get_new_keys(self):
+        return self.new_keys
+    
+    def get_unsatisfied_refs(self):
+        return self.refs.iterkeys()
+
+    def _satisfy_refs_for_key(self, key):
+        try:
+            del self.refs[key]
+        except KeyError:
+            # No keys depended on this key.  That's ok.
+            pass
+
+    def add_key(self, key):
+        # satisfy refs for key, and remember that we've seen this key.
+        self._satisfy_refs_for_key(key)
+        if self.new_keys is not None:
+            self.new_keys.add(key)
+
+    def satisfy_refs_for_keys(self, keys):
+        for key in keys:
+            self._satisfy_refs_for_key(key)
+
+    def get_referrers(self):
+        result = set()
+        for referrers in self.refs.itervalues():
+            result.update(referrers)
+        return result
+
+
+

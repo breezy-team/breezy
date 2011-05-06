@@ -182,6 +182,17 @@ class Tree(object):
         """
         raise NotImplementedError(self.iter_entries_by_dir)
 
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        """List all files in this tree.
+
+        :param include_root: Whether to include the entry for the tree root
+        :param from_dir: Directory under which to list files
+        :param recursive: Whether to list files recursively
+        :return: iterator over tuples of (path, versioned, kind, file_id,
+            inventory entry)
+        """
+        raise NotImplementedError(self.list_files)
+
     def iter_references(self):
         if self.supports_tree_reference():
             for path, entry in self.iter_entries_by_dir():
@@ -422,29 +433,19 @@ class Tree(object):
             except errors.NoSuchRevisionInTree:
                 yield self.repository.revision_tree(revision_id)
 
-    @staticmethod
-    def _file_revision(revision_tree, file_id):
-        """Determine the revision associated with a file in a given tree."""
-        # FIXME: Shouldn't this be a RevisionTree method?
-        revision_tree.lock_read()
-        try:
-            return revision_tree.inventory[file_id].revision
-        finally:
-            revision_tree.unlock()
-
     def _get_file_revision(self, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
 
         if getattr(self, '_repository', None) is None:
             last_revision = tree_revision
-            parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
+            parent_keys = [(file_id, t.get_file_revision(file_id)) for t in
                 self._iter_parent_trees()]
             vf.add_lines((file_id, last_revision), parent_keys,
                          self.get_file_lines(file_id))
             repo = self.branch.repository
             base_vf = repo.texts
         else:
-            last_revision = self._file_revision(self, file_id)
+            last_revision = self.get_file_revision(file_id)
             base_vf = self._repository.texts
         if base_vf not in vf.fallback_versionedfiles:
             vf.fallback_versionedfiles.append(base_vf)

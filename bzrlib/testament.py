@@ -76,6 +76,7 @@ from bzrlib.osutils import (
     contains_linebreaks,
     sha,
     )
+from bzrlib.tree import Tree
 
 
 class Testament(object):
@@ -91,23 +92,33 @@ class Testament(object):
 
     long_header = 'bazaar-ng testament version 1\n'
     short_header = 'bazaar-ng testament short form 1\n'
+    include_root = False
 
     @classmethod
     def from_revision(cls, repository, revision_id):
-        """Produce a new testament from a historical revision"""
+        """Produce a new testament from a historical revision."""
         rev = repository.get_revision(revision_id)
-        inventory = repository.get_inventory(revision_id)
-        return cls(rev, inventory)
+        tree = repository.revision_tree(revision_id)
+        return cls(rev, tree)
 
-    def __init__(self, rev, inventory):
-        """Create a new testament for rev using inventory."""
+    @classmethod
+    def from_revision_tree(cls, tree):
+        """Produce a new testament from a revision tree."""
+        rev = tree._repository.get_revision(tree.get_revision_id())
+        return cls(rev, tree)
+
+    def __init__(self, rev, tree):
+        """Create a new testament for rev using tree."""
         self.revision_id = rev.revision_id
         self.committer = rev.committer
         self.timezone = rev.timezone or 0
         self.timestamp = rev.timestamp
         self.message = rev.message
         self.parent_ids = rev.parent_ids[:]
-        self.inventory = inventory
+        if not isinstance(tree, Tree):
+            raise TypeError("As of bzr 2.4 Testament.__init__() takes a "
+                "Revision and a Tree.")
+        self.tree = tree
         self.revprops = copy(rev.properties)
         if contains_whitespace(self.revision_id):
             raise ValueError(self.revision_id)
@@ -143,9 +154,8 @@ class Testament(object):
         return [line.encode('utf-8') for line in r]
 
     def _get_entries(self):
-        entries = self.inventory.iter_entries()
-        entries.next()
-        return entries
+        return ((path, ie) for (path, versioned, kind, file_id, ie) in
+                self.tree.list_files(include_root=self.include_root))
 
     def _escape_path(self, path):
         if contains_linebreaks(path):
@@ -209,6 +219,7 @@ class StrictTestament(Testament):
 
     long_header = 'bazaar-ng testament version 2.1\n'
     short_header = 'bazaar-ng testament short form 2.1\n'
+    include_root = False
     def _entry_to_line(self, path, ie):
         l = Testament._entry_to_line(self, path, ie)[:-1]
         l += ' ' + ie.revision
@@ -224,8 +235,7 @@ class StrictTestament3(StrictTestament):
 
     long_header = 'bazaar testament version 3 strict\n'
     short_header = 'bazaar testament short form 3 strict\n'
-    def _get_entries(self):
-        return self.inventory.iter_entries()
+    include_root = True
 
     def _escape_path(self, path):
         if contains_linebreaks(path):
