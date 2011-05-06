@@ -16,6 +16,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
+from bzrlib import (
+    inventory,
+    )
 from bzrlib.tests import TestNotApplicable
 from bzrlib.transform import TreeTransform
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
@@ -65,6 +68,17 @@ class TestNestedSupport(TestCaseWithWorkingTree):
 
     def test_comparison_data_does_not_autodetect_subtree(self):
         tree = self.prepare_with_subtree()
-        entry = tree.iter_entries_by_dir(['subtree-id']).next()[1]
+        ie = inventory.InventoryDirectory('subtree-id', 'subtree',
+                                          tree.path2id(''))
         self.assertEqual('directory',
-                         tree._comparison_data(entry, 'subtree')[0])
+                         tree._comparison_data(ie, 'subtree')[0])
+
+    def test_inventory_autodetects_subtree(self):
+        tree = self.prepare_with_subtree()
+        ie = tree.inventory['subtree-id']
+        self.assertEqual('tree-reference', ie.kind)
+
+    def test_iter_entries_by_dir_autodetects_subtree(self):
+        tree = self.prepare_with_subtree()
+        path, ie = tree.iter_entries_by_dir(['subtree-id']).next()
+        self.assertEqual('tree-reference', ie.kind)
