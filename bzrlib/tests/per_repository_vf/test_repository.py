@@ -352,7 +352,9 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
             repo.unlock()
 
 
-class TestCaseWithCorruptRepository(per_repository.TestCaseWithRepository):
+class TestCaseWithCorruptRepository(TestCaseWithRepository):
+
+    scenarios = all_repository_vf_format_scenarios()
 
     def setUp(self):
         super(TestCaseWithCorruptRepository, self).setUp()

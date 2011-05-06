@@ -51,7 +51,7 @@ from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     InterRepository,
     InterSameDataRepository,
-    Repository,
+    RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
 from bzrlib.versionedfile import (
@@ -61,6 +61,7 @@ from bzrlib.versionedfile import (
     )
 from bzrlib.vf_repository import (
     VersionedFileCommitBuilder,
+    VersionedFileRepository,
     VersionedFileRepositoryFormat,
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
@@ -69,7 +70,7 @@ from bzrlib.vf_repository import (
 from bzrlib.plugins.weave_fmt import bzrdir as weave_bzrdir
 
 
-class AllInOneRepository(Repository):
+class AllInOneRepository(VersionedFileRepository):
     """Legacy support - the repository behaviour for all-in-one branches."""
 
     @property
