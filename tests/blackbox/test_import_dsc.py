@@ -101,9 +101,13 @@ class TestImportDsc(TestBaseImportDsc):
     tree = self.make_branch_and_tree('.')
     self.run_bzr('import-dsc %s' % self.dsc_name)
     tree.lock_read()
+    expected_shape = ['README', 'debian/', 'debian/changelog',
+        'debian/control']
     try:
-      self.check_inventory_shape(tree.inventory,
-          ['README', 'debian/', 'debian/changelog', 'debian/control'])
+      if getattr(self, "check_tree_shape", None):
+        self.check_tree_shape(tree, expected_shape)
+      else:
+        self.check_inventory_shape(tree.inventory, expected_shape)
     finally:
       tree.unlock()
     self.assertEqual(len(tree.branch.revision_history()), 2)
