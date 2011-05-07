@@ -19,6 +19,7 @@
 # wrap and fill is copied from Python's textwrap module
 # (under PSF license) and modified for support CJK.
 
+import sys
 import textwrap
 from unicodedata import east_asian_width as _eawidth
 
@@ -67,10 +68,16 @@ class UTextWrapper(textwrap.TextWrapper):
     even if !break_long_words when word contains double width
     characters.
     """
+
     def __init__(self, width=None, **kwargs):
         if width is None:
             width = (osutils.terminal_width() or
                         osutils.default_terminal_width) - 1
+        # No drop_whitespace param before Python 2.6 it was always dropped
+        if sys.version_info < (2, 6):
+            self.drop_whitespace = kwargs.pop("drop_whitespace", True)
+            if not self.drop_whitespace:
+                raise ValueError("TextWrapper version must drop whitespace")
         textwrap.TextWrapper.__init__(self, width, **kwargs)
 
     def _handle_long_word(self, chunks, cur_line, cur_len, width):
