@@ -54,7 +54,7 @@ class TestUTextWrap(tests.TestCase):
         self.check_cut(s, 12, 8)
         self.check_cut(s, 13, 9)
         self.check_cut(s, 14, 9)
-        self.check_cut('A'*5, 3, 3)
+        self.check_cut(u'A'*5, 3, 3)
 
     def test_split(self):
         w = utextwrap.UTextWrapper()

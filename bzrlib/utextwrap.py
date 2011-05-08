@@ -45,8 +45,6 @@ def _width(s):
 
     NOTE: Supporting byte string should be removed with Python 3.
     """
-    if isinstance(s, str):
-        return len(s)
     assert isinstance(s, unicode)
     return sum(_unicode_char_width(c) for c in s)
 
@@ -55,8 +53,6 @@ def _cut(s, width):
 
     Head is large as long as _width(head) <= width.
     """
-    if isinstance(s, str):
-        return s[:width], s[width:]
     assert isinstance(s, unicode)
     w = 0
     charwidth = _unicode_char_width
