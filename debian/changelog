@@ -5,10 +5,10 @@ bzr-builddeb (2.7.5) UNRELEASED; urgency=low
 
  -- Jelmer Vernooij <jelmer@debian.org>  Sun, 08 May 2011 17:45:14 +0200
 
-bzr-builddeb (2.7.4) UNRELEASED; urgency=low
+bzr-builddeb (2.7.4) unstable; urgency=low
 
   [ Jelmer Vernooij ]
-  * In 'bzr merge-usptream', don't ignore upstream branch when upstream
+  * In 'bzr merge-upstream', don't ignore upstream branch when upstream
     version can not be found.  LP: #772424
   * Automatically determine the version from the tarball name if possible.
     LP: #773199
