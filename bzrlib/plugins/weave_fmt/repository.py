@@ -274,7 +274,6 @@ class PreSplitOutRepositoryFormat(VersionedFileRepositoryFormat):
     _fetch_reconcile = True
     fast_deltas = False
     supports_leaving_lock = False
-    supports_full_versioned_files = True
     # XXX: This is an old format that we don't support full checking on, so
     # just claim that checking for this inconsistency is not required.
     revision_graph_can_have_wrong_parents = False
@@ -499,7 +498,6 @@ class RepositoryFormat7(MetaDirVersionedFileRepositoryFormat):
     supports_ghosts = False
     supports_chks = False
     supports_funky_characters = False
-    supports_full_versioned_files = True
     revision_graph_can_have_wrong_parents = False
 
     _fetch_order = 'topological'

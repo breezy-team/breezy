@@ -1846,7 +1846,6 @@ class RepositoryFormatPack(MetaDirVersionedFileRepositoryFormat):
     index_class = None
     _fetch_uses_deltas = True
     fast_deltas = False
-    supports_full_versioned_files = True
     supports_funky_characters = True
     revision_graph_can_have_wrong_parents = True
 

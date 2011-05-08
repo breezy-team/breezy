@@ -271,7 +271,6 @@ class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
     _fetch_uses_deltas = True
     fast_deltas = False
     supports_funky_characters = True
-    supports_full_versioned_files = True
     # The revision.kndx could potentially claim a revision has a different
     # parent to the revision text.
     revision_graph_can_have_wrong_parents = True
