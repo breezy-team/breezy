@@ -32,17 +32,19 @@ _str_DS = _str_D + _str_S
 class TestUTextWrap(tests.TestCase):
 
     def check_width(self, text, expected_width):
+        w = utextwrap.UTextWrapper()
         self.assertEqual(
-                utextwrap._width(text),
+                w._width(text),
                 expected_width,
                 "Width of %r should be %d" % (text, expected_width))
 
-    def test__width(self):
+    def test_width(self):
         self.check_width(_str_D, 8)
         self.check_width(_str_SD, 13)
 
     def check_cut(self, text, width, pos):
-        self.assertEqual((text[:pos], text[pos:]), utextwrap._cut(text, width))
+        w = utextwrap.UTextWrapper()
+        self.assertEqual((text[:pos], text[pos:]), w._cut(text, width))
 
     def test_cut(self):
         s = _str_SD
@@ -99,7 +101,7 @@ class TestUTextFill(tests.TestCase):
                                      "spam" + _str_D[:2],
                                      _str_D[2:]+_str_D[:2],
                                      _str_D[2:]]),
-                utextwrap.fill(text, 8, break_long_words=False))
+                         utextwrap.fill(text, 8, break_long_words=False))
 
     def test_fill_indent_with_breaks(self):
         w = utextwrap.UTextWrapper(8, initial_indent=' '*4,
@@ -133,6 +135,19 @@ class TestUTextFill(tests.TestCase):
                                      "    " + _str_D[3],
                                      ]),
                          w.fill(_str_SD))
+
+class TestUTextWrapAmbiWidth(tests.TestCase):
+    _cyrill_char = u"\u0410" # east_asian_width() == 'A'
+
+    def test_ambiwidth1(self):
+        w = utextwrap.UTextWrapper(4, ambiguous_width=1)
+        s = self._cyrill_char*8
+        self.assertEqual([self._cyrill_char*4]*2, w.wrap(s))
+
+    def test_ambiwidth2(self):
+        w = utextwrap.UTextWrapper(4, ambiguous_width=2)
+        s = self._cyrill_char*8
+        self.assertEqual([self._cyrill_char*2]*4, w.wrap(s))
 
 
 # Regression test with Python's test_textwrap

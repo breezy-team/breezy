@@ -31,42 +31,6 @@ from bzrlib import osutils
 
 __all__ = ["UTextWrapper", "fill", "wrap"]
 
-def _unicode_char_width(uc):
-    """Return width of character `uc`.
-
-    :param:     uc      Single unicode character.
-    """
-    # 'A' means width of the character is not be able to determine.
-    # We assume that it's width is 2 because longer wrap may over
-    # terminal width but shorter wrap may be acceptable.
-    return (_eawidth(uc) in 'FWA' and 2) or 1
-
-def _width(s):
-    """Returns width for s.
-    
-    When s is unicode, take care of east asian width.
-    When s is bytes, treat all byte is single width character.
-
-    NOTE: Supporting byte string should be removed with Python 3.
-    """
-    assert isinstance(s, unicode)
-    return sum(_unicode_char_width(c) for c in s)
-
-def _cut(s, width):
-    """Returns head and rest of s. (head+rest == s)
-
-    Head is large as long as _width(head) <= width.
-    """
-    assert isinstance(s, unicode)
-    w = 0
-    charwidth = _unicode_char_width
-    for pos, c in enumerate(s):
-        w += charwidth(c)
-        if w > width:
-            return s[:pos], s[pos:]
-    return s, u''
-
-
 class UTextWrapper(textwrap.TextWrapper):
     """
     Extend TextWrapper for Unicode.
@@ -74,12 +38,25 @@ class UTextWrapper(textwrap.TextWrapper):
     This textwrapper handles east asian double width and split word
     even if !break_long_words when word contains double width
     characters.
+
+    :param ambiguous_width: (keyword argument) width for character when
+                            unicodedata.east_asian_width(c) == 'A'
+                            (default: 2)
     """
 
     def __init__(self, width=None, **kwargs):
         if width is None:
             width = (osutils.terminal_width() or
                         osutils.default_terminal_width) - 1
+
+        ambi_width = kwargs.pop('ambiguous_width', 2)
+        if ambi_width == 1:
+            self._east_asian_doublewidth = 'FW'
+        elif ambi_width == 2:
+            self._east_asian_doublewidth = 'FWA'
+        else:
+            raise ValueError("ambiguous_width should be 1 or 2")
+
         # No drop_whitespace param before Python 2.6 it was always dropped
         if sys.version_info < (2, 6):
             self.drop_whitespace = kwargs.pop("drop_whitespace", True)
@@ -87,18 +64,52 @@ class UTextWrapper(textwrap.TextWrapper):
                 raise ValueError("TextWrapper version must drop whitespace")
         textwrap.TextWrapper.__init__(self, width, **kwargs)
 
+    def _unicode_char_width(self, uc):
+        """Return width of character `uc`.
+
+        :param:     uc      Single unicode character.
+        """
+        # 'A' means width of the character is not be able to determine.
+        # We assume that it's width is 2 because longer wrap may over
+        # terminal width but shorter wrap may be acceptable.
+        return (_eawidth(uc) in self._east_asian_doublewidth and 2) or 1
+
+    def _width(self, s):
+        """Returns width for s.
+        
+        When s is unicode, take care of east asian width.
+        When s is bytes, treat all byte is single width character.
+        """
+        assert isinstance(s, unicode)
+        charwidth = self._unicode_char_width
+        return sum(charwidth(c) for c in s)
+
+    def _cut(self, s, width):
+        """Returns head and rest of s. (head+rest == s)
+
+        Head is large as long as _width(head) <= width.
+        """
+        assert isinstance(s, unicode)
+        w = 0
+        charwidth = self._unicode_char_width
+        for pos, c in enumerate(s):
+            w += charwidth(c)
+            if w > width:
+                return s[:pos], s[pos:]
+        return s, u''
+
     def _handle_long_word(self, chunks, cur_line, cur_len, width):
         # Figure out when indent is larger than the specified width, and make
         # sure at least one character is stripped off on every pass
         if width < 2:
-            space_left = chunks[-1] and _width(chunks[-1][0]) or 1
+            space_left = chunks[-1] and self._width(chunks[-1][0]) or 1
         else:
             space_left = width - cur_len
 
         # If we're allowed to break long words, then do so: put as much
         # of the next chunk onto the current line as will fit.
         if self.break_long_words:
-            head, rest = _cut(chunks[-1], space_left)
+            head, rest = self._cut(chunks[-1], space_left)
             cur_line.append(head)
             if rest:
                 chunks[-1] = rest
@@ -149,8 +160,7 @@ class UTextWrapper(textwrap.TextWrapper):
 
             while chunks:
                 # Use _width instead of len for east asian width
-                # l = len(chunks[-1])
-                l = _width(chunks[-1])
+                l = self._width(chunks[-1])
 
                 # Can at least squeeze this chunk onto the current line.
                 if cur_len + l <= width:
@@ -163,7 +173,7 @@ class UTextWrapper(textwrap.TextWrapper):
 
             # The current line is full, and the next chunk is too big to
             # fit on *any* line (not just this one).
-            if chunks and _width(chunks[-1]) > width:
+            if chunks and self._width(chunks[-1]) > width:
                 self._handle_long_word(chunks, cur_line, cur_len, width)
 
             # If the last chunk on this line is all whitespace, drop it.
