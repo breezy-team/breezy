@@ -29,7 +29,7 @@ from bzrlib import (
     help_topics,
     osutils,
     plugin,
-    utextwrap,
+    textwrap,
     )
 
 
@@ -96,7 +96,7 @@ def _help_commands_to_text(topic):
         else:
             firstline = ''
         helpstring = '%-*s %s%s' % (max_name, cmd_name, firstline, plugin_name)
-        lines = utextwrap.wrap(
+        lines = textwrap.wrap(
             helpstring, subsequent_indent=indent,
             width=width,
             break_long_words=False)
