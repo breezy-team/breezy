@@ -1228,21 +1228,24 @@ class cmd_dep3_patch(Command):
             gather_bugs_and_authors,
             write_dep3_patch,
             )
-        target_branch, _ = Branch.open_containing(directory)
+        packaging_tree, packaging_branch = BzrDir.open_containing_tree_or_branch(
+            directory)[:2]
         tree, branch = BzrDir.open_containing_tree_or_branch(location)[:2]
         branch.lock_read()
         try:
-            builddeb_config = debuild_config(tree, True)
             if revision is not None and len(revision) >= 1:
                 revision_id = revision[-1].as_revision_id(branch)
             else:
                 revision_id = branch.last_revision()
-            graph = branch.repository.get_graph(target_branch.repository)
+            graph = branch.repository.get_graph(packaging_branch.repository)
             if revision is not None and len(revision) == 2:
                 base_revid = revision[0].as_revision_id(branch)
             else:
                 base_revid = graph.find_unique_lca(revision_id,
-                    target_branch.last_revision())
+                    packaging_branch.last_revision())
+            if packaging_tree is None:
+                packaging_tree = packaging_branch.basis_tree()
+            builddeb_config = debuild_config(packaging_tree, True)
             if builddeb_config.upstream_branch:
                 upstream_branch = Branch.open(builddeb_config.upstream_branch)
             else:
