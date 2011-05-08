@@ -21,12 +21,10 @@ import os
 import sys
 
 from bzrlib import (
-    add,
     errors,
     ignores,
     osutils,
     tests,
-    workingtree,
     )
 from bzrlib.tests import (
     test_smart_add,

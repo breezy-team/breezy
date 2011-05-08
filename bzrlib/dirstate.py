@@ -366,6 +366,7 @@ class DirState(object):
     NOT_IN_MEMORY = 0
     IN_MEMORY_UNMODIFIED = 1
     IN_MEMORY_MODIFIED = 2
+    IN_MEMORY_HASH_MODIFIED = 3 # Only hash-cache updates
 
     # A pack_stat (the x's) that is just noise and will never match the output
     # of base64 encode.
@@ -375,11 +376,15 @@ class DirState(object):
     HEADER_FORMAT_2 = '#bazaar dirstate flat format 2\n'
     HEADER_FORMAT_3 = '#bazaar dirstate flat format 3\n'
 
-    def __init__(self, path, sha1_provider):
+    def __init__(self, path, sha1_provider, worth_saving_limit=0):
         """Create a  DirState object.
 
         :param path: The path at which the dirstate file on disk should live.
         :param sha1_provider: an object meeting the SHA1Provider interface.
+        :param worth_saving_limit: when the exact number of hash changed
+            entries is known, only bother saving the dirstate if more than
+            this count of entries have changed.
+            -1 means never save hash changes, 0 means always save hash changes.
         """
         # _header_state and _dirblock_state represent the current state
         # of the dirstate metadata and the per-row data respectiely.
@@ -422,10 +427,45 @@ class DirState(object):
         # during commit.
         self._last_block_index = None
         self._last_entry_index = None
+        # The set of known hash changes
+        self._known_hash_changes = set()
+        # How many hash changed entries can we have without saving
+        self._worth_saving_limit = worth_saving_limit
 
     def __repr__(self):
         return "%s(%r)" % \
             (self.__class__.__name__, self._filename)
+
+    def _mark_modified(self, hash_changed_entries=None, header_modified=False):
+        """Mark this dirstate as modified.
+
+        :param hash_changed_entries: if non-None, mark just these entries as
+            having their hash modified.
+        :param header_modified: mark the header modified as well, not just the
+            dirblocks.
+        """
+        #trace.mutter_callsite(3, "modified hash entries: %s", hash_changed_entries)
+        if hash_changed_entries:
+            self._known_hash_changes.update([e[0] for e in hash_changed_entries])
+            if self._dirblock_state in (DirState.NOT_IN_MEMORY,
+                                        DirState.IN_MEMORY_UNMODIFIED):
+                # If the dirstate is already marked a IN_MEMORY_MODIFIED, then
+                # that takes precedence.
+                self._dirblock_state = DirState.IN_MEMORY_HASH_MODIFIED
+        else:
+            # TODO: Since we now have a IN_MEMORY_HASH_MODIFIED state, we
+            #       should fail noisily if someone tries to set
+            #       IN_MEMORY_MODIFIED but we don't have a write-lock!
+            # We don't know exactly what changed so disable smart saving
+            self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        if header_modified:
+            self._header_state = DirState.IN_MEMORY_MODIFIED
+
+    def _mark_unmodified(self):
+        """Mark this dirstate as unmodified."""
+        self._header_state = DirState.IN_MEMORY_UNMODIFIED
+        self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+        self._known_hash_changes = set()
 
     def add(self, path, file_id, kind, stat, fingerprint):
         """Add a path to be tracked.
@@ -558,7 +598,7 @@ class DirState(object):
         if kind == 'directory':
            # insert a new dirblock
            self._ensure_block(block_index, entry_index, utf8path)
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified()
         if self._id_index:
             self._add_to_id_index(self._id_index, entry_key)
 
@@ -1030,8 +1070,7 @@ class DirState(object):
 
         self._ghosts = []
         self._parents = [parents[0]]
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
-        self._header_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified(header_modified=True)
 
     def _empty_parent_info(self):
         return [DirState.NULL_PARENT_DETAILS] * (len(self._parents) -
@@ -1567,8 +1606,7 @@ class DirState(object):
             # the active tree.
             raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
 
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
-        self._header_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified(header_modified=True)
         self._id_index = None
         return
 
@@ -1747,7 +1785,7 @@ class DirState(object):
                 and stat_value.st_ctime < self._cutoff_time):
                 entry[1][0] = ('f', sha1, stat_value.st_size, entry[1][0][3],
                                packed_stat)
-                self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+                self._mark_modified([entry])
 
     def _sha_cutoff_time(self):
         """Return cutoff time.
@@ -1811,14 +1849,13 @@ class DirState(object):
         """Serialise the entire dirstate to a sequence of lines."""
         if (self._header_state == DirState.IN_MEMORY_UNMODIFIED and
             self._dirblock_state == DirState.IN_MEMORY_UNMODIFIED):
-            # read whats on disk.
+            # read what's on disk.
             self._state_file.seek(0)
             return self._state_file.readlines()
         lines = []
         lines.append(self._get_parents_line(self.get_parent_ids()))
         lines.append(self._get_ghosts_line(self._ghosts))
-        # append the root line which is special cased
-        lines.extend(map(self._entry_to_line, self._iter_entries()))
+        lines.extend(self._get_entry_lines())
         return self._get_output_lines(lines)
 
     def _get_ghosts_line(self, ghost_ids):
@@ -1828,6 +1865,10 @@ class DirState(object):
     def _get_parents_line(self, parent_ids):
         """Create a line for the state file for parents information."""
         return '\0'.join([str(len(parent_ids))] + parent_ids)
+
+    def _get_entry_lines(self):
+        """Create lines for entries."""
+        return map(self._entry_to_line, self._iter_entries())
 
     def _get_fields_to_entry(self):
         """Get a function which converts entry fields into a entry record.
@@ -2222,18 +2263,22 @@ class DirState(object):
         """The number of parent entries in each record row."""
         return len(self._parents) - len(self._ghosts)
 
-    @staticmethod
-    def on_file(path, sha1_provider=None):
+    @classmethod
+    def on_file(cls, path, sha1_provider=None, worth_saving_limit=0):
         """Construct a DirState on the file at path "path".
 
         :param path: The path at which the dirstate file on disk should live.
         :param sha1_provider: an object meeting the SHA1Provider interface.
             If None, a DefaultSHA1Provider is used.
+        :param worth_saving_limit: when the exact number of hash changed
+            entries is known, only bother saving the dirstate if more than
+            this count of entries have changed. -1 means never save.
         :return: An unlocked DirState object, associated with the given path.
         """
         if sha1_provider is None:
             sha1_provider = DefaultSHA1Provider()
-        result = DirState(path, sha1_provider)
+        result = cls(path, sha1_provider,
+                     worth_saving_limit=worth_saving_limit)
         return result
 
     def _read_dirblocks_if_needed(self):
@@ -2331,9 +2376,11 @@ class DirState(object):
             trace.mutter('Not saving DirState because '
                     '_changes_aborted is set.')
             return
-        if (self._header_state == DirState.IN_MEMORY_MODIFIED or
-            self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
-
+        # TODO: Since we now distinguish IN_MEMORY_MODIFIED from
+        #       IN_MEMORY_HASH_MODIFIED, we should only fail quietly if we fail
+        #       to save an IN_MEMORY_HASH_MODIFIED, and fail *noisily* if we
+        #       fail to save IN_MEMORY_MODIFIED
+        if self._worth_saving():
             grabbed_write_lock = False
             if self._lock_state != 'w':
                 grabbed_write_lock, new_lock = self._lock_token.temporary_write_lock()
@@ -2347,12 +2394,12 @@ class DirState(object):
                     # We couldn't grab a write lock, so we switch back to a read one
                     return
             try:
+                lines = self.get_lines()
                 self._state_file.seek(0)
-                self._state_file.writelines(self.get_lines())
+                self._state_file.writelines(lines)
                 self._state_file.truncate()
                 self._state_file.flush()
-                self._header_state = DirState.IN_MEMORY_UNMODIFIED
-                self._dirblock_state = DirState.IN_MEMORY_UNMODIFIED
+                self._mark_unmodified()
             finally:
                 if grabbed_write_lock:
                     self._lock_token = self._lock_token.restore_read_lock()
@@ -2360,6 +2407,26 @@ class DirState(object):
                     # TODO: jam 20070315 We should validate the disk file has
                     #       not changed contents. Since restore_read_lock may
                     #       not be an atomic operation.
+
+    def _worth_saving(self):
+        """Is it worth saving the dirstate or not?"""
+        if (self._header_state == DirState.IN_MEMORY_MODIFIED
+            or self._dirblock_state == DirState.IN_MEMORY_MODIFIED):
+            return True
+        if self._dirblock_state == DirState.IN_MEMORY_HASH_MODIFIED:
+            if self._worth_saving_limit == -1:
+                # We never save hash changes when the limit is -1
+                return False
+            # If we're using smart saving and only a small number of
+            # entries have changed their hash, don't bother saving. John has
+            # suggested using a heuristic here based on the size of the
+            # changed files and/or tree. For now, we go with a configurable
+            # number of changes, keeping the calculation time
+            # as low overhead as possible. (This also keeps all existing
+            # tests passing as the default is 0, i.e. always save.)
+            if len(self._known_hash_changes) >= self._worth_saving_limit:
+                return True
+        return False
 
     def _set_data(self, parent_ids, dirblocks):
         """Set the full dirstate data in memory.
@@ -2374,8 +2441,7 @@ class DirState(object):
         """
         # our memory copy is now authoritative.
         self._dirblocks = dirblocks
-        self._header_state = DirState.IN_MEMORY_MODIFIED
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified(header_modified=True)
         self._parents = list(parent_ids)
         self._id_index = None
         self._packed_stat_index = None
@@ -2401,7 +2467,14 @@ class DirState(object):
         self._make_absent(entry)
         self.update_minimal(('', '', new_id), 'd',
             path_utf8='', packed_stat=entry[1][0][4])
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified()
+        # XXX: This was added by Ian, we need to make sure there
+        #      are tests for it, because it isn't in bzr.dev TRUNK
+        #      It looks like the only place it is called is in setting the root
+        #      id of the tree. So probably we never had an _id_index when we
+        #      don't even have a root yet.
+        if self._id_index is not None:
+            self._add_to_id_index(self._id_index, entry[0])
 
     def set_parent_trees(self, trees, ghosts):
         """Set the parent trees for the dirstate.
@@ -2542,8 +2615,7 @@ class DirState(object):
         self._entries_to_current_state(new_entries)
         self._parents = [rev_id for rev_id, tree in trees]
         self._ghosts = list(ghosts)
-        self._header_state = DirState.IN_MEMORY_MODIFIED
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified(header_modified=True)
         self._id_index = id_index
 
     def _sort_entries(self, entry_list):
@@ -2686,7 +2758,7 @@ class DirState(object):
                         current_old[0][1].decode('utf8'))
                 self._make_absent(current_old)
                 current_old = advance(old_iterator)
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified()
         self._id_index = None
         self._packed_stat_index = None
         if tracing:
@@ -2758,7 +2830,7 @@ class DirState(object):
             if update_tree_details[0][0] == 'a': # absent
                 raise AssertionError('bad row %r' % (update_tree_details,))
             update_tree_details[0] = DirState.NULL_PARENT_DETAILS
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified()
         return last_reference
 
     def update_minimal(self, key, minikind, executable=False, fingerprint='',
@@ -2933,7 +3005,7 @@ class DirState(object):
             if not present:
                 self._dirblocks.insert(block_index, (subdir_key[0], []))
 
-        self._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        self._mark_modified()
 
     def _maybe_remove_row(self, block, index, id_index):
         """Remove index if it is absent or relocated across the row.
@@ -3242,6 +3314,8 @@ def py_update_entry(state, entry, abspath, stat_value,
         else:
             worth_saving = False
     elif minikind == 'l':
+        if saved_minikind == 'l':
+            worth_saving = False
         link_or_sha1 = state._read_link(abspath, saved_link_or_sha1)
         if state._cutoff_time is None:
             state._sha_cutoff_time()
@@ -3253,7 +3327,7 @@ def py_update_entry(state, entry, abspath, stat_value,
             entry[1][0] = ('l', '', stat_value.st_size,
                            False, DirState.NULLSTAT)
     if worth_saving:
-        state._dirblock_state = DirState.IN_MEMORY_MODIFIED
+        state._mark_modified([entry])
     return link_or_sha1
 
 

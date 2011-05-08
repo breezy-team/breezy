@@ -26,11 +26,27 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* Slightly reduced memory consumption when fetching into a 2a repository
+  by reusing existing caching a little better.  (Andrew Bennetts)
+
+* Speed up ``bzr status`` by a little bit when there are a couple of
+  modified files. We now track how many files we have seen that need
+  updating, and only rewrite the dirstate file if enough of them have
+  changed. The default is 10, and can be overridden by setting the branch
+  option "``bzr.workingtree.worth_saving_limit``".
+  (Ian Clatworthy, John Arbash Meinel, #380202)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* All Tree types can now be exported as tar.*, zip or directories.
+  (Aaron Bentley)
+  
+* Correct parent is now set when using 'switch -b' with bound branches.
+  (A. S. Budden, #513709)
 
 Documentation
 *************
@@ -135,6 +151,11 @@ Bug Fixes
 * ``bzr log`` now works on revisions which are not in the current branch.
   (Matt Giuca, #241998)
 
+* Don't rewrite the dirstate file when non-interesting changes have
+  occurred. This can significantly improve 'bzr status' times when there
+  are only small changes to a large tree.
+  (Ian Clatworthy, John Arbash Meinel, #380202)
+
 * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
 * ``bzrlib.merge.Merge`` now calls ``iter_changes`` without
@@ -145,6 +166,10 @@ Bug Fixes
   things which had not changed (such as parent directories). All cases we
   know about so far have been fixed, but there may be fallout for edge
   cases that we are missing. (John Arbash Meinel, #759091)
+
+* ``SFTPTransport`` is more pro-active about closing file-handles. This
+  reduces the chance of having threads fail from async requests while
+  running the test suite. (John Arbash Meinel, #656170)
 
 * Standalone bzr.exe installation on Windows: user can put additional python 
   libraries into ``site-packages`` subdirectory of the installation directory,
@@ -173,6 +198,10 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``Branch.update_revisions`` has been made private and should no
+  longer be used by external users. Use ``Branch.pull`` or ``Branch.push``
+  instead. (Jelmer Vernooij, #771765)
 
 * Commands now have an `invoked_as` attribute, showing the name under
   which they were called before alias expansion.
@@ -427,6 +456,9 @@ API Changes
 * ``BranchFormat.supports_leaving_lock()`` and
   ``RepositoryFormat.supports_leaving_lock`` flags have been added.
   (Jelmer Vernooij)
+
+* ``Branch.fetch`` implementations must now accept an optional
+  ``fetch_tags`` keyword argument. (Andrew Bennetts)
 
 * ``Branch.import_last_revision_info`` is deprecated.  Use the
   ``import_last_revision_info_and_tags`` method instead.
