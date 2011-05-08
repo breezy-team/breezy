@@ -1218,13 +1218,18 @@ class cmd_dep3_patch(Command):
         from bzrlib.plugins.builddeb.dep3 import write_dep3_patch
         target_branch, _ = Branch.open_containing(".")
         tree, branch = BzrDir.open_containing_tree_or_branch(location)[:2]
-        branch.lock_write()
+        branch.lock_read()
         try:
+            builddeb_config = debuild_config(tree, True)
             revision_id = branch.last_revision()
             graph = branch.repository.get_graph(target_branch.repository)
             ancestor_id = graph.find_unique_lca(revision_id,
                 target_branch.last_revision())
+            if builddeb_config.upstream_branch:
+                upstream_branch = Branch.open(builddeb_config.upstream_branch)
+            else:
+                upstream_branch = None
             write_dep3_patch(self.outf, branch, ancestor_id,
-                revision_id)
+                revision_id, upstream_branch=upstream_branch)
         finally:
             branch.unlock()

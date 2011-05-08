@@ -59,6 +59,12 @@ def write_dep3_patch_header(f, description=None, origin=None, forwarded=None,
     :param applied_upstream: If the patch is applied upstream,
         an informal string describing where it was merged
     """
+    # FIXME: Handle line breaks, etc sensibly
+    if description is not None:
+        description = description.strip("\n")
+        description = description.replace("\n\n", "\n.\n")
+        description = description.replace("\n", "\n ")
+        f.write("Description: %s\n" % description)
     if origin is not None:
         f.write("Origin: %s\n" % origin)
     if forwarded is not None:
@@ -76,8 +82,6 @@ def write_dep3_patch_header(f, description=None, origin=None, forwarded=None,
         f.write("Applied-Upstream: %s\n" % applied_upstream)
     if revision_id is not None:
         f.write("X-Bzr-Revision-Id: %s\n" % revision_id)
-    if description is not None:
-        f.write("Description: %s\n" % description)
     f.write("\n")
 
 
@@ -97,7 +101,59 @@ def gather_bugs_and_authors(repository, interesting_revision_ids):
     return (bugs, authors, last_update)
 
 
-def write_dep3_patch(f, branch, base_revid, target_revid, description=None):
+def determine_applied_upstream(upstream_branch, feature_branch, feature_revid=None):
+    """Check if a particular revision has been merged upstream.
+
+    :param upstream_branch: Upstream branch object
+    :param feature_branch: Feature branch
+    :param feature_revid: Revision id in feature branch to check,
+        defaults to feature_branch tip.
+    :return: String that can be used for Applied-Upstream field
+    """
+    if feature_revid is None:
+        feature_revid = feature_branch.last_revision()
+    upstream_graph = feature_branch.repository.get_graph(upstream_branch.repository)
+    merger = upstream_graph.find_lefthand_merger(feature_revid,
+        upstream_branch.last_revision())
+    if merger is not None:
+        return "merged in revision %s" % (
+            ".".join(str(x) for x in upstream_branch.revision_id_to_dotted_revno(merger)), )
+    else:
+        return "no"
+
+
+def determine_forwarded(upstream_branch, feature_branch, feature_revid):
+    """See if a branch has been forwarded to upstream.
+
+    :param upstream_branch: Upstream branch object
+    :param feature_branch: Feature branch
+    :param feature_revid: Revision id in feature branch to check
+    :return: String that can be used for Applied-Upstream field
+    """
+    # FIXME: Check for Launchpad merge proposals from feature_branch to
+    # upstream_branch
+
+    # Are there any other ways to see that a patch has been forwarded upstream?
+    return None
+
+
+def describe_origin(branch, revid):
+    """Describe a tree for use in the origin field.
+
+    :param branch: Branch to retrieve the revision from
+    :param revid: Revision id
+    """
+    public_branch_url = branch.get_public_branch()
+    if public_branch_url is not None:
+        return "commit, %s, revision: %s" % (
+            public_branch_url,
+            ".".join(str(x) for x in branch.revision_id_to_dotted_revno(revid)), )
+    else:
+        return "commit, revision id: %s" % revid
+
+
+def write_dep3_patch(f, branch, base_revid, target_revid, description=None,
+        origin=None, upstream_branch=None):
     """Write a DEP-3 compliant patch.
 
     :param f: File-like object to write to
@@ -105,21 +161,32 @@ def write_dep3_patch(f, branch, base_revid, target_revid, description=None):
     :param base_revid: Base revision id
     :param target_revid: Target revisoin id
     :param description: Optional description
+    :param upstream_branch: Upstream branch (used to check if the patch is
+        applied upstream)
     """
     graph = branch.repository.get_graph()
     interesting_revision_ids = graph.find_unique_ancestors(target_revid, [base_revid])
     (bugs, authors, last_update) = gather_bugs_and_authors(branch.repository,
         interesting_revision_ids)
+    config = branch.get_config()
     if description is None:
-        config = branch.get_config()
         description = config.get_user_option("description")
     if description is None and len(interesting_revision_ids) == 1:
         # if there's just one revision, use that revisions commits message
         rev = branch.repository.get_revision(iter(interesting_revision_ids).next())
         description = rev.message
+    if origin is None:
+        origin = describe_origin(branch, target_revid)
+    if upstream_branch is not None:
+        applied_upstream = determine_applied_upstream(upstream_branch, branch,
+            target_revid)
+        forwarded = determine_forwarded(upstream_branch, branch, target_revid)
+    else:
+        applied_upstream = None
+        forwarded = None
     write_dep3_patch_header(f, bugs=bugs, authors=authors, last_update=last_update,
-            description=description, revision_id=target_revid)
+            description=description, revision_id=target_revid, origin=origin,
+            applied_upstream=applied_upstream, forwarded=forwarded)
     old_tree = branch.repository.revision_tree(base_revid)
     new_tree = branch.repository.revision_tree(target_revid)
-    # FIXME: Check if patch was merged upstream
     diff.show_diff_trees(old_tree, new_tree, f, old_label='old/', new_label='new/')

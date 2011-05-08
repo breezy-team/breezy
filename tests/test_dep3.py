@@ -1,6 +1,6 @@
 #    test_dep3.py -- Testsuite for builddeb dep3.py
 #    Copyright (C) 2011 Canonical Ltd.
-#    
+#
 #    This file is part of bzr-builddeb.
 #
 #    bzr-builddeb is free software; you can redistribute it and/or modify
@@ -28,6 +28,8 @@ from bzrlib.tests import (
     )
 
 from bzrlib.plugins.builddeb.dep3 import (
+    describe_origin,
+    determine_applied_upstream,
     gather_bugs_and_authors,
     write_dep3_bug_line,
     write_dep3_patch_header,
@@ -125,9 +127,9 @@ class GatherBugsAndAuthors(TestCaseWithTransport):
 
     def test_multiple_authors(self):
         tree = self.make_branch_and_tree(".")
-        revid1 = tree.commit(author="Jelmer Vernooij <jelmer@canonical.com>",
+        revid1 = tree.commit(authors=["Jelmer Vernooij <jelmer@canonical.com>"],
                 timestamp=1304844311, message="msg")
-        revid2 = tree.commit(author="Max Bowsher <maxb@f2s.com>",
+        revid2 = tree.commit(authors=["Max Bowsher <maxb@f2s.com>"],
                 timestamp=1304844278, message="msg")
         self.assertEquals((set(), set([
             "Jelmer Vernooij <jelmer@canonical.com>",
@@ -136,10 +138,49 @@ class GatherBugsAndAuthors(TestCaseWithTransport):
 
     def test_bugs(self):
         tree = self.make_branch_and_tree(".")
-        revid1 = tree.commit(author="Jelmer Vernooij <jelmer@canonical.com>",
+        revid1 = tree.commit(authors=["Jelmer Vernooij <jelmer@canonical.com>"],
                 timestamp=1304844311, message="msg", revprops={"bugs":
                     "http://bugs.samba.org/bug.cgi?id=2011 fixed\n"})
         self.assertEquals((
             set([("http://bugs.samba.org/bug.cgi?id=2011", "fixed")]),
             set(["Jelmer Vernooij <jelmer@canonical.com>"]), 1304844311),
             gather_bugs_and_authors(tree.branch.repository, [revid1]))
+
+
+class DetermineAppliedUpstreamTests(TestCaseWithTransport):
+
+    def test_not_applied(self):
+        upstream = self.make_branch_and_tree("upstream")
+        feature = self.make_branch_and_tree("feature")
+        feature.commit(message="every bloody emperor")
+        self.addCleanup(feature.lock_read().unlock)
+        self.assertEquals("no",
+            determine_applied_upstream(upstream.branch, feature.branch))
+
+    def test_merged(self):
+        upstream = self.make_branch_and_tree("upstream")
+        upstream.commit(message="initial upstream commit")
+        feature = upstream.bzrdir.sprout("feature").open_workingtree()
+        feature.commit(message="nutter alert")
+        upstream.merge_from_branch(feature.branch)
+        upstream.commit(message="merge feature")
+        self.addCleanup(upstream.lock_read().unlock)
+        self.addCleanup(feature.lock_read().unlock)
+        self.assertEquals("merged in revision 2",
+            determine_applied_upstream(upstream.branch, feature.branch))
+
+
+class DescribeOriginTests(TestCaseWithTransport):
+
+    def test_no_public_branch(self):
+        tree = self.make_branch_and_tree(".")
+        revid1 = tree.commit(message="msg1")
+        self.assertEquals("commit, revision id: %s" % revid1,
+            describe_origin(tree.branch, revid1))
+
+    def test_public_branch(self):
+        tree = self.make_branch_and_tree(".")
+        tree.branch.set_public_branch("http://example.com/public")
+        revid1 = tree.commit(message="msg1")
+        self.assertEquals("commit, http://example.com/public, revision: 1",
+            describe_origin(tree.branch, revid1))
