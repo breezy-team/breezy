@@ -130,8 +130,8 @@ def determine_forwarded(upstream_branch, feature_branch, feature_revid):
     :param feature_revid: Revision id in feature branch to check
     :return: String that can be used for Applied-Upstream field
     """
-    # FIXME: Check for Launchpad merge proposals from feature_branch to
-    # upstream_branch
+    # FIXME: Check for Launchpad merge proposals from feature_branch (or its
+    # public_branch) to upstream_branch
 
     # Are there any other ways to see that a patch has been forwarded upstream?
     return None
@@ -153,37 +153,22 @@ def describe_origin(branch, revid):
 
 
 def write_dep3_patch(f, branch, base_revid, target_revid, description=None,
-        origin=None, upstream_branch=None):
+        origin=None, forwarded=None, applied_upstream=None, bugs=None,
+        authors=None, last_update=None):
     """Write a DEP-3 compliant patch.
 
     :param f: File-like object to write to
     :param repository: Repository to retrieve revisions from
     :param base_revid: Base revision id
-    :param target_revid: Target revisoin id
+    :param target_revid: Target revision id
     :param description: Optional description
-    :param upstream_branch: Upstream branch (used to check if the patch is
-        applied upstream)
+    :param forwarded: Optional information on if/how the patch was forwarded
+    :param applied_upstream: Optional information on how whether the patch
+        was merged upstream
+    :param bugs: Sequence of bug reports related to this patch
+    :param authors: Sequence of authors of this patch
+    :param last_update: Timestamp for last time this patch was updated
     """
-    graph = branch.repository.get_graph()
-    interesting_revision_ids = graph.find_unique_ancestors(target_revid, [base_revid])
-    (bugs, authors, last_update) = gather_bugs_and_authors(branch.repository,
-        interesting_revision_ids)
-    config = branch.get_config()
-    if description is None:
-        description = config.get_user_option("description")
-    if description is None and len(interesting_revision_ids) == 1:
-        # if there's just one revision, use that revisions commits message
-        rev = branch.repository.get_revision(iter(interesting_revision_ids).next())
-        description = rev.message
-    if origin is None:
-        origin = describe_origin(branch, target_revid)
-    if upstream_branch is not None:
-        applied_upstream = determine_applied_upstream(upstream_branch, branch,
-            target_revid)
-        forwarded = determine_forwarded(upstream_branch, branch, target_revid)
-    else:
-        applied_upstream = None
-        forwarded = None
     write_dep3_patch_header(f, bugs=bugs, authors=authors, last_update=last_update,
             description=description, revision_id=target_revid, origin=origin,
             applied_upstream=applied_upstream, forwarded=forwarded)
