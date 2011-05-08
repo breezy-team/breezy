@@ -27,6 +27,16 @@ from bzrlib import osutils
 
 __all__ = ["UTextWrapper", "fill", "wrap"]
 
+def _unicode_char_width(uc):
+    """Return width of character `uc`.
+
+    :param:     uc      Single unicode character.
+    """
+    # 'A' means width of the character is not be able to determine.
+    # We assume that it's width is 2 because longer wrap may over
+    # terminal width but shorter wrap may be acceptable.
+    return (_eawidth(uc) in 'FWA' and 2) or 1
+
 def _width(s):
     """Returns width for s.
     
@@ -38,14 +48,10 @@ def _width(s):
     if isinstance(s, str):
         return len(s)
     assert isinstance(s, unicode)
-    w = 0
-    for c in map(_eawidth, s):
-        #w += 2 if c in 'FWA' else 1 # needs Python >= 2.5
-        w += (c in 'FWA' and 2) or 1
-    return w
+    return sum(_unicode_char_width(c) for c in s)
 
 def _cut(s, width):
-    """Returns head and rest of s. (head+rest == s).
+    """Returns head and rest of s. (head+rest == s)
 
     Head is large as long as _width(head) <= width.
     """
@@ -53,11 +59,12 @@ def _cut(s, width):
         return s[:width], s[width:]
     assert isinstance(s, unicode)
     w = 0
+    charwidth = _unicode_char_width
     for pos, c in enumerate(s):
-        w += (_eawidth(c) in 'FWA' and 2) or 1
+        w += charwidth(c)
         if w > width:
             return s[:pos], s[pos:]
-    return s, ''
+    return s, u''
 
 
 class UTextWrapper(textwrap.TextWrapper):
