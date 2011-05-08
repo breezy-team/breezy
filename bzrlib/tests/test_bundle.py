@@ -493,7 +493,7 @@ class BundleTester(object):
                                  % (ancestor,))
 
                 # Now check that the file contents are all correct
-                for inventory_id in old:
+                for inventory_id in old.all_file_ids():
                     try:
                         old_file = old.get_file(inventory_id)
                     except errors.NoSuchFile:
