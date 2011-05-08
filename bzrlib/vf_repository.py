@@ -1190,9 +1190,10 @@ class VersionedFileRepository(Repository):
         # rather copying them?
         self._safe_to_return_from_cache = False
 
-    def gather_stats(self):
+    @needs_read_lock
+    def gather_stats(self, revid=None, committers=None):
         """See Repository.gather_stats()."""
-        result = super(VersionedFileRepository, self).gather_stats()
+        result = super(VersionedFileRepository, self).gather_stats(revid, committers)
         # now gather global repository information
         # XXX: This is available for many repos regardless of listability.
         if self.user_transport.listable():
