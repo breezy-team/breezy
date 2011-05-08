@@ -1215,17 +1215,16 @@ class cmd_dep3_patch(Command):
     takes_args = ["location"]
 
     def run(self, location):
-        from bzrlib.plugins.builddeb.dep3 import dep3_patch
+        from bzrlib.plugins.builddeb.dep3 import write_dep3_patch
         target_branch, _ = Branch.open_containing(".")
         tree, branch = BzrDir.open_containing_tree_or_branch(location)[:2]
         branch.lock_write()
         try:
             revision_id = branch.last_revision()
-            graph = branch.repository.get_graph()
+            graph = branch.repository.get_graph(target_branch.repository)
             ancestor_id = graph.find_unique_lca(revision_id,
                 target_branch.last_revision())
-            tree_1 = branch.repository.revision_tree(ancestor_id)
-            tree_2 = branch.repository.revision_tree(revision_id)
-            dep3_patch(self.outf, tree_1, tree_2)
+            write_dep3_patch(self.outf, branch.repository, ancestor_id,
+                revision_id)
         finally:
             branch.unlock()

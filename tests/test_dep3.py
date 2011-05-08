@@ -20,11 +20,13 @@
 
 from cStringIO import StringIO
 
+import rfc822
+
 from bzrlib.tests import TestCase
 
-from bzrlib.plugins.builddeb.dep3 import dep3_patch_header
-
-from debian.deb822 import Deb822
+from bzrlib.plugins.builddeb.dep3 import (
+    write_dep3_patch_header,
+    )
 
 
 class Dep3HeaderTests(TestCase):
@@ -32,10 +34,10 @@ class Dep3HeaderTests(TestCase):
     def dep3_header(self, description=None, bugs=None, authors=None,
             revision_id=None, last_update=None):
         f = StringIO()
-        dep3_patch_header(f, description=description, bugs=bugs,
+        write_dep3_patch_header(f, description=description, bugs=bugs,
             authors=authors, revision_id=revision_id, last_update=last_update)
         f.seek(0)
-        return Deb822(f)
+        return rfc822.Message(f)
 
     def test_description(self):
         ret = self.dep3_header(description="This patch fixes the foobar")
@@ -48,3 +50,11 @@ class Dep3HeaderTests(TestCase):
     def test_revision_id(self):
         ret = self.dep3_header(revision_id="myrevid")
         self.assertEquals("myrevid", ret["X-Bzr-Revision-Id"])
+
+    def test_authors(self):
+        authors = ["Jelmer Vernooij <jelmer@canonical.com>", "James Westby <james.westby@canonical.com>"]
+        ret = self.dep3_header(authors=authors)
+        self.assertEquals([
+            ("Jelmer Vernooij", "jelmer@canonical.com"),
+            ("James Westby", "james.westby@canonical.com")],
+            ret.getaddrlist("Author"))
