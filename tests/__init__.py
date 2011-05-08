@@ -119,6 +119,7 @@ def load_tests(standard_tests, module, loader):
             'test_bzrtools_import',
             'test_commit_message',
             'test_config',
+            'test_dep3',
             'test_dh_make',
             'test_hooks',
             'test_import_dsc',

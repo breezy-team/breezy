@@ -1207,35 +1207,6 @@ class cmd_dh_make(Command):
                     self.outf.encoding))
 
 
-def dep3_patch_header(f, bugs=None, authors=None, revision_id=None):
-    """Write a DEP3 patch header.
-
-    :param f: File-like object to write to
-    """
-    import time
-    # FIXME: Description
-    # FIXME: Origin
-    # FIXME: Bug- or Bug:
-    # FIXME: Forwarded
-    if authors:
-        for author in authors:
-            f.write("Author: %s\n" % author)
-    f.write("Last-Update: %s\n" % time.strftime("%Y-%m-%d"))
-    # FIXME: Applied-Upstream
-    if revision_id is not None:
-        f.write("X-Bzr-Revision-Id: %s\n" % revision_id)
-    f.write("\n")
-
-
-def dep3_patch(f, old_tree, new_tree, bugs=None):
-    """Write a DEP-3 compliant patch.
-
-    """
-    from bzrlib import diff
-    dep3_patch_header(f)
-    diff.show_diff_trees(old_tree, new_tree, f, old_label='old/', new_label='new/')
-
-
 class cmd_dep3_patch(Command):
     """Format a branch as a DEP3 patch.
 
@@ -1244,6 +1215,7 @@ class cmd_dep3_patch(Command):
     takes_args = ["location"]
 
     def run(self, location):
+        from bzrlib.plugins.builddeb.dep3 import dep3_patch
         target_branch, _ = Branch.open_containing(".")
         tree, branch = BzrDir.open_containing_tree_or_branch(location)[:2]
         branch.lock_write()
