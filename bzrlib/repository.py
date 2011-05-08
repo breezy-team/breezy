@@ -1378,6 +1378,8 @@ class RepositoryFormat(controldir.ControlComponentFormat):
     supports_revision_signatures = True
     # Can the revision graph have incorrect parents?
     revision_graph_can_have_wrong_parents = None
+    # Does this format support rich root data?
+    rich_root_data = None
 
     def __repr__(self):
         return "%s()" % self.__class__.__name__
@@ -1850,29 +1852,6 @@ class InterRepository(InterObject):
             raise errors.IncompatibleRepositories(source, target,
                 "different serializers")
 
-
-class InterSameDataRepository(InterRepository):
-    """Code for converting between repositories that represent the same data.
-
-    Data format and model must match for this to work.
-    """
-
-    @classmethod
-    def _get_repo_format_to_test(self):
-        """Repository format for testing with.
-
-        InterSameData can pull from subtree to subtree and from non-subtree to
-        non-subtree, so we test this with the richest repository format.
-        """
-        from bzrlib.repofmt import knitrepo
-        return knitrepo.RepositoryFormatKnit3()
-
-    @staticmethod
-    def is_compatible(source, target):
-        return InterRepository._same_model(source, target)
-
-
-InterRepository.register_optimiser(InterSameDataRepository)
 
 
 class CopyConverter(object):

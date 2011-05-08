@@ -2453,6 +2453,10 @@ class InterDifferingSerializer(InterRepository):
 
     @staticmethod
     def is_compatible(source, target):
+        if not source._format.supports_full_versioned_files:
+            return False
+        if not target._format.supports_full_versioned_files:
+            return False
         # This is redundant with format.check_conversion_target(), however that
         # raises an exception, and we just want to say "False" as in we won't
         # support converting between these formats.
@@ -2474,10 +2478,6 @@ class InterDifferingSerializer(InterRepository):
         if not source.bzrdir.transport.base.startswith('file:///'):
             return False
         if not target.bzrdir.transport.base.startswith('file:///'):
-            return False
-        if not source._format.supports_full_versioned_files:
-            return False
-        if not target._format.supports_full_versioned_files:
             return False
         return True
 
@@ -2787,7 +2787,32 @@ class InterDifferingSerializer(InterRepository):
         return basis_id, basis_tree
 
 
+class InterSameDataRepository(InterRepository):
+    """Code for converting between repositories that represent the same data.
+
+    Data format and model must match for this to work.
+    """
+
+    @classmethod
+    def _get_repo_format_to_test(self):
+        """Repository format for testing with.
+
+        InterSameData can pull from subtree to subtree and from non-subtree to
+        non-subtree, so we test this with the richest repository format.
+        """
+        from bzrlib.repofmt import knitrepo
+        return knitrepo.RepositoryFormatKnit3()
+
+    @staticmethod
+    def is_compatible(source, target):
+        return (
+            InterRepository._same_model(source, target) and
+            source._format.supports_full_versioned_files and
+            target._format.supports_full_versioned_files)
+
+
 InterRepository.register_optimiser(InterDifferingSerializer)
+InterRepository.register_optimiser(InterSameDataRepository)
 
 
 def install_revisions(repository, iterable, num_revisions=None, pb=None):

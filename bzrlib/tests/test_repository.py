@@ -379,7 +379,11 @@ class TestInterRepository(TestCaseWithTransport):
         # classes do not barf inappropriately when a surprising repository type
         # is handed to them.
         dummy_a = DummyRepository()
+        dummy_a._format = RepositoryFormat()
+        dummy_a._format.supports_full_versioned_files = True
         dummy_b = DummyRepository()
+        dummy_b._format = RepositoryFormat()
+        dummy_b._format.supports_full_versioned_files = True
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 
     def assertGetsDefaultInterRepository(self, repo_a, repo_b):
@@ -389,7 +393,7 @@ class TestInterRepository(TestCaseWithTransport):
         no actual sane default in the presence of incompatible data models.
         """
         inter_repo = repository.InterRepository.get(repo_a, repo_b)
-        self.assertEqual(repository.InterSameDataRepository,
+        self.assertEqual(vf_repository.InterSameDataRepository,
                          inter_repo.__class__)
         self.assertEqual(repo_a, inter_repo.source)
         self.assertEqual(repo_b, inter_repo.target)
@@ -409,9 +413,11 @@ class TestInterRepository(TestCaseWithTransport):
         dummy_a._serializer = repo._serializer
         dummy_a._format.supports_tree_reference = repo._format.supports_tree_reference
         dummy_a._format.rich_root_data = repo._format.rich_root_data
+        dummy_a._format.supports_full_versioned_files = repo._format.supports_full_versioned_files
         dummy_b._serializer = repo._serializer
         dummy_b._format.supports_tree_reference = repo._format.supports_tree_reference
         dummy_b._format.rich_root_data = repo._format.rich_root_data
+        dummy_b._format.supports_full_versioned_files = repo._format.supports_full_versioned_files
         repository.InterRepository.register_optimiser(InterDummy)
         try:
             # we should get the default for something InterDummy returns False

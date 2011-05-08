@@ -35,11 +35,11 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     InterRepository,
-    InterSameDataRepository,
     IsInWriteGroupError,
     RepositoryFormat,
     )
 from bzrlib.vf_repository import (
+    InterSameDataRepository,
     MetaDirVersionedFileRepository,
     MetaDirVersionedFileRepositoryFormat,
     VersionedFileCommitBuilder,

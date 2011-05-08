@@ -50,7 +50,6 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
     InterRepository,
-    InterSameDataRepository,
     RepositoryFormat,
     )
 from bzrlib.store.text import TextStore
@@ -60,6 +59,7 @@ from bzrlib.versionedfile import (
     VersionedFiles,
     )
 from bzrlib.vf_repository import (
+    InterSameDataRepository,
     VersionedFileCommitBuilder,
     VersionedFileRepository,
     VersionedFileRepositoryFormat,
