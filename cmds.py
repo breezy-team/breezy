@@ -1218,9 +1218,12 @@ class cmd_dep3_patch(Command):
                            help='Packaging tree for which to generate patch.',
                            short_name='d', type=unicode)
 
-    takes_options = [directory_opt, "revision"]
+    no_upstream_check_opt = Option('no-upstream-check',
+        help="Don't check whether patch has been merged upstream.")
 
-    def run(self, location, directory=".", revision=None):
+    takes_options = [directory_opt, "revision", no_upstream_check_opt]
+
+    def run(self, location, directory=".", revision=None, no_upstream_check=False):
         from bzrlib.plugins.builddeb.dep3 import (
             determine_applied_upstream,
             determine_forwarded,
@@ -1258,7 +1261,7 @@ class cmd_dep3_patch(Command):
             if packaging_tree is None:
                 packaging_tree = packaging_branch.basis_tree()
             builddeb_config = debuild_config(packaging_tree, True)
-            if builddeb_config.upstream_branch:
+            if not no_upstream_check and builddeb_config.upstream_branch:
                 upstream_branch = Branch.open(builddeb_config.upstream_branch)
                 applied_upstream = determine_applied_upstream(upstream_branch, branch,
                     revision_id)

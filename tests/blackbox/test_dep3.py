@@ -90,3 +90,15 @@ class TestDep3Patch(ExternalBase):
         self.feature_tree.commit(message="a message")
         (out, err) = self.run_bzr("dep3-patch -d packaging feature")
         self.assertContainsRe(out, "Applied-Upstream: no\n")
+
+    def test_upstream_branch_disabled(self):
+        os.mkdir('packaging/.bzr-builddeb/')
+        f = open('packaging/.bzr-builddeb/local.conf', 'wb')
+        try:
+            f.write('[BUILDDEB]\nupstream-branch = %s\n' %
+                    self.upstream_tree.branch.base)
+        finally:
+            f.close()
+        self.feature_tree.commit(message="a message")
+        (out, err) = self.run_bzr("dep3-patch --no-upstream-check -d packaging feature")
+        self.assertNotContainsRe(out, "Applied-Upstream")
