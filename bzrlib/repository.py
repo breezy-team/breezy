@@ -3523,7 +3523,7 @@ class InterRepository(InterObject):
 
     @classmethod
     def _get_repo_format_to_test(self):
-        return []
+        return None
 
     @classmethod
     def is_compatible(cls, source, target):
