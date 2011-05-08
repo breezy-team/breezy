@@ -412,11 +412,12 @@ class UpdateToOneParentViaDeltaTests(TestCaseWithWorkingTree):
                     committer="Foo Bar <foo@example.com>",
                     revision_id=revid)
             shape_tree = ShapeTree(shape)
+            base_tree = tree.branch.repository.revision_tree(
+                    _mod_revision.NULL_REVISION)
             changes = shape_tree.iter_changes(
-                tree.branch.repository.revision_tree(
-                    _mod_revision.NULL_REVISION))
+                base_tree)
             list(builder.record_iter_changes(shape_tree,
-                tree.branch.last_revision(), changes))
+                base_tree.get_revision_id(), changes))
             builder.finish_inventory()
             builder.commit("Message")
         finally:
