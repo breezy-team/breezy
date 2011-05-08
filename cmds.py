@@ -1224,7 +1224,7 @@ class cmd_dep3_patch(Command):
             graph = branch.repository.get_graph(target_branch.repository)
             ancestor_id = graph.find_unique_lca(revision_id,
                 target_branch.last_revision())
-            write_dep3_patch(self.outf, branch.repository, ancestor_id,
+            write_dep3_patch(self.outf, branch, ancestor_id,
                 revision_id)
         finally:
             branch.unlock()

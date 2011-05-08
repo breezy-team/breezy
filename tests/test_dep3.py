@@ -22,9 +22,13 @@ from cStringIO import StringIO
 
 import rfc822
 
-from bzrlib.tests import TestCase
+from bzrlib.tests import (
+    TestCase,
+    TestCaseWithTransport,
+    )
 
 from bzrlib.plugins.builddeb.dep3 import (
+    gather_bugs_and_authors,
     write_dep3_bug_line,
     write_dep3_patch_header,
     )
@@ -32,11 +36,14 @@ from bzrlib.plugins.builddeb.dep3 import (
 
 class Dep3HeaderTests(TestCase):
 
-    def dep3_header(self, description=None, bugs=None, authors=None,
-            revision_id=None, last_update=None):
+    def dep3_header(self, description=None, origin=None, forwarded=None,
+            bugs=None, authors=None, revision_id=None, last_update=None,
+            applied_upstream=None):
         f = StringIO()
-        write_dep3_patch_header(f, description=description, bugs=bugs,
-            authors=authors, revision_id=revision_id, last_update=last_update)
+        write_dep3_patch_header(f, description=description, origin=origin,
+            forwarded=forwarded, bugs=bugs, authors=authors,
+            revision_id=revision_id, last_update=last_update,
+            applied_upstream=applied_upstream)
         f.seek(0)
         return rfc822.Message(f)
 
@@ -62,6 +69,33 @@ class Dep3HeaderTests(TestCase):
             ("James Westby", "james.westby@canonical.com")],
             ret.getaddrlist("Author"))
 
+    def test_origin(self):
+        ret = self.dep3_header(origin="Cherrypick from upstream")
+        self.assertEquals("Cherrypick from upstream",
+            ret["Origin"])
+
+    def test_forwarded(self):
+        ret = self.dep3_header(forwarded="not needed")
+        self.assertEquals("not needed",
+            ret["Forwarded"])
+
+    def test_applied_upstream(self):
+        ret = self.dep3_header(applied_upstream="commit 45")
+        self.assertEquals("commit 45", ret["Applied-Upstream"])
+
+    def test_bugs(self):
+        bugs = [
+            ("http://bugs.debian.org/424242", "fixed"),
+            ("https://bugs.launchpad.net/bugs/20110508", "fixed"),
+            ("http://bugzilla.samba.org/bug.cgi?id=52", "fixed")]
+        ret = self.dep3_header(bugs=bugs)
+        self.assertEquals([
+            "https://bugs.launchpad.net/bugs/20110508",
+            "http://bugzilla.samba.org/bug.cgi?id=52"],
+            ret.getheaders("Bug"))
+        self.assertEquals(["http://bugs.debian.org/424242"],
+            ret.getheaders("Bug-Debian"))
+
     def test_write_bug_fix_only(self):
         # non-fixed bug lines are ignored
         f = StringIO()
@@ -80,3 +114,32 @@ class Dep3HeaderTests(TestCase):
         write_dep3_bug_line(f, "http://bugs.debian.org/234354", "fixed")
         self.assertEquals("Bug-Debian: http://bugs.debian.org/234354\n",
             f.getvalue())
+
+
+class GatherBugsAndAuthors(TestCaseWithTransport):
+
+    def test_none(self):
+        branch = self.make_branch(".")
+        self.assertEquals((set(), set(), None),
+            gather_bugs_and_authors(branch.repository, []))
+
+    def test_multiple_authors(self):
+        tree = self.make_branch_and_tree(".")
+        revid1 = tree.commit(author="Jelmer Vernooij <jelmer@canonical.com>",
+                timestamp=1304844311, message="msg")
+        revid2 = tree.commit(author="Max Bowsher <maxb@f2s.com>",
+                timestamp=1304844278, message="msg")
+        self.assertEquals((set(), set([
+            "Jelmer Vernooij <jelmer@canonical.com>",
+            "Max Bowsher <maxb@f2s.com>"]), 1304844311),
+            gather_bugs_and_authors(tree.branch.repository, [revid1, revid2]))
+
+    def test_bugs(self):
+        tree = self.make_branch_and_tree(".")
+        revid1 = tree.commit(author="Jelmer Vernooij <jelmer@canonical.com>",
+                timestamp=1304844311, message="msg", revprops={"bugs":
+                    "http://bugs.samba.org/bug.cgi?id=2011 fixed\n"})
+        self.assertEquals((
+            set([("http://bugs.samba.org/bug.cgi?id=2011", "fixed")]),
+            set(["Jelmer Vernooij <jelmer@canonical.com>"]), 1304844311),
+            gather_bugs_and_authors(tree.branch.repository, [revid1]))
