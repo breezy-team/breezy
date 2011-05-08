@@ -543,15 +543,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 first_revision.timezone)
             result['latestrev'] = (last_revision.timestamp,
                 last_revision.timezone)
-
-        # now gather global repository information
-        # XXX: This is available for many repos regardless of listability.
-        if self.user_transport.listable():
-            # XXX: do we want to __define len__() ?
-            # Maybe the versionedfiles object should provide a different
-            # method to get the number of keys.
-            result['revisions'] = len(self.revisions.keys())
-            # result['size'] = t
         return result
 
     def find_branches(self, using=False):
