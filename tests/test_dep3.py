@@ -22,6 +22,9 @@ from cStringIO import StringIO
 
 import rfc822
 
+from bzrlib.revision import (
+    NULL_REVISION,
+    )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithTransport,
@@ -32,6 +35,7 @@ from bzrlib.plugins.builddeb.dep3 import (
     determine_applied_upstream,
     gather_bugs_and_authors,
     write_dep3_bug_line,
+    write_dep3_patch,
     write_dep3_patch_header,
     )
 
@@ -184,3 +188,30 @@ class DescribeOriginTests(TestCaseWithTransport):
         revid1 = tree.commit(message="msg1")
         self.assertEquals("commit, http://example.com/public, revision: 1",
             describe_origin(tree.branch, revid1))
+
+
+class FullDep3PatchTests(TestCaseWithTransport):
+
+    def test_simple(self):
+        f = StringIO()
+        tree = self.make_branch_and_tree(".")
+        self.build_tree_contents([("foo", "data")])
+        tree.add("foo")
+        revid = tree.commit("msg", rev_id="arevid", timestamp=1304849661,
+            timezone=0)
+        write_dep3_patch(f, tree.branch, NULL_REVISION, revid,
+            description="Nutter alert",
+            forwarded="not needed",
+            authors=set(["Jelmer <jelmer@samba.org>"]))
+        self.assertEquals("Description: Nutter alert\n"
+            "Forwarded: not needed\n"
+            "Author: Jelmer <jelmer@samba.org>\n"
+            "X-Bzr-Revision-Id: arevid\n"
+            "\n"
+            "=== added file 'foo'\n"
+            "--- old/foo\t1970-01-01 00:00:00 +0000\n"
+            "+++ new/foo\t2011-05-08 10:14:21 +0000\n"
+            "@@ -0,0 +1,1 @@\n"
+            "+data\n"
+            "\\ No newline at end of file\n"
+            "\n", f.getvalue())

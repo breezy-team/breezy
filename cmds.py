@@ -1208,7 +1208,7 @@ class cmd_dh_make(Command):
 
 
 class cmd_dep3_patch(Command):
-    """Format a branch as a DEP3 patch.
+    """Format the changes in a branch as a DEP-3 patch.
 
     """
 
