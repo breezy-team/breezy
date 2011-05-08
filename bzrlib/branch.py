@@ -747,9 +747,12 @@ class Branch(controldir.ControlComponent):
         raise NotImplementedError(self.print_file)
 
     @deprecated_method(deprecated_in((2, 4, 0)))
-    @needs_write_lock
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
+        self._set_revision_history(rev_history)
+
+    @needs_write_lock
+    def _set_revision_history(self, rev_history):
         if len(rev_history) == 0:
             revid = _mod_revision.NULL_REVISION
         else:
@@ -758,6 +761,8 @@ class Branch(controldir.ControlComponent):
             raise errors.NotLefthandHistory(rev_history)
         self.set_last_revision_info(len(rev_history), revid)
         self._cache_revision_history(rev_history)
+        for hook in Branch.hooks['set_rh']:
+            hook(self, rev_history)
 
     @needs_write_lock
     def set_last_revision_info(self, revno, revision_id):
@@ -776,7 +781,7 @@ class Branch(controldir.ControlComponent):
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
-        """See BzrBranch5.generate_revision_history"""
+        """See Branch.generate_revision_history"""
         # FIXME: This shouldn't have to fetch the entire history
         history = self._lefthand_history(revision_id, last_rev, other_branch)
         revno = len(history)
@@ -2723,8 +2728,6 @@ class FullHistoryBzrBranch(BzrBranch):
     def set_revision_history(self, rev_history):
         """See Branch.set_revision_history."""
         self._set_revision_history(rev_history)
-        for hook in Branch.hooks['set_rh']:
-            hook(self, rev_history)
 
     def _set_revision_history(self, rev_history):
         if 'evil' in debug.debug_flags:

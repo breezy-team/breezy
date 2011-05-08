@@ -130,7 +130,14 @@ class TestSetRevisionHistoryHook(ChangeBranchTipTestCase):
         expected_calls = [('set_rh', branch, [], True),
             ('set_rh', branch, [], True),
             ]
-        self.assertEqual(expected_calls, self.hook_calls)
+        if isinstance(branch, remote.RemoteBranch):
+            # For a remote branch, both the server and the client will raise
+            # set_rh, and the server will do so first because that is where
+            # the change takes place.
+            self.assertEqual(expected_calls, self.hook_calls[2:])
+            self.assertEqual(4, len(self.hook_calls))
+        else:
+            self.assertEqual(expected_calls, self.hook_calls)
 
 
 class TestOpen(tests.TestCaseWithMemoryTransport):
