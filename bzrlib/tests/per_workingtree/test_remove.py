@@ -17,7 +17,7 @@
 """Tests for interface conformance of 'WorkingTree.remove'"""
 
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
-from bzrlib import errors, ignores, osutils
+from bzrlib import ignores, osutils
 
 class TestRemove(TestCaseWithWorkingTree):
     """Tests WorkingTree.remove"""

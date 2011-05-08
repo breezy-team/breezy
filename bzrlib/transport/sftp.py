@@ -281,6 +281,8 @@ class _SFTPReadvHelper(object):
                     buffered = buffered[buffered_offset:]
                     buffered_data = [buffered]
                     buffered_len = len(buffered)
+        # now that the data stream is done, close the handle
+        fp.close()
         if buffered_len:
             buffered = ''.join(buffered_data)
             del buffered_data[:]
@@ -421,11 +423,6 @@ class SFTPTransport(ConnectedTransport):
         :param relpath: The relative path to the file
         """
         try:
-            # FIXME: by returning the file directly, we don't pass this
-            # through to report_activity.  We could try wrapping the object
-            # before it's returned.  For readv and get_bytes it's handled in
-            # the higher-level function.
-            # -- mbp 20090126
             path = self._remote_path(relpath)
             f = self._get_sftp().file(path, mode='rb')
             if self._do_prefetch and (getattr(f, 'prefetch', None) is not None):

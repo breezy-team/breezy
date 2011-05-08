@@ -21,7 +21,6 @@ import sys
 import time
 
 from bzrlib import (
-    errors,
     hashcache,
     tests,
     )

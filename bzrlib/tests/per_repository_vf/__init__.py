@@ -37,8 +37,10 @@ def all_repository_vf_format_scenarios():
 
 def load_tests(basic_tests, module, loader):
     testmod_names = [
+        'test_add_inventory_by_delta',
         'test_check',
         'test_check_reconcile',
+        'test_fetch',
         'test_reconcile',
         'test_repository',
         ]
