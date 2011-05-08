@@ -6154,6 +6154,16 @@ class cmd_reference(Command):
             self.outf.write('%s %s\n' % (path, location))
 
 
+class cmd_export_pot(Command):
+    __doc__ = """Export command helps and error messages in po format."""
+
+    hidden = True
+
+    def run(self):
+        from bzrlib.export_pot import export_pot
+        export_pot(self.outf)
+
+
 def _register_lazy_builtins():
     # register lazy builtins from other modules; called at startup and should
     # be only called once.
