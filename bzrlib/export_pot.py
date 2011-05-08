@@ -174,4 +174,5 @@ def export_pot(outf):
     _FOUND_MSGID = set()
     _command_helps(outf)
     _error_messages(outf)
-    _help_topics(outf)
+    # disable exporting help topics until we decide  how to translate it.
+    #_help_topics(outf)
