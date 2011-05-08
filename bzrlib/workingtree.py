@@ -2089,7 +2089,7 @@ class InventoryWorkingTree(WorkingTree,
 
     # should be deprecated - this is slow and in any case treating them as a
     # container is (we now know) bad style -- mbp 20070302
-    ## @deprecated_method(zero_fifteen)
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def __iter__(self):
         """Iterate through file_ids for this tree.
 

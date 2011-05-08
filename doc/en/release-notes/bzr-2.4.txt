@@ -62,6 +62,9 @@ API Changes
 * ``annotate_file`` has been deprecated in favor of
   ``annotate_file_revision_tree``. (Jelmer Vernooij, #775598)
 
+* ``Tree.__iter__`` has been deprecated; use ``Tree.all_file_ids``
+  instead.  (Jelmer Vernooij)
+
 Internals
 *********
 
