@@ -52,6 +52,7 @@ from bzrlib import (
     revision as _mod_revision,
     upgrade,
     versionedfile,
+    vf_repository,
     workingtree,
     )
 from bzrlib.repofmt import (
@@ -666,7 +667,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         target = self.make_repository('target', format='rich-root-pack')
         stream = source._get_source(target._format)
         # We don't want the child GroupCHKStreamSource
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
     def test_get_stream_for_missing_keys_includes_all_chk_refs(self):
         source_builder = self.make_branch_builder('source',
@@ -781,13 +782,13 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         source = self.make_repository('source', format='pack-0.92')
         target = self.make_repository('target', format='1.9')
         stream = source._get_source(target._format)
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
     def test_stream_source_to_non_exact_rich_root(self):
         source = self.make_repository('source', format='1.9')
         target = self.make_repository('target', format='1.9-rich-root')
         stream = source._get_source(target._format)
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
     def test_source_to_remote_non_exact_pack_19(self):
         trans = self.make_smart_server('target')
@@ -796,13 +797,13 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         target = self.make_repository('target', format='1.6')
         target = repository.Repository.open(trans.base)
         stream_source = source._get_source(target._format)
-        self.assertIs(type(stream_source), repository.StreamSource)
+        self.assertIs(type(stream_source), vf_repository.StreamSource)
 
     def test_stream_source_to_knit(self):
         source = self.make_repository('source', format='pack-0.92')
         target = self.make_repository('target', format='dirstate')
         stream = source._get_source(target._format)
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
 
 class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
