@@ -430,11 +430,6 @@ class RepositoryFormat5(PreSplitOutRepositoryFormat):
         return versionedfile.ThunkedVersionedFiles(base_transport,
             weave.WeaveFile, mapper, repo.is_locked)
 
-    def _get_extra_interrepo_test_combinations(self):
-        from bzrlib.repofmt import knitrepo
-        return [(InterRepository, RepositoryFormat5(),
-            knitrepo.RepositoryFormatKnit3())]
-
 
 class RepositoryFormat6(PreSplitOutRepositoryFormat):
     """Bzr control format 6.
@@ -635,7 +630,7 @@ class TextVersionedFiles(VersionedFiles):
                     record, record.get_bytes_as(record.storage_kind)))
                 try:
                     self.add_lines(record.key, None, lines)
-                except RevisionAlreadyPresent:
+                except errors.RevisionAlreadyPresent:
                     pass
 
     def _load_text(self, key):
