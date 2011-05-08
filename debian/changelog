@@ -1,3 +1,10 @@
+bzr-builddeb (2.7.5) UNRELEASED; urgency=low
+
+  * New 'bzr dep3-patch' subcommand that can generate DEP-3 compliant
+    patches. LP: #460576
+
+ -- Jelmer Vernooij <jelmer@debian.org>  Sun, 08 May 2011 17:45:14 +0200
+
 bzr-builddeb (2.7.4) UNRELEASED; urgency=low
 
   [ Jelmer Vernooij ]
