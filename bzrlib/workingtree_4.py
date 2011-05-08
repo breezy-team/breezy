@@ -76,6 +76,8 @@ from bzrlib.workingtree import (
 
 class DirStateWorkingTree(InventoryWorkingTree):
 
+    _DEFAULT_WORTH_SAVING_LIMIT = 10
+
     def __init__(self, basedir,
                  branch,
                  _control_files=None,
@@ -229,7 +231,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
         local_path = self.bzrdir.get_workingtree_transport(None
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path,
-            self._sha1_provider())
+            self._sha1_provider(), self._worth_saving_limit())
         return self._dirstate
 
     def _sha1_provider(self):
@@ -243,6 +245,26 @@ class DirStateWorkingTree(InventoryWorkingTree):
             return ContentFilterAwareSHA1Provider(self)
         else:
             return None
+
+    def _worth_saving_limit(self):
+        """How many hash changes are ok before we must save the dirstate.
+
+        :return: an integer. -1 means never save.
+        """
+        config = self.branch.get_config()
+        val = config.get_user_option('bzr.workingtree.worth_saving_limit')
+        if val is None:
+            val = self._DEFAULT_WORTH_SAVING_LIMIT
+        else:
+            try:
+                val = int(val)
+            except ValueError, e:
+                trace.warning('Invalid config value for'
+                              ' "bzr.workingtree.worth_saving_limit"'
+                              ' value %r is not an integer.'
+                              % (val,))
+                val = self._DEFAULT_WORTH_SAVING_LIMIT
+        return val
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -860,7 +882,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 rollback_rename()
                 raise
             result.append((from_rel, to_rel))
-            state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
+            state._mark_modified()
             self._make_dirty(reset_inventory=False)
 
         return result

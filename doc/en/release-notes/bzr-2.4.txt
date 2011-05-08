@@ -29,6 +29,13 @@ Improvements
 * Slightly reduced memory consumption when fetching into a 2a repository
   by reusing existing caching a little better.  (Andrew Bennetts)
 
+* Speed up ``bzr status`` by a little bit when there are a couple of
+  modified files. We now track how many files we have seen that need
+  updating, and only rewrite the dirstate file if enough of them have
+  changed. The default is 10, and can be overridden by setting the branch
+  option "``bzr.workingtree.worth_saving_limit``".
+  (Ian Clatworthy, John Arbash Meinel, #380202)
+
 Bug Fixes
 *********
 
@@ -144,6 +151,11 @@ Bug Fixes
 * ``bzr log`` now works on revisions which are not in the current branch.
   (Matt Giuca, #241998)
 
+* Don't rewrite the dirstate file when non-interesting changes have
+  occurred. This can significantly improve 'bzr status' times when there
+  are only small changes to a large tree.
+  (Ian Clatworthy, John Arbash Meinel, #380202)
+
 * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
 * ``bzrlib.merge.Merge`` now calls ``iter_changes`` without
@@ -154,6 +166,10 @@ Bug Fixes
   things which had not changed (such as parent directories). All cases we
   know about so far have been fixed, but there may be fallout for edge
   cases that we are missing. (John Arbash Meinel, #759091)
+
+* ``SFTPTransport`` is more pro-active about closing file-handles. This
+  reduces the chance of having threads fail from async requests while
+  running the test suite. (John Arbash Meinel, #656170)
 
 * Standalone bzr.exe installation on Windows: user can put additional python 
   libraries into ``site-packages`` subdirectory of the installation directory,
