@@ -25,6 +25,7 @@ import rfc822
 from bzrlib.tests import TestCase
 
 from bzrlib.plugins.builddeb.dep3 import (
+    write_dep3_bug_line,
     write_dep3_patch_header,
     )
 
@@ -52,9 +53,30 @@ class Dep3HeaderTests(TestCase):
         self.assertEquals("myrevid", ret["X-Bzr-Revision-Id"])
 
     def test_authors(self):
-        authors = ["Jelmer Vernooij <jelmer@canonical.com>", "James Westby <james.westby@canonical.com>"]
+        authors = [
+            "Jelmer Vernooij <jelmer@canonical.com>",
+            "James Westby <james.westby@canonical.com>"]
         ret = self.dep3_header(authors=authors)
         self.assertEquals([
             ("Jelmer Vernooij", "jelmer@canonical.com"),
             ("James Westby", "james.westby@canonical.com")],
             ret.getaddrlist("Author"))
+
+    def test_write_bug_fix_only(self):
+        # non-fixed bug lines are ignored
+        f = StringIO()
+        write_dep3_bug_line(f, "http://bar/", "pending")
+        self.assertEquals("", f.getvalue())
+
+    def test_write_normal_bug(self):
+        f = StringIO()
+        write_dep3_bug_line(f, "http://bugzilla.samba.org/bug.cgi?id=42",
+            "fixed")
+        self.assertEquals("Bug: http://bugzilla.samba.org/bug.cgi?id=42\n",
+            f.getvalue())
+
+    def test_write_debian_bug(self):
+        f = StringIO()
+        write_dep3_bug_line(f, "http://bugs.debian.org/234354", "fixed")
+        self.assertEquals("Bug-Debian: http://bugs.debian.org/234354\n",
+            f.getvalue())
