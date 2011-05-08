@@ -1243,13 +1243,6 @@ class cmd_dep3_patch(Command):
             else:
                 base_revid = graph.find_unique_lca(revision_id,
                     packaging_branch.last_revision())
-            if packaging_tree is None:
-                packaging_tree = packaging_branch.basis_tree()
-            builddeb_config = debuild_config(packaging_tree, True)
-            if builddeb_config.upstream_branch:
-                upstream_branch = Branch.open(builddeb_config.upstream_branch)
-            else:
-                upstream_branch = None
             interesting_revision_ids = graph.find_unique_ancestors(revision_id, [base_revid])
             if len(interesting_revision_ids) == 0:
                 raise BzrCommandError("No unmerged revisions")
@@ -1262,7 +1255,11 @@ class cmd_dep3_patch(Command):
                 rev = branch.repository.get_revision(iter(interesting_revision_ids).next())
                 description = rev.message
             origin = describe_origin(branch, revision_id)
-            if upstream_branch is not None:
+            if packaging_tree is None:
+                packaging_tree = packaging_branch.basis_tree()
+            builddeb_config = debuild_config(packaging_tree, True)
+            if builddeb_config.upstream_branch:
+                upstream_branch = Branch.open(builddeb_config.upstream_branch)
                 applied_upstream = determine_applied_upstream(upstream_branch, branch,
                     revision_id)
                 forwarded = determine_forwarded(upstream_branch, branch, revision_id)
