@@ -41,7 +41,7 @@ class UTextWrapper(textwrap.TextWrapper):
 
     :param ambiguous_width: (keyword argument) width for character when
                             unicodedata.east_asian_width(c) == 'A'
-                            (default: 2)
+                            (default: 1)
     """
 
     def __init__(self, width=None, **kwargs):
@@ -49,7 +49,7 @@ class UTextWrapper(textwrap.TextWrapper):
             width = (osutils.terminal_width() or
                         osutils.default_terminal_width) - 1
 
-        ambi_width = kwargs.pop('ambiguous_width', 2)
+        ambi_width = kwargs.pop('ambiguous_width', 1)
         if ambi_width == 1:
             self._east_asian_doublewidth = 'FW'
         elif ambi_width == 2:
