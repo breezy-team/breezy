@@ -220,13 +220,13 @@ class InterToLocalGitRepository(InterToGitRepository):
         return bzr_refs
 
     def fetch_refs(self, update_refs):
-        self.source.lock_read()
+        self.source_store.lock_read()
         try:
             old_refs = self._get_target_bzr_refs()
             new_refs = update_refs(old_refs)
             self.fetch(mapped_refs=new_refs.values())
         finally:
-            self.source.unlock()
+            self.source_store.unlock()
         return old_refs, new_refs
 
     def dfetch_refs(self, update_refs):
