@@ -66,6 +66,12 @@ API Changes
 * ``annotate_file`` has been deprecated in favor of
   ``annotate_file_revision_tree``. (Jelmer Vernooij, #775598)
 
+* The default implementation of ``Branch`` is now oriented to
+  storing the branch tip. Branch implementations which store the full
+  history should now subclass ``FullHistoryBzrBranch``.
+  ``Branch._last_revision_info`` has been renamed to
+  ``Branch._read_last_revision_info`` (Jelmer Vernooij)
+
 Internals
 *********
 
