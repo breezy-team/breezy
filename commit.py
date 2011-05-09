@@ -162,5 +162,8 @@ class GitCommitBuilder(CommitBuilder):
     def abort(self):
         pass
 
+    def will_record_deletes(self):
+        pass
+
     def revision_tree(self):
         return self.repository.revision_tree(self._new_revision_id)
