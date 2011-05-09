@@ -3552,6 +3552,15 @@ class InterRepository(InterObject):
             raise errors.IncompatibleRepositories(source, target,
                 "different serializers")
 
+    @classmethod
+    def _get_repo_format_to_test(self):
+        return None
+
+    @classmethod
+    def is_compatible(cls, source, target):
+        # The default implementation is compatible with everything
+        return True
+
 
 class InterSameDataRepository(InterRepository):
     """Code for converting between repositories that represent the same data.
@@ -3913,6 +3922,7 @@ class InterDifferingSerializer(InterRepository):
         return basis_id, basis_tree
 
 
+InterRepository.register_optimiser(InterRepository)
 InterRepository.register_optimiser(InterDifferingSerializer)
 InterRepository.register_optimiser(InterSameDataRepository)
 
