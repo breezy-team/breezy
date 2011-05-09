@@ -103,7 +103,7 @@ from bzrlib.versionedfile import (
     ConstantMapper,
     ContentFactory,
     sort_groupcompress,
-    VersionedFiles,
+    VersionedFilesWithFallbacks,
     )
 
 
@@ -845,7 +845,7 @@ def _get_total_build_size(self, keys, positions):
                 in all_build_index_memos.itervalues()])
 
 
-class KnitVersionedFiles(VersionedFiles):
+class KnitVersionedFiles(VersionedFilesWithFallbacks):
     """Storage for many versioned files using knit compression.
 
     Backend storage is managed by indices and data objects.
@@ -886,6 +886,12 @@ class KnitVersionedFiles(VersionedFiles):
             self.__class__.__name__,
             self._index,
             self._access)
+
+    def without_fallbacks(self):
+        """Return a clone of this object without any fallbacks configured."""
+        return KnitVersionedFiles(self._index, self._access,
+            self._max_delta_chain, self._factory.annotated,
+            self._reload_func)
 
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.

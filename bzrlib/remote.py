@@ -44,7 +44,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.smart.client import _SmartClient
 from bzrlib.revision import NULL_REVISION
-from bzrlib.repository import RepositoryWriteLockResult
+from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.trace import mutter, note, warning
 
 
@@ -2010,9 +2010,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         providers = [self._unstacked_provider]
         if other is not None:
             providers.insert(0, other)
-        providers.extend(r._make_parents_provider() for r in
-                         self._fallback_repositories)
-        return graph.StackedParentsProvider(providers)
+        return graph.StackedParentsProvider(_LazyListJoin(
+            providers, self._fallback_repositories))
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.
@@ -2851,7 +2850,7 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             missing_parent = parent_map[missing_parent]
         raise errors.RevisionNotPresent(missing_parent, self.repository)
 
-    def _last_revision_info(self):
+    def _read_last_revision_info(self):
         response = self._call('Branch.last_revision_info', self._remote_path())
         if response[0] != 'ok':
             raise SmartProtocolError('unexpected response code %s' % (response,))
