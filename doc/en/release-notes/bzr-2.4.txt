@@ -76,6 +76,9 @@ API Changes
   ``Branch._last_revision_info`` has been renamed to
   ``Branch._read_last_revision_info`` (Jelmer Vernooij)
 
+* ``Tree.__iter__`` has been deprecated; use ``Tree.all_file_ids``
+  instead.  (Jelmer Vernooij)
+
 Internals
 *********
 

@@ -105,7 +105,7 @@ class TestReadonly(TestCaseWithWorkingTree):
             if hack_dirstate:
                 tree._dirstate._sha_cutoff_time = self._custom_cutoff_time
             # Make sure we check all the files
-            for file_id in tree:
+            for file_id in tree.all_file_ids():
                 size = tree.get_file_size(file_id)
                 sha1 = tree.get_file_sha1(file_id)
         finally:

@@ -763,7 +763,7 @@ class BundleTree(Tree):
         paths = []
         for result in self._new_id.iteritems():
             paths.append(result)
-        for id in self.base_tree:
+        for id in self.base_tree.all_file_ids():
             path = self.id2path(id)
             if path is None:
                 continue
