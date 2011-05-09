@@ -2103,10 +2103,12 @@ foo_in_qux=quux
 class TestLockableIniFileStore(TestStore):
 
     def test_create_store_in_created_dir(self):
+        self.assertPathDoesNotExist('dir')
         t = self.get_transport('dir/subdir')
         store = config.LockableIniFileStore(t, 'foo.conf')
         store.get_mutable_section(None).set('foo', 'bar')
         store.save()
+        self.assertPathExists('dir/subdir')
 
     # FIXME: We should adapt the tests in TestLockableConfig about concurrent
     # writes. Since this requires a clearer rewrite, I'll just rely on using

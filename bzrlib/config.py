@@ -197,7 +197,6 @@ class Config(object):
         return diff.DiffFromTool.from_string(cmd, old_tree, new_tree,
                                              sys.stdout)
 
-
     def get_mail_client(self):
         """Get a mail client to use"""
         selected_client = self.get_user_option('mail_client')
