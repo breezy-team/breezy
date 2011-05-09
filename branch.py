@@ -445,8 +445,16 @@ class LocalGitBranch(GitBranch):
         except KeyError:
             return None
 
-    def set_last_revision_info(self, revno, revid):
-        self.set_last_revision(revid)
+    def _read_last_revision_info(self):
+        last_revid = self.last_revision()
+        graph = self.repository.get_graph()
+        revno = graph.find_distance_to_null(last_revid,
+            [(revision.NULL_REVISION, 0)])
+        return revno, last_revid
+
+    def set_last_revision_info(self, revno, revision_id):
+        self.set_last_revision(revision_id)
+        self._last_revision_info_cache = revno, revision_id
 
     def set_last_revision(self, revid):
         if revid == NULL_REVISION:
