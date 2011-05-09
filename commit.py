@@ -159,5 +159,8 @@ class GitCommitBuilder(CommitBuilder):
         self.repository.commit_write_group()
         return self._new_revision_id
 
+    def abort(self):
+        pass
+
     def revision_tree(self):
         return self.repository.revision_tree(self._new_revision_id)
