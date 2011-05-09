@@ -318,9 +318,6 @@ class DirStateWorkingTree(InventoryWorkingTree):
                 name_unicode = utf8_decode(name)[0]
                 file_id = key[2]
                 kind = minikind_to_kind[minikind]
-                if (name and kind == 'directory'
-                    and self._directory_is_tree_reference(name_unicode)):
-                    kind = 'tree-reference'
                 inv_entry = factory[kind](file_id, name_unicode,
                                           parent_ie.file_id)
                 if kind == 'file':
