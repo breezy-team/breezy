@@ -22,14 +22,13 @@
 
 import inspect
 import os
-import sys
 
 from bzrlib import (
     commands as _mod_commands,
     errors,
     help_topics,
-    osutils,
     plugin,
+    trace,
     )
 
 
@@ -114,7 +113,6 @@ def _command_helps(outf):
     This respects the Bazaar cmdtable/table convention and will
     only extract docstrings from functions mentioned in these tables.
     """
-    import bzrlib.plugin
     from glob import glob
 
     # builtin commands
@@ -122,7 +120,7 @@ def _command_helps(outf):
         command = _mod_commands.get_cmd_object(cmd_name, False)
         _write_command_help(outf, cmd_name, command)
 
-    plugin_path = bzrlib.plugin.get_core_plugin_path()
+    plugin_path = plugin.get_core_plugin_path()
     core_plugins = glob(plugin_path + '/*/__init__.py')
     core_plugins = [os.path.basename(os.path.dirname(p))
                         for p in core_plugins]
@@ -138,7 +136,6 @@ def _command_helps(outf):
 
 def _error_messages(outf):
     """Extract fmt string from bzrlib.errors."""
-    from bzrlib import errors
     base_klass = errors.BzrError
     for name in dir(errors):
         klass = getattr(errors, name)
@@ -155,7 +152,7 @@ def _error_messages(outf):
             _poentry(outf, 'bzrlib/errors.py', inspect.findsource(klass)[1], fmt)
 
 def _help_topics(outf):
-    from bzrlib.help_topics import topic_registry
+    topic_registry = help_topics.topic_registry
     for key in topic_registry.keys():
         doc = topic_registry.get(key)
         if isinstance(doc, str):
