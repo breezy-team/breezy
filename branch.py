@@ -457,6 +457,8 @@ class LocalGitBranch(GitBranch):
         self._last_revision_info_cache = revno, revision_id
 
     def set_last_revision(self, revid):
+        if not revid or not isinstance(revid, basestring):
+            raise errors.InvalidRevisionId(revision_id=revid, branch=self)
         if revid == NULL_REVISION:
             newhead = ZERO_SHA
         else:

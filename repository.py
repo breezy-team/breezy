@@ -52,6 +52,9 @@ from dulwich.objects import (
     Tag,
     ZERO_SHA,
     )
+from dulwich.object_store import (
+    tree_lookup_path,
+    )
 
 
 class GitRepository(ForeignRepository):
@@ -133,6 +136,54 @@ class LocalGitRepository(GitRepository):
         return GitCommitBuilder(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id,
             lossy)
+
+    def iter_files_bytes(self, desired_files):
+        """Iterate through file versions.
+
+        Files will not necessarily be returned in the order they occur in
+        desired_files.  No specific order is guaranteed.
+
+        Yields pairs of identifier, bytes_iterator.  identifier is an opaque
+        value supplied by the caller as part of desired_files.  It should
+        uniquely identify the file version in the caller's context.  (Examples:
+        an index number or a TreeTransform trans_id.)
+
+        bytes_iterator is an iterable of bytestrings for the file.  The
+        kind of iterable and length of the bytestrings are unspecified, but for
+        this implementation, it is a list of bytes produced by
+        VersionedFile.get_record_stream().
+
+        :param desired_files: a list of (file_id, revision_id, identifier)
+            triples
+        """
+        per_revision = {}
+        for (file_id, revision_id, identifier) in desired_files:
+            per_revision.setdefault(revision_id, []).append((file_id, identifier))
+        for revid, files in per_revision.iteritems():
+            (commit_id, mapping) = self.lookup_bzr_revision_id(revid)
+            try:
+                commit = self._git.object_store[commit_id]
+            except KeyError:
+                raise errors.RevisionNotPresent(revid, self)
+            root_tree = commit.tree
+            for fileid, identifier in files:
+                path = mapping.parse_file_id(fileid)
+                try:
+                    obj = tree_lookup_path(
+                        self._git.object_store.__getitem__, root_tree, path)
+                    if isinstance(obj, tuple):
+                        (mode, item_id) = obj
+                        obj = self._git.object_store[item_id]
+                except KeyError:
+                    raise errors.RevisionNotPresent((fileid, revid), self)
+                else:
+                    if obj.type_name == "tree":
+                        yield (identifier, [])
+                    elif obj.type_name == "blob":
+                        yield (identifier, obj.chunked)
+                    else:
+                        raise AssertionError("file text resolved to %r" % obj)
+
 
     def _iter_revision_ids(self):
         mapping = self.get_mapping()
