@@ -157,13 +157,17 @@ class TestTreeReference(TestCaseWithWorkingTree):
 
     def test_tree_reference_matches_inv(self):
         base = self.make_branch_and_tree('base')
-        subdir = self.make_branch_and_tree('base/subdir')
-        if not base._directory_is_tree_reference('subdir'):
+        if not base.supports_tree_reference():
             raise tests.TestNotApplicable("wt doesn't support nested trees")
-        base.add(['subdir'], ['subdir-id'])
+        # We add it as a directory, but it becomes a tree-reference
+        base.add(['subdir'], ['subdir-id'], ['directory'])
+        subdir = self.make_branch_and_tree('base/subdir')
         self.addCleanup(base.lock_read().unlock)
+        # Note: we aren't strict about ie.kind being 'directory' here, what we
+        # are strict about is that wt.inventory should match
+        # wt.current_dirstate()'s idea about what files are where.
         ie = base.inventory['subdir-id']
-        self.assertEqual('tree-reference', ie.kind)
+        self.assertEqual('directory', ie.kind)
         path, ie = base.iter_entries_by_dir(['subdir-id']).next()
         self.assertEqual('subdir', path)
         self.assertEqual('tree-reference', ie.kind)
