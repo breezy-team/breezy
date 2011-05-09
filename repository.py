@@ -127,6 +127,7 @@ class LocalGitRepository(GitRepository):
         :param lossy: Whether to discard data that can not be natively
             represented, when pushing to a foreign VCS
         """
+        self.start_write_group()
         return GitCommitBuilder(self, parents, config,
             timestamp, timezone, committer, revprops, revision_id,
             lossy)

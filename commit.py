@@ -54,6 +54,10 @@ class GitCommitBuilder(CommitBuilder):
         super(GitCommitBuilder, self).__init__(*args, **kwargs)
         self.store = self.repository._git.object_store
         self._blobs = {}
+        self._any_changes = False
+
+    def any_changes(self):
+        return self._any_changes
 
     def record_entry_contents(self, ie, parent_invs, path, tree,
         content_summary):
@@ -160,7 +164,7 @@ class GitCommitBuilder(CommitBuilder):
         return self._new_revision_id
 
     def abort(self):
-        pass
+        self.repository.abort_write_group()
 
     def will_record_deletes(self):
         pass
