@@ -65,6 +65,7 @@ def get_inventory_text(repo, revision_id):
 
 
 class MockTree(object):
+
     def __init__(self):
         from bzrlib.inventory import InventoryDirectory, ROOT_ID
         object.__init__(self)
@@ -75,8 +76,8 @@ class MockTree(object):
 
     inventory = property(lambda x:x)
 
-    def __iter__(self):
-        return self.paths.iterkeys()
+    def all_file_ids(self):
+        return set(self.paths.keys())
 
     def __getitem__(self, file_id):
         if file_id == self.root.file_id:
