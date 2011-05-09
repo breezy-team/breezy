@@ -43,7 +43,6 @@ from bzrlib.plugins.git.tree import (
     GitRevisionTree,
     )
 from bzrlib.plugins.git.versionedfiles import (
-    GitRevisions,
     GitTexts,
     )
 
@@ -110,7 +109,7 @@ class LocalGitRepository(GitRepository):
         self.base = gitdir.root_transport.base
         self._git = gitdir._git
         self.signatures = None
-        self.revisions = GitRevisions(self, self._git.object_store)
+        self.revisions = None
         self.inventories = None
         self.texts = GitTexts(self)
 
