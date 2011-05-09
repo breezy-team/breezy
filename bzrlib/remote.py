@@ -43,7 +43,7 @@ from bzrlib.lockable_files import LockableFiles
 from bzrlib.smart import client, vfs, repository as smart_repo
 from bzrlib.smart.client import _SmartClient
 from bzrlib.revision import NULL_REVISION
-from bzrlib.repository import RepositoryWriteLockResult
+from bzrlib.repository import RepositoryWriteLockResult, _LazyListJoin
 from bzrlib.trace import mutter, note, warning
 
 
@@ -2009,9 +2009,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         providers = [self._unstacked_provider]
         if other is not None:
             providers.insert(0, other)
-        providers.extend(r._make_parents_provider() for r in
-                         self._fallback_repositories)
-        return graph.StackedParentsProvider(providers)
+        return graph.StackedParentsProvider(_LazyListJoin(
+            providers, self._fallback_repositories))
 
     def _serialise_search_recipe(self, recipe):
         """Serialise a graph search recipe.
