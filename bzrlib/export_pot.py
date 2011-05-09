@@ -77,6 +77,7 @@ def _poentry(outf, path, lineno, s, comment=None):
            'msgstr ""\n')
 
 def _poentry_per_paragraph(outf, path, lineno, msgid):
+    # TODO: How to split long help?
     paragraphs = msgid.split('\n\n')
     for p in paragraphs:
         _poentry(outf, path, lineno, p)
@@ -85,8 +86,10 @@ def _poentry_per_paragraph(outf, path, lineno, msgid):
 def _offset(src, doc, default):
     """Compute offset or issue a warning on stdout."""
     # Backslashes in doc appear doubled in src.
+    # TODO: Use ast to more 
     end = src.find(doc.replace('\\', '\\\\'))
     if end == -1:
+        mutter("Can't find where %r is.", doc[:20])
         return default
     else:
         return src.count('\n', 0, end)
