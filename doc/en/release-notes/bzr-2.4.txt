@@ -70,6 +70,12 @@ API Changes
   compatible optimisers rather than an instance of the class it is called
   on. (Jelmer Vernooij)
 
+* The default implementation of ``Branch`` is now oriented to
+  storing the branch tip. Branch implementations which store the full
+  history should now subclass ``FullHistoryBzrBranch``.
+  ``Branch._last_revision_info`` has been renamed to
+  ``Branch._read_last_revision_info`` (Jelmer Vernooij)
+
 Internals
 *********
 
