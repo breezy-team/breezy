@@ -135,6 +135,10 @@ class GitCommitBuilder(CommitBuilder):
                 self._blobs[path.encode("utf-8")] = (entry_mode(entry), blob.id)
         self.new_inventory = None
 
+    def get_basis_delta(self):
+        # FIXME
+        return None
+
     def finish_inventory(self):
         # eliminate blobs that were removed
         for path, entry in iter(self._blobs.items()):
