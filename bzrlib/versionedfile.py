@@ -1422,6 +1422,20 @@ class ThunkedVersionedFiles(VersionedFiles):
         return result
 
 
+class VersionedFilesWithFallbacks(VersionedFiles):
+
+    def without_fallbacks(self):
+        """Return a clone of this object without any fallbacks configured."""
+        raise NotImplementedError(self.without_fallbacks)
+
+    def add_fallback_versioned_files(self, a_versioned_files):
+        """Add a source of texts for texts not present in this knit.
+
+        :param a_versioned_files: A VersionedFiles object.
+        """
+        raise NotImplementedError(self.add_fallback_versioned_files)
+
+
 class _PlanMergeVersionedFile(VersionedFiles):
     """A VersionedFile for uncommitted and committed texts.
 

@@ -179,6 +179,23 @@ class CachingParentsProvider(object):
             self.missing_keys.add(key)
 
 
+class CallableToParentsProviderAdapter(object):
+    """A parents provider that adapts any callable to the parents provider API.
+
+    i.e. it accepts calls to self.get_parent_map and relays them to the
+    callable it was constructed with.
+    """
+
+    def __init__(self, a_callable):
+        self.callable = a_callable
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.callable)
+
+    def get_parent_map(self, keys):
+        return self.callable(keys)
+
+
 class Graph(object):
     """Provide incremental access to revision graphs.
 
