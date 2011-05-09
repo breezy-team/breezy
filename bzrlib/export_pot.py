@@ -91,13 +91,42 @@ def _offset(src, doc, default):
     else:
         return src.count('\n', 0, end)
 
+def _standard_options(outf):
+    from bzrlib.option import Option
+    src = inspect.findsource(Option)[0]
+    src = ''.join(src)
+    path = 'bzrlib/option.py'
+
+    for name in sorted(Option.OPTIONS.keys()):
+        opt = Option.OPTIONS[name]
+        if getattr(opt, 'hidden', False):
+            continue
+        if getattr(opt, 'title', None):
+            lineno = _offset(src, opt.title, 0)
+            _poentry(outf, path, lineno, opt.title,
+                     'title of %r option' % name)
+        if getattr(opt, 'help', None):
+            lineno = _offset(src, opt.help, 0)
+            _poentry(outf, path, lineno, opt.help,
+                     'help of %r option' % name)
 
 def _command_options(outf, path, cmd):
-    for name, opt in cmd.options().iteritems():
-        src, lineno = inspect.findsource(cmd.__class__)
-        lineno = _offset(''.join(src), opt.help, lineno)
-        _poentry(outf, path, lineno, opt.help,
-                "help of '%s' option of '%s' command" % (name, cmd.name()))
+    src, default_lineno = inspect.findsource(cmd.__class__)
+    src = ''.join(src)
+    for opt in cmd.takes_options:
+        if isinstance(opt, str):
+            continue
+        if getattr(opt, 'hidden', False):
+            continue
+        name = opt.name
+        if getattr(opt, 'title', None):
+            lineno = _offset(src, opt.title, default_lineno)
+            _poentry(outf, path, lineno, opt.title,
+                     'title of %r option of %r command' % (name, cmd.name()))
+        if getattr(opt, 'help', None):
+            lineno = _offset(src, opt.help, default_lineno)
+            _poentry(outf, path, lineno, opt.help,
+                     'help of %r option of %r command' % (name, cmd.name()))
 
 
 def _write_command_help(outf, cmd_name, cmd):
@@ -182,6 +211,7 @@ def _help_topics(outf):
 def export_pot(outf):
     global _FOUND_MSGID
     _FOUND_MSGID = set()
+    _standard_options(outf)
     _command_helps(outf)
     _error_messages(outf)
     # disable exporting help topics until we decide  how to translate it.
