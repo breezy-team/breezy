@@ -2808,11 +2808,15 @@ class BzrBranch8(BzrBranch):
         self._reference_info = None
 
     def _check_history_violation(self, revision_id):
-        last_revision = _mod_revision.ensure_null(self.last_revision())
+        current_revid = self.last_revision()
+        last_revision = _mod_revision.ensure_null(current_revid)
         if _mod_revision.is_null(last_revision):
             return
-        if last_revision not in self._lefthand_history(revision_id):
-            raise errors.AppendRevisionsOnlyViolation(self.user_url)
+        graph = self.repository.get_graph()
+        for lh_ancestor in graph.iter_lefthand_ancestry(revision_id):
+            if lh_ancestor == current_revid:
+                return
+        raise errors.AppendRevisionsOnlyViolation(self.user_url)
 
     def _gen_revision_history(self):
         """Generate the revision history from last revision
