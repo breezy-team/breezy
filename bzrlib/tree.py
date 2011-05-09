@@ -940,6 +940,12 @@ class InterTree(InterObject):
 
     _optimisers = []
 
+    @classmethod
+    def is_compatible(kls, source, target):
+        # The default implementation is naive and uses the public API, so
+        # it works for all trees.
+        return True
+
     def _changes_from_entries(self, source_entry, target_entry,
         source_path=None, target_path=None):
         """Generate a iter_changes tuple between source_entry and target_entry.
@@ -1312,6 +1318,9 @@ class InterTree(InterObject):
                             precise_file_ids.add(child.file_id)
                     changed_file_ids.add(result[0])
                     yield result
+
+
+InterTree.register_optimiser(InterTree)
 
 
 class MultiWalker(object):

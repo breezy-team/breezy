@@ -54,6 +54,14 @@ to automate merging of changes to ``ChangeLog`` files in GNU's change log
 format.  Refer to ``bzr help changelog_merge`` for documentation on how to
 enable it and what it can do.
 
+Faster stacked branches
+***********************
+
+Creating a stacked branch from a smart server with ``bzr branch
+--stacked`` is a bit faster now.  For small branches it does 20% fewer
+network roundtrips.  Other operations where a local branch is stacked on a
+branch hosted on a smart server will also benefit.
+
 Further information
 *******************
 

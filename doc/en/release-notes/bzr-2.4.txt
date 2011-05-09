@@ -26,6 +26,10 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr branch --stacked`` from a smart server uses the network a little
+  more efficiently.  For a simple branch it reduces the number of
+  round-trips by about 20%.  (Andrew Bennetts)
+
 * Slightly reduced memory consumption when fetching into a 2a repository
   by reusing existing caching a little better.  (Andrew Bennetts)
 
@@ -61,6 +65,10 @@ API Changes
 
 * ``annotate_file`` has been deprecated in favor of
   ``annotate_file_revision_tree``. (Jelmer Vernooij, #775598)
+
+* ``Inter.get`` now raises ``NoCompatibleInter`` if there are no
+  compatible optimisers rather than an instance of the class it is called
+  on. (Jelmer Vernooij)
 
 * ``Tree.__iter__`` has been deprecated; use ``Tree.all_file_ids``
   instead.  (Jelmer Vernooij)
