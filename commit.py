@@ -137,7 +137,7 @@ class GitCommitBuilder(CommitBuilder):
 
     def get_basis_delta(self):
         # FIXME
-        return None
+        return []
 
     def finish_inventory(self):
         # eliminate blobs that were removed
