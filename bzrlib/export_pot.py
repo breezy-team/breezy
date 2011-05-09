@@ -28,7 +28,10 @@ from bzrlib import (
     errors,
     help_topics,
     plugin,
-    trace,
+    )
+from bzrlib.trace import (
+    mutter,
+    note,
     )
 
 
@@ -67,6 +70,7 @@ def _poentry(outf, path, lineno, s, comment=None):
         comment = ''
     else:
         comment = "# %s\n" % comment
+    mutter("Exporting msg %r at line %d in %r", s[:20], lineno, path)
     print >>outf, ('#: %s:%d\n' % (path, lineno) +
            comment+
            'msgid %s\n' % _normalize(s) +
@@ -117,6 +121,7 @@ def _command_helps(outf):
 
     # builtin commands
     for cmd_name in _mod_commands.builtin_command_names():
+        note("Exporting messages from builtin command: %s", cmd_name)
         command = _mod_commands.get_cmd_object(cmd_name, False)
         _write_command_help(outf, cmd_name, command)
 
@@ -131,6 +136,8 @@ def _command_helps(outf):
             # skip non-core plugins
             # TODO: Support extracting from third party plugins.
             continue
+        note("Exporting messages from plugin command: %s in %s",
+             cmd_name, command.plugin_name())
         _write_command_help(outf, cmd_name, command)
 
 
@@ -149,7 +156,9 @@ def _error_messages(outf):
             continue
         fmt = getattr(klass, "_fmt", None)
         if fmt:
-            _poentry(outf, 'bzrlib/errors.py', inspect.findsource(klass)[1], fmt)
+            note("Exporting message from error: %s", name)
+            _poentry(outf, 'bzrlib/errors.py',
+                     inspect.findsource(klass)[1], fmt)
 
 def _help_topics(outf):
     topic_registry = help_topics.topic_registry
