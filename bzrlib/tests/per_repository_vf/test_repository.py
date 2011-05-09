@@ -24,6 +24,7 @@ from bzrlib import (
     revision as _mod_revision,
     tests,
     versionedfile,
+    vf_repository,
     )
 
 from bzrlib.tests.per_repository_vf import (
@@ -39,6 +40,19 @@ load_tests = load_tests_apply_scenarios
 class TestRepository(TestCaseWithRepository):
 
     scenarios = all_repository_vf_format_scenarios()
+
+    def assertFormatAttribute(self, attribute, allowed_values):
+        """Assert that the format has an attribute 'attribute'."""
+        repo = self.make_repository('repo')
+        self.assertSubset([getattr(repo._format, attribute)], allowed_values)
+
+    def test_attribute__fetch_order(self):
+        """Test the _fetch_order attribute."""
+        self.assertFormatAttribute('_fetch_order', ('topological', 'unordered'))
+
+    def test_attribute__fetch_uses_deltas(self):
+        """Test the _fetch_uses_deltas attribute."""
+        self.assertFormatAttribute('_fetch_uses_deltas', (True, False))
 
     def test_attribute_inventories_store(self):
         """Test the existence of the inventories attribute."""
@@ -116,6 +130,11 @@ class TestRepository(TestCaseWithRepository):
         self.assertRaises(errors.ObjectNotLocked,
             inventories.add_lines, ('foo',), [], [])
 
+    def test__get_sink(self):
+        repo = self.make_repository('repo')
+        sink = repo._get_sink()
+        self.assertIsInstance(sink, vf_repository.StreamSink)
+
     def test_get_serializer_format(self):
         repo = self.make_repository('.')
         format = repo.get_serializer_format()
@@ -166,9 +185,78 @@ class TestRepository(TestCaseWithRepository):
         signature = repo.get_signature_text('A')
         repo2.lock_write()
         self.addCleanup(repo2.unlock)
-        _mod_repository.install_revisions(repo2, [(revision, tree, signature)])
+        vf_repository.install_revisions(repo2, [(revision, tree, signature)])
         self.assertEqual(revision, repo2.get_revision('A'))
         self.assertEqual(signature, repo2.get_signature_text('A'))
+
+    def test_attribute_text_store(self):
+        """Test the existence of the texts attribute."""
+        tree = self.make_branch_and_tree('tree')
+        repo = tree.branch.repository
+        self.assertIsInstance(repo.texts,
+            versionedfile.VersionedFiles)
+
+    def test_iter_inventories_is_ordered(self):
+        # just a smoke test
+        tree = self.make_branch_and_tree('a')
+        first_revision = tree.commit('')
+        second_revision = tree.commit('')
+        tree.lock_read()
+        self.addCleanup(tree.unlock)
+        revs = (first_revision, second_revision)
+        invs = tree.branch.repository.iter_inventories(revs)
+        for rev_id, inv in zip(revs, invs):
+            self.assertEqual(rev_id, inv.revision_id)
+            self.assertIsInstance(inv, inventory.CommonInventory)
+
+    def test_item_keys_introduced_by(self):
+        # Make a repo with one revision and one versioned file.
+        tree = self.make_branch_and_tree('t')
+        self.build_tree(['t/foo'])
+        tree.add('foo', 'file1')
+        tree.commit('message', rev_id='rev_id')
+        repo = tree.branch.repository
+        repo.lock_write()
+        repo.start_write_group()
+        try:
+            repo.sign_revision('rev_id', gpg.LoopbackGPGStrategy(None))
+        except errors.UnsupportedOperation:
+            signature_texts = []
+        else:
+            signature_texts = ['rev_id']
+        repo.commit_write_group()
+        repo.unlock()
+        repo.lock_read()
+        self.addCleanup(repo.unlock)
+
+        # Item keys will be in this order, for maximum convenience for
+        # generating data to insert into knit repository:
+        #   * files
+        #   * inventory
+        #   * signatures
+        #   * revisions
+        expected_item_keys = [
+            ('file', 'file1', ['rev_id']),
+            ('inventory', None, ['rev_id']),
+            ('signatures', None, signature_texts),
+            ('revisions', None, ['rev_id'])]
+        item_keys = list(repo.item_keys_introduced_by(['rev_id']))
+        item_keys = [
+            (kind, file_id, list(versions))
+            for (kind, file_id, versions) in item_keys]
+
+        if repo.supports_rich_root():
+            # Check for the root versioned file in the item_keys, then remove
+            # it from streamed_names so we can compare that with
+            # expected_record_names.
+            # Note that the file keys can be in any order, so this test is
+            # written to allow that.
+            inv = repo.get_inventory('rev_id')
+            root_item_key = ('file', inv.root.file_id, ['rev_id'])
+            self.assertTrue(root_item_key in item_keys)
+            item_keys.remove(root_item_key)
+
+        self.assertEqual(expected_item_keys, item_keys)
 
 
 class TestCaseWithComplexRepository(TestCaseWithRepository):
@@ -262,3 +350,69 @@ class TestCaseWithComplexRepository(TestCaseWithRepository):
         finally:
             repo.abort_write_group()
             repo.unlock()
+
+
+class TestCaseWithCorruptRepository(TestCaseWithRepository):
+
+    scenarios = all_repository_vf_format_scenarios()
+
+    def setUp(self):
+        super(TestCaseWithCorruptRepository, self).setUp()
+        # a inventory with no parents and the revision has parents..
+        # i.e. a ghost.
+        repo = self.make_repository('inventory_with_unnecessary_ghost')
+        repo.lock_write()
+        repo.start_write_group()
+        inv = inventory.Inventory(revision_id = 'ghost')
+        inv.root.revision = 'ghost'
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            repo.texts.add_lines((root_id, 'ghost'), [], [])
+        sha1 = repo.add_inventory('ghost', inv, [])
+        rev = _mod_revision.Revision(
+            timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
+            message="Message", inventory_sha1=sha1, revision_id='ghost')
+        rev.parent_ids = ['the_ghost']
+        try:
+            repo.add_revision('ghost', rev)
+        except (errors.NoSuchRevision, errors.RevisionNotPresent):
+            raise tests.TestNotApplicable(
+                "Cannot test with ghosts for this format.")
+
+        inv = inventory.Inventory(revision_id = 'the_ghost')
+        inv.root.revision = 'the_ghost'
+        if repo.supports_rich_root():
+            root_id = inv.root.file_id
+            repo.texts.add_lines((root_id, 'the_ghost'), [], [])
+        sha1 = repo.add_inventory('the_ghost', inv, [])
+        rev = _mod_revision.Revision(
+            timestamp=0, timezone=None, committer="Foo Bar <foo@example.com>",
+            message="Message", inventory_sha1=sha1, revision_id='the_ghost')
+        rev.parent_ids = []
+        repo.add_revision('the_ghost', rev)
+        # check its setup usefully
+        inv_weave = repo.inventories
+        possible_parents = (None, (('ghost',),))
+        self.assertSubset(inv_weave.get_parent_map([('ghost',)])[('ghost',)],
+            possible_parents)
+        repo.commit_write_group()
+        repo.unlock()
+
+    def test_corrupt_revision_access_asserts_if_reported_wrong(self):
+        repo_url = self.get_url('inventory_with_unnecessary_ghost')
+        repo = _mod_repository.Repository.open(repo_url)
+        reported_wrong = False
+        try:
+            if repo.get_ancestry('ghost') != [None, 'the_ghost', 'ghost']:
+                reported_wrong = True
+        except errors.CorruptRepository:
+            # caught the bad data:
+            return
+        if not reported_wrong:
+            return
+        self.assertRaises(errors.CorruptRepository, repo.get_revision, 'ghost')
+
+    def test_corrupt_revision_get_revision_reconcile(self):
+        repo_url = self.get_url('inventory_with_unnecessary_ghost')
+        repo = _mod_repository.Repository.open(repo_url)
+        repo.get_revision_reconcile('ghost')

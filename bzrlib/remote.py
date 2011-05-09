@@ -32,7 +32,8 @@ from bzrlib import (
     static_tuple,
     symbol_versioning,
     urlutils,
-)
+    vf_repository,
+    )
 from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
 from bzrlib.errors import (
@@ -700,7 +701,7 @@ class RemoteBzrDir(_mod_bzrdir.BzrDir, _RpcHelper):
         return RemoteBzrDirConfig(self)
 
 
-class RemoteRepositoryFormat(_mod_repository.RepositoryFormat):
+class RemoteRepositoryFormat(vf_repository.VersionedFileRepositoryFormat):
     """Format for repositories accessed over a _SmartClient.
 
     Instances of this repository are represented by RemoteRepository
@@ -2040,7 +2041,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
             raise errors.UnexpectedSmartServerResponse(response)
 
 
-class RemoteStreamSink(_mod_repository.StreamSink):
+class RemoteStreamSink(vf_repository.StreamSink):
 
     def _insert_real(self, stream, src_format, resume_tokens):
         self.target_repo._ensure_real()
@@ -2158,7 +2159,7 @@ class RemoteStreamSink(_mod_repository.StreamSink):
                 yield substream_kind, substream
 
 
-class RemoteStreamSource(_mod_repository.StreamSource):
+class RemoteStreamSource(vf_repository.StreamSource):
     """Stream data from a remote server."""
 
     def get_stream(self, search):

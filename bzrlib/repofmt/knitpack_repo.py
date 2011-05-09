@@ -66,7 +66,7 @@ from bzrlib.repofmt.pack_repo import (
     PackRootCommitBuilder,
     RepositoryPackCollection,
     )
-from bzrlib.repository import (
+from bzrlib.vf_repository import (
     StreamSource,
     )
 

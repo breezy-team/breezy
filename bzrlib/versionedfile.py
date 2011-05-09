@@ -972,7 +972,7 @@ class VersionedFiles(object):
     def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
         """Add a text to the store.
 
-        This is a private function for use by CommitBuilder.
+        This is a private function for use by VersionedFileCommitBuilder.
 
         :param key: The key tuple of the text to add. If the last element is
             None, a CHK string will be generated during the addition.
