@@ -1228,6 +1228,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         if _mod_revision.is_null(new_revision):
             self.branch.set_last_revision_info(0, new_revision)
             return False
+        _mod_revision.check_not_reserved_id(new_revision)
         try:
             self.branch.generate_revision_history(new_revision)
         except errors.NoSuchRevision:
