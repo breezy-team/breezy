@@ -121,8 +121,10 @@ def _command_helps(outf):
 
     # builtin commands
     for cmd_name in _mod_commands.builtin_command_names():
-        note("Exporting messages from builtin command: %s", cmd_name)
         command = _mod_commands.get_cmd_object(cmd_name, False)
+        if command.hidden:
+            continue
+        note("Exporting messages from builtin command: %s", cmd_name)
         _write_command_help(outf, cmd_name, command)
 
     plugin_path = plugin.get_core_plugin_path()
@@ -132,6 +134,8 @@ def _command_helps(outf):
     # core plugins
     for cmd_name in _mod_commands.plugin_command_names():
         command = _mod_commands.get_cmd_object(cmd_name, False)
+        if command.hidden:
+            continue
         if command.plugin_name() not in core_plugins:
             # skip non-core plugins
             # TODO: Support extracting from third party plugins.
