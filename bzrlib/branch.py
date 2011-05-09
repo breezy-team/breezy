@@ -35,9 +35,7 @@ from bzrlib import (
         repository,
         revision as _mod_revision,
         rio,
-        symbol_versioning,
         transport,
-        tsort,
         ui,
         urlutils,
         )
