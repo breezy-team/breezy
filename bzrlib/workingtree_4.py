@@ -34,6 +34,7 @@ import stat
 from bzrlib import (
     bzrdir,
     cache_utf8,
+    conflicts as _mod_conflicts,
     debug,
     dirstate,
     errors,
@@ -51,6 +52,8 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.inventory import Inventory, ROOT_ID, entry_factory
 from bzrlib.lock import LogicalLockResult
+from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (
     file_kind,
@@ -65,13 +68,15 @@ from bzrlib.tree import (
     InventoryTree,
     )
 from bzrlib.workingtree import (
+    InventoryWorkingTree,
     WorkingTree,
-    WorkingTree3,
-    WorkingTreeFormat3,
+    WorkingTreeFormat,
     )
 
 
-class DirStateWorkingTree(WorkingTree3):
+class DirStateWorkingTree(InventoryWorkingTree):
+
+    _DEFAULT_WORTH_SAVING_LIMIT = 10
 
     def __init__(self, basedir,
                  branch,
@@ -127,6 +132,10 @@ class DirStateWorkingTree(WorkingTree3):
             # always change this once tests are all passing.
             state.add(f, file_id, kind, None, '')
         self._make_dirty(reset_inventory=True)
+
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree."""
+        return [('trees', self.last_revision())]
 
     def _make_dirty(self, reset_inventory):
         """Make the tree state dirty.
@@ -185,7 +194,7 @@ class DirStateWorkingTree(WorkingTree3):
 
     def _comparison_data(self, entry, path):
         kind, executable, stat_value = \
-            WorkingTree3._comparison_data(self, entry, path)
+            WorkingTree._comparison_data(self, entry, path)
         # it looks like a plain directory, but it's really a reference -- see
         # also kind()
         if (self._repo_supports_tree_reference and kind == 'directory'
@@ -197,7 +206,7 @@ class DirStateWorkingTree(WorkingTree3):
     def commit(self, message=None, revprops=None, *args, **kwargs):
         # mark the tree as dirty post commit - commit
         # can change the current versioned list by doing deletes.
-        result = WorkingTree3.commit(self, message, revprops, *args, **kwargs)
+        result = WorkingTree.commit(self, message, revprops, *args, **kwargs)
         self._make_dirty(reset_inventory=True)
         return result
 
@@ -222,7 +231,7 @@ class DirStateWorkingTree(WorkingTree3):
         local_path = self.bzrdir.get_workingtree_transport(None
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path,
-            self._sha1_provider())
+            self._sha1_provider(), self._worth_saving_limit())
         return self._dirstate
 
     def _sha1_provider(self):
@@ -236,6 +245,26 @@ class DirStateWorkingTree(WorkingTree3):
             return ContentFilterAwareSHA1Provider(self)
         else:
             return None
+
+    def _worth_saving_limit(self):
+        """How many hash changes are ok before we must save the dirstate.
+
+        :return: an integer. -1 means never save.
+        """
+        config = self.branch.get_config()
+        val = config.get_user_option('bzr.workingtree.worth_saving_limit')
+        if val is None:
+            val = self._DEFAULT_WORTH_SAVING_LIMIT
+        else:
+            try:
+                val = int(val)
+            except ValueError, e:
+                trace.warning('Invalid config value for'
+                              ' "bzr.workingtree.worth_saving_limit"'
+                              ' value %r is not an integer.'
+                              % (val,))
+                val = self._DEFAULT_WORTH_SAVING_LIMIT
+        return val
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -853,7 +882,7 @@ class DirStateWorkingTree(WorkingTree3):
                 rollback_rename()
                 raise
             result.append((from_rel, to_rel))
-            state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
+            state._mark_modified()
             self._make_dirty(reset_inventory=False)
 
         return result
@@ -1373,7 +1402,7 @@ class ContentFilteringDirStateWorkingTree(DirStateWorkingTree):
 class WorkingTree4(DirStateWorkingTree):
     """This is the Format 4 working tree.
 
-    This differs from WorkingTree3 by:
+    This differs from WorkingTree by:
      - Having a consolidated internal dirstate, stored in a
        randomly-accessible sorted file on disk.
      - Not having a regular inventory attribute.  One can be synthesized
@@ -1407,9 +1436,17 @@ class WorkingTree6(ContentFilteringDirStateWorkingTree):
         return views.PathBasedViews(self)
 
 
-class DirStateWorkingTreeFormat(WorkingTreeFormat3):
+class DirStateWorkingTreeFormat(WorkingTreeFormat):
 
     missing_parent_conflicts = True
+
+    _lock_class = LockDir
+    _lock_file_name = 'lock'
+
+    def _open_control_files(self, a_bzrdir):
+        transport = a_bzrdir.get_workingtree_transport(None)
+        return LockableFiles(transport, self._lock_file_name,
+                             self._lock_class)
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
@@ -1514,6 +1551,20 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
 
         :param wt: the WorkingTree object
         """
+
+    def open(self, a_bzrdir, _found=False):
+        """Return the WorkingTree object for a_bzrdir
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already been done.
+        """
+        if not _found:
+            # we are being called directly and must probe.
+            raise NotImplementedError
+        if not isinstance(a_bzrdir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        wt = self._open(a_bzrdir, self._open_control_files(a_bzrdir))
+        return wt
 
     def _open(self, a_bzrdir, control_files):
         """Open the tree itself.

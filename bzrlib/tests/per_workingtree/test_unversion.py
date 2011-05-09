@@ -18,7 +18,6 @@
 
 from bzrlib import (
     errors,
-    osutils,
     )
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 

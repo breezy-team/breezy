@@ -24,7 +24,6 @@ rather than in tests/per_workingtree/*.py.
 
 from bzrlib import (
     branchbuilder,
-    errors,
     tests,
     workingtree,
     )

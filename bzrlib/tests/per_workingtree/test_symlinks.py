@@ -20,7 +20,6 @@
 import os
 
 from bzrlib import (
-    builtins,
     osutils,
     tests,
     workingtree,

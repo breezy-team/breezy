@@ -30,8 +30,10 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
     fixtures,
     HardlinkFeature,
+    script,
     test_server,
     )
+from bzrlib.tests.blackbox import test_switch
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.script import run_script
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
@@ -535,3 +537,32 @@ class TestDeprecatedAliases(TestCaseWithTransport):
             2>The command 'bzr %(command)s' has been deprecated in bzr 2.4. Please use 'bzr branch' instead.
             2>bzr: ERROR: Not a branch...
             """ % locals())
+
+
+class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):
+
+    def _checkout_and_branch(self, option=''):
+        self.script_runner.run_script(self, '''
+                $ bzr checkout %(option)s repo/trunk checkout
+                $ cd checkout
+                $ bzr branch --switch ../repo/trunk ../repo/branched
+                2>Branched 0 revision(s).
+                2>Tree is up to date at revision 0.
+                2>Switched to branch:...branched...
+                $ cd ..
+                ''' % locals())
+        bound_branch = branch.Branch.open_containing('checkout')[0]
+        master_branch = branch.Branch.open_containing('repo/branched')[0]
+        return (bound_branch, master_branch)
+
+    def test_branch_switch_parent_lightweight(self):
+        """Lightweight checkout using bzr branch --switch."""
+        bb, mb = self._checkout_and_branch(option='--lightweight')
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)
+
+    def test_branch_switch_parent_heavyweight(self):
+        """Heavyweight checkout using bzr branch --switch."""
+        bb, mb = self._checkout_and_branch()
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)
