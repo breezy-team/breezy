@@ -292,18 +292,6 @@ class LocalGitRepository(GitRepository):
         progress=None):
         return self._git.fetch_objects(determine_wants, graph_walker, progress)
 
-    def _get_versioned_file_checker(self, text_key_references=None, ancestors=None):
-        return GitVersionedFileChecker(self,
-            text_key_references=text_key_references, ancestors=ancestors)
-
-
-class GitVersionedFileChecker(repository._VersionedFileChecker):
-
-    file_ids = []
-
-    def _check_file_version_parents(self, texts, progress_bar):
-        return {}, []
-
 
 class GitRepositoryFormat(repository.RepositoryFormat):
     """Git repository format."""
