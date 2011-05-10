@@ -116,6 +116,7 @@ def load_tests(standard_tests, module, loader):
         'test_commit_builder',
         'test_fetch',
         'test_fileid_involved',
+        'test_file_graph',
         'test_find_text_key_references',
         'test__generate_text_key_index',
         'test_get_parent_map',

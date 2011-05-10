@@ -32,6 +32,7 @@ from bzrlib import (
     static_tuple,
     symbol_versioning,
     urlutils,
+    versionedfile,
 )
 from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
 from bzrlib.decorators import needs_read_lock, needs_write_lock, only_raises
@@ -1133,6 +1134,12 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
         return RemoteStreamSource(self, to_format)
+
+    @needs_read_lock
+    def get_file_graph(self, file_id):
+        parents_provider = versionedfile.PerFileParentsProvider(self.texts,
+            file_id)
+        return graph.Graph(parents_provider)
 
     @needs_read_lock
     def has_revision(self, revision_id):
