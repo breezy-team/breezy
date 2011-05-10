@@ -2632,7 +2632,7 @@ class DirState(object):
             try:
                 split = _split_dirs[dirpath]
             except KeyError:
-                split = tuple(dirpath.split('/'))
+                split = dirpath.split('/')
                 _split_dirs[dirpath] = split
             return (split, fname, file_id)
         return sorted(entry_list, key=_key)
