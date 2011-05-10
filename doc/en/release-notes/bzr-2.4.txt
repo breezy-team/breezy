@@ -485,6 +485,10 @@ API Changes
   ``ControlDir.sprout`` no longer has a default implementation; it now
   raises ``NotImplementedError``. (Jelmer Vernooij, #717937)
 
+* ``bzrlib.deprecated_graph`` has been removed. ``bzrlib.graph``
+  scales better tree and should be used instead.
+  (Jelmer Vernooij, #733612)
+
 * ``ControlDirFormat.register_format`` has been removed. Instead,
   ``Prober`` implementations should now implement a ``known_formats``
   method. (Jelmer Vernooij)
