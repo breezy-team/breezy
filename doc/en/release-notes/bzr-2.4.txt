@@ -26,11 +26,36 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+* ``bzr branch --stacked`` from a smart server uses the network a little
+  more efficiently.  For a simple branch it reduces the number of
+  round-trips by about 20%.  (Andrew Bennetts)
+
+* Slightly reduced memory consumption when fetching into a 2a repository
+  by reusing existing caching a little better.  (Andrew Bennetts)
+
+* Speed up ``bzr status`` by a little bit when there are a couple of
+  modified files. We now track how many files we have seen that need
+  updating, and only rewrite the dirstate file if enough of them have
+  changed. The default is 10, and can be overridden by setting the branch
+  option "``bzr.workingtree.worth_saving_limit``".
+  (Ian Clatworthy, John Arbash Meinel, #380202)
+
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
+
+* All Tree types can now be exported as tar.*, zip or directories.
+  (Aaron Bentley)
+  
+* Correct parent is now set when using 'switch -b' with bound branches.
+  (A. S. Budden, #513709)
+
+* ``WT.inventory`` and ``WT.iter_entries_by_dir()`` was not correctly
+  reporting subdirectories that were tree references (in formats that
+  supported them). (John Arbash Meinel, #764677)
+
 
 Documentation
 *************
@@ -43,8 +68,24 @@ API Changes
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
 
+* ``annotate_file`` has been deprecated in favor of
+  ``annotate_file_revision_tree``. (Jelmer Vernooij, #775598)
+
+* ``Inter.get`` now raises ``NoCompatibleInter`` if there are no
+  compatible optimisers rather than an instance of the class it is called
+  on. (Jelmer Vernooij)
+
 * New method ``Repository.get_file_graph`` which can return the
   per-file revision graph. (Jelmer Vernooij, #775578)
+
+* The default implementation of ``Branch`` is now oriented to
+  storing the branch tip. Branch implementations which store the full
+  history should now subclass ``FullHistoryBzrBranch``.
+  ``Branch._last_revision_info`` has been renamed to
+  ``Branch._read_last_revision_info`` (Jelmer Vernooij)
+
+* ``Tree.__iter__`` has been deprecated; use ``Tree.all_file_ids``
+  instead.  (Jelmer Vernooij)
 
 Internals
 *********
@@ -98,8 +139,13 @@ Improvements
    or memory usage, or better results.
 
 * ``bzr merge`` in large trees is now significantly faster. On a 70k entry
-  tree, the time went from ~3min down to 30s.
-  (John Arbash Meinel, #759091)
+  tree, the time went from ~3min down to 30s. This also effects ``bzr pull``
+  and ``bzr update`` since they use the same merge logic to update the
+  WorkingTree.  (John Arbash Meinel, #759091)
+
+* ``bzr revert`` now properly uses ``bzr status``'s optimized
+  ``iter_changes``. This can be a significant performance difference (33s
+  to 5s on large trees). (John Arbash Meinel, #759096)
 
 * Resolve ``lp:FOO`` urls locally rather than doing an XMLRPC request if
   the user has done ``bzr launchpad-login``. The bzr+ssh URLs were already
@@ -135,6 +181,11 @@ Bug Fixes
 * ``bzr log`` now works on revisions which are not in the current branch.
   (Matt Giuca, #241998)
 
+* Don't rewrite the dirstate file when non-interesting changes have
+  occurred. This can significantly improve 'bzr status' times when there
+  are only small changes to a large tree.
+  (Ian Clatworthy, John Arbash Meinel, #380202)
+
 * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
 * ``bzrlib.merge.Merge`` now calls ``iter_changes`` without
@@ -146,10 +197,20 @@ Bug Fixes
   know about so far have been fixed, but there may be fallout for edge
   cases that we are missing. (John Arbash Meinel, #759091)
 
+* ``SFTPTransport`` is more pro-active about closing file-handles. This
+  reduces the chance of having threads fail from async requests while
+  running the test suite. (John Arbash Meinel, #656170)
+
 * Standalone bzr.exe installation on Windows: user can put additional python 
   libraries into ``site-packages`` subdirectory of the installation directory,
   this might be required for "installing" extra dependencies for some plugins.
   (Alexander Belchenko, #743256)
+
+* ``transform.revert()`` has been updated to use
+  ``wt.iter_changes(basis_tree)`` rather than
+  ``basis_tree.iter_changes(wt)``. This allows the optimized code path to
+  kick in, improving ``bzr revert`` times significantly (33s to 4s on
+  large trees, 0.7s to 0.3s on small trees.) (John Arbash Meinel, #759096)
 
 * ``TreeTransform.create_file/new_file`` can now take an optional ``sha1``
   parameter. If supplied, when the transform is applied, it will then call
@@ -173,6 +234,10 @@ API Changes
 
 .. Changes that may require updates in plugins or other code that uses
    bzrlib.
+
+* ``Branch.update_revisions`` has been made private and should no
+  longer be used by external users. Use ``Branch.pull`` or ``Branch.push``
+  instead. (Jelmer Vernooij, #771765)
 
 * Commands now have an `invoked_as` attribute, showing the name under
   which they were called before alias expansion.
@@ -325,7 +390,6 @@ Improvements
   of CHK data, down to just 150MB.) This has noticeable affects for things
   like building checkouts, etc.  (John Arbash Meinel, #737234)
 
-
 Bug Fixes
 *********
 
@@ -428,6 +492,9 @@ API Changes
   ``RepositoryFormat.supports_leaving_lock`` flags have been added.
   (Jelmer Vernooij)
 
+* ``Branch.fetch`` implementations must now accept an optional
+  ``fetch_tags`` keyword argument. (Andrew Bennetts)
+
 * ``Branch.import_last_revision_info`` is deprecated.  Use the
   ``import_last_revision_info_and_tags`` method instead.
   (Andrew Bennetts)
@@ -435,6 +502,10 @@ API Changes
 * Because it was too specific to BzrDir implementations,
   ``ControlDir.sprout`` no longer has a default implementation; it now
   raises ``NotImplementedError``. (Jelmer Vernooij, #717937)
+
+* ``bzrlib.deprecated_graph`` has been removed. ``bzrlib.graph``
+  scales better tree and should be used instead.
+  (Jelmer Vernooij, #733612)
 
 * ``ControlDirFormat.register_format`` has been removed. Instead,
   ``Prober`` implementations should now implement a ``known_formats``

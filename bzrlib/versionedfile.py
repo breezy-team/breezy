@@ -972,7 +972,7 @@ class VersionedFiles(object):
     def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
         """Add a text to the store.
 
-        This is a private function for use by CommitBuilder.
+        This is a private function for use by VersionedFileCommitBuilder.
 
         :param key: The key tuple of the text to add. If the last element is
             None, a CHK string will be generated during the addition.
@@ -1420,6 +1420,20 @@ class ThunkedVersionedFiles(VersionedFiles):
             for suffix in vf.versions():
                 result.add(prefix + (suffix,))
         return result
+
+
+class VersionedFilesWithFallbacks(VersionedFiles):
+
+    def without_fallbacks(self):
+        """Return a clone of this object without any fallbacks configured."""
+        raise NotImplementedError(self.without_fallbacks)
+
+    def add_fallback_versioned_files(self, a_versioned_files):
+        """Add a source of texts for texts not present in this knit.
+
+        :param a_versioned_files: A VersionedFiles object.
+        """
+        raise NotImplementedError(self.add_fallback_versioned_files)
 
 
 class _PlanMergeVersionedFile(VersionedFiles):

@@ -171,7 +171,6 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_interbranch.test_copy_content_into',
         'bzrlib.tests.per_interbranch.test_pull',
         'bzrlib.tests.per_interbranch.test_push',
-        'bzrlib.tests.per_interbranch.test_update_revisions',
         ])
     scenarios = make_scenarios(default_test_list())
     return multiply_tests(submod_tests, scenarios, standard_tests)

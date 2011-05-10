@@ -48,7 +48,7 @@ from bzrlib.versionedfile import (
     AbsentContentFactory,
     ChunkedContentFactory,
     FulltextContentFactory,
-    VersionedFiles,
+    VersionedFilesWithFallbacks,
     )
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
@@ -1174,16 +1174,18 @@ class _BatchingBlockFetcher(object):
         self.total_bytes = 0
 
 
-class GroupCompressVersionedFiles(VersionedFiles):
+class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     """A group-compress based VersionedFiles implementation."""
 
-    def __init__(self, index, access, delta=True, _unadded_refs=None):
+    def __init__(self, index, access, delta=True, _unadded_refs=None,
+            _group_cache=None):
         """Create a GroupCompressVersionedFiles object.
 
         :param index: The index object storing access and graph data.
         :param access: The access object storing raw data.
         :param delta: Whether to delta compress or just entropy compress.
         :param _unadded_refs: private parameter, don't use.
+        :param _group_cache: private parameter, don't use.
         """
         self._index = index
         self._access = access
@@ -1191,13 +1193,16 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if _unadded_refs is None:
             _unadded_refs = {}
         self._unadded_refs = _unadded_refs
-        self._group_cache = LRUSizeCache(max_size=50*1024*1024)
+        if _group_cache is None:
+            _group_cache = LRUSizeCache(max_size=50*1024*1024)
+        self._group_cache = _group_cache
         self._immediate_fallback_vfs = []
 
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
         return GroupCompressVersionedFiles(self._index, self._access,
-            self._delta, _unadded_refs=dict(self._unadded_refs))
+            self._delta, _unadded_refs=dict(self._unadded_refs),
+            _group_cache=self._group_cache)
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,

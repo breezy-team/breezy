@@ -20,7 +20,7 @@ This contains functionality for installing bundles into repositories
 from bzrlib import ui
 from bzrlib.progress import ProgressPhase
 from bzrlib.merge import Merger
-from bzrlib.repository import install_revision
+from bzrlib.vf_repository import install_revision
 from bzrlib.trace import note
 
 

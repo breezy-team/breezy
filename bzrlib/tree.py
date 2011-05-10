@@ -39,6 +39,10 @@ from bzrlib import (
 
 from bzrlib.decorators import needs_read_lock
 from bzrlib.inter import InterObject
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 
 
 class Tree(object):
@@ -137,13 +141,9 @@ class Tree(object):
         """
         return False
 
-    def __iter__(self):
-        """Yield all file ids in this tree."""
-        raise NotImplementedError(self.__iter__)
-
     def all_file_ids(self):
         """Iterate through all file ids, including ids for missing files."""
-        return set(self.inventory)
+        raise NotImplementedError(self.all_file_ids)
 
     def id2path(self, file_id):
         """Return the path for a file id.
@@ -757,6 +757,10 @@ class InventoryTree(Tree):
     def has_or_had_id(self, file_id):
         return self.inventory.has_id(file_id)
 
+    def all_file_ids(self):
+        return set(self.inventory)
+
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def __iter__(self):
         return iter(self.inventory)
 
@@ -935,6 +939,12 @@ class InterTree(InterObject):
     _matching_to_tree_format = None
 
     _optimisers = []
+
+    @classmethod
+    def is_compatible(kls, source, target):
+        # The default implementation is naive and uses the public API, so
+        # it works for all trees.
+        return True
 
     def _changes_from_entries(self, source_entry, target_entry,
         source_path=None, target_path=None):
@@ -1308,6 +1318,9 @@ class InterTree(InterObject):
                             precise_file_ids.add(child.file_id)
                     changed_file_ids.add(result[0])
                     yield result
+
+
+InterTree.register_optimiser(InterTree)
 
 
 class MultiWalker(object):

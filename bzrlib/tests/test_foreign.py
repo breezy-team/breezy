@@ -30,6 +30,7 @@ from bzrlib import (
     revision,
     tests,
     trace,
+    vf_repository,
     )
 
 from bzrlib.repofmt import groupcompress_repo
@@ -117,7 +118,7 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
         return (revno, revid)
 
 
-class DummyForeignCommitBuilder(repository.RootCommitBuilder):
+class DummyForeignCommitBuilder(vf_repository.VersionedFileRootCommitBuilder):
 
     def _generate_revision_if_needed(self):
         mapping = DummyForeignVcsMapping(DummyForeignVcs())

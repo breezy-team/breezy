@@ -99,7 +99,7 @@ def zip_exporter(tree, dest, root, subdir=None, filtered=False, force_mtime=None
                             date_time=date_time)
                 zinfo.compress_type = compression
                 zinfo.external_attr = _FILE_ATTR
-                zipf.writestr(zinfo, ie.symlink_target)
+                zipf.writestr(zinfo, tree.get_symlink_target(file_id))
 
         zipf.close()
 
