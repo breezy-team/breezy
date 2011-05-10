@@ -2625,9 +2625,16 @@ class DirState(object):
         try to keep everything in sorted blocks all the time, but sometimes
         it's easier to sort after the fact.
         """
-        def _key(entry):
+        split_dirs = {}
+        def _key(entry, _split_dirs=split_dirs):
             # sort by: directory parts, file name, file id
-            return entry[0][0].split('/'), entry[0][1], entry[0][2]
+            dirpath, fname, file_id = entry[0]
+            try:
+                split = _split_dirs[dirpath]
+            except KeyError:
+                split = tuple(dirpath.split('/'))
+                _split_dirs[dirpath] = split
+            return (split, fname, file_id)
         return sorted(entry_list, key=_key)
 
     def set_state_from_inventory(self, new_inv):
