@@ -258,6 +258,42 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         lock_and_call_current_dirstate(tree, 'lock_tree_write')
         self.assertRaises(errors.ObjectNotLocked, tree.current_dirstate)
 
+    def test_set_parent_trees_uses_update_basis_by_delta(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
+        builder.build_snapshot('A', [], [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('a', 'a-id', 'file', 'content\n'))])
+        builder.build_snapshot('B', ['A'], [
+            ('modify', ('a-id', 'new content\nfor a\n')),
+            ('add', ('b', 'b-id', 'file', 'b-content\n'))])
+        tree = self.make_workingtree('tree')
+        source_branch = builder.get_branch()
+        tree.branch.repository.fetch(source_branch.repository, 'B')
+        tree.pull(source_branch, stop_revision='A')
+        tree.lock_write()
+        self.addCleanup(tree.unlock)
+        state = tree.current_dirstate()
+        called = []
+        orig_update = state.update_basis_by_delta
+        def log_update_basis_by_delta(delta, new_revid):
+            called.append(new_revid)
+            return orig_update(delta, new_revid)
+        state.update_basis_by_delta = log_update_basis_by_delta
+        basis = tree.basis_tree()
+        self.assertEqual('a-id', basis.path2id('a'))
+        self.assertEqual(None, basis.path2id('b'))
+        def fail_set_parent_trees(trees, ghosts):
+            raise AssertionError('dirstate.set_parent_trees() was called')
+        state.set_parent_trees = fail_set_parent_trees
+        repo = tree.branch.repository
+        tree.pull(source_branch, stop_revision='B')
+        self.assertEqual(['B'], called)
+        basis = tree.basis_tree()
+        self.assertEqual('a-id', basis.path2id('a'))
+        self.assertEqual('b-id', basis.path2id('b'))
+
     def test_new_dirstate_on_new_lock(self):
         # until we have detection for when a dirstate can be reused, we
         # want to reparse dirstate on every new lock.
