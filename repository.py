@@ -75,7 +75,7 @@ class GitRepository(ForeignRepository):
             repository.InterRepository.register_optimiser(optimiser)
 
     def add_fallback_repository(self, basis_url):
-        raise errors.UnstackableRepositoryFormat(self._format, self.root_transport.base)
+        raise errors.UnstackableRepositoryFormat(self._format, self.control_transport.base)
 
     def is_shared(self):
         return False
