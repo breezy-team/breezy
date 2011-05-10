@@ -1140,6 +1140,15 @@ class CannotCommitSelectedFileMerge(BzrError):
         BzrError.__init__(self, files=files, files_str=files_str)
 
 
+class ExcludesUnsupported(BzrError):
+
+    _fmt = ('Excluding paths during commit is not supported by '
+            'repository at %(repository)r.')
+
+    def __init__(self, repository):
+        BzrError.__init__(self, repository=repository)
+
+
 class BadCommitMessageEncoding(BzrError):
 
     _fmt = 'The specified commit message contains characters unsupported by '\
@@ -1757,12 +1766,12 @@ class ConflictsInTree(BzrError):
 
 class ParseConfigError(BzrError):
 
+    _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
+
     def __init__(self, errors, filename):
-        if filename is None:
-            filename = ""
-        message = "Error(s) parsing config file %s:\n%s" % \
-            (filename, ('\n'.join(e.msg for e in errors)))
-        BzrError.__init__(self, message)
+        BzrError.__init__(self)
+        self.filename = filename
+        self.errors = '\n'.join(e.msg for e in errors)
 
 
 class NoEmailInUsername(BzrError):
@@ -3240,3 +3249,13 @@ class ExpandingUnknownOption(BzrError):
     def __init__(self, name, string):
         self.name = name
         self.string = string
+
+
+class NoCompatibleInter(BzrError):
+
+    _fmt = ('No compatible object available for operations from %(source)r '
+            'to %(target)r.')
+
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target

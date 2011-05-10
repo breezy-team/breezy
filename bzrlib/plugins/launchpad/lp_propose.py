@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,11 +24,11 @@ import webbrowser
 
 from bzrlib import (
     msgeditor,
-)
+    )
 from bzrlib.plugins.launchpad import (
     lp_api,
     lp_registration,
-)
+    )
 """)
 
 
@@ -36,19 +36,12 @@ class ProposeMergeHooks(hooks.Hooks):
     """Hooks for proposing a merge on Launchpad."""
 
     def __init__(self):
-        hooks.Hooks.__init__(self)
-        self.create_hook(
-            hooks.HookPoint(
-                'get_prerequisite',
-                "Return the prerequisite branch for proposing as merge.",
-                (2, 1), None),
-        )
-        self.create_hook(
-            hooks.HookPoint(
-                'merge_proposal_body',
-                "Return an initial body for the merge proposal message.",
-                (2, 1), None),
-        )
+        hooks.Hooks.__init__(self, "bzrlib.plugins.launchpad.lp_propose",
+            "Proposer.hooks")
+        self.add_hook('get_prerequisite',
+            "Return the prerequisite branch for proposing as merge.", (2, 1))
+        self.add_hook('merge_proposal_body',
+            "Return an initial body for the merge proposal message.", (2, 1))
 
 
 class Proposer(object):

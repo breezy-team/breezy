@@ -46,13 +46,26 @@ cdef extern from "delta.h":
         unsigned long agg_offset
     struct delta_index:
         pass
-    delta_index * create_delta_index(source_info *src, delta_index *old) nogil
-    delta_index * create_delta_index_from_delta(source_info *delta,
-                                                delta_index *old) nogil
+    ctypedef enum delta_result:
+        DELTA_OK
+        DELTA_OUT_OF_MEMORY
+        DELTA_INDEX_NEEDED
+        DELTA_SOURCE_EMPTY
+        DELTA_SOURCE_BAD
+        DELTA_BUFFER_EMPTY
+        DELTA_SIZE_TOO_BIG
+    delta_result create_delta_index(source_info *src,
+                                    delta_index *old,
+                                    delta_index **fresh) nogil
+    delta_result create_delta_index_from_delta(source_info *delta,
+                                               delta_index *old,
+                                               delta_index **fresh) nogil
     void free_delta_index(delta_index *index) nogil
-    void *create_delta(delta_index *indexes,
-             void *buf, unsigned long bufsize,
-             unsigned long *delta_size, unsigned long max_delta_size) nogil
+    delta_result create_delta(delta_index *indexes,
+                              void *buf, unsigned long bufsize,
+                              unsigned long *delta_size,
+                              unsigned long max_delta_size,
+                              void **delta_data) nogil
     unsigned long get_delta_hdr_size(unsigned char **datap,
                                      unsigned char *top) nogil
     unsigned long sizeof_delta_index(delta_index *index)
@@ -84,6 +97,20 @@ cdef int safe_free(void **val) except -1:
 
 def make_delta_index(source):
     return DeltaIndex(source)
+
+
+cdef object _translate_delta_failure(delta_result result):
+    if result == DELTA_OUT_OF_MEMORY:
+        return MemoryError("Delta function failed to allocate memory")
+    elif result == DELTA_INDEX_NEEDED:
+        return ValueError("Delta function requires delta_index param")
+    elif result == DELTA_SOURCE_EMPTY:
+        return ValueError("Delta function given empty source_info param")
+    elif result == DELTA_SOURCE_BAD:
+        return RuntimeError("Delta function given invalid source_info param")
+    elif result == DELTA_BUFFER_EMPTY:
+        return ValueError("Delta function given empty buffer params")
+    return AssertionError("Unrecognised delta result code: %d" % result)
 
 
 cdef class DeltaIndex:
@@ -147,6 +174,7 @@ cdef class DeltaIndex:
         cdef char *c_delta
         cdef Py_ssize_t c_delta_size
         cdef delta_index *index
+        cdef delta_result res
         cdef unsigned int source_location
         cdef source_info *src
         cdef unsigned int num_indexes
@@ -165,9 +193,11 @@ cdef class DeltaIndex:
         src.size = c_delta_size
         src.agg_offset = self._source_offset + unadded_bytes
         with nogil:
-            index = create_delta_index_from_delta(src, self._index)
+            res = create_delta_index_from_delta(src, self._index, &index)
+        if res != DELTA_OK:
+            raise _translate_delta_failure(res)
         self._source_offset = src.agg_offset + src.size
-        if index != NULL:
+        if index != self._index:
             free_delta_index(self._index)
             self._index = index
 
@@ -181,6 +211,7 @@ cdef class DeltaIndex:
         cdef char *c_source
         cdef Py_ssize_t c_source_size
         cdef delta_index *index
+        cdef delta_result res
         cdef unsigned int source_location
         cdef source_info *src
         cdef unsigned int num_indexes
@@ -206,22 +237,27 @@ cdef class DeltaIndex:
         # We delay creating the index on the first insert
         if source_location != 0:
             with nogil:
-                index = create_delta_index(src, self._index)
-            if index != NULL:
+                res = create_delta_index(src, self._index, &index)
+            if res != DELTA_OK:
+                raise _translate_delta_failure(res)
+            if index != self._index:
                 free_delta_index(self._index)
                 self._index = index
 
     cdef _populate_first_index(self):
         cdef delta_index *index
+        cdef delta_result res
         if len(self._sources) != 1 or self._index != NULL:
             raise AssertionError('_populate_first_index should only be'
                 ' called when we have a single source and no index yet')
 
-        # We know that self._index is already NULL, so whatever
-        # create_delta_index returns is fine
+        # We know that self._index is already NULL, so create_delta_index
+        # will always create a new index unless there's a malloc failure
         with nogil:
-            self._index = create_delta_index(&self._source_infos[0], NULL)
-        assert self._index != NULL
+            res = create_delta_index(&self._source_infos[0], NULL, &index)
+        if res != DELTA_OK:
+            raise _translate_delta_failure(res)
+        self._index = index
 
     cdef _expand_sources(self):
         raise RuntimeError('if we move self._source_infos, then we need to'
@@ -238,6 +274,7 @@ cdef class DeltaIndex:
         cdef void * delta
         cdef unsigned long delta_size
         cdef unsigned long c_max_delta_size
+        cdef delta_result res
 
         if self._index == NULL:
             if len(self._sources) == 0:
@@ -256,13 +293,14 @@ cdef class DeltaIndex:
         #       allocate the bytes into the final string
         c_max_delta_size = max_delta_size
         with nogil:
-            delta = create_delta(self._index,
-                                 target, target_size,
-                                 &delta_size, c_max_delta_size)
+            res = create_delta(self._index, target, target_size,
+                               &delta_size, c_max_delta_size, &delta)
         result = None
-        if delta:
+        if res == DELTA_OK:
             result = PyString_FromStringAndSize(<char *>delta, delta_size)
             free(delta)
+        elif res != DELTA_SIZE_TOO_BIG:
+            raise _translate_delta_failure(res)
         return result
 
 
@@ -369,8 +407,8 @@ cdef object _apply_delta(char *source, Py_ssize_t source_size,
                 # Copy instruction
                 data = _decode_copy_instruction(data, cmd, &cp_off, &cp_size)
                 if (cp_off + cp_size < cp_size or
-                    cp_off + cp_size > source_size or
-                    cp_size > size):
+                    cp_off + cp_size > <unsigned int>source_size or
+                    cp_size > <unsigned int>size):
                     failed = 1
                     break
                 memcpy(out, source + cp_off, cp_size)

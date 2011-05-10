@@ -18,12 +18,8 @@
 
 
 import os
-import time
 
-from bzrlib import (
-    errors,
-    inventory,
-    )
+from bzrlib import inventory
 from bzrlib.tests.per_workingtree import TestCaseWithWorkingTree
 
 
@@ -33,14 +29,14 @@ class TestRevert(TestCaseWithWorkingTree):
         wt = self.make_branch_and_tree('b1')
         wt.lock_tree_write()
         self.addCleanup(wt.unlock)
-        self.assertEqual(len(wt.inventory), 1)
+        self.assertEqual(len(wt.all_file_ids()), 1)
         open('b1/a', 'wb').write('a test\n')
         wt.add('a')
-        self.assertEqual(len(wt.inventory), 2)
+        self.assertEqual(len(wt.all_file_ids()), 2)
         wt.flush() # workaround revert doing wt._write_inventory for now.
         os.unlink('b1/a')
         wt.revert()
-        self.assertEqual(len(wt.inventory), 1)
+        self.assertEqual(len(wt.all_file_ids()), 1)
 
 
 class TestApplyInventoryDelta(TestCaseWithWorkingTree):

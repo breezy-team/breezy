@@ -72,14 +72,14 @@ class SFTPLockTests(TestCaseWithSFTPServer):
         t = self.get_transport()
 
         l = t.lock_write('bogus')
-        self.failUnlessExists('bogus.write-lock')
+        self.assertPathExists('bogus.write-lock')
 
         # Don't wait for the lock, locking an already locked
         # file should raise an assert
         self.assertRaises(LockError, t.lock_write, 'bogus')
 
         l.unlock()
-        self.failIf(lexists('bogus.write-lock'))
+        self.assertFalse(lexists('bogus.write-lock'))
 
         open('something.write-lock', 'wb').write('fake lock\n')
         self.assertRaises(LockError, t.lock_write, 'something')
@@ -417,7 +417,7 @@ class TestSocketDelay(TestCase):
 
 
 class ReadvFile(object):
-    """An object that acts like Paramiko's SFTPFile.readv()"""
+    """An object that acts like Paramiko's SFTPFile when readv() is used"""
 
     def __init__(self, data):
         self._data = data
@@ -425,6 +425,9 @@ class ReadvFile(object):
     def readv(self, requests):
         for start, length in requests:
             yield self._data[start:start+length]
+
+    def close(self):
+        pass
 
 
 def _null_report_activity(*a, **k):

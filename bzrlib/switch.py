@@ -103,6 +103,7 @@ def _set_branch_location(control, to_branch, force=False):
             b.pull(to_branch, overwrite=True,
                 possible_transports=possible_transports)
             b.set_bound_location(to_branch.base)
+            b.set_parent(b.get_master_branch().get_parent())
         else:
             raise errors.BzrCommandError('Cannot switch a branch, '
                 'only a checkout.')

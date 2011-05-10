@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,9 +20,11 @@ Such as non-controlled directories, tarfiles, zipfiles, etc.
 """
 
 import os
+import time
 from bzrlib import (
     errors,
     pyutils,
+    trace,
     )
 
 # Maps format name => export function
@@ -57,10 +59,10 @@ def register_lazy_exporter(scheme, extensions, module, funcname):
 
     When requesting a specific type of export, load the respective path.
     """
-    def _loader(tree, dest, root, subdir, filtered, per_file_timestamps):
+    def _loader(tree, dest, root, subdir, filtered, force_mtime):
         func = pyutils.get_named_object(module, funcname)
         return func(tree, dest, root, subdir, filtered=filtered,
-                    per_file_timestamps=per_file_timestamps)
+                    force_mtime=force_mtime)
     register_exporter(scheme, extensions, _loader)
 
 
@@ -103,10 +105,18 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
 
     if format not in _exporters:
         raise errors.NoSuchExportFormat(format)
+
+    if not per_file_timestamps:
+        force_mtime = time.time()
+    else:
+        force_mtime = None
+
+    trace.mutter('export version %r', tree)
+
     tree.lock_read()
     try:
         return _exporters[format](tree, dest, root, subdir, filtered=filtered,
-                                  per_file_timestamps=per_file_timestamps)
+                                  force_mtime=force_mtime)
     finally:
         tree.unlock()
 
@@ -114,26 +124,11 @@ def export(tree, dest, format=None, root=None, subdir=None, filtered=False,
 def get_root_name(dest):
     """Get just the root name for an export.
 
-    >>> get_root_name('../mytest.tar')
-    'mytest'
-    >>> get_root_name('mytar.tar')
-    'mytar'
-    >>> get_root_name('mytar.tar.bz2')
-    'mytar'
-    >>> get_root_name('tar.tar.tar.tgz')
-    'tar.tar.tar'
-    >>> get_root_name('bzr-0.0.5.tar.gz')
-    'bzr-0.0.5'
-    >>> get_root_name('bzr-0.0.5.zip')
-    'bzr-0.0.5'
-    >>> get_root_name('bzr-0.0.5')
-    'bzr-0.0.5'
-    >>> get_root_name('a/long/path/mytar.tgz')
-    'mytar'
-    >>> get_root_name('../parent/../dir/other.tbz2')
-    'other'
     """
     global _exporter_extensions
+    if dest == '-':
+        # Exporting to -/foo doesn't make sense so use relative paths.
+        return ''
     dest = os.path.basename(dest)
     for ext in _exporter_extensions:
         if dest.endswith(ext):
@@ -141,47 +136,46 @@ def get_root_name(dest):
     return dest
 
 
-def _export_iter_entries(tree, subdir):
+def _export_iter_entries(tree, subdir, skip_special=True):
     """Iter the entries for tree suitable for exporting.
 
     :param tree: A tree object.
     :param subdir: None or the path of an entry to start exporting from.
+    :param skip_special: Whether to skip .bzr files.
     """
-    inv = tree.inventory
-    if subdir is None:
-        subdir_object = None
-    else:
-        subdir_id = inv.path2id(subdir)
-        if subdir_id is not None:
-            subdir_object = inv[subdir_id]
-        # XXX: subdir is path not an id, so NoSuchId isn't proper error
-        else:
-            raise errors.NoSuchId(tree, subdir)
-    if subdir_object is not None and subdir_object.kind != 'directory':
-        yield subdir_object.name, subdir_object
-        return
-    else:
-        entries = inv.iter_entries(subdir_object)
-    if subdir is None:
-        entries.next() # skip root
-    for entry in entries:
+    if subdir == '':
+        subdir = None
+    if subdir is not None:
+        subdir = subdir.rstrip('/')
+    entries = tree.iter_entries_by_dir()
+    entries.next() # skip root
+    for path, entry in entries:
         # The .bzr* namespace is reserved for "magic" files like
         # .bzrignore and .bzrrules - do not export these
-        if entry[0].startswith(".bzr"):
+        if skip_special and path.startswith(".bzr"):
             continue
-        if subdir is None:
-            if not tree.has_filename(entry[0]):
+        if path == subdir:
+            if entry.kind == 'directory':
+                continue
+            final_path = entry.name
+        elif subdir is not None:
+            if path.startswith(subdir + '/'):
+                final_path = path[len(subdir) + 1:]
+            else:
                 continue
         else:
-            if not tree.has_filename(os.path.join(subdir, entry[0])):
-                continue
-        yield entry
+            final_path = path
+        if not tree.has_filename(path):
+            continue
+        yield final_path, entry
 
 
 register_lazy_exporter(None, [], 'bzrlib.export.dir_exporter', 'dir_exporter')
 register_lazy_exporter('dir', [], 'bzrlib.export.dir_exporter', 'dir_exporter')
-register_lazy_exporter('tar', ['.tar'], 'bzrlib.export.tar_exporter', 'tar_exporter')
+register_lazy_exporter('tar', ['.tar'], 'bzrlib.export.tar_exporter', 'plain_tar_exporter')
 register_lazy_exporter('tgz', ['.tar.gz', '.tgz'], 'bzrlib.export.tar_exporter', 'tgz_exporter')
 register_lazy_exporter('tbz2', ['.tar.bz2', '.tbz2'], 'bzrlib.export.tar_exporter', 'tbz_exporter')
+register_lazy_exporter('tlzma', ['.tar.lzma'], 'bzrlib.export.tar_exporter', 'tar_lzma_exporter')
+register_lazy_exporter('txz', ['.tar.xz'], 'bzrlib.export.tar_exporter', 'tar_xz_exporter')
 register_lazy_exporter('zip', ['.zip'], 'bzrlib.export.zip_exporter', 'zip_exporter')
 
