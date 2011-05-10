@@ -42,6 +42,17 @@ class UTextWrapper(textwrap.TextWrapper):
     :param ambiguous_width: (keyword argument) width for character when
                             unicodedata.east_asian_width(c) == 'A'
                             (default: 1)
+
+    Limitations:
+    * expand_tabs doesn't fixed. It uses len() for calculating width
+      of string on left of TAB.
+    * Handles one codeunit as a single character having 1 or 2 width.
+      This is not correct when there are surrogate pairs, combined
+      characters or zero-width characters.
+    * Treats all asian character are line breakable. But it is not
+      true because line breaking is prohibited around some characters.
+      (For example, breaking before punctation mark is prohibited.)
+      See UAX # 14 "UNICODE LINE BREAKING ALGORITHM"
     """
 
     def __init__(self, width=None, **kwargs):
@@ -194,10 +205,6 @@ class UTextWrapper(textwrap.TextWrapper):
             assert chunk # TextWrapper._split removes empty chunk
             prev_pos = 0
             for pos, char in enumerate(chunk):
-                # Treats all asian character are line breakable.
-                # But it is not true because line breaking is
-                # prohibited around some characters.
-                # See UAX # 14 "UNICODE LINE BREAKING ALGORITHM"
                 if _eawidth(char) in 'FWA':
                     if prev_pos < pos:
                         cjk_split_chunks.append(chunk[prev_pos:pos])
