@@ -2611,6 +2611,11 @@ class DirState(object):
         # --- end generation of full tree mappings
 
         # sort and output all the entries
+        items = by_path.items()
+        self._sort_entries(items)
+        self._sort_entries(items)
+        self._sort_entries(items)
+
         new_entries = self._sort_entries(by_path.items())
         self._entries_to_current_state(new_entries)
         self._parents = [rev_id for rev_id, tree in trees]
@@ -2626,16 +2631,22 @@ class DirState(object):
         it's easier to sort after the fact.
         """
         split_dirs = {}
-        def _key(entry, _split_dirs=split_dirs):
+        stats = [0, 0]
+        def _key(entry, _split_dirs=split_dirs, st=static_tuple.StaticTuple,
+                 as_st=static_tuple.StaticTuple.from_sequence):
             # sort by: directory parts, file name, file id
             dirpath, fname, file_id = entry[0]
             try:
                 split = _split_dirs[dirpath]
             except KeyError:
-                split = dirpath.split('/')
+                split = as_st(dirpath.split('/'))
                 _split_dirs[dirpath] = split
-            return (split, fname, file_id)
-        return sorted(entry_list, key=_key)
+            return st(split, fname, file_id)
+        t = time.clock()
+        sort_vals = sorted(entry_list, key=_key)
+        t = time.clock() - t
+        trace.note('%.3fs Hit %d, miss %d' % (t, stats[0], stats[1]))
+        return sort_vals
 
     def set_state_from_inventory(self, new_inv):
         """Set new_inv as the current state.
