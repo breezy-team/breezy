@@ -65,9 +65,11 @@ trees. A possibly incomplete list is as follows for running commands on a
 
     bzr-2.3 bzr-2.4 action
     3m39s   1m03s   bzr co --lightweight
-      38s      6s   bzr revert
+      38s      3s   bzr revert
     4m47s     27s   bzr merge
     4m58s     32s   bzr up
+    9m33s     29s   bzr uncommit (including a merge)
+    4m44s      3s   bzr uncommit (simple commit)
     
 
 Faster stacked branches

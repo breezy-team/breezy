@@ -40,6 +40,10 @@ Improvements
   option "``bzr.workingtree.worth_saving_limit``".
   (Ian Clatworthy, John Arbash Meinel, #380202)
 
+* Speed up ``bzr uncommit``. Instead of resetting the dirstate from
+  scratch, use ``update_basis_by_delta``, computing the delta from the
+  repsository. (John Arbash Meinel, #780544)
+
 Bug Fixes
 *********
 
