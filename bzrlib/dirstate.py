@@ -2626,16 +2626,15 @@ class DirState(object):
         it's easier to sort after the fact.
         """
         split_dirs = {}
-        def _key(entry, _split_dirs=split_dirs, st=static_tuple.StaticTuple,
-                 as_st=static_tuple.StaticTuple.from_sequence):
+        def _key(entry, _split_dirs=split_dirs, _st=static_tuple.StaticTuple):
             # sort by: directory parts, file name, file id
             dirpath, fname, file_id = entry[0]
             try:
                 split = _split_dirs[dirpath]
             except KeyError:
-                split = as_st(dirpath.split('/'))
+                split = _st.from_sequence(dirpath.split('/'))
                 _split_dirs[dirpath] = split
-            return st(split, fname, file_id)
+            return _st(split, fname, file_id)
         return sorted(entry_list, key=_key)
 
     def set_state_from_inventory(self, new_inv):
