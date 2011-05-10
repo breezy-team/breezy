@@ -572,6 +572,34 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
 
+    def _check_for_tree_references(self, iterator):
+        """See if directories have become tree-references."""
+        blocked_parent_ids = set()
+        for path, ie in iterator:
+            if ie.parent_id in blocked_parent_ids:
+                # This entry was pruned because one of its parents became a
+                # TreeReference. If this is a directory, mark it as blocked.
+                if ie.kind == 'directory':
+                    blocked_parent_ids.add(ie.file_id)
+                continue
+            if ie.kind == 'directory' and self._directory_is_tree_reference(path):
+                # This InventoryDirectory needs to be a TreeReference
+                ie = inventory.TreeReference(ie.file_id, ie.name, ie.parent_id)
+                blocked_parent_ids.add(ie.file_id)
+            yield path, ie
+
+    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+        """See Tree.iter_entries_by_dir()"""
+        # The only trick here is that if we supports_tree_reference then we
+        # need to detect if a directory becomes a tree-reference.
+        iterator = super(WorkingTree, self).iter_entries_by_dir(
+                specific_file_ids=specific_file_ids,
+                yield_parents=yield_parents)
+        if not self.supports_tree_reference():
+            return iterator
+        else:
+            return self._check_for_tree_references(iterator)
+
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
         # XXX: this returns the on-disk size; it should probably return the

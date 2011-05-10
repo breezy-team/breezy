@@ -52,6 +52,11 @@ Bug Fixes
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
 
+* ``WT.inventory`` and ``WT.iter_entries_by_dir()`` was not correctly
+  reporting subdirectories that were tree references (in formats that
+  supported them). (John Arbash Meinel, #764677)
+
+
 Documentation
 *************
 
@@ -370,7 +375,6 @@ Improvements
   the correct order. (With the gcc-tree, this changes it (re)reading 8GB
   of CHK data, down to just 150MB.) This has noticeable affects for things
   like building checkouts, etc.  (John Arbash Meinel, #737234)
-
 
 Bug Fixes
 *********
