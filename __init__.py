@@ -126,8 +126,7 @@ class LocalGitProber(Prober):
 
     def probe_transport(self, transport):
         try:
-            if not transport.has_any(['info/refs', '.git/branches',
-                                      'branches']):
+            if not transport.has_any(['info/refs', '.git/HEAD', 'HEAD', 'objects', '.git/objects']):
                 raise bzr_errors.NotBranchError(path=transport.base)
         except bzr_errors.NoSuchFile:
             raise bzr_errors.NotBranchError(path=transport.base)

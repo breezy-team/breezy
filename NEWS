@@ -1,5 +1,10 @@
 0.6.1	UNRELEASED
 
+ BUG FIXES
+
+  * Support git repositories without a branches directory in their control
+    directory. (Jelmer Vernooij, #780239)
+
 0.6.0	2011-04-12
 
  BUG FIXES
