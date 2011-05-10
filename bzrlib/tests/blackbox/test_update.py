@@ -90,7 +90,7 @@ All changes applied successfully.
 Updated to revision 1 of branch %s
 """ % osutils.pathjoin(self.test_dir, 'branch',),
                          err)
-        self.failUnlessExists('branch/file')
+        self.assertPathExists('branch/file')
 
     def test_update_out_of_date_light_checkout(self):
         self.make_branch_and_tree('branch')
@@ -179,9 +179,9 @@ Your local commits will now show as pending merges with 'bzr status', and can be
 """ % osutils.pathjoin(self.test_dir, 'master',),
                          err)
         self.assertEqual([master_tip, child_tip], wt.get_parent_ids())
-        self.failUnlessExists('checkout/file')
-        self.failUnlessExists('checkout/file_b')
-        self.failUnlessExists('checkout/file_c')
+        self.assertPathExists('checkout/file')
+        self.assertPathExists('checkout/file_b')
+        self.assertPathExists('checkout/file_c')
         self.assertTrue(wt.has_filename('file_c'))
 
     def test_update_with_merges(self):
@@ -299,8 +299,8 @@ $ bzr update -r 1
 2>All changes applied successfully.
 2>Updated to revision 1 of .../master
 ''')
-        self.failUnlessExists('./file1')
-        self.failIfExists('./file2')
+        self.assertPathExists('./file1')
+        self.assertPathDoesNotExist('./file2')
         self.assertEquals(['m1'], master.get_parent_ids())
 
     def test_update_dash_r_outside_history(self):

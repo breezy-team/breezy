@@ -20,6 +20,10 @@
 import os
 from testtools import content
 
+from bzrlib.bzrdir import BzrDir
+from bzrlib.smart import medium
+from bzrlib.transport import remote
+
 from bzrlib.plugin import (
     are_plugins_disabled,
     )
@@ -27,6 +31,21 @@ from bzrlib.plugin import (
 from bzrlib.tests import (
     TestCaseWithTransport,
     )
+
+old_format_modules = [
+    'bzrlib.repofmt.knitrepo',
+    'bzrlib.repofmt.knitpack_repo',
+    'bzrlib.plugins.weave_fmt.branch',
+    'bzrlib.plugins.weave_fmt.bzrdir',
+    'bzrlib.plugins.weave_fmt.repository',
+    'bzrlib.plugins.weave_fmt.workingtree',
+    'bzrlib.weave',
+    'bzrlib.weavefile',
+    'bzrlib.xml4',
+    'bzrlib.xml5',
+    'bzrlib.xml6',
+    'bzrlib.xml7',
+    ]
 
 
 class TestImportTariffs(TestCaseWithTransport):
@@ -43,14 +62,11 @@ class TestImportTariffs(TestCaseWithTransport):
             self.preserved_env_vars[name] = os.environ.get(name)
         super(TestImportTariffs, self).setUp()
 
-    def run_command_check_imports(self, args, forbidden_imports):
-        """Run bzr ARGS in a subprocess and check its imports.
+    def start_bzr_subprocess_with_import_check(self, args):
+        """Run a bzr process and capture the imports.
 
         This is fairly expensive because we start a subprocess, so we aim to
         cover representative rather than exhaustive cases.
-
-        :param forbidden_imports: List of fully-qualified Python module names
-            that should not be loaded while running this command.
         """
         # We use PYTHON_VERBOSE rather than --profile-importts because in
         # experimentation the profile-imports output seems to not always show
@@ -63,10 +79,15 @@ class TestImportTariffs(TestCaseWithTransport):
         # explicitly do want to test against things installed there, therefore
         # we pass it through.
         env_changes = dict(PYTHONVERBOSE='1', **self.preserved_env_vars)
-        out, err = self.run_bzr_subprocess(args,
-            allow_plugins=(not are_plugins_disabled()),
-            env_changes=env_changes)
+        return self.start_bzr_subprocess(args, env_changes=env_changes,
+            allow_plugins=(not are_plugins_disabled()))
 
+    def check_forbidden_modules(self, err, forbidden_imports):
+        """Check for forbidden modules in stderr.
+
+        :param err: Standard error
+        :param forbidden_imports: List of forbidden modules
+        """
         self.addDetail('subprocess_stderr',
             content.Content(content.ContentType("text", "plain"),
                 lambda:[err]))
@@ -77,9 +98,34 @@ class TestImportTariffs(TestCaseWithTransport):
                 bad_modules.append(module_name)
 
         if bad_modules:
-            self.fail("command %r loaded forbidden modules %r"
-                % (args, bad_modules))
+            self.fail("command loaded forbidden modules %r"
+                % (bad_modules,))
+
+    def finish_bzr_subprocess_with_import_check(self, process,
+            args, forbidden_imports):
+        """Finish subprocess and check specific modules have not been
+        imported.
+
+        :param forbidden_imports: List of fully-qualified Python module names
+            that should not be loaded while running this command.
+        """
+        (out, err) = self.finish_bzr_subprocess(process,
+            universal_newlines=False, process_args=args)
+        self.check_forbidden_modules(err, forbidden_imports)
         return out, err
+
+    def run_command_check_imports(self, args, forbidden_imports):
+        """Run bzr ARGS in a subprocess and check its imports.
+
+        This is fairly expensive because we start a subprocess, so we aim to
+        cover representative rather than exhaustive cases.
+
+        :param forbidden_imports: List of fully-qualified Python module names
+            that should not be loaded while running this command.
+        """
+        process = self.start_bzr_subprocess_with_import_check(args)
+        self.finish_bzr_subprocess_with_import_check(process, args,
+            forbidden_imports)
 
     def test_import_tariffs_working(self):
         # check some guaranteed-true and false imports to be sure we're
@@ -96,6 +142,7 @@ class TestImportTariffs(TestCaseWithTransport):
         # 'st' in a default format working tree shouldn't need many modules
         self.make_branch_and_tree('.')
         self.run_command_check_imports(['st'], [
+            'bzrlib.annotate',
             'bzrlib.atomicfile',
             'bzrlib.bugtracker',
             'bzrlib.bundle.commands',
@@ -106,34 +153,26 @@ class TestImportTariffs(TestCaseWithTransport):
             # bzrlib.foreign so it can't be blacklisted
             'bzrlib.gpg',
             'bzrlib.info',
+            'bzrlib.knit',
             'bzrlib.merge3',
             'bzrlib.merge_directive',
             'bzrlib.msgeditor',
             'bzrlib.patiencediff',
             'bzrlib.remote',
-            'bzrlib.repofmt.knitpack_repo',
             'bzrlib.rules',
             'bzrlib.sign_my_commits',
             'bzrlib.smart',
             'bzrlib.smart.client',
+            'bzrlib.smart.medium',
+            'bzrlib.smart.server',
             'bzrlib.transform',
             'bzrlib.version_info_formats.format_rio',
-            'bzrlib.plugins.weave_fmt.branch',
-            'bzrlib.plugins.weave_fmt.bzrdir',
-            'bzrlib.plugins.weave_fmt.repository',
-            'bzrlib.plugins.weave_fmt.workingtree',
-            'bzrlib.weave',
-            'bzrlib.weavefile',
-            'bzrlib.xml4',
-            'bzrlib.xml5',
-            'bzrlib.xml6',
-            'bzrlib.xml7',
             'getpass',
             'kerberos',
             'smtplib',
             'tarfile',
             'tempfile',
-            ])
+            ] + old_format_modules)
         # TODO: similar test for repository-only operations, checking we avoid
         # loading wt-specific stuff
         #
@@ -144,3 +183,53 @@ class TestImportTariffs(TestCaseWithTransport):
         self.run_command_check_imports(['help', 'commands'], [
             'testtools',
             ])
+
+    def test_simple_serve(self):
+        # 'serve' in a default format working tree shouldn't need many modules
+        tree = self.make_branch_and_tree('.')
+        process = self.start_bzr_subprocess_with_import_check(['serve',
+            '--inet', '-d', tree.basedir])
+        url = 'bzr://localhost/'
+        self.permit_url(url)
+        client_medium = medium.SmartSimplePipesClientMedium(
+            process.stdout, process.stdin, url)
+        transport = remote.RemoteTransport(url, medium=client_medium)
+        branch = BzrDir.open_from_transport(transport).open_branch()
+        process.stdin.close()
+        # Hide stdin from the subprocess module, so it won't fail to close it.
+        process.stdin = None
+        (out, err) = self.finish_bzr_subprocess(process,
+            universal_newlines=False)
+        self.check_forbidden_modules(err,
+            ['bzrlib.annotate',
+            'bzrlib.atomicfile',
+            'bzrlib.bugtracker',
+            'bzrlib.bundle.commands',
+            'bzrlib.cmd_version_info',
+            'bzrlib.dirstate',
+            'bzrlib._dirstate_helpers_py',
+            'bzrlib._dirstate_helpers_pyx',
+            'bzrlib.externalcommand',
+            'bzrlib.filters',
+            # foreign branch plugins import the foreign_vcs_registry from 
+            # bzrlib.foreign so it can't be blacklisted
+            'bzrlib.gpg',
+            'bzrlib.info',
+            'bzrlib.knit',
+            'bzrlib.merge3',
+            'bzrlib.merge_directive',
+            'bzrlib.msgeditor',
+            'bzrlib.patiencediff',
+            'bzrlib.remote',
+            'bzrlib.rules',
+            'bzrlib.sign_my_commits',
+            'bzrlib.smart.client',
+            'bzrlib.transform',
+            'bzrlib.version_info_formats.format_rio',
+            'bzrlib.workingtree_4',
+            'getpass',
+            'kerberos',
+            'smtplib',
+            'tarfile',
+            'tempfile',
+            ] + old_format_modules)

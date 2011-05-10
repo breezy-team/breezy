@@ -23,27 +23,32 @@ try:
 except ImportError:
     pylzma = None
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     annotate,
     debug,
     errors,
     graph as _mod_graph,
-    knit,
     osutils,
     pack,
     static_tuple,
     trace,
+    tsort,
     )
+
+from bzrlib.repofmt import pack_repo
+""")
+
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
-from bzrlib.repofmt import pack_repo
-from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
+    _KeyRefs,
     adapter_registry,
     AbsentContentFactory,
     ChunkedContentFactory,
     FulltextContentFactory,
-    VersionedFiles,
+    VersionedFilesWithFallbacks,
     )
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
@@ -78,7 +83,7 @@ def sort_gc_optimal(parent_map):
 
     present_keys = []
     for prefix in sorted(per_prefix_map):
-        present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
+        present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
     return present_keys
 
 
@@ -1169,16 +1174,18 @@ class _BatchingBlockFetcher(object):
         self.total_bytes = 0
 
 
-class GroupCompressVersionedFiles(VersionedFiles):
+class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     """A group-compress based VersionedFiles implementation."""
 
-    def __init__(self, index, access, delta=True, _unadded_refs=None):
+    def __init__(self, index, access, delta=True, _unadded_refs=None,
+            _group_cache=None):
         """Create a GroupCompressVersionedFiles object.
 
         :param index: The index object storing access and graph data.
         :param access: The access object storing raw data.
         :param delta: Whether to delta compress or just entropy compress.
         :param _unadded_refs: private parameter, don't use.
+        :param _group_cache: private parameter, don't use.
         """
         self._index = index
         self._access = access
@@ -1186,13 +1193,16 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if _unadded_refs is None:
             _unadded_refs = {}
         self._unadded_refs = _unadded_refs
-        self._group_cache = LRUSizeCache(max_size=50*1024*1024)
+        if _group_cache is None:
+            _group_cache = LRUSizeCache(max_size=50*1024*1024)
+        self._group_cache = _group_cache
         self._immediate_fallback_vfs = []
 
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
         return GroupCompressVersionedFiles(self._index, self._access,
-            self._delta, _unadded_refs=dict(self._unadded_refs))
+            self._delta, _unadded_refs=dict(self._unadded_refs),
+            _group_cache=self._group_cache)
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
@@ -1471,7 +1481,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             the defined order, regardless of source.
         """
         if ordering == 'topological':
-            present_keys = topo_sort(parent_map)
+            present_keys = tsort.topo_sort(parent_map)
         else:
             # ordering == 'groupcompress'
             # XXX: This only optimizes for the target ordering. We may need
@@ -1922,7 +1932,7 @@ class _GCGraphIndex(object):
         # repeated over and over, this creates a surplus of ints
         self._int_cache = {}
         if track_external_parent_refs:
-            self._key_dependencies = knit._KeyRefs(
+            self._key_dependencies = _KeyRefs(
                 track_new_keys=track_new_keys)
         else:
             self._key_dependencies = None

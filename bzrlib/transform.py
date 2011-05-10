@@ -1898,11 +1898,10 @@ class TransformPreview(DiskTreeTransform):
         path = self._tree_id_paths.get(trans_id)
         if path is None:
             return None
-        file_id = self._tree.path2id(path)
-        try:
-            return self._tree.kind(file_id)
-        except errors.NoSuchFile:
-            return None
+        kind = self._tree.path_content_summary(path)[0]
+        if kind == 'missing':
+            kind = None
+        return kind
 
     def _set_mode(self, trans_id, mode_id, typefunc):
         """Set the mode of new file contents.
@@ -1967,7 +1966,7 @@ class _PreviewTree(tree.InventoryTree):
                 yield self._get_repository().revision_tree(revision_id)
 
     def _get_file_revision(self, file_id, vf, tree_revision):
-        parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
+        parent_keys = [(file_id, t.get_file_revision(file_id)) for t in
                        self._iter_parent_trees()]
         vf.add_lines((file_id, tree_revision), parent_keys,
                      self.get_file_lines(file_id))
@@ -1977,8 +1976,9 @@ class _PreviewTree(tree.InventoryTree):
             vf.fallback_versionedfiles.append(base_vf)
         return tree_revision
 
-    def _stat_limbo_file(self, file_id):
-        trans_id = self._transform.trans_id_file_id(file_id)
+    def _stat_limbo_file(self, file_id=None, trans_id=None):
+        if trans_id is None:
+            trans_id = self._transform.trans_id_file_id(file_id)
         name = self._transform._limbo_name(trans_id)
         return os.lstat(name)
 
@@ -2199,6 +2199,12 @@ class _PreviewTree(tree.InventoryTree):
 
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
+        trans_id = self._transform.trans_id_file_id(file_id)
+        kind = self._transform.final_kind(trans_id)
+        if kind != 'file':
+            return None
+        if trans_id in self._transform._new_contents:
+            return self._stat_limbo_file(trans_id=trans_id).st_size
         if self.kind(file_id) == 'file':
             return self._transform._tree.get_file_size(file_id)
         else:
@@ -2231,6 +2237,15 @@ class _PreviewTree(tree.InventoryTree):
                 raise
             except errors.NoSuchId:
                 return False
+
+    def has_filename(self, path):
+        trans_id = self._path2trans_id(path)
+        if trans_id in self._transform._new_contents:
+            return True
+        elif trans_id in self._transform._removed_contents:
+            return False
+        else:
+            return self._transform._tree.has_filename(path)
 
     def path_content_summary(self, path):
         trans_id = self._path2trans_id(path)

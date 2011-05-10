@@ -39,6 +39,10 @@ from bzrlib import (
 
 from bzrlib.decorators import needs_read_lock
 from bzrlib.inter import InterObject
+from bzrlib.symbol_versioning import (
+    deprecated_in,
+    deprecated_method,
+    )
 
 
 class Tree(object):
@@ -137,13 +141,9 @@ class Tree(object):
         """
         return False
 
-    def __iter__(self):
-        """Yield all file ids in this tree."""
-        raise NotImplementedError(self.__iter__)
-
     def all_file_ids(self):
         """Iterate through all file ids, including ids for missing files."""
-        return set(self.inventory)
+        raise NotImplementedError(self.all_file_ids)
 
     def id2path(self, file_id):
         """Return the path for a file id.
@@ -181,6 +181,17 @@ class Tree(object):
             impact if specific_file_ids is None.
         """
         raise NotImplementedError(self.iter_entries_by_dir)
+
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        """List all files in this tree.
+
+        :param include_root: Whether to include the entry for the tree root
+        :param from_dir: Directory under which to list files
+        :param recursive: Whether to list files recursively
+        :return: iterator over tuples of (path, versioned, kind, file_id,
+            inventory entry)
+        """
+        raise NotImplementedError(self.list_files)
 
     def iter_references(self):
         if self.supports_tree_reference():
@@ -422,29 +433,19 @@ class Tree(object):
             except errors.NoSuchRevisionInTree:
                 yield self.repository.revision_tree(revision_id)
 
-    @staticmethod
-    def _file_revision(revision_tree, file_id):
-        """Determine the revision associated with a file in a given tree."""
-        # FIXME: Shouldn't this be a RevisionTree method?
-        revision_tree.lock_read()
-        try:
-            return revision_tree.inventory[file_id].revision
-        finally:
-            revision_tree.unlock()
-
     def _get_file_revision(self, file_id, vf, tree_revision):
         """Ensure that file_id, tree_revision is in vf to plan the merge."""
 
         if getattr(self, '_repository', None) is None:
             last_revision = tree_revision
-            parent_keys = [(file_id, self._file_revision(t, file_id)) for t in
+            parent_keys = [(file_id, t.get_file_revision(file_id)) for t in
                 self._iter_parent_trees()]
             vf.add_lines((file_id, last_revision), parent_keys,
                          self.get_file_lines(file_id))
             repo = self.branch.repository
             base_vf = repo.texts
         else:
-            last_revision = self._file_revision(self, file_id)
+            last_revision = self.get_file_revision(file_id)
             base_vf = self._repository.texts
         if base_vf not in vf.fallback_versionedfiles:
             vf.fallback_versionedfiles.append(base_vf)
@@ -756,6 +757,10 @@ class InventoryTree(Tree):
     def has_or_had_id(self, file_id):
         return self.inventory.has_id(file_id)
 
+    def all_file_ids(self):
+        return set(self.inventory)
+
+    @deprecated_method(deprecated_in((2, 4, 0)))
     def __iter__(self):
         return iter(self.inventory)
 
@@ -934,6 +939,12 @@ class InterTree(InterObject):
     _matching_to_tree_format = None
 
     _optimisers = []
+
+    @classmethod
+    def is_compatible(kls, source, target):
+        # The default implementation is naive and uses the public API, so
+        # it works for all trees.
+        return True
 
     def _changes_from_entries(self, source_entry, target_entry,
         source_path=None, target_path=None):
@@ -1307,6 +1318,9 @@ class InterTree(InterObject):
                             precise_file_ids.add(child.file_id)
                     changed_file_ids.add(result[0])
                     yield result
+
+
+InterTree.register_optimiser(InterTree)
 
 
 class MultiWalker(object):

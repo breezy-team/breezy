@@ -26,6 +26,7 @@ from bzrlib import (
     bzrdir,
     errors,
     osutils,
+    symbol_versioning,
     tests,
     urlutils,
     )
@@ -41,6 +42,7 @@ from bzrlib.workingtree import (
     TreeDirectory,
     TreeFile,
     TreeLink,
+    InventoryWorkingTree,
     WorkingTree,
     )
 from bzrlib.conflicts import ConflictList, TextConflict, ContentsConflict
@@ -203,7 +205,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         os.unlink('hello.txt')
         tree.remove('hello.txt')
         tree.revert(['hello.txt'])
-        self.failUnlessExists('hello.txt')
+        self.assertPathExists('hello.txt')
 
     def test_versioned_files_not_unknown(self):
         tree = self.make_branch_and_tree('.')
@@ -244,21 +246,19 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         revid = b.revision_history()[0]
         self.log('first revision_id is {%s}' % revid)
 
-        inv = b.repository.get_inventory(revid)
-        self.log('contents of inventory: %r' % inv.entries())
+        tree = b.repository.revision_tree(revid)
+        self.log('contents of tree: %r' % list(tree.iter_entries_by_dir()))
 
-        self.check_inventory_shape(inv,
-                                   ['dir/', 'dir/sub/', 'dir/sub/file'])
+        self.check_tree_shape(tree, ['dir/', 'dir/sub/', 'dir/sub/file'])
         wt.rename_one('dir', 'newdir')
 
         wt.lock_read()
-        self.check_inventory_shape(wt.inventory,
+        self.check_tree_shape(wt,
                                    ['newdir/', 'newdir/sub/', 'newdir/sub/file'])
         wt.unlock()
         wt.rename_one('newdir/sub', 'newdir/newsub')
         wt.lock_read()
-        self.check_inventory_shape(wt.inventory,
-                                   ['newdir/', 'newdir/newsub/',
+        self.check_tree_shape(wt, ['newdir/', 'newdir/newsub/',
                                     'newdir/newsub/file'])
         wt.unlock()
 
@@ -327,7 +327,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # because some formats mutate the branch to set it on the tree
         # we need to alter the branch to let this pass.
         try:
-            wt.branch.set_revision_history(['A', 'B'])
+            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+                wt.branch.set_revision_history, ['A', 'B'])
         except errors.NoSuchRevision, e:
             self.assertEqual('B', e.revision)
             raise TestSkipped("Branch format does not permit arbitrary"
@@ -398,12 +399,12 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.set_parent_ids(['B'])
         tree = wt.basis_tree()
         tree.lock_read()
-        self.failUnless(tree.has_filename('bar'))
+        self.assertTrue(tree.has_filename('bar'))
         tree.unlock()
         wt.set_parent_ids(['A'])
         tree = wt.basis_tree()
         tree.lock_read()
-        self.failUnless(tree.has_filename('foo'))
+        self.assertTrue(tree.has_filename('foo'))
         tree.unlock()
 
     def test_clone_tree_revision(self):
@@ -464,7 +465,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.commit('A', rev_id='A')
         # and update old_tree
         self.assertEqual(0, old_tree.update())
-        self.failUnlessExists('checkout/file')
+        self.assertPathExists('checkout/file')
         self.assertEqual(['A'], old_tree.get_parent_ids())
 
     def test_update_sets_root_id(self):
@@ -485,7 +486,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         wt.commit('A', rev_id='A')
         # and update checkout
         self.assertEqual(0, checkout.update())
-        self.failUnlessExists('checkout/file')
+        self.assertPathExists('checkout/file')
         self.assertEqual(wt.get_root_id(), checkout.get_root_id())
         self.assertNotEqual(None, wt.get_root_id())
 
@@ -566,10 +567,10 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             a.close()
         this.revert()
         self.assertFileEqual('a test\n', 'b1/a')
-        self.failUnlessExists('b1/b.~1~')
-        self.failIfExists('b1/c')
-        self.failIfExists('b1/a.~1~')
-        self.failUnlessExists('b1/d')
+        self.assertPathExists('b1/b.~1~')
+        self.assertPathDoesNotExist('b1/c')
+        self.assertPathDoesNotExist('b1/a.~1~')
+        self.assertPathExists('b1/d')
 
     def test_update_updates_bound_branch_no_local_commits(self):
         # doing an update in a tree updates the branch its bound to too.
@@ -738,7 +739,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test_format_description(self):
         tree = self.make_branch_and_tree('tree')
         text = tree._format.get_format_description()
-        self.failUnless(len(text))
+        self.assertTrue(len(text))
 
     def test_branch_attribute_is_not_settable(self):
         # the branch attribute is an aspect of the working tree, not a
@@ -775,7 +776,7 @@ class TestWorkingTree(TestCaseWithWorkingTree):
             tree.lock_read()
             self.assertEqual([('', 'directory'), (u'\xe5', 'file')],
                     [(path, ie.kind) for path,ie in
-                                tree.inventory.iter_entries()])
+                                tree.iter_entries_by_dir()])
             tree.unlock()
         finally:
             osutils.normalized_filename = orig
@@ -797,6 +798,9 @@ class TestWorkingTree(TestCaseWithWorkingTree):
     def test__write_inventory(self):
         # The private interface _write_inventory is currently used by transform.
         tree = self.make_branch_and_tree('.')
+        if not isinstance(tree, InventoryWorkingTree):
+            raise TestNotApplicable("_write_inventory does not exist on "
+                "non-inventory working trees")
         # if we write write an inventory then do a walkdirs we should get back
         # missing entries, and actual, and unknowns as appropriate.
         self.build_tree(['present', 'unknown'])
@@ -1070,9 +1074,9 @@ class TestWorkingTreeUpdate(TestCaseWithWorkingTree):
         self.assertEqual(0, wt.update(revision='1'))
         self.assertEqual('1', wt.last_revision())
         self.assertEqual(tip, wt.branch.last_revision())
-        self.failUnlessExists('checkout/file1')
-        self.failIfExists('checkout/file4')
-        self.failIfExists('checkout/file5')
+        self.assertPathExists('checkout/file1')
+        self.assertPathDoesNotExist('checkout/file4')
+        self.assertPathDoesNotExist('checkout/file5')
 
 
 class TestIllegalPaths(TestCaseWithWorkingTree):
@@ -1120,3 +1124,38 @@ class TestControlComponent(TestCaseWithWorkingTree):
         # above the control dir but we might need to relax that?
         self.assertEqual(wt.control_url.find(wt.user_url), 0)
         self.assertEqual(wt.control_url, wt.control_transport.base)
+
+
+class TestWorthSavingLimit(TestCaseWithWorkingTree):
+
+    def make_wt_with_worth_saving_limit(self):
+        wt = self.make_branch_and_tree('wt')
+        if getattr(wt, '_worth_saving_limit', None) is None:
+            raise tests.TestNotApplicable('no _worth_saving_limit for'
+                                          ' this tree type')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        return wt
+
+    def test_not_set(self):
+        # Default should be 10
+        wt = self.make_wt_with_worth_saving_limit()
+        self.assertEqual(10, wt._worth_saving_limit())
+        ds = wt.current_dirstate()
+        self.assertEqual(10, ds._worth_saving_limit)
+
+    def test_set_in_branch(self):
+        wt = self.make_wt_with_worth_saving_limit()
+        config = wt.branch.get_config()
+        config.set_user_option('bzr.workingtree.worth_saving_limit', '20')
+        self.assertEqual(20, wt._worth_saving_limit())
+        ds = wt.current_dirstate()
+        self.assertEqual(10, ds._worth_saving_limit)
+
+    def test_invalid(self):
+        wt = self.make_wt_with_worth_saving_limit()
+        config = wt.branch.get_config()
+        config.set_user_option('bzr.workingtree.worth_saving_limit', 'a')
+        # If the config entry is invalid, default to 10
+        # TODO: This writes a warning to the user, trap it somehow
+        self.assertEqual(10, wt._worth_saving_limit())

@@ -30,8 +30,8 @@ from bzrlib import (
 from bzrlib.decorators import needs_read_lock
 from bzrlib.transport.local import LocalTransport
 from bzrlib.workingtree import (
+    InventoryWorkingTree,
     WorkingTreeFormat,
-    WorkingTree,
     )
 
 
@@ -133,7 +133,7 @@ class WorkingTreeFormat2(WorkingTreeFormat):
         return wt
 
 
-class WorkingTree2(WorkingTree):
+class WorkingTree2(InventoryWorkingTree):
     """This is the Format 2 working tree.
 
     This was the first weave based working tree.
@@ -227,4 +227,8 @@ class WorkingTree2(WorkingTree):
                              file_id=self.path2id(conflicted)))
         return conflicts
 
+    def set_conflicts(self, arg):
+        raise errors.UnsupportedOperation(self.set_conflicts, self)
 
+    def add_conflicts(self, arg):
+        raise errors.UnsupportedOperation(self.add_conflicts, self)

@@ -38,7 +38,8 @@ from bzrlib import (
     transport as _mod_transport,
     urlutils,
     win32utils,
-    workingtree,
+    workingtree_3,
+    workingtree_4,
     )
 import bzrlib.branch
 from bzrlib.errors import (
@@ -73,12 +74,12 @@ class TestDefaultFormat(TestCase):
     def test_get_set_default_format(self):
         old_format = bzrdir.BzrDirFormat.get_default_format()
         # default is BzrDirMetaFormat1
-        self.failUnless(isinstance(old_format, bzrdir.BzrDirMetaFormat1))
+        self.assertIsInstance(old_format, bzrdir.BzrDirMetaFormat1)
         controldir.ControlDirFormat._set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
         try:
             result = bzrdir.BzrDir.create('memory:///')
-            self.failUnless(isinstance(result, SampleBzrDir))
+            self.assertIsInstance(result, SampleBzrDir)
         finally:
             controldir.ControlDirFormat._set_default_format(old_format)
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
@@ -286,7 +287,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
             format.initialize(url)
             t = _mod_transport.get_transport(url)
             found_format = bzrdir.BzrDirFormat.find_format(t)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(BzrDirFormatTest1(), "foo")
         check_format(BzrDirFormatTest2(), "bar")
 
@@ -797,7 +798,7 @@ class ChrootedTests(TestCaseWithTransport):
         tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
         tree2.lock_read()
         self.addCleanup(tree2.unlock)
-        self.failUnlessExists('tree2/subtree/file')
+        self.assertPathExists('tree2/subtree/file')
         self.assertEqual('tree-reference', tree2.kind('subtree-root'))
 
     def test_cloning_metadir(self):
@@ -807,7 +808,7 @@ class ChrootedTests(TestCaseWithTransport):
         branch = self.make_branch('branch', format='knit')
         format = branch.bzrdir.cloning_metadir()
         self.assertIsInstance(format.workingtree_format,
-            workingtree.WorkingTreeFormat3)
+            workingtree_4.WorkingTreeFormat6)
 
     def test_sprout_recursive_treeless(self):
         tree = self.make_branch_and_tree('tree1',
@@ -837,8 +838,8 @@ class ChrootedTests(TestCaseWithTransport):
         # #634470.  -- vila 20100909
         self.assertRaises(errors.NotBranchError,
                           tree.bzrdir.sprout, 'repo/tree2')
-#        self.failUnlessExists('repo/tree2/subtree')
-#        self.failIfExists('repo/tree2/subtree/file')
+#        self.assertPathExists('repo/tree2/subtree')
+#        self.assertPathDoesNotExist('repo/tree2/subtree/file')
 
     def make_foo_bar_baz(self):
         foo = bzrdir.BzrDir.create_branch_convenience('foo').bzrdir
@@ -963,7 +964,7 @@ class TestMeta1DirFormat(TestCaseWithTransport):
         checkout_base = t.clone('checkout').base
         self.assertEqual(checkout_base, dir.get_workingtree_transport(None).base)
         self.assertEqual(checkout_base,
-                         dir.get_workingtree_transport(workingtree.WorkingTreeFormat3()).base)
+                         dir.get_workingtree_transport(workingtree_3.WorkingTreeFormat3()).base)
 
     def test_meta1dir_uses_lockdir(self):
         """Meta1 format uses a LockDir to guard the whole directory, not a file."""
@@ -1057,7 +1058,7 @@ class NonLocalTests(TestCaseWithTransport):
         my_bzrdir = bzrdir.BzrDir.open(self.get_url('branch-knit2'))
         checkout_format = my_bzrdir.checkout_metadir()
         self.assertIsInstance(checkout_format.workingtree_format,
-                              workingtree.WorkingTreeFormat3)
+                              workingtree_4.WorkingTreeFormat4)
 
 
 class TestHTTPRedirections(object):
