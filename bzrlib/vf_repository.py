@@ -1815,6 +1815,13 @@ class VersionedFileRepository(Repository):
         known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
         return graph.GraphThunkIdsToKeys(known_graph)
 
+    @needs_read_lock
+    def get_file_graph(self, file_id):
+        """Return the graph walker for a specific file."""
+        parents_provider = versionedfile.PerFileParentsProvider(self.texts,
+            file_id)
+        return graph.Graph(parents_provider)
+
     def _get_versioned_file_checker(self, text_key_references=None,
         ancestors=None):
         """Return an object suitable for checking versioned files.
