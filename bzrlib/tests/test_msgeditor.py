@@ -368,11 +368,5 @@ class TestPlatformErrnoWorkarounds(TestCaseInTempDir):
         ERROR_BAD_EXE_FORMAT = 193
         file("textfile.txt", "w").close()
         e = self.assertRaises(WindowsError, subprocess.call, "textfile.txt")
-        # Python2.4 used the 'winerror' as the errno, which confuses a lot of
-        # our error trapping code. Make sure that we understand the mapping
-        # correctly.
-        if sys.version_info >= (2, 5):
-            self.assertEqual(e.errno, errno.ENOEXEC)
-            self.assertEqual(e.winerror, ERROR_BAD_EXE_FORMAT)
-        else:
-            self.assertEqual(e.errno, ERROR_BAD_EXE_FORMAT)
+        self.assertEqual(e.errno, errno.ENOEXEC)
+        self.assertEqual(e.winerror, ERROR_BAD_EXE_FORMAT)

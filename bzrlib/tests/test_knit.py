@@ -1192,8 +1192,7 @@ class LowLevelKnitIndexTests(TestCase):
             self.assertRaises(errors.KnitCorrupt, index.keys)
         except TypeError, e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.IndexError')
-                and sys.version_info[0:2] >= (2,5)):
+                           ' not exceptions.IndexError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
@@ -1212,8 +1211,7 @@ class LowLevelKnitIndexTests(TestCase):
             self.assertRaises(errors.KnitCorrupt, index.keys)
         except TypeError, e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')
-                and sys.version_info[0:2] >= (2,5)):
+                           ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
@@ -1232,8 +1230,7 @@ class LowLevelKnitIndexTests(TestCase):
             self.assertRaises(errors.KnitCorrupt, index.keys)
         except TypeError, e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')
-                and sys.version_info[0:2] >= (2,5)):
+                           ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
@@ -1250,8 +1247,7 @@ class LowLevelKnitIndexTests(TestCase):
             self.assertRaises(errors.KnitCorrupt, index.keys)
         except TypeError, e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')
-                and sys.version_info[0:2] >= (2,5)):
+                           ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
@@ -1268,8 +1264,7 @@ class LowLevelKnitIndexTests(TestCase):
             self.assertRaises(errors.KnitCorrupt, index.keys)
         except TypeError, e:
             if (str(e) == ('exceptions must be strings, classes, or instances,'
-                           ' not exceptions.ValueError')
-                and sys.version_info[0:2] >= (2,5)):
+                           ' not exceptions.ValueError')):
                 self.knownFailure('Pyrex <0.9.5 fails with TypeError when'
                                   ' raising new style exceptions with python'
                                   ' >=2.5')
