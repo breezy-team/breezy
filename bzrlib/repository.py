@@ -1226,13 +1226,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param check_repo: If False do not check the repository contents, just 
             calculate the data callback_refs requires and call them back.
         """
-        return self._check(revision_ids, callback_refs=callback_refs,
-            check_repo=check_repo)
-
-    def _check(self, revision_ids, callback_refs, check_repo):
-        result = check.Check(self, check_repo=check_repo)
-        result.check(callback_refs)
-        return result
+        return check.Check()
 
     def _warn_if_deprecated(self, branch=None):
         if not self._format.is_deprecated():

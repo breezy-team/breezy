@@ -20,6 +20,7 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    check,
     debug,
     fetch as _mod_fetch,
     fifo_cache,
@@ -1849,6 +1850,11 @@ class VersionedFileRepository(Repository):
         if record.storage_kind == 'absent':
             raise errors.NoSuchRevision(self, revision_id)
         return record.get_bytes_as('fulltext')
+
+    def check(self, revision_ids, callback_refs, check_repo):
+        result = check.VersionedFileCheck(self, check_repo=check_repo)
+        result.check(callback_refs)
+        return result
 
     def _find_inconsistent_revision_parents(self, revisions_iterator=None):
         """Find revisions with different parent lists in the revision object
