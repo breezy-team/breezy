@@ -63,11 +63,12 @@ thrashing. Various other tweaks have been applied with feedback from large
 trees. A possibly incomplete list is as follows for running commands on a
 70k file tree::
 
-    bzr-2.3 bzr-2.4 action
-    3m39s   1m03s   bzr co --lightweight
-      38s      6s   bzr revert
-    4m47s     27s   bzr merge
-    4m58s     32s   bzr up
+    bzr-2.3.1 bzr-2.3.2 bzr-2.4 action
+    3m39s                 1m03s   bzr co --lightweight
+      38s                    6s   bzr revert
+    4m47s                   27s   bzr merge
+    4m45s           29s     17s   bzr pull
+    4m58s                   32s   bzr up
     
 
 Faster stacked branches

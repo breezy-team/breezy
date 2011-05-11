@@ -1032,6 +1032,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
                 repository = self.branch.repository
+                if repository._format.fast_deltas:
+                    parent_ids = self.get_parent_ids()
+                    if parent_ids:
+                        basis_id = parent_ids[0]
+                        basis_tree = repository.revision_tree(basis_id)
                 basis_tree.lock_read()
                 try:
                     new_basis_tree = self.branch.basis_tree()
