@@ -15,6 +15,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
+import textwrap
 
 from bzrlib import (
     export_pot,
@@ -62,39 +63,85 @@ class TestNormalize(tests.TestCase):
         self.assertEqual(export_pot._normalize(s), e)
 
 
-class TestPoEntry(tests.TestCase):
+class PoEntryTestCase(tests.TestCase):
 
     def setUp(self):
         self.overrideAttr(export_pot, '_FOUND_MSGID', set())
         self._outf = StringIO()
-        super(TestPoEntry, self).setUp()
+        super(PoEntryTestCase, self).setUp()
 
-    def test_simple(self):
-        export_pot._poentry( self._outf, 'dummy', 1, "spam")
-        export_pot._poentry( self._outf, 'dummy', 2, "ham", 'EGG')
+    def check_output(self, expected):
         self.assertEqual(
                 self._outf.getvalue(),
-                '''#: dummy:1\n'''
-                '''msgid "spam"\n'''
-                '''msgstr ""\n'''
-                '''\n'''
-                '''#: dummy:2\n'''
-                '''# EGG\n'''
-                '''msgid "ham"\n'''
-                '''msgstr ""\n'''
-                '''\n'''
+                textwrap.dedent(expected)
                 )
+
+class TestPoEntry(PoEntryTestCase):
+
+    def test_simple(self):
+        export_pot._poentry(self._outf, 'dummy', 1, "spam")
+        export_pot._poentry(self._outf, 'dummy', 2, "ham", 'EGG')
+        self.check_output('''\
+                #: dummy:1
+                msgid "spam"
+                msgstr ""
+
+                #: dummy:2
+                # EGG
+                msgid "ham"
+                msgstr ""
+
+                ''')
 
     def test_duplicate(self):
         export_pot._poentry(self._outf, 'dummy', 1, "spam")
         # This should be ignored.
         export_pot._poentry(self._outf, 'dummy', 2, "spam", 'EGG')
 
-        self.assertEqual(
-                self._outf.getvalue(),
-                '''#: dummy:1\n'''
-                '''msgid "spam"\n'''
-                '''msgstr ""\n'''
-                '''\n'''
-                )
+        self.check_output('''\
+                #: dummy:1
+                msgid "spam"
+                msgstr ""\n
+                ''')
 
+
+class TestPoentryPerPergraph(PoEntryTestCase):
+
+    def test_single(self):
+        export_pot._poentry_per_paragraph(
+                self._outf,
+                'dummy',
+                10,
+                '''foo\nbar\nbaz\n'''
+                )
+        self.check_output('''\
+                #: dummy:10
+                msgid ""
+                "foo\\n"
+                "bar\\n"
+                "baz\\n"
+                msgstr ""\n
+                ''')
+
+    def test_multi(self):
+        export_pot._poentry_per_paragraph(
+                self._outf,
+                'dummy',
+                10,
+                '''spam\nham\negg\n\nSPAM\nHAM\nEGG\n'''
+                )
+        self.check_output('''\
+                #: dummy:10
+                msgid ""
+                "spam\\n"
+                "ham\\n"
+                "egg"
+                msgstr ""
+
+                #: dummy:14
+                msgid ""
+                "SPAM\\n"
+                "HAM\\n"
+                "EGG\\n"
+                msgstr ""\n
+                ''')
