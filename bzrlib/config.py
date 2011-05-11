@@ -2537,7 +2537,18 @@ class Stack(object):
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
 
-class GlobalStack(Stack):
+class _CompatibleStack(Stack):
+    """Place holder for compatibility with previous design."""
+
+    def set(self, name, value):
+        # Force a reload (assuming we use a LockableIniFileStore)
+        self.store._config_obj = None
+        super(_CompatibleStack, self).set(name, value)
+        # Force a write to persistent storage
+        self.store.save()
+
+
+class GlobalStack(_CompatibleStack):
 
     def __init__(self):
         # Get a GlobalStore
@@ -2545,7 +2556,7 @@ class GlobalStack(Stack):
         super(GlobalStack, self).__init__([gstore.get_sections], gstore)
 
 
-class LocationStack(Stack):
+class LocationStack(_CompatibleStack):
 
     def __init__(self, location):
         lstore = LocationStore()

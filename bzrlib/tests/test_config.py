@@ -96,11 +96,11 @@ test_stack_builder_registry.register(
 
 # FIXME: Same remark as above for the following registry, which makes three of
 # them, we'll soon be able to triangulate ;) -- vila 20110509
-test_lockable_store_builder_registry = registry.Registry()
-test_lockable_store_builder_registry.register(
-    'bazaar', lambda test: config.GlobalStore())
-test_lockable_store_builder_registry.register(
-    'location', lambda test: config.LocationStore())
+test_compatible_stack_builder_registry = registry.Registry()
+test_compatible_stack_builder_registry.register(
+    'bazaar', lambda test: config.GlobalStack())
+test_compatible_stack_builder_registry.register(
+    'location', lambda test: config.LocationStack('.'))
 
 sample_long_alias="log -r-15..-1 --line"
 sample_config_text = u"""
@@ -2117,24 +2117,20 @@ class TestLockableIniFileStore(TestStore):
         store.save()
         self.assertPathExists('dir/subdir')
 
+
 class TestConcurrentStoreUpdates(TestStore):
 
-    scenarios = [(key, {'get_store': builder})
+    scenarios = [(key, {'get_stack': builder})
                  for key, builder
-                 in test_lockable_store_builder_registry.iteritems()]
+                 in test_compatible_stack_builder_registry.iteritems()]
 
     def setUp(self):
         super(TestConcurrentStoreUpdates, self).setUp()
         self._content = 'one=1\ntwo=2\n'
-        self.store = self.get_store(self)
-        self.store._load_from_string(self._content)
-        self.stack = self.get_stack(self.store)
-
-    def get_stack(self, store):
-        # While we really test Stores here, Stack provides an easier way to
-        # read/modify/delete options. So we just wrap the store in a trivial
-        # stack
-        return config.Stack([store.get_sections], store)
+        self.stack = self.get_stack(self)
+        self.stack.store._load_from_string(self._content)
+        # Flush the store
+        self.stack.store.save()
 
     def test_simple_read_access(self):
         self.assertEquals('1', self.stack.get('one'))
@@ -2143,6 +2139,30 @@ class TestConcurrentStoreUpdates(TestStore):
         self.stack.set('one', 'one')
         self.assertEquals('one', self.stack.get('one'))
 
+    def test_listen_to_the_last_speaker(self):
+        c1 = self.stack
+        c2 = self.get_stack(self)
+        c1.set('one', 'ONE')
+        c2.set('two', 'TWO')
+        self.assertEquals('ONE', c1.get('one'))
+        self.assertEquals('TWO', c2.get('two'))
+        # The second update respect the first one
+        self.assertEquals('ONE', c2.get('one'))
+
+    def test_last_speaker_wins(self):
+        # If the same config is not shared, the same variable modified twice
+        # can only see a single result.
+        c1 = self.stack
+        c2 = self.get_stack(self)
+        c1.set('one', 'c1')
+        c2.set('one', 'c2')
+        self.assertEquals('c2', c2.get('one'))
+        # The first modification is still available until another refresh
+        # occur
+        self.assertEquals('c1', c1.get('one'))
+        c1.set('two', 'done')
+        self.assertEquals('c2', c1.get('one'))
+
     # FIXME: We should adapt the tests in TestLockableConfig about concurrent
     # writes. Since this requires a clearer rewrite, I'll just rely on using
     # the same code in LockableIniFileStore (copied from LockableConfig, but
@@ -2150,7 +2170,7 @@ class TestConcurrentStoreUpdates(TestStore):
     # save() instead of set_user_option() and remove_user_option()). The intent
     # is to ensure that we always get a valid content for the store even when
     # concurrent accesses occur, read/write, write/write. It may be worth
-    # looking into removing the lock dir when it;s not needed anymore and look
+    # looking into removing the lock dir when it's not needed anymore and look
     # at possible fallouts for concurrent lockers -- vila 20110-04-06
 
 
