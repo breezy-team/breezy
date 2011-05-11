@@ -29,7 +29,7 @@ On the other hand, Mary might want to merge into her branch the work Bill
 has done in his. In this case, she needs to explicitly give the URL the
 first time, e.g.::
 
-  bzr merge sftp://mary@bill-laptop/cool-repo/cool-trunk
+  bzr merge bzr+ssh://mary@bill-laptop/cool-repo/cool-trunk
 
 This sets the default merge branch if one is not already set. To change the
 default after it is set, use the ``--remember`` option.

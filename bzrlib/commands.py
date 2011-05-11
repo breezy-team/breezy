@@ -27,10 +27,8 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 import errno
 import threading
-from warnings import warn
 
 import bzrlib
 from bzrlib import (
@@ -42,7 +40,6 @@ from bzrlib import (
     osutils,
     trace,
     ui,
-    win32utils,
     )
 """)
 
@@ -276,6 +273,8 @@ def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     # Allow plugins to extend commands
     for hook in Command.hooks['extend_command']:
         hook(cmd)
+    if getattr(cmd, 'invoked_as', None) is None:
+        cmd.invoked_as = cmd_name
     return cmd
 
 
@@ -397,7 +396,13 @@ class Command(object):
             sys.stdout is forced to be a binary stream, and line-endings
             will not mangled.
 
+    :ivar invoked_as:
+        A string indicating the real name under which this command was
+        invoked, before expansion of aliases. 
+        (This may be None if the command was constructed and run in-process.)
+
     :cvar hooks: An instance of CommandHooks.
+
     :ivar __doc__: The help shown by 'bzr help command' for this command.
         This is set by assigning explicitly to __doc__ so that -OO can
         be used::
@@ -409,6 +414,7 @@ class Command(object):
     takes_args = []
     takes_options = []
     encoding_type = 'strict'
+    invoked_as = None
 
     hidden = False
 
@@ -752,6 +758,10 @@ class Command(object):
         return getdoc(self)
 
     def name(self):
+        """Return the canonical name for this command.
+
+        The name under which it was actually invoked is available in invoked_as.
+        """
         return _unsquish_command_name(self.__class__.__name__)
 
     def plugin_name(self):
@@ -1034,7 +1044,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         Specify the number of processes that can be run concurrently (selftest).
     """
     trace.mutter("bazaar version: " + bzrlib.__version__)
-    argv = list(argv)
+    argv = _specified_or_unicode_argv(argv)
     trace.mutter("bzr arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
@@ -1180,7 +1190,7 @@ def _specified_or_unicode_argv(argv):
         new_argv = []
         try:
             # ensure all arguments are unicode strings
-            for a in argv[1:]:
+            for a in argv:
                 if isinstance(a, unicode):
                     new_argv.append(a)
                 else:
@@ -1202,7 +1212,8 @@ def main(argv=None):
 
     :return: exit code of bzr command.
     """
-    argv = _specified_or_unicode_argv(argv)
+    if argv is not None:
+        argv = argv[1:]
     _register_builtin_commands()
     ret = run_bzr_catch_errors(argv)
     trace.mutter("return code %d", ret)

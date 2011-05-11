@@ -45,9 +45,9 @@ Bug Fixes
   normally not require running ``bzr whoami`` first.
   (Martin Pool, #616878)
 
-* When reporting a crash without apport, don't print the full list of
-   plugins because it's often too long.
-   (Martin Pool, #716389)
+* ``bzr merge --preview --pull`` should respect the ``--preview`` option
+  first, and not actually change the branch tip revision.
+  (John Arbash Meinel, Dennis Duchier, #760152)
 
 * ``bzr push`` into a repository (that doesn't have a branch), will no
   longer copy all revisions in the repository. Only the ones in the
@@ -61,6 +61,16 @@ Bug Fixes
 * Fix "Unable to obtain lock" error when pushing to a bound branch if tags
   had changed.  Bazaar was attempting to open and lock the master branch
   twice in this case.  (Andrew Bennetts, #733350)
+
+* Standalone bzr.exe installation on Windows: user can put additional python 
+  libraries into ``site-packages`` subdirectory of the installation directory,
+  this might be required for "installing" extra dependencies for some plugins.
+  (Alexander Belchenko, #743256)
+
+* When reporting a crash without apport, don't print the full list of
+  plugins because it's often too long.
+  (Martin Pool, #716389)
+
 
 Documentation
 *************

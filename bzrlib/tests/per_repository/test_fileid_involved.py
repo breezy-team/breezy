@@ -19,6 +19,7 @@ import time
 
 from bzrlib import (
     errors,
+    inventory,
     remote,
     revision as _mod_revision,
     tests,
@@ -325,7 +326,7 @@ class FileIdInvolvedWGhosts(per_repository.TestCaseWithRepository):
             ('add', ('a', 'a-file-id', 'file', 'some content\n'))])
         b = builder.get_branch()
         old_rt = b.repository.revision_tree('A-id')
-        new_inv = old_rt.inventory._get_mutable_inventory()
+        new_inv = inventory.mutable_inventory_from_tree(old_rt)
         new_inv.revision_id = 'B-id'
         new_inv['a-file-id'].revision = 'ghost-id'
         new_rev = _mod_revision.Revision('B-id',

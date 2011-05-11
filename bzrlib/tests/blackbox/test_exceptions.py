@@ -16,6 +16,7 @@
 
 """Tests for display of exceptions."""
 
+import os
 import sys
 
 from bzrlib import (
@@ -44,6 +45,21 @@ class TestExceptionReporting(TestCase):
         self.assertContainsRe(err,
                 r'exceptions\.AssertionError: always fails\n')
         self.assertContainsRe(err, r'Bazaar has encountered an internal error')
+
+    def test_undecodable_argv(self):
+        """A user error must be reported if argv is not in the locale encoding
+
+        A subprocess with an environment ascii-only setting is used so the test
+        can run without worrying about the locale the test suite is using.
+        """
+        if os.name != "posix":
+            raise tests.TestNotApplicable("Needs system beholden to C locales")
+        out, err = self.run_bzr_subprocess(["\xa0"],
+            env_changes={"LANG": "C", "LC_ALL": "C"},
+            universal_newlines=True,
+            retcode=errors.EXIT_ERROR)
+        self.assertContainsRe(err, r"^bzr: ERROR: .*'\\xa0'.* unsupported")
+        self.assertEquals(out, "")
 
 
 class TestOptParseBugHandling(TestCase):
@@ -86,7 +102,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
         bzrdir.register_metadir(controldir.format_registry, "testobsolete",
             "bzrlib.tests.blackbox.test_exceptions.TestObsoleteRepoFormat",
             branch_format='bzrlib.branch.BzrBranchFormat7',
-            tree_format='bzrlib.workingtree.WorkingTreeFormat6',
+            tree_format='bzrlib.workingtree_4.WorkingTreeFormat6',
             deprecated=True,
             help='Same as 2a, but with an obsolete repo format.')
         self.disable_deprecation_warning()

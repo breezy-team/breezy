@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,8 @@ import os
 from cStringIO import StringIO
 
 import bzrlib
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     atomicfile,
     config,
@@ -28,6 +30,7 @@ from bzrlib import (
     )
 
 from trace import warning
+""")
 
 # ~/.bazaar/ignore will be filled out using
 # this ignore list, if it does not exist
