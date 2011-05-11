@@ -53,7 +53,6 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.revision import NULL_REVISION
-from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import note
 from bzrlib.workingtree import WorkingTree
 
