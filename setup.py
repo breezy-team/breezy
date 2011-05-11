@@ -171,12 +171,12 @@ from distutils.extension import Extension
 ext_modules = []
 try:
     try:
-        from Pyrex.Distutils import build_ext
-        from Pyrex.Compiler.Version import version as pyrex_version
-    except ImportError:
-        print("No Pyrex, trying Cython...")
         from Cython.Distutils import build_ext
         from Cython.Compiler.Version import version as pyrex_version
+    except ImportError:
+        print("No Cython, trying Pyrex...")
+        from Pyrex.Distutils import build_ext
+        from Pyrex.Compiler.Version import version as pyrex_version
 except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
