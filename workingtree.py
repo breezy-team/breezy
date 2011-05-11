@@ -234,6 +234,49 @@ class GitWorkingTree(workingtree.WorkingTree):
                 file_id = self._fileid_map.lookup_file_id(path.encode("utf-8"))
             self._index_add_entry(path, file_id, kind)
 
+    def smart_add(self, file_list, recurse=True, action=None, save=True):
+        added = []
+        ignored = {}
+        user_dirs = []
+        for filepath in osutils.canonical_relpaths(self.basedir, file_list):
+            if action is not None:
+                file_id = action()
+            else:
+                file_id = None
+            abspath = self.abspath(filepath)
+            kind = osutils.file_kind(abspath)
+            if kind in ("file", "symlink"):
+                if not save:
+                    self._index_add_entry(filepath, file_id, kind)
+                added.append(filepath)
+            elif kind == "directory":
+                if recurse:
+                    user_dirs.append(filepath)
+            else:
+                raise errors.BadFileKindError(filename=abspath, kind=kind)
+        for user_dir in user_dirs:
+            abs_user_dir = self.abspath(user_dir)
+            for name in os.listdir(abs_user_dir):
+                subp = os.path.join(user_dir, name)
+                if self.is_control_filename(subp):
+                    trace.mutter("skip control directory %r", subp)
+                ignore_glob = self.is_ignored(subp)
+                if ignore_glob is not None:
+                    ignored.setdefault(ignore_glob, []).append(subp)
+                    continue
+                abspath = self.abspath(subp)
+                kind = osutils.file_kind(abspath)
+                if kind == "directory":
+                    user_dirs.append(subp)
+                else:
+                    if action is not None:
+                        file_id = action()
+                    else:
+                        file_id = None
+                    if not save:
+                        self._index_add_entry(subp, file_id, kind)
+        return added, ignored
+
     def _set_root_id(self, file_id):
         self._fileid_map.set_file_id("", file_id)
 
