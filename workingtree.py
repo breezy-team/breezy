@@ -96,6 +96,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             transport.get_transport(self.controldir), 'lock', lockdir.LockDir)
         self._format = GitWorkingTreeFormat()
         self.index = index
+        self._versioned_dirs = None
         self.views = self._make_views()
         self._rules_searcher = None
         self._detect_case_handling()
@@ -138,10 +139,24 @@ class GitWorkingTree(workingtree.WorkingTree):
             self.store.add_object(blob)
         # Add an entry to the index or update the existing entry
         flags = 0 # FIXME
-        self.index[path.encode("utf-8")] = (stat_val.st_ctime,
+        encoded_path = path.encode("utf-8")
+        self.index[encoded_path] = (stat_val.st_ctime,
                 stat_val.st_mtime, stat_val.st_dev, stat_val.st_ino,
                 stat_val.st_mode, stat_val.st_uid, stat_val.st_gid,
                 stat_val.st_size, blob.id, flags)
+        if self._versioned_dirs is not None:
+            self._ensure_versioned_dir(encoded_path)
+
+    def _ensure_versioned_dir(self, dirname):
+        if dirname == "" or dirname in self._versioned_dirs:
+            return
+        self._ensure_versioned_dir(posixpath.dirname(dirname))
+        self._versioned_dirs.add(dirname)
+
+    def _load_dirs(self):
+        self._versioned_dirs = set()
+        for p in self.index:
+            self._ensure_versioned_dir(posixpath.dirname(p))
 
     def _unversion_path(self, path):
         encoded_path = path.encode("utf-8")
@@ -152,6 +167,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             for p in list(self.index):
                 if p.startswith(encoded_path+"/"):
                     del self.index[p]
+        # FIXME: remove empty directories
 
     def unversion(self, file_ids):
         for file_id in file_ids:
@@ -311,9 +327,17 @@ class GitWorkingTree(workingtree.WorkingTree):
     def get_root_id(self):
         return self.path2id("")
 
+    def _has_dir(self, path):
+        if self._versioned_dirs is None:
+            self._load_dirs()
+        return path in self._versioned_dirs
+
     @needs_read_lock
     def path2id(self, path):
-        return self._fileid_map.lookup_file_id(path.encode("utf-8"))
+        encoded_path = path.encode("utf-8")
+        if self._is_versioned(encoded_path):
+            return self._fileid_map.lookup_file_id(encoded_path)
+        return None
 
     def extras(self):
         """Yield all unversioned files in this WorkingTree.
@@ -323,7 +347,7 @@ class GitWorkingTree(workingtree.WorkingTree):
                 continue
             for filename in filenames:
                 relpath = os.path.join(dirpath[len(self.basedir):].strip("/"), filename)
-                if not relpath in self.index:
+                if not self._is_versioned(relpath):
                     yield relpath
 
     def unlock(self):
@@ -344,6 +368,9 @@ class GitWorkingTree(workingtree.WorkingTree):
 
     def __iter__(self):
         for path in self.index:
+            yield self.path2id(path)
+        self._load_dirs()
+        for path in self._versioned_dirs:
             yield self.path2id(path)
 
     def has_or_had_id(self, file_id):
@@ -383,8 +410,8 @@ class GitWorkingTree(workingtree.WorkingTree):
             raise AssertionError
         path = self._fileid_map.lookup_path(file_id)
         # FIXME: What about directories?
-        if path in self.index:
-            return path
+        if self._is_versioned(path):
+            return path.decode("utf-8")
         raise errors.NoSuchId(self, file_id)
 
     def get_file_mtime(self, file_id, path=None):
@@ -440,8 +467,11 @@ class GitWorkingTree(workingtree.WorkingTree):
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
 
+    def _is_versioned(self, path):
+        return (path in self.index or self._has_dir(path))
+
     def filter_unversioned_files(self, files):
-        return set([p for p in files if p.encode("utf-8") not in self.index])
+        return set([p for p in files if self._is_versioned(p.encode("utf-8"))])
 
     def _get_dir_ie(self, path, parent_id):
         file_id = self.path2id(path)
