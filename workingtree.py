@@ -174,6 +174,10 @@ class GitWorkingTree(workingtree.WorkingTree):
             path = self.id2path(file_id)
             self._unversion_path(path)
 
+    def check_state(self):
+        """Check that the working state is/isn't valid."""
+        pass
+
     def remove(self, files, verbose=False, to_file=None, keep_files=True,
         force=False):
         """Remove nominated files from the working tree metadata.
