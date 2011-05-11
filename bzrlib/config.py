@@ -2331,6 +2331,7 @@ class LockableIniFileStore(IniFileStore):
 
     @needs_write_lock
     def save(self):
+        # We need to be able to override the undecorated implementation
         self._save()
 
     def _save(self):

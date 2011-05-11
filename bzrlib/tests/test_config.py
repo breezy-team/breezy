@@ -2167,7 +2167,7 @@ class TestConcurrentStoreUpdates(TestStore):
         c1 = self.stack
         c2 = self.get_stack(self)
 
-        # We spawn a thread that will pause *during* the write
+        # We spawn a thread that will pause *during* the config saving.
         before_writing = threading.Event()
         after_writing = threading.Event()
         writing_done = threading.Event()
@@ -2199,15 +2199,48 @@ class TestConcurrentStoreUpdates(TestStore):
         c2.set('one', 'c2')
         self.assertEquals('c2', c2.get('one'))
 
-    # FIXME: We should adapt the tests in TestLockableConfig about concurrent
-    # writes. Since this requires a clearer rewrite, I'll just rely on using
-    # the same code in LockableIniFileStore (copied from LockableConfig, but
-    # trivial enough, the main difference is that we add @needs_write_lock on
-    # save() instead of set_user_option() and remove_user_option()). The intent
-    # is to ensure that we always get a valid content for the store even when
-    # concurrent accesses occur, read/write, write/write. It may be worth
-    # looking into removing the lock dir when it's not needed anymore and look
-    # at possible fallouts for concurrent lockers -- vila 20110-04-06
+    def test_read_while_writing(self):
+       c1 = self.stack
+       # We spawn a thread that will pause *during* the write
+       ready_to_write = threading.Event()
+       do_writing = threading.Event()
+       writing_done = threading.Event()
+       # We override the _save implementation so we know the store is locked
+       c1_orig = c1.store._save
+       def c1_save():
+           ready_to_write.set()
+           # The lock is held. We wait for the main thread to decide when to
+           # continue
+           do_writing.wait()
+           c1_orig()
+           writing_done.set()
+       c1.store._save = c1_save
+       def c1_set():
+           c1.set('one', 'c1')
+       t1 = threading.Thread(target=c1_set)
+       # Collect the thread after the test
+       self.addCleanup(t1.join)
+       # Be ready to unblock the thread if the test goes wrong
+       self.addCleanup(do_writing.set)
+       t1.start()
+       # Ensure the thread is ready to write
+       ready_to_write.wait()
+       self.assertTrue(c1.store._lock.is_held)
+       self.assertEquals('c1', c1.get('one'))
+       # If we read during the write, we get the old value
+       c2 = self.get_stack(self)
+       self.assertEquals('1', c2.get('one'))
+       # Let the writing occur and ensure it occurred
+       do_writing.set()
+       writing_done.wait()
+       # Now we get the updated value
+       c3 = self.get_stack(self)
+       self.assertEquals('c1', c3.get('one'))
+
+    # FIXME: It may be worth looking into removing the lock dir when it's not
+    # needed anymore and look at possible fallouts for concurrent lockers. This
+    # will matter if/when we use config files outside of bazaar directories
+    # (.bazaar or .bzr) -- vila 20110-04-11
 
 
 class TestSectionMatcher(TestStore):
