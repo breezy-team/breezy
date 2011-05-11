@@ -22,6 +22,7 @@
 # TODO: `help commands --all` should show hidden commands
 
 import sys
+import textwrap
 
 from bzrlib import (
     commands as _mod_commands,
@@ -29,7 +30,6 @@ from bzrlib import (
     help_topics,
     osutils,
     plugin,
-    textwrap,
     )
 
 
