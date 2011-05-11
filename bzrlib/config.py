@@ -2331,6 +2331,9 @@ class LockableIniFileStore(IniFileStore):
 
     @needs_write_lock
     def save(self):
+        self._save()
+
+    def _save(self):
         super(LockableIniFileStore, self).save()
 
 

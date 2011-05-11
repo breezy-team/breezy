@@ -2163,6 +2163,42 @@ class TestConcurrentStoreUpdates(TestStore):
         c1.set('two', 'done')
         self.assertEquals('c2', c1.get('one'))
 
+    def test_writes_are_serialized(self):
+        c1 = self.stack
+        c2 = self.get_stack(self)
+
+        # We spawn a thread that will pause *during* the write
+        before_writing = threading.Event()
+        after_writing = threading.Event()
+        writing_done = threading.Event()
+        c1_save_orig = c1.store._save
+        def c1_save():
+            before_writing.set()
+            c1_save_orig()
+            # The lock is held. We wait for the main thread to decide when to
+            # continue
+            after_writing.wait()
+        c1.store._save = c1_save
+        def c1_set():
+            c1.set('one', 'c1')
+            writing_done.set()
+        t1 = threading.Thread(target=c1_set)
+        # Collect the thread after the test
+        self.addCleanup(t1.join)
+        # Be ready to unblock the thread if the test goes wrong
+        self.addCleanup(after_writing.set)
+        t1.start()
+        before_writing.wait()
+        self.assertTrue(c1.store._lock.is_held)
+        self.assertRaises(errors.LockContention,
+                          c2.set, 'one', 'c2')
+        self.assertEquals('c1', c1.get('one'))
+        # Let the lock be released
+        after_writing.set()
+        writing_done.wait()
+        c2.set('one', 'c2')
+        self.assertEquals('c2', c2.get('one'))
+
     # FIXME: We should adapt the tests in TestLockableConfig about concurrent
     # writes. Since this requires a clearer rewrite, I'll just rely on using
     # the same code in LockableIniFileStore (copied from LockableConfig, but
