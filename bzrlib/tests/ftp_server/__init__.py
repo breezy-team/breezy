@@ -17,17 +17,7 @@
 Facilities to use ftp test servers.
 """
 
-import sys
-
 from bzrlib import tests
-
-
-try:
-    from bzrlib.tests.ftp_server import medusa_based
-    # medusa is bogus under python2.6
-    medusa_available = sys.version_info < (2, 6)
-except ImportError:
-    medusa_available = False
 
 
 try:
@@ -48,7 +38,7 @@ class _FTPServerFeature(tests.Feature):
     """
 
     def _probe(self):
-        return medusa_available or pyftpdlib_available
+        return pyftpdlib_available
 
     def feature_name(self):
         return 'FTPServer'
@@ -79,9 +69,7 @@ class UnavailableFTPTestServer(object):
         raise tests.UnavailableFeature(FTPServerFeature)
 
 
-if medusa_available:
-    FTPTestServer = medusa_based.FTPTestServer
-elif pyftpdlib_available:
+if pyftpdlib_available:
     FTPTestServer = pyftpdlib_based.FTPTestServer
 else:
     FTPTestServer = UnavailableFTPTestServer

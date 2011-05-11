@@ -15,6 +15,10 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* ``bzr-2.4`` has officially dropped support for python2.4 and python2.5.
+  We will continue to maintain ``bzr-2.3`` for people who still need to
+  use those versions of python. (John Arbash Meinel)
+
 New Features
 ************
 
