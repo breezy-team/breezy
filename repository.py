@@ -18,6 +18,7 @@
 """An adapter between a Git Repository and a Bazaar Branch"""
 
 from bzrlib import (
+    check,
     errors,
     inventory,
     repository,
@@ -55,6 +56,22 @@ from dulwich.objects import (
 from dulwich.object_store import (
     tree_lookup_path,
     )
+
+
+class GitCheck(check.Check):
+
+    def __init__(self, repository, check_repo=True):
+        self.repository = repository
+        self.checked_rev_cnt = 0
+
+    def check(self, callback_refs=None, check_repo=True):
+        if callback_refs is None:
+            callback_refs = {}
+        self.repository.lock_read()
+        self.repository.unlock()
+
+    def report_results(self, verbose):
+        pass
 
 
 class GitRepository(ForeignRepository):
@@ -240,6 +257,11 @@ class LocalGitRepository(GitRepository):
 
     def get_signature_text(self, revision_id):
         raise errors.NoSuchRevision(self, revision_id)
+
+    def check(self, revision_ids=None, callback_refs=None, check_repo=True):
+        result = GitCheck(self, check_repo=check_repo)
+        result.check(callback_refs)
+        return result
 
     def pack(self, hint=None, clean_obsolete_packs=False):
         self._git.object_store.pack_loose_objects()
