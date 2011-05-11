@@ -94,6 +94,13 @@ test_stack_builder_registry.register(
 test_stack_builder_registry.register(
     'branch', lambda test: config.BranchStack(test.branch))
 
+# FIXME: Same remark as above for the following registry, which makes three of
+# them, we'll soon be able to triangulate ;) -- vila 20110509
+test_lockable_store_builder_registry = registry.Registry()
+test_lockable_store_builder_registry.register(
+    'bazaar', lambda test: config.GlobalStore())
+test_lockable_store_builder_registry.register(
+    'location', lambda test: config.LocationStore())
 
 sample_long_alias="log -r-15..-1 --line"
 sample_config_text = u"""
@@ -2109,6 +2116,32 @@ class TestLockableIniFileStore(TestStore):
         store.get_mutable_section(None).set('foo', 'bar')
         store.save()
         self.assertPathExists('dir/subdir')
+
+class TestConcurrentStoreUpdates(TestStore):
+
+    scenarios = [(key, {'get_store': builder})
+                 for key, builder
+                 in test_lockable_store_builder_registry.iteritems()]
+
+    def setUp(self):
+        super(TestConcurrentStoreUpdates, self).setUp()
+        self._content = 'one=1\ntwo=2\n'
+        self.store = self.get_store(self)
+        self.store._load_from_string(self._content)
+        self.stack = self.get_stack(self.store)
+
+    def get_stack(self, store):
+        # While we really test Stores here, Stack provides an easier way to
+        # read/modify/delete options. So we just wrap the store in a trivial
+        # stack
+        return config.Stack([store.get_sections], store)
+
+    def test_simple_read_access(self):
+        self.assertEquals('1', self.stack.get('one'))
+    
+    def test_simple_write_access(self):
+        self.stack.set('one', 'one')
+        self.assertEquals('one', self.stack.get('one'))
 
     # FIXME: We should adapt the tests in TestLockableConfig about concurrent
     # writes. Since this requires a clearer rewrite, I'll just rely on using
