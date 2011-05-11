@@ -2141,7 +2141,8 @@ class DirState(object):
             executable = False
         else:
             raise Exception("can't pack %s" % inv_entry)
-        return (minikind, fingerprint, size, executable, tree_data)
+        return static_tuple.StaticTuple(minikind, fingerprint, size,
+                                        executable, tree_data)
 
     def _iter_child_entries(self, tree_index, path_utf8):
         """Iterate over all the entries that are children of path_utf.
@@ -2525,6 +2526,7 @@ class DirState(object):
         parent_trees = [tree for rev_id, tree in trees if rev_id not in ghosts]
         # how many trees do we end up with
         parent_count = len(parent_trees)
+        st = static_tuple.StaticTuple
 
         # one: the current tree
         for entry in self._iter_entries():
@@ -2547,6 +2549,7 @@ class DirState(object):
             # the suffix is from tree_index+1:parent_count+1.
             new_location_suffix = [DirState.NULL_PARENT_DETAILS] * (parent_count - tree_index)
             # now stitch in all the entries from this tree
+            last_dirname = None
             for path, entry in tree.iter_entries_by_dir():
                 # here we process each trees details for each item in the tree.
                 # we first update any existing entries for the id at other paths,
@@ -2560,10 +2563,16 @@ class DirState(object):
                 file_id = entry.file_id
                 path_utf8 = path.encode('utf8')
                 dirname, basename = osutils.split(path_utf8)
-                new_entry_key = (dirname, basename, file_id)
+                if dirname == last_dirname:
+                    # Try to re-use objects as much as possible
+                    dirname = last_dirname
+                else:
+                    last_dirname = dirname
+                new_entry_key = st(dirname, basename, file_id)
                 # tree index consistency: All other paths for this id in this tree
                 # index must point to the correct path.
-                for entry_key in id_index.get(file_id, ()):
+                entry_keys = id_index.get(file_id, ())
+                for entry_key in entry_keys:
                     # TODO:PROFILING: It might be faster to just update
                     # rather than checking if we need to, and then overwrite
                     # the one we are located at.
@@ -2572,12 +2581,14 @@ class DirState(object):
                         # other trees, so put absent pointers there
                         # This is the vertical axis in the matrix, all pointing
                         # to the real path.
-                        by_path[entry_key][tree_index] = ('r', path_utf8, 0, False, '')
-                # by path consistency: Insert into an existing path record (trivial), or
-                # add a new one with relocation pointers for the other tree indexes.
-                entry_keys = id_index.get(file_id, ())
+                        by_path[entry_key][tree_index] = st('r', path_utf8, 0,
+                                                            False, '')
+                # by path consistency: Insert into an existing path record
+                # (trivial), or add a new one with relocation pointers for the
+                # other tree indexes.
                 if new_entry_key in entry_keys:
-                    # there is already an entry where this data belongs, just insert it.
+                    # there is already an entry where this data belongs, just
+                    # insert it.
                     by_path[new_entry_key][tree_index] = \
                         self._inv_entry_to_details(entry)
                 else:
@@ -2593,17 +2604,16 @@ class DirState(object):
                             new_details.append(DirState.NULL_PARENT_DETAILS)
                         else:
                             # grab any one entry, use it to find the right path.
-                            # TODO: optimise this to reduce memory use in highly
-                            # fragmented situations by reusing the relocation
-                            # records.
                             a_key = iter(entry_keys).next()
                             if by_path[a_key][lookup_index][0] in ('r', 'a'):
-                                # its a pointer or missing statement, use it as is.
+                                # its a pointer or missing statement, use it as
+                                # is.
                                 new_details.append(by_path[a_key][lookup_index])
                             else:
                                 # we have the right key, make a pointer to it.
                                 real_path = ('/'.join(a_key[0:2])).strip('/')
-                                new_details.append(('r', real_path, 0, False, ''))
+                                new_details.append(st('r', real_path, 0, False,
+                                                      ''))
                     new_details.append(self._inv_entry_to_details(entry))
                     new_details.extend(new_location_suffix)
                     by_path[new_entry_key] = new_details
@@ -2625,6 +2635,10 @@ class DirState(object):
         try to keep everything in sorted blocks all the time, but sometimes
         it's easier to sort after the fact.
         """
+        # When sorting, we usually have 10x more entries than directories. (69k
+        # total entries, 4k directories). So cache the results of splitting.
+        # Saving time and objects. Also, use StaticTuple to avoid putting all
+        # of these object into python's garbage collector.
         split_dirs = {}
         def _key(entry, _split_dirs=split_dirs, _st=static_tuple.StaticTuple):
             # sort by: directory parts, file name, file id
