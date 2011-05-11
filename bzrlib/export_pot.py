@@ -83,39 +83,52 @@ def _poentry_per_paragraph(outf, path, lineno, msgid):
         _poentry(outf, path, lineno, p)
         lineno += p.count('\n') + 2
 
-def _offset(src, doc, default):
-    """Compute offset or issue a warning on stdout."""
-    # Backslashes in doc appear doubled in src.
-    # TODO: Use ast to more 
-    end = src.find(doc.replace('\\', '\\\\'))
-    if end == -1:
-        mutter("Can't find where %r is.", doc[:20])
-        return default
-    else:
-        return src.count('\n', 0, end)
+_LAST_CACHE = _LAST_CACHED_SRC = None
+
+def _offsets_of_literal(src):
+    global _LAST_CACHE, _LAST_CACHED_SRC
+    if src == _LAST_CACHED_SRC:
+        return _LAST_CACHE.copy()
+
+    import ast
+    root = ast.parse(src)
+    offsets = {}
+    for node in ast.walk(root):
+        if not isinstance(node, ast.Str):
+            continue
+        offsets[node.s] = node.lineno
+
+    _LAST_CACHED_SRC = src
+    _LAST_CACHE = offsets.copy()
+    return offsets
 
 def _standard_options(outf):
     from bzrlib.option import Option
     src = inspect.findsource(Option)[0]
     src = ''.join(src)
     path = 'bzrlib/option.py'
+    offsets = _offsets_of_literal(src)
 
     for name in sorted(Option.OPTIONS.keys()):
         opt = Option.OPTIONS[name]
         if getattr(opt, 'hidden', False):
             continue
         if getattr(opt, 'title', None):
-            lineno = _offset(src, opt.title, 0)
+            lineno = offsets.get(opt.title, 9999)
+            if lineno == 9999:
+                note("%r is not found in bzrlib/option.py" % opt.title)
             _poentry(outf, path, lineno, opt.title,
                      'title of %r option' % name)
         if getattr(opt, 'help', None):
-            lineno = _offset(src, opt.help, 0)
+            lineno = offsets.get(opt.help, 9999)
+            if lineno == 9999:
+                note("%r is not found in bzrlib/option.py" % opt.help)
             _poentry(outf, path, lineno, opt.help,
                      'help of %r option' % name)
 
 def _command_options(outf, path, cmd):
     src, default_lineno = inspect.findsource(cmd.__class__)
-    src = ''.join(src)
+    offsets = _offsets_of_literal(''.join(src))
     for opt in cmd.takes_options:
         if isinstance(opt, str):
             continue
@@ -123,11 +136,11 @@ def _command_options(outf, path, cmd):
             continue
         name = opt.name
         if getattr(opt, 'title', None):
-            lineno = _offset(src, opt.title, default_lineno)
+            lineno = offsets.get(opt.title, default_lineno)
             _poentry(outf, path, lineno, opt.title,
                      'title of %r option of %r command' % (name, cmd.name()))
         if getattr(opt, 'help', None):
-            lineno = _offset(src, opt.help, default_lineno)
+            lineno = offsets.get(opt.help, default_lineno)
             _poentry(outf, path, lineno, opt.help,
                      'help of %r option of %r command' % (name, cmd.name()))
 
