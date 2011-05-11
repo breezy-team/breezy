@@ -397,6 +397,9 @@ class GitWorkingTree(workingtree.WorkingTree):
     def revision_tree(self, revid):
         return self.repository.revision_tree(revid)
 
+    def filter_unversioned_files(self, files):
+        return set([p for p in files if p.encode("utf-8") not in self.index])
+
     def _get_dir_ie(self, path, parent_id):
         file_id = self.path2id(path)
         return inventory.InventoryDirectory(file_id,
