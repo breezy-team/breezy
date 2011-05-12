@@ -678,7 +678,7 @@ class Branch(controldir.ControlComponent):
         :param limit: Optional rough limit of revisions to fetch
         :return: None
         """
-        return InterBranch.get(from_branch, self).fetch(last_revision)
+        return InterBranch.get(from_branch, self).fetch(last_revision, limit=limit)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
