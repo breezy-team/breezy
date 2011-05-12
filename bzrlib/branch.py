@@ -669,12 +669,13 @@ class Branch(controldir.ControlComponent):
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     @needs_write_lock
-    def fetch(self, from_branch, last_revision=None):
+    def fetch(self, from_branch, last_revision=None, limit=None):
         """Copy revisions from from_branch into this branch.
 
         :param from_branch: Where to copy from.
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
+        :param limit: Optional rough limit of revisions to fetch
         :return: None
         """
         return InterBranch.get(from_branch, self).fetch(last_revision)
@@ -3261,10 +3262,11 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.copy_content_into)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None):
+    def fetch(self, stop_revision=None, limit=None):
         """Fetch revisions.
 
         :param stop_revision: Last revision to fetch
+        :param limit: Optional rough limit of revisions to fetch
         """
         raise NotImplementedError(self.fetch)
 
@@ -3308,7 +3310,8 @@ class GenericInterBranch(InterBranch):
             self.source.tags.merge_to(self.target.tags)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None):
+    def fetch(self, stop_revision=None, limit=None):
+        # TODO: Honor limit
         if self.target.base == self.source.base:
             return (0, [])
         self.source.lock_read()
