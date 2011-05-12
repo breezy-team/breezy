@@ -148,9 +148,10 @@ class GitWorkingTree(workingtree.WorkingTree):
             self._ensure_versioned_dir(encoded_path)
 
     def _ensure_versioned_dir(self, dirname):
-        if dirname == "" or dirname in self._versioned_dirs:
+        if dirname in self._versioned_dirs:
             return
-        self._ensure_versioned_dir(posixpath.dirname(dirname))
+        if dirname != "":
+            self._ensure_versioned_dir(posixpath.dirname(dirname))
         self._versioned_dirs.add(dirname)
 
     def _load_dirs(self):
