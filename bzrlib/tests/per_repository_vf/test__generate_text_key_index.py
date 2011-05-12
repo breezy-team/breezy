@@ -18,10 +18,19 @@
 """Tests for the _generate_text_key_index API."""
 
 
-from bzrlib.tests.per_repository import TestCaseWithRepository
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
+from bzrlib.tests.per_repository_vf import (
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+    )
+
+
+load_tests = load_tests_apply_scenarios
 
 
 class TestGenerateTextKeyIndex(TestCaseWithRepository):
+
+    scenarios = all_repository_vf_format_scenarios()
 
     def test_empty(self):
         repo = self.make_repository('.')

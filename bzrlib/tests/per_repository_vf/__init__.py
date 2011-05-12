@@ -40,6 +40,7 @@ def load_tests(basic_tests, module, loader):
         'test_add_inventory_by_delta',
         'test_check',
         'test_check_reconcile',
+        'test__generate_text_key_index',
         'test_fetch',
         'test_reconcile',
         'test_repository',
