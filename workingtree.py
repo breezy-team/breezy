@@ -573,15 +573,25 @@ class GitWorkingTree(workingtree.WorkingTree):
         return set(ids.values())
 
     def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
-        # FIXME: Support specific_file_ids
         # FIXME: Is return order correct?
-        if specific_file_ids is not None:
+        if yield_parents:
             raise NotImplementedError(self.iter_entries_by_dir)
+        if specific_file_ids is not None:
+            specific_paths = [self.id2path(file_id) for file_id in specific_file_ids]
+            if specific_paths in ([u""], []):
+                specific_paths = None
+            else:
+                specific_paths = set(specific_paths)
+        else:
+            specific_paths = None
         root_ie = self._get_dir_ie(u"", None)
-        yield u"", root_ie
+        if specific_paths is None:
+            yield u"", root_ie
         dir_ids = {u"": root_ie.file_id}
         for path, value in self.index.iteritems():
             path = path.decode("utf-8")
+            if specific_paths is not None and not path in specific_paths:
+                continue
             try:
                 file_ie = self._get_file_ie(path, value, None)
             except IOError:
