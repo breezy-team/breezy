@@ -1402,7 +1402,7 @@ def get_digest_algorithm_impls(algorithm):
     if algorithm == 'MD5':
         H = lambda x: osutils.md5(x).hexdigest()
     elif algorithm == 'SHA':
-        H = lambda x: osutils.sha_string(x)
+        H = osutils.sha_string
     if H is not None:
         KD = lambda secret, data: H("%s:%s" % (secret, data))
     return H, KD
