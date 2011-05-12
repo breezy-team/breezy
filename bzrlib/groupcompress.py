@@ -27,6 +27,7 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     annotate,
+    config,
     debug,
     errors,
     graph as _mod_graph,
@@ -910,7 +911,7 @@ class _CommonGroupCompressor(object):
 
 class PythonGroupCompressor(_CommonGroupCompressor):
 
-    def __init__(self):
+    def __init__(self, max_entries_per_source=None):
         """Create a GroupCompressor.
 
         Used only if the pyrex version is not available.
@@ -969,9 +970,10 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
        left side.
     """
 
-    def __init__(self):
+    def __init__(self, max_entries_per_source=None):
         super(PyrexGroupCompressor, self).__init__()
-        self._delta_index = DeltaIndex()
+        self._delta_index = DeltaIndex(
+            max_entries_per_source=max_entries_per_source)
 
     def _compress(self, key, bytes, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
@@ -1177,8 +1179,18 @@ class _BatchingBlockFetcher(object):
 class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     """A group-compress based VersionedFiles implementation."""
 
+    # This controls how the GroupCompress DeltaIndex works. Basically, we
+    # compute hash pointers into the source blocks (so hash(text) => text).
+    # However each of these references costs some memory in trade against a
+    # more accurate match result. For very large files, they either are
+    # pre-compressed and change in bulk whenever they change, or change in just
+    # local blocks. Either way, 'improved resolution' is not very helpful,
+    # versus running out of memory trying to track everything. The default max
+    # gives 100% sampling of a 1MB file.
+    _DEFAULT_MAX_ENTRIES_PER_SOURCE = 1024 * 1024 / 16
+
     def __init__(self, index, access, delta=True, _unadded_refs=None,
-            _group_cache=None):
+                 _group_cache=None):
         """Create a GroupCompressVersionedFiles object.
 
         :param index: The index object storing access and graph data.
@@ -1197,6 +1209,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             _group_cache = LRUSizeCache(max_size=50*1024*1024)
         self._group_cache = _group_cache
         self._immediate_fallback_vfs = []
+        self._max_entries_per_source = None
 
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
@@ -1628,6 +1641,27 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         for _ in self._insert_record_stream(stream, random_id=False):
             pass
 
+    def _make_group_compressor(self):
+        if self._max_entries_per_source is None:
+            # TODO: VersionedFiles don't know about their containing
+            #       repository, so they don't have much of an idea about their
+            #       location. So for now, this is only a global option.
+            c = config.GlobalConfig()
+            val = c.get_user_option('bzr.groupcompress.max_entries_per_source')
+            if val is not None:
+                try:
+                    val = int(val)
+                except ValueError, e:
+                    trace.warning('Value for '
+                                  '"bzr.groupcompress.max_entries_per_source"'
+                                  ' %r is not an integer'
+                                  % (val,))
+                    val = None
+            if val is None:
+                val = self._DEFAULT_MAX_ENTRIES_PER_SOURCE
+            self._max_entries_per_source = val
+        return GroupCompressor(self._max_entries_per_source)
+
     def _insert_record_stream(self, stream, random_id=False, nostore_sha=None,
                               reuse_blocks=True):
         """Internal core to insert a record stream into this container.
@@ -1656,12 +1690,12 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
                 return adapter
         # This will go up to fulltexts for gc to gc fetching, which isn't
         # ideal.
-        self._compressor = GroupCompressor()
+        self._compressor = self._make_group_compressor()
         self._unadded_refs = {}
         keys_to_add = []
         def flush():
             bytes_len, chunks = self._compressor.flush().to_chunks()
-            self._compressor = GroupCompressor()
+            self._compressor = self._make_group_compressor()
             # Note: At this point we still have 1 copy of the fulltext (in
             #       record and the var 'bytes'), and this generates 2 copies of
             #       the compressed text (one for bytes, one in chunks)

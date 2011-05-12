@@ -20,6 +20,7 @@ import zlib
 
 from bzrlib import (
     btree_index,
+    config,
     groupcompress,
     errors,
     index as _mod_index,
@@ -768,6 +769,49 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         self.assertTrue(len(vf._group_cache) > 0)
         vf.clear_cache()
         self.assertEqual(0, len(vf._group_cache))
+
+
+class TestGroupCompressConfig(tests.TestCaseWithTransport):
+
+    def make_test_vf(self):
+        t = self.get_transport('.')
+        t.ensure_base()
+        factory = groupcompress.make_pack_factory(graph=True,
+            delta=False, keylength=1, inconsistency_fatal=True)
+        vf = factory(t)
+        self.addCleanup(groupcompress.cleanup_pack_group, vf)
+        return vf
+
+    def test_max_entries_per_source_default(self):
+        vf = self.make_test_vf()
+        gc = vf._make_group_compressor()
+        self.assertEqual(vf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
+                         vf._max_entries_per_source)
+        if isinstance(gc, groupcompress.PyrexGroupCompressor):
+            self.assertEqual(vf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
+                             gc._delta_index._max_entries_per_source)
+
+    def test_max_entries_per_source_in_config(self):
+        c = config.GlobalConfig()
+        c.set_user_option('bzr.groupcompress.max_entries_per_source', '10000')
+        vf = self.make_test_vf()
+        gc = vf._make_group_compressor()
+        self.assertEqual(10000, vf._max_entries_per_source)
+        if isinstance(gc, groupcompress.PyrexGroupCompressor):
+            self.assertEqual(10000, gc._delta_index._max_entries_per_source)
+
+    def test_max_entries_per_source_bad_config(self):
+        c = config.GlobalConfig()
+        c.set_user_option('bzr.groupcompress.max_entries_per_source', 'boogah')
+        vf = self.make_test_vf()
+        # TODO: This is triggering a warning, we might want to trap and make
+        #       sure it is readable.
+        gc = vf._make_group_compressor()
+        self.assertEqual(vf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
+                         vf._max_entries_per_source)
+        if isinstance(gc, groupcompress.PyrexGroupCompressor):
+            self.assertEqual(vf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
+                             gc._delta_index._max_entries_per_source)
 
 
 
