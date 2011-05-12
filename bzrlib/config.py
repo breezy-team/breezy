@@ -2542,7 +2542,14 @@ class Stack(object):
 
 
 class _CompatibleStack(Stack):
-    """Place holder for compatibility with previous design."""
+    """Place holder for compatibility with previous design.
+
+    This intended to ease the transition from the Config-based design to the
+    Stack-based design and should not be used nor relied upon by plugins.
+
+    One assumption made here is that the daughter classes will all use Stores
+    derived from LockableIniFileStore).
+    """
 
     def set(self, name, value):
         # Force a reload (assuming we use a LockableIniFileStore)
