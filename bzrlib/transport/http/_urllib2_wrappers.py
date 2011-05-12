@@ -1393,7 +1393,7 @@ def get_digest_algorithm_impls(algorithm):
     if algorithm == 'MD5':
         H = lambda x: osutils.md5(x).hexdigest()
     elif algorithm == 'SHA':
-        H = lambda x: osutils.sha(x).hexdigest()
+        H = osutils.sha_string
     if H is not None:
         KD = lambda secret, data: H("%s:%s" % (secret, data))
     return H, KD
@@ -1402,7 +1402,7 @@ def get_digest_algorithm_impls(algorithm):
 def get_new_cnonce(nonce, nonce_count):
     raw = '%s:%d:%s:%s' % (nonce, nonce_count, time.ctime(),
                            urllib2.randombytes(8))
-    return osutils.sha(raw).hexdigest()[:16]
+    return osutils.sha_string(raw)[:16]
 
 
 class DigestAuthHandler(AbstractAuthHandler):

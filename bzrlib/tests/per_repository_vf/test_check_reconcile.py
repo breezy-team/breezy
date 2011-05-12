@@ -855,7 +855,7 @@ class TestFileParentReconciliation(TestCaseWithRepository):
         entry.text_size = 0
         if file_contents is None:
             file_contents = '%sline\n' % entry.revision
-        entry.text_sha1 = osutils.sha(file_contents).hexdigest()
+        entry.text_sha1 = osutils.sha_string(file_contents)
         inv.add(entry)
         if make_file_version:
             repo.texts.add_lines((file_id, revision),
