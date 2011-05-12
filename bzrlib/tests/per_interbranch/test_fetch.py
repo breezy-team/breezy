@@ -44,4 +44,23 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         self.addCleanup(tree.unlock)
         self.assertEqual(tree.get_file_text('foo-id'), 'hello')
 
+    def test_fetch_revisions_limit(self):
+        """Test fetch-revision operation."""
+        wt = self.make_from_branch_and_tree('b1')
+        b1 = wt.branch
+        self.build_tree_contents([('b1/foo', 'hello')])
+        wt.add(['foo'], ['foo-id'])
+        wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
+        wt.commit('hmm', rev_id='revision-2')
+        wt.commit('hmmm', rev_id='revision-3')
 
+        b2 = self.make_to_branch('b2')
+        b2.fetch(b1, limit=1)
+
+        # fetch does not update the last revision
+        self.assertEquals(NULL_REVISION, b2.last_revision())
+
+        self.assertEquals(
+            set(['revision-1']),
+            b2.repository.has_revisions(
+                ['revision-1', 'revision-2', 'revision-3']))
