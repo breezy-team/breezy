@@ -194,6 +194,11 @@ def _command_helps(outf):
 
 def _error_messages(outf):
     """Extract fmt string from bzrlib.errors."""
+    path = errors.__file__
+    if path.endswith('.pyc'):
+        path = path[:-1]
+    offsets = _offsets_of_literal(open(path).read())
+
     base_klass = errors.BzrError
     for name in dir(errors):
         klass = getattr(errors, name)
@@ -209,7 +214,7 @@ def _error_messages(outf):
         if fmt:
             note("Exporting message from error: %s", name)
             _poentry(outf, 'bzrlib/errors.py',
-                     inspect.findsource(klass)[1], fmt)
+                     offsets.get(fmt, 9999), fmt)
 
 def _help_topics(outf):
     topic_registry = help_topics.topic_registry
