@@ -273,7 +273,7 @@ class TestCommit(TestCaseWithWorkingTree):
             # older format.
             return
         tree.commit('foo', rev_id='foo', local=True)
-        self.failIf(master.repository.has_revision('foo'))
+        self.assertFalse(master.repository.has_revision('foo'))
         self.assertEqual(_mod_revision.NULL_REVISION,
                          (_mod_revision.ensure_null(master.last_revision())))
 

@@ -79,7 +79,7 @@ class SFTPLockTests(TestCaseWithSFTPServer):
         self.assertRaises(LockError, t.lock_write, 'bogus')
 
         l.unlock()
-        self.failIf(lexists('bogus.write-lock'))
+        self.assertFalse(lexists('bogus.write-lock'))
 
         open('something.write-lock', 'wb').write('fake lock\n')
         self.assertRaises(LockError, t.lock_write, 'something')

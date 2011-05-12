@@ -70,13 +70,12 @@ class TestDefaultFormat(TestCase):
 
     def test_get_set_default_format(self):
         old_format = bzrdir.BzrDirFormat.get_default_format()
-        # default is BzrDirFormat6
-        self.failUnless(isinstance(old_format, bzrdir.BzrDirMetaFormat1))
+        self.assertIsInstance(old_format, bzrdir.BzrDirMetaFormat1)
         controldir.ControlDirFormat._set_default_format(SampleBzrDirFormat())
         # creating a bzr dir should now create an instrumented dir.
         try:
             result = bzrdir.BzrDir.create('memory:///')
-            self.failUnless(isinstance(result, SampleBzrDir))
+            self.assertIsInstance(result, SampleBzrDir)
         finally:
             controldir.ControlDirFormat._set_default_format(old_format)
         self.assertEqual(old_format, bzrdir.BzrDirFormat.get_default_format())
@@ -260,7 +259,7 @@ class TestBzrDirFormat(TestCaseWithTransport):
             format.initialize(url)
             t = _mod_transport.get_transport(url)
             found_format = bzrdir.BzrDirFormat.find_format(t)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(bzrdir.BzrDirFormat5(), "foo")
         check_format(bzrdir.BzrDirFormat6(), "bar")
 

@@ -1188,7 +1188,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.failUnlessExists(self.wt.abspath('parent2/child1'))
         # rename limbo/new-1 => parent1, rename limbo/new-3 => parent2
         # no rename for child1 (counting only renames during apply)
-        self.failUnlessEqual(2, transform.rename_count)
+        self.assertEqual(2, transform.rename_count)
 
     def test_cancel_parent(self):
         """Cancelling a parent doesn't cause deletion of a non-empty directory
@@ -1220,7 +1220,7 @@ class TestTreeTransform(tests.TestCaseWithTransport):
         self.failIfExists(self.wt.abspath('parent1'))
         self.failUnlessExists(self.wt.abspath('parent2/child1'))
         # rename limbo/new-3 => parent2, rename limbo/new-2 => child1
-        self.failUnlessEqual(2, transform.rename_count)
+        self.assertEqual(2, transform.rename_count)
 
     def test_adjust_and_cancel(self):
         """Make sure adjust_path keeps track of limbo children properly"""

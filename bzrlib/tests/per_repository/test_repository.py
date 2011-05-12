@@ -295,7 +295,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
                               self.repository_format.__class__)
         # find it via Repository.open
         opened_repo = repository.Repository.open(readonly_t.base)
-        self.failUnless(isinstance(opened_repo, made_repo.__class__))
+        self.assertIsInstance(opened_repo, made_repo.__class__)
         self.assertEqual(made_repo._format.__class__,
                          opened_repo._format.__class__)
         # if it has a unique id string, can we probe for it ?
@@ -521,7 +521,7 @@ class TestRepository(per_repository.TestCaseWithRepository):
     def test_format_description(self):
         repo = self.make_repository('.')
         text = repo._format.get_format_description()
-        self.failUnless(len(text))
+        self.assertTrue(len(text))
 
     def test_format_supports_external_lookups(self):
         repo = self.make_repository('.')

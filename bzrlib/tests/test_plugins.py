@@ -91,12 +91,12 @@ dir_source = '%s'
                 delattr(plugin, submodule_name)
 
     def assertPluginUnknown(self, name):
-        self.failIf(getattr(bzrlib.plugins, name, None) is not None)
-        self.failIf('bzrlib.plugins.%s' % name in sys.modules)
+        self.assertFalse(getattr(bzrlib.plugins, name, None) is not None)
+        self.assertFalse('bzrlib.plugins.%s' % name in sys.modules)
 
     def assertPluginKnown(self, name):
-        self.failUnless(getattr(bzrlib.plugins, name, None) is not None)
-        self.failUnless('bzrlib.plugins.%s' % name in sys.modules)
+        self.assertTrue(getattr(bzrlib.plugins, name, None) is not None)
+        self.assertTrue('bzrlib.plugins.%s' % name in sys.modules)
 
 
 class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
@@ -109,12 +109,12 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
         # file name we can use which is also a valid attribute for accessing in
         # activeattributes. - we cannot give import parameters.
         tempattribute = "0"
-        self.failIf(tempattribute in self.activeattributes)
+        self.assertFalse(tempattribute in self.activeattributes)
         # set a place for the plugins to record their loading, and at the same
         # time validate that the location the plugins should record to is
         # valid and correct.
         self.__class__.activeattributes [tempattribute] = []
-        self.failUnless(tempattribute in self.activeattributes)
+        self.assertTrue(tempattribute in self.activeattributes)
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
@@ -147,21 +147,21 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
         self.assertPluginUnknown('plugin')
 
     def test_plugins_from_different_dirs_can_demand_load(self):
-        self.failIf('bzrlib.plugins.pluginone' in sys.modules)
-        self.failIf('bzrlib.plugins.plugintwo' in sys.modules)
+        self.assertFalse('bzrlib.plugins.pluginone' in sys.modules)
+        self.assertFalse('bzrlib.plugins.plugintwo' in sys.modules)
         # This test tests that having two plugins in different
         # directories with different names allows them both to be loaded, when
         # we do a direct import statement.
         # Determine a file name we can use which is also a valid attribute
         # for accessing in activeattributes. - we cannot give import parameters.
         tempattribute = "different-dirs"
-        self.failIf(tempattribute in self.activeattributes)
+        self.assertFalse(tempattribute in self.activeattributes)
         # set a place for the plugins to record their loading, and at the same
         # time validate that the location the plugins should record to is
         # valid and correct.
         bzrlib.tests.test_plugins.TestLoadingPlugins.activeattributes \
             [tempattribute] = []
-        self.failUnless(tempattribute in self.activeattributes)
+        self.assertTrue(tempattribute in self.activeattributes)
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
@@ -186,8 +186,8 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
 
         oldpath = bzrlib.plugins.__path__
         try:
-            self.failIf('bzrlib.plugins.pluginone' in sys.modules)
-            self.failIf('bzrlib.plugins.plugintwo' in sys.modules)
+            self.assertFalse('bzrlib.plugins.pluginone' in sys.modules)
+            self.assertFalse('bzrlib.plugins.plugintwo' in sys.modules)
             bzrlib.plugins.__path__ = ['first', 'second']
             exec "import bzrlib.plugins.pluginone"
             self.assertEqual(['first'], self.activeattributes[tempattribute])
@@ -208,13 +208,13 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
         # check the plugin is not loaded already
         self.assertPluginUnknown('ts_plugin')
         tempattribute = "trailing-slash"
-        self.failIf(tempattribute in self.activeattributes)
+        self.assertFalse(tempattribute in self.activeattributes)
         # set a place for the plugin to record its loading, and at the same
         # time validate that the location the plugin should record to is
         # valid and correct.
         bzrlib.tests.test_plugins.TestLoadingPlugins.activeattributes \
             [tempattribute] = []
-        self.failUnless(tempattribute in self.activeattributes)
+        self.assertTrue(tempattribute in self.activeattributes)
         # create a directory for the plugin
         os.mkdir('plugin_test')
         # write a plugin that will record when its loaded in the

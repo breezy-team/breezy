@@ -137,7 +137,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             format.initialize(dir)
             t = transport.get_transport(url)
             found_format = workingtree.WorkingTreeFormat.find_format(dir)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(workingtree.WorkingTreeFormat3(), "bar")
 
     def test_find_format_no_tree(self):

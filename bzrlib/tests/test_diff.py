@@ -226,7 +226,7 @@ class TestDiff(tests.TestCase):
         output = StringIO.StringIO()
         diff.internal_diff(u'old_\xb5', ['old_text\n'],
                             u'new_\xe5', ['new_text\n'], output)
-        self.failUnless(isinstance(output.getvalue(), str),
+        self.assertIsInstance(output.getvalue(), str,
             'internal_diff should return bytestrings')
 
 

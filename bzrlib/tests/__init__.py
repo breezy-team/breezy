@@ -1456,7 +1456,8 @@ class TestCase(testtools.TestCase):
             for p in path:
                 self.failUnlessExists(p)
         else:
-            self.failUnless(osutils.lexists(path),path+" does not exist")
+            self.assertTrue(osutils.lexists(path),
+                path + " does not exist")
 
     def failIfExists(self, path):
         """Fail if path or paths, which may be abs or relative, exist."""
@@ -1464,7 +1465,8 @@ class TestCase(testtools.TestCase):
             for p in path:
                 self.failIfExists(p)
         else:
-            self.failIf(osutils.lexists(path),path+" exists")
+            self.assertFalse(osutils.lexists(path),
+                path + " exists")
 
     def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.

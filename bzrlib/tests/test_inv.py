@@ -650,15 +650,15 @@ class TestInventoryEntry(TestCase):
 
     def test_file_has_text(self):
         file = inventory.InventoryFile('123', 'hello.c', ROOT_ID)
-        self.failUnless(file.has_text())
+        self.assertTrue(file.has_text())
 
     def test_directory_has_text(self):
         dir = inventory.InventoryDirectory('123', 'hello.c', ROOT_ID)
-        self.failIf(dir.has_text())
+        self.assertFalse(dir.has_text())
 
     def test_link_has_text(self):
         link = inventory.InventoryLink('123', 'hello.c', ROOT_ID)
-        self.failIf(link.has_text())
+        self.assertFalse(link.has_text())
 
     def test_make_entry(self):
         self.assertIsInstance(inventory.make_entry("file", "name", ROOT_ID),

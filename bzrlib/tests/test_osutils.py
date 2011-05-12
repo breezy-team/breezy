@@ -103,18 +103,18 @@ load_tests = load_tests_apply_scenarios
 class TestContainsWhitespace(tests.TestCase):
 
     def test_contains_whitespace(self):
-        self.failUnless(osutils.contains_whitespace(u' '))
-        self.failUnless(osutils.contains_whitespace(u'hello there'))
-        self.failUnless(osutils.contains_whitespace(u'hellothere\n'))
-        self.failUnless(osutils.contains_whitespace(u'hello\nthere'))
-        self.failUnless(osutils.contains_whitespace(u'hello\rthere'))
-        self.failUnless(osutils.contains_whitespace(u'hello\tthere'))
+        self.assertTrue(osutils.contains_whitespace(u' '))
+        self.assertTrue(osutils.contains_whitespace(u'hello there'))
+        self.assertTrue(osutils.contains_whitespace(u'hellothere\n'))
+        self.assertTrue(osutils.contains_whitespace(u'hello\nthere'))
+        self.assertTrue(osutils.contains_whitespace(u'hello\rthere'))
+        self.assertTrue(osutils.contains_whitespace(u'hello\tthere'))
 
         # \xa0 is "Non-breaking-space" which on some python locales thinks it
         # is whitespace, but we do not.
-        self.failIf(osutils.contains_whitespace(u''))
-        self.failIf(osutils.contains_whitespace(u'hellothere'))
-        self.failIf(osutils.contains_whitespace(u'hello\xa0there'))
+        self.assertFalse(osutils.contains_whitespace(u''))
+        self.assertFalse(osutils.contains_whitespace(u'hellothere'))
+        self.assertFalse(osutils.contains_whitespace(u'hello\xa0there'))
 
 
 class TestRename(tests.TestCaseInTempDir):
@@ -469,13 +469,13 @@ class TestCanonicalRelPath(tests.TestCaseInTempDir):
         f = file('MixedCaseName', 'w')
         f.close()
         actual = osutils.canonical_relpath(self.test_base_dir, 'mixedcasename')
-        self.failUnlessEqual('work/MixedCaseName', actual)
+        self.assertEqual('work/MixedCaseName', actual)
 
     def test_canonical_relpath_missing_tail(self):
         os.mkdir('MixedCaseParent')
         actual = osutils.canonical_relpath(self.test_base_dir,
                                            'mixedcaseparent/nochild')
-        self.failUnlessEqual('work/MixedCaseParent/nochild', actual)
+        self.assertEqual('work/MixedCaseParent/nochild', actual)
 
 
 class Test_CICPCanonicalRelpath(tests.TestCaseWithTransport):
@@ -1647,7 +1647,7 @@ class TestSetUnsetEnv(tests.TestCase):
         old = osutils.set_or_unset_env('BZR_TEST_ENV_VAR', None)
         self.assertEqual('foo', old)
         self.assertEqual(None, os.environ.get('BZR_TEST_ENV_VAR'))
-        self.failIf('BZR_TEST_ENV_VAR' in os.environ)
+        self.assertFalse('BZR_TEST_ENV_VAR' in os.environ)
 
 
 class TestSizeShaFile(tests.TestCaseInTempDir):

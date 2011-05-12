@@ -105,7 +105,7 @@ class TestMerge(tests.TestCaseWithTransport):
         # Merging a branch pulls its revision into the tree
         b = branch.Branch.open('../b')
         b_tip = b.last_revision()
-        self.failUnless(a.branch.repository.has_revision(b_tip))
+        self.assertTrue(a.branch.repository.has_revision(b_tip))
         self.assertEqual([a_tip, b_tip], a.get_parent_ids())
         a_tree.revert(backups=False)
         out, err = self.run_bzr('merge -r revno:1:./hello', retcode=3)
