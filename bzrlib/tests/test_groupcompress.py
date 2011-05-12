@@ -553,6 +553,23 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                     'as-requested', False)]
         self.assertEqual([('b',), ('a',), ('d',), ('c',)], keys)
 
+    def test_get_record_stream_max_entries_per_source_default(self):
+        vf = self.make_test_vf(True, dir='source')
+        vf.add_lines(('a',), (), ['lines\n'])
+        vf.writer.end()
+        record = vf.get_record_stream([('a',)], 'unordered', True).next()
+        self.assertEqual(vf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
+                         record._manager._get_max_entries_per_source())
+
+    def test_get_record_stream_accesses_max_entries_per_source_default(self):
+        vf = self.make_test_vf(True, dir='source')
+        vf.add_lines(('a',), (), ['lines\n'])
+        vf.writer.end()
+        vf._max_entries_per_source = 1234
+        record = vf.get_record_stream([('a',)], 'unordered', True).next()
+        self.assertEqual(1234, record._manager._get_max_entries_per_source())
+
+
     def test_insert_record_stream_reuses_blocks(self):
         vf = self.make_test_vf(True, dir='source')
         def grouped_stream(revision_ids, first_parents=()):
