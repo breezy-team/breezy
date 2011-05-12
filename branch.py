@@ -288,6 +288,8 @@ class GitBranch(ForeignBranch):
         self._format = GitBranchFormat()
         self.control_files = lockfiles
         self.bzrdir = bzrdir
+        self._lock_mode = None
+        self._lock_count = 0
         super(GitBranch, self).__init__(repository.get_mapping())
         if tagsdict is not None:
             self.tags = DictTagDict(self, tagsdict)
@@ -338,7 +340,13 @@ class GitBranch(ForeignBranch):
     def lock_write(self, token=None):
         if token is not None:
             raise errors.TokenLockingNotSupported(self)
-        self.control_files.lock_write()
+        if self._lock_mode:
+            assert self._lock_mode == 'w'
+            self._lock_count += 1
+        else:
+            self._lock_mode = 'w'
+            self._lock_count = 1
+        self.repository.lock_write()
         return GitWriteLock(self.unlock)
 
     def get_stacked_on_url(self):
@@ -355,14 +363,28 @@ class GitBranch(ForeignBranch):
         pass
 
     def lock_read(self):
-        self.control_files.lock_read()
+        if self._lock_mode:
+            assert self._lock_mode in ('r', 'w')
+            self._lock_count += 1
+        else:
+            self._lock_mode = 'r'
+            self._lock_count = 1
+        self.repository.lock_read()
         return GitReadLock(self.unlock)
 
+    def peek_lock_mode(self):
+        return self._lock_mode
+
     def is_locked(self):
-        return self.control_files.is_locked()
+        return (self._lock_mode is not None)
 
     def unlock(self):
-        self.control_files.unlock()
+        """See Branch.unlock()."""
+        self._lock_count -= 1
+        if self._lock_count == 0:
+            self._lock_mode = None
+            self._clear_cached_state()
+        self.repository.unlock()
 
     def get_physical_lock_status(self):
         return False
