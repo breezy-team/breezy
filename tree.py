@@ -162,6 +162,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
         """See RevisionTree.get_revision_id."""
         return self._revision_id
 
+    def get_file_sha1(self, file_id, path=None):
+        return osutils.sha_string(self.get_file_text(file_id, path))
+
     def get_file_text(self, file_id, path=None):
         """See RevisionTree.get_file_text."""
         if path is None:
