@@ -55,6 +55,7 @@ class GitCommitBuilder(CommitBuilder):
         self.store = self.repository._git.object_store
         self._blobs = {}
         self._any_changes = False
+        self._will_record_deletes = False
 
     def any_changes(self):
         return self._any_changes
@@ -136,6 +137,8 @@ class GitCommitBuilder(CommitBuilder):
         self.new_inventory = None
 
     def get_basis_delta(self):
+        if not self._will_record_deletes:
+            raise AssertionError
         # FIXME
         return []
 
@@ -171,7 +174,7 @@ class GitCommitBuilder(CommitBuilder):
         self.repository.abort_write_group()
 
     def will_record_deletes(self):
-        pass
+        self._will_record_deletes = True
 
     def revision_tree(self):
         return self.repository.revision_tree(self._new_revision_id)
