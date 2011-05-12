@@ -59,7 +59,7 @@ class GitLock(object):
         pass
 
     def break_lock(self):
-        pass
+        raise NotImplementedError(self.break_lock)
 
     def dont_leave_in_place(self):
         raise NotImplementedError(self.dont_leave_in_place)
