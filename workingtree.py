@@ -582,12 +582,16 @@ class GitWorkingTree(workingtree.WorkingTree):
         dir_ids = {u"": root_ie.file_id}
         for path, value in self.index.iteritems():
             path = path.decode("utf-8")
+            try:
+                file_ie = self._get_file_ie(path, value, None)
+            except IOError:
+                continue
             parent = posixpath.dirname(path).strip("/")
             for (dir_path, dir_ie) in self._add_missing_parent_ids(parent,
                     dir_ids):
                 yield dir_path, dir_ie
-            parent_id = self.path2id(parent)
-            yield path, self._get_file_ie(path, value, parent_id)
+            file_ie.parent_id = self.path2id(parent)
+            yield path, file_ie
 
     @needs_read_lock
     def conflicts(self):
