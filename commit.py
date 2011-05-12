@@ -52,6 +52,7 @@ class GitCommitBuilder(CommitBuilder):
 
     def __init__(self, *args, **kwargs):
         super(GitCommitBuilder, self).__init__(*args, **kwargs)
+        self._validate_revprops(self._revprops)
         self.store = self.repository._git.object_store
         self._blobs = {}
         self._any_changes = False
