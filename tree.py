@@ -75,6 +75,9 @@ class GitRevisionTree(revisiontree.RevisionTree):
         if path is None:
             path = self.id2path(file_id)
         (mode, hexsha) = tree_lookup_path(self.store.__getitem__, self.tree, path)
+        if mode is None:
+            # the tree root is a directory
+            return "directory"
         return mode_kind(mode)
 
     def has_filename(self, path):
