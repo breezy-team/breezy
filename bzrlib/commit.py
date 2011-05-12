@@ -495,18 +495,6 @@ class Commit(object):
         # A merge with no effect on files
         if len(self.parents) > 1:
             return
-        # TODO: we could simplify this by using self.builder.basis_delta.
-
-        # The initial commit adds a root directory, but this in itself is not
-        # a worthwhile commit.
-        if self.basis_revid == revision.NULL_REVISION:
-            if self.use_record_iter_changes:
-                if len(self.builder.get_basis_delta()) == 1:
-                    raise PointlessCommit()
-            else:
-                if (self.builder.new_inventory is not None and
-                    len(self.builder.new_inventory) == 1):
-                    raise PointlessCommit()
         if self.builder.any_changes():
             return
         raise PointlessCommit()

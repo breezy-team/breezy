@@ -104,6 +104,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
         super(VersionedFileCommitBuilder, self).__init__(repository,
             parents, config, timestamp, timezone, committer, revprops,
             revision_id, lossy)
+        try:
+            basis_id = self.parents[0]
+        except IndexError:
+            basis_id = _mod_revision.NULL_REVISION
+        self.basis_delta_revision = basis_id
         self.new_inventory = Inventory(None)
         self._basis_delta = []
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
@@ -123,11 +128,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
         builder.record_delete().
         """
         self._recording_deletes = True
-        try:
-            basis_id = self.parents[0]
-        except IndexError:
-            basis_id = _mod_revision.NULL_REVISION
-        self.basis_delta_revision = basis_id
 
     def any_changes(self):
         """Return True if any entries were changed.
@@ -536,7 +536,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
-        self._any_changes = True
+        # The initial commit adds a root directory, but this in itself is not
+        # a worthwhile commit.
+        if (self.basis_delta_revision != _mod_revision.NULL_REVISION or
+            path != ""):
+            self._any_changes = True
         return self._get_delta(ie, basis_inv, path), True, fingerprint
 
     def record_iter_changes(self, tree, basis_revision_id, iter_changes,
@@ -798,7 +802,10 @@ class VersionedFileCommitBuilder(CommitBuilder):
             if new_path == '':
                 seen_root = True
         self.new_inventory = None
-        if len(inv_delta):
+        # The initial commit adds a root directory, but this in itself is not
+        # a worthwhile commit.
+        if ((len(inv_delta) > 0 and basis_revision_id != _mod_revision.NULL_REVISION) or
+            (len(inv_delta) > 1 and basis_revision_id == _mod_revision.NULL_REVISION)):
             # This should perhaps be guarded by a check that the basis we
             # commit against is the basis for the commit and if not do a delta
             # against the basis.
@@ -1203,7 +1210,6 @@ class VersionedFileRepository(Repository):
             result['revisions'] = len(self.revisions.keys())
             # result['size'] = t
         return result
-
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
