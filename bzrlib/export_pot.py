@@ -96,7 +96,7 @@ def _offsets_of_literal(src):
     for node in ast.walk(root):
         if not isinstance(node, ast.Str):
             continue
-        offsets[node.s] = node.lineno
+        offsets[node.s] = node.lineno - node.s.count('\n')
 
     _LAST_CACHED_SRC = src
     _LAST_CACHE = offsets.copy()
@@ -150,7 +150,9 @@ def _write_command_help(outf, cmd_name, cmd):
     if path.endswith('.pyc'):
         path = path[:-1]
     path = os.path.relpath(path)
-    lineno = inspect.findsource(cmd.__class__)[1]
+    src, lineno = inspect.findsource(cmd.__class__)
+    offsets = _offsets_of_literal(''.join(src))
+    lineno = offsets[cmd.__doc__]
     doc = inspect.getdoc(cmd)
 
     _poentry_per_paragraph(outf, path, lineno, doc)
