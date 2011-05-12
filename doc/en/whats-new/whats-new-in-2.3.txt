@@ -20,6 +20,8 @@ broader Bazaar world of potential interest to those upgrading.
 Bazaar 2.3.1 includes all the fixes in the un-released 2.0.7, 2.1.4 and 2.2.5
 versions that weren't included in 2.3.0 and fixes some bugs on its own.
 
+Bazaar 2.3.2 is a bugfix release.
+
 See the :doc:`../release-notes/index` for details.
 
 Bazaar 2.3 is fully compatible both locally and on the network with 2.0, 2.1,

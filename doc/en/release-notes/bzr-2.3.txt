@@ -8,23 +8,23 @@ Bazaar Release Notes
 bzr 2.3.2
 #########
 
-:2.3.2: NOT RELEASED YET
+:2.3.2: 2011-05-12
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.3 releases.
 
 External Compatibility Breaks
 *****************************
 
-.. These may require users to change the way they use Bazaar.
+None
 
 New Features
 ************
 
-.. New commands, options, etc that users may wish to try out.
+None
 
 Improvements
 ************
-
-.. Improvements to existing commands, especially improved performance 
-   or memory usage, or better results.
 
 * Getting all entries from ``CHKInventory.iter_entries_by_dir()`` has been
   sped up dramatically for large trees. Iterating by dir is not the best
@@ -35,9 +35,6 @@ Improvements
 
 Bug Fixes
 *********
-
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
 
 * Bazaar now infers the default user email address on Unix from the local
   account name plus the contents of ``/etc/mailname`` if that file exists.
@@ -71,29 +68,13 @@ Bug Fixes
   this might be required for "installing" extra dependencies for some plugins.
   (Alexander Belchenko, #743256)
 
-Documentation
-*************
-
-.. Improved or updated documentation.
-
 API Changes
 ***********
 
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
-
-Internals
-*********
-
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
+None.
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * FreeBSD8 has switched to python-2.7 which revealed a re-occurrence of a test
   failure in the launchpad plugin. ``xmlrpclib.py`` on natty carries a patch
