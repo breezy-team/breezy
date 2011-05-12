@@ -21,7 +21,6 @@ struct source_info {
                                  aggregate source */
 };
 
-
 /* result type for functions that have multiple failure modes */
 typedef enum {
     DELTA_OK,             /* Success */
@@ -42,11 +41,16 @@ typedef enum {
  * free_delta_index().  Other values are a failure, and *fresh is unset.
  * The given buffer must not be freed nor altered before free_delta_index() is
  * called. The resultant struct must be freed using free_delta_index().
+ *
+ * :param max_entries: Limit the number of regions to sample to this amount.
+ *      Useful if src can be unbounded in size, but you are willing to trade
+ *      match accuracy for peak memory.
  */
 extern delta_result
 create_delta_index(const struct source_info *src,
                    struct delta_index *old,
-                   struct delta_index **fresh);
+                   struct delta_index **fresh,
+                   int max_entries);
 
 
 /*
@@ -117,5 +121,33 @@ get_delta_hdr_size(unsigned char **datap, const unsigned char *top)
     *datap = data;
     return size;
 }
+
+/*
+ * Return the basic information about a given delta index.
+ * :param index: The delta_index object
+ * :param pos: The offset in the entry list. Start at 0, and walk until you get
+ *      0 as a return code.
+ * :param global_offset: return value, distance to the beginning of all sources
+ * :param hash_val: return value, the RABIN hash associated with this pointer
+ * :param hash_offset: Location for this entry in the hash array.
+ * :return: 1 if pos != -1 (there was data produced)
+ */
+extern int
+get_entry_summary(const struct delta_index *index, int pos,
+                  unsigned int *text_offset, unsigned int *hash_val);
+
+/*
+ * Determine what entry index->hash[X] points to.
+ */
+extern int
+get_hash_offset(const struct delta_index *index, int pos,
+                unsigned int *entry_offset);
+
+/*
+ * Compute the rabin_hash of the given data, it is assumed the data is at least
+ * RABIN_WINDOW wide (16 bytes).
+ */
+extern unsigned int
+rabin_hash(const unsigned char *data);
 
 #endif

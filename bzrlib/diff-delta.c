@@ -29,7 +29,6 @@
 
 #define RABIN_SHIFT 23
 #define RABIN_WINDOW 16
-#define MAX_NUM_ENTRIES 10000
 
 /* The hash map is sized to put 4 entries per bucket, this gives us ~even room
  * for more data. Tweaking this number above 4 doesn't seem to help much,
@@ -377,7 +376,8 @@ pack_delta_index(struct unpacked_index_entry **hash, unsigned int hsize,
 delta_result
 create_delta_index(const struct source_info *src,
                    struct delta_index *old,
-                   struct delta_index **fresh)
+                   struct delta_index **fresh,
+                   int max_entries)
 {
     unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
     unsigned int total_num_entries, stride;
@@ -392,17 +392,16 @@ create_delta_index(const struct source_info *src,
     buffer = src->buf;
 
     /* Determine index hash size.  Note that indexing skips the
-       first byte to allow for optimizing the Rabin's polynomial
-       initialization in create_delta(). */
+       first byte so we subtract 1 to get the edge cases right.
+     */
     stride = RABIN_WINDOW;
     num_entries = (src->size - 1)  / RABIN_WINDOW;
-    if (num_entries > MAX_NUM_ENTRIES) {
+    if (max_entries > 0 && num_entries > max_entries) {
         /* Limit the max number of matching entries. This reduces the 'best'
          * possible match, but means we don't consume all of ram.
          */
-        // fprintf(stderr, "limiting num_entries to %d\n", MAX_NUM_ENTRIES);
-        num_entries = MAX_NUM_ENTRIES;
-        stride = (src->size) / num_entries;
+        num_entries = max_entries;
+        stride = (src->size - 1) / num_entries;
     }
     if (old != NULL)
         total_num_entries = num_entries + old->num_entries;
@@ -486,7 +485,7 @@ _put_entries_into_hash(struct index_entry *entries, unsigned int num_entries,
                        unsigned int hsize)
 {
     unsigned int hash_offset, hmask, memsize;
-    struct index_entry *entry, *last_entry;
+    struct index_entry *entry;
     struct index_entry_linked_list *out_entry, **hash;
     void *mem;
 
@@ -506,7 +505,6 @@ _put_entries_into_hash(struct index_entry *entries, unsigned int num_entries,
     /* We know that entries are in the order we want in the output, but they
      * aren't "grouped" by hash bucket yet.
      */
-    last_entry = entries + num_entries;
     for (entry = entries + num_entries - 1; entry >= entries; --entry) {
         hash_offset = entry->val & hmask;
         out_entry->p_entry = entry;
@@ -531,7 +529,7 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
     unsigned int i, j, hsize, hmask, total_num_entries;
     struct delta_index *index;
     struct index_entry *entry, *packed_entry, **packed_hash;
-    struct index_entry *last_entry, null_entry = {0};
+    struct index_entry null_entry = {0};
     void *mem;
     unsigned long memsize;
     struct index_entry_linked_list *unpacked_entry, **mini_hash;
@@ -582,7 +580,6 @@ create_index_from_old_and_new_entries(const struct delta_index *old_index,
         free(index);
         return NULL;
     }
-    last_entry = entries + num_entries;
     for (i = 0; i < hsize; i++) {
         /*
          * Coalesce all entries belonging in one hash bucket
@@ -1108,6 +1105,75 @@ create_delta(const struct delta_index *index,
     *delta_size = outpos;
     *delta_data = out;
     return DELTA_OK;
+}
+
+
+int
+get_entry_summary(const struct delta_index *index, int pos,
+                  unsigned int *text_offset, unsigned int *hash_val)
+{
+    int hsize;
+    const struct index_entry *entry;
+    const struct index_entry *start_of_entries;
+    unsigned int offset;
+    if (pos < 0 || text_offset == NULL || hash_val == NULL
+        || index == NULL)
+    {
+        return 0;
+    }
+    hsize = index->hash_mask + 1;
+    start_of_entries = (struct index_entry *)(((struct index_entry **)index->hash) + (hsize + 1));
+    entry = start_of_entries + pos;
+    if (entry > index->last_entry) {
+        return 0;
+    }
+    if (entry->ptr == NULL) {
+        *text_offset = 0;
+        *hash_val = 0;
+    } else {
+        offset = entry->src->agg_offset;
+        offset += (entry->ptr - ((unsigned char *)entry->src->buf));
+        *text_offset = offset;
+        *hash_val = entry->val;
+    }
+    return 1;
+}
+
+
+int
+get_hash_offset(const struct delta_index *index, int pos,
+                unsigned int *entry_offset)
+{
+    int hsize;
+    const struct index_entry *entry;
+    const struct index_entry *start_of_entries;
+    if (pos < 0 || index == NULL || entry_offset == NULL)
+    {
+        return 0;
+    }
+    hsize = index->hash_mask + 1;
+    start_of_entries = (struct index_entry *)(((struct index_entry **)index->hash) + (hsize + 1));
+    if (pos >= hsize) {
+        return 0;
+    }
+    entry = index->hash[pos];
+    if (entry == NULL) {
+        *entry_offset = -1;
+    } else {
+        *entry_offset = (entry - start_of_entries);
+    }
+    return 1;
+}
+
+
+unsigned int
+rabin_hash(const unsigned char *data)
+{
+    int i;
+    unsigned int val = 0;
+    for (i = 0; i < RABIN_WINDOW; i++)
+        val = ((val << 8) | data[i]) ^ T[val >> RABIN_SHIFT];
+    return val;
 }
 
 /* vim: et ts=4 sw=4 sts=4

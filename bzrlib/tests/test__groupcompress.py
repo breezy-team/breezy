@@ -264,6 +264,63 @@ class TestDeltaIndex(tests.TestCase):
         di = self._gc_module.DeltaIndex('test text\n')
         self.assertEqual('DeltaIndex(1, 10)', repr(di))
 
+    def test__dump_no_index(self):
+        di = self._gc_module.DeltaIndex()
+        self.assertEqual(None, di._dump_index())
+
+    def test__dump_index_simple(self):
+        di = self._gc_module.DeltaIndex()
+        di.add_source(_text1, 0)
+        self.assertFalse(di._has_index())
+        self.assertEqual(None, di._dump_index())
+        _ = di.make_delta(_text1)
+        self.assertTrue(di._has_index())
+        hash_list, entry_list = di._dump_index()
+        self.assertEqual(16, len(hash_list))
+        self.assertEqual(68, len(entry_list))
+        just_entries = [(idx, text_offset, hash_val)
+                        for idx, (text_offset, hash_val)
+                         in enumerate(entry_list)
+                         if text_offset != 0 or hash_val != 0]
+        rabin_hash = self._gc_module.rabin_hash
+        self.assertEqual([(8, 16, rabin_hash(_text1[1:17])),
+                          (25, 48, rabin_hash(_text1[33:49])),
+                          (34, 32, rabin_hash(_text1[17:33])),
+                          (47, 64, rabin_hash(_text1[49:65])),
+                         ], just_entries)
+        # This ensures that the hash map points to the location we expect it to
+        for entry_idx, text_offset, hash_val in just_entries:
+            self.assertEqual(entry_idx, hash_list[hash_val & 0xf])
+
+    def test__dump_index_two_sources(self):
+        di = self._gc_module.DeltaIndex()
+        di.add_source(_text1, 0)
+        di.add_source(_text2, 2)
+        start2 = len(_text1) + 2
+        self.assertTrue(di._has_index())
+        hash_list, entry_list = di._dump_index()
+        self.assertEqual(16, len(hash_list))
+        self.assertEqual(68, len(entry_list))
+        just_entries = [(idx, text_offset, hash_val)
+                        for idx, (text_offset, hash_val)
+                         in enumerate(entry_list)
+                         if text_offset != 0 or hash_val != 0]
+        rabin_hash = self._gc_module.rabin_hash
+        self.assertEqual([(8, 16, rabin_hash(_text1[1:17])),
+                          (9, start2+16, rabin_hash(_text2[1:17])),
+                          (25, 48, rabin_hash(_text1[33:49])),
+                          (30, start2+64, rabin_hash(_text2[49:65])),
+                          (34, 32, rabin_hash(_text1[17:33])),
+                          (35, start2+32, rabin_hash(_text2[17:33])),
+                          (43, start2+48, rabin_hash(_text2[33:49])),
+                          (47, 64, rabin_hash(_text1[49:65])),
+                         ], just_entries)
+        # Each entry should be in the appropriate hash bucket.
+        for entry_idx, text_offset, hash_val in just_entries:
+            hash_idx = hash_val & 0xf
+            self.assertTrue(
+                hash_list[hash_idx] <= entry_idx < hash_list[hash_idx+1])
+
     def test_first_add_source_doesnt_index_until_make_delta(self):
         di = self._gc_module.DeltaIndex()
         self.assertFalse(di._has_index())
@@ -274,6 +331,27 @@ class TestDeltaIndex(tests.TestCase):
         delta = di.make_delta(_text2)
         self.assertTrue(di._has_index())
         self.assertEqual('N\x90/\x1fdiffer from\nagainst other text\n', delta)
+
+    def test_add_source_max_entries(self):
+        di = self._gc_module.DeltaIndex()
+        di._max_entries_per_source = 3
+        di.add_source(_text1, 0) # (77 bytes -1) // 3 = 25 byte stride
+        di.add_source(_text3, 3) # (135 bytes -1) // 3 = 44 byte stride
+        start2 = len(_text1) + 3
+        hash_list, entry_list = di._dump_index()
+        self.assertEqual(16, len(hash_list))
+        self.assertEqual(67, len(entry_list))
+        just_entries = sorted([(text_offset, hash_val)
+                               for text_offset, hash_val in entry_list
+                                if text_offset != 0 or hash_val != 0])
+        rabin_hash = self._gc_module.rabin_hash
+        self.assertEqual([(25, rabin_hash(_text1[10:26])),
+                          (50, rabin_hash(_text1[35:51])),
+                          (75, rabin_hash(_text1[60:76])),
+                          (start2+44, rabin_hash(_text3[29:45])),
+                          (start2+88, rabin_hash(_text3[73:89])),
+                          (start2+132, rabin_hash(_text3[117:133])),
+                         ], just_entries)
 
     def test_second_add_source_triggers_make_index(self):
         di = self._gc_module.DeltaIndex()
