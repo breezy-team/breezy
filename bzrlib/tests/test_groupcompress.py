@@ -1090,6 +1090,51 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
             self.assertEqual(self._texts[record.key],
                              record.get_bytes_as('fulltext'))
 
+    def test_manager_default_max_entries_per_source(self):
+        locations, old_block = self.make_block(self._texts)
+        manager = groupcompress._LazyGroupContentManager(old_block)
+        gcvf = groupcompress.GroupCompressVersionedFiles
+        # It doesn't greedily evaluate _max_entries_per_source
+        self.assertIs(None, manager._max_entries_per_source)
+        self.assertEqual(gcvf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
+                         manager._get_max_entries_per_source())
+
+    def test_manager_custom_max_entries_per_source(self):
+        locations, old_block = self.make_block(self._texts)
+        called = []
+        def max_entries():
+            called.append('called')
+            return 10
+        manager = groupcompress._LazyGroupContentManager(old_block,
+            get_max_entries_per_source=max_entries)
+        gcvf = groupcompress.GroupCompressVersionedFiles
+        # It doesn't greedily evaluate _max_entries_per_source
+        self.assertIs(None, manager._max_entries_per_source)
+        self.assertEqual(10, manager._get_max_entries_per_source())
+        self.assertEqual(10, manager._get_max_entries_per_source())
+        self.assertEqual(10, manager._max_entries_per_source)
+        # Only called 1 time
+        self.assertEqual(['called'], called)
+
+    def test__rebuild_handles_max_entries_per_source(self):
+        locations, old_block = self.make_block(self._texts)
+        manager = groupcompress._LazyGroupContentManager(old_block,
+            get_max_entries_per_source=lambda: 2)
+        gc = manager._make_group_compressor()
+        if isinstance(gc, groupcompress.PyrexGroupCompressor):
+            self.assertEqual(2, gc._delta_index._max_entries_per_source)
+        self.add_key_to_manager(('key3',), locations, old_block, manager)
+        self.add_key_to_manager(('key4',), locations, old_block, manager)
+        action, last_byte, total_bytes = manager._check_rebuild_action()
+        self.assertEqual('rebuild', action)
+        manager._rebuild_block()
+        new_block = manager._block
+        self.assertIsNot(old_block, new_block)
+        # Because of the new max_entries_per_source, we do a poor job of
+        # rebuilding. This is a side-effect of the change, but at least it does
+        # show the setting had an effect.
+        self.assertTrue(old_block._content_length < new_block._content_length)
+
     def test_check_is_well_utilized_all_keys(self):
         block, manager = self.make_block_and_full_manager(self._texts)
         self.assertFalse(manager.check_is_well_utilized())

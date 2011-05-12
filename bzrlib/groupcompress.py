@@ -491,11 +491,25 @@ class _LazyGroupContentManager(object):
     _full_enough_block_size = 3*1024*1024 # size at which we won't repack
     _full_enough_mixed_block_size = 2*768*1024 # 1.5MB
 
-    def __init__(self, block):
+    def __init__(self, block, get_max_entries_per_source=None):
         self._block = block
         # We need to preserve the ordering
         self._factories = []
         self._last_byte = 0
+        self._get_max = get_max_entries_per_source
+        self._max_entries_per_source = None
+
+    def _get_max_entries_per_source(self):
+        if self._max_entries_per_source is not None:
+            return self._max_entries_per_source
+        max_entries = None
+        if self._get_max is not None:
+            max_entries = self._get_max()
+        if max_entries is None:
+            vf = GroupCompressVersionedFiles
+            max_entries = vf._DEFAULT_MAX_ENTRIES_PER_SOURCE
+        self._max_entries_per_source = max_entries
+        return self._max_entries_per_source
 
     def add_factory(self, key, parents, start, end):
         if not self._factories:
@@ -534,9 +548,12 @@ class _LazyGroupContentManager(object):
         new_block.set_content(self._block._content[:last_byte])
         self._block = new_block
 
+    def _make_group_compressor(self):
+        return GroupCompressor(self._get_max_entries_per_source())
+
     def _rebuild_block(self):
         """Create a new GroupCompressBlock with only the referenced texts."""
-        compressor = GroupCompressor()
+        compressor = self._make_group_compressor()
         tstart = time.time()
         old_length = self._block._content_length
         end_point = 0
@@ -554,6 +571,11 @@ class _LazyGroupContentManager(object):
         #       block? It seems hard to come up with a method that it would
         #       expand, since we do full compression again. Perhaps based on a
         #       request that ends up poorly ordered?
+        # TODO: If the content would have expanded, then we would want to
+        #       handle a case where we need to split the block.
+        #       Now that we have a user-tweakable option
+        #       (max_entries_per_source), it is possible that one person set it
+        #       to a very low value, causing poor compression.
         delta = time.time() - tstart
         self._block = new_block
         trace.mutter('creating new compressed block on-the-fly in %.3fs'
@@ -1070,12 +1092,12 @@ def cleanup_pack_group(versioned_files):
 
 class _BatchingBlockFetcher(object):
     """Fetch group compress blocks in batches.
-    
+
     :ivar total_bytes: int of expected number of bytes needed to fetch the
         currently pending batch.
     """
 
-    def __init__(self, gcvf, locations):
+    def __init__(self, gcvf, locations, get_max_entries_per_source=None):
         self.gcvf = gcvf
         self.locations = locations
         self.keys = []
@@ -1084,10 +1106,11 @@ class _BatchingBlockFetcher(object):
         self.total_bytes = 0
         self.last_read_memo = None
         self.manager = None
+        self._get_max_entries_per_source = get_max_entries_per_source
 
     def add_key(self, key):
         """Add another to key to fetch.
-        
+
         :return: The estimated number of bytes needed to fetch the batch so
             far.
         """
@@ -1118,7 +1141,7 @@ class _BatchingBlockFetcher(object):
             # and then.
             self.batch_memos[read_memo] = cached_block
         return self.total_bytes
-        
+
     def _flush_manager(self):
         if self.manager is not None:
             for factory in self.manager.get_record_stream():
@@ -1129,7 +1152,7 @@ class _BatchingBlockFetcher(object):
     def yield_factories(self, full_flush=False):
         """Yield factories for keys added since the last yield.  They will be
         returned in the order they were added via add_key.
-        
+
         :param full_flush: by default, some results may not be returned in case
             they can be part of the next batch.  If full_flush is True, then
             all results are returned.
@@ -1163,7 +1186,8 @@ class _BatchingBlockFetcher(object):
                     memos_to_get_stack.pop()
                 else:
                     block = self.batch_memos[read_memo]
-                self.manager = _LazyGroupContentManager(block)
+                self.manager = _LazyGroupContentManager(block,
+                    get_max_entries_per_source=self._get_max_entries_per_source)
                 self.last_read_memo = read_memo
             start, end = index_memo[3:5]
             self.manager.add_factory(key, parents, start, end)
@@ -1589,7 +1613,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         #  - we encounter an unadded ref, or
         #  - we run out of keys, or
         #  - the total bytes to retrieve for this batch > BATCH_SIZE
-        batcher = _BatchingBlockFetcher(self, locations)
+        batcher = _BatchingBlockFetcher(self, locations,
+            get_max_entries_per_source=self._get_max_entries_per_source)
         for source, keys in source_keys:
             if source is self:
                 for key in keys:
@@ -1641,7 +1666,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         for _ in self._insert_record_stream(stream, random_id=False):
             pass
 
-    def _make_group_compressor(self):
+    def _get_max_entries_per_source(self):
         if self._max_entries_per_source is None:
             # TODO: VersionedFiles don't know about their containing
             #       repository, so they don't have much of an idea about their
@@ -1660,7 +1685,10 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             if val is None:
                 val = self._DEFAULT_MAX_ENTRIES_PER_SOURCE
             self._max_entries_per_source = val
-        return GroupCompressor(self._max_entries_per_source)
+        return self._max_entries_per_source
+
+    def _make_group_compressor(self):
+        return GroupCompressor(self._get_max_entries_per_source())
 
     def _insert_record_stream(self, stream, random_id=False, nostore_sha=None,
                               reuse_blocks=True):
