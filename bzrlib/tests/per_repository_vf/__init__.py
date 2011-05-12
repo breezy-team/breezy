@@ -44,6 +44,7 @@ def load_tests(basic_tests, module, loader):
         'test_fetch',
         'test_reconcile',
         'test_repository',
+        'test_write_group',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
             ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
