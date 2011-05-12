@@ -20,7 +20,6 @@ import time
 
 from bzrlib import (
     bzrdir,
-    check,
     config,
     controldir,
     debug,
@@ -1212,7 +1211,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """Return the text for a signature."""
         raise NotImplementedError(self.get_signature_text)
 
-    @needs_read_lock
     def check(self, revision_ids=None, callback_refs=None, check_repo=True):
         """Check consistency of all history of given revision_ids.
 
@@ -1226,7 +1224,11 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param check_repo: If False do not check the repository contents, just 
             calculate the data callback_refs requires and call them back.
         """
-        return check.Check()
+        return self._check(revision_ids=revision_ids, callback_refs=callback_refs,
+            check_repo=check_repo)
+
+    def _check(self, revision_ids=None, callback_refs=None, check_repo=True):
+        raise NotImplementedError(self.check)
 
     def _warn_if_deprecated(self, branch=None):
         if not self._format.is_deprecated():

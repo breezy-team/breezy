@@ -1851,7 +1851,8 @@ class VersionedFileRepository(Repository):
             raise errors.NoSuchRevision(self, revision_id)
         return record.get_bytes_as('fulltext')
 
-    def check(self, revision_ids=None, callback_refs=None, check_repo=True):
+    @needs_read_lock
+    def _check(self, revision_ids, callback_refs, check_repo):
         result = check.VersionedFileCheck(self, check_repo=check_repo)
         result.check(callback_refs)
         return result
