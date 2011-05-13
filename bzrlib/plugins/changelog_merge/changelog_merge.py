@@ -109,7 +109,6 @@ def default_guess_edits(new_entries, deleted_entries, entry_as_str=''.join):
     sm = difflib.SequenceMatcher()
     CUTOFF = 0.8
     while True:
-        mutter('default_guess_edits loop')
         best = None
         best_score = CUTOFF
         # Compare each new entry with each old entry to find the best match
@@ -121,7 +120,6 @@ def default_guess_edits(new_entries, deleted_entries, entry_as_str=''.join):
                 if score > best_score:
                     best = new_entry_as_str, old_entry_as_str
                     best_score = score
-                    mutter('best: %0.3f %r', best_score, best)
         if best is not None:
             # Add the best match to the list of edits, and remove it from the
             # the list of new/old entries.  Also remove it from the new/old
