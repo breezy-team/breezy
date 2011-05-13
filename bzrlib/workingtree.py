@@ -863,8 +863,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self.add(path, file_id, 'directory')
         return file_id
 
-    def get_symlink_target(self, file_id):
-        abspath = self.id2abspath(file_id)
+    def get_symlink_target(self, file_id, path=None):
+        if path is not None:
+            abspath = self.abspath(path)
+        else:
+            abspath = self.id2abspath(file_id)
         target = osutils.readlink(abspath)
         return target
 
