@@ -18,10 +18,18 @@
 """Test the find_text_key_references API."""
 
 
-from bzrlib.tests.per_repository import TestCaseWithRepository
+from bzrlib.tests.per_repository_vf import (
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+    )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
+
+load_tests = load_tests_apply_scenarios
 
 
 class TestFindTextKeyReferences(TestCaseWithRepository):
+
+    scenarios = all_repository_vf_format_scenarios()
 
     def test_empty(self):
         repo = self.make_repository('.')

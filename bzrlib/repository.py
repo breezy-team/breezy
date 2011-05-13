@@ -927,15 +927,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
         raise NotImplementedError(self.add_signature_text)
 
-    def find_text_key_references(self):
-        """Find the text key references within the repository.
-
-        :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
-            to whether they were referred to by the tree of the
-            revision_id that they contain. 
-        """
-        raise NotImplementedError(self.find_text_key_references)
-
     def _find_parent_ids_of_revisions(self, revision_ids):
         """Find all parent ids that are mentioned in the revision graph.
 
