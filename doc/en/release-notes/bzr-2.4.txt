@@ -96,6 +96,9 @@ API Changes
 * ``Tree.__iter__`` has been deprecated; use ``Tree.all_file_ids``
   instead.  (Jelmer Vernooij)
 
+* ``Tree.get_symlink_target`` now takes an optional ``path``
+  argument. (Jelmer Vernooij)
+
 Internals
 *********
 
