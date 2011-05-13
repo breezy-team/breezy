@@ -52,8 +52,9 @@
 from bzrlib import (
     debug,
     errors,
+    revision,
     trace,
-    tree as _mod_tree,
+    tree,
     ui,
     )
 from bzrlib.branch import Branch
@@ -645,16 +646,15 @@ class Commit(object):
         # entries and the order is preserved when doing this.
         if self.use_record_iter_changes:
             return
-        self.basis_tree = self.basis_tree
-        self.parent_trees = [self.basis_tree]
+        self.basis_inv = self.basis_tree.inventory
+        self.parent_invs = [self.basis_inv]
         for revision in self.parents[1:]:
-            try:
+            if self.branch.repository.has_revision(revision):
                 mutter('commit parent revision {%s}', revision)
-                tree = self.branch.repository.revision_tree(revision)
-            except errors.NoSuchRevision:
-                mutter('commit parent ghost revision {%s}', revision)
+                inventory = self.branch.repository.get_inventory(revision)
+                self.parent_invs.append(inventory)
             else:
-                self.parent_trees.append(tree)
+                mutter('commit parent ghost revision {%s}', revision)
 
     def _update_builder_with_changes(self):
         """Update the commit builder with the data about what has changed.
@@ -673,9 +673,8 @@ class Commit(object):
                 self.work_tree._observed_sha1(file_id, path, fs_hash)
         else:
             # Build the new inventory
-            parent_invs = [tree.inventory for tree in self.parent_trees]
-            self._populate_from_inventory(parent_invs)
-            self._record_unselected(parent_invs)
+            self._populate_from_inventory()
+            self._record_unselected()
             self._report_and_accumulate_deletes()
 
     def _filter_iter_changes(self, iter_changes):
@@ -728,7 +727,7 @@ class Commit(object):
         # Unversion IDs that were found to be deleted
         self.deleted_ids = deleted_ids
 
-    def _record_unselected(self, parent_invs):
+    def _record_unselected(self):
         # If specific files are selected, then all un-selected files must be
         # recorded in their previous state. For more details, see
         # https://lists.ubuntu.com/archives/bazaar/2007q3/028476.html.
@@ -751,7 +750,7 @@ class Commit(object):
                 # required after that changes.
                 if len(self.parents) > 1:
                     ie.revision = None
-                self.builder.record_entry_contents(ie, parent_invs, path,
+                self.builder.record_entry_contents(ie, self.parent_invs, path,
                     self.basis_tree, None)
 
     def _report_and_accumulate_deletes(self):
@@ -787,7 +786,7 @@ class Commit(object):
             for unknown in self.work_tree.unknowns():
                 raise StrictCommitFailed()
 
-    def _populate_from_inventory(self, parent_invs):
+    def _populate_from_inventory(self):
         """Populate the CommitBuilder by walking the working tree inventory."""
         # Build the revision inventory.
         #
@@ -882,7 +881,7 @@ class Commit(object):
             # parameter but the test suite currently (28-Jun-07) breaks
             # without it thanks to a unicode normalisation issue. :-(
             definitely_changed = kind != existing_ie.kind
-            self._record_entry(parent_invs, path, file_id, specific_files, kind, name,
+            self._record_entry(path, file_id, specific_files, kind, name,
                 parent_id, definitely_changed, existing_ie, report_changes,
                 content_summary)
 
@@ -914,9 +913,9 @@ class Commit(object):
         except errors.PointlessCommit:
             return self.work_tree.get_reference_revision(file_id)
 
-    def _record_entry(self, parent_invs, path, file_id, specific_files, kind,
-            name, parent_id, definitely_changed, existing_ie, report_changes,
-            content_summary):
+    def _record_entry(self, path, file_id, specific_files, kind, name,
+        parent_id, definitely_changed, existing_ie, report_changes,
+        content_summary):
         "Record the new inventory entry for a path if any."
         # mutter('check %s {%s}', path, file_id)
         # mutter('%s selected for commit', path)
@@ -928,7 +927,7 @@ class Commit(object):
         # For carried over entries we don't care about the fs hash - the repo
         # isn't generating a sha, so we're not saving computation time.
         _, _, fs_hash = self.builder.record_entry_contents(
-            ie, parent_invs, path, self.work_tree, content_summary)
+            ie, self.parent_invs, path, self.work_tree, content_summary)
         if report_changes:
             self._report_change(ie, path)
         if fs_hash:
@@ -992,7 +991,7 @@ class Commit(object):
                 # examining the whole tree again.
                 # XXX: Dont we have filter_unversioned to do this more
                 # cheaply?
-                self.specific_file_ids = _mod_tree.find_ids_across_trees(
+                self.specific_file_ids = tree.find_ids_across_trees(
                     self.specific_files, [self.basis_tree, self.work_tree])
             else:
                 self.specific_file_ids = None
