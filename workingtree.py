@@ -280,7 +280,7 @@ class GitWorkingTree(workingtree.WorkingTree):
             for name in os.listdir(abs_user_dir):
                 subp = os.path.join(user_dir, name)
                 if self.is_control_filename(subp):
-                    trace.mutter("skip control directory %r", subp)
+                    continue
                 ignore_glob = self.is_ignored(subp)
                 if ignore_glob is not None:
                     ignored.setdefault(ignore_glob, []).append(subp)
