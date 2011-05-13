@@ -112,6 +112,11 @@ class GitCommitBuilder(CommitBuilder):
             self._any_changes = True
             self._blobs[path[1].encode("utf-8")] = (mode, sha)
             file_sha1 = workingtree.get_file_sha1(file_id, path[1])
+            if file_sha1 is None:
+                # File no longer exists
+                if path[0] is not None:
+                    self.record_delete(path[0], file_id)
+                continue
             _, st = workingtree.get_file_with_stat(file_id, path[1])
             yield file_id, path[1], (file_sha1, st)
         if not seen_root and len(self.parents) == 0:
