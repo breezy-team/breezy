@@ -43,10 +43,9 @@ class TestUpgrade(tests.TestCaseWithTransport):
         control = bzrdir.BzrDir.open('.')
         b = control.open_branch()
         # tsk, peeking under the covers.
-        self.failUnless(
-            isinstance(
+        self.assertIsInstance(
                 control._format,
-                bzrdir.BzrDirFormat.get_default_format().__class__))
+                bzrdir.BzrDirFormat.get_default_format().__class__)
         rh = b.revision_history()
         eq(rh,
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
@@ -153,7 +152,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         # We have covered the scope of this test, we may as well check that
         # upgrade has not eaten our data, even if it's a bit redundant with
         # other tests.
-        self.failUnless(isinstance(control._format, bzrdir.BzrDirMetaFormat1))
+        self.assertIsInstance(control._format, bzrdir.BzrDirMetaFormat1)
         b = control.open_branch()
         self.assertEquals(b.revision_history(),
            ['mbp@sourcefrog.net-20051004035611-176b16534b086b3c',
