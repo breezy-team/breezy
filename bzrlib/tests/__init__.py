@@ -1434,7 +1434,7 @@ class TestCase(testtools.TestCase):
 
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
-        self.failUnlessExists(path)
+        self.assertPathExists(path)
         f = file(path, 'rb')
         try:
             s = f.read()
@@ -1450,20 +1450,28 @@ class TestCase(testtools.TestCase):
         else:
             self.assertEqual(expected_docstring, obj.__doc__)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failUnlessExists(self, path):
+        return self.assertPathExists(path)
+
+    def assertPathExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
             for p in path:
-                self.failUnlessExists(p)
+                self.assertPathExists(p)
         else:
             self.assertTrue(osutils.lexists(path),
                 path + " does not exist")
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failIfExists(self, path):
+        return self.assertPathDoesNotExist(path)
+
+    def assertPathDoesNotExist(self, path):
         """Fail if path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
             for p in path:
-                self.failIfExists(p)
+                self.assertPathDoesNotExist(p)
         else:
             self.assertFalse(osutils.lexists(path),
                 path + " exists")
