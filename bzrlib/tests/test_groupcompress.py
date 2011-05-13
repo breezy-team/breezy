@@ -569,7 +569,6 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         record = vf.get_record_stream([('a',)], 'unordered', True).next()
         self.assertEqual(1234, record._manager._get_max_entries_per_source())
 
-
     def test_insert_record_stream_reuses_blocks(self):
         vf = self.make_test_vf(True, dir='source')
         def grouped_stream(revision_ids, first_parents=()):
@@ -829,7 +828,6 @@ class TestGroupCompressConfig(tests.TestCaseWithTransport):
         if isinstance(gc, groupcompress.PyrexGroupCompressor):
             self.assertEqual(vf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
                              gc._delta_index._max_entries_per_source)
-
 
 
 class StubGCVF(object):
