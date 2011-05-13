@@ -180,7 +180,7 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 class TestTreeReference(TestCaseWithWorkingTree):
 
     def test_tree_reference_matches_inv(self):
-        base =self.make_branch_and_tree('base')
+        base = self.make_branch_and_tree('base')
         if base.branch.repository._format.supports_full_versioned_files:
             raise tests.TestNotApplicable(
                 "format does not support inventory deltas")
