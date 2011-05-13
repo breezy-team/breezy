@@ -93,17 +93,17 @@ class TestRevert(TestCaseWithTransport):
         """Test that revert DIRECTORY does what's expected"""
         self._prepare_rename_mod_tree()
         self.run_bzr('revert a')
-        self.failUnlessExists('a/b')
-        self.failUnlessExists('a/d')
-        self.failIfExists('a/g')
+        self.assertPathExists('a/b')
+        self.assertPathExists('a/d')
+        self.assertPathDoesNotExist('a/g')
         self.expectFailure(
             "j is in the delta revert applies because j was renamed too",
-            self.failUnlessExists, 'j')
-        self.failUnlessExists('h')
+            self.assertPathExists, 'j')
+        self.assertPathExists('h')
         self.run_bzr('revert f')
-        self.failIfExists('j')
-        self.failIfExists('h')
-        self.failUnlessExists('a/d/e')
+        self.assertPathDoesNotExist('j')
+        self.assertPathDoesNotExist('h')
+        self.assertPathExists('a/d/e')
 
     def test_revert_chatter(self):
         self._prepare_rename_mod_tree()
@@ -148,7 +148,7 @@ class TestRevert(TestCaseWithTransport):
             self.run_bzr('commit -m f')
             os.unlink('symlink')
             self.run_bzr('revert')
-            self.failUnlessExists('symlink')
+            self.assertPathExists('symlink')
             os.unlink('symlink')
             os.symlink('a-different-path', 'symlink')
             self.run_bzr('revert')

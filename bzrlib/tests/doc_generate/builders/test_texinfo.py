@@ -69,5 +69,5 @@ Improvements
              ])
         app, out, err = self.make_sphinx()
         self.build(app)
-        self.failUnlessExists('index.texi')
-        self.failUnlessExists('content.texi')
+        self.assertPathExists('index.texi')
+        self.assertPathExists('content.texi')

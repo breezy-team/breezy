@@ -134,8 +134,8 @@ class TestRename(tests.TestCaseInTempDir):
         # This should work everywhere
         self.create_file('a', 'something in a\n')
         self._fancy_rename('a', 'b')
-        self.failIfExists('a')
-        self.failUnlessExists('b')
+        self.assertPathDoesNotExist('a')
+        self.assertPathExists('b')
         self.check_file_contents('b', 'something in a\n')
 
         self.create_file('a', 'new something in a\n')
@@ -148,7 +148,7 @@ class TestRename(tests.TestCaseInTempDir):
         self.create_file('target', 'data in target\n')
         self.assertRaises((IOError, OSError), self._fancy_rename,
                           'missingsource', 'target')
-        self.failUnlessExists('target')
+        self.assertPathExists('target')
         self.check_file_contents('target', 'data in target\n')
 
     def test_fancy_rename_fails_if_source_and_target_missing(self):
@@ -159,8 +159,8 @@ class TestRename(tests.TestCaseInTempDir):
         # Rename should be semi-atomic on all platforms
         self.create_file('a', 'something in a\n')
         osutils.rename('a', 'b')
-        self.failIfExists('a')
-        self.failUnlessExists('b')
+        self.assertPathDoesNotExist('a')
+        self.assertPathExists('b')
         self.check_file_contents('b', 'something in a\n')
 
         self.create_file('a', 'new something in a\n')
@@ -248,8 +248,8 @@ class TestRmTree(tests.TestCaseInTempDir):
 
         osutils.rmtree('dir')
 
-        self.failIfExists('dir/file')
-        self.failIfExists('dir')
+        self.assertPathDoesNotExist('dir/file')
+        self.assertPathDoesNotExist('dir')
 
 
 class TestDeleteAny(tests.TestCaseInTempDir):
@@ -905,8 +905,8 @@ class TestWin32FuncsDirs(tests.TestCaseInTempDir):
         b.close()
 
         osutils._win32_rename('b', 'a')
-        self.failUnlessExists('a')
-        self.failIfExists('b')
+        self.assertPathExists('a')
+        self.assertPathDoesNotExist('b')
         self.assertFileEqual('baz\n', 'a')
 
     def test_rename_missing_file(self):
@@ -1595,7 +1595,7 @@ class TestCopyTree(tests.TestCaseInTempDir):
                           ('d', 'source/b', 'target/b'),
                           ('f', 'source/b/c', 'target/b/c'),
                          ], processed_files)
-        self.failIfExists('target')
+        self.assertPathDoesNotExist('target')
         if osutils.has_symlinks():
             self.assertEqual([('source/lnk', 'target/lnk')], processed_links)
 

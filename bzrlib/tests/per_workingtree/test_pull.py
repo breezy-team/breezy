@@ -100,4 +100,4 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         work.pull(trunk)
         self.assertLength(0, work.conflicts())
         # The directory removal should succeed
-        self.failIfExists('work/dir')
+        self.assertPathDoesNotExist('work/dir')

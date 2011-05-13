@@ -149,17 +149,17 @@ class TestSwitch(TestCaseWithTransport):
         tree = self._create_sample_tree()
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
         self.run_bzr(['switch', 'branch-1', '-r1'], working_dir='checkout')
-        self.failUnlessExists('checkout/file-1')
-        self.failIfExists('checkout/file-2')
+        self.assertPathExists('checkout/file-1')
+        self.assertPathDoesNotExist('checkout/file-2')
 
     def test_switch_only_revision(self):
         tree = self._create_sample_tree()
         checkout = tree.branch.create_checkout('checkout', lightweight=True)
-        self.failUnlessExists('checkout/file-1')
-        self.failUnlessExists('checkout/file-2')
+        self.assertPathExists('checkout/file-1')
+        self.assertPathExists('checkout/file-2')
         self.run_bzr(['switch', '-r1'], working_dir='checkout')
-        self.failUnlessExists('checkout/file-1')
-        self.failIfExists('checkout/file-2')
+        self.assertPathExists('checkout/file-1')
+        self.assertPathDoesNotExist('checkout/file-2')
         # Check that we don't accept a range
         self.run_bzr_error(
             ['bzr switch --revision takes exactly one revision identifier'],

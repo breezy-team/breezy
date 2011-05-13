@@ -173,7 +173,7 @@ class TestMove(TestCaseWithWorkingTree):
                                ('b/c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                ('b/c', 'c-id')], tree.basis_tree())
-        self.failIfExists('a')
+        self.assertPathDoesNotExist('a')
         self.assertFileEqual(a_contents, 'b/a')
         tree._validate()
 
@@ -190,7 +190,7 @@ class TestMove(TestCaseWithWorkingTree):
                                ('c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                ('b/c', 'c-id')], tree.basis_tree())
-        self.failIfExists('b/c')
+        self.assertPathDoesNotExist('b/c')
         self.assertFileEqual(c_contents, 'c')
         tree._validate()
 
@@ -209,7 +209,7 @@ class TestMove(TestCaseWithWorkingTree):
             self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                    ('c', 'c-id')], tree)
         else:
-            self.failUnlessExists('b/c')
+            self.assertPathExists('b/c')
             self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),
                                    ('b/c', 'c-id')], tree)
         self.assertTreeLayout([('', root_id), ('a', 'a-id'), ('b', 'b-id'),

@@ -121,12 +121,12 @@ class TestControlDir(TestCaseWithControlDir):
             bzrdir.destroy_workingtree()
         except errors.UnsupportedOperation:
             raise TestSkipped('Format does not support destroying tree')
-        self.failIfExists('tree/file')
+        self.assertPathDoesNotExist('tree/file')
         self.assertRaises(errors.NoWorkingTree, bzrdir.open_workingtree)
         bzrdir.create_workingtree()
-        self.failUnlessExists('tree/file')
+        self.assertPathExists('tree/file')
         bzrdir.destroy_workingtree_metadata()
-        self.failUnlessExists('tree/file')
+        self.assertPathExists('tree/file')
         self.assertRaises(errors.NoWorkingTree, bzrdir.open_workingtree)
 
     def test_destroy_branch(self):
@@ -762,7 +762,7 @@ class TestControlDir(TestCaseWithControlDir):
                 create_tree_if_local=False)
         except errors.MustHaveWorkingTree:
             raise TestNotApplicable("control dir format requires working tree")
-        self.failIfExists('target/foo')
+        self.assertPathDoesNotExist('target/foo')
         self.assertEqual(tree.branch.last_revision(),
                          target.open_branch().last_revision())
 
@@ -1379,8 +1379,8 @@ class TestControlDir(TestCaseWithControlDir):
         old_url, new_url = tree.bzrdir.backup_bzrdir()
         old_path = urlutils.local_path_from_url(old_url)
         new_path = urlutils.local_path_from_url(new_url)
-        self.failUnlessExists(old_path)
-        self.failUnlessExists(new_path)
+        self.assertPathExists(old_path)
+        self.assertPathExists(new_path)
         for (((dir_relpath1, _), entries1),
              ((dir_relpath2, _), entries2)) in izip(
                 osutils.walkdirs(old_path),

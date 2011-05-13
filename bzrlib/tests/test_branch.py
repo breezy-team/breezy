@@ -260,22 +260,22 @@ class TestBranch67(object):
 
     def test_layout(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.failUnlessExists('a/.bzr/branch/last-revision')
-        self.failIfExists('a/.bzr/branch/revision-history')
-        self.failIfExists('a/.bzr/branch/references')
+        self.assertPathExists('a/.bzr/branch/last-revision')
+        self.assertPathDoesNotExist('a/.bzr/branch/revision-history')
+        self.assertPathDoesNotExist('a/.bzr/branch/references')
 
     def test_config(self):
         """Ensure that all configuration data is stored in the branch"""
         branch = self.make_branch('a', format=self.get_format_name())
         branch.set_parent('http://example.com')
-        self.failIfExists('a/.bzr/branch/parent')
+        self.assertPathDoesNotExist('a/.bzr/branch/parent')
         self.assertEqual('http://example.com', branch.get_parent())
         branch.set_push_location('sftp://example.com')
         config = branch.get_config()._get_branch_data_config()
         self.assertEqual('sftp://example.com',
                          config.get_user_option('push_location'))
         branch.set_bound_location('ftp://example.com')
-        self.failIfExists('a/.bzr/branch/bound')
+        self.assertPathDoesNotExist('a/.bzr/branch/bound')
         self.assertEqual('ftp://example.com', branch.get_bound_location())
 
     def test_set_revision_history(self):
@@ -309,10 +309,10 @@ class TestBranch67(object):
         subtree.commit('a subtree file')
         subsubtree.commit('a subsubtree file')
         tree.branch.create_checkout('target', lightweight=lightweight)
-        self.failUnlessExists('target')
-        self.failUnlessExists('target/subtree')
-        self.failUnlessExists('target/subtree/file')
-        self.failUnlessExists('target/subtree/subsubtree/file')
+        self.assertPathExists('target')
+        self.assertPathExists('target/subtree')
+        self.assertPathExists('target/subtree/file')
+        self.assertPathExists('target/subtree/subsubtree/file')
         subbranch = _mod_branch.Branch.open('target/subtree/subsubtree')
         if lightweight:
             self.assertEndsWith(subbranch.base, 'source/subtree/subsubtree/')

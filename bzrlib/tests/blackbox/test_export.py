@@ -257,7 +257,7 @@ class TestExport(TestCaseWithTransport):
         os.chdir('branch')
 
         self.run_bzr('export ../first.zip -r 1')
-        self.failUnlessExists('../first.zip')
+        self.assertPathExists('../first.zip')
         zf = zipfile.ZipFile('../first.zip')
         try:
             self.assertEqual(['first/hello'], sorted(zf.namelist()))

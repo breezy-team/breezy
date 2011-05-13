@@ -190,7 +190,7 @@ class TestShelver(tests.TestCaseWithTransport):
         shelver.expect('Shelve adding file "foo"? [yNfq?]', 'y')
         shelver.expect('Shelve 1 change(s)? [yNfq?]', 'y')
         shelver.run()
-        self.failIfExists('tree/foo')
+        self.assertPathDoesNotExist('tree/foo')
 
     def test_shelve_kind_change(self):
         tree = self.create_shelvable_tree()
@@ -422,7 +422,7 @@ class TestApplyReporter(TestShelver):
         shelver.expect('Delete file "foo"? [yNfq?]', 'y')
         shelver.expect('Apply 1 change(s)? [yNfq?]', 'y')
         shelver.run()
-        self.failIfExists('tree/foo')
+        self.assertPathDoesNotExist('tree/foo')
 
     def test_shelve_kind_change(self):
         tree = self.create_shelvable_tree()
