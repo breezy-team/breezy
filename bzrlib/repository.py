@@ -1160,8 +1160,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
         raise NotImplementedError(self.get_known_graph_ancestry)
 
-    def get_file_graph(self, file_id):
-        """Return the graph walker for a specific file."""
+    def get_file_graph(self):
+        """Return the graph walker for files."""
         raise NotImplementedError(self.get_file_graph)
 
     def get_graph(self, other_repository=None):

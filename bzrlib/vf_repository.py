@@ -1816,11 +1816,9 @@ class VersionedFileRepository(Repository):
         return graph.GraphThunkIdsToKeys(known_graph)
 
     @needs_read_lock
-    def get_file_graph(self, file_id):
-        """Return the graph walker for a specific file."""
-        parents_provider = versionedfile.PerFileParentsProvider(self.texts,
-            file_id)
-        return graph.Graph(parents_provider)
+    def get_file_graph(self):
+        """Return the graph walker for text revisions."""
+        return graph.Graph(self.texts)
 
     def _get_versioned_file_checker(self, text_key_references=None,
         ancestors=None):

@@ -1137,10 +1137,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         return RemoteStreamSource(self, to_format)
 
     @needs_read_lock
-    def get_file_graph(self, file_id):
-        parents_provider = versionedfile.PerFileParentsProvider(self.texts,
-            file_id)
-        return graph.Graph(parents_provider)
+    def get_file_graph(self):
+        return graph.Graph(self.texts)
 
     @needs_read_lock
     def has_revision(self, revision_id):

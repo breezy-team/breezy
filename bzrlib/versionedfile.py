@@ -1946,25 +1946,4 @@ class _KeyRefs(object):
         return result
 
 
-class PerFileParentsProvider(object):
-    """Simple parents provider for a specific file id."""
 
-    def __init__(self, versionedfiles, file_id):
-        """Create per file parents provider.
-
-        :param versionedfiles: Versionedfiles store to retrieve parents from.
-        :param file_id: File id to return parents for.
-        """
-        self.versionedfiles = versionedfiles
-        self.file_id = file_id
-
-    def get_parent_map(self, revisions):
-        keys = [(self.file_id, r) for r in revisions]
-        keys_ret = self.versionedfiles.get_parent_map(keys)
-        ret = {}
-        for (fid, rev), parents in keys_ret.iteritems():
-            if parents is None:
-                ret[rev] = None
-            else:
-                ret[rev] = [p[1] for p in parents]
-        return ret

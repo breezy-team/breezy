@@ -31,6 +31,7 @@ class TestPerFileGraph(TestCaseWithRepository):
         self.build_tree_contents([("a", "new contents")])
         revid2 = tree.commit("msg")
         self.addCleanup(tree.lock_read().unlock)
-        graph = tree.branch.repository.get_file_graph("fileid")
-        self.assertEquals({revid2:[revid1], revid1:[]},
-            graph.get_parent_map([revid2, revid1]))
+        graph = tree.branch.repository.get_file_graph()
+        self.assertEquals({
+            ("fileid", revid2): (("fileid", revid1),), ("fileid", revid1):()},
+            graph.get_parent_map([("fileid", revid2), ("fileid", revid1)]))
