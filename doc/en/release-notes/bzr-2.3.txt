@@ -5,6 +5,25 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
+bzr 2.3.3
+#########
+
+:2.3.3: 2011-05-13
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.3 releases.
+
+This fixed a bug in the test suite triggered by python-2.7 deprecating some
+tests helpers.
+
+Testing
+*******
+
+* Stop using `failIf`, `failUnless`, `failIfEqual`, etc, that give
+  `PendingDeprecationWarnings` on Python2.7. 
+  (Martin Pool, #760435)
+
+
 bzr 2.3.2
 #########
 
@@ -12,6 +31,9 @@ bzr 2.3.2
 
 This is a bugfix release. Upgrading is recommended for all users of earlier
 2.3 releases.
+
+This was never released due to bug #760435 interrupting the release process by
+breaking the test suite under python-2.7 on natty.
 
 External Compatibility Breaks
 *****************************
@@ -42,10 +64,6 @@ Bug Fixes
   normally not require running ``bzr whoami`` first.
   (Martin Pool, #616878)
 
-* When reporting a crash without apport, don't print the full list of
-   plugins because it's often too long.
-   (Martin Pool, #716389)
-
 * ``bzr merge --preview --pull`` should respect the ``--preview`` option
   first, and not actually change the branch tip revision.
   (John Arbash Meinel, Dennis Duchier, #760152)
@@ -67,6 +85,10 @@ Bug Fixes
   libraries into ``site-packages`` subdirectory of the installation directory,
   this might be required for "installing" extra dependencies for some plugins.
   (Alexander Belchenko, #743256)
+
+* When reporting a crash without apport, don't print the full list of
+   plugins because it's often too long.
+   (Martin Pool, #716389)
 
 API Changes
 ***********

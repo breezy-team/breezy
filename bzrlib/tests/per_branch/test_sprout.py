@@ -125,7 +125,7 @@ class TestSprout(TestCaseWithBranch):
         wt2 = wt.bzrdir.sprout('target',
             revision_id='rev1a').open_workingtree()
         self.assertEqual('rev1a', wt2.last_revision())
-        self.failUnlessExists('target/a')
+        self.assertPathExists('target/a')
 
     def test_sprout_with_unicode_symlink(self):
         # this tests bug #272444

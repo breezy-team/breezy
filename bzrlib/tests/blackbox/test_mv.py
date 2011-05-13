@@ -35,10 +35,10 @@ class TestMove(TestCaseWithTransport):
 
     def assertMoved(self,from_path,to_path):
         """Assert that to_path is existing and versioned but from_path not. """
-        self.failIfExists(from_path)
+        self.assertPathDoesNotExist(from_path)
         self.assertNotInWorkingTree(from_path)
 
-        self.failUnlessExists(to_path)
+        self.assertPathExists(to_path)
         self.assertInWorkingTree(to_path)
 
     def test_mv_modes(self):
@@ -119,7 +119,7 @@ class TestMove(TestCaseWithTransport):
 
         os.chdir('sub1/sub2')
         self.run_bzr('mv ../hello.txt .')
-        self.failUnlessExists('./hello.txt')
+        self.assertPathExists('./hello.txt')
 
         os.chdir('..')
         self.run_bzr('mv sub2/hello.txt .')
@@ -229,8 +229,8 @@ class TestMove(TestCaseWithTransport):
             ["^bzr: ERROR: Could not move a => b. b is already versioned\.$"],
             'mv a b')
         #check that nothing changed
-        self.failIfExists('a')
-        self.failUnlessExists('b')
+        self.assertPathDoesNotExist('a')
+        self.assertPathExists('b')
 
     def test_mv_already_moved_file_into_subdir(self):
         """Test bzr mv original_file to versioned_directory/file.
@@ -264,8 +264,8 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move a => a: sub is not versioned\.$"],
             'mv a sub/a')
-        self.failIfExists('a')
-        self.failUnlessExists('sub/a')
+        self.assertPathDoesNotExist('a')
+        self.assertPathExists('sub/a')
 
     def test_mv_already_moved_files_into_subdir(self):
         """Test bzr mv original_files to versioned_directory.
@@ -300,10 +300,10 @@ class TestMove(TestCaseWithTransport):
         self.run_bzr_error(
             ["^bzr: ERROR: Could not move to sub. sub is not versioned\.$"],
             'mv a1 a2 sub')
-        self.failIfExists('a1')
-        self.failUnlessExists('sub/a1')
-        self.failUnlessExists('a2')
-        self.failIfExists('sub/a2')
+        self.assertPathDoesNotExist('a1')
+        self.assertPathExists('sub/a1')
+        self.assertPathExists('a2')
+        self.assertPathDoesNotExist('sub/a2')
 
     def test_mv_already_moved_file_forcing_after(self):
         """Test bzr mv versioned_file to unversioned_file.
@@ -325,8 +325,8 @@ class TestMove(TestCaseWithTransport):
              " \(Use --after to tell bzr about a rename that has already"
              " happened\)$"],
             'mv a b')
-        self.failUnlessExists('a')
-        self.failUnlessExists('b')
+        self.assertPathExists('a')
+        self.assertPathExists('b')
 
     def test_mv_already_moved_file_using_after(self):
         """Test bzr mv --after versioned_file to unversioned_file.
@@ -346,9 +346,9 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a']) #touch a
 
         self.run_bzr('mv a b --after')
-        self.failUnlessExists('a')
+        self.assertPathExists('a')
         self.assertNotInWorkingTree('a')#a should be unknown now.
-        self.failUnlessExists('b')
+        self.assertPathExists('b')
         self.assertInWorkingTree('b')
 
     def test_mv_already_moved_files_forcing_after(self):
@@ -375,10 +375,10 @@ class TestMove(TestCaseWithTransport):
              " exist. \(Use --after to tell bzr about a rename that has already"
              " happened\)$"],
             'mv a1 a2 sub')
-        self.failUnlessExists('a1')
-        self.failUnlessExists('a2')
-        self.failUnlessExists('sub/a1')
-        self.failUnlessExists('sub/a2')
+        self.assertPathExists('a1')
+        self.assertPathExists('a2')
+        self.assertPathExists('sub/a1')
+        self.assertPathExists('sub/a2')
 
     def test_mv_already_moved_files_using_after(self):
         """Test bzr mv --after versioned_file to directory/unversioned_file.
@@ -402,10 +402,10 @@ class TestMove(TestCaseWithTransport):
         self.build_tree(['a2']) #touch a2
 
         self.run_bzr('mv a1 a2 sub --after')
-        self.failUnlessExists('a1')
-        self.failUnlessExists('a2')
-        self.failUnlessExists('sub/a1')
-        self.failUnlessExists('sub/a2')
+        self.assertPathExists('a1')
+        self.assertPathExists('a2')
+        self.assertPathExists('sub/a1')
+        self.assertPathExists('sub/a2')
         self.assertInWorkingTree('sub/a1')
         self.assertInWorkingTree('sub/a2')
 
@@ -421,15 +421,15 @@ class TestMove(TestCaseWithTransport):
         osutils.rename('c', 'd')
         # mv a b should work just like it does for already renamed files
         self.run_bzr('mv a b')
-        self.failIfExists('a')
+        self.assertPathDoesNotExist('a')
         self.assertNotInWorkingTree('a')
-        self.failUnlessExists('b')
+        self.assertPathExists('b')
         self.assertInWorkingTree('b')
         # and --after should work, too (technically it's ignored)
         self.run_bzr('mv --after c d')
-        self.failIfExists('c')
+        self.assertPathDoesNotExist('c')
         self.assertNotInWorkingTree('c')
-        self.failUnlessExists('d')
+        self.assertPathExists('d')
         self.assertInWorkingTree('d')
 
     def make_abcd_tree(self):

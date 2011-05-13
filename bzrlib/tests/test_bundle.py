@@ -1409,7 +1409,7 @@ class V4BundleTester(BundleTester, tests.TestCaseWithTransport):
         branch = tree_a.branch
         repo_a = branch.repository
         tree_a.commit("base", allow_pointless=True, rev_id='A')
-        self.failIf(branch.repository.has_signature_for_revision_id('A'))
+        self.assertFalse(branch.repository.has_signature_for_revision_id('A'))
         try:
             from bzrlib.testament import Testament
             # monkey patch gpg signing mechanism

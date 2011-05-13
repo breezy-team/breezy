@@ -72,14 +72,14 @@ class SFTPLockTests(TestCaseWithSFTPServer):
         t = self.get_transport()
 
         l = t.lock_write('bogus')
-        self.failUnlessExists('bogus.write-lock')
+        self.assertPathExists('bogus.write-lock')
 
         # Don't wait for the lock, locking an already locked
         # file should raise an assert
         self.assertRaises(LockError, t.lock_write, 'bogus')
 
         l.unlock()
-        self.failIf(lexists('bogus.write-lock'))
+        self.assertFalse(lexists('bogus.write-lock'))
 
         open('something.write-lock', 'wb').write('fake lock\n')
         self.assertRaises(LockError, t.lock_write, 'something')
@@ -193,15 +193,15 @@ class SFTPBranchTest(TestCaseWithSFTPServer):
         # old format branches use a special lock file on sftp.
         b = self.make_branch('', format=bzrdir.BzrDirFormat6())
         b = bzrlib.branch.Branch.open(self.get_url())
-        self.failUnlessExists('.bzr/')
-        self.failUnlessExists('.bzr/branch-format')
-        self.failUnlessExists('.bzr/branch-lock')
+        self.assertPathExists('.bzr/')
+        self.assertPathExists('.bzr/branch-format')
+        self.assertPathExists('.bzr/branch-lock')
 
-        self.failIf(lexists('.bzr/branch-lock.write-lock'))
+        self.assertPathDoesNotExist('.bzr/branch-lock.write-lock')
         b.lock_write()
-        self.failUnlessExists('.bzr/branch-lock.write-lock')
+        self.assertPathExists('.bzr/branch-lock.write-lock')
         b.unlock()
-        self.failIf(lexists('.bzr/branch-lock.write-lock'))
+        self.assertPathDoesNotExist('.bzr/branch-lock.write-lock')
 
     def test_push_support(self):
         self.build_tree(['a/', 'a/foo'])

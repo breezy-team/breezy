@@ -360,7 +360,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
         # config file in the branch.
         branch.nick = "Aaron's branch"
         if not isinstance(branch, remote.RemoteBranch):
-            self.failUnless(branch._transport.has("branch.conf"))
+            self.assertTrue(branch._transport.has("branch.conf"))
         # Because the nick has been set explicitly, the nick is now always
         # "Aaron's branch", regardless of directory name.
         self.assertEqual(branch.nick, "Aaron's branch")
@@ -419,7 +419,7 @@ class TestBranch(per_branch.TestCaseWithBranch):
     def test_format_description(self):
         tree = self.make_branch_and_tree('tree')
         text = tree.branch._format.get_format_description()
-        self.failUnless(len(text))
+        self.assertTrue(len(text))
 
     def test_get_commit_builder(self):
         branch = self.make_branch(".")
@@ -685,19 +685,19 @@ class TestFormat(per_branch.TestCaseWithBranch):
         t = self.get_transport()
         readonly_t = transport.get_transport(self.get_readonly_url())
         made_branch = self.make_branch('.')
-        self.failUnless(isinstance(made_branch, _mod_branch.Branch))
+        self.assertIsInstance(made_branch, _mod_branch.Branch)
 
         # find it via bzrdir opening:
         opened_control = bzrdir.BzrDir.open(readonly_t.base)
         direct_opened_branch = opened_control.open_branch()
         self.assertEqual(direct_opened_branch.__class__, made_branch.__class__)
         self.assertEqual(opened_control, direct_opened_branch.bzrdir)
-        self.failUnless(isinstance(direct_opened_branch._format,
-                        self.branch_format.__class__))
+        self.assertIsInstance(direct_opened_branch._format,
+            self.branch_format.__class__)
 
         # find it via Branch.open
         opened_branch = _mod_branch.Branch.open(readonly_t.base)
-        self.failUnless(isinstance(opened_branch, made_branch.__class__))
+        self.assertIsInstance(opened_branch, made_branch.__class__)
         self.assertEqual(made_branch._format.__class__,
                          opened_branch._format.__class__)
         # if it has a unique id string, can we probe for it ?
