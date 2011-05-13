@@ -137,8 +137,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.fetch(source.repository)
+        graph = repo.get_file_graph()
         self.assertEqual(result,
-            repo.get_file_graph().get_parent_map([(root_id, 'tip')])[(root_id, 'tip')])
+            graph.get_parent_map([(root_id, 'tip')])[(root_id, 'tip')])
 
     def test_fetch_to_rich_root_set_parent_no_parents(self):
         # No parents rev -> No parents

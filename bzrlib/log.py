@@ -1192,6 +1192,7 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     # Lookup all possible text keys to determine which ones actually modified
     # the file.
     graph = branch.repository.get_file_graph(file_id)
+    get_parent_map = graph.get_parent_map
     text_keys = [(file_id, rev_id) for rev_id, revno, depth in view_revisions]
     next_keys = None
     # Looking up keys in batches of 1000 can cut the time in half, as well as
@@ -1207,7 +1208,7 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
         next_keys = text_keys[start:start + chunk_size]
         # Only keep the revision_id portion of the key
         modified_text_revisions.update(
-            [k[1] for k in graph.get_parent_map(next_keys)])
+            [k[1] for k in get_parent_map(next_keys)])
     del text_keys, next_keys
 
     result = []
