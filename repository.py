@@ -43,9 +43,6 @@ from bzrlib.plugins.git.mapping import (
 from bzrlib.plugins.git.tree import (
     GitRevisionTree,
     )
-from bzrlib.plugins.git.versionedfiles import (
-    GitTexts,
-    )
 
 
 from dulwich.objects import (
@@ -162,7 +159,7 @@ class LocalGitRepository(GitRepository):
         self.signatures = None
         self.revisions = None
         self.inventories = None
-        self.texts = GitTexts(self)
+        self.texts = None
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
