@@ -20,7 +20,10 @@ broader Bazaar world of potential interest to those upgrading.
 Bazaar 2.3.1 includes all the fixes in the un-released 2.0.7, 2.1.4 and 2.2.5
 versions that weren't included in 2.3.0 and fixes some bugs on its own.
 
-Bazaar 2.3.2 is a bugfix release.
+Bazaar 2.3.2 is a bugfix release that was never released.
+
+Bazaar 2.3.3 is a bugfix release including the fixes in 2.3.2 and
+fixing the test helpers deprecated by python-2.7.
 
 See the :doc:`../release-notes/index` for details.
 
