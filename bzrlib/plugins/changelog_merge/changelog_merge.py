@@ -85,8 +85,8 @@ class ChangeLogMerger(merge.ConfigurableFileMerger):
             result_entries = merge_entries(
                 base_entries, this_entries, other_entries)
         except EntryConflict:
-            return 'not_applicable' # XXX: generating a nice conflict file
-                                    # would be better
+            # XXX: generating a nice conflict file would be better
+            return 'not_applicable', None
         # Transform the merged elements back into real blocks of lines.
         return 'success', entries_to_lines(result_entries)
 
@@ -101,29 +101,31 @@ def default_guess_edits(new_entries, deleted_entries, entry_as_str=''.join):
     This algorithm does O(N^2 * logN) SequenceMatcher.ratio() calls, which is
     pretty bad, but it shouldn't be used very often.
     """
-    deleted_entries_as_strs = [
-        entry_as_str(entry) for entry in deleted_entries]
-    new_entries_as_strs = [
-        entry_as_str(entry) for entry in new_entries]
+    deleted_entries_as_strs = map(entry_as_str, deleted_entries)
+    new_entries_as_strs = map(entry_as_str, new_entries)
     result_new = list(new_entries)
     result_deleted = list(deleted_entries)
     result_edits = []
     sm = difflib.SequenceMatcher()
     CUTOFF = 0.8
     while True:
+        mutter('default_guess_edits loop')
         best = None
-        best_score = None
-        for new_entry in new_entries:
-            new_entry_as_str = entry_as_str(new_entry)
+        best_score = CUTOFF
+        # Compare each new entry with each old entry to find the best match
+        for new_entry_as_str in new_entries_as_strs:
             sm.set_seq1(new_entry_as_str)
             for old_entry_as_str in deleted_entries_as_strs:
                 sm.set_seq2(old_entry_as_str)
                 score = sm.ratio()
-                if score > CUTOFF:
-                    if best_score is None or score > best_score:
-                        best = new_entry_as_str, old_entry_as_str
-                        best_score = score
+                if score > best_score:
+                    best = new_entry_as_str, old_entry_as_str
+                    best_score = score
+                    mutter('best: %0.3f %r', best_score, best)
         if best is not None:
+            # Add the best match to the list of edits, and remove it from the
+            # the list of new/old entries.  Also remove it from the new/old
+            # lists for the next round.
             del_index = deleted_entries_as_strs.index(best[1])
             new_index = new_entries_as_strs.index(best[0])
             result_edits.append(
@@ -131,6 +133,8 @@ def default_guess_edits(new_entries, deleted_entries, entry_as_str=''.join):
             del deleted_entries_as_strs[del_index], result_deleted[del_index]
             del new_entries_as_strs[new_index], result_new[new_index]
         else:
+            # No match better than CUTOFF exists in the remaining new and old
+            # entries.
             break
     return result_new, result_deleted, result_edits
 
