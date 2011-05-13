@@ -23,7 +23,6 @@ from bzrlib import (
     trace,
     osutils,
     urlutils,
-    version_info as bzrlib_version,
     )
 from bzrlib.bzrdir import CreateRepository
 from bzrlib.transport import do_catching_redirections
