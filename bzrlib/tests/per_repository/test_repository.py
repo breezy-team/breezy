@@ -33,8 +33,6 @@ from bzrlib import (
     tests,
     transport,
     upgrade,
-    versionedfile,
-    vf_repository,
     workingtree,
     )
 from bzrlib.repofmt import (
