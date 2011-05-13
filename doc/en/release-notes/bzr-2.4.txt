@@ -15,6 +15,10 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* ``bzr-2.4`` has officially dropped support for python2.4 and python2.5.
+  We will continue to maintain ``bzr-2.3`` for people who still need to
+  use those versions of python. (John Arbash Meinel)
+
 New Features
 ************
 
@@ -29,6 +33,14 @@ Improvements
 * ``bzr branch --stacked`` from a smart server uses the network a little
   more efficiently.  For a simple branch it reduces the number of
   round-trips by about 20%.  (Andrew Bennetts)
+
+* ``bzr pull`` now properly triggers the fast
+  ``CHKInventory.iter_changes`` rather than the slow generic
+  inter-Inventory changes. It used to use a ``DirStateRevisionTree`` as
+  one of the source trees, which is faster when we have to read the whole
+  inventory anyway, but much slower when we can get just the delta out of
+  the repository. On a 70k record tree, this changes ``bzr pull`` from 28s
+  down to 17s. (John Arbash Meinel, #780677)
 
 * Slightly reduced memory consumption when fetching into a 2a repository
   by reusing existing caching a little better.  (Andrew Bennetts)

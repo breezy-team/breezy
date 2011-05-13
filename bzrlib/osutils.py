@@ -53,18 +53,10 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     )
 
-# sha and md5 modules are deprecated in python2.6 but hashlib is available as
-# of 2.5
-if sys.version_info < (2, 5):
-    import md5 as _mod_md5
-    md5 = _mod_md5.new
-    import sha as _mod_sha
-    sha = _mod_sha.new
-else:
-    from hashlib import (
-        md5,
-        sha1 as sha,
-        )
+from hashlib import (
+    md5,
+    sha1 as sha,
+    )
 
 
 import bzrlib
