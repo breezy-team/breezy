@@ -89,6 +89,8 @@ class TestFindInconsistentRevisionParents(TestCaseWithBrokenRevisionIndex):
 
 class TestCallbacks(TestCaseWithRepository):
 
+    scenarios = all_repository_vf_format_scenarios()
+
     def test_callback_tree_and_branch(self):
         # use a real tree to get actual refs that will work
         tree = self.make_branch_and_tree('foo')
