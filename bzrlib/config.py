@@ -2362,7 +2362,10 @@ class LocationStore(LockableIniFileStore):
         super(LocationStore, self).__init__(t, 'locations.conf')
 
 
-class BranchStore(IniFileStore):
+# FIXME: We should rely on the branch itself to be locked (possibly checking
+# that even) but we shouldn't lock ourselves. This may make `bzr config` is
+# abit trickier though but I punt for now -- vila 20110512
+class BranchStore(LockableIniFileStore):
 
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
@@ -2576,8 +2579,8 @@ class LocationStack(_CompatibleStack):
         super(LocationStack, self).__init__(
             [matcher.get_sections, gstore.get_sections], lstore)
 
-
-class BranchStack(Stack):
+# FIXME: See BranchStore, same remarks -- vila 20110512
+class BranchStack(_CompatibleStack):
 
     def __init__(self, branch):
         bstore = BranchStore(branch)
@@ -2752,3 +2755,23 @@ class cmd_config(commands.Command):
             raise errors.NoSuchConfig(scope)
         if not removed:
             raise errors.NoSuchConfigOption(name)
+
+
+# Test registries
+
+# We need adapters that can build a Store or a Stack in a test context. Test
+# classes, based on TestCaseWithTransport, can use the registry to parametrize
+# themselves. The builder will receive a test instance and should return a
+# ready-to-use store or stack.  Plugins that defines new store/stacks can also
+# register themselves here to be tested against the tests defined in
+# bzrlib.tests.test_config.
+
+# The registered object should be a callable receiving a test instance
+# parameter (inheriting from tests.TestCaseWithTransport) and returning a Store
+# object.
+test_store_builder_registry = registry.Registry()
+
+# Thre registered object should be a callable receiving a test instance
+# parameter (inheriting from tests.TestCaseWithTransport) and returning a Stack
+# object.
+test_stack_builder_registry = registry.Registry()

@@ -63,44 +63,33 @@ def lockable_config_scenarios():
 
 load_tests = scenarios.load_tests_apply_scenarios
 
-# We need adapters that can build a config store in a test context. Test
-# classes, based on TestCaseWithTransport, can use the registry to parametrize
-# themselves. The builder will receive a test instance and should return a
-# ready-to-use store.  Plugins that defines new stores can also register
-# themselves here to be tested against the tests defined below.
-
-# FIXME: plugins should *not* need to import test_config to register their
-# helpers (or selftest -s xxx will be broken), the following registry should be
-# moved to bzrlib.config instead so that selftest -s bt.test_config also runs
-# the plugin specific tests (selftest -s bp.xxx won't, that would be against
-# the spirit of '-s') -- vila 20110503
-test_store_builder_registry = registry.Registry()
-test_store_builder_registry.register(
+# Register helpers to build stores
+config.test_store_builder_registry.register(
     'configobj', lambda test: config.IniFileStore(test.get_transport(),
                                                   'configobj.conf'))
-test_store_builder_registry.register(
+config.test_store_builder_registry.register(
     'bazaar', lambda test: config.GlobalStore())
-test_store_builder_registry.register(
+config.test_store_builder_registry.register(
     'location', lambda test: config.LocationStore())
-test_store_builder_registry.register(
-    'branch', lambda test: config.BranchStore(test.branch))
 
-# FIXME: Same remark as above for the following registry -- vila 20110503
-test_stack_builder_registry = registry.Registry()
-test_stack_builder_registry.register(
-    'bazaar', lambda test: config.GlobalStack())
-test_stack_builder_registry.register(
-    'location', lambda test: config.LocationStack('.'))
-test_stack_builder_registry.register(
-    'branch', lambda test: config.BranchStack(test.branch))
+def build_branch_store(test):
+    if getattr(test, 'branch', None) is None:
+        test.branch = test.make_branch('branch')
+    return config.BranchStore(test.branch)
+config.test_store_builder_registry.register('branch', build_branch_store)
 
-# FIXME: Same remark as above for the following registry, which makes three of
-# them, we'll soon be able to triangulate ;) -- vila 20110509
-test_compatible_stack_builder_registry = registry.Registry()
-test_compatible_stack_builder_registry.register(
+
+config.test_stack_builder_registry.register(
     'bazaar', lambda test: config.GlobalStack())
-test_compatible_stack_builder_registry.register(
+config.test_stack_builder_registry.register(
     'location', lambda test: config.LocationStack('.'))
+
+def build_branch_stack(test):
+    if getattr(test, 'branch', None) is None:
+        test.branch = test.make_branch('branch')
+    return config.BranchStack(test.branch)
+config.test_stack_builder_registry.register('branch', build_branch_stack)
+
 
 sample_long_alias="log -r-15..-1 --line"
 sample_config_text = u"""
@@ -1938,8 +1927,8 @@ class TestStore(tests.TestCaseWithTransport):
 
 class TestReadonlyStore(TestStore):
 
-    scenarios = [(key, {'get_store': builder})
-                 for key, builder in test_store_builder_registry.iteritems()]
+    scenarios = [(key, {'get_store': builder}) for key, builder
+                 in config.test_store_builder_registry.iteritems()]
 
     def setUp(self):
         super(TestReadonlyStore, self).setUp()
@@ -1978,13 +1967,12 @@ class TestReadonlyStore(TestStore):
 
 class TestMutableStore(TestStore):
 
-    scenarios = [(key, {'store_id': key, 'get_store': builder})
-                 for key, builder in test_store_builder_registry.iteritems()]
+    scenarios = [(key, {'store_id': key, 'get_store': builder}) for key, builder
+                 in config.test_store_builder_registry.iteritems()]
 
     def setUp(self):
         super(TestMutableStore, self).setUp()
         self.transport = self.get_transport()
-        self.branch = self.make_branch('branch')
 
     def has_store(self, store):
         store_basename = urlutils.relative_url(self.transport.external_url(),
@@ -2120,21 +2108,24 @@ class TestLockableIniFileStore(TestStore):
 
 class TestConcurrentStoreUpdates(TestStore):
 
-    scenarios = [(key, {'get_stack': builder})
-                 for key, builder
-                 in test_compatible_stack_builder_registry.iteritems()]
+    scenarios = [(key, {'get_stack': builder}) for key, builder
+                 in config.test_stack_builder_registry.iteritems()]
 
     def setUp(self):
         super(TestConcurrentStoreUpdates, self).setUp()
         self._content = 'one=1\ntwo=2\n'
         self.stack = self.get_stack(self)
+        if not isinstance(self.stack, config._CompatibleStack):
+            raise tests.TestNotApplicable(
+                '%s is not meant to be compatible with the old config design'
+                % (self.stack,))
         self.stack.store._load_from_string(self._content)
         # Flush the store
         self.stack.store.save()
 
     def test_simple_read_access(self):
         self.assertEquals('1', self.stack.get('one'))
-    
+
     def test_simple_write_access(self):
         self.stack.set('one', 'one')
         self.assertEquals('one', self.stack.get('one'))
@@ -2366,17 +2357,11 @@ class TestStackGet(tests.TestCase):
 
 class TestStackWithTransport(tests.TestCaseWithTransport):
 
-    def setUp(self):
-        super(TestStackWithTransport, self).setUp()
-        # FIXME: A more elaborate builder for the stack would avoid building a
-        # branch even for tests that don't need it.
-        self.branch = self.make_branch('branch')
+    scenarios = [(key, {'get_stack': builder}) for key, builder
+                 in config.test_stack_builder_registry.iteritems()]
 
 
 class TestStackSet(TestStackWithTransport):
-
-    scenarios = [(key, {'get_stack': builder})
-                 for key, builder in test_stack_builder_registry.iteritems()]
 
     def test_simple_set(self):
         conf = self.get_stack(self)
@@ -2394,9 +2379,6 @@ class TestStackSet(TestStackWithTransport):
 
 class TestStackRemove(TestStackWithTransport):
 
-    scenarios = [(key, {'get_stack': builder})
-                 for key, builder in test_stack_builder_registry.iteritems()]
-
     def test_remove_existing(self):
         conf = self.get_stack(self)
         conf.store._load_from_string('foo=bar')
@@ -2411,9 +2393,6 @@ class TestStackRemove(TestStackWithTransport):
 
 
 class TestConcreteStacks(TestStackWithTransport):
-
-    scenarios = [(key, {'get_stack': builder})
-                 for key, builder in test_stack_builder_registry.iteritems()]
 
     def test_build_stack(self):
         stack = self.get_stack(self)
