@@ -43,6 +43,9 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
     def test_add(self):
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                "format does not support inventory deltas")
         wt.lock_write()
         self.addCleanup(wt.unlock)
         root_id = wt.get_root_id()
@@ -55,6 +58,9 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
     def test_remove(self):
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                "format does not support inventory deltas")
         wt.lock_write()
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar'])
@@ -65,6 +71,9 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
     def test_rename_dir_with_children(self):
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                "format does not support inventory deltas")
         wt.lock_write()
         root_id = wt.get_root_id()
         self.addCleanup(wt.unlock)
@@ -79,6 +88,9 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
     def test_rename_dir_with_children_with_children(self):
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                "format does not support inventory deltas")
         wt.lock_write()
         root_id = wt.get_root_id()
         self.addCleanup(wt.unlock)
@@ -93,6 +105,9 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
     def test_rename_file(self):
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                "format does not support inventory deltas")
         wt.lock_write()
         self.addCleanup(wt.unlock)
         self.build_tree(['foo/', 'foo/bar', 'baz/'])
@@ -109,6 +124,9 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
         works, any simpler rename ought to work.
         """
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                "format does not support inventory deltas")
         wt.lock_write()
         root_id = wt.get_root_id()
         self.addCleanup(wt.unlock)
@@ -129,6 +147,9 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
          unable to find the child.)
         """
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                "format does not support inventory deltas")
         root_id = wt.get_root_id()
         self.build_tree(['dir/', 'dir/child', 'other/'])
         wt.add(['dir', 'dir/child', 'other'],
@@ -144,6 +165,9 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
     def test_replace_root(self):
         wt = self.make_branch_and_tree('.')
+        if not wt.branch.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                "format does not support inventory deltas")
         wt.lock_write()
         self.addCleanup(wt.unlock)
 
@@ -156,7 +180,10 @@ class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 class TestTreeReference(TestCaseWithWorkingTree):
 
     def test_tree_reference_matches_inv(self):
-        base = self.make_branch_and_tree('base')
+        base =self.make_branch_and_tree('base')
+        if base.branch.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                "format does not support inventory deltas")
         if not base.supports_tree_reference():
             raise tests.TestNotApplicable("wt doesn't support nested trees")
         # We add it as a directory, but it becomes a tree-reference
