@@ -43,7 +43,7 @@ import sys
 IGNORE_FILENAME = ".bzrignore"
 
 
-__copyright__ = "Copyright 2005-2010 Canonical Ltd."
+__copyright__ = "Copyright 2005-2011 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
