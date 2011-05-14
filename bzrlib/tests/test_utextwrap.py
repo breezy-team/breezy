@@ -18,6 +18,7 @@
 """Tests of the bzrlib.utextwrap."""
 
 from bzrlib import tests, utextwrap
+from bzrlib.tests import TestSkipped
 
 # Japanese "Good morning".
 # Each character have double width. So total 8 width on console.
@@ -189,4 +190,18 @@ try:
             setup_both(self, TestIndent, test_textwrap.IndentTestCases)
 
 except ImportError:
-    pass
+
+    class TestWrap(tests.TestCase):
+
+        def test_wrap(self):
+            raise TestSkipped("test.test_textwrap is not avialable.")
+
+    class TestLongWord(tests.TestCase):
+
+        def test_longword(self):
+            raise TestSkipped("test.test_textwrap is not avialable.")
+
+    class TestIndent(tests.TestCase):
+
+        def test_indent(self):
+            raise TestSkipped("test.test_textwrap is not avialable.")
