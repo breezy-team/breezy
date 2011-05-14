@@ -1,8 +1,8 @@
 # Copyright (C) 2011 Canonical Ltd
 #
 # UTextWrapper._handle_long_word, UTextWrapper._wrap_chunks,
-# wrap and fill is copied from Python's textwrap module
-# (under PSF license) and modified for support CJK.
+# UTextWrapper._fix_sentence_endings, wrap and fill is copied from Python's
+# textwrap module (under PSF license) and modified for support CJK.
 # Original Copyright for these functions:
 #
 # Copyright (C) 1999-2001 Gregory P. Ward.
@@ -107,6 +107,28 @@ class UTextWrapper(textwrap.TextWrapper):
                 return s[:pos], s[pos:]
         return s, u''
 
+    def _fix_sentence_endings(self, chunks):
+        """_fix_sentence_endings(chunks : [string])
+
+        Correct for sentence endings buried in 'chunks'.  Eg. when the
+        original text contains "... foo.\nBar ...", munge_whitespace()
+        and split() will convert that to [..., "foo.", " ", "Bar", ...]
+        which has one too few spaces; this method simply changes the one
+        space to two.
+
+        Note: This function is copied from textwrap.TextWrap and modified
+        to use unicode always.
+        """
+        i = 0
+        L = len(chunks)-1
+        patsearch = self.sentence_end_re.search
+        while i < L:
+            if chunks[i+1] == u" " and patsearch(chunks[i]):
+                chunks[i+1] = u"  "
+                i += 2
+            else:
+                i += 1
+
     def _handle_long_word(self, chunks, cur_line, cur_len, width):
         # Figure out when indent is larger than the specified width, and make
         # sure at least one character is stripped off on every pass
@@ -192,7 +214,7 @@ class UTextWrapper(textwrap.TextWrapper):
             # Convert current line back to a string and store it in list
             # of all lines (return value).
             if cur_line:
-                lines.append(indent + ''.join(cur_line))
+                lines.append(indent + u''.join(cur_line))
 
         return lines
 
@@ -202,7 +224,7 @@ class UTextWrapper(textwrap.TextWrapper):
         for chunk in chunks:
             prev_pos = 0
             for pos, char in enumerate(chunk):
-                if _eawidth(char) in 'FWA':
+                if self._unicode_char_width(char) == 2:
                     if prev_pos < pos:
                         cjk_split_chunks.append(chunk[prev_pos:pos])
                     cjk_split_chunks.append(char)
