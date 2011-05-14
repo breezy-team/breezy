@@ -74,6 +74,10 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Restore the workaround for option names including dots (--1.14) which was
+  disabled when we stopped listing --1.9 as a format.
+  (Vincent Ladeuil, #782289)
+
 API Changes
 ***********
 
