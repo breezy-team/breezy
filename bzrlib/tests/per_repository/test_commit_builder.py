@@ -995,7 +995,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # (closest to a public per-file graph API we have today)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        g = dict(graph.Graph(tree.branch.repository.texts).iter_ancestry([tip]))
+        g = dict(tree.branch.repository.get_file_graph().iter_ancestry([tip]))
         self.assertEqual(expected_graph, g)
 
     def test_last_modified_revision_after_content_file_changes(self):

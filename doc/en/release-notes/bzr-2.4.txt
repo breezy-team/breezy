@@ -87,6 +87,9 @@ API Changes
   compatible optimisers rather than an instance of the class it is called
   on. (Jelmer Vernooij)
 
+* New method ``Repository.get_file_graph`` which can return the
+  per-file revision graph. (Jelmer Vernooij, #775578)
+
 * The default implementation of ``Branch`` is now oriented to
   storing the branch tip. Branch implementations which store the full
   history should now subclass ``FullHistoryBzrBranch``.
