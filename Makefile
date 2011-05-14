@@ -425,14 +425,15 @@ clean-win32: clean-docs
 .PHONY: update-pot po/bzr.pot
 update-pot: po/bzr.pot
 
-PYFILES:=$(shell find bzrlib -name '*.py' | grep -v '/tests/')
+TRANSLATABLE_PYFILES:=$(shell find bzrlib -name '*.py' \
+    		| grep -v 'bzrlib/tests/' \
+    		| grep -v 'bzrlib/doc' \
+		)
 
 po/bzr.pot: $(PYFILES) $(DOCFILES)
-	$(PYTHON) tools/bzrgettext.py bzrlib/*.py \
-	  bzrlib/plugins/*.py \
-	  > po/bzr.pot
-	echo $(PYFILES) | xargs \
-	  xgettext --package-name "Bazaar" \
+	$(PYTHON) ./bzr export-pot > po/bzr.pot
+	echo $(TRANSLATABLE_PYFILES) | xargs \
+	  xgettext --package-name "bzr" \
 	  --msgid-bugs-address "<bazaar@canonical.com>" \
 	  --copyright-holder "Canonical" \
 	  --from-code ISO-8859-1 --join --sort-by-file --add-comments=i18n: \

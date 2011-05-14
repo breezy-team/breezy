@@ -3784,6 +3784,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_eol_filters',
         'bzrlib.tests.test_errors',
         'bzrlib.tests.test_export',
+        'bzrlib.tests.test_export_pot',
         'bzrlib.tests.test_extract',
         'bzrlib.tests.test_fetch',
         'bzrlib.tests.test_fixtures',
