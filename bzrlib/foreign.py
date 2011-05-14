@@ -338,23 +338,3 @@ class cmd_dpush(Command):
             push_result.report(self.outf)
         finally:
             target_branch.unlock()
-
-
-class InterToForeignBranch(InterBranch):
-
-    def lossy_push(self, stop_revision=None):
-        """Push deltas into another branch.
-
-        :note: This does not, like push, retain the revision ids from 
-            the source branch and will, rather than adding bzr-specific 
-            metadata, push only those semantics of the revision that can be 
-            natively represented by this branch' VCS.
-
-        :param target: Target branch
-        :param stop_revision: Revision to push, defaults to last revision.
-        :return: BranchPushResult with an extra member revidmap: 
-            A dictionary mapping revision ids from the target branch 
-            to new revision ids in the target branch, for each 
-            revision that was pushed.
-        """
-        raise NotImplementedError(self.lossy_push)
