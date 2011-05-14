@@ -110,11 +110,9 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
     def import_last_revision_info_and_tags(self, source, revno, revid,
                                            lossy=False):
         interbranch = InterToDummyVcsBranch(source, self)
+        result = interbranch.push(revid, lossy=True)
         if lossy:
-            result = interbranch.lossy_push(revid)
             revid = result.revidmap[revid]
-        else:
-            interbranch.push(revid)
         return (revno, revid)
 
 
@@ -150,17 +148,15 @@ class DummyForeignVcsRepositoryFormat(groupcompress_repo.RepositoryFormat2a):
         return "Dummy Foreign Vcs Repository"
 
 
-class InterToDummyVcsBranch(branch.GenericInterBranch,
-                            foreign.InterToForeignBranch):
+class InterToDummyVcsBranch(branch.GenericInterBranch):
 
     @staticmethod
     def is_compatible(source, target):
         return isinstance(target, DummyForeignVcsBranch)
 
-    def push(self, overwrite=False, stop_revision=None):
-        raise errors.NoRoundtrippingSupport(self.source, self.target)
-
-    def lossy_push(self, stop_revision=None):
+    def push(self, overwrite=False, stop_revision=None, lossy=False):
+        if not lossy:
+            raise errors.NoRoundtrippingSupport(self.source, self.target)
         result = branch.BranchPushResult()
         result.source_branch = self.source
         result.target_branch = self.target
@@ -453,7 +449,7 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
         source_tree = self.make_branch_and_tree("source")
         target_tree = self.make_branch_and_tree("target", 
             format=DummyForeignVcsDirFormat())
-        pushresult = source_tree.branch.lossy_push(target_tree.branch)
+        pushresult = source_tree.branch.push(target_tree.branch, lossy=True)
         self.assertEquals(revision.NULL_REVISION, pushresult.old_revid)
         self.assertEquals(revision.NULL_REVISION, pushresult.new_revid)
         self.assertEquals({}, pushresult.revidmap)
@@ -467,7 +463,7 @@ class DummyForeignVcsTests(tests.TestCaseWithTransport):
             format=DummyForeignVcsDirFormat())
         target_tree.branch.lock_write()
         try:
-            pushresult = source_tree.branch.lossy_push(target_tree.branch)
+            pushresult = source_tree.branch.push(target_tree.branch, lossy=True)
         finally:
             target_tree.branch.unlock()
         self.assertEquals(revision.NULL_REVISION, pushresult.old_revid)

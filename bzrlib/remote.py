@@ -2990,10 +2990,10 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             _override_hook_target=self, **kwargs)
 
     @needs_read_lock
-    def push(self, target, overwrite=False, stop_revision=None):
+    def push(self, target, overwrite=False, stop_revision=None, lossy=False):
         self._ensure_real()
         return self._real_branch.push(
-            target, overwrite=overwrite, stop_revision=stop_revision,
+            target, overwrite=overwrite, stop_revision=stop_revision, lossy=lossy,
             _override_hook_source_branch=self)
 
     def is_locked(self):
