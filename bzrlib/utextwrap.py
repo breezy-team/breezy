@@ -87,7 +87,7 @@ class UTextWrapper(textwrap.TextWrapper):
 
     def _width(self, s):
         """Returns width for s.
-        
+
         When s is unicode, take care of east asian width.
         When s is bytes, treat all byte is single width character.
         """
@@ -186,7 +186,7 @@ class UTextWrapper(textwrap.TextWrapper):
                 self._handle_long_word(chunks, cur_line, cur_len, width)
 
             # If the last chunk on this line is all whitespace, drop it.
-            if self.drop_whitespace and cur_line and cur_line[-1].strip() == '':
+            if self.drop_whitespace and cur_line and not cur_line[-1].strip():
                 del cur_line[-1]
 
             # Convert current line back to a string and store it in list
