@@ -200,7 +200,6 @@ class UTextWrapper(textwrap.TextWrapper):
         chunks = textwrap.TextWrapper._split(self, unicode(text))
         cjk_split_chunks = []
         for chunk in chunks:
-            assert chunk # TextWrapper._split removes empty chunk
             prev_pos = 0
             for pos, char in enumerate(chunk):
                 if _eawidth(char) in 'FWA':
