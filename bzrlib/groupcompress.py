@@ -804,7 +804,7 @@ def network_block_to_records(storage_kind, bytes, line_end):
 
 class _CommonGroupCompressor(object):
 
-    def __init__(self):
+    def __init__(self, settings=None):
         """Create a GroupCompressor."""
         self.chunks = []
         self._last = None
@@ -813,6 +813,10 @@ class _CommonGroupCompressor(object):
         self.labels_deltas = {}
         self._delta_index = None # Set by the children
         self._block = GroupCompressBlock()
+        if settings is None:
+            self._settings = {}
+        else:
+            self._settings = settings
 
     def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
         """Compress lines with label key.
@@ -933,12 +937,12 @@ class _CommonGroupCompressor(object):
 
 class PythonGroupCompressor(_CommonGroupCompressor):
 
-    def __init__(self, max_bytes_to_index=None):
+    def __init__(self, settings=None):
         """Create a GroupCompressor.
 
         Used only if the pyrex version is not available.
         """
-        super(PythonGroupCompressor, self).__init__()
+        super(PythonGroupCompressor, self).__init__(settings)
         self._delta_index = LinesDeltaIndex([])
         # The actual content is managed by LinesDeltaIndex
         self.chunks = self._delta_index.lines
@@ -993,12 +997,8 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
     """
 
     def __init__(self, settings=None):
-        super(PyrexGroupCompressor, self).__init__()
-        if settings is None:
-            max_bytes_to_index = \
-                GroupCompressVersionedFiles._DEFAULT_MAX_BYTES_TO_INDEX
-        else:
-            (max_bytes_to_index,) = settings
+        super(PyrexGroupCompressor, self).__init__(settings)
+        max_bytes_to_index = self._settings.get('max_bytes_to_index', 0)
         self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
     def _compress(self, key, bytes, max_delta_size, soft=False):
@@ -1216,7 +1216,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     # versus running out of memory trying to track everything. The default max
     # gives 100% sampling of a 1MB file.
     _DEFAULT_MAX_BYTES_TO_INDEX = 1024 * 1024
-    _DEFAULT_COMPRESSOR_SETTINGS = (_DEFAULT_MAX_BYTES_TO_INDEX,)
+    _DEFAULT_COMPRESSOR_SETTINGS = {'max_bytes_to_index':
+                                     _DEFAULT_MAX_BYTES_TO_INDEX}
 
     def __init__(self, index, access, delta=True, _unadded_refs=None,
                  _group_cache=None):
@@ -1690,7 +1691,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             if val is None:
                 val = self._DEFAULT_MAX_BYTES_TO_INDEX
             self._max_bytes_to_index = val
-        return (self._max_bytes_to_index,)
+        return {'max_bytes_to_index': self._max_bytes_to_index}
 
     def _make_group_compressor(self):
         return GroupCompressor(self._get_compressor_settings())

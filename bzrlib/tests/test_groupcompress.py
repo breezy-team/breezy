@@ -567,7 +567,8 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
         vf.writer.end()
         vf._max_bytes_to_index = 1234
         record = vf.get_record_stream([('a',)], 'unordered', True).next()
-        self.assertEqual((1234,), record._manager._get_compressor_settings())
+        self.assertEqual(dict(max_bytes_to_index=1234),
+                         record._manager._get_compressor_settings())
 
     def test_insert_record_stream_reuses_blocks(self):
         vf = self.make_test_vf(True, dir='source')
@@ -1138,7 +1139,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
                 ' does not handle compressor_settings')
         locations, old_block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(old_block,
-            get_compressor_settings=lambda: (32,))
+            get_compressor_settings=lambda: dict(max_bytes_to_index=32))
         gc = manager._make_group_compressor()
         self.assertEqual(32, gc._delta_index._max_bytes_to_index)
         self.add_key_to_manager(('key3',), locations, old_block, manager)
