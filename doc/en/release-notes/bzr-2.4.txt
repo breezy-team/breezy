@@ -198,6 +198,9 @@ Bug Fixes
   are only small changes to a large tree.
   (Ian Clatworthy, John Arbash Meinel, #380202)
 
+* ``bzr merge --no-remember location`` will not set ``submit_branch`` anymore
+  if it is *not* yet set. (Vincent Ladeuil, #782169)
+
 * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
 * ``bzrlib.merge.Merge`` now calls ``iter_changes`` without
