@@ -20,7 +20,6 @@
 
 from bzrlib.branch import (
     Branch,
-    InterBranch,
     )
 from bzrlib.commands import Command, Option
 from bzrlib.repository import Repository
@@ -315,7 +314,7 @@ class cmd_dpush(Command):
         target_branch.lock_write()
         try:
             try:
-                push_result = source_branch.lossy_push(target_branch)
+                push_result = source_branch.push(target_branch, lossy=True)
             except errors.LossyPushToSameVCS:
                 raise BzrCommandError("%r and %r are in the same VCS, lossy "
                     "push not necessary. Please use regular push." %
