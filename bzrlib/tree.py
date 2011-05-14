@@ -359,16 +359,18 @@ class Tree(object):
             cur_file = (self.get_file_text(file_id),)
             yield identifier, cur_file
 
-    def get_symlink_target(self, file_id):
+    def get_symlink_target(self, file_id, path=None):
         """Get the target for a given file_id.
 
         It is assumed that the caller already knows that file_id is referencing
         a symlink.
         :param file_id: Handle for the symlink entry.
+        :param path: The path of the file.
+        If both file_id and path are supplied, an implementation may use
+        either one.
         :return: The path the symlink points to.
         """
         raise NotImplementedError(self.get_symlink_target)
-
 
     def get_root_id(self):
         """Return the file_id for the root of this tree."""

@@ -2340,7 +2340,7 @@ class _PreviewTree(tree.InventoryTree):
                                    self.get_file(file_id).readlines(),
                                    default_revision)
 
-    def get_symlink_target(self, file_id):
+    def get_symlink_target(self, file_id, path=None):
         """See Tree.get_symlink_target"""
         if not self._content_change(file_id):
             return self._transform._tree.get_symlink_target(file_id)

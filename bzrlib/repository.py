@@ -20,7 +20,6 @@ import time
 
 from bzrlib import (
     bzrdir,
-    check,
     config,
     controldir,
     debug,
@@ -927,15 +926,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """
         raise NotImplementedError(self.add_signature_text)
 
-    def find_text_key_references(self):
-        """Find the text key references within the repository.
-
-        :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
-            to whether they were referred to by the tree of the
-            revision_id that they contain. 
-        """
-        raise NotImplementedError(self.find_text_key_references)
-
     def _find_parent_ids_of_revisions(self, revision_ids):
         """Find all parent ids that are mentioned in the revision graph.
 
@@ -1216,7 +1206,6 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         """Return the text for a signature."""
         raise NotImplementedError(self.get_signature_text)
 
-    @needs_read_lock
     def check(self, revision_ids=None, callback_refs=None, check_repo=True):
         """Check consistency of all history of given revision_ids.
 
@@ -1230,13 +1219,11 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
         :param check_repo: If False do not check the repository contents, just 
             calculate the data callback_refs requires and call them back.
         """
-        return self._check(revision_ids, callback_refs=callback_refs,
+        return self._check(revision_ids=revision_ids, callback_refs=callback_refs,
             check_repo=check_repo)
 
-    def _check(self, revision_ids, callback_refs, check_repo):
-        result = check.Check(self, check_repo=check_repo)
-        result.check(callback_refs)
-        return result
+    def _check(self, revision_ids=None, callback_refs=None, check_repo=True):
+        raise NotImplementedError(self.check)
 
     def _warn_if_deprecated(self, branch=None):
         if not self._format.is_deprecated():
