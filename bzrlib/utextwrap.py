@@ -91,7 +91,6 @@ class UTextWrapper(textwrap.TextWrapper):
         When s is unicode, take care of east asian width.
         When s is bytes, treat all byte is single width character.
         """
-        assert isinstance(s, unicode)
         charwidth = self._unicode_char_width
         return sum(charwidth(c) for c in s)
 
@@ -100,7 +99,6 @@ class UTextWrapper(textwrap.TextWrapper):
 
         Head is large as long as _width(head) <= width.
         """
-        assert isinstance(s, unicode)
         w = 0
         charwidth = self._unicode_char_width
         for pos, c in enumerate(s):
