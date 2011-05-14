@@ -1191,7 +1191,7 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     """
     # Lookup all possible text keys to determine which ones actually modified
     # the file.
-    graph = branch.repository.get_file_graph(file_id)
+    graph = branch.repository.get_file_graph()
     get_parent_map = graph.get_parent_map
     text_keys = [(file_id, rev_id) for rev_id, revno, depth in view_revisions]
     next_keys = None
