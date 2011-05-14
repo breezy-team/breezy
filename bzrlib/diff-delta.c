@@ -377,10 +377,10 @@ delta_result
 create_delta_index(const struct source_info *src,
                    struct delta_index *old,
                    struct delta_index **fresh,
-                   int max_entries)
+                   int max_bytes_to_index)
 {
     unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
-    unsigned int total_num_entries, stride;
+    unsigned int total_num_entries, stride, max_entries;
     const unsigned char *data, *buffer;
     struct delta_index *index;
     struct unpacked_index_entry *entry, **hash;
@@ -396,12 +396,15 @@ create_delta_index(const struct source_info *src,
      */
     stride = RABIN_WINDOW;
     num_entries = (src->size - 1)  / RABIN_WINDOW;
-    if (max_entries > 0 && num_entries > max_entries) {
-        /* Limit the max number of matching entries. This reduces the 'best'
-         * possible match, but means we don't consume all of ram.
-         */
-        num_entries = max_entries;
-        stride = (src->size - 1) / num_entries;
+    if (max_bytes_to_index > 0) {
+        max_entries = max_bytes_to_index / RABIN_WINDOW;
+        if (num_entries > max_entries) {
+            /* Limit the max number of matching entries. This reduces the 'best'
+             * possible match, but means we don't consume all of ram.
+             */
+            num_entries = max_entries;
+            stride = (src->size - 1) / num_entries;
+        }
     }
     if (old != NULL)
         total_num_entries = num_entries + old->num_entries;

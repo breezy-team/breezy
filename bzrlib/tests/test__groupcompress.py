@@ -282,7 +282,7 @@ class TestDeltaIndex(tests.TestCase):
                         for idx, (text_offset, hash_val)
                          in enumerate(entry_list)
                          if text_offset != 0 or hash_val != 0]
-        rabin_hash = self._gc_module.rabin_hash
+        rabin_hash = self._gc_module._rabin_hash
         self.assertEqual([(8, 16, rabin_hash(_text1[1:17])),
                           (25, 48, rabin_hash(_text1[33:49])),
                           (34, 32, rabin_hash(_text1[17:33])),
@@ -305,7 +305,7 @@ class TestDeltaIndex(tests.TestCase):
                         for idx, (text_offset, hash_val)
                          in enumerate(entry_list)
                          if text_offset != 0 or hash_val != 0]
-        rabin_hash = self._gc_module.rabin_hash
+        rabin_hash = self._gc_module._rabin_hash
         self.assertEqual([(8, 16, rabin_hash(_text1[1:17])),
                           (9, start2+16, rabin_hash(_text2[1:17])),
                           (25, 48, rabin_hash(_text1[33:49])),
@@ -332,9 +332,9 @@ class TestDeltaIndex(tests.TestCase):
         self.assertTrue(di._has_index())
         self.assertEqual('N\x90/\x1fdiffer from\nagainst other text\n', delta)
 
-    def test_add_source_max_entries(self):
+    def test_add_source_max_bytes_to_index(self):
         di = self._gc_module.DeltaIndex()
-        di._max_entries_per_source = 3
+        di._max_bytes_to_index = 3*16
         di.add_source(_text1, 0) # (77 bytes -1) // 3 = 25 byte stride
         di.add_source(_text3, 3) # (135 bytes -1) // 3 = 44 byte stride
         start2 = len(_text1) + 3
@@ -344,7 +344,7 @@ class TestDeltaIndex(tests.TestCase):
         just_entries = sorted([(text_offset, hash_val)
                                for text_offset, hash_val in entry_list
                                 if text_offset != 0 or hash_val != 0])
-        rabin_hash = self._gc_module.rabin_hash
+        rabin_hash = self._gc_module._rabin_hash
         self.assertEqual([(25, rabin_hash(_text1[10:26])),
                           (50, rabin_hash(_text1[35:51])),
                           (75, rabin_hash(_text1[60:76])),

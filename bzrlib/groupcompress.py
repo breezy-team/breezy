@@ -491,25 +491,25 @@ class _LazyGroupContentManager(object):
     _full_enough_block_size = 3*1024*1024 # size at which we won't repack
     _full_enough_mixed_block_size = 2*768*1024 # 1.5MB
 
-    def __init__(self, block, get_max_entries_per_source=None):
+    def __init__(self, block, get_compressor_settings=None):
         self._block = block
         # We need to preserve the ordering
         self._factories = []
         self._last_byte = 0
-        self._get_max = get_max_entries_per_source
-        self._max_entries_per_source = None
+        self._get_settings = get_compressor_settings
+        self._compressor_settings = None
 
-    def _get_max_entries_per_source(self):
-        if self._max_entries_per_source is not None:
-            return self._max_entries_per_source
-        max_entries = None
-        if self._get_max is not None:
-            max_entries = self._get_max()
-        if max_entries is None:
+    def _get_compressor_settings(self):
+        if self._compressor_settings is not None:
+            return self._compressor_settings
+        settings = None
+        if self._get_settings is not None:
+            settings = self._get_settings()
+        if settings is None:
             vf = GroupCompressVersionedFiles
-            max_entries = vf._DEFAULT_MAX_ENTRIES_PER_SOURCE
-        self._max_entries_per_source = max_entries
-        return self._max_entries_per_source
+            settings = vf._DEFAULT_COMPRESSOR_SETTINGS
+        self._compressor_settings = settings
+        return self._compressor_settings
 
     def add_factory(self, key, parents, start, end):
         if not self._factories:
@@ -549,7 +549,7 @@ class _LazyGroupContentManager(object):
         self._block = new_block
 
     def _make_group_compressor(self):
-        return GroupCompressor(self._get_max_entries_per_source())
+        return GroupCompressor(self._get_compressor_settings())
 
     def _rebuild_block(self):
         """Create a new GroupCompressBlock with only the referenced texts."""
@@ -574,7 +574,7 @@ class _LazyGroupContentManager(object):
         # TODO: If the content would have expanded, then we would want to
         #       handle a case where we need to split the block.
         #       Now that we have a user-tweakable option
-        #       (max_entries_per_source), it is possible that one person set it
+        #       (max_bytes_to_index), it is possible that one person set it
         #       to a very low value, causing poor compression.
         delta = time.time() - tstart
         self._block = new_block
@@ -933,7 +933,7 @@ class _CommonGroupCompressor(object):
 
 class PythonGroupCompressor(_CommonGroupCompressor):
 
-    def __init__(self, max_entries_per_source=None):
+    def __init__(self, max_bytes_to_index=None):
         """Create a GroupCompressor.
 
         Used only if the pyrex version is not available.
@@ -992,10 +992,14 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
        left side.
     """
 
-    def __init__(self, max_entries_per_source=None):
+    def __init__(self, settings=None):
         super(PyrexGroupCompressor, self).__init__()
-        self._delta_index = DeltaIndex(
-            max_entries_per_source=max_entries_per_source)
+        if settings is None:
+            max_bytes_to_index = \
+                GroupCompressVersionedFiles._DEFAULT_MAX_BYTES_TO_INDEX
+        else:
+            (max_bytes_to_index,) = settings
+        self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
     def _compress(self, key, bytes, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
@@ -1097,7 +1101,7 @@ class _BatchingBlockFetcher(object):
         currently pending batch.
     """
 
-    def __init__(self, gcvf, locations, get_max_entries_per_source=None):
+    def __init__(self, gcvf, locations, get_compressor_settings=None):
         self.gcvf = gcvf
         self.locations = locations
         self.keys = []
@@ -1106,7 +1110,7 @@ class _BatchingBlockFetcher(object):
         self.total_bytes = 0
         self.last_read_memo = None
         self.manager = None
-        self._get_max_entries_per_source = get_max_entries_per_source
+        self._get_compressor_settings = get_compressor_settings
 
     def add_key(self, key):
         """Add another to key to fetch.
@@ -1187,7 +1191,7 @@ class _BatchingBlockFetcher(object):
                 else:
                     block = self.batch_memos[read_memo]
                 self.manager = _LazyGroupContentManager(block,
-                    get_max_entries_per_source=self._get_max_entries_per_source)
+                    get_compressor_settings=self._get_compressor_settings)
                 self.last_read_memo = read_memo
             start, end = index_memo[3:5]
             self.manager.add_factory(key, parents, start, end)
@@ -1211,7 +1215,8 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     # local blocks. Either way, 'improved resolution' is not very helpful,
     # versus running out of memory trying to track everything. The default max
     # gives 100% sampling of a 1MB file.
-    _DEFAULT_MAX_ENTRIES_PER_SOURCE = 1024 * 1024 / 16
+    _DEFAULT_MAX_BYTES_TO_INDEX = 1024 * 1024
+    _DEFAULT_COMPRESSOR_SETTINGS = (_DEFAULT_MAX_BYTES_TO_INDEX,)
 
     def __init__(self, index, access, delta=True, _unadded_refs=None,
                  _group_cache=None):
@@ -1233,7 +1238,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
             _group_cache = LRUSizeCache(max_size=50*1024*1024)
         self._group_cache = _group_cache
         self._immediate_fallback_vfs = []
-        self._max_entries_per_source = None
+        self._max_bytes_to_index = None
 
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
@@ -1614,7 +1619,7 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         #  - we run out of keys, or
         #  - the total bytes to retrieve for this batch > BATCH_SIZE
         batcher = _BatchingBlockFetcher(self, locations,
-            get_max_entries_per_source=self._get_max_entries_per_source)
+            get_compressor_settings=self._get_compressor_settings)
         for source, keys in source_keys:
             if source is self:
                 for key in keys:
@@ -1666,29 +1671,29 @@ class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
         for _ in self._insert_record_stream(stream, random_id=False):
             pass
 
-    def _get_max_entries_per_source(self):
-        if self._max_entries_per_source is None:
+    def _get_compressor_settings(self):
+        if self._max_bytes_to_index is None:
             # TODO: VersionedFiles don't know about their containing
             #       repository, so they don't have much of an idea about their
             #       location. So for now, this is only a global option.
             c = config.GlobalConfig()
-            val = c.get_user_option('bzr.groupcompress.max_entries_per_source')
+            val = c.get_user_option('bzr.groupcompress.max_bytes_to_index')
             if val is not None:
                 try:
                     val = int(val)
                 except ValueError, e:
                     trace.warning('Value for '
-                                  '"bzr.groupcompress.max_entries_per_source"'
+                                  '"bzr.groupcompress.max_bytes_to_index"'
                                   ' %r is not an integer'
                                   % (val,))
                     val = None
             if val is None:
-                val = self._DEFAULT_MAX_ENTRIES_PER_SOURCE
-            self._max_entries_per_source = val
-        return self._max_entries_per_source
+                val = self._DEFAULT_MAX_BYTES_TO_INDEX
+            self._max_bytes_to_index = val
+        return (self._max_bytes_to_index,)
 
     def _make_group_compressor(self):
-        return GroupCompressor(self._get_max_entries_per_source())
+        return GroupCompressor(self._get_compressor_settings())
 
     def _insert_record_stream(self, stream, random_id=False, nostore_sha=None,
                               reuse_blocks=True):

@@ -42,15 +42,16 @@ typedef enum {
  * The given buffer must not be freed nor altered before free_delta_index() is
  * called. The resultant struct must be freed using free_delta_index().
  *
- * :param max_entries: Limit the number of regions to sample to this amount.
- *      Useful if src can be unbounded in size, but you are willing to trade
- *      match accuracy for peak memory.
+ * :param max_bytes_to_index: Limit the number of regions to sample to this
+ *      amount of text. We will store at most max_bytes_to_index / RABIN_WINDOW
+ *      pointers into the source text.  Useful if src can be unbounded in size,
+ *      and you are willing to trade match accuracy for peak memory.
  */
 extern delta_result
 create_delta_index(const struct source_info *src,
                    struct delta_index *old,
                    struct delta_index **fresh,
-                   int max_entries);
+                   int max_bytes_to_index);
 
 
 /*

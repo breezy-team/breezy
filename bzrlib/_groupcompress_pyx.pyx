@@ -74,7 +74,7 @@ cdef extern from "delta.h":
     int get_hash_offset(delta_index *index, int pos, unsigned int *hash_offset)
     int get_entry_summary(delta_index *index, int pos,
                           unsigned int *global_offset, unsigned int *hash_val)
-    unsigned int c_rabin_hash "rabin_hash" (char *data)
+    unsigned int rabin_hash (char *data)
 
 
 cdef void *safe_malloc(size_t count) except NULL:
@@ -118,13 +118,13 @@ cdef object _translate_delta_failure(delta_result result):
     return AssertionError("Unrecognised delta result code: %d" % result)
 
 
-def rabin_hash(content):
+def _rabin_hash(content):
     if not PyString_CheckExact(content):
         raise ValueError('content must be a string')
     if len(content) < 16:
         raise ValueError('content must be at least 16 bytes long')
     # Try to cast it to an int, if it can fit
-    return int(c_rabin_hash(PyString_AS_STRING(content)))
+    return int(rabin_hash(PyString_AS_STRING(content)))
 
 
 cdef class DeltaIndex:
@@ -137,18 +137,18 @@ cdef class DeltaIndex:
     cdef delta_index *_index
     cdef public unsigned long _source_offset
     cdef readonly unsigned int _max_num_sources
-    cdef public int _max_entries_per_source
+    cdef public int _max_bytes_to_index
 
-    def __init__(self, source=None, max_entries_per_source=None):
+    def __init__(self, source=None, max_bytes_to_index=None):
         self._sources = []
         self._index = NULL
         self._max_num_sources = 65000
         self._source_infos = <source_info *>safe_malloc(sizeof(source_info)
                                                         * self._max_num_sources)
         self._source_offset = 0
-        self._max_entries_per_source = 0
-        if max_entries_per_source is not None:
-            self._max_entries_per_source = max_entries_per_source
+        self._max_bytes_to_index = 0
+        if max_bytes_to_index is not None:
+            self._max_bytes_to_index = max_bytes_to_index
 
         if source is not None:
             self.add_source(source, 0)
@@ -299,7 +299,7 @@ cdef class DeltaIndex:
         if source_location != 0:
             with nogil:
                 res = create_delta_index(src, self._index, &index,
-                                         self._max_entries_per_source)
+                                         self._max_bytes_to_index)
             if res != DELTA_OK:
                 raise _translate_delta_failure(res)
             if index != self._index:
@@ -317,7 +317,7 @@ cdef class DeltaIndex:
         # will always create a new index unless there's a malloc failure
         with nogil:
             res = create_delta_index(&self._source_infos[0], NULL, &index,
-                                     self._max_entries_per_source)
+                                     self._max_bytes_to_index)
         if res != DELTA_OK:
             raise _translate_delta_failure(res)
         self._index = index

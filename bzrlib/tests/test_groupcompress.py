@@ -553,21 +553,21 @@ class TestGroupCompressVersionedFiles(TestCaseWithGroupCompressVersionedFiles):
                     'as-requested', False)]
         self.assertEqual([('b',), ('a',), ('d',), ('c',)], keys)
 
-    def test_get_record_stream_max_entries_per_source_default(self):
+    def test_get_record_stream_max_bytes_to_index_default(self):
         vf = self.make_test_vf(True, dir='source')
         vf.add_lines(('a',), (), ['lines\n'])
         vf.writer.end()
         record = vf.get_record_stream([('a',)], 'unordered', True).next()
-        self.assertEqual(vf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
-                         record._manager._get_max_entries_per_source())
+        self.assertEqual(vf._DEFAULT_COMPRESSOR_SETTINGS,
+                         record._manager._get_compressor_settings())
 
-    def test_get_record_stream_accesses_max_entries_per_source_default(self):
+    def test_get_record_stream_accesses_compressor_settings(self):
         vf = self.make_test_vf(True, dir='source')
         vf.add_lines(('a',), (), ['lines\n'])
         vf.writer.end()
-        vf._max_entries_per_source = 1234
+        vf._max_bytes_to_index = 1234
         record = vf.get_record_stream([('a',)], 'unordered', True).next()
-        self.assertEqual(1234, record._manager._get_max_entries_per_source())
+        self.assertEqual((1234,), record._manager._get_compressor_settings())
 
     def test_insert_record_stream_reuses_blocks(self):
         vf = self.make_test_vf(True, dir='source')
@@ -798,36 +798,36 @@ class TestGroupCompressConfig(tests.TestCaseWithTransport):
         self.addCleanup(groupcompress.cleanup_pack_group, vf)
         return vf
 
-    def test_max_entries_per_source_default(self):
+    def test_max_bytes_to_index_default(self):
         vf = self.make_test_vf()
         gc = vf._make_group_compressor()
-        self.assertEqual(vf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
-                         vf._max_entries_per_source)
+        self.assertEqual(vf._DEFAULT_MAX_BYTES_TO_INDEX,
+                         vf._max_bytes_to_index)
         if isinstance(gc, groupcompress.PyrexGroupCompressor):
-            self.assertEqual(vf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
-                             gc._delta_index._max_entries_per_source)
+            self.assertEqual(vf._DEFAULT_MAX_BYTES_TO_INDEX,
+                             gc._delta_index._max_bytes_to_index)
 
-    def test_max_entries_per_source_in_config(self):
+    def test_max_bytes_to_index_in_config(self):
         c = config.GlobalConfig()
-        c.set_user_option('bzr.groupcompress.max_entries_per_source', '10000')
+        c.set_user_option('bzr.groupcompress.max_bytes_to_index', '10000')
         vf = self.make_test_vf()
         gc = vf._make_group_compressor()
-        self.assertEqual(10000, vf._max_entries_per_source)
+        self.assertEqual(10000, vf._max_bytes_to_index)
         if isinstance(gc, groupcompress.PyrexGroupCompressor):
-            self.assertEqual(10000, gc._delta_index._max_entries_per_source)
+            self.assertEqual(10000, gc._delta_index._max_bytes_to_index)
 
-    def test_max_entries_per_source_bad_config(self):
+    def test_max_bytes_to_index_bad_config(self):
         c = config.GlobalConfig()
-        c.set_user_option('bzr.groupcompress.max_entries_per_source', 'boogah')
+        c.set_user_option('bzr.groupcompress.max_bytes_to_index', 'boogah')
         vf = self.make_test_vf()
         # TODO: This is triggering a warning, we might want to trap and make
         #       sure it is readable.
         gc = vf._make_group_compressor()
-        self.assertEqual(vf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
-                         vf._max_entries_per_source)
+        self.assertEqual(vf._DEFAULT_MAX_BYTES_TO_INDEX,
+                         vf._max_bytes_to_index)
         if isinstance(gc, groupcompress.PyrexGroupCompressor):
-            self.assertEqual(vf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
-                             gc._delta_index._max_entries_per_source)
+            self.assertEqual(vf._DEFAULT_MAX_BYTES_TO_INDEX,
+                             gc._delta_index._max_bytes_to_index)
 
 
 class StubGCVF(object):
@@ -1105,39 +1105,42 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
             self.assertEqual(self._texts[record.key],
                              record.get_bytes_as('fulltext'))
 
-    def test_manager_default_max_entries_per_source(self):
+    def test_manager_default_compressor_settings(self):
         locations, old_block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(old_block)
         gcvf = groupcompress.GroupCompressVersionedFiles
-        # It doesn't greedily evaluate _max_entries_per_source
-        self.assertIs(None, manager._max_entries_per_source)
-        self.assertEqual(gcvf._DEFAULT_MAX_ENTRIES_PER_SOURCE,
-                         manager._get_max_entries_per_source())
+        # It doesn't greedily evaluate _max_bytes_to_index
+        self.assertIs(None, manager._compressor_settings)
+        self.assertEqual(gcvf._DEFAULT_COMPRESSOR_SETTINGS,
+                         manager._get_compressor_settings())
 
-    def test_manager_custom_max_entries_per_source(self):
+    def test_manager_custom_compressor_settings(self):
         locations, old_block = self.make_block(self._texts)
         called = []
-        def max_entries():
+        def compressor_settings():
             called.append('called')
-            return 10
+            return (10,)
         manager = groupcompress._LazyGroupContentManager(old_block,
-            get_max_entries_per_source=max_entries)
+            get_compressor_settings=compressor_settings)
         gcvf = groupcompress.GroupCompressVersionedFiles
-        # It doesn't greedily evaluate _max_entries_per_source
-        self.assertIs(None, manager._max_entries_per_source)
-        self.assertEqual(10, manager._get_max_entries_per_source())
-        self.assertEqual(10, manager._get_max_entries_per_source())
-        self.assertEqual(10, manager._max_entries_per_source)
+        # It doesn't greedily evaluate compressor_settings
+        self.assertIs(None, manager._compressor_settings)
+        self.assertEqual((10,), manager._get_compressor_settings())
+        self.assertEqual((10,), manager._get_compressor_settings())
+        self.assertEqual((10,), manager._compressor_settings)
         # Only called 1 time
         self.assertEqual(['called'], called)
 
-    def test__rebuild_handles_max_entries_per_source(self):
+    def test__rebuild_handles_compressor_settings(self):
+        if not isinstance(groupcompress.GroupCompressor,
+                          groupcompress.PyrexGroupCompressor):
+            raise tests.TestNotApplicable('pure-python compressor'
+                ' does not handle compressor_settings')
         locations, old_block = self.make_block(self._texts)
         manager = groupcompress._LazyGroupContentManager(old_block,
-            get_max_entries_per_source=lambda: 2)
+            get_compressor_settings=lambda: (32,))
         gc = manager._make_group_compressor()
-        if isinstance(gc, groupcompress.PyrexGroupCompressor):
-            self.assertEqual(2, gc._delta_index._max_entries_per_source)
+        self.assertEqual(32, gc._delta_index._max_bytes_to_index)
         self.add_key_to_manager(('key3',), locations, old_block, manager)
         self.add_key_to_manager(('key4',), locations, old_block, manager)
         action, last_byte, total_bytes = manager._check_rebuild_action()
@@ -1145,7 +1148,7 @@ class TestLazyGroupCompress(tests.TestCaseWithTransport):
         manager._rebuild_block()
         new_block = manager._block
         self.assertIsNot(old_block, new_block)
-        # Because of the new max_entries_per_source, we do a poor job of
+        # Because of the new max_bytes_to_index, we do a poor job of
         # rebuilding. This is a side-effect of the change, but at least it does
         # show the setting had an effect.
         self.assertTrue(old_block._content_length < new_block._content_length)
