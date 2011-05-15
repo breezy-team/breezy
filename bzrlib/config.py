@@ -2091,8 +2091,13 @@ class TransportConfig(object):
 
 class Option(object):
 
-    def __init__(self, name):
+    def __init__(self, name, default=None):
         self.name = name
+        self.default = default
+
+    def get_default(self):
+        return self.default
+
 
 # Options registry
 

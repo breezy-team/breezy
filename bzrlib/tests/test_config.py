@@ -1842,6 +1842,13 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
+class TestOption(tests.TestCase):
+
+    def test_default_value(self):
+        opt = config.Option('foo', default='bar')
+        self.assertEquals('bar', opt.get_default())
+        
+
 class TestOptionRegistry(tests.TestCase):
     
     def setUp(self):
