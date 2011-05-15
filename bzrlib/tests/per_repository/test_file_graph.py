@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,16 +15,23 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Test the find_text_key_references API."""
+"""Tests for the per file graph API."""
 
 
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
-class TestFindTextKeyReferences(TestCaseWithRepository):
+class TestPerFileGraph(TestCaseWithRepository):
 
-    def test_empty(self):
-        repo = self.make_repository('.')
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
-        self.assertEqual({}, repo.find_text_key_references())
+    def test_file_graph(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree_contents([("a", "contents")])
+        tree.add(["a"], ["fileid"])
+        revid1 = tree.commit("msg")
+        self.build_tree_contents([("a", "new contents")])
+        revid2 = tree.commit("msg")
+        self.addCleanup(tree.lock_read().unlock)
+        graph = tree.branch.repository.get_file_graph()
+        self.assertEquals({
+            ("fileid", revid2): (("fileid", revid1),), ("fileid", revid1):()},
+            graph.get_parent_map([("fileid", revid2), ("fileid", revid1)]))
