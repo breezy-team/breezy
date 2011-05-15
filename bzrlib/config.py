@@ -2098,6 +2098,12 @@ class Option(object):
 
 option_registry = registry.Registry()
 
+
+# FIXME: Delete the following dummy options once we register the real ones
+# -- vila 20110515
+option_registry.register('foo', Option('foo'), help='Dummy option')
+
+
 class Section(object):
     """A section defines a dict of option name => value.
 

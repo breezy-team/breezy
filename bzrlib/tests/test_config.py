@@ -1862,6 +1862,34 @@ class TestOptionRegistry(tests.TestCase):
                                     'TestOptionRegistry.lazy_option')
         self.assertIs(self.lazy_option, self.registry.get('foo'))
 
+    def test_registered_help(self):
+        opt = config.Option('foo')
+        self.registry.register('foo', opt, help='A simple option')
+        self.assertEquals('A simple option', self.registry.get_help('foo'))
+
+
+class TestRegisteredOptions(tests.TestCase):
+    """All registered options should verify some constraints."""
+
+    scenarios = [(key, {'option_name': key, 'option': option}) for key, option
+                 in config.option_registry.iteritems()]
+
+    def setUp(self):
+        super(TestRegisteredOptions, self).setUp()
+        self.registry = config.option_registry
+
+    def test_proper_name(self):
+        # An option should be registered under its own name, this can't be
+        # checked at registration time for the lazy ones.
+        self.assertEquals(self.option_name, self.option.name)
+
+    def test_help_is_set(self):
+        option_help = self.registry.get_help(self.option_name)
+        self.assertNotEquals(None, option_help)
+        # Come on, think about the user, he really wants to know whst the
+        # option is about
+        self.assertNotEquals('', option_help)
+
 
 class TestSection(tests.TestCase):
 
