@@ -3395,7 +3395,7 @@ class GenericInterBranch(InterBranch):
         try:
             return _run_with_write_locked_target(
                 self.target, self._push_with_bound_branches, overwrite,
-                stop_revision, lossy,
+                stop_revision, 
                 _override_hook_source_branch=_override_hook_source_branch)
         finally:
             self.source.unlock()
