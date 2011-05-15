@@ -1847,10 +1847,10 @@ class TestOption(tests.TestCase):
     def test_default_value(self):
         opt = config.Option('foo', default='bar')
         self.assertEquals('bar', opt.get_default())
-        
+
 
 class TestOptionRegistry(tests.TestCase):
-    
+
     def setUp(self):
         super(TestOptionRegistry, self).setUp()
         # Always start with an empty registry
