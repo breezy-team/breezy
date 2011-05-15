@@ -2385,12 +2385,25 @@ class TestStackGet(tests.TestCase):
         conf_stack = config.Stack([conf])
         self.assertEquals('bar', conf_stack.get('foo'))
 
-    def test_get_with_default_value(self):
+    def test_get_with_registered_default_value(self):
         conf_stack = config.Stack([dict()])
         opt = config.Option('foo', default='bar')
         self.overrideAttr(config, 'option_registry', registry.Registry())
         config.option_registry.register('foo', opt)
         self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_without_registered_default_value(self):
+        conf_stack = config.Stack([dict()])
+        opt = config.Option('foo')
+        self.overrideAttr(config, 'option_registry', registry.Registry())
+        config.option_registry.register('foo', opt)
+        self.assertEquals(None, conf_stack.get('foo'))
+
+    def test_get_without_default_value_for_not_registered(self):
+        conf_stack = config.Stack([dict()])
+        opt = config.Option('foo')
+        self.overrideAttr(config, 'option_registry', registry.Registry())
+        self.assertEquals(None, conf_stack.get('foo'))
 
     def test_get_first_definition(self):
         conf1 = dict(foo='bar')

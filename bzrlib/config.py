@@ -2104,7 +2104,7 @@ class Option(object):
 option_registry = registry.Registry()
 
 
-# FIXME: Delete the following dummy options once we register the real ones
+# FIXME: Delete the following dummy option once we register the real ones
 # -- vila 20110515
 option_registry.register('foo', Option('foo'), help='Dummy option')
 
@@ -2539,8 +2539,13 @@ class Stack(object):
                 break
         if value is None:
             # If the option is registered, it may provide a default value
-            opt = option_registry.get(name)
-            value = opt.get_default()
+            try:
+                opt = option_registry.get(name)
+            except KeyError:
+                # Not registered
+                opt = None
+            if opt is not None:
+                value = opt.get_default()
         return value
 
     def _get_mutable_section(self):
