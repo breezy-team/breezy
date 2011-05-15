@@ -2520,7 +2520,7 @@ class Stack(object):
         existence) require loading the store (even partially).
         """
         # FIXME: No caching of options nor sections yet -- vila 20110503
-
+        value = None
         # Ensuring lazy loading is achieved by delaying section matching (which
         # implies querying the persistent storage) until it can't be avoided
         # anymore by using callables to describe (possibly empty) section
@@ -2534,9 +2534,14 @@ class Stack(object):
             for section in sections:
                 value = section.get(name)
                 if value is not None:
-                    return value
-        # No definition was found
-        return None
+                    break
+            if value is not None:
+                break
+        if value is None:
+            # If the option is registered, it may provide a default value
+            opt = option_registry.get(name)
+            value = opt.get_default()
+        return value
 
     def _get_mutable_section(self):
         """Get the MutableSection for the Stack.
