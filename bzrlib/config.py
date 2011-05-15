@@ -2764,7 +2764,8 @@ class cmd_config(commands.Command):
 # themselves. The builder will receive a test instance and should return a
 # ready-to-use store or stack.  Plugins that defines new store/stacks can also
 # register themselves here to be tested against the tests defined in
-# bzrlib.tests.test_config.
+# bzrlib.tests.test_config. Note that the builder can be called multiple times
+# for the same tests.
 
 # The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Store

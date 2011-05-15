@@ -2361,6 +2361,13 @@ class TestStackWithTransport(tests.TestCaseWithTransport):
                  in config.test_stack_builder_registry.iteritems()]
 
 
+class TestConcreteStacks(TestStackWithTransport):
+
+    def test_build_stack(self):
+        # Just a smoke test to help debug builders
+        stack = self.get_stack(self)
+
+
 class TestStackSet(TestStackWithTransport):
 
     def test_simple_set(self):
@@ -2390,12 +2397,6 @@ class TestStackRemove(TestStackWithTransport):
     def test_remove_unknown(self):
         conf = self.get_stack(self)
         self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
-
-
-class TestConcreteStacks(TestStackWithTransport):
-
-    def test_build_stack(self):
-        stack = self.get_stack(self)
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
