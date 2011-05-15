@@ -2089,8 +2089,17 @@ class TransportConfig(object):
         self._transport.put_file(self._filename, out_file)
 
 
+class Option(object):
+
+    def __init__(self, name):
+        self.name = name
+
+# Options registry
+
+option_registry = registry.Registry()
+
 class Section(object):
-    """A section defines a dict of options.
+    """A section defines a dict of option name => value.
 
     This is merely a read-only dict which can add some knowledge about the
     options. It is *not* a python dict object though and doesn't try to mimic
@@ -2755,7 +2764,6 @@ class cmd_config(commands.Command):
             raise errors.NoSuchConfig(scope)
         if not removed:
             raise errors.NoSuchConfigOption(name)
-
 
 # Test registries
 

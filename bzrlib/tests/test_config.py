@@ -1842,6 +1842,27 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
+class TestOptionRegistry(tests.TestCase):
+    
+    def setUp(self):
+        super(TestOptionRegistry, self).setUp()
+        # Always start with an empty registry
+        self.overrideAttr(config, 'option_registry', registry.Registry())
+        self.registry = config.option_registry
+
+    def test_register(self):
+        opt = config.Option('foo')
+        self.registry.register('foo', opt)
+        self.assertIs(opt, self.registry.get('foo'))
+
+    lazy_option = config.Option('lazy_foo')
+
+    def test_register_lazy(self):
+        self.registry.register_lazy('foo', self.__module__,
+                                    'TestOptionRegistry.lazy_option')
+        self.assertIs(self.lazy_option, self.registry.get('foo'))
+
+
 class TestSection(tests.TestCase):
 
     # FIXME: Parametrize so that all sections produced by Stores run these
