@@ -377,7 +377,7 @@ delta_result
 create_delta_index(const struct source_info *src,
                    struct delta_index *old,
                    struct delta_index **fresh,
-                   int max_bytes_to_index)
+                   unsigned int max_bytes_to_index)
 {
     unsigned int i, hsize, hmask, num_entries, prev_val, *hash_count;
     unsigned int total_num_entries, stride, max_entries;

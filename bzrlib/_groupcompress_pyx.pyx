@@ -57,7 +57,7 @@ cdef extern from "delta.h":
     delta_result create_delta_index(source_info *src,
                                     delta_index *old,
                                     delta_index **fresh,
-                                    int max_entries) nogil
+                                    unsigned int max_entries) nogil
     delta_result create_delta_index_from_delta(source_info *delta,
                                                delta_index *old,
                                                delta_index **fresh) nogil
@@ -137,7 +137,7 @@ cdef class DeltaIndex:
     cdef delta_index *_index
     cdef public unsigned long _source_offset
     cdef readonly unsigned int _max_num_sources
-    cdef public int _max_bytes_to_index
+    cdef public unsigned int _max_bytes_to_index
 
     def __init__(self, source=None, max_bytes_to_index=None):
         self._sources = []

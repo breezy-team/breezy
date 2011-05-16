@@ -51,7 +51,7 @@ extern delta_result
 create_delta_index(const struct source_info *src,
                    struct delta_index *old,
                    struct delta_index **fresh,
-                   int max_bytes_to_index);
+                   unsigned int max_bytes_to_index);
 
 
 /*
