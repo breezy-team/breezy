@@ -64,6 +64,9 @@ Bug Fixes
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
 
+* Fix `bzr plugins` regression in bzr 2.4 which resulted in a traceback
+  from writelines on ckj terminals. (Martin [GZ], #754082)
+
 * ``WT.inventory`` and ``WT.iter_entries_by_dir()`` was not correctly
   reporting subdirectories that were tree references (in formats that
   supported them). (John Arbash Meinel, #764677)
