@@ -149,6 +149,6 @@ get_hash_offset(const struct delta_index *index, int pos,
  * RABIN_WINDOW wide (16 bytes).
  */
 extern unsigned int
-rabin_hash(const unsigned char *data);
+rabin_hash(const char *data);
 
 #endif

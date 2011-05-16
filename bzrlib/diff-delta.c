@@ -1170,7 +1170,7 @@ get_hash_offset(const struct delta_index *index, int pos,
 
 
 unsigned int
-rabin_hash(const unsigned char *data)
+rabin_hash(const char *data)
 {
     int i;
     unsigned int val = 0;
