@@ -74,7 +74,7 @@ cdef extern from "delta.h":
     int get_hash_offset(delta_index *index, int pos, unsigned int *hash_offset)
     int get_entry_summary(delta_index *index, int pos,
                           unsigned int *global_offset, unsigned int *hash_val)
-    unsigned int rabin_hash (char *data)
+    unsigned int rabin_hash (unsigned char *data)
 
 
 cdef void *safe_malloc(size_t count) except NULL:
@@ -124,7 +124,7 @@ def _rabin_hash(content):
     if len(content) < 16:
         raise ValueError('content must be at least 16 bytes long')
     # Try to cast it to an int, if it can fit
-    return int(rabin_hash(PyString_AS_STRING(content)))
+    return int(rabin_hash(<unsigned char*>(PyString_AS_STRING(content))))
 
 
 cdef class DeltaIndex:

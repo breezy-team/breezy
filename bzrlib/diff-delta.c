@@ -397,7 +397,7 @@ create_delta_index(const struct source_info *src,
     stride = RABIN_WINDOW;
     num_entries = (src->size - 1)  / RABIN_WINDOW;
     if (max_bytes_to_index > 0) {
-        max_entries = max_bytes_to_index / RABIN_WINDOW;
+        max_entries = (unsigned int) (max_bytes_to_index / RABIN_WINDOW);
         if (num_entries > max_entries) {
             /* Limit the max number of matching entries. This reduces the 'best'
              * possible match, but means we don't consume all of ram.
