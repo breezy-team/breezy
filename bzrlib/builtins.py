@@ -3857,10 +3857,10 @@ class cmd_merge(Command):
 
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
-    If there is no default branch set, the first merge will set it. After
-    that, you can omit the branch to use the default.  To change the
-    default, use --remember. The value will only be saved if the remote
-    location can be accessed.
+    If there is no default branch set, the first merge will set it (use
+    --no-remember to *not* set it). After that, you can omit the branch to use
+    the default.  To change the default, use --remember. The value will only be
+    saved if the remote location can be accessed.
 
     The results of the merge are placed into the destination working
     directory, where they can be reviewed (with bzr diff), tested, and then

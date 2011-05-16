@@ -61,6 +61,9 @@ Bug Fixes
 * All Tree types can now be exported as tar.*, zip or directories.
   (Aaron Bentley)
   
+* ``bzr merge --no-remember location`` never sets ``submit_branch``.
+  (Vincent Ladeuil, #782169)
+
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
 
@@ -197,9 +200,6 @@ Bug Fixes
   occurred. This can significantly improve 'bzr status' times when there
   are only small changes to a large tree.
   (Ian Clatworthy, John Arbash Meinel, #380202)
-
-* ``bzr merge --no-remember location`` will not set ``submit_branch`` anymore
-  if it is *not* yet set. (Vincent Ladeuil, #782169)
 
 * Lazy hooks are now reset between test runs. (Jelmer Vernooij, #745566)
 
