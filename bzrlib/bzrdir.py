@@ -2280,6 +2280,8 @@ register_metadir(controldir.format_registry, 'default-rich-root',
     hidden=True,
     help='Same as 2a.')
 
+# FIXME: The following defeats the lazy loading of config -- vila 20110515
+#
 # The current format that is made on 'bzr init'.
 format_name = config.GlobalConfig().get_user_option('default_format')
 if format_name is None:
