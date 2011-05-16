@@ -18,12 +18,11 @@
 #    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
 
-from bzrlib.tests import TestUtil
-
 
 def load_tests(standard_tests, module, loader):
   testmod_names = [
           'test_builddeb',
+          'test_dep3',
           'test_do',
           'test_import_dsc',
           'test_import_upstream',

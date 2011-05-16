@@ -1205,3 +1205,73 @@ class cmd_dh_make(Command):
         note('Package prepared in %s'
                 % urlutils.unescape_for_display(tree.basedir,
                     self.outf.encoding))
+
+
+class cmd_dep3_patch(Command):
+    """Format the changes in a branch as a DEP-3 patch.
+
+    """
+
+    takes_args = ["location"]
+
+    directory_opt = Option('directory',
+                           help='Packaging tree for which to generate patch.',
+                           short_name='d', type=unicode)
+
+    no_upstream_check_opt = Option('no-upstream-check',
+        help="Don't check whether patch has been merged upstream.")
+
+    takes_options = [directory_opt, "revision", no_upstream_check_opt]
+
+    def run(self, location, directory=".", revision=None, no_upstream_check=False):
+        from bzrlib.plugins.builddeb.dep3 import (
+            determine_applied_upstream,
+            determine_forwarded,
+            describe_origin,
+            gather_bugs_and_authors,
+            write_dep3_patch,
+            )
+        packaging_tree, packaging_branch = BzrDir.open_containing_tree_or_branch(
+            directory)[:2]
+        tree, branch = BzrDir.open_containing_tree_or_branch(location)[:2]
+        branch.lock_read()
+        try:
+            if revision is not None and len(revision) >= 1:
+                revision_id = revision[-1].as_revision_id(branch)
+            else:
+                revision_id = branch.last_revision()
+            graph = branch.repository.get_graph(packaging_branch.repository)
+            if revision is not None and len(revision) == 2:
+                base_revid = revision[0].as_revision_id(branch)
+            else:
+                base_revid = graph.find_unique_lca(revision_id,
+                    packaging_branch.last_revision())
+            interesting_revision_ids = graph.find_unique_ancestors(revision_id, [base_revid])
+            if len(interesting_revision_ids) == 0:
+                raise BzrCommandError("No unmerged revisions")
+            (bugs, authors, last_update) = gather_bugs_and_authors(branch.repository,
+                interesting_revision_ids)
+            config = branch.get_config()
+            description = config.get_user_option("description")
+            if description is None and len(interesting_revision_ids) == 1:
+                # if there's just one revision, use that revisions commits message
+                rev = branch.repository.get_revision(iter(interesting_revision_ids).next())
+                description = rev.message
+            origin = describe_origin(branch, revision_id)
+            if packaging_tree is None:
+                packaging_tree = packaging_branch.basis_tree()
+            builddeb_config = debuild_config(packaging_tree, True)
+            if not no_upstream_check and builddeb_config.upstream_branch:
+                upstream_branch = Branch.open(builddeb_config.upstream_branch)
+                applied_upstream = determine_applied_upstream(upstream_branch, branch,
+                    revision_id)
+                forwarded = determine_forwarded(upstream_branch, branch, revision_id)
+            else:
+                applied_upstream = None
+                forwarded = None
+            write_dep3_patch(self.outf, branch, base_revid,
+                revision_id, bugs=bugs, authors=authors, origin=origin,
+                forwarded=forwarded, applied_upstream=applied_upstream,
+                description=description, last_update=last_update)
+        finally:
+            branch.unlock()
