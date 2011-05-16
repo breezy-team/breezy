@@ -119,6 +119,8 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* A test that was expected to fail but passes instead now counts as a failure
+  catching up with new testtools and subunit handling. (Martin [GZ], #654474)
 
 bzr 2.4b2
 #########
