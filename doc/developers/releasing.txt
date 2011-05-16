@@ -318,7 +318,7 @@ Making the source tarball
 Publishing the source tarball
 -----------------------------
 
-#. Go to the relevant milestone page in Launchpad.
+#. Go to the relevant series page in Launchpad.
 
 #. Create a release of the milestone, and upload the source tarball and
    the GPG signature.  Or, if you prefer, use the
