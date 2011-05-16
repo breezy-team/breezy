@@ -64,6 +64,10 @@ Bug Fixes
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
 
+* ``UIFactory.prompt``, ``UIFactory.get_username``,
+  ``UIFactory.get_password`` and ``UIFactory.get_boolean`` now require a
+  unicode prompt to be passed in. (Jelmer Vernooij, #592083)
+
 * ``WT.inventory`` and ``WT.iter_entries_by_dir()`` was not correctly
   reporting subdirectories that were tree references (in formats that
   supported them). (John Arbash Meinel, #764677)
