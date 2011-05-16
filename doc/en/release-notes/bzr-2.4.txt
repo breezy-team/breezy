@@ -119,6 +119,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Make it easier for plugins to reuse the per_workingtree scenarios by
+  restoring the wt_scenarios helper that was accidentally deleted.
+  (Vincent Ladeuil, #783472)
 
 bzr 2.4b2
 #########
