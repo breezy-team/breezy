@@ -136,3 +136,10 @@ def load_tests(standard_tests, module, loader):
     return tests.multiply_tests(
         loader.loadTestsFromModuleNames(test_workingtree_implementations),
         scenarios, standard_tests)
+
+
+class TestWtScenarios(tests.TestCase):
+
+    def test_protect_wt_scenarios(self):
+        # Just make sure we don't accidentally delete the helper again
+        scenarios = wt_scenarios()
