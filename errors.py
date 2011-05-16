@@ -224,3 +224,10 @@ class StrictBuildFailed(BzrError):
 
     _fmt = ("Build refused because there are unknown files in the tree. "
             "To list all known files, run 'bzr unknowns'.")
+
+
+class DchError(BzrError):
+    _fmt = 'There was an error using dch: %(error)s.'
+
+    def __init__(self, error):
+        BzrError.__init__(self, error=error)

@@ -34,6 +34,11 @@ except ImportError:
     # Prior to 0.1.15 the debian module was called debian_bundle
     from debian_bundle.changelog import Version
 
+from bzrlib.plugins.builddeb.errors import (
+    DchError,
+    )
+
+
 TAG_PREFIX = "upstream-"
 
 
@@ -83,7 +88,6 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
     :param distribution_name: Distribution name (debian, ubuntu, ...)
     :param changelog: Changelog object
     :param package: Package name
-    :return: Whether an entry was successfully added
     """
     assert isinstance(upstream_version, str), \
          "upstream_version should be a str, not %s" % str(
@@ -99,8 +103,7 @@ def changelog_add_new_version(tree, upstream_version, distribution_name,
             "--package", package, entry_description]
     if not tree.has_filename("debian/changelog"):
         argv.append("--create")
-    proc = subprocess.Popen(argv, cwd=tree.basedir)
-    proc.wait()
-    # FIXME: Raise insightful exception here rather than just checking
-    # return code.
-    return proc.returncode == 0
+    proc = subprocess.Popen(argv, cwd=tree.basedir, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    (stdout, stderr) = proc.communicate()
+    if proc.returncode != 0:
+        raise DchError("Adding changelog entry failed: %s" % stderr)

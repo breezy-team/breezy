@@ -67,6 +67,7 @@ from bzrlib.plugins.builddeb.config import (
     )
 from bzrlib.plugins.builddeb.errors import (
     BuildFailedError,
+    DchError,
     MissingChangelogError,
     NoPreviousUpload,
     PackageVersionNotPresent,
@@ -541,8 +542,11 @@ class cmd_merge_upstream(Command):
             changelog):
         from bzrlib.plugins.builddeb.merge_upstream import (
             changelog_add_new_version)
-        if not changelog_add_new_version(tree, version, distribution_name,
-                changelog, package):
+        try:
+            changelog_add_new_version(tree, version, distribution_name,
+                changelog, package)
+        except DchError, e:
+            note(e)
             raise BzrCommandError('Adding a new changelog stanza after the '
                     'merge had completed failed. Add the new changelog '
                     'entry yourself, review the merge, and then commit.')
