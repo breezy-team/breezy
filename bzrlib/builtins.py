@@ -4633,8 +4633,8 @@ class cmd_plugins(Command):
     @display_command
     def run(self, verbose=False):
         from bzrlib import plugin
-        for line in plugin.describe_plugins(show_paths=verbose):
-            self.outf.write(line)
+        self.outf.writelines(
+            list(plugin.describe_plugins(show_paths=verbose)))
 
 
 class cmd_testament(Command):
