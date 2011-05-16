@@ -81,14 +81,10 @@ def _format_version_tuple(version_info):
     1.4.0
     >>> print _format_version_tuple((1, 4))
     1.4
-    >>> print _format_version_tuple((2, 1, 0, 'final', 1))
-    Traceback (most recent call last):
-    ...
-    ValueError: version_info (2, 1, 0, 'final', 1) not valid
+    >>> print _format_version_tuple((2, 1, 0, 'final', 42))
+    2.1.0.42
     >>> print _format_version_tuple((1, 4, 0, 'wibble', 0))
-    Traceback (most recent call last):
-    ...
-    ValueError: version_info (1, 4, 0, 'wibble', 0) not valid
+    1.4.0.wibble.0
     """
     if len(version_info) == 2:
         main_version = '%d.%d' % version_info[:2]
@@ -100,9 +96,10 @@ def _format_version_tuple(version_info):
     release_type = version_info[3]
     sub = version_info[4]
 
-    # check they're consistent
     if release_type == 'final' and sub == 0:
         sub_string = ''
+    elif release_type == 'final':
+        sub_string = '.' + str(sub)
     elif release_type == 'dev' and sub == 0:
         sub_string = 'dev'
     elif release_type == 'dev':
@@ -114,7 +111,7 @@ def _format_version_tuple(version_info):
     elif release_type == 'candidate':
         sub_string = 'rc' + str(sub)
     else:
-        raise ValueError("version_info %r not valid" % (version_info,))
+        return '.'.join(map(str, version_info))
 
     return main_version + sub_string
 
