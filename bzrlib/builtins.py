@@ -990,7 +990,7 @@ class cmd_pull(Command):
     takes_args = ['location?']
     encoding_type = 'replace'
 
-    def run(self, location=None, remember=False, overwrite=False,
+    def run(self, location=None, remember=None, overwrite=False,
             revision=None, verbose=False,
             directory=None, local=False,
             show_base=False):
@@ -1048,7 +1048,8 @@ class cmd_pull(Command):
                 possible_transports=possible_transports)
             self.add_cleanup(branch_from.lock_read().unlock)
 
-            if branch_to.get_parent() is None or remember:
+            if (remember
+                or (remember is None and branch_to.get_parent() is None)):
                 branch_to.set_parent(branch_from.base)
 
         if revision is not None:

@@ -180,3 +180,45 @@ class TestPushRemember(script.TestCaseWithTransportAndScript,
             self.assertIsSameRealPath(expected_push_location, push_location)
 
 
+class TestPullRemember(script.TestCaseWithTransportAndScript,
+                       TestRememberMixin):
+
+    working_dir = 'work'
+    command = ['pull',]
+    first_use_args = ['../parent',]
+    next_uses_args = ['../new_parent']
+
+    def setUp(self):
+        super(TestPullRemember, self).setUp()
+        self.run_script('''
+            $ bzr init parent
+            $ cd parent
+            $ echo parent > file
+            $ bzr add
+            $ bzr commit -m 'initial commit'
+            $ cd ..
+            $ bzr init %(working_dir)s
+            ''' % {'working_dir': self.working_dir},
+                        null_output_matches_anything=True)
+
+    def setup_next_uses(self):
+        # Do a first push that remembers the location
+        self.do_command(*self.first_use_args)
+        # Now create some new content
+        self.run_script('''
+            $ bzr branch parent new_parent
+            $ cd new_parent
+            $ echo new parent > file
+            $ bzr commit -m 'new parent'
+            $ cd ..
+            ''' % {'working_dir': self.working_dir},
+                        null_output_matches_anything=True)
+
+    def assertLocations(self, expected_locations):
+        br, _ = branch.Branch.open_containing(self.working_dir)
+        if not expected_locations:
+            self.assertEquals(None, br.get_parent())
+        else:
+            expected_pull_location = expected_locations[0]
+            pull_location = urlutils.relative_url(br.base, br.get_parent())
+            self.assertIsSameRealPath(expected_pull_location, pull_location)
