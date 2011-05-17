@@ -1172,11 +1172,16 @@ class DiskTreeTransform(TreeTransformBase):
         if self._tree is None:
             return
         try:
-            entries = [(self._limbo_name(t), t, k) for t, k in
-                       self._new_contents.iteritems()]
-            entries.sort(reverse=True)
-            for path, trans_id, kind in entries:
-                delete_any(path)
+            limbo_paths = sorted(self._limbo_files.values(), reverse=True)
+            for path in limbo_paths:
+                try:
+                    delete_any(path)
+                except OSError, e:
+                    if e.errno != errno.ENOENT:
+                        raise
+                    # XXX: warn? perhaps we just got interrupted at an
+                    # inconvenient moment, but perhaps files are disappearing
+                    # from under us?
             try:
                 delete_any(self._limbodir)
             except OSError:
@@ -1851,6 +1856,8 @@ class TreeTransform(DiskTreeTransform):
                     self._observed_sha1s[trans_id] = (o_sha1, st)
         finally:
             child_pb.finished()
+        for trans_id in self._new_contents:
+            del self._limbo_files[trans_id]
         self._new_contents.clear()
         return modified_paths
 
