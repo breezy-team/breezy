@@ -110,7 +110,7 @@ class DummyForeignVcsBranch(branch.BzrBranch6,foreign.ForeignBranch):
     def import_last_revision_info_and_tags(self, source, revno, revid,
                                            lossy=False):
         interbranch = InterToDummyVcsBranch(source, self)
-        result = interbranch.push(revid, lossy=True)
+        result = interbranch.push(stop_revision=revid, lossy=True)
         if lossy:
             revid = result.revidmap[revid]
         return (revno, revid)
@@ -167,7 +167,8 @@ class InterToDummyVcsBranch(branch.GenericInterBranch):
             my_history = self.target.revision_history()
             if stop_revision is None:
                 stop_revision = self.source.last_revision()
-            their_history = list(self.source.repository.iter_reverse_revision_history(stop_revision))
+            their_history = list(
+                self.source.repository.iter_reverse_revision_history(stop_revision))
             their_history.reverse()
             if their_history[:min(len(my_history), len(their_history))] != my_history:
                 raise errors.DivergedBranches(self.target, self.source)
