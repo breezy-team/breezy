@@ -346,7 +346,7 @@ class TestSendStrictWithoutChanges(tests.TestCaseWithTransport,
 
 
 class TestSendStrictWithChanges(tests.TestCaseWithTransport,
-                                   TestSendStrictMixin):
+                                TestSendStrictMixin):
 
     # These are textually the same as test_push.strict_push_change_scenarios,
     # but since the functions are reimplemented here, the definitions are left
@@ -433,3 +433,80 @@ class TestSendStrictWithChanges(tests.TestCaseWithTransport,
 class TestBundleStrictWithoutChanges(TestSendStrictWithoutChanges):
 
     _default_command = ['bundle-revisions', '../parent']
+
+
+# * first use remembers by default
+# * first use remembers if --remember is used
+# * first use does not remember if --no-remember is used
+
+# * default does not override stored
+# * --remember overrides stored
+# * --no-remember does not override stored
+
+class TestRemember(tests.TestCaseWithTransport, TestSendMixin):
+
+    _default_wd = 'work'
+
+    def setUp(self):
+        super(TestRemember, self).setUp()
+        grand_parent_tree = bzrdir.BzrDir.create_standalone_workingtree(
+            'grand_parent')
+        self.build_tree_contents([('grand_parent/file1', 'grand_parent')])
+        grand_parent_tree.add('file1')
+        grand_parent_tree.commit('initial commit', rev_id='grand_parent')
+        self.grand_parent_tree = grand_parent_tree
+
+        parent_bzrdir = grand_parent_tree.bzrdir.sprout('parent')
+        parent_tree = parent_bzrdir.open_workingtree()
+        parent_tree.commit('next commit', rev_id='parent')
+        self.parent_tree = parent_tree
+
+        branch_tree = parent_tree.bzrdir.sprout('branch').open_workingtree()
+        self.build_tree_contents([('branch/file1', 'branch')])
+        branch_tree.commit('last commit', rev_id='branch')
+        self.branch_tree = branch_tree
+
+    def prepare_next_uses(self):
+        # Do a first send that remembers the locations
+        self.do_send(['../parent', '../grand_parent'])
+        # Now create some new targets
+        new_grand_parent_tree = self.grand_parent_tree.bzrdir.sprout(
+            'new_grand_parent')
+        new_parent_tree = self.parent_tree.bzrdir.sprout('new_parent')
+
+    def assertLocations(self, expected_submit_branch, expected_public_branch):
+        br = self.branch_tree.branch
+        self.assertEquals(expected_submit_branch, br.get_submit_branch())
+        self.assertEquals(expected_public_branch, br.get_public_branch())
+
+    def do_send(self, *args):
+        # We always expect the same result here and care only about the
+        # arguments used and their consequences on the remembered locations
+        self.assertBundleContains(['branch'], *args)
+
+    def test_first_use_no_option(self):
+        self.do_send(['../parent', '../grand_parent'])
+        self.assertLocations('../parent', '../grand_parent')
+
+    def test_first_use_remember(self):
+        self.do_send(['--remember', '../parent', '../grand_parent'])
+        self.assertLocations('../parent', '../grand_parent')
+
+    def test_first_use_no_remember(self):
+        self.do_send(['--no-remember', '../parent', '../grand_parent'])
+        self.assertLocations(None, None)
+
+    def test_next_uses_no_option(self):
+        self.prepare_next_uses()
+        self.do_send(['../new_parent', '../new_grand_parent'])
+        self.assertLocations('../parent', '../grand_parent')
+
+    def test_next_uses_remember(self):
+        self.prepare_next_uses()
+        self.do_send(['--remember', '../new_parent', '../new_grand_parent'])
+        self.assertLocations('../new_parent', '../new_grand_parent')
+
+    def test_next_uses_no_remember(self):
+        self.prepare_next_uses()
+        self.do_send(['--no-remember', '../new_parent', '../new_grand_parent'])
+        self.assertLocations('../parent', '../grand_parent')

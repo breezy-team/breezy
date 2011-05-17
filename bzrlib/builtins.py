@@ -5366,7 +5366,7 @@ class cmd_send(Command):
         ]
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
-            no_patch=False, revision=None, remember=False, output=None,
+            no_patch=False, revision=None, remember=None, output=None,
             format=None, mail_to=None, message=None, body=None,
             strict=None, **kwargs):
         from bzrlib.send import send
