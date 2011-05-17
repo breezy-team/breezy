@@ -101,7 +101,7 @@ def _get_current_locale():
 class _ZzzTranslations(object):
 
     def zzz(self, s):
-        return 'zz{{%s}}' % s
+        return u'zz{{%s}}' % s
 
     def ugettext(self, s):
         return self.zzz(_null_translation.ugettext(s))
