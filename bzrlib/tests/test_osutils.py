@@ -1897,10 +1897,7 @@ class TestReadLink(tests.TestCaseInTempDir):
         os.symlink(self.target, self.link)
 
     def test_os_readlink_link_encoding(self):
-        if sys.version_info < (2, 6):
-            self.assertRaises(UnicodeEncodeError, os.readlink, self.link)
-        else:
-            self.assertEquals(self.target,  os.readlink(self.link))
+        self.assertEquals(self.target,  os.readlink(self.link))
 
     def test_os_readlink_link_decoding(self):
         self.assertEquals(self.target.encode(osutils._fs_enc),

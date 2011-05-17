@@ -53,7 +53,7 @@ from bzrlib.repofmt.pack_repo import (
     ResumedPack,
     Packer,
     )
-from bzrlib.repository import (
+from bzrlib.vf_repository import (
     StreamSource,
     )
 from bzrlib.static_tuple import StaticTuple
@@ -1269,6 +1269,9 @@ class GroupCHKStreamSource(StreamSource):
                         self._revision_keys)
         self.from_repository.revisions.clear_cache()
         self.from_repository.signatures.clear_cache()
+        # Clear the repo's get_parent_map cache too.
+        self.from_repository._unstacked_provider.disable_cache()
+        self.from_repository._unstacked_provider.enable_cache()
         s = self._get_inventory_stream(self._revision_keys)
         yield (s[0], wrap_and_count(pb, rc, s[1]))
         self.from_repository.inventories.clear_cache()

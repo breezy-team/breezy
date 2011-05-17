@@ -74,7 +74,7 @@ from copy import copy
 from bzrlib.osutils import (
     contains_whitespace,
     contains_linebreaks,
-    sha,
+    sha_strings,
     )
 from bzrlib.tree import Tree
 
@@ -209,9 +209,7 @@ class Testament(object):
         return r
 
     def as_sha1(self):
-        s = sha()
-        map(s.update, self.as_text_lines())
-        return s.hexdigest()
+        return sha_strings(self.as_text_lines())
 
 
 class StrictTestament(Testament):

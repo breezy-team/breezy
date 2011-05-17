@@ -972,7 +972,7 @@ class VersionedFiles(object):
     def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
         """Add a text to the store.
 
-        This is a private function for use by CommitBuilder.
+        This is a private function for use by VersionedFileCommitBuilder.
 
         :param key: The key tuple of the text to add. If the last element is
             None, a CHK string will be generated during the addition.
@@ -1420,6 +1420,33 @@ class ThunkedVersionedFiles(VersionedFiles):
             for suffix in vf.versions():
                 result.add(prefix + (suffix,))
         return result
+
+
+class VersionedFilesWithFallbacks(VersionedFiles):
+
+    def without_fallbacks(self):
+        """Return a clone of this object without any fallbacks configured."""
+        raise NotImplementedError(self.without_fallbacks)
+
+    def add_fallback_versioned_files(self, a_versioned_files):
+        """Add a source of texts for texts not present in this knit.
+
+        :param a_versioned_files: A VersionedFiles object.
+        """
+        raise NotImplementedError(self.add_fallback_versioned_files)
+
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        parent_map, missing_keys = self._index.find_ancestry(keys)
+        for fallback in self._transitive_fallbacks():
+            if not missing_keys:
+                break
+            (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
+                                                missing_keys)
+            parent_map.update(f_parent_map)
+            missing_keys = f_missing_keys
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
 
 
 class _PlanMergeVersionedFile(VersionedFiles):

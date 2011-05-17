@@ -40,36 +40,6 @@ class TestNoSpuriousInconsistentAncestors(TestCaseWithRepository):
         self.assertContainsRe(self.get_log(), "0 unreferenced text versions")
 
 
-class TestCallbacks(TestCaseWithRepository):
-
-    def test_callback_tree_and_branch(self):
-        # use a real tree to get actual refs that will work
-        tree = self.make_branch_and_tree('foo')
-        revid = tree.commit('foo')
-        tree.lock_read()
-        self.addCleanup(tree.unlock)
-        needed_refs = {}
-        for ref in tree._get_check_refs():
-            needed_refs.setdefault(ref, []).append(tree)
-        for ref in tree.branch._get_check_refs():
-            needed_refs.setdefault(ref, []).append(tree.branch)
-        self.tree_check = tree._check
-        self.branch_check = tree.branch.check
-        tree._check = self.tree_callback
-        tree.branch.check = self.branch_callback
-        self.callbacks = []
-        tree.branch.repository.check([revid], callback_refs=needed_refs)
-        self.assertNotEqual([], self.callbacks)
-
-    def tree_callback(self, refs):
-        self.callbacks.append(('tree', refs))
-        return self.tree_check(refs)
-
-    def branch_callback(self, refs):
-        self.callbacks.append(('branch', refs))
-        return self.branch_check(refs)
-
-
 class TestCleanRepository(TestCaseWithRepository):
 
     def test_new_repo(self):
