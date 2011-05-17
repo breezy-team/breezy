@@ -41,7 +41,7 @@ def _get_editor():
     except KeyError:
         pass
 
-    e = config.GlobalConfig().get_editor()
+    e = config.GlobalStack().get('editor')
     if e is not None:
         yield e, config.config_filename()
 
