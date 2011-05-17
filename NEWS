@@ -5,10 +5,45 @@ Bazaar Release Notes
 .. contents:: List of Releases
    :depth: 1
 
+bzr 2.1.5
+#########
+
+:2.1.5: NOT RELEASED YET
+
+Compatibility Breaks
+********************
+
+New Features
+************
+
+Bug Fixes
+*********
+
+Improvements
+************
+
+Documentation
+*************
+
+API Changes
+***********
+
+Internals
+*********
+
+Testing
+*******
+
+
 bzr 2.1.4
 #########
 
 :2.1.4: 2011-05-16
+
+The fourth release in our 2.1 series addresses some user-inconvenience bugs.
+None are critical, but upgrading is recommended for all users on earlier 2.1
+releases.
+
 
 Compatibility Breaks
 ********************
@@ -21,6 +56,8 @@ Compatibility Breaks
 
 New Features
 ************
+
+None.
 
 Bug Fixes
 *********
