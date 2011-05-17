@@ -1835,7 +1835,6 @@ class InterRepository(InterObject):
         if limit is not None:
             graph = self.source.get_graph()
             topo_ordered = list(graph.iter_topo_order(result_set))
-            mutter("topo ordered %r", topo_ordered)
             result_set = set(topo_ordered[:limit])
         return self.source.revision_ids_to_search_result(result_set)
 

@@ -130,6 +130,16 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         self.assertEqual(('search', set(['rev1']), set([NULL_REVISION]), 1),
             result.get_recipe())
 
+    def test_search_missing_revision_ids_limit(self):
+        # The limit= argument makes fetch() limit
+        # the results to the first X topo-sorted revisions.
+        repo_b = self.make_to_repository('rev1_only')
+        repo_a = self.bzrdir.open_repository()
+        # check the test will be valid
+        self.assertFalse(repo_b.has_revision('rev2'))
+        result = repo_b.search_missing_revision_ids(repo_a, limit=1)
+        self.assertEqual(set(['rev1']), result.get_keys())
+
     def test_fetch_fetches_signatures_too(self):
         from_repo = self.bzrdir.open_repository()
         from_signature = from_repo.get_signature_text('rev2')

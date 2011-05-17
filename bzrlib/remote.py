@@ -1604,7 +1604,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     @needs_read_lock
     def search_missing_revision_ids(self, other,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None, if_present_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None,
+            limit=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
@@ -1624,7 +1625,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         inter_repo = _mod_repository.InterRepository.get(other, self)
         return inter_repo.search_missing_revision_ids(
             find_ghosts=find_ghosts, revision_ids=revision_ids,
-            if_present_ids=if_present_ids)
+            if_present_ids=if_present_ids, limit=limit)
 
     def fetch(self, source, revision_id=None, find_ghosts=False,
             fetch_spec=None):

@@ -160,13 +160,13 @@ class RepoFetcher(object):
         elif self._last_revision == NULL_REVISION:
             # fetch_spec is None + last_revision is null => empty fetch.
             # explicit limit of no revisions needed
-            return graph.EmptySearchResult()
+            return _mod_graph.EmptySearchResult()
         elif self._last_revision is not None:
-            return graph.NotInOtherForRevs(self.to_repository,
+            return _mod_graph.NotInOtherForRevs(self.to_repository,
                 self.from_repository, [self._last_revision],
                 find_ghosts=self.find_ghosts).execute()
         else: # self._last_revision is None:
-            return graph.EverythingNotInOther(self.to_repository,
+            return _mod_graph.EverythingNotInOther(self.to_repository,
                 self.from_repository,
                 find_ghosts=self.find_ghosts).execute()
 
@@ -419,8 +419,9 @@ class FetchSpecFactory(object):
             if self.limit is not None:
                 graph = self.source_repo.get_graph()
                 topo_order = list(graph.iter_topo_order(ret.get_keys()))
-                ret = topo_order[:self.limit]
-            return self.source_repo.revision_ids_to_search_result(ret)
+                result_set = topo_order[:self.limit]
+                ret = self.source_repo.revision_ids_to_search_result(result_set)
+            return ret
         else:
             return _mod_graph.NotInOtherForRevs(self.target_repo, self.source_repo,
                 required_ids=heads_to_fetch, if_present_ids=if_present_fetch,
