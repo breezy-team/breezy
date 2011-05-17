@@ -24,22 +24,6 @@ from bzrlib.tests import (
     )
 
 
-def pull_first_use(test):
-    test.run_script('''
-        $ bzr init parent
-        $ cd parent
-        $ echo parent > file
-        $ bzr commit -m 'parent'
-        $ cd ..
-        $ bzr branch parent %(working_dir)s
-        $ cd parent
-        $ echo new content > file
-        $ bzr commit -m 'new content'
-        $ cd ..
-''' % {'working_dir': test.working_dir}, null_output_matches_anything=True)
-
-
-
 class TestRememberMixin(object):
     """--remember and --no-remember set locations or not."""
 

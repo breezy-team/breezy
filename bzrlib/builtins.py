@@ -1047,7 +1047,7 @@ class cmd_pull(Command):
             branch_from = Branch.open(location,
                 possible_transports=possible_transports)
             self.add_cleanup(branch_from.lock_read().unlock)
-
+            # Remembers if asked explicitly or no previous location is set
             if (remember
                 or (remember is None and branch_to.get_parent() is None)):
                 branch_to.set_parent(branch_from.base)
