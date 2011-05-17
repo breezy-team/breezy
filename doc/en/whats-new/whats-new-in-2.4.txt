@@ -75,14 +75,14 @@ code paths that were updating the WT state using an O(tree) operation to
 one that was an O(changes) operation.  A possibly incomplete list is as
 follows for running commands on a 70k file tree::
 
-    bzr-2.3.1 bzr-2.3.2 bzr-2.4 action
-    3m39s         1m08s   1m03s   bzr co --lightweight
-      38s            8s      2s   bzr revert (in a clean tree)
-    4m47s         3m56s     15s   bzr merge
-    4m45s           20s      3s   bzr pull
-    4m58s         3m00s      2s   bzr up
-    9m33s           21s     19s   bzr uncommit (including a merge)
-    4m44s           17s      2s   bzr uncommit (simple commit)
+    bzr-2.3.1 bzr-2.3.2 bzr-2.4  action
+    3m39s         1m08s   1m03s  bzr co --lightweight
+      38s            8s      2s  bzr revert (in a clean tree)
+    4m47s         3m56s     15s  bzr merge
+    4m45s           20s      3s  bzr pull
+    4m58s         3m00s      2s  bzr up
+    9m33s           21s     19s  bzr uncommit (including a merge)
+    4m44s           17s      2s  bzr uncommit (simple commit)
     
 
 Faster stacked branches
