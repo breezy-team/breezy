@@ -861,7 +861,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         result.new_revid = new_refs[main_ref][1]
         return result
 
-    def push(self, overwrite=False, stop_revision=None,
+    def push(self, overwrite=False, stop_revision=None, lossy=False,
              _override_hook_source_branch=None):
         result = GitBranchPushResult()
         result.source_branch = self.source
@@ -872,32 +872,23 @@ class InterToGitBranch(branch.GenericInterBranch):
             # FIXME: Check for diverged branches
             refs.update(new_refs)
             return refs
-        try:
-            old_refs, new_refs = self.interrepo.fetch_refs(update_refs)
-        except NoPushSupport:
-            raise errors.NoRoundtrippingSupport(self.source, self.target)
+        if lossy:
+            result.revidmap, old_refs, new_refs = self.interrepo.dfetch_refs(
+                update_refs)
+        else:
+            try:
+                old_refs, new_refs = self.interrepo.fetch_refs(update_refs)
+            except NoPushSupport:
+                raise errors.NoRoundtrippingSupport(self.source, self.target)
         (result.old_revid, old_sha1) = old_refs.get(main_ref, (ZERO_SHA, NULL_REVISION))
         if result.old_revid is None:
             result.old_revid = self.target.lookup_foreign_revision_id(old_sha1)
         result.new_revid = new_refs[main_ref][1]
+        (result.new_original_revno, result.new_original_revid) = stop_revinfo
         return result
 
     def lossy_push(self, stop_revision=None):
-        result = GitBranchPushResult()
-        result.source_branch = self.source
-        result.target_branch = self.target
-        new_refs, main_ref, stop_revinfo = self._get_new_refs(stop_revision)
-        def update_refs(old_refs):
-            refs = dict(old_refs)
-            # FIXME: Check for diverged branches
-            refs.update(new_refs)
-            return refs
-        result.revidmap, old_refs, new_refs = self.interrepo.dfetch_refs(
-            update_refs)
-        result.old_revid = old_refs.get(self.target.ref, (None, NULL_REVISION))[1]
-        result.new_revid = new_refs[main_ref][1]
-        (result.new_original_revno, result.new_original_revid) = stop_revinfo
-        return result
+        return self.push(lossy=True, stop_revision=stop_revision)
 
 
 branch.InterBranch.register_optimiser(InterGitLocalGitBranch)
