@@ -1660,12 +1660,9 @@ class DirState(object):
                 dirname, basename = osutils.split(new_path)
                 entry_key = (dirname, basename, file_id)
                 _, block = self._find_block(entry_key, add_if_missing=True)
-                index, present = self._find_entry_index(entry_key, block)
-                if present:
-                    raise AssertionError('entry was missing, but now was found')
-                else:
-                    entry = (entry_key, [DirState.NULL_PARENT_DETAILS]*2)
-                    block.insert(index, entry)
+                index, _ = self._find_entry_index(entry_key, block)
+                entry = (entry_key, [DirState.NULL_PARENT_DETAILS]*2)
+                block.insert(index, entry)
             elif entry[0][2] != file_id:
                 self._changes_aborted = True
                 raise errors.InconsistentDelta(new_path, file_id,
