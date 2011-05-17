@@ -219,10 +219,30 @@ plugin_cmds.register_lazy("cmd_git_object", ["git-objects", "git-cat"],
 plugin_cmds.register_lazy("cmd_git_refs", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_apply", [], "bzrlib.plugins.git.commands")
 
+def extract_git_foreign_revid(rev):
+    try:
+        foreign_revid = rev.foreign_revid
+    except AttributeError:
+        from bzrlib.plugins.git.mapping import mapping_registry
+        foreign_revid, mapping = \
+            mapping_registry.parse_revision_id(rev.revision_id)
+        return foreign_revid
+    else:
+        from bzrlib.plugins.git.mapping import foreign_vcs_git
+        if rev.mapping.vcs == foreign_vcs_git:
+            return foreign_revid
+        else:
+            raise bzr_errors.InvalidRevisionId(rev.revision_id, None)
+
+
 def update_stanza(rev, stanza):
     mapping = getattr(rev, "mapping", None)
-    if mapping is not None and mapping.revid_prefix.startswith("git-"):
-        stanza.add("git-commit", rev.foreign_revid)
+    try:
+        git_commit = extract_git_foreign_revid(rev)
+    except bzr_errors.InvalidRevisionId:
+        pass
+    else:
+        stanza.add("git-commit", git_commit)
 
 try:
     from bzrlib.hooks import install_lazy_named_hook
