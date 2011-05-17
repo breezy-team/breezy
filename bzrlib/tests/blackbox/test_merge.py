@@ -555,6 +555,20 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertEqual(tree_b.branch.get_submit_branch(),
                          tree_a.bzrdir.root_transport.base)
 
+    def test_no_remember_dont_set_submit(self):
+        tree_a = self.make_branch_and_tree('a')
+        tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
+        self.assertIs(tree_b.branch.get_submit_branch(), None)
+
+        # Remember should not happen if using default from parent
+        out, err = self.run_bzr(['merge', '-d', 'b', '--no-remember'])
+        self.assertEquals(None, tree_b.branch.get_submit_branch())
+
+        # Remember should not happen if user supplies location but ask for not
+        # remembering it
+        out, err = self.run_bzr(['merge', '-d', 'b', '--no-remember', 'a'])
+        self.assertEqual(None, tree_b.branch.get_submit_branch())
+
     def test_weave_cherrypick(self):
         this_tree = self.make_branch_and_tree('this')
         self.build_tree_contents([('this/file', "a\n")])

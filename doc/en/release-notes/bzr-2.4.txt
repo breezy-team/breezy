@@ -24,6 +24,15 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* The text compressor used for 2a repositories now has a tweakable
+  parameter that can be set in bazaar.conf.
+  ``bzr.groupcompress.max_entries_per_source`` default of 65536.
+  When doing compression, we build up an index of locations to match
+  against. Setting this higher will result in slightly better compression,
+  at a cost of more memory. Note that a value of 65k represents fully
+  sampling a 1MB file. So this only has an effect when compressing texts
+  larger than N*16 bytes. (John Arbash Meinel, #602614)
+
 Improvements
 ************
 
@@ -61,8 +70,14 @@ Bug Fixes
 * All Tree types can now be exported as tar.*, zip or directories.
   (Aaron Bentley)
   
+* ``bzr merge --no-remember location`` never sets ``submit_branch``.
+  (Vincent Ladeuil, #782169)
+
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
+
+* Fix `bzr plugins` regression in bzr 2.4 which resulted in a traceback
+  from writelines on ckj terminals. (Martin [GZ], #754082)
 
 * ``WT.inventory`` and ``WT.iter_entries_by_dir()`` was not correctly
   reporting subdirectories that were tree references (in formats that
@@ -73,6 +88,10 @@ Documentation
 *************
 
 .. Improved or updated documentation.
+
+* Restore the workaround for option names including dots (--1.14) which was
+  disabled when we stopped listing --1.9 as a format.
+  (Vincent Ladeuil, #782289)
 
 API Changes
 ***********
@@ -115,6 +134,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Make it easier for plugins to reuse the per_workingtree scenarios by
+  restoring the wt_scenarios helper that was accidentally deleted.
+  (Vincent Ladeuil, #783472)
 
 bzr 2.4b2
 #########
