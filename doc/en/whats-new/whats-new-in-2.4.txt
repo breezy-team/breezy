@@ -84,6 +84,14 @@ follows for running commands on a 70k file tree::
     9m33s           21s     19s  bzr uncommit (including a merge)
     4m44s           17s      2s  bzr uncommit (simple commit)
     
+This is a smaller table of times for the Launchpad tree (~8k items)::
+
+    bzr-2.3.1   bzr-2.4     action
+    5.3s        5.2s        bzr co --lightweight
+    0.9s        0.3s        bzr revert
+    1.4s        0.4s        bzr pull
+    3.9s        3.7s        bzr uncommit (with merge)
+    0.9s        0.3s        bzr uncommit (without merge)
 
 Faster stacked branches
 ***********************
