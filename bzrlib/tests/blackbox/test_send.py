@@ -27,10 +27,13 @@ from bzrlib import (
     )
 from bzrlib.bundle import serializer
 from bzrlib.transport import memory
-from bzrlib.tests.scenarios import load_tests_apply_scenarios
+from bzrlib.tests import (
+    scenarios,
+    script,
+    )
 
 
-load_tests = load_tests_apply_scenarios
+load_tests = scenarios.load_tests_apply_scenarios
 
 
 class TestSendMixin(object):
@@ -435,78 +438,75 @@ class TestBundleStrictWithoutChanges(TestSendStrictWithoutChanges):
     _default_command = ['bundle-revisions', '../parent']
 
 
-# * first use remembers by default
-# * first use remembers if --remember is used
-# * first use does not remember if --no-remember is used
-
-# * default does not override stored
-# * --remember overrides stored
-# * --no-remember does not override stored
-
-class TestRemember(tests.TestCaseWithTransport, TestSendMixin):
+class TestRemember(script.TestCaseWithTransportAndScript):
+    """--remember and --no-remember set locations or not."""
 
     _default_wd = 'work'
 
     def setUp(self):
         super(TestRemember, self).setUp()
-        grand_parent_tree = bzrdir.BzrDir.create_standalone_workingtree(
-            'grand_parent')
-        self.build_tree_contents([('grand_parent/file1', 'grand_parent')])
-        grand_parent_tree.add('file1')
-        grand_parent_tree.commit('initial commit', rev_id='grand_parent')
-        self.grand_parent_tree = grand_parent_tree
-
-        parent_bzrdir = grand_parent_tree.bzrdir.sprout('parent')
-        parent_tree = parent_bzrdir.open_workingtree()
-        parent_tree.commit('next commit', rev_id='parent')
-        self.parent_tree = parent_tree
-
-        branch_tree = parent_tree.bzrdir.sprout('branch').open_workingtree()
-        self.build_tree_contents([('branch/file1', 'branch')])
-        branch_tree.commit('last commit', rev_id='branch')
-        self.branch_tree = branch_tree
+        self.run_script('''
+            $ bzr init grand_parent
+            $ cd grand_parent
+            $ echo grand_parent > file
+            $ bzr add
+            $ bzr commit -m 'initial commit'
+            $ cd ..
+            $ bzr branch grand_parent parent
+            $ cd parent
+            $ echo parent > file
+            $ bzr commit -m 'parent'
+            $ cd ..
+            $ bzr branch parent work
+            $ cd work
+            $ echo work > file
+            $ bzr commit -m 'work'
+            $ cd ..
+''', null_output_matches_anything=True)
 
     def prepare_next_uses(self):
         # Do a first send that remembers the locations
-        self.do_send(['../parent', '../grand_parent'])
+        self.do_send('../parent', '../grand_parent')
         # Now create some new targets
-        new_grand_parent_tree = self.grand_parent_tree.bzrdir.sprout(
-            'new_grand_parent')
-        new_parent_tree = self.parent_tree.bzrdir.sprout('new_parent')
+        self.run_script('''
+             $ bzr branch grand_parent new_grand_parent
+             $ bzr branch parent new_parent
+''', null_output_matches_anything=True)
 
     def assertLocations(self, expected_submit_branch, expected_public_branch):
-        br = self.branch_tree.branch
+        br, _ = branch.Branch.open_containing('work')
         self.assertEquals(expected_submit_branch, br.get_submit_branch())
         self.assertEquals(expected_public_branch, br.get_public_branch())
 
     def do_send(self, *args):
         # We always expect the same result here and care only about the
         # arguments used and their consequences on the remembered locations
-        self.assertBundleContains(['branch'], *args)
+        out, err = self.run_bzr(['send', '-o-'] + list(args),
+                                working_dir='work')
 
     def test_first_use_no_option(self):
-        self.do_send(['../parent', '../grand_parent'])
+        self.do_send('../parent', '../grand_parent')
         self.assertLocations('../parent', '../grand_parent')
 
     def test_first_use_remember(self):
-        self.do_send(['--remember', '../parent', '../grand_parent'])
+        self.do_send('--remember', '../parent', '../grand_parent')
         self.assertLocations('../parent', '../grand_parent')
 
     def test_first_use_no_remember(self):
-        self.do_send(['--no-remember', '../parent', '../grand_parent'])
+        self.do_send('--no-remember', '../parent', '../grand_parent')
         self.assertLocations(None, None)
 
     def test_next_uses_no_option(self):
         self.prepare_next_uses()
-        self.do_send(['../new_parent', '../new_grand_parent'])
+        self.do_send('../new_parent', '../new_grand_parent')
         self.assertLocations('../parent', '../grand_parent')
 
     def test_next_uses_remember(self):
         self.prepare_next_uses()
-        self.do_send(['--remember', '../new_parent', '../new_grand_parent'])
+        self.do_send('--remember', '../new_parent', '../new_grand_parent')
         self.assertLocations('../new_parent', '../new_grand_parent')
 
     def test_next_uses_no_remember(self):
         self.prepare_next_uses()
-        self.do_send(['--no-remember', '../new_parent', '../new_grand_parent'])
+        self.do_send('--no-remember', '../new_parent', '../new_grand_parent')
         self.assertLocations('../parent', '../grand_parent')
