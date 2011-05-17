@@ -236,6 +236,47 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
                 workingtree.WorkingTreeFormat.get_formats))
 
 
+class TestWorkingTreeIterEntriesByDir_wSubtrees(TestCaseWithTransport):
+
+    def make_simple_tree(self):
+        tree = self.make_branch_and_tree('tree', format='development-subtree')
+        self.build_tree(['tree/a/', 'tree/a/b/', 'tree/a/b/c'])
+        tree.set_root_id('root-id')
+        tree.add(['a', 'a/b', 'a/b/c'], ['a-id', 'b-id', 'c-id'])
+        tree.commit('initial')
+        return tree
+
+    def test_just_directory(self):
+        tree = self.make_simple_tree()
+        self.assertEqual([('directory', 'root-id'),
+                          ('directory', 'a-id'),
+                          ('directory', 'b-id'),
+                          ('file', 'c-id')],
+                         [(ie.kind, ie.file_id)
+                          for path, ie in tree.iter_entries_by_dir()])
+        subtree = self.make_branch_and_tree('tree/a/b')
+        self.assertEqual([('tree-reference', 'b-id')],
+                         [(ie.kind, ie.file_id)
+                          for path, ie in tree.iter_entries_by_dir(['b-id'])])
+
+    def test_direct_subtree(self):
+        tree = self.make_simple_tree()
+        subtree = self.make_branch_and_tree('tree/a/b')
+        self.assertEqual([('directory', 'root-id'),
+                          ('directory', 'a-id'),
+                          ('tree-reference', 'b-id')],
+                         [(ie.kind, ie.file_id)
+                          for path, ie in tree.iter_entries_by_dir()])
+
+    def test_indirect_subtree(self):
+        tree = self.make_simple_tree()
+        subtree = self.make_branch_and_tree('tree/a')
+        self.assertEqual([('directory', 'root-id'),
+                          ('tree-reference', 'a-id')],
+                         [(ie.kind, ie.file_id)
+                          for path, ie in tree.iter_entries_by_dir()])
+
+
 class TestWorkingTreeFormatRegistry(TestCase):
 
     def setUp(self):

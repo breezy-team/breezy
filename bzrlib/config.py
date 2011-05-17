@@ -848,7 +848,7 @@ class LockableConfig(IniBasedConfig):
         # LockableConfig for other kind of transports, we will need to reuse
         # whatever connection is already established -- vila 20100929
         self.transport = transport.get_transport(self.dir)
-        self._lock = lockdir.LockDir(self.transport, 'lock')
+        self._lock = lockdir.LockDir(self.transport, self.lock_name)
 
     def _create_from_string(self, unicode_bytes, save):
         super(LockableConfig, self)._create_from_string(unicode_bytes, False)
@@ -2092,6 +2092,430 @@ class TransportConfig(object):
         configobj.write(out_file)
         out_file.seek(0)
         self._transport.put_file(self._filename, out_file)
+
+
+class Section(object):
+    """A section defines a dict of options.
+
+    This is merely a read-only dict which can add some knowledge about the
+    options. It is *not* a python dict object though and doesn't try to mimic
+    its API.
+    """
+
+    def __init__(self, section_id, options):
+        self.id = section_id
+        # We re-use the dict-like object received
+        self.options = options
+
+    def get(self, name, default=None):
+        return self.options.get(name, default)
+
+    def __repr__(self):
+        # Mostly for debugging use
+        return "<config.%s id=%s>" % (self.__class__.__name__, self.id)
+
+
+_NewlyCreatedOption = object()
+"""Was the option created during the MutableSection lifetime"""
+
+
+class MutableSection(Section):
+    """A section allowing changes and keeping track of the original values."""
+
+    def __init__(self, section_id, options):
+        super(MutableSection, self).__init__(section_id, options)
+        self.orig = {}
+
+    def set(self, name, value):
+        if name not in self.options:
+            # This is a new option
+            self.orig[name] = _NewlyCreatedOption
+        elif name not in self.orig:
+            self.orig[name] = self.get(name, None)
+        self.options[name] = value
+
+    def remove(self, name):
+        if name not in self.orig:
+            self.orig[name] = self.get(name, None)
+        del self.options[name]
+
+
+class Store(object):
+    """Abstract interface to persistent storage for configuration options."""
+
+    readonly_section_class = Section
+    mutable_section_class = MutableSection
+
+    def is_loaded(self):
+        """Returns True if the Store has been loaded.
+
+        This is used to implement lazy loading and ensure the persistent
+        storage is queried only when needed.
+        """
+        raise NotImplementedError(self.is_loaded)
+
+    def load(self):
+        """Loads the Store from persistent storage."""
+        raise NotImplementedError(self.load)
+
+    def _load_from_string(self, str_or_unicode):
+        """Create a store from a string in configobj syntax.
+
+        :param str_or_unicode: A string representing the file content. This will
+            be encoded to suit store needs internally.
+
+        This is for tests and should not be used in production unless a
+        convincing use case can be demonstrated :)
+        """
+        raise NotImplementedError(self._load_from_string)
+
+    def save(self):
+        """Saves the Store to persistent storage."""
+        raise NotImplementedError(self.save)
+
+    def external_url(self):
+        raise NotImplementedError(self.external_url)
+
+    def get_sections(self):
+        """Returns an ordered iterable of existing sections.
+
+        :returns: An iterable of (name, dict).
+        """
+        raise NotImplementedError(self.get_sections)
+
+    def get_mutable_section(self, section_name=None):
+        """Returns the specified mutable section.
+
+        :param section_name: The section identifier
+        """
+        raise NotImplementedError(self.get_mutable_section)
+
+    def __repr__(self):
+        # Mostly for debugging use
+        return "<config.%s(%s)>" % (self.__class__.__name__,
+                                    self.external_url())
+
+
+class IniFileStore(Store):
+    """A config Store using ConfigObj for storage.
+
+    :ivar transport: The transport object where the config file is located.
+
+    :ivar file_name: The config file basename in the transport directory.
+
+    :ivar _config_obj: Private member to hold the ConfigObj instance used to
+        serialize/deserialize the config file.
+    """
+
+    def __init__(self, transport, file_name):
+        """A config Store using ConfigObj for storage.
+
+        :param transport: The transport object where the config file is located.
+
+        :param file_name: The config file basename in the transport directory.
+        """
+        super(IniFileStore, self).__init__()
+        self.transport = transport
+        self.file_name = file_name
+        self._config_obj = None
+
+    def is_loaded(self):
+        return self._config_obj != None
+
+    def load(self):
+        """Load the store from the associated file."""
+        if self.is_loaded():
+            return
+        content = self.transport.get_bytes(self.file_name)
+        self._load_from_string(content)
+
+    def _load_from_string(self, str_or_unicode):
+        """Create a config store from a string.
+
+        :param str_or_unicode: A string representing the file content. This will
+            be utf-8 encoded internally.
+
+        This is for tests and should not be used in production unless a
+        convincing use case can be demonstrated :)
+        """
+        if self.is_loaded():
+            raise AssertionError('Already loaded: %r' % (self._config_obj,))
+        co_input = StringIO(str_or_unicode.encode('utf-8'))
+        try:
+            # The config files are always stored utf8-encoded
+            self._config_obj = ConfigObj(co_input, encoding='utf-8')
+        except configobj.ConfigObjError, e:
+            self._config_obj = None
+            raise errors.ParseConfigError(e.errors, self.external_url())
+
+    def save(self):
+        if not self.is_loaded():
+            # Nothing to save
+            return
+        out = StringIO()
+        self._config_obj.write(out)
+        self.transport.put_bytes(self.file_name, out.getvalue())
+
+    def external_url(self):
+        # FIXME: external_url should really accepts an optional relpath
+        # parameter (bug #750169) :-/ -- vila 2011-04-04
+        # The following will do in the interim but maybe we don't want to
+        # expose a path here but rather a config ID and its associated
+        # object </hand wawe>.
+        return urlutils.join(self.transport.external_url(), self.file_name)
+
+    def get_sections(self):
+        """Get the configobj section in the file order.
+
+        :returns: An iterable of (name, dict).
+        """
+        # We need a loaded store
+        self.load()
+        cobj = self._config_obj
+        if cobj.scalars:
+            yield self.readonly_section_class(None, cobj)
+        for section_name in cobj.sections:
+            yield self.readonly_section_class(section_name, cobj[section_name])
+
+    def get_mutable_section(self, section_name=None):
+        # We need a loaded store
+        try:
+            self.load()
+        except errors.NoSuchFile:
+            # The file doesn't exist, let's pretend it was empty
+            self._load_from_string('')
+        if section_name is None:
+            section = self._config_obj
+        else:
+            section = self._config_obj.setdefault(section_name, {})
+        return self.mutable_section_class(section_name, section)
+
+
+# Note that LockableConfigObjStore inherits from ConfigObjStore because we need
+# unlockable stores for use with objects that can already ensure the locking
+# (think branches). If different stores (not based on ConfigObj) are created,
+# they may face the same issue.
+
+
+class LockableIniFileStore(IniFileStore):
+    """A ConfigObjStore using locks on save to ensure store integrity."""
+
+    def __init__(self, transport, file_name, lock_dir_name=None):
+        """A config Store using ConfigObj for storage.
+
+        :param transport: The transport object where the config file is located.
+
+        :param file_name: The config file basename in the transport directory.
+        """
+        if lock_dir_name is None:
+            lock_dir_name = 'lock'
+        self.lock_dir_name = lock_dir_name
+        super(LockableIniFileStore, self).__init__(transport, file_name)
+        self._lock = lockdir.LockDir(self.transport, self.lock_dir_name)
+
+    def lock_write(self, token=None):
+        """Takes a write lock in the directory containing the config file.
+
+        If the directory doesn't exist it is created.
+        """
+        # FIXME: This doesn't check the ownership of the created directories as
+        # ensure_config_dir_exists does. It should if the transport is local
+        # -- vila 2011-04-06
+        self.transport.create_prefix()
+        return self._lock.lock_write(token)
+
+    def unlock(self):
+        self._lock.unlock()
+
+    def break_lock(self):
+        self._lock.break_lock()
+
+    @needs_write_lock
+    def save(self):
+        super(LockableIniFileStore, self).save()
+
+
+# FIXME: global, bazaar, shouldn't that be 'user' instead or even
+# 'user_defaults' as opposed to 'user_overrides', 'system_defaults'
+# (/etc/bzr/bazaar.conf) and 'system_overrides' ? -- vila 2011-04-05
+
+# FIXME: Moreover, we shouldn't need classes for these stores either, factory
+# functions or a registry will make it easier and clearer for tests, focusing
+# on the relevant parts of the API that needs testing -- vila 20110503 (based
+# on a poolie's remark)
+class GlobalStore(LockableIniFileStore):
+
+    def __init__(self, possible_transports=None):
+        t = transport.get_transport(config_dir(),
+                                    possible_transports=possible_transports)
+        super(GlobalStore, self).__init__(t, 'bazaar.conf')
+
+
+class LocationStore(LockableIniFileStore):
+
+    def __init__(self, possible_transports=None):
+        t = transport.get_transport(config_dir(),
+                                    possible_transports=possible_transports)
+        super(LocationStore, self).__init__(t, 'locations.conf')
+
+
+class BranchStore(IniFileStore):
+
+    def __init__(self, branch):
+        super(BranchStore, self).__init__(branch.control_transport,
+                                          'branch.conf')
+
+class SectionMatcher(object):
+    """Select sections into a given Store.
+
+    This intended to be used to postpone getting an iterable of sections from a
+    store.
+    """
+
+    def __init__(self, store):
+        self.store = store
+
+    def get_sections(self):
+        # This is where we require loading the store so we can see all defined
+        # sections.
+        sections = self.store.get_sections()
+        # Walk the revisions in the order provided
+        for s in sections:
+            if self.match(s):
+                yield s
+
+    def match(self, secion):
+        raise NotImplementedError(self.match)
+
+
+class LocationSection(Section):
+
+    def __init__(self, section, length, extra_path):
+        super(LocationSection, self).__init__(section.id, section.options)
+        self.length = length
+        self.extra_path = extra_path
+
+    def get(self, name, default=None):
+        value = super(LocationSection, self).get(name, default)
+        if value is not None:
+            policy_name = self.get(name + ':policy', None)
+            policy = _policy_value.get(policy_name, POLICY_NONE)
+            if policy == POLICY_APPENDPATH:
+                value = urlutils.join(value, self.extra_path)
+        return value
+
+
+class LocationMatcher(SectionMatcher):
+
+    def __init__(self, store, location):
+        super(LocationMatcher, self).__init__(store)
+        self.location = location
+
+    def get_sections(self):
+        # Override the default implementation as we want to change the order
+
+        # The following is a bit hackish but ensures compatibility with
+        # LocationConfig by reusing the same code
+        sections = list(self.store.get_sections())
+        filtered_sections = _iter_for_location_by_parts(
+            [s.id for s in sections], self.location)
+        iter_sections = iter(sections)
+        matching_sections = []
+        for section_id, extra_path, length in filtered_sections:
+            # a section id is unique for a given store so it's safe to iterate
+            # again
+            section = iter_sections.next()
+            if section_id == section.id:
+                matching_sections.append(
+                    LocationSection(section, length, extra_path))
+        # We want the longest (aka more specific) locations first
+        sections = sorted(matching_sections,
+                          key=lambda section: (section.length, section.id),
+                          reverse=True)
+        # Sections mentioning 'ignore_parents' restrict the selection
+        for section in sections:
+            # FIXME: We really want to use as_bool below -- vila 2011-04-07
+            ignore = section.get('ignore_parents', None)
+            if ignore is not None:
+                ignore = ui.bool_from_string(ignore)
+            if ignore:
+                break
+            # Finally, we have a valid section
+            yield section
+
+
+class Stack(object):
+    """A stack of configurations where an option can be defined"""
+
+    def __init__(self, sections_def, store=None, mutable_section_name=None):
+        """Creates a stack of sections with an optional store for changes.
+
+        :param sections_def: A list of Section or callables that returns an
+            iterable of Section. This defines the Sections for the Stack and
+            can be called repeatedly if needed.
+
+        :param store: The optional Store where modifications will be
+            recorded. If none is specified, no modifications can be done.
+
+        :param mutable_section_name: The name of the MutableSection where
+            changes are recorded. This requires the ``store`` parameter to be
+            specified.
+        """
+        self.sections_def = sections_def
+        self.store = store
+        self.mutable_section_name = mutable_section_name
+
+    def get(self, name):
+        """Return the *first* option value found in the sections.
+
+        This is where we guarantee that sections coming from Store are loaded
+        lazily: the loading is delayed until we need to either check that an
+        option exists or get its value, which in turn may require to discover
+        in which sections it can be defined. Both of these (section and option
+        existence) require loading the store (even partially).
+        """
+        # FIXME: No caching of options nor sections yet -- vila 20110503
+
+        # Ensuring lazy loading is achieved by delaying section matching until
+        # it can be avoided anymore by using callables to describe (possibly
+        # empty) section lists.
+        for section_or_callable in self.sections_def:
+            # Each section can expand to multiple ones when a callable is used
+            if callable(section_or_callable):
+                sections = section_or_callable()
+            else:
+                sections = [section_or_callable]
+            for section in sections:
+                value = section.get(name)
+                if value is not None:
+                    return value
+        # No definition was found
+        return None
+
+    def _get_mutable_section(self):
+        """Get the MutableSection for the Stack.
+
+        This is where we guarantee that the mutable section is lazily loaded:
+        this means we won't load the corresponding store before setting a value
+        or deleting an option. In practice the store will often be loaded but
+        this allows catching some programming errors.
+        """
+        section = self.store.get_mutable_section(self.mutable_section_name)
+        return section
+
+    def set(self, name, value):
+        """Set a new value for the option."""
+        section = self._get_mutable_section()
+        section.set(name, value)
+
+    def remove(self, name):
+        """Remove an existing option."""
+        section = self._get_mutable_section()
+        section.remove(name)
+
+    def __repr__(self):
+        # Mostly for debugging use
+        return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
 
 
 class cmd_config(commands.Command):

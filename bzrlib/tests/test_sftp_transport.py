@@ -417,7 +417,7 @@ class TestSocketDelay(TestCase):
 
 
 class ReadvFile(object):
-    """An object that acts like Paramiko's SFTPFile.readv()"""
+    """An object that acts like Paramiko's SFTPFile when readv() is used"""
 
     def __init__(self, data):
         self._data = data
@@ -425,6 +425,9 @@ class ReadvFile(object):
     def readv(self, requests):
         for start, length in requests:
             yield self._data[start:start+length]
+
+    def close(self):
+        pass
 
 
 def _null_report_activity(*a, **k):

@@ -4633,8 +4633,9 @@ class cmd_plugins(Command):
     @display_command
     def run(self, verbose=False):
         from bzrlib import plugin
+        # Don't give writelines a generator as some codecs don't like that
         self.outf.writelines(
-            plugin.describe_plugins(show_paths=verbose))
+            list(plugin.describe_plugins(show_paths=verbose)))
 
 
 class cmd_testament(Command):

@@ -26,6 +26,7 @@ from bzrlib import (
     bzrdir,
     errors,
     osutils,
+    symbol_versioning,
     tests,
     urlutils,
     )
@@ -326,7 +327,8 @@ class TestWorkingTree(TestCaseWithWorkingTree):
         # because some formats mutate the branch to set it on the tree
         # we need to alter the branch to let this pass.
         try:
-            wt.branch._set_revision_history(['A', 'B'])
+            self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+                wt.branch.set_revision_history, ['A', 'B'])
         except errors.NoSuchRevision, e:
             self.assertEqual('B', e.revision)
             raise TestSkipped("Branch format does not permit arbitrary"
@@ -1122,3 +1124,38 @@ class TestControlComponent(TestCaseWithWorkingTree):
         # above the control dir but we might need to relax that?
         self.assertEqual(wt.control_url.find(wt.user_url), 0)
         self.assertEqual(wt.control_url, wt.control_transport.base)
+
+
+class TestWorthSavingLimit(TestCaseWithWorkingTree):
+
+    def make_wt_with_worth_saving_limit(self):
+        wt = self.make_branch_and_tree('wt')
+        if getattr(wt, '_worth_saving_limit', None) is None:
+            raise tests.TestNotApplicable('no _worth_saving_limit for'
+                                          ' this tree type')
+        wt.lock_write()
+        self.addCleanup(wt.unlock)
+        return wt
+
+    def test_not_set(self):
+        # Default should be 10
+        wt = self.make_wt_with_worth_saving_limit()
+        self.assertEqual(10, wt._worth_saving_limit())
+        ds = wt.current_dirstate()
+        self.assertEqual(10, ds._worth_saving_limit)
+
+    def test_set_in_branch(self):
+        wt = self.make_wt_with_worth_saving_limit()
+        config = wt.branch.get_config()
+        config.set_user_option('bzr.workingtree.worth_saving_limit', '20')
+        self.assertEqual(20, wt._worth_saving_limit())
+        ds = wt.current_dirstate()
+        self.assertEqual(10, ds._worth_saving_limit)
+
+    def test_invalid(self):
+        wt = self.make_wt_with_worth_saving_limit()
+        config = wt.branch.get_config()
+        config.set_user_option('bzr.workingtree.worth_saving_limit', 'a')
+        # If the config entry is invalid, default to 10
+        # TODO: This writes a warning to the user, trap it somehow
+        self.assertEqual(10, wt._worth_saving_limit())
