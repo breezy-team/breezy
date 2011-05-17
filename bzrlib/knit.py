@@ -103,7 +103,7 @@ from bzrlib.versionedfile import (
     ConstantMapper,
     ContentFactory,
     sort_groupcompress,
-    VersionedFiles,
+    VersionedFilesWithFallbacks,
     )
 
 
@@ -845,7 +845,7 @@ def _get_total_build_size(self, keys, positions):
                 in all_build_index_memos.itervalues()])
 
 
-class KnitVersionedFiles(VersionedFiles):
+class KnitVersionedFiles(VersionedFilesWithFallbacks):
     """Storage for many versioned files using knit compression.
 
     Backend storage is managed by indices and data objects.
@@ -886,6 +886,12 @@ class KnitVersionedFiles(VersionedFiles):
             self.__class__.__name__,
             self._index,
             self._access)
+
+    def without_fallbacks(self):
+        """Return a clone of this object without any fallbacks configured."""
+        return KnitVersionedFiles(self._index, self._access,
+            self._max_delta_chain, self._factory.annotated,
+            self._reload_func)
 
     def add_fallback_versioned_files(self, a_versioned_files):
         """Add a source of texts for texts not present in this knit.
@@ -1187,19 +1193,6 @@ class KnitVersionedFiles(VersionedFiles):
             return cached_version
         generator = _VFContentMapGenerator(self, [key])
         return generator._get_content(key)
-
-    def get_known_graph_ancestry(self, keys):
-        """Get a KnownGraph instance with the ancestry of keys."""
-        parent_map, missing_keys = self._index.find_ancestry(keys)
-        for fallback in self._transitive_fallbacks():
-            if not missing_keys:
-                break
-            (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
-                                                missing_keys)
-            parent_map.update(f_parent_map)
-            missing_keys = f_missing_keys
-        kg = _mod_graph.KnownGraph(parent_map)
-        return kg
 
     def get_parent_map(self, keys):
         """Get a map of the graph parents of keys.

@@ -452,7 +452,7 @@ def load_tests(standard_tests, module, loader):
     def test_final_fallback__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'final', 2)")
         plugin = bzrlib.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3.final.2", plugin.__version__)
+        self.assertEqual("1.2.3.2", plugin.__version__)
 
 
 class TestPluginHelp(tests.TestCaseInTempDir):

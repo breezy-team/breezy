@@ -461,4 +461,4 @@ class TestLossyPush(per_branch.TestCaseWithBranch):
     def test_lossy_push_raises_same_vcs(self):
         target = self.make_branch('target')
         source = self.make_branch('source')
-        self.assertRaises(errors.LossyPushToSameVCS, source.lossy_push, target)
+        self.assertRaises(errors.LossyPushToSameVCS, source.push, target, lossy=True)
