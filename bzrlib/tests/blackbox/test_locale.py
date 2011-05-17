@@ -1,4 +1,4 @@
-# Copyright (C) 2006 Canonical Ltd
+# Copyright (C) 2006, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -76,3 +76,14 @@ timestamp: Thu 2006-08-24 20:28:17 +0000
 message:
   Unicode ? commit
 """, out)
+
+
+class TestMultibyteCodecs(tests.TestCaseWithTransport):
+    """Tests for quirks of multibyte encodings and their python codecs"""
+
+    def test_plugins_mbcs(self):
+        """Ensure the plugins command works with cjkcodecs, see lp:754082"""
+        self.disable_missing_extensions_warning()
+        out, err = self.run_bzr(["plugins"], encoding="EUC-JP")
+        # The output is tested in bt.test_plugins rather than here
+        self.assertEqual("", err)

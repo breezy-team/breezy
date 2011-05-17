@@ -15,16 +15,24 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-"""Tests for the _generate_text_key_index API."""
+"""Test the find_text_key_references API."""
 
 
-from bzrlib.tests.per_repository import TestCaseWithRepository
+from bzrlib.tests.per_repository_vf import (
+    TestCaseWithRepository,
+    all_repository_vf_format_scenarios,
+    )
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
+
+load_tests = load_tests_apply_scenarios
 
 
-class TestGenerateTextKeyIndex(TestCaseWithRepository):
+class TestFindTextKeyReferences(TestCaseWithRepository):
+
+    scenarios = all_repository_vf_format_scenarios()
 
     def test_empty(self):
         repo = self.make_repository('.')
         repo.lock_read()
         self.addCleanup(repo.unlock)
-        self.assertEqual({}, repo._generate_text_key_index())
+        self.assertEqual({}, repo.find_text_key_references())

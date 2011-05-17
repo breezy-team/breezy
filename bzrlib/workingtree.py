@@ -268,16 +268,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self._control_files.break_lock()
         self.branch.break_lock()
 
-    def _get_check_refs(self):
-        """Return the references needed to perform a check of this tree.
-        
-        The default implementation returns no refs, and is only suitable for
-        trees that have no local caching and can commit on ghosts at any time.
-
-        :seealso: bzrlib.check for details about check_refs.
-        """
-        return []
-
     def requires_rich_root(self):
         return self._format.requires_rich_root
 
@@ -572,6 +562,34 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def id2abspath(self, file_id):
         return self.abspath(self.id2path(file_id))
 
+    def _check_for_tree_references(self, iterator):
+        """See if directories have become tree-references."""
+        blocked_parent_ids = set()
+        for path, ie in iterator:
+            if ie.parent_id in blocked_parent_ids:
+                # This entry was pruned because one of its parents became a
+                # TreeReference. If this is a directory, mark it as blocked.
+                if ie.kind == 'directory':
+                    blocked_parent_ids.add(ie.file_id)
+                continue
+            if ie.kind == 'directory' and self._directory_is_tree_reference(path):
+                # This InventoryDirectory needs to be a TreeReference
+                ie = inventory.TreeReference(ie.file_id, ie.name, ie.parent_id)
+                blocked_parent_ids.add(ie.file_id)
+            yield path, ie
+
+    def iter_entries_by_dir(self, specific_file_ids=None, yield_parents=False):
+        """See Tree.iter_entries_by_dir()"""
+        # The only trick here is that if we supports_tree_reference then we
+        # need to detect if a directory becomes a tree-reference.
+        iterator = super(WorkingTree, self).iter_entries_by_dir(
+                specific_file_ids=specific_file_ids,
+                yield_parents=yield_parents)
+        if not self.supports_tree_reference():
+            return iterator
+        else:
+            return self._check_for_tree_references(iterator)
+
     def get_file_size(self, file_id):
         """See Tree.get_file_size"""
         # XXX: this returns the on-disk size; it should probably return the
@@ -845,8 +863,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self.add(path, file_id, 'directory')
         return file_id
 
-    def get_symlink_target(self, file_id):
-        abspath = self.id2abspath(file_id)
+    def get_symlink_target(self, file_id, path=None):
+        if path is not None:
+            abspath = self.abspath(path)
+        else:
+            abspath = self.id2abspath(file_id)
         target = osutils.readlink(abspath)
         return target
 
@@ -1004,6 +1025,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
             new_revision_info = self.branch.last_revision_info()
             if new_revision_info != old_revision_info:
                 repository = self.branch.repository
+                if repository._format.fast_deltas:
+                    parent_ids = self.get_parent_ids()
+                    if parent_ids:
+                        basis_id = parent_ids[0]
+                        basis_tree = repository.revision_tree(basis_id)
                 basis_tree.lock_read()
                 try:
                     new_basis_tree = self.branch.basis_tree()
@@ -1228,6 +1254,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         if _mod_revision.is_null(new_revision):
             self.branch.set_last_revision_info(0, new_revision)
             return False
+        _mod_revision.check_not_reserved_id(new_revision)
         try:
             self.branch.generate_revision_history(new_revision)
         except errors.NoSuchRevision:
@@ -1751,25 +1778,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self.set_conflicts(un_resolved)
         return un_resolved, resolved
 
-    @needs_read_lock
-    def _check(self, references):
-        """Check the tree for consistency.
-
-        :param references: A dict with keys matching the items returned by
-            self._get_check_refs(), and values from looking those keys up in
-            the repository.
-        """
-        tree_basis = self.basis_tree()
-        tree_basis.lock_read()
-        try:
-            repo_basis = references[('trees', self.last_revision())]
-            if len(list(repo_basis.iter_changes(tree_basis))) > 0:
-                raise errors.BzrCheckError(
-                    "Mismatched basis inventory content.")
-            self._validate()
-        finally:
-            tree_basis.unlock()
-
     def _validate(self):
         """Validate internal structures.
 
@@ -1781,16 +1789,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         return
 
-    @needs_read_lock
     def check_state(self):
         """Check that the working state is/isn't valid."""
-        check_refs = self._get_check_refs()
-        refs = {}
-        for ref in check_refs:
-            kind, value = ref
-            if kind == 'trees':
-                refs[ref] = self.branch.repository.revision_tree(value)
-        self._check(refs)
+        raise NotImplementedError(self.check_state)
 
     def reset_state(self, revision_ids=None):
         """Reset the state of the working tree.
@@ -2087,9 +2088,7 @@ class InventoryWorkingTree(WorkingTree,
 
     __contains__ = has_id
 
-    # should be deprecated - this is slow and in any case treating them as a
-    # container is (we now know) bad style -- mbp 20070302
-    ## @deprecated_method(zero_fifteen)
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4, 0)))
     def __iter__(self):
         """Iterate through file_ids for this tree.
 
@@ -2106,6 +2105,46 @@ class InventoryWorkingTree(WorkingTree,
         """Change the last revision in the working tree."""
         if self._change_last_revision(new_revision):
             self._cache_basis_inventory(new_revision)
+
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree.
+        
+        The default implementation returns no refs, and is only suitable for
+        trees that have no local caching and can commit on ghosts at any time.
+
+        :seealso: bzrlib.check for details about check_refs.
+        """
+        return []
+
+    @needs_read_lock
+    def _check(self, references):
+        """Check the tree for consistency.
+
+        :param references: A dict with keys matching the items returned by
+            self._get_check_refs(), and values from looking those keys up in
+            the repository.
+        """
+        tree_basis = self.basis_tree()
+        tree_basis.lock_read()
+        try:
+            repo_basis = references[('trees', self.last_revision())]
+            if len(list(repo_basis.iter_changes(tree_basis))) > 0:
+                raise errors.BzrCheckError(
+                    "Mismatched basis inventory content.")
+            self._validate()
+        finally:
+            tree_basis.unlock()
+
+    @needs_read_lock
+    def check_state(self):
+        """Check that the working state is/isn't valid."""
+        check_refs = self._get_check_refs()
+        refs = {}
+        for ref in check_refs:
+            kind, value = ref
+            if kind == 'trees':
+                refs[ref] = self.branch.repository.revision_tree(value)
+        self._check(refs)
 
     @needs_tree_write_lock
     def reset_state(self, revision_ids=None):

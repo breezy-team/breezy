@@ -67,10 +67,7 @@ class TestOptParseBugHandling(TestCase):
 
     def test_nonascii_optparse(self):
         """Reasonable error raised when non-ascii in option name"""
-        if sys.version_info < (2,5):
-            error_re = 'no such option'
-        else:
-            error_re = 'Only ASCII permitted in option names'
+        error_re = 'Only ASCII permitted in option names'
         out = self.run_bzr_error([error_re], ['st',u'-\xe4'])
 
 
