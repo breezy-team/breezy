@@ -3846,7 +3846,9 @@ class cmd_merge(Command):
     through OTHER, excluding BASE but including OTHER, will be merged.  If this
     causes some revisions to be skipped, i.e. if the destination branch does
     not already contain revision BASE, such a merge is commonly referred to as
-    a "cherrypick".
+    a "cherrypick". Unlike a normal merge, Bazaar does not currently track
+    cherrypicks. The changes look like a normal commit, and the history of the
+    changes from the other branch is not stored in the commit.
 
     Revision numbers are always relative to the source branch.
 
