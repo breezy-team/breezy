@@ -57,17 +57,14 @@ class TestRememberMixin(object):
                                 working_dir=self.working_dir)
 
     def test_first_use_no_option(self):
-        self.setup_first_use()
         self.do_command(*self.first_use_args)
         self.assertLocations(self.first_use_args)
 
     def test_first_use_remember(self):
-        self.setup_first_use()
         self.do_command('--remember', *self.first_use_args)
         self.assertLocations(self.first_use_args)
 
     def test_first_use_no_remember(self):
-        self.setup_first_use()
         self.do_command('--no-remember', *self.first_use_args)
         self.assertLocations([])
 
@@ -95,7 +92,8 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
     first_use_args = ['../parent', '../grand_parent',]
     next_uses_args = ['../new_parent', '../new_grand_parent']
 
-    def setup_first_use(self):
+    def setUp(self):
+        super(TestSendRemember, self).setUp()
         self.run_script('''
             $ bzr init grand_parent
             $ cd grand_parent
@@ -117,7 +115,6 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
                         null_output_matches_anything=True)
 
     def setup_next_uses(self):
-        self.setup_first_use()
         # Do a first send that remembers the locations
         self.do_command(*self.first_use_args)
         # Now create some new targets
@@ -135,4 +132,5 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
         br, _ = branch.Branch.open_containing(self.working_dir)
         self.assertEquals(expected_submit_branch, br.get_submit_branch())
         self.assertEquals(expected_public_branch, br.get_public_branch())
+
 
