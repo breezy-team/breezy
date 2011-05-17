@@ -962,10 +962,10 @@ class cmd_pull(Command):
     match the remote one, use pull --overwrite. This will work even if the two
     branches have diverged.
 
-    If there is no default location set, the first pull will set it.  After
-    that, you can omit the location to use the default.  To change the
-    default, use --remember. The value will only be saved if the remote
-    location can be accessed.
+    If there is no default location set, the first pull will set it (use
+    --no-remember to avoid settting it). After that, you can omit the
+    location to use the default.  To change the default, use --remember. The
+    value will only be saved if the remote location can be accessed.
 
     Note: The location can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
@@ -1098,10 +1098,10 @@ class cmd_push(Command):
     do a merge (see bzr help merge) from the other branch, and commit that.
     After that you will be able to do a push without '--overwrite'.
 
-    If there is no default push location set, the first push will set it.
-    After that, you can omit the location to use the default.  To change the
-    default, use --remember. The value will only be saved if the remote
-    location can be accessed.
+    If there is no default push location set, the first push will set it (use
+    --no-remember to avoid settting it).  After that, you can omit the
+    location to use the default.  To change the default, use --remember. The
+    value will only be saved if the remote location can be accessed.
     """
 
     _see_also = ['pull', 'update', 'working-trees']
@@ -3858,9 +3858,9 @@ class cmd_merge(Command):
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
     If there is no default branch set, the first merge will set it (use
-    --no-remember to *not* set it). After that, you can omit the branch to use
-    the default.  To change the default, use --remember. The value will only be
-    saved if the remote location can be accessed.
+    --no-remember to avoid settting it). After that, you can omit the branch
+    to use the default.  To change the default, use --remember. The value will
+    only be saved if the remote location can be accessed.
 
     The results of the merge are placed into the destination working
     directory, where they can be reviewed (with bzr diff), tested, and then
@@ -5285,6 +5285,12 @@ class cmd_send(Command):
     branch.conf the first time they are used for a particular branch.  The
     source branch defaults to that containing the working directory, but can
     be changed using --from.
+
+    Both the submit branch and the public branch follow the usual behavior with
+    respect to --remember: If there is no default location set, the first send
+    will set it (use --no-remember to avoid settting it). After that, you can
+    omit the location to use the default.  To change the default, use
+    --remember. The value will only be saved if the location can be accessed.
 
     In order to calculate those changes, bzr must analyse the submit branch.
     Therefore it is most efficient for the submit branch to be a local mirror.
