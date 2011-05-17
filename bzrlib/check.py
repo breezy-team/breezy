@@ -53,12 +53,22 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.revision import NULL_REVISION
-from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import note
 from bzrlib.workingtree import WorkingTree
 
+
 class Check(object):
     """Check a repository"""
+
+    def __init__(self, repository, check_repo=True):
+        self.repository = repository
+
+    def report_results(self, verbose):
+        raise NotImplementedError(self.report_results)
+
+
+class VersionedFileCheck(Check):
+    """Check a versioned file repository"""
 
     # The Check object interacts with InventoryEntry.check, etc.
 

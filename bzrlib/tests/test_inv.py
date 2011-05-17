@@ -176,32 +176,6 @@ def apply_inventory_WT_basis(self, basis, delta):
         # This reads basis from the repo and puts it into the tree's local
         # cache, if it has one.
         tree.set_parent_ids(['basis'])
-        paths = {}
-        parents = set()
-        for old, new, id, entry in delta:
-            if None in (new, entry):
-                continue
-            paths[new] = (entry.file_id, entry.kind)
-            parents.add(osutils.dirname(new))
-        parents = osutils.minimum_path_selection(parents)
-        parents.discard('')
-        # Put place holders in the tree to permit adding the other entries.
-        for pos, parent in enumerate(parents):
-            if not tree.path2id(parent):
-                # add a synthetic directory in the tree so we can can put the
-                # tree0 entries in place for dirstate.
-                tree.add([parent], ["id%d" % pos], ["directory"])
-        if paths:
-            # Many deltas may cause this mini-apply to fail, but we want to see what
-            # the delta application code says, not the prep that we do to deal with 
-            # limitations of dirstate's update_basis code.
-            for path, (file_id, kind) in sorted(paths.items()):
-                try:
-                    tree.add([path], [file_id], [kind])
-                except (KeyboardInterrupt, SystemExit):
-                    raise
-                except:
-                    pass
     finally:
         tree.unlock()
     # Fresh lock, reads disk again.
@@ -586,8 +560,41 @@ class TestDeltaApplication(TestCaseWithTransport):
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
+    def test_add_file(self):
+        inv = self.get_empty_inventory()
+        file1 = inventory.InventoryFile('file-id', 'path', inv.root.file_id)
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ''
+        delta = [(None, u'path', 'file-id', file1)]
+        res_inv = self.apply_delta(self, inv, delta)
+        self.assertEqual('file-id', res_inv['file-id'].file_id)
 
-class TestInventory(TestCase):
+    def test_remove_file(self):
+        inv = self.get_empty_inventory()
+        file1 = inventory.InventoryFile('file-id', 'path', inv.root.file_id)
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ''
+        inv.add(file1)
+        delta = [(u'path', None, 'file-id', None)]
+        res_inv = self.apply_delta(self, inv, delta)
+        self.assertEqual(None, res_inv.path2id('path'))
+        self.assertRaises(errors.NoSuchId, res_inv.id2path, 'file-id')
+
+    def test_rename_file(self):
+        inv = self.get_empty_inventory()
+        file1 = inventory.InventoryFile('file-id', 'path', inv.root.file_id)
+        file1.revision = 'result'
+        file1.text_size = 0
+        file1.text_sha1 = ''
+        inv.add(file1)
+        file2 = file1.copy()
+        file2.name = 'path2'
+        delta = [(u'path', 'path2', 'file-id', file2)]
+        res_inv = self.apply_delta(self, inv, delta)
+        self.assertEqual(None, res_inv.path2id('path'))
+        self.assertEqual('file-id', res_inv.path2id('path2'))
 
     def test_is_root(self):
         """Ensure our root-checking code is accurate."""

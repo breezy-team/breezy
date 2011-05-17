@@ -1191,6 +1191,8 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     """
     # Lookup all possible text keys to determine which ones actually modified
     # the file.
+    graph = branch.repository.get_file_graph()
+    get_parent_map = graph.get_parent_map
     text_keys = [(file_id, rev_id) for rev_id, revno, depth in view_revisions]
     next_keys = None
     # Looking up keys in batches of 1000 can cut the time in half, as well as
@@ -1200,7 +1202,6 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     #       indexing layer. We might consider passing in hints as to the known
     #       access pattern (sparse/clustered, high success rate/low success
     #       rate). This particular access is clustered with a low success rate.
-    get_parent_map = branch.repository.texts.get_parent_map
     modified_text_revisions = set()
     chunk_size = 1000
     for start in xrange(0, len(text_keys), chunk_size):
