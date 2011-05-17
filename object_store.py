@@ -304,6 +304,9 @@ class BazaarObjectStore(BaseObjectStore):
             raise AssertionError()
         if self._map_updated:
             return
+        if (stop_revision is not None and
+            not self._cache.idmap.missing_revisions([stop_revision])):
+            return
         graph = self.repository.get_graph()
         if stop_revision is None:
             heads = graph.heads(self.repository.all_revision_ids())
@@ -321,7 +324,8 @@ class BazaarObjectStore(BaseObjectStore):
             missing_revids.remove(NULL_REVISION)
         missing_revids = self.repository.has_revisions(missing_revids)
         if not missing_revids:
-            self._map_updated = True
+            if stop_revision is None:
+                self._map_updated = True
             return
         self.start_write_group()
         try:
@@ -333,7 +337,8 @@ class BazaarObjectStore(BaseObjectStore):
                     self._update_sha_map_revision(revid)
             finally:
                 pb.finished()
-            self._map_updated = True
+            if stop_revision is None:
+                self._map_updated = True
         except:
             self.abort_write_group()
             raise
@@ -524,11 +529,7 @@ class BazaarObjectStore(BaseObjectStore):
             try:
                 return mapping_registry.parse_revision_id(revid)[0]
             except errors.InvalidRevisionId:
-                self.repository.lock_read()
-                try:
-                    self._update_sha_map(revid)
-                finally:
-                    self.repository.unlock()
+                self._update_sha_map(revid)
                 return self._cache.idmap.lookup_commit(revid)
 
     def get_raw(self, sha):

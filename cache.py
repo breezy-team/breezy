@@ -619,7 +619,10 @@ class TdbGitShaMap(GitShaMap):
         return "%s(%r)" % (self.__class__.__name__, self.path)
 
     def lookup_commit(self, revid):
-        return sha_to_hex(self.db["commit\0" + revid][:20])
+        try:
+            return sha_to_hex(self.db["commit\0" + revid][:20])
+        except KeyError:
+            raise KeyError("No cache entry for %r" % revid)
 
     def lookup_blob_id(self, fileid, revision):
         return sha_to_hex(self.db["\0".join(("blob", fileid, revision))])
