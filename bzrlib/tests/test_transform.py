@@ -2547,6 +2547,45 @@ class TestCleanup(tests.TestCaseWithTransport):
         self.assertPathDoesNotExist(path)
         self.assertPathDoesNotExist(tt._limbodir)
 
+    def test_rename_in_limbo_rename_raises_after_rename(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        parent1 = tt.new_directory('parent1', tt.root)
+        child1 = tt.new_file('child1', parent1, 'contents')
+        parent2 = tt.new_directory('parent2', tt.root)
+
+        class FakeOSModule(object):
+            def rename(self, old, new):
+                os.rename(old, new)
+                raise RuntimeError
+        self._override_globals_in_method(tt, "_rename_in_limbo",
+            {"os": FakeOSModule()})
+        self.assertRaises(
+            RuntimeError, tt.adjust_path, "child1", parent2, child1)
+        path = osutils.pathjoin(tt._limbo_name(parent2), "child1")
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
+
+    def test_rename_in_limbo_rename_raises_before_rename(self):
+        tt, trans_id = self.create_transform_and_root_trans_id()
+        parent1 = tt.new_directory('parent1', tt.root)
+        child1 = tt.new_file('child1', parent1, 'contents')
+        parent2 = tt.new_directory('parent2', tt.root)
+
+        class FakeOSModule(object):
+            def rename(self, old, new):
+                raise RuntimeError
+        self._override_globals_in_method(tt, "_rename_in_limbo",
+            {"os": FakeOSModule()})
+        self.assertRaises(
+            RuntimeError, tt.adjust_path, "child1", parent2, child1)
+        path = osutils.pathjoin(tt._limbo_name(parent1), "child1")
+        self.assertPathExists(path)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
+
 
 class TestTransformMissingParent(tests.TestCaseWithTransport):
 

@@ -1154,6 +1154,7 @@ class DiskTreeTransform(TreeTransformBase):
         self._deletiondir = None
         # A mapping of transform ids to their limbo filename
         self._limbo_files = {}
+        self._possibly_stale_limbo_files = set()
         # A mapping of transform ids to a set of the transform ids of children
         # that their limbo directory has
         self._limbo_children = {}
@@ -1172,7 +1173,9 @@ class DiskTreeTransform(TreeTransformBase):
         if self._tree is None:
             return
         try:
-            limbo_paths = sorted(self._limbo_files.values(), reverse=True)
+            limbo_paths = self._limbo_files.values() + list(
+                self._possibly_stale_limbo_files)
+            limbo_paths = sorted(limbo_paths, reverse=True)
             for path in limbo_paths:
                 try:
                     delete_any(path)
@@ -1236,11 +1239,14 @@ class DiskTreeTransform(TreeTransformBase):
         entries from _limbo_files, because they are now stale.
         """
         for trans_id in trans_ids:
-            old_path = self._limbo_files.pop(trans_id)
+            old_path = self._limbo_files[trans_id]
+            self._possibly_stale_limbo_files.add(old_path)
+            del self._limbo_files[trans_id]
             if trans_id not in self._new_contents:
                 continue
             new_path = self._limbo_name(trans_id)
             os.rename(old_path, new_path)
+            self._possibly_stale_limbo_files.remove(old_path)
             for descendant in self._limbo_descendants(trans_id):
                 desc_path = self._limbo_files[descendant]
                 desc_path = new_path + desc_path[len(old_path):]
