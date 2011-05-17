@@ -70,18 +70,19 @@ Faster operations on Large Trees
 
 Many bzr commands used to run into pathological behavior on large trees
 (>10k files), reading the inventory data in random order causing cache
-thrashing. Various other tweaks have been applied with feedback from large
-trees. A possibly incomplete list is as follows for running commands on a
-70k file tree::
+thrashing (the fix was backported to bzr-2.3.2). We also updated several
+code paths that were updating the WT state using an O(tree) operation to
+one that was an O(changes) operation.  A possibly incomplete list is as
+follows for running commands on a 70k file tree::
 
     bzr-2.3.1 bzr-2.3.2 bzr-2.4 action
-    3m39s                 1m03s   bzr co --lightweight
-      38s                    6s   bzr revert
-    4m47s                   27s   bzr merge
-    4m45s           29s     17s   bzr pull
-    4m58s                   32s   bzr up
-    9m33s                   29s   bzr uncommit (including a merge)
-    4m44s           17s      3s   bzr uncommit (simple commit)
+    3m39s         1m08s   1m03s   bzr co --lightweight
+      38s            8s      2s   bzr revert (in a clean tree)
+    4m47s         3m56s     15s   bzr merge
+    4m45s           20s      3s   bzr pull
+    4m58s         3m00s      2s   bzr up
+    9m33s           21s     19s   bzr uncommit (including a merge)
+    4m44s           17s      2s   bzr uncommit (simple commit)
     
 
 Faster stacked branches
