@@ -85,24 +85,6 @@ class build_mo(Command):
         if not self.lang:
             return
 
-        if 'en' in self.lang:
-            if find_executable('msginit') is None:
-                log.warn("GNU gettext msginit utility not found!")
-                log.warn("Skip creating English PO file.")
-            else:
-                log.info('Creating English PO file...')
-                pot = (self.prj_name or 'messages') + '.pot'
-                if self.prj_name:
-                    en_po = '%s-en.po' % self.prj_name
-                else:
-                    en_po = 'en.po'
-                self.spawn(['msginit',
-                    '--no-translator',
-                    '-l', 'en',
-                    '-i', os.path.join(self.source_dir, pot),
-                    '-o', os.path.join(self.source_dir, en_po),
-                    ])
-
         basename = self.output_base
         if not basename.endswith('.mo'):
             basename += '.mo'
