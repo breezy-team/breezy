@@ -2522,11 +2522,9 @@ class TestCleanup(tests.TestCaseWithTransport):
         self.assertRaises(RuntimeError, tt.create_file, ["contents"], trans_id)
         path = tt._limbo_name(trans_id)
         self.assertPathExists(path)
-        # GZ 2011-05-17: Why raise ImmortalLimbo, masking the earlier error,
-        #                rather than just emitting a warning or similar?
-        self.assertRaises(errors.ImmortalLimbo, tt.finalize)
-        self.assertPathExists(path)
-        self.assertPathExists(tt._limbodir)
+        tt.finalize()
+        self.assertPathDoesNotExist(path)
+        self.assertPathDoesNotExist(tt._limbodir)
 
     def test_subdir_create_file_open_raises_before_creation(self):
         tt, trans_id = self.create_transform_and_subdir_trans_id()
