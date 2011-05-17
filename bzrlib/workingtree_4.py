@@ -1900,7 +1900,7 @@ class DirStateRevisionTree(InventoryTree):
                                        identifier))
         return self._repository.iter_files_bytes(repo_desired_files)
 
-    def get_symlink_target(self, file_id):
+    def get_symlink_target(self, file_id, path=None):
         entry = self._get_entry(file_id=file_id)
         parent_index = self._get_parent_index()
         if entry[1][parent_index][0] != 'l':

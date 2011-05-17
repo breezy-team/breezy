@@ -241,11 +241,11 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         try:
             self.build_tree(['foo'])
             tree.add('foo', 'foo-id')
-            entry = tree.inventory['foo-id']
             builder = tree.branch.get_commit_builder([])
             if not builder.supports_record_entry_contents:
                 raise tests.TestNotApplicable("CommitBuilder doesn't support "
                     "record_entry_contents")
+            entry = tree.inventory['foo-id']
             self.assertRaises(errors.RootMissing,
                 builder.record_entry_contents, entry, [], 'foo', tree,
                     tree.path_content_summary('foo'))
@@ -937,10 +937,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             parent_tree = tree.basis_tree()
             parent_tree.lock_read()
             self.addCleanup(parent_tree.unlock)
-            parent_invs = [parent_tree.inventory]
+            parent_trees = [parent_tree]
             for parent_id in parent_ids[1:]:
-                parent_invs.append(tree.branch.repository.revision_tree(
-                    parent_id).inventory)
+                parent_trees.append(tree.branch.repository.revision_tree(
+                    parent_id))
             changes = list(tree.iter_changes(parent_tree))
             result = list(builder.record_iter_changes(tree, parent_ids[0],
                 changes))
@@ -995,7 +995,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # (closest to a public per-file graph API we have today)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        g = dict(graph.Graph(tree.branch.repository.texts).iter_ancestry([tip]))
+        g = dict(tree.branch.repository.get_file_graph().iter_ancestry([tip]))
         self.assertEqual(expected_graph, g)
 
     def test_last_modified_revision_after_content_file_changes(self):

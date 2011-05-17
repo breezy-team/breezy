@@ -641,10 +641,11 @@ class BundleTree(Tree):
                 'Malformed patch for %s, %r' % (file_id, file_patch))
         return patched_file(file_patch, patch_original)
 
-    def get_symlink_target(self, file_id):
-        new_path = self.id2path(file_id)
+    def get_symlink_target(self, file_id, path=None):
+        if path is None:
+            path = self.id2path(file_id)
         try:
-            return self._targets[new_path]
+            return self._targets[path]
         except KeyError:
             return self.base_tree.get_symlink_target(file_id)
 
@@ -715,7 +716,7 @@ class BundleTree(Tree):
                 ie.executable = self.is_executable(file_id)
             elif kind == 'symlink':
                 ie = InventoryLink(file_id, name, parent_id)
-                ie.symlink_target = self.get_symlink_target(file_id)
+                ie.symlink_target = self.get_symlink_target(file_id, path)
             ie.revision = revision_id
 
             if kind == 'file':

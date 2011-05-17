@@ -35,9 +35,7 @@ from bzrlib import (
         repository,
         revision as _mod_revision,
         rio,
-        symbol_versioning,
         transport,
-        tsort,
         ui,
         urlutils,
         )
@@ -782,11 +780,17 @@ class Branch(controldir.ControlComponent):
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
         """See Branch.generate_revision_history"""
-        # FIXME: This shouldn't have to fetch the entire history
-        history = self._lefthand_history(revision_id, last_rev, other_branch)
-        revno = len(history)
+        graph = self.repository.get_graph()
+        known_revision_ids = [
+            self.last_revision_info(),
+            (_mod_revision.NULL_REVISION, 0),
+            ]
+        if last_rev is not None:
+            if not graph.is_ancestor(last_rev, revision_id):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
+        revno = graph.find_distance_to_null(revision_id, known_revision_ids)
         self.set_last_revision_info(revno, revision_id)
-        self._cache_revision_history(history)
 
     @needs_write_lock
     def set_parent(self, url):
@@ -2808,11 +2812,15 @@ class BzrBranch8(BzrBranch):
         self._reference_info = None
 
     def _check_history_violation(self, revision_id):
-        last_revision = _mod_revision.ensure_null(self.last_revision())
+        current_revid = self.last_revision()
+        last_revision = _mod_revision.ensure_null(current_revid)
         if _mod_revision.is_null(last_revision):
             return
-        if last_revision not in self._lefthand_history(revision_id):
-            raise errors.AppendRevisionsOnlyViolation(self.user_url)
+        graph = self.repository.get_graph()
+        for lh_ancestor in graph.iter_lefthand_ancestry(revision_id):
+            if lh_ancestor == current_revid:
+                return
+        raise errors.AppendRevisionsOnlyViolation(self.user_url)
 
     def _gen_revision_history(self):
         """Generate the revision history from last revision

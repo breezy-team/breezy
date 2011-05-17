@@ -252,3 +252,11 @@ To learn about Bazaar commands::
 To learn about the ''foo'' topic or command::
 
   $ bzr help foo
+
+Licence
+=============
+
+Copyright 2007-2011 Canonical Ltd. Bazaar is free software, and you
+may use, modify and redistribute both Bazaar and this document under
+the terms of the GNU General Public License version 2 or later. See
+<http://www.gnu.org/licenses/>.

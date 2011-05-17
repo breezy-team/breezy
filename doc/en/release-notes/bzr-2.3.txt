@@ -5,10 +5,11 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.3.2
+bzr 2.3.4
 #########
 
-:2.3.2: NOT RELEASED YET
+:Codename: One and counting
+:2.3.4: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -26,6 +27,80 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
+Bug Fixes
+*********
+
+.. Fixes for situations where bzr would previously crash or give incorrect
+   or undesirable results.
+
+Documentation
+*************
+
+.. Improved or updated documentation.
+
+API Changes
+***********
+
+.. Changes that may require updates in plugins or other code that uses
+   bzrlib.
+
+Internals
+*********
+
+.. Major internal changes, unlikely to be visible to users or plugin 
+   developers, but interesting for bzr developers.
+
+Testing
+*******
+
+.. Fixes and changes that are only relevant to bzr's test framework and 
+   suite.  This can include new facilities for writing tests, fixes to 
+   spurious test failures and changes to the way things should be tested.
+
+
+bzr 2.3.3
+#########
+
+:2.3.3: 2011-05-13
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.3 releases.
+
+This fixed a bug in the test suite triggered by python-2.7 deprecating some
+tests helpers.
+
+Testing
+*******
+
+* Stop using `failIf`, `failUnless`, `failIfEqual`, etc, that give
+  `PendingDeprecationWarnings` on Python2.7. 
+  (Martin Pool, #760435)
+
+
+bzr 2.3.2
+#########
+
+:2.3.2: 2011-05-12
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.3 releases.
+
+This was never released due to bug #760435 interrupting the release process by
+breaking the test suite under python-2.7 on natty.
+
+External Compatibility Breaks
+*****************************
+
+None
+
+New Features
+************
+
+None
+
+Improvements
+************
+
 * Getting all entries from ``CHKInventory.iter_entries_by_dir()`` has been
   sped up dramatically for large trees. Iterating by dir is not the best
   way to load data from a CHK inventory, so it preloads all the items in
@@ -35,9 +110,6 @@ Improvements
 
 Bug Fixes
 *********
-
-.. Fixes for situations where bzr would previously crash or give incorrect
-   or undesirable results.
 
 * Bazaar now infers the default user email address on Unix from the local
   account name plus the contents of ``/etc/mailname`` if that file exists.
@@ -72,29 +144,13 @@ Bug Fixes
   (Martin Pool, #716389)
 
 
-Documentation
-*************
-
-.. Improved or updated documentation.
-
 API Changes
 ***********
 
-.. Changes that may require updates in plugins or other code that uses
-   bzrlib.
-
-Internals
-*********
-
-.. Major internal changes, unlikely to be visible to users or plugin 
-   developers, but interesting for bzr developers.
+None.
 
 Testing
 *******
-
-.. Fixes and changes that are only relevant to bzr's test framework and 
-   suite.  This can include new facilities for writing tests, fixes to 
-   spurious test failures and changes to the way things should be tested.
 
 * FreeBSD8 has switched to python-2.7 which revealed a re-occurrence of a test
   failure in the launchpad plugin. ``xmlrpclib.py`` on natty carries a patch

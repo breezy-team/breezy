@@ -31,8 +31,9 @@ first time, e.g.::
 
   bzr merge bzr+ssh://mary@bill-laptop/cool-repo/cool-trunk
 
-This sets the default merge branch if one is not already set. To change the
-default after it is set, use the ``--remember`` option.
+This sets the default merge branch if one is not already set.  Use
+``--no-remember`` to avoid setting it. To change the default after it is set,
+use the ``--remember`` option.
 
 How does merging work?
 ----------------------

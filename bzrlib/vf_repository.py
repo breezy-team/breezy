@@ -20,6 +20,7 @@
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    check,
     debug,
     fetch as _mod_fetch,
     fifo_cache,
@@ -104,6 +105,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
         super(VersionedFileCommitBuilder, self).__init__(repository,
             parents, config, timestamp, timezone, committer, revprops,
             revision_id, lossy)
+        try:
+            basis_id = self.parents[0]
+        except IndexError:
+            basis_id = _mod_revision.NULL_REVISION
+        self.basis_delta_revision = basis_id
         self.new_inventory = Inventory(None)
         self._basis_delta = []
         self.__heads = graph.HeadsCache(repository.get_graph()).heads
@@ -123,11 +129,6 @@ class VersionedFileCommitBuilder(CommitBuilder):
         builder.record_delete().
         """
         self._recording_deletes = True
-        try:
-            basis_id = self.parents[0]
-        except IndexError:
-            basis_id = _mod_revision.NULL_REVISION
-        self.basis_delta_revision = basis_id
 
     def any_changes(self):
         """Return True if any entries were changed.
@@ -536,7 +537,11 @@ class VersionedFileCommitBuilder(CommitBuilder):
         else:
             raise NotImplementedError('unknown kind')
         ie.revision = self._new_revision_id
-        self._any_changes = True
+        # The initial commit adds a root directory, but this in itself is not
+        # a worthwhile commit.
+        if (self.basis_delta_revision != _mod_revision.NULL_REVISION or
+            path != ""):
+            self._any_changes = True
         return self._get_delta(ie, basis_inv, path), True, fingerprint
 
     def record_iter_changes(self, tree, basis_revision_id, iter_changes,
@@ -798,7 +803,10 @@ class VersionedFileCommitBuilder(CommitBuilder):
             if new_path == '':
                 seen_root = True
         self.new_inventory = None
-        if len(inv_delta):
+        # The initial commit adds a root directory, but this in itself is not
+        # a worthwhile commit.
+        if ((len(inv_delta) > 0 and basis_revision_id != _mod_revision.NULL_REVISION) or
+            (len(inv_delta) > 1 and basis_revision_id == _mod_revision.NULL_REVISION)):
             # This should perhaps be guarded by a check that the basis we
             # commit against is the basis for the commit and if not do a delta
             # against the basis.
@@ -1203,7 +1211,6 @@ class VersionedFileRepository(Repository):
             result['revisions'] = len(self.revisions.keys())
             # result['size'] = t
         return result
-
 
     def get_commit_builder(self, branch, parents, config, timestamp=None,
                            timezone=None, committer=None, revprops=None,
@@ -1815,6 +1822,11 @@ class VersionedFileRepository(Repository):
         known_graph = self.revisions.get_known_graph_ancestry(revision_keys)
         return graph.GraphThunkIdsToKeys(known_graph)
 
+    @needs_read_lock
+    def get_file_graph(self):
+        """Return the graph walker for text revisions."""
+        return graph.Graph(self.texts)
+
     def _get_versioned_file_checker(self, text_key_references=None,
         ancestors=None):
         """Return an object suitable for checking versioned files.
@@ -1849,6 +1861,12 @@ class VersionedFileRepository(Repository):
         if record.storage_kind == 'absent':
             raise errors.NoSuchRevision(self, revision_id)
         return record.get_bytes_as('fulltext')
+
+    @needs_read_lock
+    def _check(self, revision_ids, callback_refs, check_repo):
+        result = check.VersionedFileCheck(self, check_repo=check_repo)
+        result.check(callback_refs)
+        return result
 
     def _find_inconsistent_revision_parents(self, revisions_iterator=None):
         """Find revisions with different parent lists in the revision object

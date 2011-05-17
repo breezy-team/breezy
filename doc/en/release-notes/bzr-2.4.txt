@@ -15,10 +15,23 @@ External Compatibility Breaks
 
 .. These may require users to change the way they use Bazaar.
 
+* ``bzr-2.4`` has officially dropped support for python2.4 and python2.5.
+  We will continue to maintain ``bzr-2.3`` for people who still need to
+  use those versions of python. (John Arbash Meinel)
+
 New Features
 ************
 
 .. New commands, options, etc that users may wish to try out.
+
+* The text compressor used for 2a repositories now has a tweakable
+  parameter that can be set in bazaar.conf.
+  ``bzr.groupcompress.max_entries_per_source`` default of 65536.
+  When doing compression, we build up an index of locations to match
+  against. Setting this higher will result in slightly better compression,
+  at a cost of more memory. Note that a value of 65k represents fully
+  sampling a 1MB file. So this only has an effect when compressing texts
+  larger than N*16 bytes. (John Arbash Meinel, #602614)
 
 Improvements
 ************
@@ -29,6 +42,14 @@ Improvements
 * ``bzr branch --stacked`` from a smart server uses the network a little
   more efficiently.  For a simple branch it reduces the number of
   round-trips by about 20%.  (Andrew Bennetts)
+
+* ``bzr pull`` now properly triggers the fast
+  ``CHKInventory.iter_changes`` rather than the slow generic
+  inter-Inventory changes. It used to use a ``DirStateRevisionTree`` as
+  one of the source trees, which is faster when we have to read the whole
+  inventory anyway, but much slower when we can get just the delta out of
+  the repository. On a 70k record tree, this changes ``bzr pull`` from 28s
+  down to 17s. (John Arbash Meinel, #780677)
 
 * Slightly reduced memory consumption when fetching into a 2a repository
   by reusing existing caching a little better.  (Andrew Bennetts)
@@ -53,8 +74,14 @@ Bug Fixes
 * All Tree types can now be exported as tar.*, zip or directories.
   (Aaron Bentley)
   
+* ``bzr merge --no-remember location`` never sets ``submit_branch``.
+  (Vincent Ladeuil, #782169)
+
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
+
+* Fix `bzr plugins` regression in bzr 2.4 which resulted in a traceback
+  from writelines on ckj terminals. (Martin [GZ], #754082)
 
 * ``WT.inventory`` and ``WT.iter_entries_by_dir()`` was not correctly
   reporting subdirectories that were tree references (in formats that
@@ -65,6 +92,10 @@ Documentation
 *************
 
 .. Improved or updated documentation.
+
+* Restore the workaround for option names including dots (--1.14) which was
+  disabled when we stopped listing --1.9 as a format.
+  (Vincent Ladeuil, #782289)
 
 API Changes
 ***********
@@ -79,6 +110,9 @@ API Changes
   compatible optimisers rather than an instance of the class it is called
   on. (Jelmer Vernooij)
 
+* New method ``Repository.get_file_graph`` which can return the
+  per-file revision graph. (Jelmer Vernooij, #775578)
+
 * The default implementation of ``Branch`` is now oriented to
   storing the branch tip. Branch implementations which store the full
   history should now subclass ``FullHistoryBzrBranch``.
@@ -87,6 +121,9 @@ API Changes
 
 * ``Tree.__iter__`` has been deprecated; use ``Tree.all_file_ids``
   instead.  (Jelmer Vernooij)
+
+* ``Tree.get_symlink_target`` now takes an optional ``path``
+  argument. (Jelmer Vernooij)
 
 Internals
 *********
@@ -101,6 +138,9 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+* Make it easier for plugins to reuse the per_workingtree scenarios by
+  restoring the wt_scenarios helper that was accidentally deleted.
+  (Vincent Ladeuil, #783472)
 
 bzr 2.4b2
 #########
