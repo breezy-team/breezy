@@ -24,6 +24,15 @@ New Features
 
 .. New commands, options, etc that users may wish to try out.
 
+* The text compressor used for 2a repositories now has a tweakable
+  parameter that can be set in bazaar.conf.
+  ``bzr.groupcompress.max_entries_per_source`` default of 65536.
+  When doing compression, we build up an index of locations to match
+  against. Setting this higher will result in slightly better compression,
+  at a cost of more memory. Note that a value of 65k represents fully
+  sampling a 1MB file. So this only has an effect when compressing texts
+  larger than N*16 bytes. (John Arbash Meinel, #602614)
+
 Improvements
 ************
 
@@ -61,8 +70,14 @@ Bug Fixes
 * All Tree types can now be exported as tar.*, zip or directories.
   (Aaron Bentley)
   
+* ``bzr merge --no-remember location`` never sets ``submit_branch``.
+  (Vincent Ladeuil, #782169)
+
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
+
+* Fix `bzr plugins` regression in bzr 2.4 which resulted in a traceback
+  from writelines on ckj terminals. (Martin [GZ], #754082)
 
 * ``WT.inventory`` and ``WT.iter_entries_by_dir()`` was not correctly
   reporting subdirectories that were tree references (in formats that
@@ -90,6 +105,10 @@ API Changes
 * ``Inter.get`` now raises ``NoCompatibleInter`` if there are no
   compatible optimisers rather than an instance of the class it is called
   on. (Jelmer Vernooij)
+
+* ``Branch.push`` now takes a ``lossy`` argument.
+  ``Branch.lossy_push`` has been removed.
+  (Jelmer Vernooij)
 
 * New method ``Repository.get_file_graph`` which can return the
   per-file revision graph. (Jelmer Vernooij, #775578)
@@ -121,6 +140,10 @@ Testing
 
 * A test that was expected to fail but passes instead now counts as a failure
   catching up with new testtools and subunit handling. (Martin [GZ], #654474)
+
+* Make it easier for plugins to reuse the per_workingtree scenarios by
+  restoring the wt_scenarios helper that was accidentally deleted.
+  (Vincent Ladeuil, #783472)
 
 bzr 2.4b2
 #########
