@@ -3322,6 +3322,7 @@ class GenericInterBranch(InterBranch):
             fetch_spec_factory.source_repo = self.source.repository
             fetch_spec_factory.target_repo = self.target.repository
             fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+            fetch_spec_factory.limit = limit
             fetch_spec = fetch_spec_factory.make_fetch_spec()
             return self.target.repository.fetch(self.source.repository,
                 fetch_spec=fetch_spec)

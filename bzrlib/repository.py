@@ -16,6 +16,7 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import itertools
 import time
 
 from bzrlib import (
@@ -585,7 +586,8 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
     @needs_read_lock
     def search_missing_revision_ids(self, other,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None, if_present_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None,
+            limit=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
@@ -604,7 +606,7 @@ class Repository(_RelockDebugMixin, controldir.ControlComponent):
                 revision_ids = [revision_id]
         return InterRepository.get(other, self).search_missing_revision_ids(
             find_ghosts=find_ghosts, revision_ids=revision_ids,
-            if_present_ids=if_present_ids)
+            if_present_ids=if_present_ids, limit=limit)
 
     @staticmethod
     def open(base):
@@ -1788,7 +1790,8 @@ class InterRepository(InterObject):
     @needs_read_lock
     def search_missing_revision_ids(self,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None, if_present_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None,
+            limit=None):
         """Return the revision ids that source has that target does not.
 
         :param revision_id: only return revision ids included by this
@@ -1802,6 +1805,8 @@ class InterRepository(InterObject):
             to fetch for tags, which may reference absent revisions.
         :param find_ghosts: If True find missing revisions in deep history
             rather than just finding the surface difference.
+        :param limit: Maximum number of revisions to return, topologically
+            ordered
         :return: A bzrlib.graph.SearchResult.
         """
         if symbol_versioning.deprecated_passed(revision_id):
@@ -1818,13 +1823,20 @@ class InterRepository(InterObject):
         # stop searching at found target revisions.
         if not find_ghosts and (revision_ids is not None or if_present_ids is
                 not None):
-            return self._walk_to_common_revisions(revision_ids,
+            result = self._walk_to_common_revisions(revision_ids,
                     if_present_ids=if_present_ids)
-        # generic, possibly worst case, slow code path.
-        target_ids = set(self.target.all_revision_ids())
-        source_ids = self._present_source_revisions_for(
-            revision_ids, if_present_ids)
-        result_set = set(source_ids).difference(target_ids)
+            result_set = result.get_keys()
+        else:
+            # generic, possibly worst case, slow code path.
+            target_ids = set(self.target.all_revision_ids())
+            source_ids = self._present_source_revisions_for(
+                revision_ids, if_present_ids)
+            result_set = set(source_ids).difference(target_ids)
+        if limit is not None:
+            graph = self.source.get_graph()
+            topo_ordered = list(graph.iter_topo_order(result_set))
+            mutter("topo ordered %r", topo_ordered)
+            result_set = set(topo_ordered[:limit])
         return self.source.revision_ids_to_search_result(result_set)
 
     def _present_source_revisions_for(self, revision_ids, if_present_ids=None):
