@@ -211,7 +211,7 @@ register_lazy_transport("git+ssh://", 'bzrlib.plugins.git.remote',
                         'SSHGitSmartTransport')
 
 foreign_vcs_registry.register_lazy("git",
-    "bzrlib.plugins.git.mapping", "foreign_git", "Stupid content tracker")
+    "bzrlib.plugins.git.mapping", "foreign_vcs_git", "Stupid content tracker")
 
 plugin_cmds.register_lazy("cmd_git_import", [], "bzrlib.plugins.git.commands")
 plugin_cmds.register_lazy("cmd_git_object", ["git-objects", "git-cat"],

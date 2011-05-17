@@ -37,7 +37,7 @@ from bzrlib.plugins.git.commit import (
     )
 from bzrlib.plugins.git.mapping import (
     default_mapping,
-    foreign_git,
+    foreign_vcs_git,
     mapping_registry,
     )
 from bzrlib.plugins.git.tree import (
@@ -100,7 +100,7 @@ class GitRepository(ForeignRepository):
     """An adapter to git repositories for bzr."""
 
     _serializer = None
-    vcs = foreign_git
+    vcs = foreign_vcs_git
     chk_bytes = None
 
     def __init__(self, gitdir, lockfiles):

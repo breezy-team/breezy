@@ -101,7 +101,7 @@ class BzrGitMapping(foreign.VcsMapping):
     BZR_DUMMY_FILE = None
 
     def __init__(self):
-        super(BzrGitMapping, self).__init__(foreign_git)
+        super(BzrGitMapping, self).__init__(foreign_vcs_git)
 
     def __eq__(self, other):
         return (type(self) == type(other) and
@@ -464,7 +464,7 @@ class ForeignGit(ForeignVcs):
         return { "git commit": foreign_revid }
 
 
-foreign_git = ForeignGit()
+foreign_vcs_git = ForeignGit()
 default_mapping = mapping_registry.get_default()()
 
 
