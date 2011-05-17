@@ -70,6 +70,9 @@ Bug Fixes
 * All Tree types can now be exported as tar.*, zip or directories.
   (Aaron Bentley)
   
+* ``bzr merge --no-remember location`` never sets ``submit_branch``.
+  (Vincent Ladeuil, #782169)
+
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
 
