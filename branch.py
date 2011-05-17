@@ -888,6 +888,7 @@ class InterToGitBranch(branch.GenericInterBranch):
         return result
 
     def lossy_push(self, stop_revision=None):
+        # For compatibility with bzr < 2.4
         return self.push(lossy=True, stop_revision=stop_revision)
 
 
