@@ -1135,7 +1135,7 @@ class cmd_push(Command):
     takes_args = ['location?']
     encoding_type = 'replace'
 
-    def run(self, location=None, remember=False, overwrite=False,
+    def run(self, location=None, remember=None, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
         stacked=False, strict=None, no_tree=False):

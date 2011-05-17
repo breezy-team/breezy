@@ -15,7 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-from bzrlib import branch
+from bzrlib import (
+    branch,
+    urlutils,
+    )
 from bzrlib.tests import (
     script,
     )
@@ -132,5 +135,48 @@ class TestSendRemember(script.TestCaseWithTransportAndScript,
         br, _ = branch.Branch.open_containing(self.working_dir)
         self.assertEquals(expected_submit_branch, br.get_submit_branch())
         self.assertEquals(expected_public_branch, br.get_public_branch())
+
+
+class TestPushRemember(script.TestCaseWithTransportAndScript,
+                       TestRememberMixin):
+
+    working_dir = 'work'
+    command = ['push',]
+    first_use_args = ['../target',]
+    next_uses_args = ['../new_target']
+
+    def setUp(self):
+        super(TestPushRemember, self).setUp()
+        self.run_script('''
+            $ bzr init %(working_dir)s
+            $ cd %(working_dir)s
+            $ echo some content > file
+            $ bzr add
+            $ bzr commit -m 'initial commit'
+            $ cd ..
+            ''' % {'working_dir': self.working_dir},
+                        null_output_matches_anything=True)
+
+    def setup_next_uses(self):
+        # Do a first push that remembers the location
+        self.do_command(*self.first_use_args)
+        # Now create some new content
+        self.run_script('''
+            $ cd %(working_dir)s
+            $ echo new content > file
+            $ bzr commit -m 'new content'
+            $ cd ..
+            ''' % {'working_dir': self.working_dir},
+                        null_output_matches_anything=True)
+
+    def assertLocations(self, expected_locations):
+        br, _ = branch.Branch.open_containing(self.working_dir)
+        if not expected_locations:
+            self.assertEquals(None, br.get_push_location())
+        else:
+            expected_push_location = expected_locations[0]
+            push_location = urlutils.relative_url(br.base,
+                                                  br.get_push_location())
+            self.assertIsSameRealPath(expected_push_location, push_location)
 
 
