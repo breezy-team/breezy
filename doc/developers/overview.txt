@@ -325,7 +325,7 @@ An inventory entry will have other attributes, depending on the kind:
 
   * reference_revision
 
-For some more details see `Inventories <inventories.html>`_.
+For some more details see `Inventories <inventory.html>`_.
 
 
 Texts store

@@ -34,7 +34,8 @@ class TestBasisInventory(TestCaseWithWorkingTree):
 
     def _references_unsupported(self, tree):
         if not tree.supports_tree_reference():
-            raise tests.TestSkipped('Tree format does not support references')
+            raise tests.TestNotApplicable(
+                'Tree format does not support references')
         else:
             self.fail('%r does not support references but should'
                 % (tree, ))

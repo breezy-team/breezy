@@ -61,11 +61,6 @@ class ForeignBranchTests(TestCaseWithTransport):
         branch = self.make_branch()
         branch.set_parent("foobar")
 
-    def test_break_lock(self):
-        """Test that break_lock() works, even if it is a no-op."""
-        branch = self.make_branch()
-        branch.break_lock()
-
     def test_set_push_location(self):
         """Test that setting the push location works."""
         branch = self.make_branch()
@@ -148,5 +143,3 @@ class ForeignBranchFormatTests(TestCaseWithTransport):
 
     def test_network_name(self):
         self.assertIsInstance(self.branch_format.network_name(), str)
-
-

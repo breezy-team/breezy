@@ -19,6 +19,9 @@
 These were formats present in pre-1.0 version of Bazaar.
 """
 
+# Since we are a built-in plugin we share the bzrlib version
+from bzrlib import version_info
+
 from bzrlib import (
     branch as _mod_branch,
     controldir,

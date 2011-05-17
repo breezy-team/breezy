@@ -56,7 +56,8 @@ cdef extern from "delta.h":
         DELTA_SIZE_TOO_BIG
     delta_result create_delta_index(source_info *src,
                                     delta_index *old,
-                                    delta_index **fresh) nogil
+                                    delta_index **fresh,
+                                    int max_entries) nogil
     delta_result create_delta_index_from_delta(source_info *delta,
                                                delta_index *old,
                                                delta_index **fresh) nogil
@@ -70,6 +71,10 @@ cdef extern from "delta.h":
                                      unsigned char *top) nogil
     unsigned long sizeof_delta_index(delta_index *index)
     Py_ssize_t DELTA_SIZE_MIN
+    int get_hash_offset(delta_index *index, int pos, unsigned int *hash_offset)
+    int get_entry_summary(delta_index *index, int pos,
+                          unsigned int *global_offset, unsigned int *hash_val)
+    unsigned int rabin_hash (unsigned char *data)
 
 
 cdef void *safe_malloc(size_t count) except NULL:
@@ -113,6 +118,15 @@ cdef object _translate_delta_failure(delta_result result):
     return AssertionError("Unrecognised delta result code: %d" % result)
 
 
+def _rabin_hash(content):
+    if not PyString_CheckExact(content):
+        raise ValueError('content must be a string')
+    if len(content) < 16:
+        raise ValueError('content must be at least 16 bytes long')
+    # Try to cast it to an int, if it can fit
+    return int(rabin_hash(<unsigned char*>(PyString_AS_STRING(content))))
+
+
 cdef class DeltaIndex:
 
     # We need Pyrex 0.9.8+ to understand a 'list' definition, and this object
@@ -123,14 +137,18 @@ cdef class DeltaIndex:
     cdef delta_index *_index
     cdef public unsigned long _source_offset
     cdef readonly unsigned int _max_num_sources
+    cdef public int _max_bytes_to_index
 
-    def __init__(self, source=None):
+    def __init__(self, source=None, max_bytes_to_index=None):
         self._sources = []
         self._index = NULL
         self._max_num_sources = 65000
         self._source_infos = <source_info *>safe_malloc(sizeof(source_info)
                                                         * self._max_num_sources)
         self._source_offset = 0
+        self._max_bytes_to_index = 0
+        if max_bytes_to_index is not None:
+            self._max_bytes_to_index = max_bytes_to_index
 
         if source is not None:
             self.add_source(source, 0)
@@ -163,6 +181,44 @@ cdef class DeltaIndex:
 
     def _has_index(self):
         return (self._index != NULL)
+
+    def _dump_index(self):
+        """Dump the pointers in the index.
+
+        This is an arbitrary layout, used for testing. It is not meant to be
+        used in production code.
+
+        :return: (hash_list, entry_list)
+            hash_list   A list of offsets, so hash[i] points to the 'hash
+                        bucket' starting at the given offset and going until
+                        hash[i+1]
+            entry_list  A list of (text_offset, hash_val). text_offset is the
+                        offset in the "source" texts, and hash_val is the RABIN
+                        hash for that offset.
+                        Note that the entry should be in the hash bucket
+                        defined by
+                        hash[(hash_val & mask)] && hash[(hash_val & mask) + 1]
+        """
+        cdef int pos
+        cdef unsigned int text_offset
+        cdef unsigned int hash_val
+        cdef unsigned int hash_offset
+        if self._index == NULL:
+            return None
+        hash_list = []
+        pos = 0
+        while get_hash_offset(self._index, pos, &hash_offset):
+            hash_list.append(int(hash_offset))
+            pos += 1
+        entry_list = []
+        pos = 0
+        while get_entry_summary(self._index, pos, &text_offset, &hash_val):
+            # Map back using 'int' so that we don't get Long everywhere, when
+            # almost everything is <2**31.
+            val = tuple(map(int, [text_offset, hash_val]))
+            entry_list.append(val)
+            pos += 1
+        return hash_list, entry_list
 
     def add_delta_source(self, delta, unadded_bytes):
         """Add a new delta to the source texts.
@@ -207,6 +263,10 @@ cdef class DeltaIndex:
         :param source: The text in question, this must be a byte string
         :param unadded_bytes: Assume there are this many bytes that didn't get
             added between this source and the end of the previous source.
+        :param max_pointers: Add no more than this many entries to the index.
+            By default, we sample every 16 bytes, if that would require more
+            than max_entries, we will reduce the sampling rate.
+            A value of 0 means unlimited, None means use the default limit.
         """
         cdef char *c_source
         cdef Py_ssize_t c_source_size
@@ -215,6 +275,7 @@ cdef class DeltaIndex:
         cdef unsigned int source_location
         cdef source_info *src
         cdef unsigned int num_indexes
+        cdef int max_num_entries
 
         if not PyString_CheckExact(source):
             raise TypeError('source is not a str')
@@ -237,7 +298,8 @@ cdef class DeltaIndex:
         # We delay creating the index on the first insert
         if source_location != 0:
             with nogil:
-                res = create_delta_index(src, self._index, &index)
+                res = create_delta_index(src, self._index, &index,
+                                         self._max_bytes_to_index)
             if res != DELTA_OK:
                 raise _translate_delta_failure(res)
             if index != self._index:
@@ -254,7 +316,8 @@ cdef class DeltaIndex:
         # We know that self._index is already NULL, so create_delta_index
         # will always create a new index unless there's a malloc failure
         with nogil:
-            res = create_delta_index(&self._source_infos[0], NULL, &index)
+            res = create_delta_index(&self._source_infos[0], NULL, &index,
+                                     self._max_bytes_to_index)
         if res != DELTA_OK:
             raise _translate_delta_failure(res)
         self._index = index
