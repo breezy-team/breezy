@@ -1326,6 +1326,14 @@ class DirState(object):
             raise
         return result
 
+    def _check_delta_is_valid(self, delta):
+        return list(inventory._check_delta_unique_ids(
+                    inventory._check_delta_unique_old_paths(
+                    inventory._check_delta_unique_new_paths(
+                    inventory._check_delta_ids_match_entry(
+                    inventory._check_delta_ids_are_valid(
+                    inventory._check_delta_new_path_entry_both_or_None(delta)))))))
+
     def update_by_delta(self, delta):
         """Apply an inventory delta to the dirstate for tree 0
 
@@ -1349,13 +1357,8 @@ class DirState(object):
         new_ids = set()
         # This loop transforms the delta to single atomic operations that can
         # be executed and validated.
-        for old_path, new_path, file_id, inv_entry in sorted(
-            inventory._check_delta_unique_old_paths(
-            inventory._check_delta_unique_new_paths(
-            inventory._check_delta_ids_match_entry(
-            inventory._check_delta_ids_are_valid(
-            inventory._check_delta_new_path_entry_both_or_None(delta))))),
-            reverse=True):
+        delta = sorted(self._check_delta_is_valid(delta), reverse=True)
+        for old_path, new_path, file_id, inv_entry in delta:
             if (file_id in insertions) or (file_id in removals):
                 raise errors.InconsistentDelta(old_path or new_path, file_id,
                     "repeated file_id")
@@ -1475,9 +1478,6 @@ class DirState(object):
         Note that an exception during the operation of this method will leave
         the dirstate in a corrupt state where it should not be saved.
 
-        Finally, we expect all changes to be synchronising the basis tree with
-        the working tree.
-
         :param new_revid: The new revision id for the trees parent.
         :param delta: An inventory delta (see apply_inventory_delta) describing
             the changes from the current left most parent revision to new_revid.
@@ -1495,7 +1495,7 @@ class DirState(object):
 
         self._parents[0] = new_revid
 
-        delta = sorted(delta, reverse=True)
+        delta = sorted(self._check_delta_is_valid(delta), reverse=True)
         adds = []
         changes = []
         deletes = []
@@ -1653,7 +1653,20 @@ class DirState(object):
         for old_path, new_path, file_id, new_details, real_add in adds:
             # the entry for this file_id must be in tree 0.
             entry = self._get_entry(0, file_id, new_path)
-            if entry[0] is None or entry[0][2] != file_id:
+            if entry[0] is None:
+                # new_path is not versioned in the active WT state,
+                # but we are adding it to the basis tree state, we
+                # need to create a new entry record for it.
+                dirname, basename = osutils.split(new_path)
+                entry_key = (dirname, basename, file_id)
+                _, block = self._find_block(entry_key, add_if_missing=True)
+                index, present = self._find_entry_index(entry_key, block)
+                if present:
+                    raise AssertionError('entry was missing, but now was found')
+                else:
+                    entry = (entry_key, [DirState.NULL_PARENT_DETAILS]*2)
+                    block.insert(index, entry)
+            elif entry[0][2] != file_id:
                 self._changes_aborted = True
                 raise errors.InconsistentDelta(new_path, file_id,
                     'working tree does not contain new entry')
@@ -1719,12 +1732,27 @@ class DirState(object):
                 raise errors.InconsistentDelta(old_path, file_id,
                     'mismatched file_id in tree 1')
             if real_delete:
-                if entry[1][0][0] != 'a':
-                    self._changes_aborted = True
-                    raise errors.InconsistentDelta(old_path, file_id,
-                            'This was marked as a real delete, but the WT state'
-                            ' claims that it still exists and is versioned.')
-                del self._dirblocks[block_index][1][entry_index]
+                if entry[1][0][0] == 'a':
+                    # The file was marked as deleted in the active
+                    # state, and it is now deleted in the basis state,
+                    # so just remove the record entirely
+                    del self._dirblocks[block_index][1][entry_index]
+                else:
+                    # The basis entry needs to be marked deleted
+                    entry[1][1] = null
+                # If we are deleting a directory, we need to make sure
+                # that all of its children are already deleted
+                block_i, entry_i, d_present, f_present = \
+                    self._get_block_entry_index(old_path, '', 0)
+                if d_present:
+                    # The dir block is still present in the dirstate; this could
+                    # be due to it being in a parent tree, or a corrupt delta.
+                    for child_entry in self._dirblocks[block_i][1]:
+                        if child_entry[1][1][0] not in ('r', 'a'):
+                            self._changes_aborted = True
+                            raise errors.InconsistentDelta(old_path, entry[0][2],
+                                "The file id was deleted but its children were "
+                                "not deleted.")
             else:
                 if entry[1][0][0] == 'a':
                     self._changes_aborted = True
@@ -1740,6 +1768,7 @@ class DirState(object):
                     del self._dirblocks[block_index][1][entry_index]
                 else:
                     # it is being resurrected here, so blank it out temporarily.
+                    # should be equivalent to entry[1][1] = null
                     self._dirblocks[block_index][1][entry_index][1][1] = null
 
     def _after_delta_check_parents(self, parents, index):
