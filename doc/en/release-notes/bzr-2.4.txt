@@ -85,7 +85,8 @@ Bug Fixes
 
 * ``WT.update_basis_by_delta`` no longer requires that the deltas match
   the current WT state. This allows ``update_basis_by_delta`` to be used
-  by more commands than just commit.
+  by more commands than just commit. Updating with a delta allows us to
+  not load the whole inventory, which can take 10+s with large trees.
   (Jonathan Riddell, John Arbash Meinel, #781168)
 
 
