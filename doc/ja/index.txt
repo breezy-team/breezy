@@ -2,8 +2,10 @@
 Bazaarのメインドキュメント
 ===========================
 
-これらのドキュメントの最新版はBazaarのドキュメントのサイト、 http://doc.wiki.bazaar.canonical.com/ から入手可能で、
-詳しい情報は http://wiki.bazaar.canonical.com/Documentation のページからリンクされています。
+これらのドキュメントの最新版はBazaarのドキュメントのサイト、
+http://doc.bazaar.canonical.com/en/ から入手可能で、
+詳しい情報は http://wiki.bazaar.canonical.com/Documentation
+のページからリンクされています。
 
 
 目次
