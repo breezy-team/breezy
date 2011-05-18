@@ -294,6 +294,32 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         self.assertEqual('a-id', basis.path2id('a'))
         self.assertEqual('b-id', basis.path2id('b'))
 
+    def test_set_parent_trees_handles_missing_basis(self):
+        builder = self.make_branch_builder('source')
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
+        builder.build_snapshot('A', [], [
+            ('add', ('', 'root-id', 'directory', None)),
+            ('add', ('a', 'a-id', 'file', 'content\n'))])
+        builder.build_snapshot('B', ['A'], [
+            ('modify', ('a-id', 'new content\nfor a\n')),
+            ('add', ('b', 'b-id', 'file', 'b-content\n'))])
+        builder.build_snapshot('C', ['A'], [
+            ('add', ('c', 'c-id', 'file', 'c-content\n'))])
+        b_c = self.make_branch('branch_with_c')
+        b_c.pull(builder.get_branch(), stop_revision='C')
+        b_b = self.make_branch('branch_with_b')
+        b_b.pull(builder.get_branch(), stop_revision='B')
+        # This is reproducing some of what 'switch' does, just to isolate the
+        # set_parent_trees() step.
+        wt = b_b.create_checkout('tree', lightweight=True)
+        fmt = wt.bzrdir.find_branch_format()
+        fmt.set_reference(wt.bzrdir, None, b_c)
+        # Re-open with the new reference
+        wt = wt.bzrdir.open_workingtree()
+        wt.set_parent_trees([('C', b_c.repository.revision_tree('C'))])
+        self.assertEqual(None, wt.basis_tree().path2id('b'))
+
     def test_new_dirstate_on_new_lock(self):
         # until we have detection for when a dirstate can be reused, we
         # want to reparse dirstate on every new lock.

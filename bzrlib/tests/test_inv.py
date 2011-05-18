@@ -336,6 +336,13 @@ class TestDeltaApplication(TestCaseWithTransport):
             inv.root.revision = 'basis'
         return inv
 
+    def make_file_ie(self, file_id='file-id', name='name', parent_id=None):
+        ie_file = inventory.InventoryFile(file_id, name, parent_id)
+        ie_file.revision = 'result'
+        ie_file.text_size = 0
+        ie_file.text_sha1 = ''
+        return ie_file
+
     def test_empty_delta(self):
         inv = self.get_empty_inventory()
         delta = []
@@ -365,10 +372,8 @@ class TestDeltaApplication(TestCaseWithTransport):
         file1.revision = 'result'
         file1.text_size = 0
         file1.text_sha1 = ""
-        file2 = inventory.InventoryFile('id', 'path2', inv.root.file_id)
-        file2.revision = 'result'
-        file2.text_size = 0
-        file2.text_sha1 = ""
+        file2 = file1.copy()
+        file2.name = 'path2'
         delta = [(None, u'path1', 'id', file1), (None, u'path2', 'id', file2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
@@ -379,10 +384,8 @@ class TestDeltaApplication(TestCaseWithTransport):
         file1.revision = 'result'
         file1.text_size = 0
         file1.text_sha1 = ""
-        file2 = inventory.InventoryFile('id2', 'path', inv.root.file_id)
-        file2.revision = 'result'
-        file2.text_size = 0
-        file2.text_sha1 = ""
+        file2 = file1.copy()
+        file2.file_id = 'id2'
         delta = [(None, u'path', 'id1', file1), (None, u'path', 'id2', file2)]
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
@@ -584,17 +587,23 @@ class TestDeltaApplication(TestCaseWithTransport):
 
     def test_rename_file(self):
         inv = self.get_empty_inventory()
-        file1 = inventory.InventoryFile('file-id', 'path', inv.root.file_id)
-        file1.revision = 'result'
-        file1.text_size = 0
-        file1.text_sha1 = ''
+        file1 = self.make_file_ie(name='path', parent_id=inv.root.file_id)
         inv.add(file1)
-        file2 = file1.copy()
-        file2.name = 'path2'
+        file2 = self.make_file_ie(name='path2', parent_id=inv.root.file_id)
         delta = [(u'path', 'path2', 'file-id', file2)]
         res_inv = self.apply_delta(self, inv, delta)
         self.assertEqual(None, res_inv.path2id('path'))
         self.assertEqual('file-id', res_inv.path2id('path2'))
+
+    def test_replaced_at_new_path(self):
+        inv = self.get_empty_inventory()
+        file1 = self.make_file_ie(file_id='id1', parent_id=inv.root.file_id)
+        inv.add(file1)
+        file2 = self.make_file_ie(file_id='id2', parent_id=inv.root.file_id)
+        delta = [(u'name', None, 'id1', None),
+                 (None, u'name', 'id2', file2)]
+        res_inv = self.apply_delta(self, inv, delta)
+        self.assertEqual('id2', res_inv.path2id('name'))
 
     def test_is_root(self):
         """Ensure our root-checking code is accurate."""

@@ -1158,7 +1158,9 @@ class DirStateWorkingTree(InventoryWorkingTree):
             try:
                 basis_tree = self.branch.repository.revision_tree(basis_id)
             except errors.NoSuchRevision:
-                pass # Fallback to set_parent_trees
+                # Fall back to the set_parent_trees(), since we can't use
+                # _make_delta if we can't get the RevisionTree
+                pass
             else:
                 delta = rev_tree.inventory._make_delta(basis_tree.inventory)
                 dirstate.update_basis_by_delta(delta, rev_id)

@@ -1416,7 +1416,8 @@ class DirState(object):
             # _get_entry raises BzrError when a request is inconsistent; we
             # want such errors to be shown as InconsistentDelta - and that 
             # fits the behaviour we trigger.
-            raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
+            raise errors.InconsistentDeltaDelta(delta,
+                "error from _get_entry. %s" % (e,))
 
     def _apply_removals(self, removals):
         for file_id, path in sorted(removals, reverse=True,
@@ -1600,11 +1601,10 @@ class DirState(object):
             if 'integrity error' not in str(e):
                 raise
             # _get_entry raises BzrError when a request is inconsistent; we
-            # want such errors to be shown as InconsistentDelta - and that 
-            # fits the behaviour we trigger. Partof this is driven by dirstate
-            # only supporting deltas that turn the basis into a closer fit to
-            # the active tree.
-            raise errors.InconsistentDeltaDelta(delta, "error from _get_entry.")
+            # want such errors to be shown as InconsistentDelta - and that
+            # fits the behaviour we trigger.
+            raise errors.InconsistentDeltaDelta(delta,
+                "error from _get_entry. %s" % (e,))
 
         self._mark_modified(header_modified=True)
         self._id_index = None
@@ -1650,20 +1650,21 @@ class DirState(object):
         # adds is now in lexographic order, which places all parents before
         # their children, so we can process it linearly.
         absent = 'ar'
+        st = static_tuple.StaticTuple
         for old_path, new_path, file_id, new_details, real_add in adds:
-            # the entry for this file_id must be in tree 0.
-            entry = self._get_entry(0, file_id, new_path)
+            entry = self._get_entry(1, file_id, new_path)
             if entry[0] is None:
-                # new_path is not versioned in the active WT state,
-                # but we are adding it to the basis tree state, we
-                # need to create a new entry record for it.
+                # entry_key (dirname, basename, file_id) doesn't exist in any
+                # tree yet, so we need to create a new record.
                 dirname, basename = osutils.split(new_path)
-                entry_key = (dirname, basename, file_id)
+                entry_key = st(dirname, basename, file_id)
                 _, block = self._find_block(entry_key, add_if_missing=True)
                 index, _ = self._find_entry_index(entry_key, block)
                 entry = (entry_key, [DirState.NULL_PARENT_DETAILS]*2)
                 block.insert(index, entry)
             elif entry[0][2] != file_id:
+                # This should never trigger, because we pass file_id in to
+                # _get_entry which will raise its own exception.
                 self._changes_aborted = True
                 raise errors.InconsistentDelta(new_path, file_id,
                     'working tree does not contain new entry')
@@ -2019,7 +2020,8 @@ class DirState(object):
             entry_index += 1
         return block_index, entry_index, True, False
 
-    def _get_entry(self, tree_index, fileid_utf8=None, path_utf8=None, include_deleted=False):
+    def _get_entry(self, tree_index, fileid_utf8=None, path_utf8=None,
+                   include_deleted=False):
         """Get the dirstate entry for path in tree tree_index.
 
         If either file_id or path is supplied, it is used as the key to lookup.
