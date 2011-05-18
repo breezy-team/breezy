@@ -75,7 +75,11 @@ config.test_store_builder_registry.register(
 def build_branch_store(test):
     if getattr(test, 'branch', None) is None:
         test.branch = test.make_branch('branch')
-    return config.BranchStore(test.branch)
+    # Since we can be called to create different stores, we need to build them
+    # from different branch *objects*, even if they point to the same branch on
+    # disk, otherwise tests about conccurent updates won't be able to trigger
+    # LockContention
+    return config.BranchStore(branch.Branch.open('branch'))
 config.test_store_builder_registry.register('branch', build_branch_store)
 
 
@@ -87,7 +91,11 @@ config.test_stack_builder_registry.register(
 def build_branch_stack(test):
     if getattr(test, 'branch', None) is None:
         test.branch = test.make_branch('branch')
-    return config.BranchStack(test.branch)
+    # Since we can be called to create different stacks, we need to build them
+    # from different branch *objects*, even if they point to the same branch on
+    # disk, otherwise tests about conccurent updates won't be able to trigger
+    # LockContention
+    return config.BranchStack(branch.Branch.open('branch'))
 config.test_stack_builder_registry.register('branch', build_branch_stack)
 
 
@@ -2180,7 +2188,6 @@ class TestConcurrentStoreUpdates(TestStore):
         self.addCleanup(after_writing.set)
         t1.start()
         before_writing.wait()
-        self.assertTrue(c1.store._lock.is_held)
         self.assertRaises(errors.LockContention,
                           c2.set, 'one', 'c2')
         self.assertEquals('c1', c1.get('one'))
@@ -2216,7 +2223,6 @@ class TestConcurrentStoreUpdates(TestStore):
        t1.start()
        # Ensure the thread is ready to write
        ready_to_write.wait()
-       self.assertTrue(c1.store._lock.is_held)
        self.assertEquals('c1', c1.get('one'))
        # If we read during the write, we get the old value
        c2 = self.get_stack(self)
