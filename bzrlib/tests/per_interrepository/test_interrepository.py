@@ -138,7 +138,8 @@ class TestCaseWithComplexRepository(TestCaseWithInterRepository):
         # check the test will be valid
         self.assertFalse(repo_b.has_revision('rev2'))
         result = repo_b.search_missing_revision_ids(repo_a, limit=1)
-        self.assertEqual(set(['rev1']), result.get_keys())
+        self.assertEqual(('search', set(['rev1']), set(['null:']), 1),
+            result.get_recipe())
 
     def test_fetch_fetches_signatures_too(self):
         from_repo = self.bzrdir.open_repository()
