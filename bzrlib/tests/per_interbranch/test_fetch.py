@@ -46,14 +46,16 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
 
     def test_fetch_revisions_limit(self):
         """Test fetch-revision operation."""
-        wt = self.make_from_branch_and_tree('b1')
-        b1 = wt.branch
-        self.build_tree_contents([('b1/foo', 'hello')])
-        wt.add(['foo'], ['foo-id'])
-        wt.commit('lala!', rev_id='revision-1', allow_pointless=False)
-        wt.commit('hmm', rev_id='revision-2')
-        wt.commit('hmmm', rev_id='revision-3')
-
+        builder = self.make_branch_builder('b1',
+            format=self.branch_format_from._matchingbzrdir)
+        builder.start_series()
+        builder.build_snapshot('revision-1', None, [
+            ('add', ('', None, 'directory', None)),
+            ('add', ('foo', 'foo-id', 'file', 'hello'))])
+        builder.build_snapshot('revision-2', None, [])
+        builder.build_snapshot('revision-3', None, [])
+        builder.finish_series()
+        b1 = builder.get_branch()
         b2 = self.make_to_branch('b2')
         b2.fetch(b1, limit=1)
 
