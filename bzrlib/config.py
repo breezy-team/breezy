@@ -2090,6 +2090,13 @@ class TransportConfig(object):
 
 
 class Option(object):
+    """An option definition.
+
+    The option *values* are stored in config files and found in sections.
+
+    Here we define various properties about the option itself, its default
+    value, in which config files it can be stored, etc (TBC).
+    """
 
     def __init__(self, name, default=None):
         self.name = name
