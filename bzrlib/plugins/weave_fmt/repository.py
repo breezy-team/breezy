@@ -27,6 +27,8 @@ import urllib
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import itertools
+
 from bzrlib import (
     xml5,
     graph as _mod_graph,
@@ -865,9 +867,8 @@ class InterWeaveRepo(InterSameDataRepository):
             result_set = set(
                 self.source._eliminate_revisions_not_present(required_revisions))
         if limit is not None:
-            graph = self.source.get_graph()
-            topo_ordered = list(graph.iter_topo_order(result_set))
-            result_set = set(topo_ordered[:limit])
+            topo_ordered = self.get_graph().iter_topo_order(result_set)
+            result_set = set(itertools.islice(topo_ordered, limit))
         return self.source.revision_ids_to_search_result(result_set)
 
 

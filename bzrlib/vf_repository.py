@@ -19,6 +19,8 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import itertools
+
 from bzrlib import (
     check,
     debug,
@@ -2585,6 +2587,8 @@ class InterVersionedFileRepository(InterRepository):
                 not None):
             result = self._walk_to_common_revisions(revision_ids,
                     if_present_ids=if_present_ids)
+            if limit is None:
+                return result
             result_set = result.get_keys()
         else:
             # generic, possibly worst case, slow code path.
@@ -2593,9 +2597,8 @@ class InterVersionedFileRepository(InterRepository):
                 revision_ids, if_present_ids)
             result_set = set(source_ids).difference(target_ids)
         if limit is not None:
-            graph = self.source.get_graph()
-            topo_ordered = list(graph.iter_topo_order(result_set))
-            result_set = set(topo_ordered[:limit])
+            topo_ordered = self.source.get_graph().iter_topo_order(result_set)
+            result_set = set(itertools.islice(topo_ordered, limit))
         return self.source.revision_ids_to_search_result(result_set)
 
     def _present_source_revisions_for(self, revision_ids, if_present_ids=None):

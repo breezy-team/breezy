@@ -3298,7 +3298,6 @@ class GenericInterBranch(InterBranch):
 
     @needs_write_lock
     def fetch(self, stop_revision=None, limit=None):
-        # TODO: Honor limit
         if self.target.base == self.source.base:
             return (0, [])
         self.source.lock_read()
