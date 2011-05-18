@@ -978,25 +978,21 @@ def _iter_for_location_by_parts(sections, location):
         number of path components in the section name, section is the section
         name and extra_path is the difference between location and the section
         name.
+
+    ``location`` will always be a local path and never a 'file://' url but the
+    section names themselves can be in either form.
     """
     location_parts = location.rstrip('/').split('/')
 
     for section in sections:
-        # location is a local path if possible, so we need
-        # to convert 'file://' urls to local paths if necessary.
-
-        # FIXME: I don't think the above comment is still up to date,
-        # LocationConfig is always instantiated with an url -- vila 2011-04-07
+        # location is a local path if possible, so we need to convert 'file://'
+        # urls in section names to local paths if necessary.
 
         # This also avoids having file:///path be a more exact
         # match than '/path'.
 
-        # FIXME: Not sure about the above either, but since the path components
-        # are compared in sync, adding two empty components (//) is likely to
-        # trick the comparison and also trick the check on the number of
-        # components, so we *should* take only the relevant part of the url. On
-        # the other hand, this means 'file://' urls *can't* be used in sections
-        # so more work is probably needed -- vila 2011-04-07
+        # FIXME: This still raises an issue if a user defines both file:///path
+        # *and* /path. Should we raise an error in this case -- vila 20110505
 
         if section.startswith('file://'):
             section_path = urlutils.local_path_from_url(section)
@@ -2270,7 +2266,11 @@ class IniFileStore(Store):
         :returns: An iterable of (name, dict).
         """
         # We need a loaded store
-        self.load()
+        try:
+            self.load()
+        except errors.NoSuchFile:
+            # If the file doesn't exist, there is no sections
+            return
         cobj = self._config_obj
         if cobj.scalars:
             yield self.readonly_section_class(None, cobj)
@@ -2409,18 +2409,32 @@ class LocationMatcher(SectionMatcher):
 
     def __init__(self, store, location):
         super(LocationMatcher, self).__init__(store)
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
         self.location = location
 
-    def get_sections(self):
-        # Override the default implementation as we want to change the order
-
-        # The following is a bit hackish but ensures compatibility with
-        # LocationConfig by reusing the same code
-        sections = list(self.store.get_sections())
+    def _get_matching_sections(self):
+        """Get all sections matching ``location``."""
+        # We slightly diverge from LocalConfig here by allowing the no-name
+        # section as the most generic one and the lower priority.
+        no_name_section = None
+        sections = []
+        # Filter out the no_name_section so _iter_for_location_by_parts can be
+        # used (it assumes all sections have a name).
+        for section in self.store.get_sections():
+            if section.id is None:
+                no_name_section = section
+            else:
+                sections.append(section)
+        # Unfortunately _iter_for_location_by_parts deals with section names so
+        # we have to resync.
         filtered_sections = _iter_for_location_by_parts(
             [s.id for s in sections], self.location)
         iter_sections = iter(sections)
         matching_sections = []
+        if no_name_section is not None:
+            matching_sections.append(
+                LocationSection(no_name_section, 0, self.location))
         for section_id, extra_path, length in filtered_sections:
             # a section id is unique for a given store so it's safe to iterate
             # again
@@ -2428,6 +2442,11 @@ class LocationMatcher(SectionMatcher):
             if section_id == section.id:
                 matching_sections.append(
                     LocationSection(section, length, extra_path))
+        return matching_sections
+
+    def get_sections(self):
+        # Override the default implementation as we want to change the order
+        matching_sections = self._get_matching_sections()
         # We want the longest (aka more specific) locations first
         sections = sorted(matching_sections,
                           key=lambda section: (section.length, section.id),
@@ -2476,9 +2495,10 @@ class Stack(object):
         """
         # FIXME: No caching of options nor sections yet -- vila 20110503
 
-        # Ensuring lazy loading is achieved by delaying section matching until
-        # it can be avoided anymore by using callables to describe (possibly
-        # empty) section lists.
+        # Ensuring lazy loading is achieved by delaying section matching (which
+        # implies querying the persistent storage) until it can't be avoided
+        # anymore by using callables to describe (possibly empty) section
+        # lists.
         for section_or_callable in self.sections_def:
             # Each section can expand to multiple ones when a callable is used
             if callable(section_or_callable):
@@ -2498,7 +2518,7 @@ class Stack(object):
         This is where we guarantee that the mutable section is lazily loaded:
         this means we won't load the corresponding store before setting a value
         or deleting an option. In practice the store will often be loaded but
-        this allows catching some programming errors.
+        this allows helps catching some programming errors.
         """
         section = self.store.get_mutable_section(self.mutable_section_name)
         return section
@@ -2516,6 +2536,36 @@ class Stack(object):
     def __repr__(self):
         # Mostly for debugging use
         return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
+
+
+class GlobalStack(Stack):
+
+    def __init__(self):
+        # Get a GlobalStore
+        gstore = GlobalStore()
+        super(GlobalStack, self).__init__([gstore.get_sections], gstore)
+
+
+class LocationStack(Stack):
+
+    def __init__(self, location):
+        lstore = LocationStore()
+        matcher = LocationMatcher(lstore, location)
+        gstore = GlobalStore()
+        super(LocationStack, self).__init__(
+            [matcher.get_sections, gstore.get_sections], lstore)
+
+
+class BranchStack(Stack):
+
+    def __init__(self, branch):
+        bstore = BranchStore(branch)
+        lstore = LocationStore()
+        matcher = LocationMatcher(lstore, branch.base)
+        gstore = GlobalStore()
+        super(BranchStack, self).__init__(
+            [matcher.get_sections, bstore.get_sections, gstore.get_sections],
+            bstore)
 
 
 class cmd_config(commands.Command):

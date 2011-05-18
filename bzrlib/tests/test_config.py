@@ -85,6 +85,14 @@ test_store_builder_registry.register(
 test_store_builder_registry.register(
     'branch', lambda test: config.BranchStore(test.branch))
 
+# FIXME: Same remark as above for the following registry -- vila 20110503
+test_stack_builder_registry = registry.Registry()
+test_stack_builder_registry.register(
+    'bazaar', lambda test: config.GlobalStack())
+test_stack_builder_registry.register(
+    'location', lambda test: config.LocationStack('.'))
+test_stack_builder_registry.register(
+    'branch', lambda test: config.BranchStack(test.branch))
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -2177,6 +2185,23 @@ section=/foo/bar
         self.assertEquals(['baz', 'bar/baz'],
                           [section.extra_path for section in sections])
 
+    def test_appendpath_in_no_name_section(self):
+        # It's a bit weird to allow appendpath in a no-name section, but
+        # someone may found a use for it
+        store = self.get_store('foo.conf')
+        store._load_from_string('''
+foo=bar
+foo:policy = appendpath
+''')
+        matcher = config.LocationMatcher(store, 'dir/subdir')
+        sections = list(matcher.get_sections())
+        self.assertLength(1, sections)
+        self.assertEquals('bar/dir/subdir', sections[0].get('foo'))
+
+    def test_file_urls_are_normalized(self):
+        store = self.get_store('foo.conf')
+        matcher = config.LocationMatcher(store, 'file:///dir/subdir')
+        self.assertEquals('/dir/subdir', matcher.location)
 
 
 class TestStackGet(tests.TestCase):
@@ -2215,45 +2240,59 @@ class TestStackGet(tests.TestCase):
         self.assertRaises(TypeError, conf_stack.get, 'foo')
 
 
-class TestStackSet(tests.TestCaseWithTransport):
+class TestStackWithTransport(tests.TestCaseWithTransport):
 
-    # FIXME: This should be parametrized for all known Stack or dedicated
-    # paramerized tests created to avoid bloating -- vila 2011-04-05
+    def setUp(self):
+        super(TestStackWithTransport, self).setUp()
+        # FIXME: A more elaborate builder for the stack would avoid building a
+        # branch even for tests that don't need it.
+        self.branch = self.make_branch('branch')
+
+
+class TestStackSet(TestStackWithTransport):
+
+    scenarios = [(key, {'get_stack': builder})
+                 for key, builder in test_stack_builder_registry.iteritems()]
 
     def test_simple_set(self):
-        store = config.IniFileStore(self.get_transport(), 'test.conf')
-        store._load_from_string('foo=bar')
-        conf = config.Stack([store.get_sections], store)
+        conf = self.get_stack(self)
+        conf.store._load_from_string('foo=bar')
         self.assertEquals('bar', conf.get('foo'))
         conf.set('foo', 'baz')
         # Did we get it back ?
         self.assertEquals('baz', conf.get('foo'))
 
     def test_set_creates_a_new_section(self):
-        store = config.IniFileStore(self.get_transport(), 'test.conf')
-        conf = config.Stack([store.get_sections], store)
+        conf = self.get_stack(self)
         conf.set('foo', 'baz')
         self.assertEquals, 'baz', conf.get('foo')
 
 
-class TestStackRemove(tests.TestCaseWithTransport):
+class TestStackRemove(TestStackWithTransport):
 
-    # FIXME: This should be parametrized for all known Stack or dedicated
-    # paramerized tests created to avoid bloating -- vila 2011-04-06
+    scenarios = [(key, {'get_stack': builder})
+                 for key, builder in test_stack_builder_registry.iteritems()]
 
     def test_remove_existing(self):
-        store = config.IniFileStore(self.get_transport(), 'test.conf')
-        store._load_from_string('foo=bar')
-        conf = config.Stack([store.get_sections], store)
+        conf = self.get_stack(self)
+        conf.store._load_from_string('foo=bar')
         self.assertEquals('bar', conf.get('foo'))
         conf.remove('foo')
         # Did we get it back ?
         self.assertEquals(None, conf.get('foo'))
 
     def test_remove_unknown(self):
-        store = config.IniFileStore(self.get_transport(), 'test.conf')
-        conf = config.Stack([store.get_sections], store)
+        conf = self.get_stack(self)
         self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
+
+
+class TestConcreteStacks(TestStackWithTransport):
+
+    scenarios = [(key, {'get_stack': builder})
+                 for key, builder in test_stack_builder_registry.iteritems()]
+
+    def test_build_stack(self):
+        stack = self.get_stack(self)
 
 
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
