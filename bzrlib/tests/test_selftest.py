@@ -1083,6 +1083,24 @@ class TestRunner(tests.TestCase):
             '\n'
             'OK \\(known_failures=1\\)\n')
 
+    def test_unexpected_success_bad(self):
+        class Test(tests.TestCase):
+            def test_truth(self):
+                self.expectFailure("No absolute truth", self.assertTrue, True)
+        runner = tests.TextTestRunner(stream=StringIO())
+        result = self.run_test_runner(runner, Test("test_truth"))
+        self.assertContainsRe(runner.stream.getvalue(),
+            "=+\n"
+            "FAIL: \\S+\.test_truth\n"
+            "-+\n"
+            "(?:.*\n)*"
+            "No absolute truth\n"
+            "(?:.*\n)*"
+            "-+\n"
+            "Ran 1 test in .*\n"
+            "\n"
+            "FAILED \\(failures=1\\)\n\\Z")
+
     def test_result_decorator(self):
         # decorate results
         calls = []
