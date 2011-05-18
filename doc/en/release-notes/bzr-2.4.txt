@@ -73,6 +73,12 @@ Bug Fixes
 * ``bzr merge --no-remember location`` never sets ``submit_branch``.
   (Vincent Ladeuil, #782169)
 
+* ``bzr pull --no-remember location`` never sets
+  ``parent_location``.  ``bzr push --no-remember location`` never
+  sets ``push_location``.  ``bzr send --no-remember
+  submit_location public_location`` never sets ``submit_branch``
+  nor ``public_branch``.  (Vincent Ladeuil)
+
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
 
@@ -143,6 +149,9 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* A test that was expected to fail but passes instead now counts as a failure
+  catching up with new testtools and subunit handling. (Martin [GZ], #654474)
 
 * Make it easier for plugins to reuse the per_workingtree scenarios by
   restoring the wt_scenarios helper that was accidentally deleted.

@@ -962,10 +962,10 @@ class cmd_pull(Command):
     match the remote one, use pull --overwrite. This will work even if the two
     branches have diverged.
 
-    If there is no default location set, the first pull will set it.  After
-    that, you can omit the location to use the default.  To change the
-    default, use --remember. The value will only be saved if the remote
-    location can be accessed.
+    If there is no default location set, the first pull will set it (use
+    --no-remember to avoid settting it). After that, you can omit the
+    location to use the default.  To change the default, use --remember. The
+    value will only be saved if the remote location can be accessed.
 
     Note: The location can be specified either in the form of a branch,
     or in the form of a path to a file containing a merge directive generated
@@ -990,7 +990,7 @@ class cmd_pull(Command):
     takes_args = ['location?']
     encoding_type = 'replace'
 
-    def run(self, location=None, remember=False, overwrite=False,
+    def run(self, location=None, remember=None, overwrite=False,
             revision=None, verbose=False,
             directory=None, local=False,
             show_base=False):
@@ -1047,8 +1047,9 @@ class cmd_pull(Command):
             branch_from = Branch.open(location,
                 possible_transports=possible_transports)
             self.add_cleanup(branch_from.lock_read().unlock)
-
-            if branch_to.get_parent() is None or remember:
+            # Remembers if asked explicitly or no previous location is set
+            if (remember
+                or (remember is None and branch_to.get_parent() is None)):
                 branch_to.set_parent(branch_from.base)
 
         if revision is not None:
@@ -1098,10 +1099,10 @@ class cmd_push(Command):
     do a merge (see bzr help merge) from the other branch, and commit that.
     After that you will be able to do a push without '--overwrite'.
 
-    If there is no default push location set, the first push will set it.
-    After that, you can omit the location to use the default.  To change the
-    default, use --remember. The value will only be saved if the remote
-    location can be accessed.
+    If there is no default push location set, the first push will set it (use
+    --no-remember to avoid settting it).  After that, you can omit the
+    location to use the default.  To change the default, use --remember. The
+    value will only be saved if the remote location can be accessed.
     """
 
     _see_also = ['pull', 'update', 'working-trees']
@@ -1135,7 +1136,7 @@ class cmd_push(Command):
     takes_args = ['location?']
     encoding_type = 'replace'
 
-    def run(self, location=None, remember=False, overwrite=False,
+    def run(self, location=None, remember=None, overwrite=False,
         create_prefix=False, verbose=False, revision=None,
         use_existing_dir=False, directory=None, stacked_on=None,
         stacked=False, strict=None, no_tree=False):
@@ -3846,7 +3847,9 @@ class cmd_merge(Command):
     through OTHER, excluding BASE but including OTHER, will be merged.  If this
     causes some revisions to be skipped, i.e. if the destination branch does
     not already contain revision BASE, such a merge is commonly referred to as
-    a "cherrypick".
+    a "cherrypick". Unlike a normal merge, Bazaar does not currently track
+    cherrypicks. The changes look like a normal commit, and the history of the
+    changes from the other branch is not stored in the commit.
 
     Revision numbers are always relative to the source branch.
 
@@ -3858,9 +3861,9 @@ class cmd_merge(Command):
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
     If there is no default branch set, the first merge will set it (use
-    --no-remember to *not* set it). After that, you can omit the branch to use
-    the default.  To change the default, use --remember. The value will only be
-    saved if the remote location can be accessed.
+    --no-remember to avoid settting it). After that, you can omit the branch
+    to use the default.  To change the default, use --remember. The value will
+    only be saved if the remote location can be accessed.
 
     The results of the merge are placed into the destination working
     directory, where they can be reviewed (with bzr diff), tested, and then
@@ -5287,6 +5290,12 @@ class cmd_send(Command):
     source branch defaults to that containing the working directory, but can
     be changed using --from.
 
+    Both the submit branch and the public branch follow the usual behavior with
+    respect to --remember: If there is no default location set, the first send
+    will set it (use --no-remember to avoid settting it). After that, you can
+    omit the location to use the default.  To change the default, use
+    --remember. The value will only be saved if the location can be accessed.
+
     In order to calculate those changes, bzr must analyse the submit branch.
     Therefore it is most efficient for the submit branch to be a local mirror.
     If a public location is known for the submit_branch, that location is used
@@ -5361,7 +5370,7 @@ class cmd_send(Command):
         ]
 
     def run(self, submit_branch=None, public_branch=None, no_bundle=False,
-            no_patch=False, revision=None, remember=False, output=None,
+            no_patch=False, revision=None, remember=None, output=None,
             format=None, mail_to=None, message=None, body=None,
             strict=None, **kwargs):
         from bzrlib.send import send
