@@ -1654,6 +1654,16 @@ class DirState(object):
         for old_path, new_path, file_id, new_details, real_add in adds:
             entry = self._get_entry(1, file_id, new_path)
             if entry[0] is None:
+                # This entry doesn't exist in tree 1, but it might just be an
+                # 'absent' record which we are filling in. Check in tree 0
+                # Note: we never have to check old_path, because by now
+                #       old_path is always None.
+                entry = self._get_entry(0, path_utf8=new_path)
+                if entry[0] is not None and entry[0][2] != file_id:
+                    # Something does exist at that path in tree0, but it is
+                    # with a different file_id
+                    entry = (None, None)
+            if entry[0] is None:
                 # entry_key (dirname, basename, file_id) doesn't exist in any
                 # tree yet, so we need to create a new record.
                 dirname, basename = osutils.split(new_path)
