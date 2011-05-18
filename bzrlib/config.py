@@ -2758,11 +2758,11 @@ class cmd_config(commands.Command):
 
 
 # Test registries
-
+#
 # We need adapters that can build a Store or a Stack in a test context. Test
 # classes, based on TestCaseWithTransport, can use the registry to parametrize
 # themselves. The builder will receive a test instance and should return a
-# ready-to-use store or stack.  Plugins that defines new store/stacks can also
+# ready-to-use store or stack.  Plugins that define new store/stacks can also
 # register themselves here to be tested against the tests defined in
 # bzrlib.tests.test_config.
 
