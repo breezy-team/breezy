@@ -1712,7 +1712,8 @@ class TestCase(testtools.TestCase):
         for klass, (name, hooks) in self._preserved_hooks.items():
             setattr(klass, name, hooks)
         self._preserved_hooks.clear()
-        hooks._lazy_hooks = self._preserved_lazy_hooks
+        bzrlib.hooks._lazy_hooks = self._preserved_lazy_hooks
+        self._preserved_lazy_hooks.clear()
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
