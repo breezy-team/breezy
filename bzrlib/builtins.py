@@ -3983,7 +3983,6 @@ class cmd_merge(Command):
                 if revision is not None:
                     raise errors.BzrCommandError(
                         'Cannot use -r with merge directives or bundles')
-                ##note("From mergable")
                 merger, verified = _mod_merge.Merger.from_mergeable(tree,
                    mergeable, None)
 
@@ -3991,12 +3990,10 @@ class cmd_merge(Command):
             if revision is not None and len(revision) > 0:
                 raise errors.BzrCommandError('Cannot use --uncommitted and'
                     ' --revision at the same time.')
-            ##note("From uncommitted")
             merger = self.get_merger_from_uncommitted(tree, location, None)
             allow_pending = False
 
         if merger is None:
-            ##note("From branch")
             merger, allow_pending = self._get_merger_from_branch(tree,
                 location, revision, remember, possible_transports, None)
 
@@ -4004,31 +4001,17 @@ class cmd_merge(Command):
         merger.reprocess = reprocess
         merger.show_base = show_base
         self.sanity_check_merger(merger)
-        ##note("merge_type: " + str(merge_type))
         if (merger.base_rev_id == merger.other_rev_id and
             merger.other_rev_id is not None):
-            # if a file was specified
+            # check if location is nonexistent file (and not a branch)
             if location is not None:
-                ##note("location: " + str(location))
                 try:
                     WorkingTree.open(location)
                     location_is_branch = True
-                    ##note("location is branch")
                 except bzrlib.errors.NotBranchError:
                     location_is_branch = False
-                    ##note("location is not branch")
-                ##note("tree: " + str(tree))
-                if location is not None and not location_is_branch and not tree.has_filename(location):
+                if not location_is_branch and not tree.has_filename(location):
                     raise errors.BzrCommandError("Nonexistent file specified: %s" % location)
-            """
-            if other_path:
-                # check that it actually exists
-                if not merger.other_tree.has_filename(other_path):
-                    raise errors.BzrCommandError("Nonexistent file specified: %s" % other_path)
-                # check that the branches are distinct
-                if merger.this_branch is merger.other_branch:
-                    raise errors.BzrCommandError("Attempting to merge branch into itself")
-            """
             note('Nothing to do.')
             return 0
         if pull and not preview:
