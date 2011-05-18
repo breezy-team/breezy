@@ -38,6 +38,10 @@ Documentation
 
 .. Improved or updated documentation.
 
+* Updated the "Using stacked branches" section of the user guide to
+  describe committing to stacked branches and expanded its discussion of
+  pushing a stcked branch.  (Andrew Bennetts)
+
 API Changes
 ***********
 
