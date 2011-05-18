@@ -1162,6 +1162,7 @@ class DirStateWorkingTree(InventoryWorkingTree):
             else:
                 delta = rev_tree.inventory._make_delta(basis_tree.inventory)
                 dirstate.update_basis_by_delta(delta, rev_id)
+                updated = True
         if not updated:
             dirstate.set_parent_trees(real_trees, ghosts=ghosts)
         self._make_dirty(reset_inventory=False)
