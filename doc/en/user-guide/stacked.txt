@@ -82,28 +82,19 @@ revisions in ``reference-url``. For example::
 
 This usage fits the scenario described in the Motivation section.
 
+If the local branch was created as a stacked branch, then you can
+use the ``--stacked`` option to ``push`` and the *stacked-on* location
+will be implicit. For example::
 
-.. The following text is hidden because bug 375013 breaks the example.
-   When bug 375013 is fixed, we should unhide this text.
-      - Andrew Bennetts, 10 March 2010
-
-.. If the local branch was created as a stacked branch, then you can
-.. use the ``--stacked`` option to ``push`` and the *stacked-on* location
-.. will be implicit. For example::
-.. 
-..   bzr branch --stacked source-url my-dir
-..   cd my-dir
-..   (hack, hack, hack)
-..   bzr commit -m "fix bug"
-..   bzr push --stacked
+  bzr branch --stacked source-url my-dir
+  cd my-dir
+  (hack, hack, hack)
+  bzr commit -m "fix bug"
+  bzr push --stacked
 
 
 Limitations of stacked branches
 -------------------------------
-
-Currently, you cannot commit to a stacked branch, due to `bug 375013`_.
-
-.. _bug 375013: https://bugs.launchpad.net/bzr/+bug/375013
 
 The important thing to remember about a stacked branch is that the
 stacked-on branch needs to be available for almost all operations. This is
