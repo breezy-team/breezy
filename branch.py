@@ -620,10 +620,10 @@ class InterFromGitBranch(branch.GenericInterBranch):
             return False
         return True
 
-    def fetch(self, stop_revision=None, fetch_tags=True):
-        self.fetch_objects(stop_revision, fetch_tags=fetch_tags)
+    def fetch(self, stop_revision=None, fetch_tags=True, limit=None):
+        self.fetch_objects(stop_revision, fetch_tags=fetch_tags, limit=limit)
 
-    def fetch_objects(self, stop_revision, fetch_tags):
+    def fetch_objects(self, stop_revision, fetch_tags, limit=None):
         interrepo = self._get_interrepo(self.source, self.target)
         def determine_wants(heads):
             if self.source.ref is not None and not self.source.ref in heads:
@@ -641,7 +641,7 @@ class InterFromGitBranch(branch.GenericInterBranch):
                 [self._last_revid], include_tags=fetch_tags)
             return real(heads)
         pack_hint, head, refs = interrepo.fetch_objects(
-            determine_wants, self.source.mapping)
+            determine_wants, self.source.mapping, limit=limit)
         if (pack_hint is not None and
             self.target.repository._format.pack_compresses):
             self.target.repository.pack(hint=pack_hint)
