@@ -477,10 +477,13 @@ class BranchStatus(TestCaseWithTransport):
           ' M  FILE_B\n',
           'X   NONEXISTENT\n',
           ]
+        expected.sort()
         out, err = self.run_bzr('status --short NONEXISTENT '
                                 'FILE_A FILE_B UNVERSIONED_BUT_EXISTING '
                                 'FILE_C FILE_D FILE_E FILE_Q', retcode=3)
-        self.assertEqual(expected, out.splitlines(True))
+        actual = out.splitlines(True)
+        actual.sort()
+        self.assertEqual(expected, actual)
         self.assertContainsRe(err,
                               r'.*ERROR: Path\(s\) do not exist: '
                               'NONEXISTENT.*')
