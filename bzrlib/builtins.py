@@ -4011,7 +4011,7 @@ class cmd_merge(Command):
                 except bzrlib.errors.NotBranchError:
                     location_is_branch = False
                 if not location_is_branch and not tree.has_filename(location):
-                    raise errors.BzrCommandError("Nonexistent file specified: %s" % location)
+                    raise errors.PathsDoNotExist([location])
             note('Nothing to do.')
             return 0
         if pull and not preview:
