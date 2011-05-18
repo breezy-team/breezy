@@ -120,16 +120,16 @@ class TestRevert(TestCaseWithTransport):
     def test_revert(self):
         self.run_bzr('init')
 
-        file('hello', 'wt').write('foo')
+        with file('hello', 'wt') as f: f.write('foo')
         self.run_bzr('add hello')
         self.run_bzr('commit -m setup hello')
 
-        file('goodbye', 'wt').write('baz')
+        with file('goodbye', 'wt') as f: f.write('baz')
         self.run_bzr('add goodbye')
         self.run_bzr('commit -m setup goodbye')
 
-        file('hello', 'wt').write('bar')
-        file('goodbye', 'wt').write('qux')
+        with file('hello', 'wt') as f: f.write('bar')
+        with file('goodbye', 'wt') as f: f.write('qux')
         self.run_bzr('revert hello')
         self.check_file_contents('hello', 'foo')
         self.check_file_contents('goodbye', 'qux')
@@ -157,7 +157,7 @@ class TestRevert(TestCaseWithTransport):
         else:
             self.log("skipping revert symlink tests")
 
-        file('hello', 'wt').write('xyz')
+        with file('hello', 'wt') as f: f.write('xyz')
         self.run_bzr('commit -m xyz hello')
         self.run_bzr('revert -r 1 hello')
         self.check_file_contents('hello', 'foo')

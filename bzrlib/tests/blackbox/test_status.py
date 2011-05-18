@@ -324,10 +324,10 @@ class BranchStatus(TestCaseWithTransport):
         wt.add('FILE_D')
         wt.add('FILE_E')
         wt.commit('Create five empty files.')
-        open('FILE_B', 'w').write('Modification to file FILE_B.')
-        open('FILE_C', 'w').write('Modification to file FILE_C.')
+        with open('FILE_B', 'w') as f: f.write('Modification to file FILE_B.')
+        with open('FILE_C', 'w') as f: f.write('Modification to file FILE_C.')
         unlink('FILE_E')  # FILE_E will be versioned but missing
-        open('FILE_Q', 'w').write('FILE_Q is added but not committed.')
+        with open('FILE_Q', 'w') as f: f.write('FILE_Q is added but not committed.')
         wt.add('FILE_Q')  # FILE_Q will be added but not committed
         open('UNVERSIONED_BUT_EXISTING', 'w')
         return wt
