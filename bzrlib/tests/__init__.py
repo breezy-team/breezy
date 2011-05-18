@@ -975,10 +975,6 @@ class TestCase(testtools.TestCase):
         super(TestCase, self).setUp()
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
-        self._log_contents = None
-        self.addDetail("log", content.Content(content.ContentType("text",
-            "plain", {"charset": "utf8"}),
-            lambda:[self._get_log(keep_log_file=True)]))
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -1642,7 +1638,14 @@ class TestCase(testtools.TestCase):
 
         The file is removed as the test is torn down.
         """
-        self._log_file = StringIO()
+        pseudo_log_file = StringIO()
+        def _get_log_contents_for_weird_testtools_api():
+            return [pseudo_log_file.getvalue().decode(
+                "utf-8", "replace").encode("utf-8")]          
+        self.addDetail("log", content.Content(content.ContentType("text",
+            "plain", {"charset": "utf8"}),
+            _get_log_contents_for_weird_testtools_api))
+        self._log_file = pseudo_log_file
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
 
@@ -1655,8 +1658,6 @@ class TestCase(testtools.TestCase):
             # flush the log file, to get all content
             trace._trace_file.flush()
         trace.pop_log_file(self._log_memento)
-        # Cache the log result and delete the file on disk
-        self._get_log(False)
 
     def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.
@@ -1810,41 +1811,6 @@ class TestCase(testtools.TestCase):
 
     def log(self, *args):
         trace.mutter(*args)
-
-    def _get_log(self, keep_log_file=False):
-        """Internal helper to get the log from bzrlib.trace for this test.
-
-        Please use self.getDetails, or self.get_log to access this in test case
-        code.
-
-        :param keep_log_file: When True, if the log is still a file on disk
-            leave it as a file on disk. When False, if the log is still a file
-            on disk, the log file is deleted and the log preserved as
-            self._log_contents.
-        :return: A string containing the log.
-        """
-        if self._log_contents is not None:
-            try:
-                self._log_contents.decode('utf8')
-            except UnicodeDecodeError:
-                unicodestr = self._log_contents.decode('utf8', 'replace')
-                self._log_contents = unicodestr.encode('utf8')
-            return self._log_contents
-        if self._log_file is not None:
-            log_contents = self._log_file.getvalue()
-            try:
-                log_contents.decode('utf8')
-            except UnicodeDecodeError:
-                unicodestr = log_contents.decode('utf8', 'replace')
-                log_contents = unicodestr.encode('utf8')
-            if not keep_log_file:
-                self._log_file = None
-                # Permit multiple calls to get_log until we clean it up in
-                # finishLogFile
-                self._log_contents = log_contents
-            return log_contents
-        else:
-            return "No log file content."
 
     def get_log(self):
         """Get a unicode string containing the log from bzrlib.trace.
