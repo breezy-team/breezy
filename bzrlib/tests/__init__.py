@@ -3459,6 +3459,8 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #                           with proper exclusion rules.
 #   -Ethreads               Will display thread ident at creation/join time to
 #                           help track thread leaks
+#   -Ecollection            Display the identity of any test cases that weren't
+#                           deallocated after being completed.
 selftest_debug_flags = set()
 
 

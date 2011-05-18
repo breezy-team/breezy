@@ -89,6 +89,8 @@ class TestSuite(unittest.TestSuite):
         if stream is None:
             stream = result.decorated._stream
         stored_count = 0
+        from bzrlib.tests import selftest_debug_flags
+        notify = "collection" in selftest_debug_flags
         while tests:
             if result.shouldStop:
                 self._tests = reversed(tests)
@@ -96,7 +98,7 @@ class TestSuite(unittest.TestSuite):
             case = _run_and_collect_case(tests.pop(), result)()
             new_stored_count = getattr(result, "_count_stored_tests", int)()
             if case is not None and isinstance(case, unittest.TestCase):
-                if stored_count == new_stored_count:
+                if stored_count == new_stored_count and notify:
                     # Testcase didn't fail, but somehow is still alive
                     stream.write("Uncollected test case: %s\n" % (case.id(),))
                 # Zombie the testcase but leave a working stub id method
