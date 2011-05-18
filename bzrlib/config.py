@@ -2096,6 +2096,13 @@ class TransportConfig(object):
 
 
 class Option(object):
+    """An option definition.
+
+    The option *values* are stored in config files and found in sections.
+
+    Here we define various properties about the option itself, its default
+    value, in which config files it can be stored, etc (TBC).
+    """
 
     def __init__(self, name, default=None):
         self.name = name
@@ -2793,11 +2800,11 @@ class cmd_config(commands.Command):
             raise errors.NoSuchConfigOption(name)
 
 # Test registries
-
+#
 # We need adapters that can build a Store or a Stack in a test context. Test
 # classes, based on TestCaseWithTransport, can use the registry to parametrize
 # themselves. The builder will receive a test instance and should return a
-# ready-to-use store or stack.  Plugins that defines new store/stacks can also
+# ready-to-use store or stack.  Plugins that define new store/stacks can also
 # register themselves here to be tested against the tests defined in
 # bzrlib.tests.test_config. Note that the builder can be called multiple times
 # for the same tests.
