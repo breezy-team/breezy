@@ -272,9 +272,9 @@ def load_plugins(path=None):
     """Load bzrlib plugins.
 
     The environment variable BZR_PLUGIN_PATH is considered a delimited
-    set of paths to look through. Each entry is searched for *.py
+    set of paths to look through. Each entry is searched for `*.py`
     files (and whatever other extensions are used in the platform,
-    such as *.pyd).
+    such as `*.pyd`).
 
     load_from_path() provides the underlying mechanism and is called with
     the default directory list to provide the normal behaviour.

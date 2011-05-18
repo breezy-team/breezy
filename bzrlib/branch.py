@@ -1469,6 +1469,7 @@ class Branch(controldir.ControlComponent):
 
     def reference_parent(self, file_id, path, possible_transports=None):
         """Return the parent branch for a tree-reference file_id
+
         :param file_id: The file_id of the tree reference
         :param path: The path of the file_id in the tree
         :return: A branch associated with the file_id
@@ -1864,7 +1865,7 @@ Branch.hooks = BranchHooks()
 
 
 class ChangeBranchTipParams(object):
-    """Object holding parameters passed to *_change_branch_tip hooks.
+    """Object holding parameters passed to `*_change_branch_tip` hooks.
 
     There are 5 fields that hooks may wish to access:
 
@@ -1902,7 +1903,7 @@ class ChangeBranchTipParams(object):
 
 
 class BranchInitHookParams(object):
-    """Object holding parameters passed to *_branch_init hooks.
+    """Object holding parameters passed to `*_branch_init` hooks.
 
     There are 4 fields that hooks may wish to access:
 
@@ -1942,7 +1943,7 @@ class BranchInitHookParams(object):
 
 
 class SwitchHookParams(object):
-    """Object holding parameters passed to *_switch hooks.
+    """Object holding parameters passed to `*_switch` hooks.
 
     There are 4 fields that hooks may wish to access:
 
@@ -3390,10 +3391,10 @@ class GenericInterBranch(InterBranch):
 
         This is the basic concrete implementation of push()
 
-        :param _override_hook_source_branch: If specified, run
-        the hooks passing this Branch as the source, rather than self.
-        This is for use of RemoteBranch, where push is delegated to the
-        underlying vfs-based Branch.
+        :param _override_hook_source_branch: If specified, run the hooks
+            passing this Branch as the source, rather than self.  This is for
+            use of RemoteBranch, where push is delegated to the underlying
+            vfs-based Branch.
         """
         if lossy:
             raise errors.LossyPushToSameVCS(self.source, self.target)

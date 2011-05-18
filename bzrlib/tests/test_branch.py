@@ -16,7 +16,7 @@
 
 """Tests for the Branch facility that are not interface  tests.
 
-For interface tests see tests/per_branch/*.py.
+For interface tests see `tests/per_branch/*.py`.
 
 For concrete class tests see this file, and for meta-branch tests
 also see this file.

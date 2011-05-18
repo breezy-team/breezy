@@ -269,11 +269,11 @@ class BasicTags(_Tags):
     def _reconcile_tags(self, source_dict, dest_dict, overwrite):
         """Do a two-way merge of two tag dictionaries.
 
-        only in source => source value
-        only in destination => destination value
-        same definitions => that
-        different definitions => if overwrite is False, keep destination
-            value and give a warning, otherwise use the source value
+        * only in source => source value
+        * only in destination => destination value
+        * same definitions => that
+        * different definitions => if overwrite is False, keep destination
+          value and give a warning, otherwise use the source value
 
         :returns: (result_dict,
             [(conflicting_tag, source_target, dest_target)])

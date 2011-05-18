@@ -54,12 +54,12 @@ class BzrError(StandardError):
     Base class for errors raised by bzrlib.
 
     :cvar internal_error: if True this was probably caused by a bzr bug and
-    should be displayed with a traceback; if False (or absent) this was
-    probably a user or environment error and they don't need the gory details.
-    (That can be overridden by -Derror on the command line.)
+        should be displayed with a traceback; if False (or absent) this was
+        probably a user or environment error and they don't need the gory
+        details.  (That can be overridden by -Derror on the command line.)
 
     :cvar _fmt: Format string to display the error; this is expanded
-    by the instance's dict.
+        by the instance's dict.
     """
 
     internal_error = False
@@ -864,9 +864,9 @@ class AlreadyVersionedError(BzrError):
         """Construct a new AlreadyVersionedError.
 
         :param path: This is the path which is versioned,
-        which should be in a user friendly form.
+            which should be in a user friendly form.
         :param context_info: If given, this is information about the context,
-        which could explain why this is expected to not be versioned.
+            which could explain why this is expected to not be versioned.
         """
         BzrError.__init__(self)
         self.path = path
@@ -885,9 +885,9 @@ class NotVersionedError(BzrError):
         """Construct a new NotVersionedError.
 
         :param path: This is the path which is not versioned,
-        which should be in a user friendly form.
+            which should be in a user friendly form.
         :param context_info: If given, this is information about the context,
-        which could explain why this is expected to be versioned.
+            which could explain why this is expected to be versioned.
         """
         BzrError.__init__(self)
         self.path = path
@@ -2665,11 +2665,12 @@ class UnknownErrorFromSmartServer(BzrError):
 
     This is distinct from ErrorFromSmartServer so that it is possible to
     distinguish between the following two cases:
-      - ErrorFromSmartServer was uncaught.  This is logic error in the client
-        and so should provoke a traceback to the user.
-      - ErrorFromSmartServer was caught but its error_tuple could not be
-        translated.  This is probably because the server sent us garbage, and
-        should not provoke a traceback.
+
+    - ErrorFromSmartServer was uncaught.  This is logic error in the client
+      and so should provoke a traceback to the user.
+    - ErrorFromSmartServer was caught but its error_tuple could not be
+      translated.  This is probably because the server sent us garbage, and
+      should not provoke a traceback.
     """
 
     _fmt = "Server sent an unexpected error: %(error_tuple)r"
