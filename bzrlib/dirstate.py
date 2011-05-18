@@ -1285,7 +1285,8 @@ class DirState(object):
         except IndexError:
             pass
         entry_index = bisect.bisect_left(block, (key, []))
-        present = (entry_index < len_block and block[entry_index][0] == key)
+        present = (entry_index < len_block and
+            block[entry_index][0] == key)
         self._last_entry_index = entry_index
         return entry_index, present
 
@@ -1499,6 +1500,10 @@ class DirState(object):
         adds = []
         changes = []
         deletes = []
+        # when we renaming something in basis, which is already at a
+        # different path from the active tree. This tracks what active path was
+        # associated with the given old basis path
+        rename_targets = {}
         # The paths this function accepts are unicode and must be encoded as we
         # go.
         encode = cache_utf8.encode
@@ -1566,7 +1571,7 @@ class DirState(object):
                 # the target of the 'r' is old_path here, and we add that to
                 # deletes, meaning that the add handler does not need to check
                 # for 'r' items on every pass.
-                self._update_basis_apply_deletes(deletes)
+                self._update_basis_apply_deletes(deletes, rename_targets)
                 deletes = []
                 # Split into an add/delete pair recursively.
                 adds.append((old_path_utf8, new_path_utf8, file_id,
@@ -1597,9 +1602,9 @@ class DirState(object):
         self._check_delta_ids_absent(new_ids, delta, 1)
         try:
             # Finish expunging deletes/first half of renames.
-            self._update_basis_apply_deletes(deletes)
+            self._update_basis_apply_deletes(deletes, rename_targets)
             # Reinstate second half of renames and new paths.
-            self._update_basis_apply_adds(adds)
+            self._update_basis_apply_adds(adds, rename_targets)
             # Apply in-situ changes.
             self._update_basis_apply_changes(changes)
             # Validate parents
@@ -1641,7 +1646,7 @@ class DirState(object):
                     "This file_id is new in the delta but already present in "
                     "the target")
 
-    def _update_basis_apply_adds(self, adds):
+    def _update_basis_apply_adds(self, adds, rename_targets):
         """Apply a sequence of adds to tree 1 during update_basis_by_delta.
 
         They may be adds, or renames that have been split into add/delete
@@ -1663,52 +1668,31 @@ class DirState(object):
         absent = 'ar'
         st = static_tuple.StaticTuple
         for old_path, new_path, file_id, new_details, real_add in adds:
-            if real_add and old_path is not None:
-                raise errors.InconsistentDelta(new_path, file_id,
-                    'considered a real add but still had old_path at %s'
-                    % (old_path,))
-            # This change may or may not be reflected in tree0. When adding a
-            # record, we have to watch out for
-            #   1) Simple case, the file exists in tree0, and old_path =
-            #      new_path, just add the details for tree1
-            #   2) The file doesn't exist in tree0 at all
-            #   3) Something else exists in tree0 at the same path
-            #   4) The file exists in tree0, but at a different path
-            entry = self._get_entry(1, file_id, new_path)
-            if entry[0] is None:
-                # This entry doesn't exist in tree 1, but it might just be an
-                # 'absent' record which we are filling in. Check in tree 0
-                # Note: we never have to check old_path, because by now
-                #       old_path is always None.
-                entry = self._get_entry(0, path_utf8=new_path)
-                if entry[0] is not None and entry[0][2] != file_id:
-                    # Something does exist at that path in tree0, but it is
-                    # with a different file_id
-                    entry = (None, None)
-            if entry[0] is None:
-                # entry_key (dirname, basename, file_id) doesn't exist in any
-                # tree yet, so we need to create a new record.
-                dirname, basename = osutils.split(new_path)
-                entry_key = st(dirname, basename, file_id)
-                _, block = self._find_block(entry_key, add_if_missing=True)
-                index, _ = self._find_entry_index(entry_key, block)
-                entry = (entry_key, [DirState.NULL_PARENT_DETAILS]*2)
-                block.insert(index, entry)
-            elif entry[0][2] != file_id:
-                # This should never trigger, because we pass file_id in to
-                # _get_entry which will raise its own exception.
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(new_path, file_id,
-                    'working tree does not contain new entry')
-            if real_add and entry[1][1][0] not in absent:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(new_path, file_id,
-                    'The entry was considered to be a genuinely new record,'
-                    ' but there was already an old record for it.')
-            # We don't need to update the target of an 'r' because the handling
-            # of renames turns all 'r' situations into a delete at the original
-            # location.
-            entry[1][1] = new_details
+            dirname, basename = osutils.split(new_path)
+            entry_key = st(dirname, basename, file_id)
+            _, block = self._find_block(entry_key)
+            entry_index, present = self._find_entry_index(entry_key, block)
+            if real_add:
+                if old_path is not None:
+                    raise errors.InconsistentDelta(new_path, file_id,
+                        'considered a real add but still had old_path at %s'
+                        % (old_path,))
+            if present:
+                entry = block[entry_index]
+                basis_kind = entry[1][1][0]
+                if basis_kind == 'a':
+                    entry[1][1] = new_details
+                elif basis_kind == 'r':
+                    raise NotImplementedError
+                else:
+                    self._changes_aborted = True
+                    raise InconsistentDelta(new_path, file_id,
+                        "An entry was marked as a new add"
+                        " but the basis target already existed")
+            else:
+                entry = (entry_key, [DirState.NULL_PARENT_DETAILS,
+                                     new_details])
+                block.insert(entry_index, entry)
 
     def _update_basis_apply_changes(self, changes):
         """Apply a sequence of changes to tree 1 during update_basis_by_delta.
@@ -1731,7 +1715,7 @@ class DirState(object):
                     'changed considered absent')
             entry[1][1] = new_details
 
-    def _update_basis_apply_deletes(self, deletes):
+    def _update_basis_apply_deletes(self, deletes, rename_targets):
         """Apply a sequence of deletes to tree 1 during update_basis_by_delta.
 
         They may be deletes, or renames that have been split into add/delete
@@ -1742,6 +1726,11 @@ class DirState(object):
             real_delete is True when the desired outcome is an actual deletion
             rather than the rename handling logic temporarily deleting a path
             during the replacement of a parent.
+        :param rename_targets: When we mark an entry for deletion, if it was a
+            rename record, save the matching path.
+            eg, tree0 has dir/name file_id, tree1 has other/name file_id
+                and we are renaming other/name file_id to third/name file_id
+                record that the other/name record pointed at dir/name.
         """
         null = DirState.NULL_PARENT_DETAILS
         for old_path, new_path, file_id, _, real_delete in deletes:
@@ -1757,15 +1746,35 @@ class DirState(object):
                 raise errors.InconsistentDelta(old_path, file_id,
                     'basis tree does not contain removed entry')
             entry = self._dirblocks[block_index][1][entry_index]
+            # The state of the entry in the 'active' WT
+            active_kind = entry[1][0][0]
             if entry[0][2] != file_id:
                 self._changes_aborted = True
                 raise errors.InconsistentDelta(old_path, file_id,
                     'mismatched file_id in tree 1')
             if real_delete:
-                if entry[1][0][0] == 'a':
+                # This entry is being completely removed from the basis tree.
+                if active_kind == 'a':
                     # The file was marked as deleted in the active
                     # state, and it is now deleted in the basis state,
                     # so just remove the record entirely
+                    del self._dirblocks[block_index][1][entry_index]
+                elif active_kind == 'r':
+                    # The active record is found at a different location
+                    # we can consider it deleted *here*, but we have to update
+                    # the other location to call it deleted
+                    active_path_utf8 = entry[1][0][1]
+                    active_entry = self._get_entry(0, file_id, active_path_utf8)
+                    # tree0 has a rename record, tree1 should have the reverse
+                    # rename record.
+                    if active_entry[1][1][0] != 'r':
+                        raise errors.InconsistentDelta(old_path, file_id,
+                            "Dirstate did not have matching rename entries")
+                    elif active_entry[1][0][0] in 'ar':
+                        raise errors.InconsistentDelta(old_path, file_id,
+                            "Dirstate had a rename pointing at an inactive"
+                            " tree0")
+                    active_entry[1][1] = null
                     del self._dirblocks[block_index][1][entry_index]
                 else:
                     # The basis entry needs to be marked deleted
@@ -1784,22 +1793,26 @@ class DirState(object):
                                 "The file id was deleted but its children were "
                                 "not deleted.")
             else:
-                if entry[1][0][0] == 'a':
-                    self._changes_aborted = True
-                    raise errors.InconsistentDelta(old_path, file_id,
-                        'The entry was considered a rename, but the source path'
-                        ' is marked as absent.')
-                    # For whatever reason, we were asked to rename an entry
-                    # that was originally marked as deleted. This could be
-                    # because we are renaming the parent directory, and the WT
-                    # current state has the file marked as deleted.
-                elif entry[1][0][0] == 'r':
+                if active_kind == 'a':
+                    # The active tree doesn't have this file_id.
+                    # The basis tree is changing this record. If this is a
+                    # rename, then we don't want the record here at all
+                    # anymore. If it is just an in-place change, we want the
+                    # record here, but we'll add it if we need to. So we just
+                    # delete it
+                    del self._dirblocks[block_index][1][entry_index]
+                elif active_kind == 'r':
+                    # The active tree has this record at a different location.
                     # implement the rename
+                    active_path_utf8 = entry[1][0][1]
+                    rename_targets[old_path] = active_path_utf8
+                    active_entry = self._get_entry(0, file_id, active_path_utf8)
+                    active_entry[1][1] = null
                     del self._dirblocks[block_index][1][entry_index]
                 else:
-                    # it is being resurrected here, so blank it out temporarily.
-                    # should be equivalent to entry[1][1] = null
-                    self._dirblocks[block_index][1][entry_index][1][1] = null
+                    # There is still an active record, so just mark this
+                    # removed.
+                    entry[1][1] = null
 
     def _after_delta_check_parents(self, parents, index):
         """Check that parents required by the delta are all intact.

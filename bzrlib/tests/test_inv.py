@@ -166,6 +166,23 @@ def _get_basis_entries(tree):
     return basis_tree_entries
 
 
+def _populate_different_tree(tree, basis, delta):
+    """Put all entries into tree, but at a unique location."""
+    added_ids = set()
+    added_paths = set()
+    tree.add(['unique-dir'], ['unique-dir-id'], ['directory'])
+    for path, ie in basis.iter_entries_by_dir():
+        if ie.file_id in added_ids:
+            continue
+        # We want a unique path for each of these, we use the file-id
+        tree.add(['unique-dir/' + ie.file_id], [ie.file_id], [ie.kind])
+        added_ids.add(ie.file_id)
+    for old_path, new_path, file_id, ie in delta:
+        if file_id in added_ids:
+            continue
+        tree.add(['unique-dir/' + file_id], [file_id], [ie.kind])
+
+
 def apply_inventory_WT_basis(test, basis, delta, expect_fail=True):
     """Apply delta to basis and return the result.
 
@@ -187,10 +204,13 @@ def apply_inventory_WT_basis(test, basis, delta, expect_fail=True):
     try:
         target_entries = _create_repo_revisions(tree.branch.repository, basis,
                                                 delta, expect_fail)
-        # For successful deltas, we try 2 different permutations
+        # For successful deltas, we try different permutations
         # 1) active WT has no state
-        # 2) active WT is at target, basis tree is updated from basis to target
-        # 3) active WT is at basis, basis tree is updated to new target
+        # 2) active WT has all entries in target, but all at a different
+        #    location
+        # 3) active WT is at target, basis tree is updated from basis to target
+        # 4) active WT is at basis, basis tree is updated to new target
+        # TODO: active WT has all paths as target, but different file_ids.
         # For expect_fail = True, we only do the last one.
         if not expect_fail:
             tree1 = tree.bzrdir.sprout('tree1').open_workingtree()
@@ -202,19 +222,29 @@ def apply_inventory_WT_basis(test, basis, delta, expect_fail=True):
                 tree1._validate()
             finally:
                 tree1.unlock()
-            test.assertEqual(target_entries, _get_basis_entries(tree1))
             tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
             tree2.branch.repository.fetch(tree.branch.repository)
             tree2.lock_write()
             try:
-                tree2._write_inventory(basis)
+                _populate_different_tree(tree2, basis, delta)
                 tree2.set_parent_ids(['basis'])
-                tree2.apply_inventory_delta(delta)
                 tree2.update_basis_by_delta('result', delta)
                 tree2._validate()
             finally:
                 tree2.unlock()
             test.assertEqual(target_entries, _get_basis_entries(tree1))
+            tree3 = tree.bzrdir.sprout('tree3').open_workingtree()
+            tree3.branch.repository.fetch(tree.branch.repository)
+            tree3.lock_write()
+            try:
+                tree3._write_inventory(basis)
+                tree3.set_parent_ids(['basis'])
+                tree3.apply_inventory_delta(delta)
+                tree3.update_basis_by_delta('result', delta)
+                tree3._validate()
+            finally:
+                tree3.unlock()
+            test.assertEqual(target_entries, _get_basis_entries(tree3))
         # Set the basis state as the trees current state
         tree._write_inventory(basis)
         # This reads basis from the repo and puts it into the tree's local
@@ -652,6 +682,40 @@ class TestDeltaApplication(TestCaseWithTransport):
                  (None, u'name', 'id2', file2)]
         res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
         self.assertEqual('id2', res_inv.path2id('name'))
+
+    def test_rename_dir(self):
+        inv = self.get_empty_inventory()
+        dir1 = inventory.InventoryDirectory('dir-id', 'dir1', inv.root.file_id)
+        dir1.revision = 'basis'
+        file1 = self.make_file_ie(parent_id='dir-id')
+        inv.add(dir1)
+        inv.add(file1)
+        dir2 = inventory.InventoryDirectory('dir-id', 'dir2', inv.root.file_id)
+        dir2.revision = 'result'
+        delta = [('dir1', 'dir2', 'dir-id', dir2)]
+        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
+        # The file should be accessible under the new path
+        self.assertEqual('file-id', res_inv.path2id('dir2/name'))
+
+    def test_renamed_dir_with_renamed_child(self):
+        inv = self.get_empty_inventory()
+        dir1 = inventory.InventoryDirectory('dir-id', 'dir1', inv.root.file_id)
+        dir1.revision = 'basis'
+        file1 = self.make_file_ie('file-id-1', 'name1', parent_id='dir-id')
+        file2 = self.make_file_ie('file-id-2', 'name2', parent_id='dir-id')
+        inv.add(dir1)
+        inv.add(file1)
+        inv.add(file2)
+        dir2 = inventory.InventoryDirectory('dir-id', 'dir2', inv.root.file_id)
+        dir2.revision = 'result'
+        file2b = self.make_file_ie('file-id-2', 'name2', inv.root.file_id)
+        delta = [('dir1', 'dir2', 'dir-id', dir2),
+                 ('dir1/name2', 'name2', 'file-id-2', file2b)]
+        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
+        # The file should be accessible under the new path
+        self.assertEqual('file-id-1', res_inv.path2id('dir2/name1'))
+        self.assertEqual(None, res_inv.path2id('dir2/name2'))
+        self.assertEqual('file-id-2', res_inv.path2id('name2'))
 
     def test_is_root(self):
         """Ensure our root-checking code is accurate."""
