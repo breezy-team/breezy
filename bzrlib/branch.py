@@ -774,7 +774,7 @@ class Branch(controldir.ControlComponent):
         configured to check constraints on history, in which case this may not
         be permitted.
         """
-        raise NotImplementedError(self.last_revision_info)
+        raise NotImplementedError(self.set_last_revision_info)
 
     @needs_write_lock
     def generate_revision_history(self, revision_id, last_rev=None,
