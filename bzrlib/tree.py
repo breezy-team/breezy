@@ -294,12 +294,13 @@ class Tree(object):
         """
         return osutils.split_lines(self.get_file_text(file_id, path))
 
-    def get_file_sha1(self, file_id, path=None):
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
         """Return the SHA1 file for a file.
 
         :param file_id: The handle for this file.
         :param path: The path that this file can be found at.
             These must point to the same object.
+        :param stat_value: Optional stat value for the object
         """
         raise NotImplementedError(self.get_file_sha1)
 
