@@ -14,7 +14,7 @@ Bazaarのメインドキュメント
 
    tutorials/index
    user-guide/index
-   user-reference/bzr_man
+   user-reference/index
 
 
 ウェブリンク
