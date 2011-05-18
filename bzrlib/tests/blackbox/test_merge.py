@@ -352,6 +352,13 @@ class TestMerge(tests.TestCaseWithTransport):
         self.assertPathExists('file1')
         self.assertPathDoesNotExist('file2')
 
+    def test_merge_nonexistent_file(self):
+        """It should not be possible to merge changes from a file which
+        does not exist."""
+        tree_a = self.make_branch_and_tree('tree_a')
+        self.run_bzr_error(('Nonexistent file specified',),
+                           ['merge', 'non/existing'])
+
     def pullable_branch(self):
         tree_a = self.make_branch_and_tree('a')
         self.build_tree_contents([('a/file', 'bar\n')])
