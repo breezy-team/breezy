@@ -41,6 +41,12 @@ class TestRevert(TestCaseWithWorkingTree):
 
 class TestApplyInventoryDelta(TestCaseWithWorkingTree):
 
+    def setUp(self):
+        super(TestApplyInventoryDelta, self).setUp()
+        if not self.bzrdir_format.repository_format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                "format does not support inventory deltas")
+
     def test_add(self):
         wt = self.make_branch_and_tree('.')
         wt.lock_write()
@@ -157,6 +163,9 @@ class TestTreeReference(TestCaseWithWorkingTree):
 
     def test_tree_reference_matches_inv(self):
         base = self.make_branch_and_tree('base')
+        if base.branch.repository._format.supports_full_versioned_files:
+            raise tests.TestNotApplicable(
+                "format does not support inventory deltas")
         if not base.supports_tree_reference():
             raise tests.TestNotApplicable("wt doesn't support nested trees")
         # We add it as a directory, but it becomes a tree-reference
