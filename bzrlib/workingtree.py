@@ -268,16 +268,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self._control_files.break_lock()
         self.branch.break_lock()
 
-    def _get_check_refs(self):
-        """Return the references needed to perform a check of this tree.
-        
-        The default implementation returns no refs, and is only suitable for
-        trees that have no local caching and can commit on ghosts at any time.
-
-        :seealso: bzrlib.check for details about check_refs.
-        """
-        return []
-
     def requires_rich_root(self):
         return self._format.requires_rich_root
 
@@ -873,8 +863,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self.add(path, file_id, 'directory')
         return file_id
 
-    def get_symlink_target(self, file_id):
-        abspath = self.id2abspath(file_id)
+    def get_symlink_target(self, file_id, path=None):
+        if path is not None:
+            abspath = self.abspath(path)
+        else:
+            abspath = self.id2abspath(file_id)
         target = osutils.readlink(abspath)
         return target
 
@@ -1785,25 +1778,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self.set_conflicts(un_resolved)
         return un_resolved, resolved
 
-    @needs_read_lock
-    def _check(self, references):
-        """Check the tree for consistency.
-
-        :param references: A dict with keys matching the items returned by
-            self._get_check_refs(), and values from looking those keys up in
-            the repository.
-        """
-        tree_basis = self.basis_tree()
-        tree_basis.lock_read()
-        try:
-            repo_basis = references[('trees', self.last_revision())]
-            if len(list(repo_basis.iter_changes(tree_basis))) > 0:
-                raise errors.BzrCheckError(
-                    "Mismatched basis inventory content.")
-            self._validate()
-        finally:
-            tree_basis.unlock()
-
     def _validate(self):
         """Validate internal structures.
 
@@ -1815,16 +1789,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         return
 
-    @needs_read_lock
     def check_state(self):
         """Check that the working state is/isn't valid."""
-        check_refs = self._get_check_refs()
-        refs = {}
-        for ref in check_refs:
-            kind, value = ref
-            if kind == 'trees':
-                refs[ref] = self.branch.repository.revision_tree(value)
-        self._check(refs)
+        raise NotImplementedError(self.check_state)
 
     def reset_state(self, revision_ids=None):
         """Reset the state of the working tree.
@@ -2138,6 +2105,46 @@ class InventoryWorkingTree(WorkingTree,
         """Change the last revision in the working tree."""
         if self._change_last_revision(new_revision):
             self._cache_basis_inventory(new_revision)
+
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree.
+        
+        The default implementation returns no refs, and is only suitable for
+        trees that have no local caching and can commit on ghosts at any time.
+
+        :seealso: bzrlib.check for details about check_refs.
+        """
+        return []
+
+    @needs_read_lock
+    def _check(self, references):
+        """Check the tree for consistency.
+
+        :param references: A dict with keys matching the items returned by
+            self._get_check_refs(), and values from looking those keys up in
+            the repository.
+        """
+        tree_basis = self.basis_tree()
+        tree_basis.lock_read()
+        try:
+            repo_basis = references[('trees', self.last_revision())]
+            if len(list(repo_basis.iter_changes(tree_basis))) > 0:
+                raise errors.BzrCheckError(
+                    "Mismatched basis inventory content.")
+            self._validate()
+        finally:
+            tree_basis.unlock()
+
+    @needs_read_lock
+    def check_state(self):
+        """Check that the working state is/isn't valid."""
+        check_refs = self._get_check_refs()
+        refs = {}
+        for ref in check_refs:
+            kind, value = ref
+            if kind == 'trees':
+                refs[ref] = self.branch.repository.revision_tree(value)
+        self._check(refs)
 
     @needs_tree_write_lock
     def reset_state(self, revision_ids=None):

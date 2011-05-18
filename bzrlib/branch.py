@@ -35,9 +35,7 @@ from bzrlib import (
         repository,
         revision as _mod_revision,
         rio,
-        symbol_versioning,
         transport,
-        tsort,
         ui,
         urlutils,
         )
@@ -783,11 +781,17 @@ class Branch(controldir.ControlComponent):
     def generate_revision_history(self, revision_id, last_rev=None,
                                   other_branch=None):
         """See Branch.generate_revision_history"""
-        # FIXME: This shouldn't have to fetch the entire history
-        history = self._lefthand_history(revision_id, last_rev, other_branch)
-        revno = len(history)
+        graph = self.repository.get_graph()
+        known_revision_ids = [
+            self.last_revision_info(),
+            (_mod_revision.NULL_REVISION, 0),
+            ]
+        if last_rev is not None:
+            if not graph.is_ancestor(last_rev, revision_id):
+                # our previous tip is not merged into stop_revision
+                raise errors.DivergedBranches(self, other_branch)
+        revno = graph.find_distance_to_null(revision_id, known_revision_ids)
         self.set_last_revision_info(revno, revision_id)
-        self._cache_revision_history(history)
 
     @needs_write_lock
     def set_parent(self, url):
@@ -1099,35 +1103,14 @@ class Branch(controldir.ControlComponent):
             stop_revision=stop_revision,
             possible_transports=possible_transports, *args, **kwargs)
 
-    def push(self, target, overwrite=False, stop_revision=None, *args,
-        **kwargs):
+    def push(self, target, overwrite=False, stop_revision=None, lossy=False,
+            *args, **kwargs):
         """Mirror this branch into target.
 
         This branch is considered to be 'local', having low latency.
         """
         return InterBranch.get(self, target).push(overwrite, stop_revision,
-            *args, **kwargs)
-
-    def lossy_push(self, target, stop_revision=None):
-        """Push deltas into another branch.
-
-        :note: This does not, like push, retain the revision ids from 
-            the source branch and will, rather than adding bzr-specific 
-            metadata, push only those semantics of the revision that can be 
-            natively represented by this branch' VCS.
-
-        :param target: Target branch
-        :param stop_revision: Revision to push, defaults to last revision.
-        :return: BranchPushResult with an extra member revidmap: 
-            A dictionary mapping revision ids from the target branch 
-            to new revision ids in the target branch, for each 
-            revision that was pushed.
-        """
-        inter = InterBranch.get(self, target)
-        lossy_push = getattr(inter, "lossy_push", None)
-        if lossy_push is None:
-            raise errors.LossyPushToSameVCS(self, target)
-        return lossy_push(stop_revision)
+            lossy, *args, **kwargs)
 
     def basis_tree(self):
         """Return `Tree` object for last revision."""
@@ -2809,11 +2792,15 @@ class BzrBranch8(BzrBranch):
         self._reference_info = None
 
     def _check_history_violation(self, revision_id):
-        last_revision = _mod_revision.ensure_null(self.last_revision())
+        current_revid = self.last_revision()
+        last_revision = _mod_revision.ensure_null(current_revid)
         if _mod_revision.is_null(last_revision):
             return
-        if last_revision not in self._lefthand_history(revision_id):
-            raise errors.AppendRevisionsOnlyViolation(self.user_url)
+        graph = self.repository.get_graph()
+        for lh_ancestor in graph.iter_lefthand_ancestry(revision_id):
+            if lh_ancestor == current_revid:
+                return
+        raise errors.AppendRevisionsOnlyViolation(self.user_url)
 
     def _gen_revision_history(self):
         """Generate the revision history from last revision
@@ -3244,7 +3231,7 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.pull)
 
     @needs_write_lock
-    def push(self, overwrite=False, stop_revision=None,
+    def push(self, overwrite=False, stop_revision=None, lossy=False,
              _override_hook_source_branch=None):
         """Mirror the source branch into the target branch.
 
@@ -3401,7 +3388,7 @@ class GenericInterBranch(InterBranch):
             if master_branch:
                 master_branch.unlock()
 
-    def push(self, overwrite=False, stop_revision=None,
+    def push(self, overwrite=False, stop_revision=None, lossy=False,
              _override_hook_source_branch=None):
         """See InterBranch.push.
 
@@ -3412,13 +3399,15 @@ class GenericInterBranch(InterBranch):
         This is for use of RemoteBranch, where push is delegated to the
         underlying vfs-based Branch.
         """
+        if lossy:
+            raise errors.LossyPushToSameVCS(self.source, self.target)
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
         self.source.lock_read()
         try:
             return _run_with_write_locked_target(
                 self.target, self._push_with_bound_branches, overwrite,
-                stop_revision,
+                stop_revision, 
                 _override_hook_source_branch=_override_hook_source_branch)
         finally:
             self.source.unlock()
