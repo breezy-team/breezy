@@ -3293,9 +3293,10 @@ def fork_for_tests(suite):
                 os.waitpid(self.pid, 0)
 
     test_blocks = partition_tests(suite, concurrency)
+    suite._tests[:] = []
     for process_tests in test_blocks:
-        process_suite = TestUtil.TestSuite()
-        process_suite.addTests(process_tests)
+        process_suite = TestUtil.TestSuite(process_tests)
+        process_tests[:] = []
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
         if pid == 0:
