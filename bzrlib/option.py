@@ -204,21 +204,20 @@ class Option(object):
             return 'no-' + self.name
 
     @staticmethod
-    def get_gettext():
+    def get_gettext(l10n):
         """Returns the gettext function used to translate this Option's help.
 
         NOTE: Options provided by third party plugins should override this to
         use own i18n system.
         """
-        from bzrlib.i18n import gettext
-        return gettext
+        if l10n:
+            from bzrlib.i18n import gettext
+            return gettext
+        return lambda x: x
 
     def add_option(self, parser, short_name, l10n=False):
         """Add this option to an Optparse parser"""
-        if l10n:
-            gettext = self.get_gettext()
-        else:
-            gettext = lambda x: x
+        gettext = self.get_gettext(l10n)
         option_strings = ['--%s' % self.name]
         if short_name is not None:
             option_strings.append('-%s' % short_name)
@@ -282,16 +281,17 @@ class ListOption(Option):
     sets the value of the 'foo' option to ['c'].
     """
 
-    def add_option(self, parser, short_name):
+    def add_option(self, parser, short_name, l10n=False):
         """Add this option to an Optparse parser."""
+        gettext = self.get_gettext(l10n)
         option_strings = ['--%s' % self.name]
         if short_name is not None:
             option_strings.append('-%s' % short_name)
         parser.add_option(action='callback',
                           callback=self._optparse_callback,
                           type='string', metavar=self.argname.upper(),
-                          help=self.help, dest=self._param_name, default=[],
-                          *option_strings)
+                          help=gettext(self.help), dest=self._param_name,
+                          default=[], *option_strings)
 
     def _optparse_callback(self, option, opt, value, parser):
         values = getattr(parser.values, self._param_name)
@@ -388,8 +388,9 @@ class RegistryOption(Option):
         return RegistryOption(name_, help, reg, title=title,
             value_switches=value_switches, enum_switch=enum_switch)
 
-    def add_option(self, parser, short_name):
+    def add_option(self, parser, short_name, l10n=False):
         """Add this option to an Optparse parser"""
+        gettext = self.get_gettext(l10n)
         if self.value_switches:
             parser = parser.add_option_group(self.title)
         if self.enum_switch:
@@ -400,7 +401,7 @@ class RegistryOption(Option):
                 if self.is_hidden(key):
                     help = optparse.SUPPRESS_HELP
                 else:
-                    help = self.registry.get_help(key)
+                    help = gettext(self.registry.get_help(key))
                 parser.add_option(action='callback',
                               callback=self._optparse_value_callback(key),
                                   help=help,
