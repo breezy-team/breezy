@@ -14,11 +14,12 @@ Bazaarのメインドキュメント
 
    user-guide/index
    tutorials/index
-   quick-reference/index
    upgrade-guide/index
    user-reference/index
-   admin-guide/index
 
+.. no translated documents
+   quick-reference/index
+   admin-guide/index
 
 ウェブリンク
 =============
