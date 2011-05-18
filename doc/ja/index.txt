@@ -12,8 +12,8 @@ Bazaarのメインドキュメント
 .. toctree::
    :maxdepth: 1
 
-   user-guide/index
    tutorials/index
+   user-guide/index
    upgrade-guide/index
    user-reference/index
 

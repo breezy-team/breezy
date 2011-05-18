@@ -85,4 +85,3 @@ class ForeignRepositoryTests(TestCaseWithTransport):
         repo = self.make_repository()
         stats = repo.gather_stats()
         self.assertIsInstance(stats, dict)
-        self.assertTrue(stats.has_key("revisions"))
