@@ -74,17 +74,27 @@ command like this::
 This creates a new branch at ``my-url`` that is stacked on ``reference-url``
 and only contains the revisions in the current branch that are not already
 in the branch at ``reference-url``. In particular, ``my-url`` and
-``reference-url`` can be on the same host, and the ``--stacked`` option
+``reference-url`` can be on the same host, and the ``--stacked-on`` option
 can be used additionally to inform ``push`` to reference the
 revisions in ``reference-url``. For example::
 
-  bzr push --stacked-on sftp://host/project --stacked sftp://host/user/stacked-branch
+  bzr push --stacked-on sftp://host/project sftp://host/user/stacked-branch
 
 This usage fits the scenario described in the Motivation section.
 
-If the local branch was created as a stacked branch, then you can
-use the ``--stacked`` option to ``push`` and the *stacked-on* location
-will be implicit. For example::
+You can also use the ``--stacked`` option without specifying ``--stacked-on``.
+This will automatically set the *stacked-on* location to the parent branch of
+the branch you are pushing (or its ``public_location`` if configured).  For
+example::
+
+  bzr branch source-url my-dir
+  cd my-dir
+  (hack, hack, hack)
+  bzr commit -m "fix bug"
+  bzr push --stacked
+
+You can combine ``bzr branch --stacked`` and ``bzr push --stacked`` to work on a
+branch without downloading or uploading the whole history::
 
   bzr branch --stacked source-url my-dir
   cd my-dir
@@ -104,6 +114,11 @@ same server.
 Similarly, because most of the history is stored in the stacked-on repository,
 operations like ``bzr log`` can be slower when the stacked-on repository is
 accessed via a network.
+
+If a stacked branch is in a format older than 2a, you cannot commit to it due to
+`bug 375013`_.
+
+.. _bug 375013: https://bugs.launchpad.net/bzr/+bug/375013
 
 
 Changing branch stacking
