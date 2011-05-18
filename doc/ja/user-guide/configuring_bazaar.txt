@@ -17,11 +17,66 @@ Bazaarが行う推測を望まないのであれば、あなたが望む識別�
 
 ``whoami`` は引数なしで使われると、現在の値が表示されます。
 
+
+.. Using a network proxy
+
+ネットワークプロクシを使う
+---------------------------
+
+ネットワークが外部への接続に HTTP プロクシを必要とする場合、
+``http_proxy`` という環境変数を設定しなければなりません。
+https 接続にもプロクシが必要なら、 ``https_proxy`` も設定しなければなりません。
+プロクシが必要なのにこれらの環境変数が設定されていない場合、
+Launchpad やその他の外部のサーバーへの接続ができなかったりタイムアウトしたりします。
+
+Unix では、たいていこれらの設定は ``/etc/environment`` か
+``~/.bash_profile`` に書いて、 Windows ではたいていユーザープロファイルで
+設定します。
+
+::
+
+  http_proxy=http://proxy.example.com:3128/
+  https_proxy=http://proxy.example.com:3128/
+
+The ``no_proxy`` variable can be set to a comma-separated list of hosts
+which shouldn't be reached by the proxy.  (See
+<http://docs.python.org/library/urllib.html> for more details.)
+
+``no_proxy`` という環境変数に、プロクシを利用しないで到達するホスト名の
+リストをカンマ区切りで設定できます。
+(詳細は <http://docs.python.org/library/urllib.html> を参照してください)
+
+
+.. Various ways to configure
+
+いろいろな設定方法
+-------------------------
+
+上の例で示したように Bazaar を設定する方法はたくさんありますが、
+全てに共通している属性があります。オプションは全て以下のように
+なっています。
+
+- 名前は有効な Python の識別子です。
+
+- a value which is a string. In some cases, Bazaar will be able
+  to recognize special values like 'True', 'False' to infer a
+  boolean type, but basically, as a user, you will always specify
+  a value as a string.
+
+- 値は文字列です。いくつかの場面では、真偽値を得るために Bazaar は `True`,
+  `False` のような特別な値を認識しますが、基本的にはユーザーは値として
+  ただの文字列を渡します。
+
+オプションはコンテキストによってグループ化されており、オプション名は
+そのコンテキスト内ではユニークに識別することができます。
+必要な場合、オプションは設定ファイルに保存され永続化されます。
+
+
 設定ファイル
 -------------
 
-設定ファイルはLinux/Unixの場合 ``$HOME/.bazaar`` に、
-Windowsの場合 ``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0`` にあります。
+設定ファイルは Unix の場合 ``$HOME/.bazaar`` に、 Windows の場合
+``C:\Documents and Settings\<username>\Application Data\Bazaar\2.0`` にあります。
 この場所には3つの主要な設定ファイルがあります:
 
 * ``bazaar.conf`` はデフォルトの設定オプションを記述します。
@@ -42,7 +97,66 @@ Windowsの場合 ``C:\Documents and Settings\<username>\Application Data\Bazaar\
   email = Your Name <email@example.com>
 
 サポートされる構文と構成設定の詳細については、
-Bazaarのユーザーリファレンスの `構成設定 <../user-reference/bzr_man.html#configuration-settings>`_ の項目を参照してください。
+Bazaar のユーザーリファレンスの
+`構成設定 <../user-reference/index.html#configuration-settings>`_
+の項目を参照してください。
+
+
+.. Looking at the active configuration
+
+アクティブな設定を確認する
+-----------------------------------
+
+現在定義されている全てのオプションを確認するには、次のコマンドを実行します。 ::
+
+  bzr config
+
+``bzr`` は設定オプションをどこから取得するかを決定するためのいくつかのルールを
+持っています。
+
+現在のポリシーでは、以下の順序でマッチする定義を設定ファイルから探します。
+
+  * 最初に ``location.conf`` の中の、セクション名が場所(作業ツリー、ブランチ、
+    リモートブランチ)にマッチするセクションが探されます。
+
+  * 次に現在の ``branch.conf`` が探されます。
+
+  * 次に ``bazaar.conf`` が探されます。
+
+  * 最後に、いくつかのオプションはコード中で定義されたデフォルト値が設定され、
+    この設定は ``bzr config`` には表示されません。
+    (`構成設定 <../user-reference/index.html#configuration-settings>`_
+    を参照してください。)
+
+この動作は、 ``bzr config`` を引数なしで実行すると理解しやすいはずです。
+このコマンドを実行すると次のような表示をします。 ::
+
+  locations:
+    post_commit_to = commits@example.com
+    news_merge_files = NEWS
+  branch:
+    parent_location = bzr+ssh://bazaar.launchpad.net/+branch/bzr/
+    nickname = config-modify
+    push_location = bzr+ssh://bazaar.launchpad.net/~vila/bzr/config-modify/
+  bazaar:
+    debug_flags = hpss,
+
+各オプション定義のグループの前に表示されているスコープが、
+そのオプションを定義している構成設定ファイルを表しています。
+
+
+.. _modifying-the-active-configuration:
+
+有効な設定を変更する
+----------------------------------
+
+オプションに値を設定するには::
+
+  bzr config opt=value
+
+オプションの利用を止めるには::
+
+  bzr config --remove opt
 
 
 ルールベースのプリファレンス
@@ -50,5 +164,24 @@ Bazaarのユーザーリファレンスの `構成設定 <../user-reference/bzr_
 
 いくつかのコマンドとプラグインは特定のパターンにマッチするファイルのカスタムの処理機能を提供します。
 ユーザーごとにルールベースのプリファレンスが ``BZR_HOME/rules`` で定義されます。
+
 ルールが検索される検索方法と関連ファイルの詳細な構文に関する詳細については、
-Bazaarのユーザープリファレンスの `ルール <../user-reference/bzr_man.html#rules>`_ の項目を参照してください。
+Bazaarのユーザープリファレンスの `ルール <../user-reference/index.html#rules>`_
+の項目を参照してください。
+
+
+.. _escaping-command-lines:
+
+コマンドラインのエスケープ
+--------------------------------
+
+設定ファイルの中にプログラム名やコマンドラインを記述する場合、特殊な文字や
+スペースをその中に含めるためにクォートすることができます。
+同じルールが全てのプラットフォームで有効です。
+
+そのルールとは、ダブルクォートで囲まれた文字列はスペースが含まれていたとしても
+1つの「語」として認識され、クォート文字をクォートの中に含めるためにバックスラッシュ
+(訳注: 日本語環境では多くの場合バックスラッシュではなく円記号(ASCII文字の0x5c)です)
+を使います。例えば::
+
+    BZR_EDITOR="C:\Program Files\My Editor\myeditor.exe"

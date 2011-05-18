@@ -2,7 +2,7 @@
 Bazaarのメインドキュメント
 ===========================
 
-これらのドキュメントの最新版はBazaarのドキュメントのサイト、 http://doc.bazaar.canonical.com/ から入手可能で、
+これらのドキュメントの最新版はBazaarのドキュメントのサイト、 http://doc.wiki.bazaar.canonical.com/ から入手可能で、
 詳しい情報は http://wiki.bazaar.canonical.com/Documentation のページからリンクされています。
 
 
@@ -12,9 +12,12 @@ Bazaarのメインドキュメント
 .. toctree::
    :maxdepth: 1
 
-   tutorials/index
    user-guide/index
-   user-reference/bzr_man
+   tutorials/index
+   quick-reference/index
+   upgrade-guide/index
+   user-reference/index
+   admin-guide/index
 
 
 ウェブリンク
@@ -38,10 +41,6 @@ https://launchpad.net/bzr/+download からbzr-setup-x.xxx.exeを入手し、
 ファイルをダブルクリックをしてインストールウィザードを起動させます。
 その後の作業はインストールウィザードに従います。
 インストールウィザードが終了した後で再起動します。
-
-最新バージョンでも正常に動作しないことがあるので、
-その場合は古いバージョンをインストールします。
-2009年1月時点で筆者はbzr-setup-1.9.exeの基本的な動作を確認しています。
 
 もしPythonインタープリタにbzrをインストールした場合、インストールしたディレクトリによって
 bzr.exe(デフォルトでは ``C:\Program Files\Bazaar`` )よりもbzr.bat(``C:\PythonXX\Scripts``)が
