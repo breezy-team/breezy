@@ -2117,9 +2117,9 @@ class Option(object):
 option_registry = registry.Registry()
 
 
-# FIXME: Delete the following dummy option once we register the real ones
-# -- vila 20110515
-option_registry.register('foo', Option('foo'), help='Dummy option')
+option_registry.register(
+    'editor', Option('editor'),
+    help='The command called to launch an editor to enter a message.')
 
 
 class Section(object):
