@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@ from bzrlib import (
     symbol_versioning,
     tests,
     trace,
-    transport,
     urlutils,
     )
 
@@ -41,7 +40,7 @@ class TestDefaultFormat(tests.TestCase):
 
     def test_default_format(self):
         # update this if you change the default branch format
-        self.assertIsInstance(_mod_branch.BranchFormat.get_default_format(),
+        self.assertIsInstance(_mod_branch.format_registry.get_default(),
                 _mod_branch.BzrBranchFormat7)
 
     def test_default_format_is_same_as_bzrdir_default(self):
@@ -49,13 +48,13 @@ class TestDefaultFormat(tests.TestCase):
         # set, but at the moment that's not true -- mbp 20070814 --
         # https://bugs.launchpad.net/bzr/+bug/132376
         self.assertEqual(
-            _mod_branch.BranchFormat.get_default_format(),
+            _mod_branch.format_registry.get_default(),
             bzrdir.BzrDirFormat.get_default_format().get_branch_format())
 
     def test_get_set_default_format(self):
         # set the format and then set it back again
-        old_format = _mod_branch.BranchFormat.get_default_format()
-        _mod_branch.BranchFormat.set_default_format(SampleBranchFormat())
+        old_format = _mod_branch.format_registry.get_default()
+        _mod_branch.format_registry.set_default(SampleBranchFormat())
         try:
             # the default branch format is used by the meta dir format
             # which is not the default bzrdir format at this point
@@ -63,9 +62,9 @@ class TestDefaultFormat(tests.TestCase):
             result = dir.create_branch()
             self.assertEqual(result, 'A branch')
         finally:
-            _mod_branch.BranchFormat.set_default_format(old_format)
+            _mod_branch.format_registry.set_default(old_format)
         self.assertEqual(old_format,
-                         _mod_branch.BranchFormat.get_default_format())
+                         _mod_branch.format_registry.get_default())
 
 
 class TestBranchFormat5(tests.TestCaseWithTransport):
@@ -75,7 +74,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         url = self.get_url()
         bdir = bzrdir.BzrDirMetaFormat1().initialize(url)
         bdir.create_repository()
-        branch = bdir.create_branch()
+        branch = _mod_branch.BzrBranchFormat5().initialize(bdir)
         t = self.get_transport()
         self.log("branch instance is %r" % branch)
         self.assert_(isinstance(branch, _mod_branch.BzrBranch5))
@@ -113,7 +112,7 @@ class SampleBranchFormat(_mod_branch.BranchFormat):
         """See BzrBranchFormat.get_format_string()."""
         return "Sample branch format."
 
-    def initialize(self, a_bzrdir, name=None):
+    def initialize(self, a_bzrdir, name=None, repository=None):
         """Format 4 branches cannot be created."""
         t = a_bzrdir.get_branch_transport(self, name=name)
         t.put_bytes('format', self.get_format_string())
@@ -147,6 +146,24 @@ class SampleSupportedBranchFormat(_mod_branch.BranchFormat):
         return "opened supported branch."
 
 
+class SampleExtraBranchFormat(_mod_branch.BranchFormat):
+    """A sample format that is not usable in a metadir."""
+
+    def get_format_string(self):
+        # This format is not usable in a metadir.
+        return None
+
+    def network_name(self):
+        # Network name always has to be provided.
+        return "extra"
+
+    def initialize(self, a_bzrdir, name=None):
+        raise NotImplementedError(self.initialize)
+
+    def open(self, transport, name=None, _found=False, ignore_fallbacks=False):
+        raise NotImplementedError(self.open)
+
+
 class TestBzrBranchFormat(tests.TestCaseWithTransport):
     """Tests for the BzrBranchFormat facility."""
 
@@ -160,7 +177,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             dir.create_repository()
             format.initialize(dir)
             found_format = _mod_branch.BranchFormat.find_format(dir)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(_mod_branch.BzrBranchFormat5(), "bar")
 
     def test_find_format_factory(self):
@@ -169,8 +186,8 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
         factory = _mod_branch.MetaDirBranchFormatFactory(
             SampleSupportedBranchFormatString,
             "bzrlib.tests.test_branch", "SampleSupportedBranchFormat")
-        _mod_branch.BranchFormat.register_format(factory)
-        self.addCleanup(_mod_branch.BranchFormat.unregister_format, factory)
+        _mod_branch.format_registry.register(factory)
+        self.addCleanup(_mod_branch.format_registry.remove, factory)
         b = _mod_branch.Branch.open(self.get_url())
         self.assertEqual(b, "opened supported branch.")
 
@@ -188,13 +205,15 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
                           dir)
 
     def test_register_unregister_format(self):
+        # Test the deprecated format registration functions
         format = SampleBranchFormat()
         # make a control dir
         dir = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         # make a branch
         format.initialize(dir)
         # register a format for it.
-        _mod_branch.BranchFormat.register_format(format)
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            _mod_branch.BranchFormat.register_format, format)
         # which branch.Open will refuse (not supported)
         self.assertRaises(errors.UnsupportedFormatError,
                           _mod_branch.Branch.open, self.get_url())
@@ -204,8 +223,51 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             format.open(dir),
             bzrdir.BzrDir.open(self.get_url()).open_branch(unsupported=True))
         # unregister the format
-        _mod_branch.BranchFormat.unregister_format(format)
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            _mod_branch.BranchFormat.unregister_format, format)
         self.make_branch_and_tree('bar')
+
+
+class TestBranchFormatRegistry(tests.TestCase):
+
+    def setUp(self):
+        super(TestBranchFormatRegistry, self).setUp()
+        self.registry = _mod_branch.BranchFormatRegistry()
+
+    def test_default(self):
+        self.assertIs(None, self.registry.get_default())
+        format = SampleBranchFormat()
+        self.registry.set_default(format)
+        self.assertEquals(format, self.registry.get_default())
+
+    def test_register_unregister_format(self):
+        format = SampleBranchFormat()
+        self.registry.register(format)
+        self.assertEquals(format,
+            self.registry.get("Sample branch format."))
+        self.registry.remove(format)
+        self.assertRaises(KeyError, self.registry.get,
+            "Sample branch format.")
+
+    def test_get_all(self):
+        format = SampleBranchFormat()
+        self.assertEquals([], self.registry._get_all())
+        self.registry.register(format)
+        self.assertEquals([format], self.registry._get_all())
+
+    def test_register_extra(self):
+        format = SampleExtraBranchFormat()
+        self.assertEquals([], self.registry._get_all())
+        self.registry.register_extra(format)
+        self.assertEquals([format], self.registry._get_all())
+
+    def test_register_extra_lazy(self):
+        self.assertEquals([], self.registry._get_all())
+        self.registry.register_extra_lazy("bzrlib.tests.test_branch",
+            "SampleExtraBranchFormat")
+        formats = self.registry._get_all()
+        self.assertEquals(1, len(formats))
+        self.assertIsInstance(formats[0], SampleExtraBranchFormat)
 
 
 #Used by TestMetaDirBranchFormatFactory 
@@ -260,23 +322,23 @@ class TestBranch67(object):
 
     def test_layout(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.failUnlessExists('a/.bzr/branch/last-revision')
-        self.failIfExists('a/.bzr/branch/revision-history')
-        self.failIfExists('a/.bzr/branch/references')
+        self.assertPathExists('a/.bzr/branch/last-revision')
+        self.assertPathDoesNotExist('a/.bzr/branch/revision-history')
+        self.assertPathDoesNotExist('a/.bzr/branch/references')
 
     def test_config(self):
         """Ensure that all configuration data is stored in the branch"""
         branch = self.make_branch('a', format=self.get_format_name())
-        branch.set_parent('http://bazaar-vcs.org')
-        self.failIfExists('a/.bzr/branch/parent')
-        self.assertEqual('http://bazaar-vcs.org', branch.get_parent())
-        branch.set_push_location('sftp://bazaar-vcs.org')
+        branch.set_parent('http://example.com')
+        self.assertPathDoesNotExist('a/.bzr/branch/parent')
+        self.assertEqual('http://example.com', branch.get_parent())
+        branch.set_push_location('sftp://example.com')
         config = branch.get_config()._get_branch_data_config()
-        self.assertEqual('sftp://bazaar-vcs.org',
+        self.assertEqual('sftp://example.com',
                          config.get_user_option('push_location'))
-        branch.set_bound_location('ftp://bazaar-vcs.org')
-        self.failIfExists('a/.bzr/branch/bound')
-        self.assertEqual('ftp://bazaar-vcs.org', branch.get_bound_location())
+        branch.set_bound_location('ftp://example.com')
+        self.assertPathDoesNotExist('a/.bzr/branch/bound')
+        self.assertEqual('ftp://example.com', branch.get_bound_location())
 
     def test_set_revision_history(self):
         builder = self.make_branch_builder('.', format=self.get_format_name())
@@ -287,10 +349,13 @@ class TestBranch67(object):
         branch = builder.get_branch()
         branch.lock_write()
         self.addCleanup(branch.unlock)
-        branch.set_revision_history(['foo', 'bar'])
-        branch.set_revision_history(['foo'])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            branch.set_revision_history, ['foo', 'bar'])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+                branch.set_revision_history, ['foo'])
         self.assertRaises(errors.NotLefthandHistory,
-                          branch.set_revision_history, ['bar'])
+            self.applyDeprecated, symbol_versioning.deprecated_in((2, 4, 0)),
+            branch.set_revision_history, ['bar'])
 
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source',
@@ -309,10 +374,10 @@ class TestBranch67(object):
         subtree.commit('a subtree file')
         subsubtree.commit('a subsubtree file')
         tree.branch.create_checkout('target', lightweight=lightweight)
-        self.failUnlessExists('target')
-        self.failUnlessExists('target/subtree')
-        self.failUnlessExists('target/subtree/file')
-        self.failUnlessExists('target/subtree/subsubtree/file')
+        self.assertPathExists('target')
+        self.assertPathExists('target/subtree')
+        self.assertPathExists('target/subtree/file')
+        self.assertPathExists('target/subtree/subsubtree/file')
         subbranch = _mod_branch.Branch.open('target/subtree/subsubtree')
         if lightweight:
             self.assertEndsWith(subbranch.base, 'source/subtree/subsubtree/')
@@ -480,7 +545,7 @@ class TestBranchReference(tests.TestCaseWithTransport):
 
     def test_create_open_reference(self):
         bzrdirformat = bzrdir.BzrDirMetaFormat1()
-        t = transport.get_transport(self.get_url('.'))
+        t = self.get_transport()
         t.mkdir('repo')
         dir = bzrdirformat.initialize(self.get_url('repo'))
         dir.create_repository()
@@ -713,5 +778,3 @@ class TestRunWithWriteLockedTarget(tests.TestCase):
                           _mod_branch._run_with_write_locked_target,
                           lockable, self.func_that_raises)
         self.assertEqual(['lock_write', 'func called', 'unlock'], self._calls)
-
-

@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -46,14 +46,6 @@ class TestInit(TestCaseWithTransport):
         self.assertIsDirectory('.bzr', t)
         self.assertIsDirectory('.bzr/checkout', t)
         self.assertIsDirectory('.bzr/checkout/lock', t)
-
-    def test_init_weave(self):
-        # --format=weave should be accepted to allow interoperation with
-        # old releases when desired.
-        out, err = self.run_bzr('init --format=weave')
-        self.assertEqual("""Created a standalone tree (format: weave)\n""",
-            out)
-        self.assertEqual('', err)
 
     def test_init_format_2a(self):
         """Smoke test for constructing a format 2a repoistory."""
@@ -108,7 +100,7 @@ Using shared repository: %s
         # init an existing branch.
         out, err = self.run_bzr('init subdir2', retcode=3)
         self.assertEqual('', out)
-        self.failUnless(err.startswith('bzr: ERROR: Already a branch:'))
+        self.assertTrue(err.startswith('bzr: ERROR: Already a branch:'))
 
     def test_init_branch_quiet(self):
         out, err = self.run_bzr('init -q')
@@ -162,7 +154,7 @@ Using shared repository: %s
         self.run_bzr_error(['Parent directory of ../new/tree does not exist'],
                             'init ../new/tree', working_dir='tree')
         self.run_bzr('init ../new/tree --create-prefix', working_dir='tree')
-        self.failUnlessExists('new/tree/.bzr')
+        self.assertPathExists('new/tree/.bzr')
 
     def test_init_default_format_option(self):
         """bzr init should read default format from option default_format"""
@@ -226,9 +218,9 @@ class TestSFTPInit(TestCaseWithSFTPServer):
         # and uses whoami only in a lock file. Without whoami the login name
         # is used. This test is to ensure that init passes even when whoami
         # is not available.
-        osutils.set_or_unset_env('EMAIL', None)
-        osutils.set_or_unset_env('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
         out, err = self.run_bzr(['init', 'foo'])
         self.assertEqual(err, '')
         self.assertTrue(os.path.exists('foo'))
-        
+

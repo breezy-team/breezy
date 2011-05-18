@@ -15,7 +15,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from cStringIO import StringIO
 
 from bzrlib import tests
 from bzrlib.tests import per_workingtree
@@ -34,7 +33,7 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
     def test_pull(self):
         tree_a, tree_b = self.get_pullable_trees()
         tree_b.pull(tree_a.branch)
-        self.failUnless(tree_b.branch.repository.has_revision('A'))
+        self.assertTrue(tree_b.branch.repository.has_revision('A'))
         self.assertEqual(['A'], tree_b.get_parent_ids())
 
     def test_pull_overwrites(self):
@@ -42,8 +41,8 @@ class TestPull(per_workingtree.TestCaseWithWorkingTree):
         tree_b.commit('foo', rev_id='B')
         self.assertEqual(['B'], tree_b.branch.revision_history())
         tree_b.pull(tree_a.branch, overwrite=True)
-        self.failUnless(tree_b.branch.repository.has_revision('A'))
-        self.failUnless(tree_b.branch.repository.has_revision('B'))
+        self.assertTrue(tree_b.branch.repository.has_revision('A'))
+        self.assertTrue(tree_b.branch.repository.has_revision('B'))
         self.assertEqual(['A'], tree_b.get_parent_ids())
 
     def test_pull_merges_tree_content(self):
@@ -85,10 +84,10 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         return builder.get_branch()
 
     def test_pull_orphans(self):
-        from bzrlib import workingtree
-        if isinstance(self.workingtree_format, workingtree.WorkingTreeFormat2):
+        if not self.workingtree_format.missing_parent_conflicts:
             raise tests.TestSkipped(
-                'WorkingTreeFormat2 does not support missing parent conflicts')
+                '%r does not support missing parent conflicts' %
+                    self.workingtree_format)
         trunk = self.make_branch_deleting_dir('trunk')
         work = trunk.bzrdir.sprout('work', revision_id='2').open_workingtree()
         work.branch.get_config().set_user_option(
@@ -100,4 +99,4 @@ class TestPullWithOrphans(per_workingtree.TestCaseWithWorkingTree):
         work.pull(trunk)
         self.assertLength(0, work.conflicts())
         # The directory removal should succeed
-        self.failIfExists('work/dir')
+        self.assertPathDoesNotExist('work/dir')

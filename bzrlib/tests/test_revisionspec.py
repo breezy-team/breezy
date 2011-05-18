@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,20 +15,17 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import datetime
-import os
 import time
 
 from bzrlib import (
-    branch,
-    bzrdir,
     errors,
-    repository,
     revision as _mod_revision,
     )
-from bzrlib.tests import TestCase, TestCaseWithTransport
+from bzrlib.tests import TestCaseWithTransport
 from bzrlib.revisionspec import (
+    RevisionInfo,
     RevisionSpec,
-    RevisionSpec_revno,
+    RevisionSpec_dwim,
     RevisionSpec_tag,
     )
 
@@ -147,6 +144,17 @@ class TestOddRevisionSpec(TestRevisionSpec):
         self.assertRaises(TypeError, RevisionSpec.from_string, object())
 
 
+class RevisionSpec_bork(RevisionSpec):
+
+    prefix = 'irrelevant:'
+
+    def _match_on(self, branch, revs):
+        if self.spec == "bork":
+            return RevisionInfo.from_revision_id(branch, "r1", revs)
+        else:
+            raise errors.InvalidRevisionSpec(self.spec, branch)
+
+
 class TestRevisionSpec_dwim(TestRevisionSpec):
 
     # Don't need to test revno's explicitly since TRS_revno already
@@ -189,6 +197,23 @@ class TestRevisionSpec_dwim(TestRevisionSpec):
         self.assertInvalid('1..1', invalid_as_revision_id=False)
         self.assertInvalid('1.2..1', invalid_as_revision_id=False)
         self.assertInvalid('1.', invalid_as_revision_id=False)
+
+    def test_append_dwim_revspec(self):
+        original_dwim_revspecs = list(RevisionSpec_dwim._possible_revspecs)
+        def reset_dwim_revspecs():
+            RevisionSpec_dwim._possible_revspecs = original_dwim_revspecs
+        self.addCleanup(reset_dwim_revspecs)
+        RevisionSpec_dwim.append_possible_revspec(RevisionSpec_bork)
+        self.assertAsRevisionId('r1', 'bork')
+
+    def test_append_lazy_dwim_revspec(self):
+        original_dwim_revspecs = list(RevisionSpec_dwim._possible_revspecs)
+        def reset_dwim_revspecs():
+            RevisionSpec_dwim._possible_revspecs = original_dwim_revspecs
+        self.addCleanup(reset_dwim_revspecs)
+        RevisionSpec_dwim.append_possible_lazy_revspec(
+            "bzrlib.tests.test_revisionspec", "RevisionSpec_bork")
+        self.assertAsRevisionId('r1', 'bork')
 
 
 class TestRevisionSpec_revno(TestRevisionSpec):
@@ -372,8 +397,7 @@ class TestRevisionSpec_revid(TestRevisionSpec):
         """We can get any revision id in the repository"""
         # XXX: This may change in the future, but for now, it is true
         self.tree2.commit('alt third', rev_id='alt_r3')
-        self.tree.branch.repository.fetch(self.tree2.branch.repository,
-                                          revision_id='alt_r3')
+        self.tree.branch.fetch(self.tree2.branch, 'alt_r3')
         self.assertInHistoryIs(None, 'alt_r3', 'revid:alt_r3')
 
     def test_unicode(self):
@@ -450,8 +474,7 @@ class TestRevisionSpec_before(TestRevisionSpec):
     def test_alt_no_parents(self):
         new_tree = self.make_branch_and_tree('new_tree')
         new_tree.commit('first', rev_id='new_r1')
-        self.tree.branch.repository.fetch(new_tree.branch.repository,
-                                          revision_id='new_r1')
+        self.tree.branch.fetch(new_tree.branch, 'new_r1')
         self.assertInHistoryIs(0, 'null:', 'before:revid:new_r1')
 
     def test_as_revision_id(self):
@@ -616,7 +639,7 @@ class TestRevisionSpec_branch(TestRevisionSpec):
         # XXX: Right now, we use fetch() to make sure the remote revisions
         # have been pulled into the local branch. We may change that
         # behavior in the future.
-        self.failUnless(self.tree.branch.repository.has_revision('new_r3'))
+        self.assertTrue(self.tree.branch.repository.has_revision('new_r3'))
 
     def test_no_commits(self):
         new_tree = self.make_branch_and_tree('new_tree')

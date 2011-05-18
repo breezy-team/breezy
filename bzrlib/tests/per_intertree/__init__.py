@@ -24,7 +24,6 @@ Specific tests for individual variations are in other places such as:
 
 import bzrlib
 from bzrlib import (
-    errors,
     revisiontree,
     tests,
     )
@@ -39,9 +38,7 @@ from bzrlib.tests.per_tree import (
     TestCaseWithTree,
     )
 from bzrlib.tree import InterTree
-from bzrlib.workingtree import (
-    WorkingTreeFormat3,
-    )
+from bzrlib.workingtree_3 import WorkingTreeFormat3
 from bzrlib.workingtree_4 import WorkingTreeFormat4
 
 
@@ -137,8 +134,7 @@ def load_tests(standard_tests, module, loader):
             # -- vila 20090311
             chk_tree_format = WorkingTreeFormat4()
             chk_tree_format._get_matchingbzrdir = \
-                lambda:bzrlib.bzrdir.format_registry.make_bzrdir(
-                    'development6-rich-root')
+                lambda:bzrlib.bzrdir.format_registry.make_bzrdir('2a')
             test_intertree_permutations.append(
                 (InterTree.__name__ + "(CHKInventory)",
                  InterTree,

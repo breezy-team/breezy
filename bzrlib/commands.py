@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,10 +27,8 @@ import sys
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import codecs
 import errno
 import threading
-from warnings import warn
 
 import bzrlib
 from bzrlib import (
@@ -42,11 +40,10 @@ from bzrlib import (
     osutils,
     trace,
     ui,
-    win32utils,
     )
 """)
 
-from bzrlib.hooks import HookPoint, Hooks
+from bzrlib.hooks import Hooks
 # Compatibility - Option used to be in commands.
 from bzrlib.option import Option
 from bzrlib.plugin import disable_plugins, load_plugins
@@ -276,6 +273,8 @@ def _get_cmd_object(cmd_name, plugins_override=True, check_missing=True):
     # Allow plugins to extend commands
     for hook in Command.hooks['extend_command']:
         hook(cmd)
+    if getattr(cmd, 'invoked_as', None) is None:
+        cmd.invoked_as = cmd_name
     return cmd
 
 
@@ -397,7 +396,13 @@ class Command(object):
             sys.stdout is forced to be a binary stream, and line-endings
             will not mangled.
 
+    :ivar invoked_as:
+        A string indicating the real name under which this command was
+        invoked, before expansion of aliases. 
+        (This may be None if the command was constructed and run in-process.)
+
     :cvar hooks: An instance of CommandHooks.
+
     :ivar __doc__: The help shown by 'bzr help command' for this command.
         This is set by assigning explicitly to __doc__ so that -OO can
         be used::
@@ -409,6 +414,7 @@ class Command(object):
     takes_args = []
     takes_options = []
     encoding_type = 'strict'
+    invoked_as = None
 
     hidden = False
 
@@ -514,12 +520,13 @@ class Command(object):
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
         options = option.get_optparser(self.options()).format_option_help()
-        # XXX: According to the spec, ReST option lists actually don't support 
-        # options like --1.9 so that causes syntax errors (in Sphinx at least).
-        # As that pattern always appears in the commands that break, we trap
-        # on that and then format that block of 'format' options as a literal
-        # block.
-        if not plain and options.find('  --1.9  ') != -1:
+        # FIXME: According to the spec, ReST option lists actually don't
+        # support options like --1.14 so that causes syntax errors (in Sphinx
+        # at least).  As that pattern always appears in the commands that
+        # break, we trap on that and then format that block of 'format' options
+        # as a literal block. We use the most recent format still listed so we
+        # don't have to do that too often -- vila 20110514
+        if not plain and options.find('  --1.14  ') != -1:
             options = options.replace(' format:\n', ' format::\n\n', 1)
         if options.startswith('Options:'):
             result += ':' + options
@@ -691,7 +698,10 @@ class Command(object):
             return self.run(**all_cmd_args)
         finally:
             # reset it, so that other commands run in the same process won't
-            # inherit state
+            # inherit state. Before we reset it, log any activity, so that it
+            # gets properly tracked.
+            ui.ui_factory.log_transport_activity(
+                display=('bytes' in debug.debug_flags))
             trace.set_verbosity_level(0)
 
     def _setup_run(self):
@@ -749,6 +759,10 @@ class Command(object):
         return getdoc(self)
 
     def name(self):
+        """Return the canonical name for this command.
+
+        The name under which it was actually invoked is available in invoked_as.
+        """
         return _unsquish_command_name(self.__class__.__name__)
 
     def plugin_name(self):
@@ -772,30 +786,30 @@ class CommandHooks(Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        Hooks.__init__(self)
-        self.create_hook(HookPoint('extend_command',
+        Hooks.__init__(self, "bzrlib.commands", "Command.hooks")
+        self.add_hook('extend_command',
             "Called after creating a command object to allow modifications "
             "such as adding or removing options, docs etc. Called with the "
-            "new bzrlib.commands.Command object.", (1, 13), None))
-        self.create_hook(HookPoint('get_command',
+            "new bzrlib.commands.Command object.", (1, 13))
+        self.add_hook('get_command',
             "Called when creating a single command. Called with "
             "(cmd_or_None, command_name). get_command should either return "
             "the cmd_or_None parameter, or a replacement Command object that "
             "should be used for the command. Note that the Command.hooks "
             "hooks are core infrastructure. Many users will prefer to use "
             "bzrlib.commands.register_command or plugin_cmds.register_lazy.",
-            (1, 17), None))
-        self.create_hook(HookPoint('get_missing_command',
+            (1, 17))
+        self.add_hook('get_missing_command',
             "Called when creating a single command if no command could be "
             "found. Called with (command_name). get_missing_command should "
             "either return None, or a Command object to be used for the "
-            "command.", (1, 17), None))
-        self.create_hook(HookPoint('list_commands',
+            "command.", (1, 17))
+        self.add_hook('list_commands',
             "Called when enumerating commands. Called with a set of "
             "cmd_name strings for all the commands found so far. This set "
             " is safe to mutate - e.g. to remove a command. "
             "list_commands should return the updated set of command names.",
-            (1, 17), None))
+            (1, 17))
 
 Command.hooks = CommandHooks()
 
@@ -815,7 +829,13 @@ def parse_args(command, argv, alias_argv=None):
     else:
         args = argv
 
-    options, args = parser.parse_args(args)
+    # for python 2.5 and later, optparse raises this exception if a non-ascii
+    # option name is given.  See http://bugs.python.org/issue2931
+    try:
+        options, args = parser.parse_args(args)
+    except UnicodeEncodeError,e:
+        raise errors.BzrCommandError('Only ASCII permitted in option names')
+
     opts = dict([(k, v) for k, v in options.__dict__.iteritems() if
                  v is not option.OptionParser.DEFAULT_VALUE])
     return args, opts
@@ -1025,7 +1045,7 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         Specify the number of processes that can be run concurrently (selftest).
     """
     trace.mutter("bazaar version: " + bzrlib.__version__)
-    argv = list(argv)
+    argv = _specified_or_unicode_argv(argv)
     trace.mutter("bzr arguments: %r", argv)
 
     opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
@@ -1171,7 +1191,7 @@ def _specified_or_unicode_argv(argv):
         new_argv = []
         try:
             # ensure all arguments are unicode strings
-            for a in argv[1:]:
+            for a in argv:
                 if isinstance(a, unicode):
                     new_argv.append(a)
                 else:
@@ -1193,11 +1213,10 @@ def main(argv=None):
 
     :return: exit code of bzr command.
     """
-    argv = _specified_or_unicode_argv(argv)
+    if argv is not None:
+        argv = argv[1:]
     _register_builtin_commands()
     ret = run_bzr_catch_errors(argv)
-    bzrlib.ui.ui_factory.log_transport_activity(
-        display=('bytes' in debug.debug_flags))
     trace.mutter("return code %d", ret)
     return ret
 

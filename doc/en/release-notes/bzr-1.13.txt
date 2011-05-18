@@ -220,7 +220,7 @@ Bug Fixes
 * Symlinks to non ascii file names are now supported.
   (Robert Collins, Vincent Ladeuil, #339055, #272444)    
 
-* Under rare circumstances (aka nobody reported a bug about it), the ftp
+* Under rare circumstances (aka nobody reported a bug about it), the FTP
   transport could revert to ascii mode. It now stays in binary mode except
   when needed.  (Vincent Ladeuil)
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2005, 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2005, 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -117,17 +117,19 @@ class cmd_resolve(commands.Command):
             ResolveActionOption(),
             ]
     _see_also = ['conflicts']
-    def run(self, file_list=None, all=False, action=None, directory=u'.'):
+    def run(self, file_list=None, all=False, action=None, directory=None):
         if all:
             if file_list:
                 raise errors.BzrCommandError("If --all is specified,"
                                              " no FILE may be provided")
+            if directory is None:
+                directory = u'.'
             tree = workingtree.WorkingTree.open_containing(directory)[0]
             if action is None:
                 action = 'done'
         else:
             tree, file_list = workingtree.WorkingTree.open_containing_paths(
-                file_list)
+                file_list, directory)
             if file_list is None:
                 if action is None:
                     # FIXME: There is a special case here related to the option
@@ -157,7 +159,9 @@ class cmd_resolve(commands.Command):
                 # conflict.auto(tree) --vila 091242
                 pass
         else:
-            resolve(tree, file_list, action=action)
+            before, after = resolve(tree, file_list, action=action)
+            trace.note('%d conflict(s) resolved, %d remaining'
+                       % (before - after, after))
 
 
 def resolve(tree, paths=None, ignore_misses=False, recursive=False,
@@ -176,8 +180,10 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False,
     :param action: How the conflict should be resolved,
     """
     tree.lock_tree_write()
+    nb_conflicts_after = None
     try:
         tree_conflicts = tree.conflicts()
+        nb_conflicts_before = len(tree_conflicts)
         if paths is None:
             new_conflicts = ConflictList()
             to_process = tree_conflicts
@@ -191,11 +197,15 @@ def resolve(tree, paths=None, ignore_misses=False, recursive=False,
             except NotImplementedError:
                 new_conflicts.append(conflict)
         try:
+            nb_conflicts_after = len(new_conflicts)
             tree.set_conflicts(new_conflicts)
         except errors.UnsupportedOperation:
             pass
     finally:
         tree.unlock()
+    if nb_conflicts_after is None:
+        nb_conflicts_after = nb_conflicts_before
+    return nb_conflicts_before, nb_conflicts_after
 
 
 def restore(filename):
@@ -504,7 +514,7 @@ class PathConflict(Conflict):
         # Adjust the path for the retained file id
         tid = tt.trans_id_file_id(file_id)
         parent_tid = tt.get_tree_parent(tid)
-        tt.adjust_path(path, parent_tid, tid)
+        tt.adjust_path(osutils.basename(path), parent_tid, tid)
         tt.apply()
 
     def _revision_tree(self, tree, revid):
@@ -590,7 +600,7 @@ class ContentsConflict(PathConflict):
         # 'item.suffix_to_remove' has been deleted, this is a no-op)
         this_tid = tt.trans_id_file_id(self.file_id)
         parent_tid = tt.get_tree_parent(this_tid)
-        tt.adjust_path(self.path, parent_tid, this_tid)
+        tt.adjust_path(osutils.basename(self.path), parent_tid, this_tid)
         tt.apply()
 
     def action_take_this(self, tree):
@@ -600,12 +610,9 @@ class ContentsConflict(PathConflict):
         self._resolve_with_cleanups(tree, 'THIS')
 
 
-# FIXME: TextConflict is about a single file-id, there never is a conflict_path
-# attribute so we shouldn't inherit from PathConflict but simply from Conflict
-
 # TODO: There should be a base revid attribute to better inform the user about
 # how the conflicts were generated.
-class TextConflict(PathConflict):
+class TextConflict(Conflict):
     """The merge algorithm could not resolve all differences encountered."""
 
     has_files = True
@@ -614,8 +621,42 @@ class TextConflict(PathConflict):
 
     format = 'Text conflict in %(path)s'
 
+    rformat = '%(class)s(%(path)r, %(file_id)r)'
+
     def associated_filenames(self):
         return [self.path + suffix for suffix in CONFLICT_SUFFIXES]
+
+    def _resolve(self, tt, winner_suffix):
+        """Resolve the conflict by copying one of .THIS or .OTHER into file.
+
+        :param tt: The TreeTransform where the conflict is resolved.
+        :param winner_suffix: Either 'THIS' or 'OTHER'
+
+        The resolution is symmetric, when taking THIS, item.THIS is renamed
+        into item and vice-versa. This takes one of the files as a whole
+        ignoring every difference that could have been merged cleanly.
+        """
+        # To avoid useless copies, we switch item and item.winner_suffix, only
+        # item will exist after the conflict has been resolved anyway.
+        item_tid = tt.trans_id_file_id(self.file_id)
+        item_parent_tid = tt.get_tree_parent(item_tid)
+        winner_path = self.path + '.' + winner_suffix
+        winner_tid = tt.trans_id_tree_path(winner_path)
+        winner_parent_tid = tt.get_tree_parent(winner_tid)
+        # Switch the paths to preserve the content
+        tt.adjust_path(osutils.basename(self.path),
+                       winner_parent_tid, winner_tid)
+        tt.adjust_path(osutils.basename(winner_path), item_parent_tid, item_tid)
+        # Associate the file_id to the right content
+        tt.unversion_file(item_tid)
+        tt.version_file(self.file_id, winner_tid)
+        tt.apply()
+
+    def action_take_this(self, tree):
+        self._resolve_with_cleanups(tree, 'THIS')
+
+    def action_take_other(self, tree):
+        self._resolve_with_cleanups(tree, 'OTHER')
 
 
 class HandledConflict(Conflict):
@@ -715,18 +756,15 @@ class ParentLoop(HandledPathConflict):
         pass
 
     def action_take_other(self, tree):
-        # FIXME: We shouldn't have to manipulate so many paths here (and there
-        # is probably a bug or two...)
-        base_path = osutils.basename(self.path)
-        conflict_base_path = osutils.basename(self.conflict_path)
         tt = transform.TreeTransform(tree)
         try:
             p_tid = tt.trans_id_file_id(self.file_id)
             parent_tid = tt.get_tree_parent(p_tid)
             cp_tid = tt.trans_id_file_id(self.conflict_file_id)
             cparent_tid = tt.get_tree_parent(cp_tid)
-            tt.adjust_path(base_path, cparent_tid, cp_tid)
-            tt.adjust_path(conflict_base_path, parent_tid, p_tid)
+            tt.adjust_path(osutils.basename(self.path), cparent_tid, cp_tid)
+            tt.adjust_path(osutils.basename(self.conflict_path),
+                           parent_tid, p_tid)
             tt.apply()
         finally:
             tt.finalize()

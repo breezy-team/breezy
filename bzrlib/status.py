@@ -379,23 +379,23 @@ class StatusHooks(_mod_hooks.Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        _mod_hooks.Hooks.__init__(self)
-        self.create_hook(_mod_hooks.HookPoint('post_status',
+        _mod_hooks.Hooks.__init__(self, "bzrlib.status", "hooks")
+        self.add_hook('post_status',
             "Called with argument StatusHookParams after Bazaar has "
             "displayed the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
             "line options specified by the user for the status command. "
             "to_file is the output stream for writing.",
-            (2, 3), None))
-        self.create_hook(_mod_hooks.HookPoint('pre_status',
+            (2, 3))
+        self.add_hook('pre_status',
             "Called with argument StatusHookParams before Bazaar "
             "displays the status. StatusHookParams has the attributes "
             "(old_tree, new_tree, to_file, versioned, show_ids, short, "
             "verbose). The last four arguments correspond to the command "
             "line options specified by the user for the status command. "
             "to_file is the output stream for writing.",
-            (2, 3), None))
+            (2, 3))
 
 
 class StatusHookParams(object):
@@ -444,11 +444,20 @@ def _show_shelve_summary(params):
 
     :param params: StatusHookParams.
     """
-    manager = params.new_tree.get_shelf_manager()
+    get_shelf_manager = getattr(params.new_tree, 'get_shelf_manager', None)
+    if get_shelf_manager is None:
+        return
+    manager = get_shelf_manager()
     shelves = manager.active_shelves()
     if shelves:
-        params.to_file.write('%d shelves exist. '
-            'See "bzr shelve --list" for details.\n' % len(shelves))
+        singular = '%d shelf exists. '
+        plural = '%d shelves exist. '
+        if len(shelves) == 1:
+            fmt = singular
+        else:
+            fmt = plural
+        params.to_file.write(fmt % len(shelves))
+        params.to_file.write('See "bzr shelve --list" for details.\n')
 
 
 hooks = StatusHooks()

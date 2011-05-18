@@ -26,20 +26,28 @@ rather than in tests/per_interrepository/*.py.
 """
 
 
-from bzrlib import transport
+from bzrlib import (
+    pyutils,
+    transport,
+    )
 from bzrlib.errors import (
     FileExists,
     UninitializableFormat,
     )
 
 from bzrlib.repository import (
+    format_registry,
     InterRepository,
     )
 from bzrlib.tests import (
-                          default_transport,
-                          multiply_tests,
-                          )
+    TestSkipped,
+    default_transport,
+    multiply_tests,
+    )
 from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
+from bzrlib.vf_repository import (
+    InterDifferingSerializer,
+    )
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):
@@ -68,11 +76,13 @@ def default_test_list():
     from bzrlib.repofmt import (
         groupcompress_repo,
         knitrepo,
-        pack_repo,
-        weaverepo,
+        knitpack_repo,
         )
     result = []
-    def add_combo(label, from_format, to_format, extra_setup=None):
+    def add_combo(interrepo_cls, from_format, to_format, extra_setup=None,
+                  label=None):
+        if label is None:
+            label = interrepo_cls.__name__
         result.append((label, from_format, to_format, extra_setup))
     # test the default InterRepository between format 6 and the current
     # default format.
@@ -84,7 +94,7 @@ def default_test_list():
     for optimiser_class in InterRepository._optimisers:
         format_to_test = optimiser_class._get_repo_format_to_test()
         if format_to_test is not None:
-            add_combo(optimiser_class.__name__, format_to_test, format_to_test)
+            add_combo(optimiser_class, format_to_test, format_to_test)
     # if there are specific combinations we want to use, we can add them
     # here. We want to test rich root upgrading.
     # XXX: although we attach InterRepository class names to these scenarios,
@@ -93,47 +103,52 @@ def default_test_list():
     def force_known_graph(testcase):
         from bzrlib.fetch import Inter1and2Helper
         testcase.overrideAttr(Inter1and2Helper, 'known_graph_threshold', -1)
-    add_combo('InterRepository',
-              weaverepo.RepositoryFormat5(),
-              knitrepo.RepositoryFormatKnit3())
-    add_combo('InterRepository',
+    # Gather extra scenarios from the repository implementations,
+    # as InterRepositories can be used by Repository implementations
+    # they aren't aware of.
+    for module_name in format_registry._get_all_modules():
+        module = pyutils.get_named_object(module_name)
+        try:
+            get_extra_interrepo_test_combinations = getattr(
+                module,
+                "get_extra_interrepo_test_combinations")
+        except AttributeError:
+            continue
+        for (interrepo_cls, from_format, to_format) in (
+            get_extra_interrepo_test_combinations()):
+            add_combo(interrepo_cls, from_format, to_format)
+    add_combo(InterRepository,
               knitrepo.RepositoryFormatKnit1(),
               knitrepo.RepositoryFormatKnit3())
-    add_combo('InterKnitRepo',
+    add_combo(knitrepo.InterKnitRepo,
               knitrepo.RepositoryFormatKnit1(),
-              pack_repo.RepositoryFormatKnitPack1())
-    add_combo('InterKnitRepo',
-              pack_repo.RepositoryFormatKnitPack1(),
+              knitpack_repo.RepositoryFormatKnitPack1())
+    add_combo(knitrepo.InterKnitRepo,
+              knitpack_repo.RepositoryFormatKnitPack1(),
               knitrepo.RepositoryFormatKnit1())
-    add_combo('InterKnitRepo',
+    add_combo(knitrepo.InterKnitRepo,
               knitrepo.RepositoryFormatKnit3(),
-              pack_repo.RepositoryFormatKnitPack3())
-    add_combo('InterKnitRepo',
-              pack_repo.RepositoryFormatKnitPack3(),
+              knitpack_repo.RepositoryFormatKnitPack3())
+    add_combo(knitrepo.InterKnitRepo,
+              knitpack_repo.RepositoryFormatKnitPack3(),
               knitrepo.RepositoryFormatKnit3())
-    add_combo('InterKnitRepo',
-              pack_repo.RepositoryFormatKnitPack3(),
-              pack_repo.RepositoryFormatKnitPack4())
-    add_combo('InterDifferingSerializer',
-              pack_repo.RepositoryFormatKnitPack1(),
-              pack_repo.RepositoryFormatKnitPack6RichRoot())
-    add_combo('InterDifferingSerializer+get_known_graph_ancestry',
-              pack_repo.RepositoryFormatKnitPack1(),
-              pack_repo.RepositoryFormatKnitPack6RichRoot(),
+    add_combo(knitrepo.InterKnitRepo,
+              knitpack_repo.RepositoryFormatKnitPack3(),
+              knitpack_repo.RepositoryFormatKnitPack4())
+    add_combo(InterDifferingSerializer,
+              knitpack_repo.RepositoryFormatKnitPack1(),
+              knitpack_repo.RepositoryFormatKnitPack6RichRoot())
+    add_combo(InterDifferingSerializer,
+              knitpack_repo.RepositoryFormatKnitPack1(),
+              knitpack_repo.RepositoryFormatKnitPack6RichRoot(),
               force_known_graph,
-              )
-    add_combo('InterDifferingSerializer',
-              pack_repo.RepositoryFormatKnitPack6RichRoot(),
+              label='InterDifferingSerializer+get_known_graph_ancestry')
+    add_combo(InterDifferingSerializer,
+              knitpack_repo.RepositoryFormatKnitPack6RichRoot(),
               groupcompress_repo.RepositoryFormat2a())
-    add_combo('InterDifferingSerializer',
+    add_combo(InterDifferingSerializer,
               groupcompress_repo.RepositoryFormat2a(),
-              pack_repo.RepositoryFormatKnitPack6RichRoot())
-    add_combo('InterRepository',
-              groupcompress_repo.RepositoryFormatCHK2(),
-              groupcompress_repo.RepositoryFormat2a())
-    add_combo('InterDifferingSerializer',
-              groupcompress_repo.RepositoryFormatCHK1(),
-              groupcompress_repo.RepositoryFormat2a())
+              knitpack_repo.RepositoryFormatKnitPack6RichRoot())
     return result
 
 

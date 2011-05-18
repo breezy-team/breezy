@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -430,8 +430,8 @@ class LockDir(lock.Lock):
         # there's a small race window between checking it and doing the
         # rename.
         broken_info_path = tmpname + self.__INFO_NAME
-        f = self.transport.get(broken_info_path)
-        broken_lines = f.readlines()
+        broken_content = self.transport.get_bytes(broken_info_path)
+        broken_lines = osutils.split_lines(broken_content)
         if broken_lines != corrupt_info_lines:
             raise LockBreakMismatch(self, broken_lines, corrupt_info_lines)
         self.transport.delete(broken_info_path)
@@ -537,6 +537,17 @@ class LockDir(lock.Lock):
             hook(hook_result)
         return result
 
+    def lock_url_for_display(self):
+        """Give a nicely-printable representation of the URL of this lock."""
+        # As local lock urls are correct we display them.
+        # We avoid displaying remote lock urls.
+        lock_url = self.transport.abspath(self.path)
+        if lock_url.startswith('file://'):
+            lock_url = lock_url.split('.bzr/')[0]
+        else:
+            lock_url = ''
+        return lock_url
+
     def wait_lock(self, timeout=None, poll=None, max_attempts=None):
         """Wait a certain period for a lock.
 
@@ -566,6 +577,7 @@ class LockDir(lock.Lock):
         deadline_str = None
         last_info = None
         attempt_count = 0
+        lock_url = self.lock_url_for_display()
         while True:
             attempt_count += 1
             try:
@@ -590,13 +602,6 @@ class LockDir(lock.Lock):
                 if deadline_str is None:
                     deadline_str = time.strftime('%H:%M:%S',
                                                  time.localtime(deadline))
-                # As local lock urls are correct we display them.
-                # We avoid displaying remote lock urls.
-                lock_url = self.transport.abspath(self.path)
-                if lock_url.startswith('file://'):
-                    lock_url = lock_url.split('.bzr/')[0]
-                else:
-                    lock_url = ''
                 user, hostname, pid, time_ago = formatted_info
                 msg = ('%s lock %s '        # lock_url
                     'held by '              # start

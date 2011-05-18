@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #   Authors: Robert Collins <robert.collins@canonical.com>
 #            and others
 #
@@ -63,13 +63,13 @@ up=pull
 """
 
 import os
+import string
 import sys
 
 from bzrlib import commands
 from bzrlib.decorators import needs_write_lock
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import errno
 import fnmatch
 import re
 from cStringIO import StringIO
@@ -82,6 +82,7 @@ from bzrlib import (
     errors,
     lockdir,
     mail_client,
+    mergetools,
     osutils,
     registry,
     symbol_versioning,
@@ -128,25 +129,50 @@ STORE_LOCATION_APPENDPATH = POLICY_APPENDPATH
 STORE_BRANCH = 3
 STORE_GLOBAL = 4
 
-_ConfigObj = None
-def ConfigObj(*args, **kwargs):
-    global _ConfigObj
-    if _ConfigObj is None:
-        class ConfigObj(configobj.ConfigObj):
 
-            def get_bool(self, section, key):
-                return self[section].as_bool(key)
+class ConfigObj(configobj.ConfigObj):
 
-            def get_value(self, section, name):
-                # Try [] for the old DEFAULT section.
-                if section == "DEFAULT":
-                    try:
-                        return self[name]
-                    except KeyError:
-                        pass
-                return self[section][name]
-        _ConfigObj = ConfigObj
-    return _ConfigObj(*args, **kwargs)
+    def __init__(self, infile=None, **kwargs):
+        # We define our own interpolation mechanism calling it option expansion
+        super(ConfigObj, self).__init__(infile=infile,
+                                        interpolation=False,
+                                        **kwargs)
+
+
+    def get_bool(self, section, key):
+        return self[section].as_bool(key)
+
+    def get_value(self, section, name):
+        # Try [] for the old DEFAULT section.
+        if section == "DEFAULT":
+            try:
+                return self[name]
+            except KeyError:
+                pass
+        return self[section][name]
+
+
+# FIXME: Until we can guarantee that each config file is loaded once and and
+# only once for a given bzrlib session, we don't want to re-read the file every
+# time we query for an option so we cache the value (bad ! watch out for tests
+# needing to restore the proper value).This shouldn't be part of 2.4.0 final,
+# yell at mgz^W vila and the RM if this is still present at that time
+# -- vila 20110219
+_expand_default_value = None
+def _get_expand_default_value():
+    global _expand_default_value
+    if _expand_default_value is not None:
+        return _expand_default_value
+    conf = GlobalConfig()
+    # Note that we must not use None for the expand value below or we'll run
+    # into infinite recursion. Using False really would be quite silly ;)
+    expand = conf.get_user_option_as_bool('bzr.config.expand', expand=True)
+    if expand is None:
+        # This is an opt-in feature, you *really* need to clearly say you want
+        # to activate it !
+        expand = False
+    _expand_default_value = expand
+    return expand
 
 
 class Config(object):
@@ -188,21 +214,164 @@ class Config(object):
     def _get_signing_policy(self):
         """Template method to override signature creation policy."""
 
+    option_ref_re = None
+
+    def expand_options(self, string, env=None):
+        """Expand option references in the string in the configuration context.
+
+        :param string: The string containing option to expand.
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :returns: The expanded string.
+        """
+        return self._expand_options_in_string(string, env)
+
+    def _expand_options_in_list(self, slist, env=None, _ref_stack=None):
+        """Expand options in  a list of strings in the configuration context.
+
+        :param slist: A list of strings.
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :param _ref_stack: Private list containing the options being
+            expanded to detect loops.
+
+        :returns: The flatten list of expanded strings.
+        """
+        # expand options in each value separately flattening lists
+        result = []
+        for s in slist:
+            value = self._expand_options_in_string(s, env, _ref_stack)
+            if isinstance(value, list):
+                result.extend(value)
+            else:
+                result.append(value)
+        return result
+
+    def _expand_options_in_string(self, string, env=None, _ref_stack=None):
+        """Expand options in the string in the configuration context.
+
+        :param string: The string to be expanded.
+
+        :param env: An option dict defining additional configuration options or
+            overriding existing ones.
+
+        :param _ref_stack: Private list containing the options being
+            expanded to detect loops.
+
+        :returns: The expanded string.
+        """
+        if string is None:
+            # Not much to expand there
+            return None
+        if _ref_stack is None:
+            # What references are currently resolved (to detect loops)
+            _ref_stack = []
+        if self.option_ref_re is None:
+            # We want to match the most embedded reference first (i.e. for
+            # '{{foo}}' we will get '{foo}',
+            # for '{bar{baz}}' we will get '{baz}'
+            self.option_ref_re = re.compile('({[^{}]+})')
+        result = string
+        # We need to iterate until no more refs appear ({{foo}} will need two
+        # iterations for example).
+        while True:
+            raw_chunks = self.option_ref_re.split(result)
+            if len(raw_chunks) == 1:
+                # Shorcut the trivial case: no refs
+                return result
+            chunks = []
+            list_value = False
+            # Split will isolate refs so that every other chunk is a ref
+            chunk_is_ref = False
+            for chunk in raw_chunks:
+                if not chunk_is_ref:
+                    if chunk:
+                        # Keep only non-empty strings (or we get bogus empty
+                        # slots when a list value is involved).
+                        chunks.append(chunk)
+                    chunk_is_ref = True
+                else:
+                    name = chunk[1:-1]
+                    if name in _ref_stack:
+                        raise errors.OptionExpansionLoop(string, _ref_stack)
+                    _ref_stack.append(name)
+                    value = self._expand_option(name, env, _ref_stack)
+                    if value is None:
+                        raise errors.ExpandingUnknownOption(name, string)
+                    if isinstance(value, list):
+                        list_value = True
+                        chunks.extend(value)
+                    else:
+                        chunks.append(value)
+                    _ref_stack.pop()
+                    chunk_is_ref = False
+            if list_value:
+                # Once a list appears as the result of an expansion, all
+                # callers will get a list result. This allows a consistent
+                # behavior even when some options in the expansion chain
+                # defined as strings (no comma in their value) but their
+                # expanded value is a list.
+                return self._expand_options_in_list(chunks, env, _ref_stack)
+            else:
+                result = ''.join(chunks)
+        return result
+
+    def _expand_option(self, name, env, _ref_stack):
+        if env is not None and name in env:
+            # Special case, values provided in env takes precedence over
+            # anything else
+            value = env[name]
+        else:
+            # FIXME: This is a limited implementation, what we really need is a
+            # way to query the bzr config for the value of an option,
+            # respecting the scope rules (That is, once we implement fallback
+            # configs, getting the option value should restart from the top
+            # config, not the current one) -- vila 20101222
+            value = self.get_user_option(name, expand=False)
+            if isinstance(value, list):
+                value = self._expand_options_in_list(value, env, _ref_stack)
+            else:
+                value = self._expand_options_in_string(value, env, _ref_stack)
+        return value
+
     def _get_user_option(self, option_name):
         """Template method to provide a user option."""
         return None
 
-    def get_user_option(self, option_name):
-        """Get a generic option - no special process, no default."""
-        return self._get_user_option(option_name)
+    def get_user_option(self, option_name, expand=None):
+        """Get a generic option - no special process, no default.
 
-    def get_user_option_as_bool(self, option_name):
+        :param option_name: The queried option.
+
+        :param expand: Whether options references should be expanded.
+
+        :returns: The value of the option.
+        """
+        if expand is None:
+            expand = _get_expand_default_value()
+        value = self._get_user_option(option_name)
+        if expand:
+            if isinstance(value, list):
+                value = self._expand_options_in_list(value)
+            elif isinstance(value, dict):
+                trace.warning('Cannot expand "%s":'
+                              ' Dicts do not support option expansion'
+                              % (option_name,))
+            else:
+                value = self._expand_options_in_string(value)
+        return value
+
+    def get_user_option_as_bool(self, option_name, expand=None):
         """Get a generic option as a boolean - no special process, no default.
 
         :return None if the option doesn't exist or its value can't be
             interpreted as a boolean. Returns True or False otherwise.
         """
-        s = self._get_user_option(option_name)
+        s = self.get_user_option(option_name, expand=expand)
         if s is None:
             # The option doesn't exist
             return None
@@ -213,15 +382,16 @@ class Config(object):
                           s, option_name)
         return val
 
-    def get_user_option_as_list(self, option_name):
+    def get_user_option_as_list(self, option_name, expand=None):
         """Get a generic option as a list - no special process, no default.
 
         :return None if the option doesn't exist. Returns the value as a list
             otherwise.
         """
-        l = self._get_user_option(option_name)
+        l = self.get_user_option(option_name, expand=expand)
         if isinstance(l, (str, unicode)):
-            # A single value, most probably the user forgot the final ','
+            # A single value, most probably the user forgot (or didn't care to
+            # add) the final ','
             l = [l]
         return l
 
@@ -271,21 +441,21 @@ class Config(object):
         the concrete policy type is checked, and finally
         $EMAIL is examined.
         If no username can be found, errors.NoWhoami exception is raised.
-
-        TODO: Check it's reasonably well-formed.
         """
         v = os.environ.get('BZR_EMAIL')
         if v:
             return v.decode(osutils.get_user_encoding())
-
         v = self._get_user_id()
         if v:
             return v
-
         v = os.environ.get('EMAIL')
         if v:
             return v.decode(osutils.get_user_encoding())
-
+        name, email = _auto_user_id()
+        if name and email:
+            return '%s <%s>' % (name, email)
+        elif email:
+            return email
         raise errors.NoWhoami()
 
     def ensure_username(self):
@@ -356,6 +526,25 @@ class Config(object):
             return False
         else:
             return True
+
+    def get_merge_tools(self):
+        tools = {}
+        for (oname, value, section, conf_id, parser) in self._get_options():
+            if oname.startswith('bzr.mergetool.'):
+                tool_name = oname[len('bzr.mergetool.'):]
+                tools[tool_name] = value
+        trace.mutter('loaded merge tools: %r' % tools)
+        return tools
+
+    def find_merge_tool(self, name):
+        # We fake a defaults mechanism here by checking if the given name can 
+        # be found in the known_merge_tools if it's not found in the config.
+        # This should be done through the proposed config defaults mechanism
+        # when it becomes available in the future.
+        command_line = (self.get_user_option('bzr.mergetool.%s' % name,
+                                             expand=False)
+                        or mergetools.known_merge_tools.get(name, None))
+        return command_line
 
 
 class IniBasedConfig(Config):
@@ -496,7 +685,8 @@ class IniBasedConfig(Config):
         config_id = self.config_id()
         for (section_name, section) in sections:
             for (name, value) in section.iteritems():
-                yield (name, value, section_name, config_id)
+                yield (name, parser._quote(value), section_name,
+                       config_id, parser)
 
     def _get_option_policy(self, section, option_name):
         """Return the policy for the given (section, option_name) pair."""
@@ -652,8 +842,13 @@ class LockableConfig(IniBasedConfig):
     def __init__(self, file_name):
         super(LockableConfig, self).__init__(file_name=file_name)
         self.dir = osutils.dirname(osutils.safe_unicode(self.file_name))
+        # FIXME: It doesn't matter that we don't provide possible_transports
+        # below since this is currently used only for local config files ;
+        # local transports are not shared. But if/when we start using
+        # LockableConfig for other kind of transports, we will need to reuse
+        # whatever connection is already established -- vila 20100929
         self.transport = transport.get_transport(self.dir)
-        self._lock = lockdir.LockDir(self.transport, 'lock')
+        self._lock = lockdir.LockDir(self.transport, self.lock_name)
 
     def _create_from_string(self, unicode_bytes, save):
         super(LockableConfig, self)._create_from_string(unicode_bytes, False)
@@ -772,6 +967,57 @@ class GlobalConfig(LockableConfig):
         super(LockableConfig, self).remove_user_option(option_name,
                                                        section_name)
 
+def _iter_for_location_by_parts(sections, location):
+    """Keep only the sessions matching the specified location.
+
+    :param sections: An iterable of section names.
+
+    :param location: An url or a local path to match against.
+
+    :returns: An iterator of (section, extra_path, nb_parts) where nb is the
+        number of path components in the section name, section is the section
+        name and extra_path is the difference between location and the section
+        name.
+
+    ``location`` will always be a local path and never a 'file://' url but the
+    section names themselves can be in either form.
+    """
+    location_parts = location.rstrip('/').split('/')
+
+    for section in sections:
+        # location is a local path if possible, so we need to convert 'file://'
+        # urls in section names to local paths if necessary.
+
+        # This also avoids having file:///path be a more exact
+        # match than '/path'.
+
+        # FIXME: This still raises an issue if a user defines both file:///path
+        # *and* /path. Should we raise an error in this case -- vila 20110505
+
+        if section.startswith('file://'):
+            section_path = urlutils.local_path_from_url(section)
+        else:
+            section_path = section
+        section_parts = section_path.rstrip('/').split('/')
+
+        matched = True
+        if len(section_parts) > len(location_parts):
+            # More path components in the section, they can't match
+            matched = False
+        else:
+            # Rely on zip truncating in length to the length of the shortest
+            # argument sequence.
+            names = zip(location_parts, section_parts)
+            for name in names:
+                if not fnmatch.fnmatch(name[0], name[1]):
+                    matched = False
+                    break
+        if not matched:
+            continue
+        # build the path difference between the section and the location
+        extra_path = '/'.join(location_parts[len(section_parts):])
+        yield section, extra_path, len(section_parts)
+
 
 class LocationConfig(LockableConfig):
     """A configuration object that gives the policy for a location."""
@@ -806,49 +1052,20 @@ class LocationConfig(LockableConfig):
 
     def _get_matching_sections(self):
         """Return an ordered list of section names matching this location."""
-        sections = self._get_parser()
-        location_names = self.location.split('/')
-        if self.location.endswith('/'):
-            del location_names[-1]
-        matches=[]
-        for section in sections:
-            # location is a local path if possible, so we need
-            # to convert 'file://' urls to local paths if necessary.
-            # This also avoids having file:///path be a more exact
-            # match than '/path'.
-            if section.startswith('file://'):
-                section_path = urlutils.local_path_from_url(section)
-            else:
-                section_path = section
-            section_names = section_path.split('/')
-            if section.endswith('/'):
-                del section_names[-1]
-            names = zip(location_names, section_names)
-            matched = True
-            for name in names:
-                if not fnmatch.fnmatch(name[0], name[1]):
-                    matched = False
-                    break
-            if not matched:
-                continue
-            # so, for the common prefix they matched.
-            # if section is longer, no match.
-            if len(section_names) > len(location_names):
-                continue
-            matches.append((len(section_names), section,
-                            '/'.join(location_names[len(section_names):])))
+        matches = list(_iter_for_location_by_parts(self._get_parser(),
+                                                   self.location))
         # put the longest (aka more specific) locations first
-        matches.sort(reverse=True)
-        sections = []
-        for (length, section, extra_path) in matches:
-            sections.append((section, extra_path))
+        matches.sort(
+            key=lambda (section, extra_path, length): (length, section),
+            reverse=True)
+        for (section, extra_path, length) in matches:
+            yield section, extra_path
             # should we stop looking for parent configs here?
             try:
                 if self._get_parser()[section].as_bool('ignore_parents'):
                     break
             except KeyError:
                 pass
-        return sections
 
     def _get_sections(self, name=None):
         """See IniBasedConfig._get_sections()."""
@@ -1042,7 +1259,8 @@ class BranchConfig(Config):
         config_id = self.config_id()
         for (section_name, section) in sections:
             for (name, value) in section.iteritems():
-                yield (name, value, section_name, config_id)
+                yield (name, value, section_name,
+                       config_id, branch_config._get_parser())
         # Then the global options
         for option in self._get_global_config()._get_options():
             yield option
@@ -1121,22 +1339,45 @@ def ensure_config_dir_exists(path=None):
 def config_dir():
     """Return per-user configuration directory.
 
-    By default this is ~/.bazaar/
+    By default this is %APPDATA%/bazaar/2.0 on Windows, ~/.bazaar on Mac OS X
+    and Linux.  On Linux, if there is a $XDG_CONFIG_HOME/bazaar directory,
+    that will be used instead.
 
     TODO: Global option --config-dir to override this.
     """
     base = os.environ.get('BZR_HOME', None)
     if sys.platform == 'win32':
+        # environ variables on Windows are in user encoding/mbcs. So decode
+        # before using one
+        if base is not None:
+            base = base.decode('mbcs')
         if base is None:
             base = win32utils.get_appdata_location_unicode()
         if base is None:
             base = os.environ.get('HOME', None)
+            if base is not None:
+                base = base.decode('mbcs')
         if base is None:
             raise errors.BzrError('You must have one of BZR_HOME, APPDATA,'
                                   ' or HOME set')
         return osutils.pathjoin(base, 'bazaar', '2.0')
+    elif sys.platform == 'darwin':
+        if base is None:
+            # this takes into account $HOME
+            base = os.path.expanduser("~")
+        return osutils.pathjoin(base, '.bazaar')
     else:
         if base is None:
+
+            xdg_dir = os.environ.get('XDG_CONFIG_HOME', None)
+            if xdg_dir is None:
+                xdg_dir = osutils.pathjoin(os.path.expanduser("~"), ".config")
+            xdg_dir = osutils.pathjoin(xdg_dir, 'bazaar')
+            if osutils.isdir(xdg_dir):
+                trace.mutter(
+                    "Using configuration in XDG directory %s." % xdg_dir)
+                return xdg_dir
+
             base = os.path.expanduser("~")
         return osutils.pathjoin(base, ".bazaar")
 
@@ -1186,6 +1427,86 @@ def xdg_cache_dir():
         return e
     else:
         return os.path.expanduser('~/.cache')
+
+
+def _get_default_mail_domain():
+    """If possible, return the assumed default email domain.
+
+    :returns: string mail domain, or None.
+    """
+    if sys.platform == 'win32':
+        # No implementation yet; patches welcome
+        return None
+    try:
+        f = open('/etc/mailname')
+    except (IOError, OSError), e:
+        return None
+    try:
+        domain = f.read().strip()
+        return domain
+    finally:
+        f.close()
+
+
+def _auto_user_id():
+    """Calculate automatic user identification.
+
+    :returns: (realname, email), either of which may be None if they can't be
+    determined.
+
+    Only used when none is set in the environment or the id file.
+
+    This only returns an email address if we can be fairly sure the 
+    address is reasonable, ie if /etc/mailname is set on unix.
+
+    This doesn't use the FQDN as the default domain because that may be 
+    slow, and it doesn't use the hostname alone because that's not normally 
+    a reasonable address.
+    """
+    if sys.platform == 'win32':
+        # No implementation to reliably determine Windows default mail
+        # address; please add one.
+        return None, None
+
+    default_mail_domain = _get_default_mail_domain()
+    if not default_mail_domain:
+        return None, None
+
+    import pwd
+    uid = os.getuid()
+    try:
+        w = pwd.getpwuid(uid)
+    except KeyError:
+        mutter('no passwd entry for uid %d?' % uid)
+        return None, None
+
+    # we try utf-8 first, because on many variants (like Linux),
+    # /etc/passwd "should" be in utf-8, and because it's unlikely to give
+    # false positives.  (many users will have their user encoding set to
+    # latin-1, which cannot raise UnicodeError.)
+    try:
+        gecos = w.pw_gecos.decode('utf-8')
+        encoding = 'utf-8'
+    except UnicodeError:
+        try:
+            encoding = osutils.get_user_encoding()
+            gecos = w.pw_gecos.decode(encoding)
+        except UnicodeError, e:
+            mutter("cannot decode passwd entry %s" % w)
+            return None, None
+    try:
+        username = w.pw_name.decode(encoding)
+    except UnicodeError, e:
+        mutter("cannot decode passwd entry %s" % w)
+        return None, None
+
+    comma = gecos.find(',')
+    if comma == -1:
+        realname = gecos
+    else:
+        realname = gecos[:comma]
+
+    return realname, (username + '@' + default_mail_domain)
 
 
 def parse_username(username):
@@ -1769,20 +2090,501 @@ class TransportConfig(object):
         self._transport.put_file(self._filename, out_file)
 
 
+class Section(object):
+    """A section defines a dict of options.
+
+    This is merely a read-only dict which can add some knowledge about the
+    options. It is *not* a python dict object though and doesn't try to mimic
+    its API.
+    """
+
+    def __init__(self, section_id, options):
+        self.id = section_id
+        # We re-use the dict-like object received
+        self.options = options
+
+    def get(self, name, default=None):
+        return self.options.get(name, default)
+
+    def __repr__(self):
+        # Mostly for debugging use
+        return "<config.%s id=%s>" % (self.__class__.__name__, self.id)
+
+
+_NewlyCreatedOption = object()
+"""Was the option created during the MutableSection lifetime"""
+
+
+class MutableSection(Section):
+    """A section allowing changes and keeping track of the original values."""
+
+    def __init__(self, section_id, options):
+        super(MutableSection, self).__init__(section_id, options)
+        self.orig = {}
+
+    def set(self, name, value):
+        if name not in self.options:
+            # This is a new option
+            self.orig[name] = _NewlyCreatedOption
+        elif name not in self.orig:
+            self.orig[name] = self.get(name, None)
+        self.options[name] = value
+
+    def remove(self, name):
+        if name not in self.orig:
+            self.orig[name] = self.get(name, None)
+        del self.options[name]
+
+
+class Store(object):
+    """Abstract interface to persistent storage for configuration options."""
+
+    readonly_section_class = Section
+    mutable_section_class = MutableSection
+
+    def is_loaded(self):
+        """Returns True if the Store has been loaded.
+
+        This is used to implement lazy loading and ensure the persistent
+        storage is queried only when needed.
+        """
+        raise NotImplementedError(self.is_loaded)
+
+    def load(self):
+        """Loads the Store from persistent storage."""
+        raise NotImplementedError(self.load)
+
+    def _load_from_string(self, str_or_unicode):
+        """Create a store from a string in configobj syntax.
+
+        :param str_or_unicode: A string representing the file content. This will
+            be encoded to suit store needs internally.
+
+        This is for tests and should not be used in production unless a
+        convincing use case can be demonstrated :)
+        """
+        raise NotImplementedError(self._load_from_string)
+
+    def save(self):
+        """Saves the Store to persistent storage."""
+        raise NotImplementedError(self.save)
+
+    def external_url(self):
+        raise NotImplementedError(self.external_url)
+
+    def get_sections(self):
+        """Returns an ordered iterable of existing sections.
+
+        :returns: An iterable of (name, dict).
+        """
+        raise NotImplementedError(self.get_sections)
+
+    def get_mutable_section(self, section_name=None):
+        """Returns the specified mutable section.
+
+        :param section_name: The section identifier
+        """
+        raise NotImplementedError(self.get_mutable_section)
+
+    def __repr__(self):
+        # Mostly for debugging use
+        return "<config.%s(%s)>" % (self.__class__.__name__,
+                                    self.external_url())
+
+
+class IniFileStore(Store):
+    """A config Store using ConfigObj for storage.
+
+    :ivar transport: The transport object where the config file is located.
+
+    :ivar file_name: The config file basename in the transport directory.
+
+    :ivar _config_obj: Private member to hold the ConfigObj instance used to
+        serialize/deserialize the config file.
+    """
+
+    def __init__(self, transport, file_name):
+        """A config Store using ConfigObj for storage.
+
+        :param transport: The transport object where the config file is located.
+
+        :param file_name: The config file basename in the transport directory.
+        """
+        super(IniFileStore, self).__init__()
+        self.transport = transport
+        self.file_name = file_name
+        self._config_obj = None
+
+    def is_loaded(self):
+        return self._config_obj != None
+
+    def load(self):
+        """Load the store from the associated file."""
+        if self.is_loaded():
+            return
+        content = self.transport.get_bytes(self.file_name)
+        self._load_from_string(content)
+
+    def _load_from_string(self, str_or_unicode):
+        """Create a config store from a string.
+
+        :param str_or_unicode: A string representing the file content. This will
+            be utf-8 encoded internally.
+
+        This is for tests and should not be used in production unless a
+        convincing use case can be demonstrated :)
+        """
+        if self.is_loaded():
+            raise AssertionError('Already loaded: %r' % (self._config_obj,))
+        co_input = StringIO(str_or_unicode.encode('utf-8'))
+        try:
+            # The config files are always stored utf8-encoded
+            self._config_obj = ConfigObj(co_input, encoding='utf-8')
+        except configobj.ConfigObjError, e:
+            self._config_obj = None
+            raise errors.ParseConfigError(e.errors, self.external_url())
+
+    def save(self):
+        if not self.is_loaded():
+            # Nothing to save
+            return
+        out = StringIO()
+        self._config_obj.write(out)
+        self.transport.put_bytes(self.file_name, out.getvalue())
+
+    def external_url(self):
+        # FIXME: external_url should really accepts an optional relpath
+        # parameter (bug #750169) :-/ -- vila 2011-04-04
+        # The following will do in the interim but maybe we don't want to
+        # expose a path here but rather a config ID and its associated
+        # object </hand wawe>.
+        return urlutils.join(self.transport.external_url(), self.file_name)
+
+    def get_sections(self):
+        """Get the configobj section in the file order.
+
+        :returns: An iterable of (name, dict).
+        """
+        # We need a loaded store
+        try:
+            self.load()
+        except errors.NoSuchFile:
+            # If the file doesn't exist, there is no sections
+            return
+        cobj = self._config_obj
+        if cobj.scalars:
+            yield self.readonly_section_class(None, cobj)
+        for section_name in cobj.sections:
+            yield self.readonly_section_class(section_name, cobj[section_name])
+
+    def get_mutable_section(self, section_name=None):
+        # We need a loaded store
+        try:
+            self.load()
+        except errors.NoSuchFile:
+            # The file doesn't exist, let's pretend it was empty
+            self._load_from_string('')
+        if section_name is None:
+            section = self._config_obj
+        else:
+            section = self._config_obj.setdefault(section_name, {})
+        return self.mutable_section_class(section_name, section)
+
+
+# Note that LockableConfigObjStore inherits from ConfigObjStore because we need
+# unlockable stores for use with objects that can already ensure the locking
+# (think branches). If different stores (not based on ConfigObj) are created,
+# they may face the same issue.
+
+
+class LockableIniFileStore(IniFileStore):
+    """A ConfigObjStore using locks on save to ensure store integrity."""
+
+    def __init__(self, transport, file_name, lock_dir_name=None):
+        """A config Store using ConfigObj for storage.
+
+        :param transport: The transport object where the config file is located.
+
+        :param file_name: The config file basename in the transport directory.
+        """
+        if lock_dir_name is None:
+            lock_dir_name = 'lock'
+        self.lock_dir_name = lock_dir_name
+        super(LockableIniFileStore, self).__init__(transport, file_name)
+        self._lock = lockdir.LockDir(self.transport, self.lock_dir_name)
+
+    def lock_write(self, token=None):
+        """Takes a write lock in the directory containing the config file.
+
+        If the directory doesn't exist it is created.
+        """
+        # FIXME: This doesn't check the ownership of the created directories as
+        # ensure_config_dir_exists does. It should if the transport is local
+        # -- vila 2011-04-06
+        self.transport.create_prefix()
+        return self._lock.lock_write(token)
+
+    def unlock(self):
+        self._lock.unlock()
+
+    def break_lock(self):
+        self._lock.break_lock()
+
+    @needs_write_lock
+    def save(self):
+        super(LockableIniFileStore, self).save()
+
+
+# FIXME: global, bazaar, shouldn't that be 'user' instead or even
+# 'user_defaults' as opposed to 'user_overrides', 'system_defaults'
+# (/etc/bzr/bazaar.conf) and 'system_overrides' ? -- vila 2011-04-05
+
+# FIXME: Moreover, we shouldn't need classes for these stores either, factory
+# functions or a registry will make it easier and clearer for tests, focusing
+# on the relevant parts of the API that needs testing -- vila 20110503 (based
+# on a poolie's remark)
+class GlobalStore(LockableIniFileStore):
+
+    def __init__(self, possible_transports=None):
+        t = transport.get_transport(config_dir(),
+                                    possible_transports=possible_transports)
+        super(GlobalStore, self).__init__(t, 'bazaar.conf')
+
+
+class LocationStore(LockableIniFileStore):
+
+    def __init__(self, possible_transports=None):
+        t = transport.get_transport(config_dir(),
+                                    possible_transports=possible_transports)
+        super(LocationStore, self).__init__(t, 'locations.conf')
+
+
+class BranchStore(IniFileStore):
+
+    def __init__(self, branch):
+        super(BranchStore, self).__init__(branch.control_transport,
+                                          'branch.conf')
+
+class SectionMatcher(object):
+    """Select sections into a given Store.
+
+    This intended to be used to postpone getting an iterable of sections from a
+    store.
+    """
+
+    def __init__(self, store):
+        self.store = store
+
+    def get_sections(self):
+        # This is where we require loading the store so we can see all defined
+        # sections.
+        sections = self.store.get_sections()
+        # Walk the revisions in the order provided
+        for s in sections:
+            if self.match(s):
+                yield s
+
+    def match(self, secion):
+        raise NotImplementedError(self.match)
+
+
+class LocationSection(Section):
+
+    def __init__(self, section, length, extra_path):
+        super(LocationSection, self).__init__(section.id, section.options)
+        self.length = length
+        self.extra_path = extra_path
+
+    def get(self, name, default=None):
+        value = super(LocationSection, self).get(name, default)
+        if value is not None:
+            policy_name = self.get(name + ':policy', None)
+            policy = _policy_value.get(policy_name, POLICY_NONE)
+            if policy == POLICY_APPENDPATH:
+                value = urlutils.join(value, self.extra_path)
+        return value
+
+
+class LocationMatcher(SectionMatcher):
+
+    def __init__(self, store, location):
+        super(LocationMatcher, self).__init__(store)
+        if location.startswith('file://'):
+            location = urlutils.local_path_from_url(location)
+        self.location = location
+
+    def _get_matching_sections(self):
+        """Get all sections matching ``location``."""
+        # We slightly diverge from LocalConfig here by allowing the no-name
+        # section as the most generic one and the lower priority.
+        no_name_section = None
+        sections = []
+        # Filter out the no_name_section so _iter_for_location_by_parts can be
+        # used (it assumes all sections have a name).
+        for section in self.store.get_sections():
+            if section.id is None:
+                no_name_section = section
+            else:
+                sections.append(section)
+        # Unfortunately _iter_for_location_by_parts deals with section names so
+        # we have to resync.
+        filtered_sections = _iter_for_location_by_parts(
+            [s.id for s in sections], self.location)
+        iter_sections = iter(sections)
+        matching_sections = []
+        if no_name_section is not None:
+            matching_sections.append(
+                LocationSection(no_name_section, 0, self.location))
+        for section_id, extra_path, length in filtered_sections:
+            # a section id is unique for a given store so it's safe to iterate
+            # again
+            section = iter_sections.next()
+            if section_id == section.id:
+                matching_sections.append(
+                    LocationSection(section, length, extra_path))
+        return matching_sections
+
+    def get_sections(self):
+        # Override the default implementation as we want to change the order
+        matching_sections = self._get_matching_sections()
+        # We want the longest (aka more specific) locations first
+        sections = sorted(matching_sections,
+                          key=lambda section: (section.length, section.id),
+                          reverse=True)
+        # Sections mentioning 'ignore_parents' restrict the selection
+        for section in sections:
+            # FIXME: We really want to use as_bool below -- vila 2011-04-07
+            ignore = section.get('ignore_parents', None)
+            if ignore is not None:
+                ignore = ui.bool_from_string(ignore)
+            if ignore:
+                break
+            # Finally, we have a valid section
+            yield section
+
+
+class Stack(object):
+    """A stack of configurations where an option can be defined"""
+
+    def __init__(self, sections_def, store=None, mutable_section_name=None):
+        """Creates a stack of sections with an optional store for changes.
+
+        :param sections_def: A list of Section or callables that returns an
+            iterable of Section. This defines the Sections for the Stack and
+            can be called repeatedly if needed.
+
+        :param store: The optional Store where modifications will be
+            recorded. If none is specified, no modifications can be done.
+
+        :param mutable_section_name: The name of the MutableSection where
+            changes are recorded. This requires the ``store`` parameter to be
+            specified.
+        """
+        self.sections_def = sections_def
+        self.store = store
+        self.mutable_section_name = mutable_section_name
+
+    def get(self, name):
+        """Return the *first* option value found in the sections.
+
+        This is where we guarantee that sections coming from Store are loaded
+        lazily: the loading is delayed until we need to either check that an
+        option exists or get its value, which in turn may require to discover
+        in which sections it can be defined. Both of these (section and option
+        existence) require loading the store (even partially).
+        """
+        # FIXME: No caching of options nor sections yet -- vila 20110503
+
+        # Ensuring lazy loading is achieved by delaying section matching (which
+        # implies querying the persistent storage) until it can't be avoided
+        # anymore by using callables to describe (possibly empty) section
+        # lists.
+        for section_or_callable in self.sections_def:
+            # Each section can expand to multiple ones when a callable is used
+            if callable(section_or_callable):
+                sections = section_or_callable()
+            else:
+                sections = [section_or_callable]
+            for section in sections:
+                value = section.get(name)
+                if value is not None:
+                    return value
+        # No definition was found
+        return None
+
+    def _get_mutable_section(self):
+        """Get the MutableSection for the Stack.
+
+        This is where we guarantee that the mutable section is lazily loaded:
+        this means we won't load the corresponding store before setting a value
+        or deleting an option. In practice the store will often be loaded but
+        this allows helps catching some programming errors.
+        """
+        section = self.store.get_mutable_section(self.mutable_section_name)
+        return section
+
+    def set(self, name, value):
+        """Set a new value for the option."""
+        section = self._get_mutable_section()
+        section.set(name, value)
+
+    def remove(self, name):
+        """Remove an existing option."""
+        section = self._get_mutable_section()
+        section.remove(name)
+
+    def __repr__(self):
+        # Mostly for debugging use
+        return "<config.%s(%s)>" % (self.__class__.__name__, id(self))
+
+
+class GlobalStack(Stack):
+
+    def __init__(self):
+        # Get a GlobalStore
+        gstore = GlobalStore()
+        super(GlobalStack, self).__init__([gstore.get_sections], gstore)
+
+
+class LocationStack(Stack):
+
+    def __init__(self, location):
+        lstore = LocationStore()
+        matcher = LocationMatcher(lstore, location)
+        gstore = GlobalStore()
+        super(LocationStack, self).__init__(
+            [matcher.get_sections, gstore.get_sections], lstore)
+
+
+class BranchStack(Stack):
+
+    def __init__(self, branch):
+        bstore = BranchStore(branch)
+        lstore = LocationStore()
+        matcher = LocationMatcher(lstore, branch.base)
+        gstore = GlobalStore()
+        super(BranchStack, self).__init__(
+            [matcher.get_sections, bstore.get_sections, gstore.get_sections],
+            bstore)
+
+
 class cmd_config(commands.Command):
     __doc__ = """Display, set or remove a configuration option.
 
-    Display the MATCHING configuration options mentioning their scope (the
-    configuration file they are defined in). The active value that bzr will
-    take into account is the first one displayed.
+    Display the active value for a given option.
+
+    If --all is specified, NAME is interpreted as a regular expression and all
+    matching options are displayed mentioning their scope. The active value
+    that bzr will take into account is the first one displayed for each option.
+
+    If no NAME is given, --all .* is implied.
 
     Setting a value is achieved by using name=value without spaces. The value
     is set in the most relevant scope and can be checked by displaying the
     option again.
     """
 
-    aliases = ['conf']
-    takes_args = ['matching?']
+    takes_args = ['name?']
 
     takes_options = [
         'directory',
@@ -1791,27 +2593,43 @@ class cmd_config(commands.Command):
         commands.Option('scope', help='Reduce the scope to the specified'
                         ' configuration file',
                         type=unicode),
+        commands.Option('all',
+            help='Display all the defined values for the matching options.',
+            ),
         commands.Option('remove', help='Remove the option from'
                         ' the configuration file'),
         ]
 
     @commands.display_command
-    def run(self, matching=None, directory=None, scope=None, remove=False):
+    def run(self, name=None, all=False, directory=None, scope=None,
+            remove=False):
         if directory is None:
             directory = '.'
         directory = urlutils.normalize_url(directory)
-        if matching is None:
-            self._show_config('*', directory)
+        if remove and all:
+            raise errors.BzrError(
+                '--all and --remove are mutually exclusive.')
+        elif remove:
+            # Delete the option in the given scope
+            self._remove_config_option(name, directory, scope)
+        elif name is None:
+            # Defaults to all options
+            self._show_matching_options('.*', directory, scope)
         else:
-            if remove:
-                self._remove_config_option(matching, directory, scope)
-            else:
-                pos = matching.find('=')
-                if pos == -1:
-                    self._show_config(matching, directory)
+            try:
+                name, value = name.split('=', 1)
+            except ValueError:
+                # Display the option(s) value(s)
+                if all:
+                    self._show_matching_options(name, directory, scope)
                 else:
-                    self._set_config_option(matching[:pos], matching[pos+1:],
-                                            directory, scope)
+                    self._show_value(name, directory, scope)
+            else:
+                if all:
+                    raise errors.BzrError(
+                        'Only one option can be set.')
+                # Set the option value
+                self._set_config_option(name, value, directory, scope)
 
     def _get_configs(self, directory, scope=None):
         """Iterate the configurations specified by ``directory`` and ``scope``.
@@ -1838,17 +2656,50 @@ class cmd_config(commands.Command):
                 yield LocationConfig(directory)
                 yield GlobalConfig()
 
-    def _show_config(self, matching, directory):
-        # Turn the glob into a regexp
-        matching_re = re.compile(fnmatch.translate(matching))
+    def _show_value(self, name, directory, scope):
+        displayed = False
+        for c in self._get_configs(directory, scope):
+            if displayed:
+                break
+            for (oname, value, section, conf_id, parser) in c._get_options():
+                if name == oname:
+                    # Display only the first value and exit
+
+                    # FIXME: We need to use get_user_option to take policies
+                    # into account and we need to make sure the option exists
+                    # too (hence the two for loops), this needs a better API
+                    # -- vila 20101117
+                    value = c.get_user_option(name)
+                    # Quote the value appropriately
+                    value = parser._quote(value)
+                    self.outf.write('%s\n' % (value,))
+                    displayed = True
+                    break
+        if not displayed:
+            raise errors.NoSuchConfigOption(name)
+
+    def _show_matching_options(self, name, directory, scope):
+        name = re.compile(name)
+        # We want any error in the regexp to be raised *now* so we need to
+        # avoid the delay introduced by the lazy regexp.
+        name._compile_and_collapse()
         cur_conf_id = None
-        for c in self._get_configs(directory):
-            for (name, value, section, conf_id) in c._get_options():
-                if matching_re.search(name):
+        cur_section = None
+        for c in self._get_configs(directory, scope):
+            for (oname, value, section, conf_id, parser) in c._get_options():
+                if name.search(oname):
                     if cur_conf_id != conf_id:
+                        # Explain where the options are defined
                         self.outf.write('%s:\n' % (conf_id,))
                         cur_conf_id = conf_id
-                    self.outf.write('  %s = %s\n' % (name, value))
+                        cur_section = None
+                    if (section not in (None, 'DEFAULT')
+                        and cur_section != section):
+                        # Display the section if it's not the default (or only)
+                        # one.
+                        self.outf.write('  [%s]\n' % (section,))
+                        cur_section = section
+                    self.outf.write('  %s = %s\n' % (oname, value))
 
     def _set_config_option(self, name, value, directory, scope):
         for conf in self._get_configs(directory, scope):
@@ -1858,6 +2709,9 @@ class cmd_config(commands.Command):
             raise errors.NoSuchConfig(scope)
 
     def _remove_config_option(self, name, directory, scope):
+        if name is None:
+            raise errors.BzrCommandError(
+                '--remove expects an option to remove.')
         removed = False
         for conf in self._get_configs(directory, scope):
             for (section_name, section, conf_id) in conf._get_sections():

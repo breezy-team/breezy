@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,13 +15,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 from cStringIO import StringIO
-import errno
 import re
-import socket
-import threading
-import time
 import urllib2
-import urlparse
 
 
 from bzrlib import (
@@ -32,7 +27,6 @@ from bzrlib import (
     )
 from bzrlib.smart import (
     medium,
-    protocol,
     )
 from bzrlib.tests import http_server
 from bzrlib.transport import chroot

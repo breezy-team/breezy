@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -323,6 +323,9 @@ class TestDiff(DiffBase):
         self.build_tree_contents([('hello', 'hello world!\n')])
         output = self.run_bzr('diff --format=boo', retcode=1)
         self.assertTrue("BOO!" in output[0])
+        output = self.run_bzr('diff -Fboo', retcode=1)
+        self.assertTrue("BOO!" in output[0])
+
 
 class TestCheckoutDiff(TestDiff):
 
@@ -386,8 +389,7 @@ class TestExternalDiff(DiffBase):
         # subprocess.py that we had to workaround).
         # However, if 'diff' may not be available
         self.make_example_branch()
-        # this will be automatically restored by the base bzr test class
-        os.environ['BZR_PROGRESS_BAR'] = 'none'
+        self.overrideEnv('BZR_PROGRESS_BAR', 'none')
         out, err = self.run_bzr_subprocess('diff -r 1 --diff-options -ub',
                                            universal_newlines=True,
                                            retcode=None)

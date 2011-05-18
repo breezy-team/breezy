@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,19 +18,18 @@ from bzrlib.lazy_import import lazy_import
 
 lazy_import(globals(), """
 import errno
+import gzip
 import itertools
 import os
 from StringIO import StringIO
 
 from bzrlib import (
+    bencode,
     errors,
     patiencediff,
-    trace,
     ui,
     )
-from bzrlib import bencode
 """)
-from bzrlib.tuned_gzip import GzipFile
 
 
 def topo_iter_keys(vf, keys=None):
@@ -561,10 +560,11 @@ class MultiVersionedFile(BaseVersionedFile):
             sio = StringIO(infile.read(count))
         finally:
             infile.close()
-        zip_file = GzipFile(None, mode='rb', fileobj=sio)
+        zip_file = gzip.GzipFile(None, mode='rb', fileobj=sio)
         try:
             file_version_id = zip_file.readline()
-            return MultiParent.from_patch(zip_file.read())
+            content = zip_file.read()
+            return MultiParent.from_patch(content)
         finally:
             zip_file.close()
 
@@ -576,7 +576,7 @@ class MultiVersionedFile(BaseVersionedFile):
                                     # before any write returns 0
             start = outfile.tell()
             try:
-                zipfile = GzipFile(None, mode='ab', fileobj=outfile)
+                zipfile = gzip.GzipFile(None, mode='ab', fileobj=outfile)
                 zipfile.writelines(itertools.chain(
                     ['version %s\n' % version_id], diff.to_patch()))
             finally:
@@ -673,7 +673,7 @@ class _Reconstructor(object):
 
 def gzip_string(lines):
     sio = StringIO()
-    data_file = GzipFile(None, mode='wb', fileobj=sio)
+    data_file = gzip.GzipFile(None, mode='wb', fileobj=sio)
     data_file.writelines(lines)
     data_file.close()
     return sio.getvalue()

@@ -90,8 +90,8 @@ class TestMerge(TestCaseWithTransport):
         os.chdir('branch2')
         self.run_bzr('merge ../branch1/baz', retcode=3)
         self.run_bzr('merge ../branch1/foo')
-        self.failUnlessExists('foo')
-        self.failIfExists('bar')
+        self.assertPathExists('foo')
+        self.assertPathDoesNotExist('bar')
         wt2 = WorkingTree.open('.') # opens branch2
         self.assertEqual([tip], wt2.get_parent_ids())
 
@@ -157,12 +157,12 @@ class TestMerge(TestCaseWithTransport):
         log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=True)
-        self.failUnless('All changes applied successfully.\n' not in
+        self.assertTrue('All changes applied successfully.\n' not in
             self.get_log())
         tree_b.revert()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=False)
-        self.failUnless('All changes applied successfully.\n' in self.get_log())
+        self.assertTrue('All changes applied successfully.\n' in self.get_log())
 
     def test_merge_inner_conflicts(self):
         tree_a = self.make_branch_and_tree('a')
@@ -1269,6 +1269,26 @@ class TestMergerInMemory(TestMergerBase):
         merger = self.make_Merger(builder, 'H-id')
         self.assertEqual(['B-id', 'C-id', 'F-id'],
                          [t.get_revision_id() for t in merger._lca_trees])
+
+    def test_find_base_new_root_criss_cross(self):
+        # A   B
+        # |\ /|
+        # | X |
+        # |/ \|
+        # C   D
+        
+        builder = self.get_builder()
+        builder.build_snapshot('A-id', None,
+            [('add', ('', None, 'directory', None))])
+        builder.build_snapshot('B-id', [],
+            [('add', ('', None, 'directory', None))])
+        builder.build_snapshot('D-id', ['A-id', 'B-id'], [])
+        builder.build_snapshot('C-id', ['A-id', 'B-id'], [])
+        merger = self.make_Merger(builder, 'D-id')
+        self.assertEqual('A-id', merger.base_rev_id)
+        self.assertTrue(merger._is_criss_cross)
+        self.assertEqual(['A-id', 'B-id'], [t.get_revision_id()
+                                            for t in merger._lca_trees])
 
     def test_no_criss_cross_passed_to_merge_type(self):
         class LCATreesMerger(LoggingMerger):

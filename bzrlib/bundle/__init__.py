@@ -20,14 +20,11 @@ from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
     errors,
+    transport as _mod_transport,
     urlutils,
     )
 from bzrlib.bundle import serializer as _serializer
 from bzrlib.merge_directive import MergeDirective
-from bzrlib.transport import (
-    do_catching_redirections,
-    get_transport,
-    )
 """)
 from bzrlib.trace import note
 
@@ -38,7 +35,7 @@ def read_mergeable_from_url(url, _do_directive=True, possible_transports=None):
     :return: An object supporting get_target_revision.  Raises NotABundle if
         the target is not a mergeable type.
     """
-    child_transport = get_transport(url,
+    child_transport = _mod_transport.get_transport(url,
         possible_transports=possible_transports)
     transport = child_transport.clone('..')
     filename = transport.relpath(child_transport.base)
@@ -57,11 +54,11 @@ def read_mergeable_from_transport(transport, filename, _do_directive=True):
                                        exclude_trailing_slash=False)
         if not filename:
             raise errors.NotABundle('A directory cannot be a bundle')
-        return get_transport(url)
+        return _mod_transport.get_transport(url)
 
     try:
-        bytef, transport = do_catching_redirections(get_bundle, transport,
-                                                    redirected_transport)
+        bytef, transport = _mod_transport.do_catching_redirections(
+            get_bundle, transport, redirected_transport)
     except errors.TooManyRedirections:
         raise errors.NotABundle(transport.clone(filename).base)
     except (errors.ConnectionReset, errors.ConnectionError), e:

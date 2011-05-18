@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,9 @@ import os
 import sys
 import threading
 
+
+from testtools import matchers
+
 #import bzrlib specific imports here
 from bzrlib import (
     branch,
@@ -30,13 +33,19 @@ from bzrlib import (
     errors,
     osutils,
     mail_client,
+    mergetools,
     ui,
     urlutils,
+    registry,
     tests,
     trace,
     transport,
     )
-from bzrlib.tests import features
+from bzrlib.tests import (
+    features,
+    TestSkipped,
+    scenarios,
+    )
 from bzrlib.util.configobj import configobj
 
 
@@ -52,16 +61,38 @@ def lockable_config_scenarios():
           'config_section': '.'}),]
 
 
-def load_tests(standard_tests, module, loader):
-    suite = loader.suiteClass()
+load_tests = scenarios.load_tests_apply_scenarios
 
-    lc_tests, remaining_tests = tests.split_suite_by_condition(
-        standard_tests, tests.condition_isinstance((
-                TestLockableConfig,
-                )))
-    tests.multiply_tests(lc_tests, lockable_config_scenarios(), suite)
-    suite.addTest(remaining_tests)
-    return suite
+# We need adapters that can build a config store in a test context. Test
+# classes, based on TestCaseWithTransport, can use the registry to parametrize
+# themselves. The builder will receive a test instance and should return a
+# ready-to-use store.  Plugins that defines new stores can also register
+# themselves here to be tested against the tests defined below.
+
+# FIXME: plugins should *not* need to import test_config to register their
+# helpers (or selftest -s xxx will be broken), the following registry should be
+# moved to bzrlib.config instead so that selftest -s bt.test_config also runs
+# the plugin specific tests (selftest -s bp.xxx won't, that would be against
+# the spirit of '-s') -- vila 20110503
+test_store_builder_registry = registry.Registry()
+test_store_builder_registry.register(
+    'configobj', lambda test: config.IniFileStore(test.get_transport(),
+                                                  'configobj.conf'))
+test_store_builder_registry.register(
+    'bazaar', lambda test: config.GlobalStore())
+test_store_builder_registry.register(
+    'location', lambda test: config.LocationStore())
+test_store_builder_registry.register(
+    'branch', lambda test: config.BranchStore(test.branch))
+
+# FIXME: Same remark as above for the following registry -- vila 20110503
+test_stack_builder_registry = registry.Registry()
+test_stack_builder_registry.register(
+    'bazaar', lambda test: config.GlobalStack())
+test_stack_builder_registry.register(
+    'location', lambda test: config.LocationStack('.'))
+test_stack_builder_registry.register(
+    'branch', lambda test: config.BranchStack(test.branch))
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -73,6 +104,9 @@ change_editor=vimdiff -of @new_path @old_path
 gpg_signing_command=gnome-gpg
 log_format=short
 user_global_option=something
+bzr.mergetool.sometool=sometool {base} {this} {other} -o {result}
+bzr.mergetool.funkytool=funkytool "arg with spaces" {this_temp}
+bzr.default_mergetool=sometool
 [ALIASES]
 h=help
 ll=""" + sample_long_alias + "\n"
@@ -129,6 +163,49 @@ check_signatures=ignore
 post_commit=bzrlib.tests.test_config.post_commit
 #testing explicit beats globs
 """
+
+
+def create_configs(test):
+    """Create configuration files for a given test.
+
+    This requires creating a tree (and populate the ``test.tree`` attribute)
+    and its associated branch and will populate the following attributes:
+
+    - branch_config: A BranchConfig for the associated branch.
+
+    - locations_config : A LocationConfig for the associated branch
+
+    - bazaar_config: A GlobalConfig.
+
+    The tree and branch are created in a 'tree' subdirectory so the tests can
+    still use the test directory to stay outside of the branch.
+    """
+    tree = test.make_branch_and_tree('tree')
+    test.tree = tree
+    test.branch_config = config.BranchConfig(tree.branch)
+    test.locations_config = config.LocationConfig(tree.basedir)
+    test.bazaar_config = config.GlobalConfig()
+
+
+def create_configs_with_file_option(test):
+    """Create configuration files with a ``file`` option set in each.
+
+    This builds on ``create_configs`` and add one ``file`` option in each
+    configuration with a value which allows identifying the configuration file.
+    """
+    create_configs(test)
+    test.bazaar_config.set_user_option('file', 'bazaar')
+    test.locations_config.set_user_option('file', 'locations')
+    test.branch_config.set_user_option('file', 'branch')
+
+
+class TestOptionsMixin:
+
+    def assertOptions(self, expected, conf):
+        # We don't care about the parser (as it will make tests hard to write
+        # and error-prone anyway)
+        self.assertThat([opt[:4] for opt in conf._get_options()],
+                        matchers.Equals(expected))
 
 
 class InstrumentedConfigObj(object):
@@ -269,10 +346,36 @@ class TestConfigObj(tests.TestCase):
         """
         co = config.ConfigObj()
         co['test'] = 'foo#bar'
-        lines = co.write()
+        outfile = StringIO()
+        co.write(outfile=outfile)
+        lines = outfile.getvalue().splitlines()
         self.assertEqual(lines, ['test = "foo#bar"'])
         co2 = config.ConfigObj(lines)
         self.assertEqual(co2['test'], 'foo#bar')
+
+    def test_triple_quotes(self):
+        # Bug #710410: if the value string has triple quotes
+        # then ConfigObj versions up to 4.7.2 will quote them wrong
+        # and won't able to read them back
+        triple_quotes_value = '''spam
+""" that's my spam """
+eggs'''
+        co = config.ConfigObj()
+        co['test'] = triple_quotes_value
+        # While writing this test another bug in ConfigObj has been found:
+        # method co.write() without arguments produces list of lines
+        # one option per line, and multiline values are not split
+        # across multiple lines,
+        # and that breaks the parsing these lines back by ConfigObj.
+        # This issue only affects test, but it's better to avoid
+        # `co.write()` construct at all.
+        # [bialix 20110222] bug report sent to ConfigObj's author
+        outfile = StringIO()
+        co.write(outfile=outfile)
+        output = outfile.getvalue()
+        # now we're trying to read it back
+        co2 = config.ConfigObj(StringIO(output))
+        self.assertEquals(triple_quotes_value, co2['test'])
 
 
 erroneous_config = """[section] # line 1
@@ -362,11 +465,11 @@ class TestConfigPath(tests.TestCase):
 
     def setUp(self):
         super(TestConfigPath, self).setUp()
-        os.environ['HOME'] = '/home/bogus'
-        os.environ['XDG_CACHE_DIR'] = ''
+        self.overrideEnv('HOME', '/home/bogus')
+        self.overrideEnv('XDG_CACHE_DIR', '')
         if sys.platform == 'win32':
-            os.environ['BZR_HOME'] = \
-                r'C:\Documents and Settings\bogus\Application Data'
+            self.overrideEnv(
+                'BZR_HOME', r'C:\Documents and Settings\bogus\Application Data')
             self.bzr_home = \
                 'C:/Documents and Settings/bogus/Application Data/bazaar/2.0'
         else:
@@ -392,6 +495,34 @@ class TestConfigPath(tests.TestCase):
             '/home/bogus/.cache')
 
 
+class TestXDGConfigDir(tests.TestCaseInTempDir):
+    # must be in temp dir because config tests for the existence of the bazaar
+    # subdirectory of $XDG_CONFIG_HOME
+
+    def setUp(self):
+        if sys.platform in ('darwin', 'win32'):
+            raise tests.TestNotApplicable(
+                'XDG config dir not used on this platform')
+        super(TestXDGConfigDir, self).setUp()
+        self.overrideEnv('HOME', self.test_home_dir)
+        # BZR_HOME overrides everything we want to test so unset it.
+        self.overrideEnv('BZR_HOME', None)
+
+    def test_xdg_config_dir_exists(self):
+        """When ~/.config/bazaar exists, use it as the config dir."""
+        newdir = osutils.pathjoin(self.test_home_dir, '.config', 'bazaar')
+        os.makedirs(newdir)
+        self.assertEqual(config.config_dir(), newdir)
+
+    def test_xdg_config_home(self):
+        """When XDG_CONFIG_HOME is set, use it."""
+        xdgconfigdir = osutils.pathjoin(self.test_home_dir, 'xdgconfig')
+        self.overrideEnv('XDG_CONFIG_HOME', xdgconfigdir)
+        newdir = osutils.pathjoin(xdgconfigdir, 'bazaar')
+        os.makedirs(newdir)
+        self.assertEqual(config.config_dir(), newdir)
+
+
 class TestIniConfig(tests.TestCaseInTempDir):
 
     def make_config_parser(self, s):
@@ -411,7 +542,7 @@ class TestIniConfigBuilding(TestIniConfig):
     def test_cached(self):
         my_config = config.IniBasedConfig.from_string(sample_config_text)
         parser = my_config._get_parser()
-        self.failUnless(my_config._get_parser() is parser)
+        self.assertTrue(my_config._get_parser() is parser)
 
     def _dummy_chown(self, path, uid, gid):
         self.path, self.uid, self.gid = path, uid, gid
@@ -442,6 +573,7 @@ class TestIniConfigBuilding(TestIniConfig):
             ' Use IniBasedConfig(_content=xxx) instead.'],
             conf._get_parser, file=config_file)
 
+
 class TestIniConfigSaving(tests.TestCaseInTempDir):
 
     def test_cant_save_without_a_file_name(self):
@@ -453,6 +585,198 @@ class TestIniConfigSaving(tests.TestCaseInTempDir):
         conf = config.IniBasedConfig.from_string(
             content, file_name='./test.conf', save=True)
         self.assertFileEqual(content, 'test.conf')
+
+
+class TestIniConfigOptionExpansionDefaultValue(tests.TestCaseInTempDir):
+    """What is the default value of expand for config options.
+
+    This is an opt-in beta feature used to evaluate whether or not option
+    references can appear in dangerous place raising exceptions, disapearing
+    (and as such corrupting data) or if it's safe to activate the option by
+    default.
+
+    Note that these tests relies on config._expand_default_value being already
+    overwritten in the parent class setUp.
+    """
+
+    def setUp(self):
+        super(TestIniConfigOptionExpansionDefaultValue, self).setUp()
+        self.config = None
+        self.warnings = []
+        def warning(*args):
+            self.warnings.append(args[0] % args[1:])
+        self.overrideAttr(trace, 'warning', warning)
+
+    def get_config(self, expand):
+        c = config.GlobalConfig.from_string('bzr.config.expand=%s' % (expand,),
+                                            save=True)
+        return c
+
+    def assertExpandIs(self, expected):
+        actual = config._get_expand_default_value()
+        #self.config.get_user_option_as_bool('bzr.config.expand')
+        self.assertEquals(expected, actual)
+
+    def test_default_is_None(self):
+        self.assertEquals(None, config._expand_default_value)
+
+    def test_default_is_False_even_if_None(self):
+        self.config = self.get_config(None)
+        self.assertExpandIs(False)
+
+    def test_default_is_False_even_if_invalid(self):
+        self.config = self.get_config('<your choice>')
+        self.assertExpandIs(False)
+        # ...
+        # Huh ? My choice is False ? Thanks, always happy to hear that :D
+        # Wait, you've been warned !
+        self.assertLength(1, self.warnings)
+        self.assertEquals(
+            'Value "<your choice>" is not a boolean for "bzr.config.expand"',
+            self.warnings[0])
+
+    def test_default_is_True(self):
+        self.config = self.get_config(True)
+        self.assertExpandIs(True)
+        
+    def test_default_is_False(self):
+        self.config = self.get_config(False)
+        self.assertExpandIs(False)
+        
+
+class TestIniConfigOptionExpansion(tests.TestCase):
+    """Test option expansion from the IniConfig level.
+
+    What we really want here is to test the Config level, but the class being
+    abstract as far as storing values is concerned, this can't be done
+    properly (yet).
+    """
+    # FIXME: This should be rewritten when all configs share a storage
+    # implementation -- vila 2011-02-18
+
+    def get_config(self, string=None):
+        if string is None:
+            string = ''
+        c = config.IniBasedConfig.from_string(string)
+        return c
+
+    def assertExpansion(self, expected, conf, string, env=None):
+        self.assertEquals(expected, conf.expand_options(string, env))
+
+    def test_no_expansion(self):
+        c = self.get_config('')
+        self.assertExpansion('foo', c, 'foo')
+
+    def test_env_adding_options(self):
+        c = self.get_config('')
+        self.assertExpansion('bar', c, '{foo}', {'foo': 'bar'})
+
+    def test_env_overriding_options(self):
+        c = self.get_config('foo=baz')
+        self.assertExpansion('bar', c, '{foo}', {'foo': 'bar'})
+
+    def test_simple_ref(self):
+        c = self.get_config('foo=xxx')
+        self.assertExpansion('xxx', c, '{foo}')
+
+    def test_unknown_ref(self):
+        c = self.get_config('')
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          c.expand_options, '{foo}')
+
+    def test_indirect_ref(self):
+        c = self.get_config('''
+foo=xxx
+bar={foo}
+''')
+        self.assertExpansion('xxx', c, '{bar}')
+
+    def test_embedded_ref(self):
+        c = self.get_config('''
+foo=xxx
+bar=foo
+''')
+        self.assertExpansion('xxx', c, '{{bar}}')
+
+    def test_simple_loop(self):
+        c = self.get_config('foo={foo}')
+        self.assertRaises(errors.OptionExpansionLoop, c.expand_options, '{foo}')
+
+    def test_indirect_loop(self):
+        c = self.get_config('''
+foo={bar}
+bar={baz}
+baz={foo}''')
+        e = self.assertRaises(errors.OptionExpansionLoop,
+                              c.expand_options, '{foo}')
+        self.assertEquals('foo->bar->baz', e.refs)
+        self.assertEquals('{foo}', e.string)
+
+    def test_list(self):
+        conf = self.get_config('''
+foo=start
+bar=middle
+baz=end
+list={foo},{bar},{baz}
+''')
+        self.assertEquals(['start', 'middle', 'end'],
+                           conf.get_user_option('list', expand=True))
+
+    def test_cascading_list(self):
+        conf = self.get_config('''
+foo=start,{bar}
+bar=middle,{baz}
+baz=end
+list={foo}
+''')
+        self.assertEquals(['start', 'middle', 'end'],
+                           conf.get_user_option('list', expand=True))
+
+    def test_pathological_hidden_list(self):
+        conf = self.get_config('''
+foo=bin
+bar=go
+start={foo
+middle=},{
+end=bar}
+hidden={start}{middle}{end}
+''')
+        # Nope, it's either a string or a list, and the list wins as soon as a
+        # ',' appears, so the string concatenation never occur.
+        self.assertEquals(['{foo', '}', '{', 'bar}'],
+                          conf.get_user_option('hidden', expand=True))
+
+class TestLocationConfigOptionExpansion(tests.TestCaseInTempDir):
+
+    def get_config(self, location, string=None):
+        if string is None:
+            string = ''
+        # Since we don't save the config we won't strictly require to inherit
+        # from TestCaseInTempDir, but an error occurs so quickly...
+        c = config.LocationConfig.from_string(string, location)
+        return c
+
+    def test_dont_cross_unrelated_section(self):
+        c = self.get_config('/another/branch/path','''
+[/one/branch/path]
+foo = hello
+bar = {foo}/2
+
+[/another/branch/path]
+bar = {foo}/2
+''')
+        self.assertRaises(errors.ExpandingUnknownOption,
+                          c.get_user_option, 'bar', expand=True)
+
+    def test_cross_related_sections(self):
+        c = self.get_config('/project/branch/path','''
+[/project]
+foo = qu
+
+[/project/branch/path]
+bar = {foo}ux
+''')
+        self.assertEquals('quux', c.get_user_option('bar', expand=True))
 
 
 class TestIniBaseConfigOnDisk(tests.TestCaseInTempDir):
@@ -476,6 +800,8 @@ class TestIniBaseConfigOnDisk(tests.TestCaseInTempDir):
 
 
 class TestLockableConfig(tests.TestCaseInTempDir):
+
+    scenarios = lockable_config_scenarios()
 
     # Set by load_tests
     config_class = None
@@ -538,7 +864,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         def c1_write_config_file():
             before_writing.set()
             c1_orig()
-            # The lock is held we wait for the main thread to decide when to
+            # The lock is held. We wait for the main thread to decide when to
             # continue
             after_writing.wait()
         c1._write_config_file = c1_write_config_file
@@ -571,7 +897,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
        c1_orig = c1._write_config_file
        def c1_write_config_file():
            ready_to_write.set()
-           # The lock is held we wait for the main thread to decide when to
+           # The lock is held. We wait for the main thread to decide when to
            # continue
            do_writing.wait()
            c1_orig()
@@ -668,7 +994,7 @@ class TestGetConfig(tests.TestCase):
             parser = my_config._get_parser()
         finally:
             config.ConfigObj = oldparserclass
-        self.failUnless(isinstance(parser, InstrumentedConfigObj))
+        self.assertIsInstance(parser, InstrumentedConfigObj)
         self.assertEqual(parser._calls, [('__init__', config.config_filename(),
                                           'utf-8')])
 
@@ -685,7 +1011,7 @@ class TestBranchConfig(tests.TestCaseWithTransport):
         my_config = config.BranchConfig(branch)
         location_config = my_config._get_location_config()
         self.assertEqual(branch.base, location_config.location)
-        self.failUnless(location_config is my_config._get_location_config())
+        self.assertIs(location_config, my_config._get_location_config())
 
     def test_get_config(self):
         """The Branch.get_config method works properly"""
@@ -883,6 +1209,41 @@ class TestGlobalConfigItems(tests.TestCaseInTempDir):
         change_editor = my_config.get_change_editor('old', 'new')
         self.assertIs(None, change_editor)
 
+    def test_get_merge_tools(self):
+        conf = self._get_sample_config()
+        tools = conf.get_merge_tools()
+        self.log(repr(tools))
+        self.assertEqual(
+            {u'funkytool' : u'funkytool "arg with spaces" {this_temp}',
+            u'sometool' : u'sometool {base} {this} {other} -o {result}'},
+            tools)
+
+    def test_get_merge_tools_empty(self):
+        conf = self._get_empty_config()
+        tools = conf.get_merge_tools()
+        self.assertEqual({}, tools)
+
+    def test_find_merge_tool(self):
+        conf = self._get_sample_config()
+        cmdline = conf.find_merge_tool('sometool')
+        self.assertEqual('sometool {base} {this} {other} -o {result}', cmdline)
+
+    def test_find_merge_tool_not_found(self):
+        conf = self._get_sample_config()
+        cmdline = conf.find_merge_tool('DOES NOT EXIST')
+        self.assertIs(cmdline, None)
+
+    def test_find_merge_tool_known(self):
+        conf = self._get_empty_config()
+        cmdline = conf.find_merge_tool('kdiff3')
+        self.assertEquals('kdiff3 {base} {this} {other} -o {result}', cmdline)
+
+    def test_find_merge_tool_override_known(self):
+        conf = self._get_empty_config()
+        conf.set_user_option('bzr.mergetool.kdiff3', 'kdiff3 blah')
+        cmdline = conf.find_merge_tool('kdiff3')
+        self.assertEqual('kdiff3 blah', cmdline)
+
 
 class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
 
@@ -906,7 +1267,7 @@ class TestGlobalConfigSavingOptions(tests.TestCaseInTempDir):
         self.assertIs(None, new_config.get_alias('commit'))
 
 
-class TestLocationConfig(tests.TestCaseInTempDir):
+class TestLocationConfig(tests.TestCaseInTempDir, TestOptionsMixin):
 
     def test_constructs(self):
         my_config = config.LocationConfig('http://example.com')
@@ -924,7 +1285,7 @@ class TestLocationConfig(tests.TestCaseInTempDir):
             parser = my_config._get_parser()
         finally:
             config.ConfigObj = oldparserclass
-        self.failUnless(isinstance(parser, InstrumentedConfigObj))
+        self.assertIsInstance(parser, InstrumentedConfigObj)
         self.assertEqual(parser._calls,
                          [('__init__', config.locations_config_filename(),
                            'utf-8')])
@@ -932,58 +1293,55 @@ class TestLocationConfig(tests.TestCaseInTempDir):
     def test_get_global_config(self):
         my_config = config.BranchConfig(FakeBranch('http://example.com'))
         global_config = my_config._get_global_config()
-        self.failUnless(isinstance(global_config, config.GlobalConfig))
-        self.failUnless(global_config is my_config._get_global_config())
+        self.assertIsInstance(global_config, config.GlobalConfig)
+        self.assertIs(global_config, my_config._get_global_config())
+
+    def assertLocationMatching(self, expected):
+        self.assertEqual(expected,
+                         list(self.my_location_config._get_matching_sections()))
 
     def test__get_matching_sections_no_match(self):
         self.get_branch_config('/')
-        self.assertEqual([], self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([])
 
     def test__get_matching_sections_exact(self):
         self.get_branch_config('http://www.example.com')
-        self.assertEqual([('http://www.example.com', '')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('http://www.example.com', '')])
 
     def test__get_matching_sections_suffix_does_not(self):
         self.get_branch_config('http://www.example.com-com')
-        self.assertEqual([], self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([])
 
     def test__get_matching_sections_subdir_recursive(self):
         self.get_branch_config('http://www.example.com/com')
-        self.assertEqual([('http://www.example.com', 'com')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('http://www.example.com', 'com')])
 
     def test__get_matching_sections_ignoreparent(self):
         self.get_branch_config('http://www.example.com/ignoreparent')
-        self.assertEqual([('http://www.example.com/ignoreparent', '')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('http://www.example.com/ignoreparent',
+                                      '')])
 
     def test__get_matching_sections_ignoreparent_subdir(self):
         self.get_branch_config(
             'http://www.example.com/ignoreparent/childbranch')
-        self.assertEqual([('http://www.example.com/ignoreparent',
-                           'childbranch')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('http://www.example.com/ignoreparent',
+                                      'childbranch')])
 
     def test__get_matching_sections_subdir_trailing_slash(self):
         self.get_branch_config('/b')
-        self.assertEqual([('/b/', '')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('/b/', '')])
 
     def test__get_matching_sections_subdir_child(self):
         self.get_branch_config('/a/foo')
-        self.assertEqual([('/a/*', ''), ('/a/', 'foo')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('/a/*', ''), ('/a/', 'foo')])
 
     def test__get_matching_sections_subdir_child_child(self):
         self.get_branch_config('/a/foo/bar')
-        self.assertEqual([('/a/*', 'bar'), ('/a/', 'foo/bar')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('/a/*', 'bar'), ('/a/', 'foo/bar')])
 
     def test__get_matching_sections_trailing_slash_with_children(self):
         self.get_branch_config('/a/')
-        self.assertEqual([('/a/', '')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('/a/', '')])
 
     def test__get_matching_sections_explicit_over_glob(self):
         # XXX: 2006-09-08 jamesh
@@ -991,8 +1349,7 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         # was a config section for '/a/?', it would get precedence
         # over '/a/c'.
         self.get_branch_config('/a/c')
-        self.assertEqual([('/a/c', ''), ('/a/*', ''), ('/a/', 'c')],
-                         self.my_location_config._get_matching_sections())
+        self.assertLocationMatching([('/a/c', ''), ('/a/*', ''), ('/a/', 'c')])
 
     def test__get_option_policy_normal(self):
         self.get_branch_config('http://www.example.com')
@@ -1019,6 +1376,21 @@ class TestLocationConfig(tests.TestCaseInTempDir):
             self.my_location_config._get_option_policy(
             'http://www.example.com', 'appendpath_option'),
             config.POLICY_APPENDPATH)
+
+    def test__get_options_with_policy(self):
+        self.get_branch_config('/dir/subdir',
+                               location_config="""\
+[/dir]
+other_url = /other-dir
+other_url:policy = appendpath
+[/dir/subdir]
+other_url = /other-subdir
+""")
+        self.assertOptions(
+            [(u'other_url', u'/other-subdir', u'/dir/subdir', 'locations'),
+             (u'other_url', u'/other-dir', u'/dir', 'locations'),
+             (u'other_url:policy', u'appendpath', u'/dir', 'locations')],
+            self.my_location_config)
 
     def test_location_without_username(self):
         self.get_branch_config('http://www.example.com/ignoreparent')
@@ -1161,15 +1533,18 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.assertEqual('bzrlib.tests.test_config.post_commit',
                          self.my_config.post_commit())
 
-    def get_branch_config(self, location, global_config=None):
+    def get_branch_config(self, location, global_config=None,
+                          location_config=None):
         my_branch = FakeBranch(location)
         if global_config is None:
             global_config = sample_config_text
+        if location_config is None:
+            location_config = sample_branches_text
 
         my_global_config = config.GlobalConfig.from_string(global_config,
                                                            save=True)
         my_location_config = config.LocationConfig.from_string(
-            sample_branches_text, my_branch.base, save=True)
+            location_config, my_branch.base, save=True)
         my_config = config.BranchConfig(my_branch)
         self.my_config = my_config
         self.my_location_config = my_config._get_location_config()
@@ -1220,7 +1595,7 @@ class TestLocationConfig(tests.TestCaseInTempDir):
         self.assertEqual('bzr', my_config.get_bzr_remote_path())
         my_config.set_user_option('bzr_remote_path', '/path-bzr')
         self.assertEqual('/path-bzr', my_config.get_bzr_remote_path())
-        os.environ['BZR_REMOTE_PATH'] = '/environ-bzr'
+        self.overrideEnv('BZR_REMOTE_PATH', '/environ-bzr')
         self.assertEqual('/environ-bzr', my_config.get_bzr_remote_path())
 
 
@@ -1272,7 +1647,7 @@ class TestBranchConfigItems(tests.TestCaseInTempDir):
         self.assertEqual("John", my_config._get_user_id())
 
     def test_BZR_EMAIL_OVERRIDES(self):
-        os.environ['BZR_EMAIL'] = "Robert Collins <robertc@example.org>"
+        self.overrideEnv('BZR_EMAIL', "Robert Collins <robertc@example.org>")
         branch = FakeBranch()
         my_config = config.BranchConfig(branch)
         self.assertEqual("Robert Collins <robertc@example.org>",
@@ -1471,51 +1846,461 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
-def create_configs(test):
-    """Create configuration files for a given test.
+class TestSection(tests.TestCase):
 
-    This requires creating a tree (and populate the ``test.tree`` attribute and
-    its associated branch and will populate the following attributes:
+    # FIXME: Parametrize so that all sections produced by Stores run these
+    # tests -- vila 2011-04-01
 
-    - branch_config: A BranchConfig for the associated branch.
+    def test_get_a_value(self):
+        a_dict = dict(foo='bar')
+        section = config.Section('myID', a_dict)
+        self.assertEquals('bar', section.get('foo'))
 
-    - locations_config : A LocationConfig for the associated branch
+    def test_get_unknown_option(self):
+        a_dict = dict()
+        section = config.Section(None, a_dict)
+        self.assertEquals('out of thin air',
+                          section.get('foo', 'out of thin air'))
 
-    - bazaar_config: A GlobalConfig.
-
-    The tree and branch are created in a 'tree' subdirectory so the tests can
-    still use the test directory to stay outside of the branch.
-    """
-    tree = test.make_branch_and_tree('tree')
-    test.tree = tree
-    test.branch_config = config.BranchConfig(tree.branch)
-    test.locations_config = config.LocationConfig(tree.basedir)
-    test.bazaar_config = config.GlobalConfig()
-
-
-def create_configs_with_file_option(test):
-    """Create configuration files with a ``file`` option set in each.
-
-    This builds on ``create_configs`` and add one ``file`` option in each
-    configuration with a value which allows identifying the configuration file.
-    """
-    create_configs(test)
-    test.bazaar_config.set_user_option('file', 'bazaar')
-    test.locations_config.set_user_option('file', 'locations')
-    test.branch_config.set_user_option('file', 'branch')
+    def test_options_is_shared(self):
+        a_dict = dict()
+        section = config.Section(None, a_dict)
+        self.assertIs(a_dict, section.options)
 
 
-class TestConfigGetOptions(tests.TestCaseWithTransport):
+class TestMutableSection(tests.TestCase):
+
+    # FIXME: Parametrize so that all sections (including os.environ and the
+    # ones produced by Stores) run these tests -- vila 2011-04-01
+
+    def test_set(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'new_value')
+        self.assertEquals('new_value', section.get('foo'))
+        # The change appears in the shared section
+        self.assertEquals('new_value', a_dict.get('foo'))
+        # We keep track of the change
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_set_preserve_original_once(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'first_value')
+        section.set('foo', 'second_value')
+        # We keep track of the original value
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_remove(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.remove('foo')
+        # We get None for unknown options via the default value
+        self.assertEquals(None, section.get('foo'))
+        # Or we just get the default value
+        self.assertEquals('unknown', section.get('foo', 'unknown'))
+        self.assertFalse('foo' in section.options)
+        # We keep track of the deletion
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_remove_new_option(self):
+        a_dict = dict()
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'bar')
+        section.remove('foo')
+        self.assertFalse('foo' in section.options)
+        # The option didn't exist initially so it we need to keep track of it
+        # with a special value
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals(config._NewlyCreatedOption, section.orig['foo'])
+
+
+class TestStore(tests.TestCaseWithTransport):
+
+    def assertSectionContent(self, expected, section):
+        """Assert that some options have the proper values in a section."""
+        expected_name, expected_options = expected
+        self.assertEquals(expected_name, section.id)
+        self.assertEquals(
+            expected_options,
+            dict([(k, section.get(k)) for k in expected_options.keys()]))
+
+
+class TestReadonlyStore(TestStore):
+
+    scenarios = [(key, {'get_store': builder})
+                 for key, builder in test_store_builder_registry.iteritems()]
+
+    def setUp(self):
+        super(TestReadonlyStore, self).setUp()
+        self.branch = self.make_branch('branch')
+
+    def test_building_delays_load(self):
+        store = self.get_store(self)
+        self.assertEquals(False, store.is_loaded())
+        store._load_from_string('')
+        self.assertEquals(True, store.is_loaded())
+
+    def test_get_no_sections_for_empty(self):
+        store = self.get_store(self)
+        store._load_from_string('')
+        self.assertEquals([], list(store.get_sections()))
+
+    def test_get_default_section(self):
+        store = self.get_store(self)
+        store._load_from_string('foo=bar')
+        sections = list(store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
+
+    def test_get_named_section(self):
+        store = self.get_store(self)
+        store._load_from_string('[baz]\nfoo=bar')
+        sections = list(store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
+
+    def test_load_from_string_fails_for_non_empty_store(self):
+        store = self.get_store(self)
+        store._load_from_string('foo=bar')
+        self.assertRaises(AssertionError, store._load_from_string, 'bar=baz')
+
+
+class TestMutableStore(TestStore):
+
+    scenarios = [(key, {'store_id': key, 'get_store': builder})
+                 for key, builder in test_store_builder_registry.iteritems()]
+
+    def setUp(self):
+        super(TestMutableStore, self).setUp()
+        self.transport = self.get_transport()
+        self.branch = self.make_branch('branch')
+
+    def has_store(self, store):
+        store_basename = urlutils.relative_url(self.transport.external_url(),
+                                               store.external_url())
+        return self.transport.has(store_basename)
+
+    def test_save_empty_creates_no_file(self):
+        if self.store_id == 'branch':
+            raise tests.TestNotApplicable(
+                'branch.conf is *always* created when a branch is initialized')
+        store = self.get_store(self)
+        store.save()
+        self.assertEquals(False, self.has_store(store))
+
+    def test_save_emptied_succeeds(self):
+        store = self.get_store(self)
+        store._load_from_string('foo=bar\n')
+        section = store.get_mutable_section(None)
+        section.remove('foo')
+        store.save()
+        self.assertEquals(True, self.has_store(store))
+        modified_store = self.get_store(self)
+        sections = list(modified_store.get_sections())
+        self.assertLength(0, sections)
+
+    def test_save_with_content_succeeds(self):
+        if self.store_id == 'branch':
+            raise tests.TestNotApplicable(
+                'branch.conf is *always* created when a branch is initialized')
+        store = self.get_store(self)
+        store._load_from_string('foo=bar\n')
+        self.assertEquals(False, self.has_store(store))
+        store.save()
+        self.assertEquals(True, self.has_store(store))
+        modified_store = self.get_store(self)
+        sections = list(modified_store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
+
+    def test_set_option_in_empty_store(self):
+        store = self.get_store(self)
+        section = store.get_mutable_section(None)
+        section.set('foo', 'bar')
+        store.save()
+        modified_store = self.get_store(self)
+        sections = list(modified_store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
+
+    def test_set_option_in_default_section(self):
+        store = self.get_store(self)
+        store._load_from_string('')
+        section = store.get_mutable_section(None)
+        section.set('foo', 'bar')
+        store.save()
+        modified_store = self.get_store(self)
+        sections = list(modified_store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
+
+    def test_set_option_in_named_section(self):
+        store = self.get_store(self)
+        store._load_from_string('')
+        section = store.get_mutable_section('baz')
+        section.set('foo', 'bar')
+        store.save()
+        modified_store = self.get_store(self)
+        sections = list(modified_store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
+
+
+class TestIniFileStore(TestStore):
+
+    def test_loading_unknown_file_fails(self):
+        store = config.IniFileStore(self.get_transport(), 'I-do-not-exist')
+        self.assertRaises(errors.NoSuchFile, store.load)
+
+    def test_invalid_content(self):
+        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
+        self.assertEquals(False, store.is_loaded())
+        exc = self.assertRaises(
+            errors.ParseConfigError, store._load_from_string,
+            'this is invalid !')
+        self.assertEndsWith(exc.filename, 'foo.conf')
+        # And the load failed
+        self.assertEquals(False, store.is_loaded())
+
+    def test_get_embedded_sections(self):
+        # A more complicated example (which also shows that section names and
+        # option names share the same name space...)
+        # FIXME: This should be fixed by forbidding dicts as values ?
+        # -- vila 2011-04-05
+        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
+        store._load_from_string('''
+foo=bar
+l=1,2
+[DEFAULT]
+foo_in_DEFAULT=foo_DEFAULT
+[bar]
+foo_in_bar=barbar
+[baz]
+foo_in_baz=barbaz
+[[qux]]
+foo_in_qux=quux
+''')
+        sections = list(store.get_sections())
+        self.assertLength(4, sections)
+        # The default section has no name.
+        # List values are provided as lists
+        self.assertSectionContent((None, {'foo': 'bar', 'l': ['1', '2']}),
+                                  sections[0])
+        self.assertSectionContent(
+            ('DEFAULT', {'foo_in_DEFAULT': 'foo_DEFAULT'}), sections[1])
+        self.assertSectionContent(
+            ('bar', {'foo_in_bar': 'barbar'}), sections[2])
+        # sub sections are provided as embedded dicts.
+        self.assertSectionContent(
+            ('baz', {'foo_in_baz': 'barbaz', 'qux': {'foo_in_qux': 'quux'}}),
+            sections[3])
+
+
+class TestLockableIniFileStore(TestStore):
+
+    def test_create_store_in_created_dir(self):
+        t = self.get_transport('dir/subdir')
+        store = config.LockableIniFileStore(t, 'foo.conf')
+        store.get_mutable_section(None).set('foo', 'bar')
+        store.save()
+
+    # FIXME: We should adapt the tests in TestLockableConfig about concurrent
+    # writes. Since this requires a clearer rewrite, I'll just rely on using
+    # the same code in LockableIniFileStore (copied from LockableConfig, but
+    # trivial enough, the main difference is that we add @needs_write_lock on
+    # save() instead of set_user_option() and remove_user_option()). The intent
+    # is to ensure that we always get a valid content for the store even when
+    # concurrent accesses occur, read/write, write/write. It may be worth
+    # looking into removing the lock dir when it;s not needed anymore and look
+    # at possible fallouts for concurrent lockers -- vila 20110-04-06
+
+
+class TestSectionMatcher(TestStore):
+
+    scenarios = [('location', {'matcher': config.LocationMatcher})]
+
+    def get_store(self, file_name):
+        return config.IniFileStore(self.get_readonly_transport(), file_name)
+
+    def test_no_matches_for_empty_stores(self):
+        store = self.get_store('foo.conf')
+        store._load_from_string('')
+        matcher = self.matcher(store, '/bar')
+        self.assertEquals([], list(matcher.get_sections()))
+
+    def test_build_doesnt_load_store(self):
+        store = self.get_store('foo.conf')
+        matcher = self.matcher(store, '/bar')
+        self.assertFalse(store.is_loaded())
+
+
+class TestLocationSection(tests.TestCase):
+
+    def get_section(self, options, extra_path):
+        section = config.Section('foo', options)
+        # We don't care about the length so we use '0'
+        return config.LocationSection(section, 0, extra_path)
+
+    def test_simple_option(self):
+        section = self.get_section({'foo': 'bar'}, '')
+        self.assertEquals('bar', section.get('foo'))
+
+    def test_option_with_extra_path(self):
+        section = self.get_section({'foo': 'bar', 'foo:policy': 'appendpath'},
+                                   'baz')
+        self.assertEquals('bar/baz', section.get('foo'))
+
+    def test_invalid_policy(self):
+        section = self.get_section({'foo': 'bar', 'foo:policy': 'die'},
+                                   'baz')
+        # invalid policies are ignored
+        self.assertEquals('bar', section.get('foo'))
+
+
+class TestLocationMatcher(TestStore):
+
+    def get_store(self, file_name):
+        return config.IniFileStore(self.get_readonly_transport(), file_name)
+
+    def test_more_specific_sections_first(self):
+        store = self.get_store('foo.conf')
+        store._load_from_string('''
+[/foo]
+section=/foo
+[/foo/bar]
+section=/foo/bar
+''')
+        self.assertEquals(['/foo', '/foo/bar'],
+                          [section.id for section in store.get_sections()])
+        matcher = config.LocationMatcher(store, '/foo/bar/baz')
+        sections = list(matcher.get_sections())
+        self.assertEquals([3, 2],
+                          [section.length for section in sections])
+        self.assertEquals(['/foo/bar', '/foo'],
+                          [section.id for section in sections])
+        self.assertEquals(['baz', 'bar/baz'],
+                          [section.extra_path for section in sections])
+
+    def test_appendpath_in_no_name_section(self):
+        # It's a bit weird to allow appendpath in a no-name section, but
+        # someone may found a use for it
+        store = self.get_store('foo.conf')
+        store._load_from_string('''
+foo=bar
+foo:policy = appendpath
+''')
+        matcher = config.LocationMatcher(store, 'dir/subdir')
+        sections = list(matcher.get_sections())
+        self.assertLength(1, sections)
+        self.assertEquals('bar/dir/subdir', sections[0].get('foo'))
+
+    def test_file_urls_are_normalized(self):
+        store = self.get_store('foo.conf')
+        matcher = config.LocationMatcher(store, 'file:///dir/subdir')
+        self.assertEquals('/dir/subdir', matcher.location)
+
+
+class TestStackGet(tests.TestCase):
+
+    # FIXME: This should be parametrized for all known Stack or dedicated
+    # paramerized tests created to avoid bloating -- vila 2011-03-31
+
+    def test_single_config_get(self):
+        conf = dict(foo='bar')
+        conf_stack = config.Stack([conf])
+        self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_first_definition(self):
+        conf1 = dict(foo='bar')
+        conf2 = dict(foo='baz')
+        conf_stack = config.Stack([conf1, conf2])
+        self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_embedded_definition(self):
+        conf1 = dict(yy='12')
+        conf2 = config.Stack([dict(xx='42'), dict(foo='baz')])
+        conf_stack = config.Stack([conf1, conf2])
+        self.assertEquals('baz', conf_stack.get('foo'))
+
+    def test_get_for_empty_stack(self):
+        conf_stack = config.Stack([])
+        self.assertEquals(None, conf_stack.get('foo'))
+
+    def test_get_for_empty_section_callable(self):
+        conf_stack = config.Stack([lambda : []])
+        self.assertEquals(None, conf_stack.get('foo'))
+
+    def test_get_for_broken_callable(self):
+        # Trying to use and invalid callable raises an exception on first use
+        conf_stack = config.Stack([lambda : object()])
+        self.assertRaises(TypeError, conf_stack.get, 'foo')
+
+
+class TestStackWithTransport(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestStackWithTransport, self).setUp()
+        # FIXME: A more elaborate builder for the stack would avoid building a
+        # branch even for tests that don't need it.
+        self.branch = self.make_branch('branch')
+
+
+class TestStackSet(TestStackWithTransport):
+
+    scenarios = [(key, {'get_stack': builder})
+                 for key, builder in test_stack_builder_registry.iteritems()]
+
+    def test_simple_set(self):
+        conf = self.get_stack(self)
+        conf.store._load_from_string('foo=bar')
+        self.assertEquals('bar', conf.get('foo'))
+        conf.set('foo', 'baz')
+        # Did we get it back ?
+        self.assertEquals('baz', conf.get('foo'))
+
+    def test_set_creates_a_new_section(self):
+        conf = self.get_stack(self)
+        conf.set('foo', 'baz')
+        self.assertEquals, 'baz', conf.get('foo')
+
+
+class TestStackRemove(TestStackWithTransport):
+
+    scenarios = [(key, {'get_stack': builder})
+                 for key, builder in test_stack_builder_registry.iteritems()]
+
+    def test_remove_existing(self):
+        conf = self.get_stack(self)
+        conf.store._load_from_string('foo=bar')
+        self.assertEquals('bar', conf.get('foo'))
+        conf.remove('foo')
+        # Did we get it back ?
+        self.assertEquals(None, conf.get('foo'))
+
+    def test_remove_unknown(self):
+        conf = self.get_stack(self)
+        self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
+
+
+class TestConcreteStacks(TestStackWithTransport):
+
+    scenarios = [(key, {'get_stack': builder})
+                 for key, builder in test_stack_builder_registry.iteritems()]
+
+    def test_build_stack(self):
+        stack = self.get_stack(self)
+
+
+class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):
         super(TestConfigGetOptions, self).setUp()
         create_configs(self)
 
-    def assertOptions(self, expected, conf):
-        actual = list(conf._get_options())
-        self.assertEqual(expected, actual)
-
-    # One variable in none of the above
     def test_no_variable(self):
         # Using branch should query branch, locations and bazaar
         self.assertOptions([], self.branch_config)
@@ -1563,15 +2348,11 @@ class TestConfigGetOptions(tests.TestCaseWithTransport):
             self.branch_config)
 
 
-class TestConfigRemoveOption(tests.TestCaseWithTransport):
+class TestConfigRemoveOption(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):
         super(TestConfigRemoveOption, self).setUp()
         create_configs_with_file_option(self)
-
-    def assertOptions(self, expected, conf):
-        actual = list(conf._get_options())
-        self.assertEqual(expected, actual)
 
     def test_remove_in_locations(self):
         self.locations_config.remove_user_option('file', self.tree.basedir)
@@ -2165,3 +2946,25 @@ class TestPlainTextCredentialStore(tests.TestCase):
 # test_user_prompted ?
 class TestAuthenticationRing(tests.TestCaseWithTransport):
     pass
+
+
+class TestAutoUserId(tests.TestCase):
+    """Test inferring an automatic user name."""
+
+    def test_auto_user_id(self):
+        """Automatic inference of user name.
+        
+        This is a bit hard to test in an isolated way, because it depends on
+        system functions that go direct to /etc or perhaps somewhere else.
+        But it's reasonable to say that on Unix, with an /etc/mailname, we ought
+        to be able to choose a user name with no configuration.
+        """
+        if sys.platform == 'win32':
+            raise TestSkipped("User name inference not implemented on win32")
+        realname, address = config._auto_user_id()
+        if os.path.exists('/etc/mailname'):
+            self.assertIsNot(None, realname)
+            self.assertIsNot(None, address)
+        else:
+            self.assertEquals((None, None), (realname, address))
+

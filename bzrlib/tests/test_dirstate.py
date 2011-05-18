@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 """Tests of the dirstate functionality being built for WorkingTreeFormat4."""
 
-import bisect
 import os
 
 from bzrlib import (
@@ -29,6 +28,7 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import test_osutils
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
 # TODO:
@@ -44,18 +44,13 @@ from bzrlib.tests import test_osutils
 # set_path_id  setting id when state is in memory modified
 
 
-def load_tests(basic_tests, module, loader):
-    suite = loader.suiteClass()
-    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
-        basic_tests, tests.condition_isinstance(TestCaseWithDirState))
-    tests.multiply_tests(dir_reader_tests,
-                         test_osutils.dir_reader_scenarios(), suite)
-    suite.addTest(remaining_tests)
-    return suite
+load_tests = load_tests_apply_scenarios
 
 
 class TestCaseWithDirState(tests.TestCaseWithTransport):
     """Helper functions for creating DirState objects with various content."""
+
+    scenarios = test_osutils.dir_reader_scenarios()
 
     # Set by load_tests
     _dir_reader_class = None
@@ -532,6 +527,19 @@ class TestTreeToDirState(TestCaseWithDirState):
 
 class TestDirStateOnFile(TestCaseWithDirState):
 
+    def create_updated_dirstate(self):
+        self.build_tree(['a-file'])
+        tree = self.make_branch_and_tree('.')
+        tree.add(['a-file'], ['a-id'])
+        tree.commit('add a-file')
+        # Save and unlock the state, re-open it in readonly mode
+        state = dirstate.DirState.from_tree(tree, 'dirstate')
+        state.save()
+        state.unlock()
+        state = dirstate.DirState.on_file('dirstate')
+        state.lock_read()
+        return state
+
     def test_construct_with_path(self):
         tree = self.make_branch_and_tree('tree')
         state = dirstate.DirState.from_tree(tree, 'dirstate.from_tree')
@@ -566,37 +574,25 @@ class TestDirStateOnFile(TestCaseWithDirState):
             state.unlock()
 
     def test_can_save_in_read_lock(self):
-        self.build_tree(['a-file'])
-        state = dirstate.DirState.initialize('dirstate')
-        try:
-            # No stat and no sha1 sum.
-            state.add('a-file', 'a-file-id', 'file', None, '')
-            state.save()
-        finally:
-            state.unlock()
-
-        # Now open in readonly mode
-        state = dirstate.DirState.on_file('dirstate')
-        state.lock_read()
+        state = self.create_updated_dirstate()
         try:
             entry = state._get_entry(0, path_utf8='a-file')
             # The current size should be 0 (default)
             self.assertEqual(0, entry[1][0][2])
             # We should have a real entry.
             self.assertNotEqual((None, None), entry)
-            # Make sure everything is old enough
+            # Set the cutoff-time into the future, so things look cacheable
             state._sha_cutoff_time()
-            state._cutoff_time += 10
-            # Change the file length
-            self.build_tree_contents([('a-file', 'shorter')])
-            sha1sum = dirstate.update_entry(state, entry, 'a-file',
-                os.lstat('a-file'))
-            # new file, no cached sha:
-            self.assertEqual(None, sha1sum)
+            state._cutoff_time += 10.0
+            st = os.lstat('a-file')
+            sha1sum = dirstate.update_entry(state, entry, 'a-file', st)
+            # We updated the current sha1sum because the file is cacheable
+            self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
+                             sha1sum)
 
             # The dirblock has been updated
-            self.assertEqual(7, entry[1][0][2])
-            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+            self.assertEqual(st.st_size, entry[1][0][2])
+            self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                              state._dirblock_state)
 
             del entry
@@ -611,30 +607,25 @@ class TestDirStateOnFile(TestCaseWithDirState):
         state.lock_read()
         try:
             entry = state._get_entry(0, path_utf8='a-file')
-            self.assertEqual(7, entry[1][0][2])
+            self.assertEqual(st.st_size, entry[1][0][2])
         finally:
             state.unlock()
 
     def test_save_fails_quietly_if_locked(self):
         """If dirstate is locked, save will fail without complaining."""
-        self.build_tree(['a-file'])
-        state = dirstate.DirState.initialize('dirstate')
-        try:
-            # No stat and no sha1 sum.
-            state.add('a-file', 'a-file-id', 'file', None, '')
-            state.save()
-        finally:
-            state.unlock()
-
-        state = dirstate.DirState.on_file('dirstate')
-        state.lock_read()
+        state = self.create_updated_dirstate()
         try:
             entry = state._get_entry(0, path_utf8='a-file')
-            sha1sum = dirstate.update_entry(state, entry, 'a-file',
-                os.lstat('a-file'))
-            # No sha - too new
-            self.assertEqual(None, sha1sum)
-            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+            # No cached sha1 yet.
+            self.assertEqual('', entry[1][0][1])
+            # Set the cutoff-time into the future, so things look cacheable
+            state._sha_cutoff_time()
+            state._cutoff_time += 10.0
+            st = os.lstat('a-file')
+            sha1sum = dirstate.update_entry(state, entry, 'a-file', st)
+            self.assertEqual('ecc5374e9ed82ad3ea3b4d452ea995a5fd3e70e3',
+                             sha1sum)
+            self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                              state._dirblock_state)
 
             # Now, before we try to save, grab another dirstate, and take out a
@@ -730,6 +721,14 @@ class TestDirStateInitialize(TestCaseWithDirState):
 
 class TestDirStateManipulations(TestCaseWithDirState):
 
+    def make_minimal_tree(self):
+        tree1 = self.make_branch_and_memory_tree('tree1')
+        tree1.lock_write()
+        self.addCleanup(tree1.unlock)
+        tree1.add('')
+        revid1 = tree1.commit('foo')
+        return tree1, revid1
+
     def test_update_minimal_updates_id_index(self):
         state = self.create_dirstate_with_root_and_subdir()
         self.addCleanup(state.unlock)
@@ -748,15 +747,9 @@ class TestDirStateManipulations(TestCaseWithDirState):
 
     def test_set_state_from_inventory_no_content_no_parents(self):
         # setting the current inventory is a slow but important api to support.
-        tree1 = self.make_branch_and_memory_tree('tree1')
-        tree1.lock_write()
-        try:
-            tree1.add('')
-            revid1 = tree1.commit('foo').encode('utf8')
-            root_id = tree1.get_root_id()
-            inv = tree1.inventory
-        finally:
-            tree1.unlock()
+        tree1, revid1 = self.make_minimal_tree()
+        inv = tree1.inventory
+        root_id = inv.path2id('')
         expected_result = [], [
             (('', '', root_id), [
              ('d', '', 0, False, dirstate.DirState.NULLSTAT)])]
@@ -764,6 +757,50 @@ class TestDirStateManipulations(TestCaseWithDirState):
         try:
             state.set_state_from_inventory(inv)
             self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                             state._header_state)
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                             state._dirblock_state)
+        except:
+            state.unlock()
+            raise
+        else:
+            # This will unlock it
+            self.check_state_with_reopen(expected_result, state)
+
+    def test_set_state_from_scratch_no_parents(self):
+        tree1, revid1 = self.make_minimal_tree()
+        inv = tree1.inventory
+        root_id = inv.path2id('')
+        expected_result = [], [
+            (('', '', root_id), [
+             ('d', '', 0, False, dirstate.DirState.NULLSTAT)])]
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            state.set_state_from_scratch(inv, [], [])
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                             state._header_state)
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+                             state._dirblock_state)
+        except:
+            state.unlock()
+            raise
+        else:
+            # This will unlock it
+            self.check_state_with_reopen(expected_result, state)
+
+    def test_set_state_from_scratch_identical_parent(self):
+        tree1, revid1 = self.make_minimal_tree()
+        inv = tree1.inventory
+        root_id = inv.path2id('')
+        rev_tree1 = tree1.branch.repository.revision_tree(revid1)
+        d_entry = ('d', '', 0, False, dirstate.DirState.NULLSTAT)
+        parent_entry = ('d', '', 0, False, revid1)
+        expected_result = [revid1], [
+            (('', '', root_id), [d_entry, parent_entry])]
+        state = dirstate.DirState.initialize('dirstate')
+        try:
+            state.set_state_from_scratch(inv, [(revid1, rev_tree1)], [])
+            self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                              state._header_state)
             self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                              state._dirblock_state)
@@ -1302,6 +1339,53 @@ class TestDirStateManipulations(TestCaseWithDirState):
             tree1.unlock()
 
 
+class TestDirStateHashUpdates(TestCaseWithDirState):
+
+    def do_update_entry(self, state, path):
+        entry = state._get_entry(0, path_utf8=path)
+        stat = os.lstat(path)
+        return dirstate.update_entry(state, entry, os.path.abspath(path), stat)
+
+    def test_worth_saving_limit_avoids_writing(self):
+        tree = self.make_branch_and_tree('.')
+        self.build_tree(['c', 'd'])
+        tree.lock_write()
+        tree.add(['c', 'd'], ['c-id', 'd-id'])
+        tree.commit('add c and d')
+        state = InstrumentedDirState.on_file(tree.current_dirstate()._filename,
+                                             worth_saving_limit=2)
+        tree.unlock()
+        state.lock_write()
+        self.addCleanup(state.unlock)
+        state._read_dirblocks_if_needed()
+        state.adjust_time(+20) # Allow things to be cached
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        f = open(state._filename, 'rb')
+        try:
+            content = f.read()
+        finally:
+            f.close()
+        self.do_update_entry(state, 'c')
+        self.assertEqual(1, len(state._known_hash_changes))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
+                         state._dirblock_state)
+        state.save()
+        # It should not have set the state to IN_MEMORY_UNMODIFIED because the
+        # hash values haven't been written out.
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
+                         state._dirblock_state)
+        self.assertFileEqual(content, state._filename)
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
+                         state._dirblock_state)
+        self.do_update_entry(state, 'd')
+        self.assertEqual(2, len(state._known_hash_changes))
+        state.save()
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        self.assertEqual(0, len(state._known_hash_changes))
+
+
 class TestGetLines(TestCaseWithDirState):
 
     def test_get_line_with_2_rows(self):
@@ -1700,8 +1784,9 @@ class TestDirstateSortOrder(tests.TestCaseWithTransport):
 class InstrumentedDirState(dirstate.DirState):
     """An DirState with instrumented sha1 functionality."""
 
-    def __init__(self, path, sha1_provider):
-        super(InstrumentedDirState, self).__init__(path, sha1_provider)
+    def __init__(self, path, sha1_provider, worth_saving_limit=0):
+        super(InstrumentedDirState, self).__init__(path, sha1_provider,
+            worth_saving_limit=worth_saving_limit)
         self._time_offset = 0
         self._log = []
         # member is dynamically set in DirState.__init__ to turn on trace

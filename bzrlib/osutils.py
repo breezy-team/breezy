@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -53,18 +53,10 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     )
 
-# sha and md5 modules are deprecated in python2.6 but hashlib is available as
-# of 2.5
-if sys.version_info < (2, 5):
-    import md5 as _mod_md5
-    md5 = _mod_md5.new
-    import sha as _mod_sha
-    sha = _mod_sha.new
-else:
-    from hashlib import (
-        md5,
-        sha1 as sha,
-        )
+from hashlib import (
+    md5,
+    sha1 as sha,
+    )
 
 
 import bzrlib
@@ -96,8 +88,8 @@ def get_unicode_argv():
         user_encoding = get_user_encoding()
         return [a.decode(user_encoding) for a in sys.argv[1:]]
     except UnicodeDecodeError:
-        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
-                                                            "encoding." % a))
+        raise errors.BzrError("Parameter %r encoding is unsupported by %s "
+            "application locale." % (a, user_encoding))
 
 
 def make_readonly(filename):
@@ -395,6 +387,12 @@ splitext = os.path.splitext
 # These were already lazily imported into local scope
 # mkdtemp = tempfile.mkdtemp
 # rmtree = shutil.rmtree
+lstat = os.lstat
+fstat = os.fstat
+
+def wrap_stat(st):
+    return st
+
 
 MIN_ABS_PATHLENGTH = 1
 
@@ -410,6 +408,14 @@ if sys.platform == 'win32':
     getcwd = _win32_getcwd
     mkdtemp = _win32_mkdtemp
     rename = _win32_rename
+    try:
+        from bzrlib import _walkdirs_win32
+    except ImportError:
+        pass
+    else:
+        lstat = _walkdirs_win32.lstat
+        fstat = _walkdirs_win32.fstat
+        wrap_stat = _walkdirs_win32.wrap_stat
 
     MIN_ABS_PATHLENGTH = 3
 
@@ -970,7 +976,6 @@ def failed_to_load_extension(exception):
     # they tend to happen very early in startup when we can't check config
     # files etc, and also we want to report all failures but not spam the user
     # with 10 warnings.
-    from bzrlib import trace
     exception_str = str(exception)
     if exception_str not in _extension_load_failures:
         trace.mutter("failed to load compiled extension: %s" % exception_str)
@@ -1465,10 +1470,16 @@ def terminal_width():
     # a similar effect.
 
     # If BZR_COLUMNS is set, take it, user is always right
+    # Except if they specified 0 in which case, impose no limit here
     try:
-        return int(os.environ['BZR_COLUMNS'])
+        width = int(os.environ['BZR_COLUMNS'])
     except (KeyError, ValueError):
-        pass
+        width = None
+    if width is not None:
+        if width > 0:
+            return width
+        else:
+            return None
 
     isatty = getattr(sys.stdout, 'isatty', None)
     if isatty is None or not isatty():
@@ -1878,7 +1889,10 @@ def copy_ownership_from_path(dst, src=None):
         s = os.stat(src)
         chown(dst, s.st_uid, s.st_gid)
     except OSError, e:
-        trace.warning("Unable to copy ownership from '%s' to '%s': IOError: %s." % (src, dst, e))
+        trace.warning(
+            'Unable to copy ownership from "%s" to "%s". '
+            'You may want to set it manually.', src, dst)
+        trace.log_exception_quietly()
 
 
 def path_prefix_key(path):
@@ -1996,6 +2010,14 @@ def get_host_name():
 # data at once.
 MAX_SOCKET_CHUNK = 64 * 1024
 
+_end_of_stream_errors = [errno.ECONNRESET]
+for _eno in ['WSAECONNRESET', 'WSAECONNABORTED']:
+    _eno = getattr(errno, _eno, None)
+    if _eno is not None:
+        _end_of_stream_errors.append(_eno)
+del _eno
+
+
 def read_bytes_from_socket(sock, report_activity=None,
         max_read_size=MAX_SOCKET_CHUNK):
     """Read up to max_read_size of bytes from sock and notify of progress.
@@ -2009,7 +2031,7 @@ def read_bytes_from_socket(sock, report_activity=None,
             bytes = sock.recv(max_read_size)
         except socket.error, e:
             eno = e.args[0]
-            if eno == getattr(errno, "WSAECONNRESET", errno.ECONNRESET):
+            if eno in _end_of_stream_errors:
                 # The connection was closed by the other side.  Callers expect
                 # an empty string to signal end-of-stream.
                 return ""
@@ -2230,20 +2252,17 @@ else:
             termios.tcsetattr(fd, termios.TCSADRAIN, settings)
         return ch
 
-
 if sys.platform == 'linux2':
     def _local_concurrency():
-        concurrency = None
-        prefix = 'processor'
-        for line in file('/proc/cpuinfo', 'rb'):
-            if line.startswith(prefix):
-                concurrency = int(line[line.find(':')+1:]) + 1
-        return concurrency
+        try:
+            return os.sysconf('SC_NPROCESSORS_ONLN')
+        except (ValueError, OSError, AttributeError):
+            return None
 elif sys.platform == 'darwin':
     def _local_concurrency():
         return subprocess.Popen(['sysctl', '-n', 'hw.availcpu'],
                                 stdout=subprocess.PIPE).communicate()[0]
-elif sys.platform[0:7] == 'freebsd':
+elif "bsd" in sys.platform:
     def _local_concurrency():
         return subprocess.Popen(['sysctl', '-n', 'hw.ncpu'],
                                 stdout=subprocess.PIPE).communicate()[0]
@@ -2277,9 +2296,15 @@ def local_concurrency(use_cache=True):
     concurrency = os.environ.get('BZR_CONCURRENCY', None)
     if concurrency is None:
         try:
-            concurrency = _local_concurrency()
-        except (OSError, IOError):
-            pass
+            import multiprocessing
+        except ImportError:
+            # multiprocessing is only available on Python >= 2.6
+            try:
+                concurrency = _local_concurrency()
+            except (OSError, IOError):
+                pass
+        else:
+            concurrency = multiprocessing.cpu_count()
     try:
         concurrency = int(concurrency)
     except (TypeError, ValueError):
@@ -2377,3 +2402,49 @@ def available_backup_name(base, exists):
         counter += 1
         name = "%s.~%d~" % (base, counter)
     return name
+
+
+def set_fd_cloexec(fd):
+    """Set a Unix file descriptor's FD_CLOEXEC flag.  Do nothing if platform
+    support for this is not available.
+    """
+    try:
+        import fcntl
+        old = fcntl.fcntl(fd, fcntl.F_GETFD)
+        fcntl.fcntl(fd, fcntl.F_SETFD, old | fcntl.FD_CLOEXEC)
+    except (ImportError, AttributeError):
+        # Either the fcntl module or specific constants are not present
+        pass
+
+
+def find_executable_on_path(name):
+    """Finds an executable on the PATH.
+    
+    On Windows, this will try to append each extension in the PATHEXT
+    environment variable to the name, if it cannot be found with the name
+    as given.
+    
+    :param name: The base name of the executable.
+    :return: The path to the executable found or None.
+    """
+    path = os.environ.get('PATH')
+    if path is None:
+        return None
+    path = path.split(os.pathsep)
+    if sys.platform == 'win32':
+        exts = os.environ.get('PATHEXT', '').split(os.pathsep)
+        exts = [ext.lower() for ext in exts]
+        base, ext = os.path.splitext(name)
+        if ext != '':
+            if ext.lower() not in exts:
+                return None
+            name = base
+            exts = [ext]
+    else:
+        exts = ['']
+    for ext in exts:
+        for d in path:
+            f = os.path.join(d, name) + ext
+            if os.access(f, os.X_OK):
+                return f
+    return None

@@ -20,13 +20,15 @@ from bzrlib import (
     bzrdir,
     errors,
     gpg,
-    graph,
     remote,
     repository,
     tests,
     )
 from bzrlib.inventory import ROOT_ID
-from bzrlib.tests import TestSkipped
+from bzrlib.tests import (
+    TestNotApplicable,
+    TestSkipped,
+    )
 from bzrlib.tests.per_repository import TestCaseWithRepository
 
 
@@ -135,8 +137,9 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo.lock_write()
         self.addCleanup(repo.unlock)
         repo.fetch(source.repository)
+        graph = repo.get_file_graph()
         self.assertEqual(result,
-            repo.texts.get_parent_map([(root_id, 'tip')])[(root_id, 'tip')])
+            graph.get_parent_map([(root_id, 'tip')])[(root_id, 'tip')])
 
     def test_fetch_to_rich_root_set_parent_no_parents(self):
         # No parents rev -> No parents
@@ -263,7 +266,11 @@ class TestFetchSameRepository(TestCaseWithRepository):
         repo = wt.branch.repository
         repo.lock_write()
         repo.start_write_group()
-        repo.sign_revision('rev1', gpg.LoopbackGPGStrategy(None))
+        try:
+            repo.sign_revision('rev1', gpg.LoopbackGPGStrategy(None))
+        except errors.UnsupportedOperation:
+            self.assertFalse(repo._format.supports_revision_signatures)
+            raise TestNotApplicable("repository format does not support signatures")
         repo.commit_write_group()
         repo.unlock()
         return repo
@@ -349,29 +356,3 @@ class TestFetchSameRepository(TestCaseWithRepository):
         self.addCleanup(source.unlock)
         target.fetch(source, revision_id='B-id')
 
-
-class TestSource(TestCaseWithRepository):
-    """Tests for/about the results of Repository._get_source."""
-
-    def test_no_absent_records_in_stream_with_ghosts(self):
-        # XXX: Arguably should be in per_interrepository but
-        # doesn't actually gain coverage there; need a specific set of
-        # permutations to cover it.
-        # bug lp:376255 was reported about this.
-        builder = self.make_branch_builder('repo')
-        builder.start_series()
-        builder.build_snapshot('tip', ['ghost'],
-            [('add', ('', 'ROOT_ID', 'directory', ''))],
-            allow_leftmost_as_ghost=True)
-        builder.finish_series()
-        b = builder.get_branch()
-        b.lock_read()
-        self.addCleanup(b.unlock)
-        repo = b.repository
-        source = repo._get_source(repo._format)
-        search = graph.PendingAncestryResult(['tip'], repo)
-        stream = source.get_stream(search)
-        for substream_type, substream in stream:
-            for record in substream:
-                self.assertNotEqual('absent', record.storage_kind,
-                    "Absent record for %s" % (((substream_type,) + record.key),))

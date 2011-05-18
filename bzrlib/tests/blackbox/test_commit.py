@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,21 +17,24 @@
 
 """Tests for the commit CLI of bzr."""
 
+import doctest
 import os
 import re
 import sys
 
+from testtools.matchers import DocTestMatches
+
 from bzrlib import (
-    bzrdir,
+    config,
     osutils,
     ignores,
     msgeditor,
-    osutils,
     tests,
     )
 from bzrlib.bzrdir import BzrDir
 from bzrlib.tests import (
     probe_bad_non_ascii,
+    test_foreign,
     TestSkipped,
     UnicodeFilenameFeature,
     )
@@ -47,8 +50,17 @@ class TestCommit(TestCaseWithTransport):
         self.build_tree(['hello.txt'])
         out,err = self.run_bzr('commit -m empty', retcode=3)
         self.assertEqual('', out)
-        self.assertContainsRe(err, 'bzr: ERROR: No changes to commit\.'
-                                  ' Use --unchanged to commit anyhow.\n')
+        # Two ugly bits here.
+        # 1) We really don't want 'aborting commit write group' anymore.
+        # 2) bzr: ERROR: is a really long line, so we wrap it with '\'
+        self.assertThat(
+            err,
+            DocTestMatches("""\
+Committing to: ...
+bzr: ERROR: No changes to commit.\
+ Please 'bzr add' the files you want to commit,\
+ or use --unchanged to force an empty commit.
+""", flags=doctest.ELLIPSIS|doctest.REPORT_UDIFF))
 
     def test_commit_success(self):
         """Successful commit should not leave behind a bzr-commit-* file"""
@@ -59,6 +71,20 @@ class TestCommit(TestCaseWithTransport):
         # same for unicode messages
         self.run_bzr(["commit", "--unchanged", "-m", u'foo\xb5'])
         self.assertEqual('', self.run_bzr('unknowns')[0])
+
+    def test_commit_lossy_native(self):
+        """A --lossy option to commit is supported."""
+        self.make_branch_and_tree('.')
+        self.run_bzr('commit --lossy --unchanged -m message')
+        self.assertEqual('', self.run_bzr('unknowns')[0])
+
+    def test_commit_lossy_foreign(self):
+        test_foreign.register_dummy_foreign_for_test(self)
+        self.make_branch_and_tree('.',
+            format=test_foreign.DummyForeignVcsDirFormat())
+        self.run_bzr('commit --lossy --unchanged -m message')
+        output = self.run_bzr('revision-info')[0]
+        self.assertTrue(output.startswith('1 dummy-'))
 
     def test_commit_with_path(self):
         """Commit tree with path of root specified"""
@@ -78,7 +104,6 @@ class TestCommit(TestCaseWithTransport):
         self.assertEqual(len(b_tree.conflicts()), 1)
         self.run_bzr('resolved b/a_file')
         self.run_bzr(['commit', '-m', 'merge into b', 'b'])
-
 
     def test_10_verbose_commit(self):
         """Add one file and examine verbose commit output"""
@@ -308,26 +333,6 @@ class TestCommit(TestCaseWithTransport):
         self.build_tree_contents([('foo.c', 'int main() {}')])
         tree.add('foo.c')
         self.run_bzr('commit -m ""', retcode=3)
-
-    def test_unsupported_encoding_commit_message(self):
-        if sys.platform == 'win32':
-            raise tests.TestNotApplicable('Win32 parses arguments directly'
-                ' as Unicode, so we can\'t pass invalid non-ascii')
-        tree = self.make_branch_and_tree('.')
-        self.build_tree_contents([('foo.c', 'int main() {}')])
-        tree.add('foo.c')
-        # LANG env variable has no effect on Windows
-        # but some characters anyway cannot be represented
-        # in default user encoding
-        char = probe_bad_non_ascii(osutils.get_user_encoding())
-        if char is None:
-            raise TestSkipped('Cannot find suitable non-ascii character'
-                'for user_encoding (%s)' % osutils.get_user_encoding())
-        out,err = self.run_bzr_subprocess('commit -m "%s"' % char,
-                                          retcode=1,
-                                          env_changes={'LANG': 'C'})
-        self.assertContainsRe(err, r'bzrlib.errors.BzrError: Parameter.*is '
-                                    'unsupported by the current encoding.')
 
     def test_other_branch_commit(self):
         # this branch is to ensure consistent behaviour, whether we're run
@@ -719,13 +724,13 @@ altered in u2
             f = file('fed.bat', 'w')
             f.write('@rem dummy fed')
             f.close()
-            osutils.set_or_unset_env('BZR_EDITOR', "fed.bat")
+            self.overrideEnv('BZR_EDITOR', "fed.bat")
         else:
             f = file('fed.sh', 'wb')
             f.write('#!/bin/sh\n')
             f.close()
             os.chmod('fed.sh', 0755)
-            osutils.set_or_unset_env('BZR_EDITOR', "./fed.sh")
+            self.overrideEnv('BZR_EDITOR', "./fed.sh")
 
     def setup_commit_with_template(self):
         self.setup_editor()
@@ -756,8 +761,11 @@ altered in u2
         os.chdir('foo')
         open('foo.txt', 'w').write('hello')
         self.run_bzr(['add'])
-        osutils.set_or_unset_env('EMAIL', None)
-        osutils.set_or_unset_env('BZR_EMAIL', None)
+        self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
+        # Also, make sure that it's not inferred from mailname.
+        self.overrideAttr(config, '_auto_user_id',
+            lambda: (None, None))
         out, err = self.run_bzr(['commit', '-m', 'initial'], 3)
         self.assertContainsRe(err, 'Unable to determine your name')
 

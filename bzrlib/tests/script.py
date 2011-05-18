@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010 Canonical Ltd
+# Copyright (C) 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,11 +25,8 @@ import glob
 import os
 import shlex
 import textwrap
-from cStringIO import StringIO
 
 from bzrlib import (
-    commands,
-    errors,
     osutils,
     tests,
     )
@@ -197,7 +194,7 @@ class ScriptRunner(object):
         self.output_checker = doctest.OutputChecker()
         self.check_options = doctest.ELLIPSIS
 
-    def run_script(self, test_case, text):
+    def run_script(self, test_case, text, null_output_matches_anything=False):
         """Run a shell-like script as a test.
 
         :param test_case: A TestCase instance that should provide the fail(),
@@ -205,7 +202,12 @@ class ScriptRunner(object):
             attribute used as a jail root.
 
         :param text: A shell-like script (see _script_to_commands for syntax).
+
+        :param null_output_matches_anything: For commands with no specified
+            output, ignore any output that does happen, including output on
+            standard error.
         """
+        self.null_output_matches_anything = null_output_matches_anything
         for cmd, input, output, error in _script_to_commands(text):
             self.run_command(test_case, cmd, input, output, error)
 
@@ -214,7 +216,7 @@ class ScriptRunner(object):
         method = getattr(self, mname, None)
         if method is None:
             raise SyntaxError('Command not found "%s"' % (cmd[0],),
-                              None, 1, ' '.join(cmd))
+                              (None, 1, 1, ' '.join(cmd)))
         if input is None:
             str_input = ''
         else:
@@ -246,6 +248,12 @@ class ScriptRunner(object):
             else:
                 test_case.fail('expected output: %r, but found nothing'
                             % (expected,))
+
+        null_output_matches_anything = getattr(
+            self, 'null_output_matches_anything', False)
+        if null_output_matches_anything and expected is None:
+            return
+
         expected = expected or ''
         matching = self.output_checker.check_output(
             expected, actual, self.check_options)
@@ -474,8 +482,9 @@ class TestCaseWithMemoryTransportAndScript(tests.TestCaseWithMemoryTransport):
         super(TestCaseWithMemoryTransportAndScript, self).setUp()
         self.script_runner = ScriptRunner()
 
-    def run_script(self, script):
-        return self.script_runner.run_script(self, script)
+    def run_script(self, script, null_output_matches_anything=False):
+        return self.script_runner.run_script(self, script, 
+                   null_output_matches_anything=null_output_matches_anything)
 
     def run_command(self, cmd, input, output, error):
         return self.script_runner.run_command(self, cmd, input, output, error)
@@ -503,42 +512,16 @@ class TestCaseWithTransportAndScript(tests.TestCaseWithTransport):
         super(TestCaseWithTransportAndScript, self).setUp()
         self.script_runner = ScriptRunner()
 
-    def run_script(self, script):
-        return self.script_runner.run_script(self, script)
+    def run_script(self, script, null_output_matches_anything=False):
+        return self.script_runner.run_script(self, script,
+                   null_output_matches_anything=null_output_matches_anything)
 
     def run_command(self, cmd, input, output, error):
         return self.script_runner.run_command(self, cmd, input, output, error)
 
 
-def run_script(test_case, script_string):
+def run_script(test_case, script_string, null_output_matches_anything=False):
     """Run the given script within a testcase"""
-    return ScriptRunner().run_script(test_case, script_string)
+    return ScriptRunner().run_script(test_case, script_string,
+               null_output_matches_anything=null_output_matches_anything)
 
-
-class cmd_test_script(commands.Command):
-    """Run a shell-like test from a file."""
-
-    hidden = True
-    takes_args = ['infile']
-
-    @commands.display_command
-    def run(self, infile):
-
-        f = open(infile)
-        try:
-            script = f.read()
-        finally:
-            f.close()
-
-        class Test(TestCaseWithTransportAndScript):
-
-            script = None # Set before running
-
-            def test_it(self):
-                self.run_script(script)
-
-        runner = tests.TextTestRunner(stream=self.outf)
-        test = Test('test_it')
-        test.path = os.path.realpath(infile)
-        res = runner.run(test)
-        return len(res.errors) + len(res.failures)

@@ -312,7 +312,7 @@ class RegistryOption(Option):
 
     def __init__(self, name, help, registry=None, converter=None,
         value_switches=False, title=None, enum_switch=True,
-        lazy_registry=None):
+        lazy_registry=None, short_name=None):
         """
         Constructor.
 
@@ -329,7 +329,7 @@ class RegistryOption(Option):
         :param lazy_registry: A tuple of (module name, attribute name) for a
             registry to be lazily loaded.
         """
-        Option.__init__(self, name, help, type=self.convert)
+        Option.__init__(self, name, help, type=self.convert, short_name=short_name)
         self._registry = registry
         if registry is None:
             if lazy_registry is None:

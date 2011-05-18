@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ import sys
 IGNORE_FILENAME = ".bzrignore"
 
 
-__copyright__ = "Copyright 2005-2010 Canonical Ltd."
+__copyright__ = "Copyright 2005-2011 Canonical Ltd."
 
 # same format as sys.version_info: "A tuple containing the five components of
 # the version number: major, minor, micro, releaselevel, and serial. All
@@ -52,10 +52,10 @@ __copyright__ = "Copyright 2005-2010 Canonical Ltd."
 # Python version 2.0 is (2, 0, 0, 'final', 0)."  Additionally we use a
 # releaselevel of 'dev' for unreleased under-development code.
 
-version_info = (2, 3, 0, 'dev', 3)
+version_info = (2, 4, 0, 'dev', 3)
 
 # API compatibility version
-api_minimum_version = (2, 3, 0)
+api_minimum_version = (2, 4, 0)
 
 
 def _format_version_tuple(version_info):
@@ -81,14 +81,10 @@ def _format_version_tuple(version_info):
     1.4.0
     >>> print _format_version_tuple((1, 4))
     1.4
-    >>> print _format_version_tuple((2, 1, 0, 'final', 1))
-    Traceback (most recent call last):
-    ...
-    ValueError: version_info (2, 1, 0, 'final', 1) not valid
+    >>> print _format_version_tuple((2, 1, 0, 'final', 42))
+    2.1.0.42
     >>> print _format_version_tuple((1, 4, 0, 'wibble', 0))
-    Traceback (most recent call last):
-    ...
-    ValueError: version_info (1, 4, 0, 'wibble', 0) not valid
+    1.4.0.wibble.0
     """
     if len(version_info) == 2:
         main_version = '%d.%d' % version_info[:2]
@@ -100,9 +96,10 @@ def _format_version_tuple(version_info):
     release_type = version_info[3]
     sub = version_info[4]
 
-    # check they're consistent
     if release_type == 'final' and sub == 0:
         sub_string = ''
+    elif release_type == 'final':
+        sub_string = '.' + str(sub)
     elif release_type == 'dev' and sub == 0:
         sub_string = 'dev'
     elif release_type == 'dev':
@@ -114,7 +111,7 @@ def _format_version_tuple(version_info):
     elif release_type == 'candidate':
         sub_string = 'rc' + str(sub)
     else:
-        raise ValueError("version_info %r not valid" % (version_info,))
+        return '.'.join(map(str, version_info))
 
     return main_version + sub_string
 
@@ -157,13 +154,18 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
 
     More options may be added in future so callers should use named arguments.
 
+    The object returned by this function can be used as a contex manager
+    through the 'with' statement to automatically shut down when the process
+    is finished with bzrlib.  However (from bzr 2.4) it's not necessary to
+    separately enter the context as well as starting bzr: bzrlib is ready to
+    go when this function returns.
+
     :param setup_ui: If true (default) use a terminal UI; otherwise 
         some other ui_factory must be assigned to `bzrlib.ui.ui_factory` by
         the caller.
     :param stdin, stdout, stderr: If provided, use these for terminal IO;
         otherwise use the files in `sys`.
-    :return: A context manager for the use of bzrlib. The __enter__ method of
-        this context needs to be called before it takes effect, and the __exit__
+    :return: A context manager for the use of bzrlib. The __exit__
         should be called by the caller before exiting their process or
         otherwise stopping use of bzrlib. Advanced callers can use
         BzrLibraryState directly.
@@ -178,7 +180,10 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
     else:
         ui_factory = None
     tracer = trace.DefaultConfig()
-    return library_state.BzrLibraryState(ui=ui_factory, trace=tracer)
+    state = library_state.BzrLibraryState(ui=ui_factory, trace=tracer)
+    # Start automatically in case people don't realize this returns a context.
+    state._start()
+    return state
 
 
 def test_suite():

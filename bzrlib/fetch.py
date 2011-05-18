@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,11 +28,11 @@ import operator
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
+    graph,
     tsort,
     versionedfile,
     )
 """)
-import bzrlib
 from bzrlib import (
     errors,
     ui,
@@ -54,6 +54,8 @@ class RepoFetcher(object):
 
         :param last_revision: If set, try to limit to the data this revision
             references.
+        :param fetch_spec: A SearchResult specifying which revisions to fetch.
+            If set, this overrides last_revision.
         :param find_ghosts: If True search the entire history for ghosts.
         """
         # repository.fetch has the responsibility for short-circuiting
@@ -92,11 +94,12 @@ class RepoFetcher(object):
         pb.show_pct = pb.show_count = False
         try:
             pb.update("Finding revisions", 0, 2)
-            search = self._revids_to_fetch()
-            if search is None:
+            search_result = self._revids_to_fetch()
+            mutter('fetching: %s', search_result)
+            if search_result.is_empty():
                 return
             pb.update("Fetching revisions", 1, 2)
-            self._fetch_everything_for_search(search)
+            self._fetch_everything_for_search(search_result)
         finally:
             pb.finished()
 
@@ -125,9 +128,6 @@ class RepoFetcher(object):
             pb.update("Inserting stream")
             resume_tokens, missing_keys = self.sink.insert_stream(
                 stream, from_format, [])
-            if self.to_repository._fallback_repositories:
-                missing_keys.update(
-                    self._parent_inventories(search.get_keys()))
             if missing_keys:
                 pb.update("Missing keys")
                 stream = source.get_stream_for_missing_keys(missing_keys)
@@ -151,29 +151,24 @@ class RepoFetcher(object):
         """Determines the exact revisions needed from self.from_repository to
         install self._last_revision in self.to_repository.
 
-        If no revisions need to be fetched, then this just returns None.
+        :returns: A SearchResult of some sort.  (Possibly a
+            PendingAncestryResult, EmptySearchResult, etc.)
         """
         if self._fetch_spec is not None:
+            # The fetch spec is already a concrete search result.
             return self._fetch_spec
-        mutter('fetch up to rev {%s}', self._last_revision)
-        if self._last_revision is NULL_REVISION:
+        elif self._last_revision == NULL_REVISION:
+            # fetch_spec is None + last_revision is null => empty fetch.
             # explicit limit of no revisions needed
-            return None
-        return self.to_repository.search_missing_revision_ids(
-            self.from_repository, self._last_revision,
-            find_ghosts=self.find_ghosts)
-
-    def _parent_inventories(self, revision_ids):
-        # Find all the parent revisions referenced by the stream, but
-        # not present in the stream, and make sure we send their
-        # inventories.
-        parent_maps = self.to_repository.get_parent_map(revision_ids)
-        parents = set()
-        map(parents.update, parent_maps.itervalues())
-        parents.discard(NULL_REVISION)
-        parents.difference_update(revision_ids)
-        missing_keys = set(('inventories', rev_id) for rev_id in parents)
-        return missing_keys
+            return graph.EmptySearchResult()
+        elif self._last_revision is not None:
+            return graph.NotInOtherForRevs(self.to_repository,
+                self.from_repository, [self._last_revision],
+                find_ghosts=self.find_ghosts).execute()
+        else: # self._last_revision is None:
+            return graph.EverythingNotInOther(self.to_repository,
+                self.from_repository,
+                find_ghosts=self.find_ghosts).execute()
 
 
 class Inter1and2Helper(object):
@@ -322,7 +317,7 @@ def _parent_keys_for_root_version(
                 pass
             else:
                 try:
-                    parent_ids.append(tree.inventory[root_id].revision)
+                    parent_ids.append(tree.get_file_revision(root_id))
                 except errors.NoSuchId:
                     # not in the tree
                     pass
@@ -336,3 +331,89 @@ def _parent_keys_for_root_version(
             selected_ids.append(parent_id)
     parent_keys = [(root_id, parent_id) for parent_id in selected_ids]
     return parent_keys
+
+
+class TargetRepoKinds(object):
+    """An enum-like set of constants.
+    
+    They are the possible values of FetchSpecFactory.target_repo_kinds.
+    """
+    
+    PREEXISTING = 'preexisting'
+    STACKED = 'stacked'
+    EMPTY = 'empty'
+
+
+class FetchSpecFactory(object):
+    """A helper for building the best fetch spec for a sprout call.
+
+    Factors that go into determining the sort of fetch to perform:
+     * did the caller specify any revision IDs?
+     * did the caller specify a source branch (need to fetch its
+       heads_to_fetch(), usually the tip + tags)
+     * is there an existing target repo (don't need to refetch revs it
+       already has)
+     * target is stacked?  (similar to pre-existing target repo: even if
+       the target itself is new don't want to refetch existing revs)
+
+    :ivar source_branch: the source branch if one specified, else None.
+    :ivar source_branch_stop_revision_id: fetch up to this revision of
+        source_branch, rather than its tip.
+    :ivar source_repo: the source repository if one found, else None.
+    :ivar target_repo: the target repository acquired by sprout.
+    :ivar target_repo_kind: one of the TargetRepoKinds constants.
+    """
+
+    def __init__(self):
+        self._explicit_rev_ids = set()
+        self.source_branch = None
+        self.source_branch_stop_revision_id = None
+        self.source_repo = None
+        self.target_repo = None
+        self.target_repo_kind = None
+
+    def add_revision_ids(self, revision_ids):
+        """Add revision_ids to the set of revision_ids to be fetched."""
+        self._explicit_rev_ids.update(revision_ids)
+        
+    def make_fetch_spec(self):
+        """Build a SearchResult or PendingAncestryResult or etc."""
+        if self.target_repo_kind is None or self.source_repo is None:
+            raise AssertionError(
+                'Incomplete FetchSpecFactory: %r' % (self.__dict__,))
+        if len(self._explicit_rev_ids) == 0 and self.source_branch is None:
+            # Caller hasn't specified any revisions or source branch
+            if self.target_repo_kind == TargetRepoKinds.EMPTY:
+                return graph.EverythingResult(self.source_repo)
+            else:
+                # We want everything not already in the target (or target's
+                # fallbacks).
+                return graph.EverythingNotInOther(
+                    self.target_repo, self.source_repo).execute()
+        heads_to_fetch = set(self._explicit_rev_ids)
+        if self.source_branch is not None:
+            must_fetch, if_present_fetch = self.source_branch.heads_to_fetch()
+            if self.source_branch_stop_revision_id is not None:
+                # Replace the tip rev from must_fetch with the stop revision
+                # XXX: this might be wrong if the tip rev is also in the
+                # must_fetch set for other reasons (e.g. it's the tip of
+                # multiple loom threads?), but then it's pretty unclear what it
+                # should mean to specify a stop_revision in that case anyway.
+                must_fetch.discard(self.source_branch.last_revision())
+                must_fetch.add(self.source_branch_stop_revision_id)
+            heads_to_fetch.update(must_fetch)
+        else:
+            if_present_fetch = set()
+        if self.target_repo_kind == TargetRepoKinds.EMPTY:
+            # PendingAncestryResult does not raise errors if a requested head
+            # is absent.  Ideally it would support the
+            # required_ids/if_present_ids distinction, but in practice
+            # heads_to_fetch will almost certainly be present so this doesn't
+            # matter much.
+            all_heads = heads_to_fetch.union(if_present_fetch)
+            return graph.PendingAncestryResult(all_heads, self.source_repo)
+        return graph.NotInOtherForRevs(self.target_repo, self.source_repo,
+            required_ids=heads_to_fetch, if_present_ids=if_present_fetch
+            ).execute()
+
+

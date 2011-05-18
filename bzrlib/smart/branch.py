@@ -142,6 +142,20 @@ class SmartServerBranchSetTagsBytes(SmartServerLockedBranchRequest):
             self.branch.unlock()
 
 
+class SmartServerBranchHeadsToFetch(SmartServerBranchRequest):
+
+    def do_with_branch(self, branch):
+        """Return the heads-to-fetch for a Branch as two bencoded lists.
+        
+        See Branch.heads_to_fetch.
+
+        New in 2.4.
+        """
+        must_fetch, if_present_fetch = branch.heads_to_fetch()
+        return SuccessfulSmartServerResponse(
+            (list(must_fetch), list(if_present_fetch)))
+
+
 class SmartServerBranchRequestGetStackedOnURL(SmartServerBranchRequest):
 
     def do_with_branch(self, branch):
@@ -218,12 +232,12 @@ class SmartServerBranchRequestSetLastRevision(SmartServerSetTipRequest):
 
     def do_tip_change_with_locked_branch(self, branch, new_last_revision_id):
         if new_last_revision_id == 'null:':
-            branch.set_revision_history([])
+            branch._set_revision_history([])
         else:
             if not branch.repository.has_revision(new_last_revision_id):
                 return FailedSmartServerResponse(
                     ('NoSuchRevision', new_last_revision_id))
-            branch.set_revision_history(branch._lefthand_history(
+            branch._set_revision_history(branch._lefthand_history(
                 new_last_revision_id, None, None))
         return SuccessfulSmartServerResponse(('ok',))
 

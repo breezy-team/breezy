@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # Authors:
 #   Johan Rydberg <jrydberg@gnu.org>
@@ -21,6 +21,7 @@
 # TODO: might be nice to create a versionedfile with some type of corruption
 # considered typical and check that it can be detected/corrected.
 
+from gzip import GzipFile
 from itertools import chain, izip
 from StringIO import StringIO
 
@@ -37,29 +38,20 @@ from bzrlib import (
 from bzrlib.errors import (
                            RevisionNotPresent,
                            RevisionAlreadyPresent,
-                           WeaveParentMismatch
                            )
 from bzrlib.knit import (
     cleanup_pack_knit,
     make_file_factory,
     make_pack_factory,
-    KnitAnnotateFactory,
-    KnitPlainFactory,
     )
 from bzrlib.tests import (
     TestCase,
     TestCaseWithMemoryTransport,
     TestNotApplicable,
     TestSkipped,
-    condition_isinstance,
-    split_suite_by_condition,
-    multiply_tests,
     )
 from bzrlib.tests.http_utils import TestCaseWithWebserver
-from bzrlib.trace import mutter
 from bzrlib.transport.memory import MemoryTransport
-from bzrlib.tsort import topo_sort
-from bzrlib.tuned_gzip import GzipFile
 import bzrlib.versionedfile as versionedfile
 from bzrlib.versionedfile import (
     ConstantMapper,
@@ -69,101 +61,11 @@ from bzrlib.versionedfile import (
     make_versioned_files_factory,
     )
 from bzrlib.weave import WeaveFile
-from bzrlib.weavefile import read_weave, write_weave
+from bzrlib.weavefile import write_weave
+from bzrlib.tests.scenarios import load_tests_apply_scenarios
 
 
-def load_tests(standard_tests, module, loader):
-    """Parameterize VersionedFiles tests for different implementations."""
-    to_adapt, result = split_suite_by_condition(
-        standard_tests, condition_isinstance(TestVersionedFiles))
-    # We want to be sure of behaviour for:
-    # weaves prefix layout (weave texts)
-    # individually named weaves (weave inventories)
-    # annotated knits - prefix|hash|hash-escape layout, we test the third only
-    #                   as it is the most complex mapper.
-    # individually named knits
-    # individual no-graph knits in packs (signatures)
-    # individual graph knits in packs (inventories)
-    # individual graph nocompression knits in packs (revisions)
-    # plain text knits in packs (texts)
-    len_one_scenarios = [
-        ('weave-named', {
-            'cleanup':None,
-            'factory':make_versioned_files_factory(WeaveFile,
-                ConstantMapper('inventory')),
-            'graph':True,
-            'key_length':1,
-            'support_partial_insertion': False,
-            }),
-        ('named-knit', {
-            'cleanup':None,
-            'factory':make_file_factory(False, ConstantMapper('revisions')),
-            'graph':True,
-            'key_length':1,
-            'support_partial_insertion': False,
-            }),
-        ('named-nograph-nodelta-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(False, False, 1),
-            'graph':False,
-            'key_length':1,
-            'support_partial_insertion': False,
-            }),
-        ('named-graph-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(True, True, 1),
-            'graph':True,
-            'key_length':1,
-            'support_partial_insertion': True,
-            }),
-        ('named-graph-nodelta-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(True, False, 1),
-            'graph':True,
-            'key_length':1,
-            'support_partial_insertion': False,
-            }),
-        ('groupcompress-nograph', {
-            'cleanup':groupcompress.cleanup_pack_group,
-            'factory':groupcompress.make_pack_factory(False, False, 1),
-            'graph': False,
-            'key_length':1,
-            'support_partial_insertion':False,
-            }),
-        ]
-    len_two_scenarios = [
-        ('weave-prefix', {
-            'cleanup':None,
-            'factory':make_versioned_files_factory(WeaveFile,
-                PrefixMapper()),
-            'graph':True,
-            'key_length':2,
-            'support_partial_insertion': False,
-            }),
-        ('annotated-knit-escape', {
-            'cleanup':None,
-            'factory':make_file_factory(True, HashEscapedPrefixMapper()),
-            'graph':True,
-            'key_length':2,
-            'support_partial_insertion': False,
-            }),
-        ('plain-knit-pack', {
-            'cleanup':cleanup_pack_knit,
-            'factory':make_pack_factory(True, True, 2),
-            'graph':True,
-            'key_length':2,
-            'support_partial_insertion': True,
-            }),
-        ('groupcompress', {
-            'cleanup':groupcompress.cleanup_pack_group,
-            'factory':groupcompress.make_pack_factory(True, False, 1),
-            'graph': True,
-            'key_length':1,
-            'support_partial_insertion':False,
-            }),
-        ]
-    scenarios = len_one_scenarios + len_two_scenarios
-    return multiply_tests(to_adapt, scenarios, result)
+load_tests = load_tests_apply_scenarios
 
 
 def get_diamond_vf(f, trailing_eol=True, left_only=False):
@@ -849,7 +751,7 @@ class VersionedFileTestMixIn(object):
         self.assertEquals(('references_ghost', 'line_c\n'), origins[2])
 
     def test_readonly_mode(self):
-        t = transport.get_transport(self.get_url('.'))
+        t = self.get_transport()
         factory = self.get_factory()
         vf = factory('id', t, 0777, create=True, access_mode='w')
         vf = factory('id', t, access_mode='r')
@@ -880,12 +782,12 @@ class VersionedFileTestMixIn(object):
 class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+        return WeaveFile(name, self.get_transport(),
                          create=True,
                          get_scope=self.get_transaction)
 
     def get_file_corrupted_text(self):
-        w = WeaveFile('foo', transport.get_transport(self.get_url('.')),
+        w = WeaveFile('foo', self.get_transport(),
                       create=True,
                       get_scope=self.get_transaction)
         w.add_lines('v1', [], ['hello\n'])
@@ -921,7 +823,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         return w
 
     def reopen_file(self, name='foo', create=False):
-        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+        return WeaveFile(name, self.get_transport(),
                          create=create,
                          get_scope=self.get_transaction)
 
@@ -929,7 +831,7 @@ class TestWeave(TestCaseWithMemoryTransport, VersionedFileTestMixIn):
         self.assertRaises(errors.NoSuchFile,
                           WeaveFile,
                           'foo',
-                          transport.get_transport(self.get_url('.')),
+                          self.get_transport(),
                           get_scope=self.get_transaction)
 
     def get_factory(self):
@@ -1023,7 +925,7 @@ class TestReadonlyHttpMixin(object):
 class TestWeaveHTTP(TestCaseWithWebserver, TestReadonlyHttpMixin):
 
     def get_file(self):
-        return WeaveFile('foo', transport.get_transport(self.get_url('.')),
+        return WeaveFile('foo', self.get_transport(),
                          create=True,
                          get_scope=self.get_transaction)
 
@@ -1275,7 +1177,7 @@ class MergeCasesMixin(object):
 class TestWeaveMerge(TestCaseWithMemoryTransport, MergeCasesMixin):
 
     def get_file(self, name='foo'):
-        return WeaveFile(name, transport.get_transport(self.get_url('.')),
+        return WeaveFile(name, self.get_transport(),
                          create=True)
 
     def log_contents(self, w):
@@ -1475,6 +1377,95 @@ class TestKeyMapper(TestCaseWithMemoryTransport):
 class TestVersionedFiles(TestCaseWithMemoryTransport):
     """Tests for the multiple-file variant of VersionedFile."""
 
+    # We want to be sure of behaviour for:
+    # weaves prefix layout (weave texts)
+    # individually named weaves (weave inventories)
+    # annotated knits - prefix|hash|hash-escape layout, we test the third only
+    #                   as it is the most complex mapper.
+    # individually named knits
+    # individual no-graph knits in packs (signatures)
+    # individual graph knits in packs (inventories)
+    # individual graph nocompression knits in packs (revisions)
+    # plain text knits in packs (texts)
+    len_one_scenarios = [
+        ('weave-named', {
+            'cleanup':None,
+            'factory':make_versioned_files_factory(WeaveFile,
+                ConstantMapper('inventory')),
+            'graph':True,
+            'key_length':1,
+            'support_partial_insertion': False,
+            }),
+        ('named-knit', {
+            'cleanup':None,
+            'factory':make_file_factory(False, ConstantMapper('revisions')),
+            'graph':True,
+            'key_length':1,
+            'support_partial_insertion': False,
+            }),
+        ('named-nograph-nodelta-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(False, False, 1),
+            'graph':False,
+            'key_length':1,
+            'support_partial_insertion': False,
+            }),
+        ('named-graph-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(True, True, 1),
+            'graph':True,
+            'key_length':1,
+            'support_partial_insertion': True,
+            }),
+        ('named-graph-nodelta-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(True, False, 1),
+            'graph':True,
+            'key_length':1,
+            'support_partial_insertion': False,
+            }),
+        ('groupcompress-nograph', {
+            'cleanup':groupcompress.cleanup_pack_group,
+            'factory':groupcompress.make_pack_factory(False, False, 1),
+            'graph': False,
+            'key_length':1,
+            'support_partial_insertion':False,
+            }),
+        ]
+    len_two_scenarios = [
+        ('weave-prefix', {
+            'cleanup':None,
+            'factory':make_versioned_files_factory(WeaveFile,
+                PrefixMapper()),
+            'graph':True,
+            'key_length':2,
+            'support_partial_insertion': False,
+            }),
+        ('annotated-knit-escape', {
+            'cleanup':None,
+            'factory':make_file_factory(True, HashEscapedPrefixMapper()),
+            'graph':True,
+            'key_length':2,
+            'support_partial_insertion': False,
+            }),
+        ('plain-knit-pack', {
+            'cleanup':cleanup_pack_knit,
+            'factory':make_pack_factory(True, True, 2),
+            'graph':True,
+            'key_length':2,
+            'support_partial_insertion': True,
+            }),
+        ('groupcompress', {
+            'cleanup':groupcompress.cleanup_pack_group,
+            'factory':groupcompress.make_pack_factory(True, False, 1),
+            'graph': True,
+            'key_length':1,
+            'support_partial_insertion':False,
+            }),
+        ]
+
+    scenarios = len_one_scenarios + len_two_scenarios
+
     def get_versionedfiles(self, relpath='files'):
         transport = self.get_transport(relpath)
         if relpath != '.':
@@ -1490,6 +1481,18 @@ class TestVersionedFiles(TestCaseWithMemoryTransport):
             return (suffix,)
         else:
             return ('FileA',) + (suffix,)
+
+    def test_add_fallback_implies_without_fallbacks(self):
+        f = self.get_versionedfiles('files')
+        if getattr(f, 'add_fallback_versioned_files', None) is None:
+            raise TestNotApplicable("%s doesn't support fallbacks"
+                                    % (f.__class__.__name__,))
+        g = self.get_versionedfiles('fallback')
+        key_a = self.get_simple_key('a')
+        g.add_lines(key_a, [], ['\n'])
+        f.add_fallback_versioned_files(g)
+        self.assertTrue(key_a in f.get_parent_map([key_a]))
+        self.assertFalse(key_a in f.without_fallbacks().get_parent_map([key_a]))
 
     def test_add_lines(self):
         f = self.get_versionedfiles()

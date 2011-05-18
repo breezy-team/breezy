@@ -74,7 +74,7 @@ Windows machine, even though you can't use it to log in later.
 password from Amazon, and ``ec2-add-keypair`` creates a named keypair at
 Amazon and returns the private path. One keypair is all that is needed.
 This is distinct from the account identifier - likely due to the different
-toolchains in use (the keypairs are used for unix ssh keys, and I (Robert)
+toolchains in use (the keypairs are used for unix SSH keys, and I (Robert)
 suspect a rather unix friendly core at Amazon).
 Once a custom image is made with a saved password, you can skip using
 ``ec2-get-password`` (which is only needed for Windows anyway).
@@ -125,9 +125,9 @@ Preparation
 * Install the rdesktop client, to actually access the machine.
 
 * Possibly read some of the `EC2 documentation`_ for background.
-
-.. _`bug 330930`: https://bugs.edge.launchpad.net/ubuntu/+bug/330930
-.. _`Amazon EC2 API tools`:
+   
+.. _`bug 330930`: https://bugs.launchpad.net/ubuntu/+bug/330930 
+.. _`Amazon EC2 API tools`: 
      http://developer.amazonwebservices.com/connect/entry.jspa?externalID=368&categoryID=88
 .. _`EC2 documentation`: http://aws.amazon.com/
 .. _`ami-bdfe19d4`:

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ from bzrlib import (
 
 # TODO: Write a test for plugin decoration of commands.
 
-class TestPluginMixin(object):
+class BaseTestPlugins(tests.TestCaseInTempDir):
 
     def create_plugin(self, name, source=None, dir='.', file_name=None):
         if source is None:
@@ -91,15 +91,15 @@ dir_source = '%s'
                 delattr(plugin, submodule_name)
 
     def assertPluginUnknown(self, name):
-        self.failIf(getattr(bzrlib.plugins, name, None) is not None)
-        self.failIf('bzrlib.plugins.%s' % name in sys.modules)
+        self.assertFalse(getattr(bzrlib.plugins, name, None) is not None)
+        self.assertFalse('bzrlib.plugins.%s' % name in sys.modules)
 
     def assertPluginKnown(self, name):
-        self.failUnless(getattr(bzrlib.plugins, name, None) is not None)
-        self.failUnless('bzrlib.plugins.%s' % name in sys.modules)
+        self.assertTrue(getattr(bzrlib.plugins, name, None) is not None)
+        self.assertTrue('bzrlib.plugins.%s' % name in sys.modules)
 
 
-class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
+class TestLoadingPlugins(BaseTestPlugins):
 
     activeattributes = {}
 
@@ -109,12 +109,12 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
         # file name we can use which is also a valid attribute for accessing in
         # activeattributes. - we cannot give import parameters.
         tempattribute = "0"
-        self.failIf(tempattribute in self.activeattributes)
+        self.assertFalse(tempattribute in self.activeattributes)
         # set a place for the plugins to record their loading, and at the same
         # time validate that the location the plugins should record to is
         # valid and correct.
         self.__class__.activeattributes [tempattribute] = []
-        self.failUnless(tempattribute in self.activeattributes)
+        self.assertTrue(tempattribute in self.activeattributes)
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
@@ -147,21 +147,21 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
         self.assertPluginUnknown('plugin')
 
     def test_plugins_from_different_dirs_can_demand_load(self):
-        self.failIf('bzrlib.plugins.pluginone' in sys.modules)
-        self.failIf('bzrlib.plugins.plugintwo' in sys.modules)
+        self.assertFalse('bzrlib.plugins.pluginone' in sys.modules)
+        self.assertFalse('bzrlib.plugins.plugintwo' in sys.modules)
         # This test tests that having two plugins in different
         # directories with different names allows them both to be loaded, when
         # we do a direct import statement.
         # Determine a file name we can use which is also a valid attribute
         # for accessing in activeattributes. - we cannot give import parameters.
         tempattribute = "different-dirs"
-        self.failIf(tempattribute in self.activeattributes)
+        self.assertFalse(tempattribute in self.activeattributes)
         # set a place for the plugins to record their loading, and at the same
         # time validate that the location the plugins should record to is
         # valid and correct.
         bzrlib.tests.test_plugins.TestLoadingPlugins.activeattributes \
             [tempattribute] = []
-        self.failUnless(tempattribute in self.activeattributes)
+        self.assertTrue(tempattribute in self.activeattributes)
         # create two plugin directories
         os.mkdir('first')
         os.mkdir('second')
@@ -186,8 +186,8 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
 
         oldpath = bzrlib.plugins.__path__
         try:
-            self.failIf('bzrlib.plugins.pluginone' in sys.modules)
-            self.failIf('bzrlib.plugins.plugintwo' in sys.modules)
+            self.assertFalse('bzrlib.plugins.pluginone' in sys.modules)
+            self.assertFalse('bzrlib.plugins.plugintwo' in sys.modules)
             bzrlib.plugins.__path__ = ['first', 'second']
             exec "import bzrlib.plugins.pluginone"
             self.assertEqual(['first'], self.activeattributes[tempattribute])
@@ -208,13 +208,13 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
         # check the plugin is not loaded already
         self.assertPluginUnknown('ts_plugin')
         tempattribute = "trailing-slash"
-        self.failIf(tempattribute in self.activeattributes)
+        self.assertFalse(tempattribute in self.activeattributes)
         # set a place for the plugin to record its loading, and at the same
         # time validate that the location the plugin should record to is
         # valid and correct.
         bzrlib.tests.test_plugins.TestLoadingPlugins.activeattributes \
             [tempattribute] = []
-        self.failUnless(tempattribute in self.activeattributes)
+        self.assertTrue(tempattribute in self.activeattributes)
         # create a directory for the plugin
         os.mkdir('plugin_test')
         # write a plugin that will record when its loaded in the
@@ -267,8 +267,13 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
             stream.close()
 
     def test_plugin_with_bad_api_version_reports(self):
-        # This plugin asks for bzrlib api version 1.0.0, which is not supported
-        # anymore.
+        """Try loading a plugin that requests an unsupported api.
+        
+        Observe that it records the problem but doesn't complain on stderr.
+
+        See https://bugs.launchpad.net/bzr/+bug/704195
+        """
+        self.overrideAttr(plugin, 'plugin_warnings', {})
         name = 'wants100.py'
         f = file(name, 'w')
         try:
@@ -276,9 +281,14 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
                 "bzrlib.api.require_any_api(bzrlib, [(1, 0, 0)])\n")
         finally:
             f.close()
-
         log = self.load_and_capture(name)
-        self.assertContainsRe(log,
+        self.assertNotContainsRe(log,
+            r"It requested API version")
+        self.assertEquals(
+            ['wants100'],
+            plugin.plugin_warnings.keys())
+        self.assertContainsRe(
+            plugin.plugin_warnings['wants100'][0],
             r"It requested API version")
 
     def test_plugin_with_bad_name_does_not_load(self):
@@ -292,7 +302,7 @@ class TestLoadingPlugins(tests.TestCaseInTempDir, TestPluginMixin):
             "it to 'bad_plugin_name_'\.")
 
 
-class TestPlugins(tests.TestCaseInTempDir, TestPluginMixin):
+class TestPlugins(BaseTestPlugins):
 
     def setup_plugin(self, source=""):
         # This test tests a new plugin appears in bzrlib.plugin.plugins().
@@ -442,7 +452,7 @@ def load_tests(standard_tests, module, loader):
     def test_final_fallback__version__with_version_info(self):
         self.setup_plugin("version_info = (1, 2, 3, 'final', 2)")
         plugin = bzrlib.plugin.plugins()['plugin']
-        self.assertEqual("1.2.3.final.2", plugin.__version__)
+        self.assertEqual("1.2.3.2", plugin.__version__)
 
 
 class TestPluginHelp(tests.TestCaseInTempDir):
@@ -656,7 +666,7 @@ class TestLoadFromPath(tests.TestCaseInTempDir):
                     self.fail('No path to global plugins')
 
     def test_get_standard_plugins_path_env(self):
-        os.environ['BZR_PLUGIN_PATH'] = 'foo/'
+        self.overrideEnv('BZR_PLUGIN_PATH', 'foo/')
         path = plugin.get_standard_plugins_path()
         for directory in path:
             self.assertNotContainsRe(directory, r'\\/$')
@@ -692,7 +702,7 @@ class TestEnvPluginPath(tests.TestCase):
 
     def _set_path(self, *args):
         path = os.pathsep.join(self._list2paths(*args))
-        osutils.set_or_unset_env('BZR_PLUGIN_PATH', path)
+        self.overrideEnv('BZR_PLUGIN_PATH', path)
 
     def check_path(self, expected_dirs, setting_dirs):
         if setting_dirs:
@@ -768,7 +778,7 @@ class TestEnvPluginPath(tests.TestCase):
                         ['+foo', '-bar'])
 
 
-class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
+class TestDisablePlugin(BaseTestPlugins):
 
     def setUp(self):
         super(TestDisablePlugin, self).setUp()
@@ -779,7 +789,7 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         self.addCleanup(self._unregister_plugin, 'test_foo')
 
     def test_cannot_import(self):
-        osutils.set_or_unset_env('BZR_DISABLE_PLUGINS', 'test_foo')
+        self.overrideEnv('BZR_DISABLE_PLUGINS', 'test_foo')
         plugin.set_plugins_path(['.'])
         try:
             import bzrlib.plugins.test_foo
@@ -801,12 +811,13 @@ class TestDisablePlugin(tests.TestCaseInTempDir, TestPluginMixin):
         self.overrideAttr(trace, 'warning', captured_warning)
         # Reset the flag that protect against double loading
         self.overrideAttr(plugin, '_loaded', False)
-        osutils.set_or_unset_env('BZR_DISABLE_PLUGINS', 'test_foo')
+        self.overrideEnv('BZR_DISABLE_PLUGINS', 'test_foo')
         plugin.load_plugins(['.'])
         self.assertPluginUnknown('test_foo')
         # Make sure we don't warn about the plugin ImportError since this has
         # been *requested* by the user.
         self.assertLength(0, self.warnings)
+
 
 
 class TestLoadPluginAtSyntax(tests.TestCase):
@@ -832,7 +843,7 @@ class TestLoadPluginAtSyntax(tests.TestCase):
                           os.pathsep.join(['batman@cave', '', 'robin@mobile']))
 
 
-class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
+class TestLoadPluginAt(BaseTestPlugins):
 
     def setUp(self):
         super(TestLoadPluginAt, self).setUp()
@@ -847,6 +858,9 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         self.create_plugin_package('test_foo', dir='standard/test_foo')
         # All the tests will load the 'test_foo' plugin from various locations
         self.addCleanup(self._unregister_plugin, 'test_foo')
+        # Unfortunately there's global cached state for the specific
+        # registered paths.
+        self.addCleanup(plugin.PluginImporter.reset)
 
     def assertTestFooLoadedFrom(self, path):
         self.assertPluginKnown('test_foo')
@@ -859,7 +873,7 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         self.assertTestFooLoadedFrom('standard/test_foo')
 
     def test_import(self):
-        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.set_plugins_path(['standard'])
         try:
             import bzrlib.plugins.test_foo
@@ -868,12 +882,12 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         self.assertTestFooLoadedFrom('non-standard-dir')
 
     def test_loading(self):
-        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom('non-standard-dir')
 
     def test_compiled_loaded(self):
-        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom('non-standard-dir')
         self.assertIsSameRealPath('non-standard-dir/__init__.py',
@@ -896,7 +910,7 @@ class TestLoadPluginAt(tests.TestCaseInTempDir, TestPluginMixin):
         self.create_plugin_package('test_bar', dir='non-standard-dir/test_bar')
         self.addCleanup(self._unregister_plugin_submodule,
                         'test_foo', 'test_bar')
-        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.set_plugins_path(['standard'])
         import bzrlib.plugins.test_foo
         self.assertEqual('bzrlib.plugins.test_foo',
@@ -913,7 +927,7 @@ import test_bar
         self.create_plugin_package('test_bar', dir='another-dir/test_bar')
         self.addCleanup(self._unregister_plugin_submodule,
                         'test_foo', 'test_bar')
-        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@another-dir')
+        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@another-dir')
         plugin.set_plugins_path(['standard'])
         import bzrlib.plugins.test_foo
         self.assertEqual('bzrlib.plugins.test_foo',
@@ -928,7 +942,7 @@ import test_bar
         random = 'non-standard-dir/setup.py'
         os.rename(init, random)
         self.addCleanup(os.rename, random, init)
-        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
+        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@non-standard-dir')
         plugin.load_plugins(['standard'])
         self.assertPluginUnknown('test_foo')
 
@@ -942,6 +956,29 @@ dir_source = '%s'
 ''' % ('test_foo', plugin_path)
         self.create_plugin('test_foo', source=source,
                            dir=plugin_dir, file_name=plugin_file_name)
-        osutils.set_or_unset_env('BZR_PLUGINS_AT', 'test_foo@%s' % plugin_path)
+        self.overrideEnv('BZR_PLUGINS_AT', 'test_foo@%s' % plugin_path)
         plugin.load_plugins(['standard'])
         self.assertTestFooLoadedFrom(plugin_path)
+
+
+class TestDescribePlugins(BaseTestPlugins):
+
+    def test_describe_plugins(self):
+        class DummyModule(object):
+            __doc__ = 'Hi there'
+        class DummyPlugin(object):
+            __version__ = '0.1.0'
+            module = DummyModule()
+        def dummy_plugins():
+            return { 'good': DummyPlugin() }
+        self.overrideAttr(plugin, 'plugin_warnings',
+            {'bad': ['Failed to load (just testing)']})
+        self.overrideAttr(plugin, 'plugins', dummy_plugins)
+        self.assertEquals("""\
+bad (failed to load)
+  ** Failed to load (just testing)
+
+good 0.1.0
+  Hi there
+
+""", ''.join(plugin.describe_plugins()))

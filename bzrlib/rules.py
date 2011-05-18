@@ -1,4 +1,4 @@
-# Copyright (C) 2008 Canonical Ltd
+# Copyright (C) 2008, 2009, 2010 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -64,6 +64,15 @@ class _RulesSearcher(object):
         """
         raise NotImplementedError(self.get_selected_items)
 
+    def get_single_value(self, path, preference_name):
+        """Get a single preference for a single file.
+        
+        :returns: The string preference value, or None.
+        """
+        for key, value in self.get_selected_items(path, [preference_name]):
+            return value
+        return None
+
 
 class _IniBasedRulesSearcher(_RulesSearcher):
 
@@ -74,8 +83,7 @@ class _IniBasedRulesSearcher(_RulesSearcher):
 
         :param inifile: the name of the file or a sequence of lines.
         """
-        options = {'encoding': 'utf-8'}
-        self._cfg = configobj.ConfigObj(inifile, options=options)
+        self._cfg = configobj.ConfigObj(inifile, encoding='utf-8')
         sections = self._cfg.keys()
         patterns = []
         self.pattern_to_section = {}

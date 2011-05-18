@@ -26,21 +26,18 @@ from testtools.matchers import (
 
 from bzrlib import (
     branch,
-    builtins,
     bzrdir,
     check,
-    debug,
     errors,
     push,
-    repository,
     symbol_versioning,
     tests,
+    vf_repository,
     )
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.memorytree import MemoryTree
 from bzrlib.revision import NULL_REVISION
-from bzrlib.smart import client, server
 from bzrlib.smart.repository import SmartServerRepositoryGetParentMap
 from bzrlib.tests.per_interbranch import (
     TestCaseWithInterBranch,
@@ -204,8 +201,6 @@ class TestPush(TestCaseWithInterBranch):
         default for the branch), and will be stacked when the repo format
         allows (which means that the branch format isn't necessarly preserved).
         """
-        if isinstance(self.branch_format_from, branch.BzrBranchFormat4):
-            raise tests.TestNotApplicable('Not a metadir format.')
         if isinstance(self.branch_format_from, branch.BranchReferenceFormat):
             # This test could in principle apply to BranchReferenceFormat, but
             # make_branch_builder doesn't support it.
@@ -292,7 +287,7 @@ class TestPush(TestCaseWithInterBranch):
     def disableOptimisticGetParentMap(self):
         # Tweak some class variables to stop remote get_parent_map calls asking
         # for or receiving more data than the caller asked for.
-        self.overrideAttr(repository.InterRepository,
+        self.overrideAttr(vf_repository.InterVersionedFileRepository,
                           '_walk_to_common_revisions_batch_size', 1)
         self.overrideAttr(SmartServerRepositoryGetParentMap,
                             'no_extra_results', True)

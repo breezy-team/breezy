@@ -64,7 +64,7 @@ Bug Fixes
   but to support those repositories, we know always request full texts
   for Revision texts. (John Arbash Meinel, #261339)
 
-* The previous ``--1.6-rich-root`` format used an incorrect xml
+* The previous ``--1.6-rich-root`` format used an incorrect XML
   serializer, which would accidentally support fetching from a
   repository that supported subtrees, even though the local one would
   not. We deprecated that format, and introduced a new one that uses
@@ -179,7 +179,7 @@ Bug Fixes
 * ``Inventory.copy()`` was failing to set the revision property for
   the root entry. (Jelmer Vernooij)
 
-* sftp transport: added missing ``FileExists`` case to
+* SFTP transport: added missing ``FileExists`` case to
   ``_translate_io_exception`` (Christophe Troestler, #123475)
 
 * The help for ``bzr ignored`` now suggests ``bzr ls --ignored`` for
@@ -416,7 +416,7 @@ Bug Fixes
 * Fetch from a stacked branch copies all required data.
   (Aaron Bentley, #248506)
 
-* Handle urls such as ftp://user@host.com@www.host.com where the user
+* Handle URLs such as ftp://user@host.com@www.host.com where the user
   name contains an @.
   (Neil Martinsen-Burrell, #228058)
 
@@ -693,14 +693,14 @@ Bugfixes
   get_parent_map requirements exposed a latent bug here.  (Aaron Bentley)
 
 * Issue a warning and ignore passwords declared in authentication.conf when
-  used for an ssh scheme (sftp or bzr+ssh).
+  used for an SSH scheme (sftp:// or bzr+ssh://).
   (Vincent Ladeuil, #203186)
 
-* Make both http implementations raise appropriate exceptions on 403
+* Make both HTTP implementations raise appropriate exceptions on 403
   Forbidden when POSTing smart requests.
   (Vincent Ladeuil, #230223)
 
-* Properly *title* header names in http requests instead of capitalizing
+* Properly *title* header names in HTTP requests instead of capitalizing
   them.
   (Vincent Ladeuil, #229076)
 

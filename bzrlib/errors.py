@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -713,6 +713,9 @@ class NotBranchError(PathError):
        self.bzrdir = bzrdir
        PathError.__init__(self, path=path)
 
+    def __repr__(self):
+        return '<%s %r>' % (self.__class__.__name__, self.__dict__)
+
     def _format(self):
         # XXX: Ideally self.detail would be a property, but Exceptions in
         # Python 2.4 have to be old-style classes so properties don't work.
@@ -722,6 +725,15 @@ class NotBranchError(PathError):
                 try:
                     self.bzrdir.open_repository()
                 except NoRepositoryPresent:
+                    self.detail = ''
+                except Exception:
+                    # Just ignore unexpected errors.  Raising arbitrary errors
+                    # during str(err) can provoke strange bugs.  Concretely
+                    # Launchpad's codehosting managed to raise NotBranchError
+                    # here, and then get stuck in an infinite loop/recursion
+                    # trying to str() that error.  All this error really cares
+                    # about that there's no working repository there, and if
+                    # open_repository() fails, there probably isn't.
                     self.detail = ''
                 else:
                     self.detail = ': location is a repository'
@@ -1126,6 +1138,15 @@ class CannotCommitSelectedFileMerge(BzrError):
     def __init__(self, files):
         files_str = ', '.join(files)
         BzrError.__init__(self, files=files, files_str=files_str)
+
+
+class ExcludesUnsupported(BzrError):
+
+    _fmt = ('Excluding paths during commit is not supported by '
+            'repository at %(repository)r.')
+
+    def __init__(self, repository):
+        BzrError.__init__(self, repository=repository)
 
 
 class BadCommitMessageEncoding(BzrError):
@@ -1746,12 +1767,12 @@ class ConflictsInTree(BzrError):
 
 class ParseConfigError(BzrError):
 
+    _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
+
     def __init__(self, errors, filename):
-        if filename is None:
-            filename = ""
-        message = "Error(s) parsing config file %s:\n%s" % \
-            (filename, ('\n'.join(e.msg for e in errors)))
-        BzrError.__init__(self, message)
+        BzrError.__init__(self)
+        self.filename = filename
+        self.errors = '\n'.join(e.msg for e in errors)
 
 
 class NoEmailInUsername(BzrError):
@@ -1949,15 +1970,16 @@ class TransformRenameFailed(BzrError):
 
 class BzrMoveFailedError(BzrError):
 
-    _fmt = "Could not move %(from_path)s%(operator)s %(to_path)s%(extra)s"
+    _fmt = ("Could not move %(from_path)s%(operator)s %(to_path)s"
+        "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path='', to_path='', extra=None):
         from bzrlib.osutils import splitpath
         BzrError.__init__(self)
         if extra:
-            self.extra = ': ' + str(extra)
+            self.extra, self._has_extra = extra, ': '
         else:
-            self.extra = ''
+            self.extra = self._has_extra = ''
 
         has_from = len(from_path) > 0
         has_to = len(to_path) > 0
@@ -1984,10 +2006,12 @@ class BzrMoveFailedError(BzrError):
 
 class BzrRenameFailedError(BzrMoveFailedError):
 
-    _fmt = "Could not rename %(from_path)s%(operator)s %(to_path)s%(extra)s"
+    _fmt = ("Could not rename %(from_path)s%(operator)s %(to_path)s"
+        "%(_has_extra)s%(extra)s")
 
     def __init__(self, from_path, to_path, extra=None):
         BzrMoveFailedError.__init__(self, from_path, to_path, extra)
+
 
 class BzrRemoveChangedFilesError(BzrError):
     """Used when user is trying to remove changed files."""
@@ -2012,7 +2036,7 @@ class BzrBadParameterNotString(BzrBadParameter):
 
 class BzrBadParameterMissing(BzrBadParameter):
 
-    _fmt = "Parameter $(param)s is required but not present."
+    _fmt = "Parameter %(param)s is required but not present."
 
 
 class BzrBadParameterUnicode(BzrBadParameter):
@@ -3207,3 +3231,32 @@ class RecursiveBind(BzrError):
     def __init__(self, branch_url):
         self.branch_url = branch_url
 
+
+# FIXME: I would prefer to define the config related exception classes in
+# config.py but the lazy import mechanism proscribes this -- vila 20101222
+class OptionExpansionLoop(BzrError):
+
+    _fmt = 'Loop involving %(refs)r while expanding "%(string)s".'
+
+    def __init__(self, string, refs):
+        self.string = string
+        self.refs = '->'.join(refs)
+
+
+class ExpandingUnknownOption(BzrError):
+
+    _fmt = 'Option %(name)s is not defined while expanding "%(string)s".'
+
+    def __init__(self, name, string):
+        self.name = name
+        self.string = string
+
+
+class NoCompatibleInter(BzrError):
+
+    _fmt = ('No compatible object available for operations from %(source)r '
+            'to %(target)r.')
+
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target

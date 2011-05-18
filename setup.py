@@ -11,8 +11,8 @@ import os.path
 import sys
 import copy
 
-if sys.version_info < (2, 4):
-    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.4+\n")
+if sys.version_info < (2, 6):
+    sys.stderr.write("[ERROR] Not a supported Python version. Need 2.6+\n")
     sys.exit(1)
 
 # NOTE: The directory containing setup.py, whether run by 'python setup.py' or
@@ -69,7 +69,8 @@ PKG_DATA = {# install files from selftest suite
                                         'tests/ssl_certs/ca.crt',
                                         'tests/ssl_certs/server_without_pass.key',
                                         'tests/ssl_certs/server_with_pass.key',
-                                        'tests/ssl_certs/server.crt'
+                                        'tests/ssl_certs/server.crt',
+                                        'locale/*/LC_MESSAGES/*.mo',
                                        ]},
            }
 
@@ -152,6 +153,10 @@ class bzr_build(build):
     Generate bzr.1.
     """
 
+    sub_commands = build.sub_commands + [
+            ('build_mo', lambda _: True),
+            ]
+
     def run(self):
         build.run(self)
 
@@ -163,20 +168,24 @@ class bzr_build(build):
 ## Setup
 ########################
 
+from tools.build_mo import build_mo
+
 command_classes = {'install_scripts': my_install_scripts,
-                   'build': bzr_build}
+                   'build': bzr_build,
+                   'build_mo': build_mo,
+                   }
 from distutils import log
 from distutils.errors import CCompilerError, DistutilsPlatformError
 from distutils.extension import Extension
 ext_modules = []
 try:
     try:
-        from Pyrex.Distutils import build_ext
-        from Pyrex.Compiler.Version import version as pyrex_version
-    except ImportError:
-        print("No Pyrex, trying Cython...")
         from Cython.Distutils import build_ext
         from Cython.Compiler.Version import version as pyrex_version
+    except ImportError:
+        print("No Cython, trying Pyrex...")
+        from Pyrex.Distutils import build_ext
+        from Pyrex.Compiler.Version import version as pyrex_version
 except ImportError:
     have_pyrex = False
     # try to build the extension from the prior generated source.
@@ -291,11 +300,11 @@ else:
         # The code it generates re-uses a "local" pointer and
         # calls "PY_DECREF" after having set it to NULL. (It mixes PY_XDECREF
         # which is NULL safe with PY_DECREF which is not.)
-        # <https://bugs.edge.launchpad.net/bzr/+bug/449372>
-        # <https://bugs.edge.launchpad.net/bzr/+bug/276868>
+        # <https://bugs.launchpad.net/bzr/+bug/449372>
+        # <https://bugs.launchpad.net/bzr/+bug/276868>
         print('Cannot build extension "bzrlib._dirstate_helpers_pyx" using')
-        print('your version of pyrex "%s". Please upgrade your pyrex' % (
-            pyrex_version,))
+        print('your version of pyrex "%s". Please upgrade your pyrex'
+              % (pyrex_version,))
         print('install. For now, the non-compiled (python) version will')
         print('be used instead.')
     else:
@@ -395,7 +404,8 @@ def get_tbzr_py2exe_info(includes, excludes, packages, console_targets,
     # ditto for the tbzrcommand tool
     tbzrcommand = dict(
         script = os.path.join(tbzr_root, "scripts", "tbzrcommand.py"),
-        icon_resources = [(0,'bzr.ico')],
+        icon_resources = icon_resources,
+        other_resources = other_resources,
     )
     console_targets.append(tbzrcommand)
     tbzrcommandw = tbzrcommand.copy()
@@ -689,7 +699,11 @@ elif 'py2exe' in sys.argv:
 
     # MSWSOCK.dll is a system-specific library, which py2exe accidentally pulls
     # in on Vista.
-    dll_excludes.extend(["MSWSOCK.dll", "MSVCP60.dll", "powrprof.dll"])
+    dll_excludes.extend(["MSWSOCK.dll",
+                         "MSVCP60.dll",
+                         "MSVCP90.dll",
+                         "powrprof.dll",
+                         "SHFOLDER.dll"])
     options_list = {"py2exe": {"packages": packages + list(additional_packages),
                                "includes": includes,
                                "excludes": excludes,

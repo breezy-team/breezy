@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2010 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,60 +28,34 @@ from bzrlib import (
     )
 from bzrlib.tests import (
     test_dirstate,
-    test_osutils,
+    )
+from bzrlib.tests.test_osutils import dir_reader_scenarios
+from bzrlib.tests.scenarios import (
+    load_tests_apply_scenarios,
+    multiply_scenarios,
     )
 
-try:
-    from bzrlib import _dirstate_helpers_pyx
-    has_dirstate_helpers_pyx = True
-except ImportError:
-    has_dirstate_helpers_pyx = False
+
+load_tests = load_tests_apply_scenarios
 
 
 compiled_dirstate_helpers_feature = tests.ModuleAvailableFeature(
-                                'bzrlib._dirstate_helpers_pyx')
+    'bzrlib._dirstate_helpers_pyx')
 
 
-def load_tests(basic_tests, module, loader):
-    # FIXME: we should also parametrize against SHA1Provider !
-    suite = loader.suiteClass()
-    remaining_tests = basic_tests
+# FIXME: we should also parametrize against SHA1Provider !
 
-    dir_reader_scenarios = test_osutils.dir_reader_scenarios()
+ue_scenarios = [('dirstate_Python',
+    {'update_entry': dirstate.py_update_entry})]
+if compiled_dirstate_helpers_feature.available():
+    update_entry = compiled_dirstate_helpers_feature.module.update_entry
+    ue_scenarios.append(('dirstate_Pyrex', {'update_entry': update_entry}))
 
-    ue_scenarios = [('dirstate_Python',
-                     {'update_entry': dirstate.py_update_entry})]
-    if compiled_dirstate_helpers_feature.available():
-        update_entry = compiled_dirstate_helpers_feature.module.update_entry
-        pyrex_scenario = ('dirstate_Pyrex', {'update_entry': update_entry})
-        ue_scenarios.append(pyrex_scenario)
-    process_entry_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance(TestUpdateEntry))
-    tests.multiply_tests(process_entry_tests,
-                         tests.multiply_scenarios(dir_reader_scenarios,
-                                                  ue_scenarios),
-                         suite)
-
-    pe_scenarios = [('dirstate_Python',
-                     {'_process_entry': dirstate.ProcessEntryPython})]
-    if compiled_dirstate_helpers_feature.available():
-        process_entry = compiled_dirstate_helpers_feature.module.ProcessEntryC
-        pyrex_scenario = ('dirstate_Pyrex', {'_process_entry': process_entry})
-        pe_scenarios.append(pyrex_scenario)
-    process_entry_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance(TestProcessEntry))
-    tests.multiply_tests(process_entry_tests,
-                         tests.multiply_scenarios(dir_reader_scenarios,
-                                                  pe_scenarios),
-                         suite)
-
-    dir_reader_tests, remaining_tests = tests.split_suite_by_condition(
-        remaining_tests, tests.condition_isinstance(
-            test_dirstate.TestCaseWithDirState))
-    tests.multiply_tests(dir_reader_tests, dir_reader_scenarios, suite)
-    suite.addTest(remaining_tests)
-
-    return suite
+pe_scenarios = [('dirstate_Python',
+    {'_process_entry': dirstate.ProcessEntryPython})]
+if compiled_dirstate_helpers_feature.available():
+    process_entry = compiled_dirstate_helpers_feature.module.ProcessEntryC
+    pe_scenarios.append(('dirstate_Pyrex', {'_process_entry': process_entry}))
 
 
 class TestBisectPathMixin(object):
@@ -719,6 +693,8 @@ class TestReadDirblocks(test_dirstate.TestCaseWithDirState):
     implementation.
     """
 
+    # inherits scenarios from test_dirstate
+
     def get_read_dirblocks(self):
         from bzrlib._dirstate_helpers_py import _read_dirblocks
         return _read_dirblocks
@@ -826,6 +802,9 @@ class TestUsingCompiledIfAvailable(tests.TestCase):
 class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
     """Test the DirState.update_entry functions"""
 
+    scenarios = multiply_scenarios(
+        dir_reader_scenarios(), ue_scenarios)
+
     # Set by load_tests
     update_entry = None
 
@@ -843,25 +822,34 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_observed_sha1_cachable(self):
         state, entry = self.get_state_with_a()
+        state.save()
         atime = time.time() - 10
         self.build_tree(['a'])
-        statvalue = os.lstat('a')
-        statvalue = test_dirstate._FakeStat(statvalue.st_size, atime, atime,
-            statvalue.st_dev, statvalue.st_ino, statvalue.st_mode)
+        statvalue = test_dirstate._FakeStat.from_stat(os.lstat('a'))
+        statvalue.st_mtime = statvalue.st_ctime = atime
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
         state._observed_sha1(entry, "foo", statvalue)
         self.assertEqual('foo', entry[1][0][1])
         packed_stat = dirstate.pack_stat(statvalue)
         self.assertEqual(packed_stat, entry[1][0][4])
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
+                         state._dirblock_state)
 
     def test_observed_sha1_not_cachable(self):
         state, entry = self.get_state_with_a()
+        state.save()
         oldval = entry[1][0][1]
         oldstat = entry[1][0][4]
         self.build_tree(['a'])
         statvalue = os.lstat('a')
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
         state._observed_sha1(entry, "foo", statvalue)
         self.assertEqual(oldval, entry[1][0][1])
         self.assertEqual(oldstat, entry[1][0][4])
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
 
     def test_update_entry(self):
         state, _ = self.get_state_with_a()
@@ -892,10 +880,12 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
                                           stat_value=stat_value)
         self.assertEqual(None, link_or_sha1)
 
-        # The dirblock entry should not have cached the file's sha1 (too new)
+        # The dirblock entry should not have computed or cached the file's
+        # sha1, but it did update the files' st_size. However, this is not
+        # worth writing a dirstate file for, so we leave the state UNMODIFIED
         self.assertEqual(('f', '', 14, False, dirstate.DirState.NULLSTAT),
                          entry[1][0])
-        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
         mode = stat_value.st_mode
         self.assertEqual([('is_exec', mode, False)], state._log)
@@ -904,9 +894,8 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
 
-        # If we do it again right away, we don't know if the file has changed
-        # so we will re-read the file. Roll the clock back so the file is
-        # guaranteed to look too new.
+        # Roll the clock back so the file is guaranteed to look too new. We
+        # should still not compute the sha1.
         state.adjust_time(-10)
         del state._log[:]
 
@@ -914,7 +903,7 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
                                           stat_value=stat_value)
         self.assertEqual([('is_exec', mode, False)], state._log)
         self.assertEqual(None, link_or_sha1)
-        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
         self.assertEqual(('f', '', 14, False, dirstate.DirState.NULLSTAT),
                          entry[1][0])
@@ -930,6 +919,8 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.assertEqual([('is_exec', mode, False)], state._log)
         self.assertEqual(('f', '', 14, False, dirstate.DirState.NULLSTAT),
                          entry[1][0])
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
 
         # If the file is no longer new, and the clock has been moved forward
         # sufficiently, it will cache the sha.
@@ -977,35 +968,38 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         # Dirblock is not updated (the link is too new)
         self.assertEqual([('l', '', 6, False, dirstate.DirState.NULLSTAT)],
                          entry[1])
-        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+        # The file entry turned into a symlink, that is considered
+        # HASH modified worthy.
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                          state._dirblock_state)
 
         # Because the stat_value looks new, we should re-read the target
+        del state._log[:]
         link_or_sha1 = self.update_entry(state, entry, abspath='a',
                                           stat_value=stat_value)
         self.assertEqual('target', link_or_sha1)
-        self.assertEqual([('read_link', 'a', ''),
-                          ('read_link', 'a', ''),
-                         ], state._log)
+        self.assertEqual([('read_link', 'a', '')], state._log)
         self.assertEqual([('l', '', 6, False, dirstate.DirState.NULLSTAT)],
                          entry[1])
+        state.save()
         state.adjust_time(+20) # Skip into the future, all files look old
+        del state._log[:]
         link_or_sha1 = self.update_entry(state, entry, abspath='a',
                                           stat_value=stat_value)
+        # The symlink stayed a symlink. So while it is new enough to cache, we
+        # don't bother setting the flag, because it is not really worth saving
+        # (when we stat the symlink, we'll have paged in the target.)
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
         self.assertEqual('target', link_or_sha1)
         # We need to re-read the link because only now can we cache it
-        self.assertEqual([('read_link', 'a', ''),
-                          ('read_link', 'a', ''),
-                          ('read_link', 'a', ''),
-                         ], state._log)
+        self.assertEqual([('read_link', 'a', '')], state._log)
         self.assertEqual([('l', 'target', 6, False, packed_stat)],
                          entry[1])
 
+        del state._log[:]
         # Another call won't re-read the link
-        self.assertEqual([('read_link', 'a', ''),
-                          ('read_link', 'a', ''),
-                          ('read_link', 'a', ''),
-                         ], state._log)
+        self.assertEqual([], state._log)
         link_or_sha1 = self.update_entry(state, entry, abspath='a',
                                           stat_value=stat_value)
         self.assertEqual('target', link_or_sha1)
@@ -1026,12 +1020,29 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         self.build_tree(['a/'])
         state.adjust_time(+20)
         self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+        # a/ used to be a file, but is now a directory, worth saving
         self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
                          state._dirblock_state)
         state.save()
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
+        # No changes to a/ means not worth saving.
         self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
+        # Change the last-modified time for the directory
+        t = time.time() - 100.0
+        try:
+            os.utime('a', (t, t))
+        except OSError:
+            # It looks like Win32 + FAT doesn't allow to change times on a dir.
+            raise tests.TestSkipped("can't update mtime of a dir on FAT")
+        saved_packed_stat = entry[1][0][-1]
+        self.assertIs(None, self.do_update_entry(state, entry, 'a'))
+        # We *do* go ahead and update the information in the dirblocks, but we
+        # don't bother setting IN_MEMORY_MODIFIED because it is trivial to
+        # recompute.
+        self.assertNotEqual(saved_packed_stat, entry[1][0][-1])
         self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
                          state._dirblock_state)
 
@@ -1268,6 +1279,8 @@ class UppercaseSHA1Provider(dirstate.SHA1Provider):
 
 
 class TestProcessEntry(test_dirstate.TestCaseWithDirState):
+
+    scenarios = multiply_scenarios(dir_reader_scenarios(), pe_scenarios)
 
     # Set by load_tests
     _process_entry = None

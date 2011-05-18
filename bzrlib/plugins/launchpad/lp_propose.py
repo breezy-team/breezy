@@ -1,4 +1,4 @@
-# Copyright (C) 2010 Canonical Ltd
+# Copyright (C) 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,40 +14,34 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-
-import urlparse
-import webbrowser
-
 from bzrlib import (
     errors,
     hooks,
+    )
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
+import webbrowser
+
+from bzrlib import (
     msgeditor,
-)
+    )
 from bzrlib.plugins.launchpad import (
     lp_api,
     lp_registration,
-)
-
-from lazr.restfulclient import errors as restful_errors
+    )
+""")
 
 
 class ProposeMergeHooks(hooks.Hooks):
     """Hooks for proposing a merge on Launchpad."""
 
     def __init__(self):
-        hooks.Hooks.__init__(self)
-        self.create_hook(
-            hooks.HookPoint(
-                'get_prerequisite',
-                "Return the prerequisite branch for proposing as merge.",
-                (2, 1), None),
-        )
-        self.create_hook(
-            hooks.HookPoint(
-                'merge_proposal_body',
-                "Return an initial body for the merge proposal message.",
-                (2, 1), None),
-        )
+        hooks.Hooks.__init__(self, "bzrlib.plugins.launchpad.lp_propose",
+            "Proposer.hooks")
+        self.add_hook('get_prerequisite',
+            "Return the prerequisite branch for proposing as merge.", (2, 1))
+        self.add_hook('merge_proposal_body',
+            "Return an initial body for the merge proposal message.", (2, 1))
 
 
 class Proposer(object):
@@ -74,23 +68,20 @@ class Proposer(object):
         if staging:
             lp_instance = 'staging'
         else:
-            lp_instance = 'edge'
+            lp_instance = 'production'
         service = lp_registration.LaunchpadService(lp_instance=lp_instance)
         self.launchpad = lp_api.login(service)
         self.source_branch = lp_api.LaunchpadBranch.from_bzr(
             self.launchpad, source_branch)
         if target_branch is None:
-            self.target_branch = self.source_branch.get_dev_focus()
+            self.target_branch = self.source_branch.get_target()
         else:
             self.target_branch = lp_api.LaunchpadBranch.from_bzr(
                 self.launchpad, target_branch)
         self.commit_message = message
         # XXX: this is where bug lp:583638 could be tackled.
         if reviews == []:
-            target_reviewer = self.target_branch.lp.reviewer
-            if target_reviewer is None:
-                raise errors.BzrCommandError('No reviewer specified')
-            self.reviews = [(target_reviewer, '')]
+            self.reviews = []
         else:
             self.reviews = [(self.launchpad.people[reviewer], review_type)
                             for reviewer, review_type in
@@ -153,7 +144,7 @@ class Proposer(object):
             if mp.target_branch.self_link == self.target_branch.lp.self_link:
                 raise errors.BzrCommandError(
                     'There is already a branch merge proposal: %s' %
-                    canonical_url(mp))
+                    lp_api.canonical_url(mp))
 
     def _get_prerequisite_branch(self):
         hooks = self.hooks['get_prerequisite']
@@ -174,6 +165,7 @@ class Proposer(object):
         :param **kwargs: **kwargs for the call.
         :return: The result of calling call(*args, *kwargs).
         """
+        from lazr.restfulclient import errors as restful_errors
         try:
             return call(*args, **kwargs)
         except restful_errors.HTTPError, e:
@@ -208,7 +200,7 @@ class Proposer(object):
             review_types=review_types)
         if self.approve:
             self.call_webservice(mp.setStatus, status='Approved')
-        webbrowser.open(canonical_url(mp))
+        webbrowser.open(lp_api.canonical_url(mp))
 
 
 def modified_files(old_tree, new_tree):
@@ -217,13 +209,3 @@ def modified_files(old_tree, new_tree):
         old_tree):
         if c and k == 'file':
             yield str(path)
-
-
-def canonical_url(object):
-    """Return the canonical URL for a branch."""
-    scheme, netloc, path, params, query, fragment = urlparse.urlparse(
-        str(object.self_link))
-    path = '/'.join(path.split('/')[2:])
-    netloc = netloc.replace('api.', 'code.')
-    return urlparse.urlunparse((scheme, netloc, path, params, query,
-                                fragment))

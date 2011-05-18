@@ -1,4 +1,4 @@
-# Copyright (C) 2007, 2009 Canonical Ltd
+# Copyright (C) 2007-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,6 @@
 
 from bzrlib import (
     branch as _mod_branch,
-    errors,
     revision as _mod_revision,
     tests,
     )
@@ -322,8 +321,23 @@ class TestBranchBuilderBuildSnapshot(tests.TestCaseWithMemoryTransport):
                              ], d_tree)
         # Because we copied the exact text into *this* tree, the 'c' file
         # should look like it was not modified in the merge
-        self.assertEqual('C-id', d_tree.inventory['c-id'].revision)
+        self.assertEqual('C-id', d_tree.get_file_revision('c-id'))
 
+    def test_set_parent_to_null(self):
+        builder = self.build_a_rev()
+        builder.start_series()
+        self.addCleanup(builder.finish_series)
+        builder.build_snapshot('B-id', [],
+            [('add', ('', None, 'directory', None))])
+        # We should now have a graph:
+        #   A B
+        # And not A => B
+        repo = builder.get_branch().repository
+        self.assertEqual({'A-id': (_mod_revision.NULL_REVISION,),
+                          'B-id': (_mod_revision.NULL_REVISION,),},
+                         repo.get_parent_map(['A-id', 'B-id']))
+
+    
     def test_start_finish_series(self):
         builder = BranchBuilder(self.get_transport().clone('foo'))
         builder.start_series()

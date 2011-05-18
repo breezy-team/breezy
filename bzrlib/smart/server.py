@@ -18,23 +18,21 @@
 
 import errno
 import os.path
-import select
 import socket
 import sys
 import threading
 
-from bzrlib.hooks import HookPoint, Hooks
+from bzrlib.hooks import Hooks
 from bzrlib import (
     errors,
     trace,
-    transport,
+    transport as _mod_transport,
 )
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.smart import medium
 from bzrlib.transport import (
     chroot,
-    get_transport,
     pathfilter,
     )
 from bzrlib import (
@@ -105,7 +103,7 @@ class SmartTCPServer(object):
         # The URL that a commit done on the same machine as the server will
         # have within the servers space. (e.g. file:///home/user/source)
         # The URL that will be given to other hooks in the same process -
-        # the URL of the backing transport itself. (e.g. chroot+:///)
+        # the URL of the backing transport itself. (e.g. filtered-36195:///)
         # We need all three because:
         #  * other machines see the first
         #  * local commits on this machine should be able to be mapped to
@@ -178,7 +176,7 @@ class SmartTCPServer(object):
 
     def get_url(self):
         """Return the url of the server"""
-        return "bzr://%s:%d/" % self._sockname
+        return "bzr://%s:%s/" % (self._sockname[0], self._sockname[1])
 
     def serve_conn(self, conn, thread_name_suffix):
         # For WIN32, where the timeout value from the listening socket
@@ -241,21 +239,21 @@ class SmartServerHooks(Hooks):
         These are all empty initially, because by default nothing should get
         notified.
         """
-        Hooks.__init__(self)
-        self.create_hook(HookPoint('server_started',
+        Hooks.__init__(self, "bzrlib.smart.server", "SmartTCPServer.hooks")
+        self.add_hook('server_started',
             "Called by the bzr server when it starts serving a directory. "
             "server_started is called with (backing urls, public url), "
             "where backing_url is a list of URLs giving the "
             "server-specific directory locations, and public_url is the "
-            "public URL for the directory being served.", (0, 16), None))
-        self.create_hook(HookPoint('server_started_ex',
+            "public URL for the directory being served.", (0, 16))
+        self.add_hook('server_started_ex',
             "Called by the bzr server when it starts serving a directory. "
             "server_started is called with (backing_urls, server_obj).",
-            (1, 17), None))
-        self.create_hook(HookPoint('server_stopped',
+            (1, 17))
+        self.add_hook('server_stopped',
             "Called by the bzr server when it stops serving a directory. "
             "server_stopped is called with the same parameters as the "
-            "server_started hook: (backing_urls, public_url).", (0, 16), None))
+            "server_started hook: (backing_urls, public_url).", (0, 16))
 
 SmartTCPServer.hooks = SmartServerHooks()
 
@@ -327,14 +325,14 @@ class BzrServerFactory(object):
         chroot_server = chroot.ChrootServer(transport)
         chroot_server.start_server()
         self.cleanups.append(chroot_server.stop_server)
-        transport = get_transport(chroot_server.get_url())
+        transport = _mod_transport.get_transport(chroot_server.get_url())
         if self.base_path is not None:
             # Decorate the server's backing transport with a filter that can
             # expand homedirs.
             expand_userdirs = self._make_expand_userdirs_filter(transport)
             expand_userdirs.start_server()
             self.cleanups.append(expand_userdirs.stop_server)
-            transport = get_transport(expand_userdirs.get_url())
+            transport = _mod_transport.get_transport(expand_userdirs.get_url())
         self.transport = transport
 
     def _make_smart_server(self, host, port, inet):

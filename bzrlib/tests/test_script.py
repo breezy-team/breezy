@@ -161,7 +161,18 @@ class TestRedirections(tests.TestCase):
 class TestExecution(script.TestCaseWithTransportAndScript):
 
     def test_unknown_command(self):
-        self.assertRaises(SyntaxError, self.run_script, 'foo')
+        """A clear error is reported for commands that aren't recognised
+
+        Testing the attributes of the SyntaxError instance is equivalent to
+        using traceback.format_exception_only and comparing with:
+          File "<string>", line 1
+            foo --frob
+            ^
+        SyntaxError: Command not found "foo"
+        """
+        e = self.assertRaises(SyntaxError, self.run_script, "$ foo --frob")
+        self.assertContainsRe(e.msg, "not found.*foo")
+        self.assertEquals(e.text, "foo --frob")
 
     def test_blank_output_mismatches_output(self):
         """If you give output, the output must actually be blank.
@@ -174,6 +185,14 @@ class TestExecution(script.TestCaseWithTransportAndScript):
             """
             $ echo foo
             """)
+
+    def test_null_output_matches_option(self):
+        """If you want null output to be a wild card, you can pass 
+        null_output_matches_anything to run_script"""
+        self.run_script(
+            """
+            $ echo foo
+            """, null_output_matches_anything=True)
 
     def test_ellipsis_everything(self):
         """A simple ellipsis matches everything."""
@@ -364,8 +383,8 @@ $ cd dir
 $ mkdir ../dir2
 $ cd ..
 """)
-        self.failUnlessExists('dir')
-        self.failUnlessExists('dir2')
+        self.assertPathExists('dir')
+        self.assertPathExists('dir2')
 
 
 class TestCd(script.TestCaseWithTransportAndScript):
@@ -397,7 +416,7 @@ class TestBzr(script.TestCaseWithTransportAndScript):
             $ bzr init branch
             Created a standalone tree (format: ...)
             """)
-        self.failUnlessExists('branch')
+        self.assertPathExists('branch')
 
 
 class TestEcho(script.TestCaseWithMemoryTransportAndScript):
@@ -461,39 +480,39 @@ class TestRm(script.TestCaseWithTransportAndScript):
 
     def test_rm_file(self):
         self.run_script('$ echo content >file')
-        self.failUnlessExists('file')
+        self.assertPathExists('file')
         self.run_script('$ rm file')
-        self.failIfExists('file')
+        self.assertPathDoesNotExist('file')
 
     def test_rm_file_force(self):
-        self.failIfExists('file')
+        self.assertPathDoesNotExist('file')
         self.run_script('$ rm -f file')
-        self.failIfExists('file')
+        self.assertPathDoesNotExist('file')
 
     def test_rm_files(self):
         self.run_script("""
 $ echo content >file
 $ echo content >file2
 """)
-        self.failUnlessExists('file2')
+        self.assertPathExists('file2')
         self.run_script('$ rm file file2')
-        self.failIfExists('file2')
+        self.assertPathDoesNotExist('file2')
 
     def test_rm_dir(self):
         self.run_script('$ mkdir dir')
-        self.failUnlessExists('dir')
+        self.assertPathExists('dir')
         self.run_script("""
 $ rm dir
 2>rm: cannot remove 'dir': Is a directory
 """)
-        self.failUnlessExists('dir')
+        self.assertPathExists('dir')
 
     def test_rm_dir_recursive(self):
         self.run_script("""
 $ mkdir dir
 $ rm -r dir
 """)
-        self.failIfExists('dir')
+        self.assertPathDoesNotExist('dir')
 
 
 class TestMv(script.TestCaseWithTransportAndScript):
@@ -505,10 +524,10 @@ class TestMv(script.TestCaseWithTransportAndScript):
 
     def test_move_file(self):
         self.run_script('$ echo content >file')
-        self.failUnlessExists('file')
+        self.assertPathExists('file')
         self.run_script('$ mv file new_name')
-        self.failIfExists('file')
-        self.failUnlessExists('new_name')
+        self.assertPathDoesNotExist('file')
+        self.assertPathExists('new_name')
 
     def test_move_unknown_file(self):
         self.assertRaises(AssertionError,
@@ -520,9 +539,9 @@ $ mkdir dir
 $ echo content >dir/file
 """)
         self.run_script('$ mv dir new_name')
-        self.failIfExists('dir')
-        self.failUnlessExists('new_name')
-        self.failUnlessExists('new_name/file')
+        self.assertPathDoesNotExist('dir')
+        self.assertPathExists('new_name')
+        self.assertPathExists('new_name/file')
 
     def test_move_file_into_dir(self):
         self.run_script("""
@@ -530,9 +549,9 @@ $ mkdir dir
 $ echo content > file
 """)
         self.run_script('$ mv file dir')
-        self.failUnlessExists('dir')
-        self.failIfExists('file')
-        self.failUnlessExists('dir/file')
+        self.assertPathExists('dir')
+        self.assertPathDoesNotExist('file')
+        self.assertPathExists('dir/file')
 
 
 class cmd_test_confirm(commands.Command):

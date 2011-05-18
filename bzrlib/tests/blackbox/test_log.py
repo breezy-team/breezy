@@ -19,7 +19,6 @@
 
 from itertools import izip
 import os
-import re
 
 from bzrlib import (
     branchbuilder,
@@ -29,7 +28,6 @@ from bzrlib import (
     tests,
     )
 from bzrlib.tests import (
-    script,
     test_log,
     )
 
@@ -926,3 +924,30 @@ class TestLogMultiple(TestLogWithLogCatcher):
         self.prepare_tree()
         os.chdir("dir1")
         self.assertLogRevnos(['dir2', 'file5'], ['5', '3'])
+
+
+class MainlineGhostTests(TestLogWithLogCatcher):
+
+    def setUp(self):
+        super(MainlineGhostTests, self).setUp()
+        tree = self.make_branch_and_tree('')
+        tree.set_parent_ids(["spooky"], allow_leftmost_as_ghost=True)
+        tree.add('')
+        tree.commit('msg1', rev_id='rev1')
+        tree.commit('msg2', rev_id='rev2')
+
+    def test_log_range(self):
+        self.assertLogRevnos(["-r1..2"], ["2", "1"])
+
+    def test_log_norange(self):
+        self.assertLogRevnos([], ["2", "1"])
+
+    def test_log_range_open_begin(self):
+        raise tests.KnownFailure("log with ghosts fails. bug #726466")
+        (stdout, stderr) = self.run_bzr(['log', '-r..2'], retcode=3)
+        self.assertEqual(["2", "1"],
+                         [r.revno for r in self.get_captured_revisions()])
+        self.assertEquals("bzr: ERROR: Further revision history missing.", stderr)
+
+    def test_log_range_open_end(self):
+        self.assertLogRevnos(["-r1.."], ["2", "1"])

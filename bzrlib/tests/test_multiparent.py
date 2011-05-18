@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2007, 2009, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,6 @@
 from unittest import TestCase
 
 from bzrlib import (
-    knit,
     multiparent,
     patiencediff,
     tests,
@@ -266,10 +265,10 @@ class TestMultiVersionedFile(tests.TestCaseInTempDir):
     def test_filenames(self):
         vf = multiparent.MultiVersionedFile('foop')
         vf.add_version('a\nb\nc\nd'.splitlines(True), 'a', [])
-        self.failUnlessExists('foop.mpknit')
-        self.failIfExists('foop.mpidx')
+        self.assertPathExists('foop.mpknit')
+        self.assertPathDoesNotExist('foop.mpidx')
         vf.save()
-        self.failUnlessExists('foop.mpidx')
+        self.assertPathExists('foop.mpidx')
         vf.destroy()
-        self.failIfExists('foop.mpknit')
-        self.failIfExists('foop.mpidx')
+        self.assertPathDoesNotExist('foop.mpknit')
+        self.assertPathDoesNotExist('foop.mpidx')

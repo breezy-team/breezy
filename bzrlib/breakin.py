@@ -41,19 +41,6 @@ def _debug(signal_number, interrupted_frame):
         signal.signal(_breakin_signal_number, _debug)
 
 
-def hook_sigquit():
-    # We import this late because breakin.py is loaded as part of the main
-    # 'bzr' script, so we want it to load as little as possible until things
-    # are up and running
-    from bzrlib import symbol_versioning, trace
-    trace.mutter_callsite(2, 'Deprecated function called')
-    symbol_versioning.warn(symbol_versioning.deprecation_string(
-        hook_sigquit, symbol_versioning.deprecated_in((1, 18, 0))),
-        DeprecationWarning, stacklevel=2)
-
-    return hook_debugger_to_signal()
-
-
 def determine_signal():
     global _breakin_signal_number
     global _breakin_signal_name

@@ -1,7 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
-#
-# Authors:
-#   Johan Rydberg <jrydberg@gnu.org>
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,6 +28,7 @@ import urllib
 
 from bzrlib import (
     annotate,
+    bencode,
     errors,
     graph as _mod_graph,
     groupcompress,
@@ -40,14 +38,10 @@ from bzrlib import (
     multiparent,
     tsort,
     revision,
-    ui,
     )
-from bzrlib.graph import DictParentsProvider, Graph, StackedParentsProvider
-from bzrlib.transport.memory import MemoryTransport
 """)
 from bzrlib.registry import Registry
 from bzrlib.textmerge import TextMerge
-from bzrlib import bencode
 
 
 adapter_registry = Registry()
@@ -930,6 +924,10 @@ class VersionedFiles(object):
 
     The use of tuples allows a single code base to support several different
     uses with only the mapping logic changing from instance to instance.
+
+    :ivar _immediate_fallback_vfs: For subclasses that support stacking,
+        this is a list of other VersionedFiles immediately underneath this
+        one.  They may in turn each have further fallbacks.
     """
 
     def add_lines(self, key, parents, lines, parent_texts=None,
@@ -974,7 +972,7 @@ class VersionedFiles(object):
     def _add_text(self, key, parents, text, nostore_sha=None, random_id=False):
         """Add a text to the store.
 
-        This is a private function for use by CommitBuilder.
+        This is a private function for use by VersionedFileCommitBuilder.
 
         :param key: The key tuple of the text to add. If the last element is
             None, a CHK string will be generated during the addition.
@@ -1192,6 +1190,19 @@ class VersionedFiles(object):
 
     def _extract_blocks(self, version_id, source, target):
         return None
+
+    def _transitive_fallbacks(self):
+        """Return the whole stack of fallback versionedfiles.
+
+        This VersionedFiles may have a list of fallbacks, but it doesn't
+        necessarily know about the whole stack going down, and it can't know
+        at open time because they may change after the objects are opened.
+        """
+        all_fallbacks = []
+        for a_vfs in self._immediate_fallback_vfs:
+            all_fallbacks.append(a_vfs)
+            all_fallbacks.extend(a_vfs._transitive_fallbacks())
+        return all_fallbacks
 
 
 class ThunkedVersionedFiles(VersionedFiles):
@@ -1411,6 +1422,33 @@ class ThunkedVersionedFiles(VersionedFiles):
         return result
 
 
+class VersionedFilesWithFallbacks(VersionedFiles):
+
+    def without_fallbacks(self):
+        """Return a clone of this object without any fallbacks configured."""
+        raise NotImplementedError(self.without_fallbacks)
+
+    def add_fallback_versioned_files(self, a_versioned_files):
+        """Add a source of texts for texts not present in this knit.
+
+        :param a_versioned_files: A VersionedFiles object.
+        """
+        raise NotImplementedError(self.add_fallback_versioned_files)
+
+    def get_known_graph_ancestry(self, keys):
+        """Get a KnownGraph instance with the ancestry of keys."""
+        parent_map, missing_keys = self._index.find_ancestry(keys)
+        for fallback in self._transitive_fallbacks():
+            if not missing_keys:
+                break
+            (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
+                                                missing_keys)
+            parent_map.update(f_parent_map)
+            missing_keys = f_missing_keys
+        kg = _mod_graph.KnownGraph(parent_map)
+        return kg
+
+
 class _PlanMergeVersionedFile(VersionedFiles):
     """A VersionedFile for uncommitted and committed texts.
 
@@ -1437,7 +1475,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
         # line data for locally held keys.
         self._lines = {}
         # key lookup providers
-        self._providers = [DictParentsProvider(self._parents)]
+        self._providers = [_mod_graph.DictParentsProvider(self._parents)]
 
     def plan_merge(self, ver_a, ver_b, base=None):
         """See VersionedFile.plan_merge"""
@@ -1450,7 +1488,7 @@ class _PlanMergeVersionedFile(VersionedFiles):
 
     def plan_lca_merge(self, ver_a, ver_b, base=None):
         from bzrlib.merge import _PlanLCAMerge
-        graph = Graph(self)
+        graph = _mod_graph.Graph(self)
         new_plan = _PlanLCAMerge(ver_a, ver_b, self, (self._file_id,), graph).plan_merge()
         if base is None:
             return new_plan
@@ -1508,7 +1546,8 @@ class _PlanMergeVersionedFile(VersionedFiles):
             result[revision.NULL_REVISION] = ()
         self._providers = self._providers[:1] + self.fallback_versionedfiles
         result.update(
-            StackedParentsProvider(self._providers).get_parent_map(keys))
+            _mod_graph.StackedParentsProvider(
+                self._providers).get_parent_map(keys))
         for key, parents in result.iteritems():
             if parents == ():
                 result[key] = (revision.NULL_REVISION,)
@@ -1860,3 +1899,64 @@ def sort_groupcompress(parent_map):
     for prefix in sorted(per_prefix_map):
         present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
     return present_keys
+
+
+class _KeyRefs(object):
+
+    def __init__(self, track_new_keys=False):
+        # dict mapping 'key' to 'set of keys referring to that key'
+        self.refs = {}
+        if track_new_keys:
+            # set remembering all new keys
+            self.new_keys = set()
+        else:
+            self.new_keys = None
+
+    def clear(self):
+        if self.refs:
+            self.refs.clear()
+        if self.new_keys:
+            self.new_keys.clear()
+
+    def add_references(self, key, refs):
+        # Record the new references
+        for referenced in refs:
+            try:
+                needed_by = self.refs[referenced]
+            except KeyError:
+                needed_by = self.refs[referenced] = set()
+            needed_by.add(key)
+        # Discard references satisfied by the new key
+        self.add_key(key)
+
+    def get_new_keys(self):
+        return self.new_keys
+    
+    def get_unsatisfied_refs(self):
+        return self.refs.iterkeys()
+
+    def _satisfy_refs_for_key(self, key):
+        try:
+            del self.refs[key]
+        except KeyError:
+            # No keys depended on this key.  That's ok.
+            pass
+
+    def add_key(self, key):
+        # satisfy refs for key, and remember that we've seen this key.
+        self._satisfy_refs_for_key(key)
+        if self.new_keys is not None:
+            self.new_keys.add(key)
+
+    def satisfy_refs_for_keys(self, keys):
+        for key in keys:
+            self._satisfy_refs_for_key(key)
+
+    def get_referrers(self):
+        result = set()
+        for referrers in self.refs.itervalues():
+            result.update(referrers)
+        return result
+
+
+

@@ -205,7 +205,7 @@ Bug Fixes
   displayed test name is always the one that's actually running.
   (Martin Pool, #123688)
 
-* Authenticating against an ssh server now uses ``auth_none`` to determine
+* Authenticating against an SSH server now uses ``auth_none`` to determine
   if password authentication is even supported. This fixes a bug where
   users would be prompted for a launchpad password, even though launchpad
   only supports publickey authentication. (John Arbash Meinel, #375867)
@@ -293,7 +293,7 @@ Bug Fixes
   
 * The ``--hardlink`` option to ``branch`` and ``checkout`` is not
   supported at the moment on workingtree formats that can do content
-  filtering.  (See <https://bugs.edge.launchpad.net/bzr/+bug/408193>.)
+  filtering.  (See <https://bugs.launchpad.net/bzr/+bug/408193>.)
   bzr now says so, rather than just ignoring the option.  (Martin Pool)
 
 * There was a bug in ``osutils.relpath`` that was only triggered on
