@@ -85,9 +85,9 @@ def create_texts_for_inv(repo, inv):
         repo.texts.add_lines((ie.file_id, ie.revision), [], lines)
 
 
-def apply_inventory_Inventory(self, basis, delta):
+def apply_inventory_Inventory(self, basis, delta, expect_fail=True):
     """Apply delta to basis and return the result.
-    
+
     :param basis: An inventory to be used as the basis.
     :param delta: The inventory delta to apply:
     :return: An inventory resulting from the application.
@@ -96,11 +96,11 @@ def apply_inventory_Inventory(self, basis, delta):
     return basis
 
 
-def apply_inventory_WT(self, basis, delta):
+def apply_inventory_WT(self, basis, delta, expect_fail=True):
     """Apply delta to basis and return the result.
 
     This sets the tree state to be basis, and then calls apply_inventory_delta.
-    
+
     :param basis: An inventory to be used as the basis.
     :param delta: The inventory delta to apply:
     :return: An inventory resulting from the application.
@@ -125,14 +125,48 @@ def apply_inventory_WT(self, basis, delta):
     tree = tree.bzrdir.open_workingtree()
     tree.lock_read()
     self.addCleanup(tree.unlock)
-    # One could add 'tree._validate' here but that would cause 'early' failues 
-    # as far as higher level code is concerned. Possibly adding an
-    # expect_fail parameter to this function and if that is False then do a
-    # validate call.
+    if not expect_fail:
+        tree._validate()
     return tree.inventory
 
 
-def apply_inventory_WT_basis(self, basis, delta):
+def _create_repo_revisions(repo, basis, delta, expect_fail):
+    repo.start_write_group()
+    try:
+        rev = revision.Revision('basis', timestamp=0, timezone=None,
+            message="", committer="foo@example.com")
+        basis.revision_id = 'basis'
+        create_texts_for_inv(repo, basis)
+        repo.add_revision('basis', rev, basis)
+        if expect_fail:
+            # We don't want to apply the delta to the basis, because we expect
+            # the delta is invalid.
+            result_inv = basis
+            result_inv.revision_id = 'result'
+            target_entries = None
+        else:
+            result_inv = basis.create_by_apply_delta(delta, 'result')
+            create_texts_for_inv(repo, result_inv)
+            target_entries = list(result_inv.iter_entries_by_dir())
+        rev = revision.Revision('result', timestamp=0, timezone=None,
+            message="", committer="foo@example.com")
+        repo.add_revision('result', rev, result_inv)
+        repo.commit_write_group()
+    except:
+        repo.abort_write_group()
+        raise
+    return target_entries
+
+
+def _get_basis_entries(tree):
+    basis_tree = tree.basis_tree()
+    basis_tree.lock_read()
+    basis_tree_entries = list(basis_tree.inventory.iter_entries_by_dir())
+    basis_tree.unlock()
+    return basis_tree_entries
+
+
+def apply_inventory_WT_basis(test, basis, delta, expect_fail=True):
     """Apply delta to basis and return the result.
 
     This sets the parent and then calls update_basis_by_delta.
@@ -140,37 +174,47 @@ def apply_inventory_WT_basis(self, basis, delta):
     allow safety checks made by the WT to succeed, and finally ensures that all
     items in the delta with a new path are present in the WT before calling
     update_basis_by_delta.
-    
+
     :param basis: An inventory to be used as the basis.
     :param delta: The inventory delta to apply:
     :return: An inventory resulting from the application.
     """
-    control = self.make_bzrdir('tree', format=self.format._matchingbzrdir)
+    control = test.make_bzrdir('tree', format=test.format._matchingbzrdir)
     control.create_repository()
     control.create_branch()
-    tree = self.format.initialize(control)
+    tree = test.format.initialize(control)
     tree.lock_write()
     try:
-        repo = tree.branch.repository
-        repo.start_write_group()
-        try:
-            rev = revision.Revision('basis', timestamp=0, timezone=None,
-                message="", committer="foo@example.com")
-            basis.revision_id = 'basis'
-            create_texts_for_inv(tree.branch.repository, basis)
-            repo.add_revision('basis', rev, basis)
-            # Add a revision for the result, with the basis content - 
-            # update_basis_by_delta doesn't check that the delta results in
-            # result, and we want inconsistent deltas to get called on the
-            # tree, or else the code isn't actually checked.
-            rev = revision.Revision('result', timestamp=0, timezone=None,
-                message="", committer="foo@example.com")
-            basis.revision_id = 'result'
-            repo.add_revision('result', rev, basis)
-            repo.commit_write_group()
-        except:
-            repo.abort_write_group()
-            raise
+        target_entries = _create_repo_revisions(tree.branch.repository, basis,
+                                                delta, expect_fail)
+        # For successful deltas, we try 2 different permutations
+        # 1) active WT has no state
+        # 2) active WT is at target, basis tree is updated from basis to target
+        # 3) active WT is at basis, basis tree is updated to new target
+        # For expect_fail = True, we only do the last one.
+        if not expect_fail:
+            tree1 = tree.bzrdir.sprout('tree1').open_workingtree()
+            tree1.branch.repository.fetch(tree.branch.repository)
+            tree1.set_parent_ids(['basis'])
+            tree1.lock_write()
+            try:
+                tree1.update_basis_by_delta('result', delta)
+                tree1._validate()
+            finally:
+                tree1.unlock()
+            test.assertEqual(target_entries, _get_basis_entries(tree1))
+            tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
+            tree2.branch.repository.fetch(tree.branch.repository)
+            tree2.lock_write()
+            try:
+                tree2._write_inventory(basis)
+                tree2.set_parent_ids(['basis'])
+                tree2.apply_inventory_delta(delta)
+                tree2.update_basis_by_delta('result', delta)
+                tree2._validate()
+            finally:
+                tree2.unlock()
+            test.assertEqual(target_entries, _get_basis_entries(tree1))
         # Set the basis state as the trees current state
         tree._write_inventory(basis)
         # This reads basis from the repo and puts it into the tree's local
@@ -182,20 +226,24 @@ def apply_inventory_WT_basis(self, basis, delta):
     tree.lock_write()
     try:
         tree.update_basis_by_delta('result', delta)
+        if not expect_fail:
+            tree._validate()
     finally:
         tree.unlock()
     # reload tree - ensure we get what was written.
     tree = tree.bzrdir.open_workingtree()
     basis_tree = tree.basis_tree()
     basis_tree.lock_read()
-    self.addCleanup(basis_tree.unlock)
-    # Note, that if the tree does not have a local cache, the trick above of
-    # setting the result as the basis, will come back to bite us. That said,
-    # all the implementations in bzr do have a local cache.
-    return basis_tree.inventory
+    test.addCleanup(basis_tree.unlock)
+    basis_inv = basis_tree.inventory
+    if target_entries:
+        basis_entries = list(basis_inv.iter_entries_by_dir())
+        test.assertEqual(target_entries, basis_entries)
+    return basis_inv
 
 
-def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta):
+def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
+                                                      expect_fail=True):
     """Apply delta to basis and return the result.
     
     This inserts basis as a whole inventory and then uses
@@ -570,7 +618,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file1.text_size = 0
         file1.text_sha1 = ''
         delta = [(None, u'path', 'file-id', file1)]
-        res_inv = self.apply_delta(self, inv, delta)
+        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
         self.assertEqual('file-id', res_inv['file-id'].file_id)
 
     def test_remove_file(self):
@@ -581,7 +629,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file1.text_sha1 = ''
         inv.add(file1)
         delta = [(u'path', None, 'file-id', None)]
-        res_inv = self.apply_delta(self, inv, delta)
+        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
         self.assertEqual(None, res_inv.path2id('path'))
         self.assertRaises(errors.NoSuchId, res_inv.id2path, 'file-id')
 
@@ -591,7 +639,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         inv.add(file1)
         file2 = self.make_file_ie(name='path2', parent_id=inv.root.file_id)
         delta = [(u'path', 'path2', 'file-id', file2)]
-        res_inv = self.apply_delta(self, inv, delta)
+        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
         self.assertEqual(None, res_inv.path2id('path'))
         self.assertEqual('file-id', res_inv.path2id('path2'))
 
@@ -602,7 +650,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2 = self.make_file_ie(file_id='id2', parent_id=inv.root.file_id)
         delta = [(u'name', None, 'id1', None),
                  (None, u'name', 'id2', file2)]
-        res_inv = self.apply_delta(self, inv, delta)
+        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
         self.assertEqual('id2', res_inv.path2id('name'))
 
     def test_is_root(self):

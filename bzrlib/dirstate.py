@@ -371,7 +371,7 @@ class DirState(object):
     # A pack_stat (the x's) that is just noise and will never match the output
     # of base64 encode.
     NULLSTAT = 'x' * 32
-    NULL_PARENT_DETAILS = ('a', '', 0, False, '')
+    NULL_PARENT_DETAILS = static_tuple.StaticTuple('a', '', 0, False, '')
 
     HEADER_FORMAT_2 = '#bazaar dirstate flat format 2\n'
     HEADER_FORMAT_3 = '#bazaar dirstate flat format 3\n'
@@ -1285,8 +1285,7 @@ class DirState(object):
         except IndexError:
             pass
         entry_index = bisect.bisect_left(block, (key, []))
-        present = (entry_index < len_block and
-            block[entry_index][0] == key)
+        present = (entry_index < len_block and block[entry_index][0] == key)
         self._last_entry_index = entry_index
         return entry_index, present
 
@@ -1525,7 +1524,9 @@ class DirState(object):
             if inv_entry is not None and file_id != inv_entry.file_id:
                 raise errors.InconsistentDelta(new_path, file_id,
                     "mismatched entry file_id %r" % inv_entry)
-            if new_path is not None:
+            if new_path is None:
+                new_path_utf8 = None
+            else:
                 if inv_entry is None:
                     raise errors.InconsistentDelta(new_path, file_id,
                         "new_path with no entry")
@@ -1535,12 +1536,24 @@ class DirState(object):
                 if basename_utf8:
                     parents.add((dirname_utf8, inv_entry.parent_id))
             if old_path is None:
-                adds.append((None, encode(new_path), file_id,
+                old_path_utf8 = None
+            else:
+                old_path_utf8 = encode(old_path)
+            if old_path is None:
+                adds.append((None, new_path_utf8, file_id,
                     inv_to_entry(inv_entry), True))
                 new_ids.add(file_id)
             elif new_path is None:
-                deletes.append((encode(old_path), None, file_id, None, True))
-            elif (old_path, new_path) != root_only:
+                deletes.append((old_path_utf8, None, file_id, None, True))
+            elif (old_path, new_path) == root_only:
+                # changes to just the root should not require remove/insertion
+                # of everything.
+                changes.append((old_path_utf8, new_path_utf8, file_id,
+                                inv_to_entry(inv_entry)))
+            else:
+                # TODO: if old_path == new_path, I think we can get away with
+                #       treating this entry as a simple 'changes' entry, rather
+                #       than a delete + add. JAM 2011-05-18
                 # Renames:
                 # Because renames must preserve their children we must have
                 # processed all relocations and removes before hand. The sort
@@ -1556,36 +1569,31 @@ class DirState(object):
                 self._update_basis_apply_deletes(deletes)
                 deletes = []
                 # Split into an add/delete pair recursively.
-                adds.append((None, new_path_utf8, file_id,
-                    inv_to_entry(inv_entry), False))
+                adds.append((old_path_utf8, new_path_utf8, file_id,
+                             inv_to_entry(inv_entry), False))
                 # Expunge deletes that we've seen so that deleted/renamed
                 # children of a rename directory are handled correctly.
-                new_deletes = reversed(list(self._iter_child_entries(1,
-                    encode(old_path))))
+                new_deletes = reversed(list(
+                    self._iter_child_entries(1, old_path_utf8)))
                 # Remove the current contents of the tree at orig_path, and
                 # reinsert at the correct new path.
                 for entry in new_deletes:
-                    if entry[0][0]:
-                        source_path = entry[0][0] + '/' + entry[0][1]
+                    child_dirname, child_basename, child_file_id = entry[0]
+                    if child_dirname:
+                        source_path = child_dirname + '/' + child_basename
                     else:
-                        source_path = entry[0][1]
+                        source_path = child_basename
                     if new_path_utf8:
                         target_path = new_path_utf8 + source_path[len(old_path):]
                     else:
                         if old_path == '':
                             raise AssertionError("cannot rename directory to"
-                                " itself")
+                                                 " itself")
                         target_path = source_path[len(old_path) + 1:]
                     adds.append((None, target_path, entry[0][2], entry[1][1], False))
                     deletes.append(
                         (source_path, target_path, entry[0][2], None, False))
-                deletes.append(
-                    (encode(old_path), new_path, file_id, None, False))
-            else:
-                # changes to just the root should not require remove/insertion
-                # of everything.
-                changes.append((encode(old_path), encode(new_path), file_id,
-                    inv_to_entry(inv_entry)))
+                deletes.append((old_path_utf8, new_path, file_id, None, False))
         self._check_delta_ids_absent(new_ids, delta, 1)
         try:
             # Finish expunging deletes/first half of renames.
@@ -1646,12 +1654,26 @@ class DirState(object):
         """
         # Adds are accumulated partly from renames, so can be in any input
         # order - sort it.
-        adds.sort()
+        # TODO: we may want to sort in dirblocks order. That way each entry
+        #       will end up in the same directory, allowing the _get_entry
+        #       fast-path for looking up 2 items in the same dir work.
+        adds.sort(key=lambda x: x[1])
         # adds is now in lexographic order, which places all parents before
         # their children, so we can process it linearly.
         absent = 'ar'
         st = static_tuple.StaticTuple
         for old_path, new_path, file_id, new_details, real_add in adds:
+            if real_add and old_path is not None:
+                raise errors.InconsistentDelta(new_path, file_id,
+                    'considered a real add but still had old_path at %s'
+                    % (old_path,))
+            # This change may or may not be reflected in tree0. When adding a
+            # record, we have to watch out for
+            #   1) Simple case, the file exists in tree0, and old_path =
+            #      new_path, just add the details for tree1
+            #   2) The file doesn't exist in tree0 at all
+            #   3) Something else exists in tree0 at the same path
+            #   4) The file exists in tree0, but at a different path
             entry = self._get_entry(1, file_id, new_path)
             if entry[0] is None:
                 # This entry doesn't exist in tree 1, but it might just be an
