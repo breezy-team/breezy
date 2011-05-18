@@ -28,7 +28,7 @@ URLが渡されない場合、オリジナルのものから由来する初期�
 したいかもしれません。
 この場合、彼女は最初に明示的にURLを渡す必要があります::
 
-  bzr merge sftp://mary@bill-laptop/cool-repo/cool-trunk
+  bzr merge bzr+ssh://mary@bill-laptop/cool-repo/cool-trunk
 
 マージブランチがまだ設定されていなければ、これによってデフォルトの\
 マージブランチが設定されます。
