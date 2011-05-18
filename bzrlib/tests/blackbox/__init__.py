@@ -98,6 +98,7 @@ def load_tests(basic_tests, module, loader):
                      'test_remerge',
                      'test_remove',
                      'test_re_sign',
+                     'test_remember_option',
                      'test_remove_tree',
                      'test_repair_workingtree',
                      'test_resolve',
