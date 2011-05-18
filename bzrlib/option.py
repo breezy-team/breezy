@@ -203,15 +203,29 @@ class Option(object):
         else:
             return 'no-' + self.name
 
-    def add_option(self, parser, short_name):
+    @staticmethod
+    def get_gettext():
+        """Returns the gettext function used to translate this Option's help.
+
+        NOTE: Options provided by third party plugins should override this to
+        use own i18n system.
+        """
+        from bzrlib.i18n import gettext
+        return gettext
+
+    def add_option(self, parser, short_name, l10n=False):
         """Add this option to an Optparse parser"""
+        if l10n:
+            gettext = self.get_gettext()
+        else:
+            gettext = lambda x: x
         option_strings = ['--%s' % self.name]
         if short_name is not None:
             option_strings.append('-%s' % short_name)
         if self.hidden:
             help = optparse.SUPPRESS_HELP
         else:
-            help = self.help
+            help = gettext(self.help)
         optargfn = self.type
         if optargfn is None:
             parser.add_option(action='callback',
@@ -426,13 +440,13 @@ class OptionParser(optparse.OptionParser):
         raise errors.BzrCommandError(message)
 
 
-def get_optparser(options):
+def get_optparser(options, l10n=False):
     """Generate an optparse parser for bzrlib-style options"""
 
     parser = OptionParser()
     parser.remove_option('--help')
     for option in options.itervalues():
-        option.add_option(parser, option.short_name())
+        option.add_option(parser, option.short_name(), l10n)
     return parser
 
 

@@ -492,9 +492,18 @@ class Command(object):
             usage help (e.g. Purpose, Usage, Options) with a
             message explaining how to obtain full help.
         """
+        from bzrlib.i18n import gettext   # gettext() for fixed string
+        cmd_gettext = self.get_gettext()  # gettext() for command help
         doc = self.help()
-        if not doc:
-            doc = "No help for this command."
+        if doc:
+            # NOTE: If cmd_gettext translates ':Usage:\n', the section will
+            # be shown after "Description" section.
+            # Additionally, ZzzTranslation translates ':Label...' into
+            # 'zz{{:Label...}}'. So all sections are broken and shown in
+            # the "Description" section.
+            doc = cmd_gettext(doc)
+        else:
+            doc = gettext("No help for this command.")
 
         # Extract the summary (purpose) and sections out from the text
         purpose,sections,order = self._get_help_parts(doc)
@@ -507,11 +516,11 @@ class Command(object):
 
         # The header is the purpose and usage
         result = ""
-        result += ':Purpose: %s\n' % purpose
+        result += ':%s: %s\n' % (gettext('Purpose'), purpose)
         if usage.find('\n') >= 0:
-            result += ':Usage:\n%s\n' % usage
+            result += ':%s:\n%s\n' % (gettext('Usage'), usage)
         else:
-            result += ':Usage:   %s\n' % usage
+            result += ':%s:   %s\n' % (gettext('Usage'), usage)
         result += '\n'
 
         # Add the options
@@ -519,7 +528,8 @@ class Command(object):
         # XXX: optparse implicitly rewraps the help, and not always perfectly,
         # so we get <https://bugs.launchpad.net/bzr/+bug/249908>.  -- mbp
         # 20090319
-        options = option.get_optparser(self.options()).format_option_help()
+        options = option.get_optparser(self.options(), True)
+        options = options.format_option_help()
         # FIXME: According to the spec, ReST option lists actually don't
         # support options like --1.14 so that causes syntax errors (in Sphinx
         # at least).  As that pattern always appears in the commands that
@@ -528,11 +538,9 @@ class Command(object):
         # don't have to do that too often -- vila 20110514
         if not plain and options.find('  --1.14  ') != -1:
             options = options.replace(' format:\n', ' format::\n\n', 1)
-        if options.startswith('Options:'):
-            result += ':' + options
-        elif options.startswith('options:'):
-            # Python 2.4 version of optparse
-            result += ':Options:' + options[len('options:'):]
+        if options.startswith('Options:') or options.startswith('options:'):
+            # Python 2.4 version of optparse uses 'options'.
+            result += ':%s:%s' % (gettext('Options'), options[len('options:'):])
         else:
             result += options
         result += '\n'
@@ -543,22 +551,22 @@ class Command(object):
             if sections.has_key(None):
                 text = sections.pop(None)
                 text = '\n  '.join(text.splitlines())
-                result += ':%s:\n  %s\n\n' % ('Description',text)
+                result += ':%s:\n  %s\n\n' % (gettext('Description'),text)
 
             # Add the custom sections (e.g. Examples). Note that there's no need
             # to indent these as they must be indented already in the source.
             if sections:
                 for label in order:
-                    if sections.has_key(label):
-                        result += ':%s:\n%s\n' % (label,sections[label])
+                    if label in sections:
+                        result += ':%s:\n%s\n' % (label, sections[label])
                 result += '\n'
         else:
-            result += ("See bzr help %s for more details and examples.\n\n"
+            result += (gettext("See bzr help %s for more details and examples.\n\n")
                 % self.name())
 
         # Add the aliases, source (plug-in) and see also links, if any
         if self.aliases:
-            result += ':Aliases:  '
+            result += ':%s:  ' % gettext('Aliases')
             result += ', '.join(self.aliases) + '\n'
         plugin_name = self.plugin_name()
         if plugin_name is not None:
@@ -577,7 +585,7 @@ class Command(object):
                         link_text = ":doc:`%s <%s-help>`" % (item, item)
                         see_also_links.append(link_text)
                 see_also = see_also_links
-            result += ':See also: '
+            result += ':%s: ' % gettext('See also')
             result += ', '.join(see_also) + '\n'
 
         # If this will be rendered as plain text, convert it
@@ -668,7 +676,8 @@ class Command(object):
 
         # Process the standard options
         if 'help' in opts:  # e.g. bzr add --help
-            sys.stdout.write(self.get_help_text())
+            self._setup_outf()
+            self.outf.write(self.get_help_text())
             return 0
         if 'usage' in opts:  # e.g. bzr add --usage
             sys.stdout.write(self.get_help_text(verbose=False))
@@ -757,6 +766,16 @@ class Command(object):
         if self.__doc__ is Command.__doc__:
             return None
         return getdoc(self)
+
+    @staticmethod
+    def get_gettext():
+        """Returns the gettext function used to translate this command's help.
+
+        NOTE: Commands provided by plugins should override this to use own
+        i18n system.
+        """
+        from bzrlib.i18n import gettext
+        return gettext
 
     def name(self):
         """Return the canonical name for this command.
@@ -1048,8 +1067,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
     argv = _specified_or_unicode_argv(argv)
     trace.mutter("bzr arguments: %r", argv)
 
-    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin =  \
-                opt_no_aliases = False
+    opt_lsprof = opt_profile = opt_no_plugins = opt_builtin = \
+            opt_no_i18n = opt_no_aliases = False
     opt_lsprof_file = opt_coverage_dir = None
 
     # --no-plugins is handled specially at a very early stage. We need
@@ -1072,6 +1091,8 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
             opt_no_plugins = True
         elif a == '--no-aliases':
             opt_no_aliases = True
+        elif a == '--no-i18n':
+            opt_no_i18n = True
         elif a == '--builtin':
             opt_builtin = True
         elif a == '--concurrency':
@@ -1089,6 +1110,12 @@ def run_bzr(argv, load_plugins=load_plugins, disable_plugins=disable_plugins):
         i += 1
 
     debug.set_debug_flags_from_config()
+    if not opt_no_i18n:
+        from bzrlib import i18n
+        if 'i18n' in debug.debug_flags:
+            i18n.install_zzz()
+        else:
+            i18n.install()
 
     if not opt_no_plugins:
         load_plugins()
