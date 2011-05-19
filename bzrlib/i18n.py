@@ -52,7 +52,11 @@ def _get_locale_dir():
         return os.path.join(base, u'locale')
     else:
         base = os.path.dirname(unicode(__file__, sys.getfilesystemencoding()))
-        return os.path.realpath(os.path.join(base, u'locale'))
+        dirpath = os.path.realpath(os.path.join(base, u'locale'))
+        if os.path.exists(dirpath):
+            return dirpath
+        else:
+            return '/usr/share/locale'
 
 
 def _check_win32_locale():
