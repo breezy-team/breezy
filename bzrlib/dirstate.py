@@ -20,91 +20,105 @@ Pseudo EBNF grammar for the state file. Fields are separated by NULLs, and
 lines by NL. The field delimiters are ommitted in the grammar, line delimiters
 are not - this is done for clarity of reading. All string data is in utf8.
 
-MINIKIND = "f" | "d" | "l" | "a" | "r" | "t";
-NL = "\n";
-NULL = "\0";
-WHOLE_NUMBER = {digit}, digit;
-BOOLEAN = "y" | "n";
-REVISION_ID = a non-empty utf8 string;
+::
 
-dirstate format = header line, full checksum, row count, parent details,
- ghost_details, entries;
-header line = "#bazaar dirstate flat format 3", NL;
-full checksum = "crc32: ", ["-"], WHOLE_NUMBER, NL;
-row count = "num_entries: ", WHOLE_NUMBER, NL;
-parent_details = WHOLE NUMBER, {REVISION_ID}* NL;
-ghost_details = WHOLE NUMBER, {REVISION_ID}*, NL;
-entries = {entry};
-entry = entry_key, current_entry_details, {parent_entry_details};
-entry_key = dirname,  basename, fileid;
-current_entry_details = common_entry_details, working_entry_details;
-parent_entry_details = common_entry_details, history_entry_details;
-common_entry_details = MINIKIND, fingerprint, size, executable
-working_entry_details = packed_stat
-history_entry_details = REVISION_ID;
-executable = BOOLEAN;
-size = WHOLE_NUMBER;
-fingerprint = a nonempty utf8 sequence with meaning defined by minikind.
+    MINIKIND = "f" | "d" | "l" | "a" | "r" | "t";
+    NL = "\\n";
+    NULL = "\\0";
+    WHOLE_NUMBER = {digit}, digit;
+    BOOLEAN = "y" | "n";
+    REVISION_ID = a non-empty utf8 string;
+    
+    dirstate format = header line, full checksum, row count, parent details,
+     ghost_details, entries;
+    header line = "#bazaar dirstate flat format 3", NL;
+    full checksum = "crc32: ", ["-"], WHOLE_NUMBER, NL;
+    row count = "num_entries: ", WHOLE_NUMBER, NL;
+    parent_details = WHOLE NUMBER, {REVISION_ID}* NL;
+    ghost_details = WHOLE NUMBER, {REVISION_ID}*, NL;
+    entries = {entry};
+    entry = entry_key, current_entry_details, {parent_entry_details};
+    entry_key = dirname,  basename, fileid;
+    current_entry_details = common_entry_details, working_entry_details;
+    parent_entry_details = common_entry_details, history_entry_details;
+    common_entry_details = MINIKIND, fingerprint, size, executable
+    working_entry_details = packed_stat
+    history_entry_details = REVISION_ID;
+    executable = BOOLEAN;
+    size = WHOLE_NUMBER;
+    fingerprint = a nonempty utf8 sequence with meaning defined by minikind.
 
-Given this definition, the following is useful to know:
-entry (aka row) - all the data for a given key.
-entry[0]: The key (dirname, basename, fileid)
-entry[0][0]: dirname
-entry[0][1]: basename
-entry[0][2]: fileid
-entry[1]: The tree(s) data for this path and id combination.
-entry[1][0]: The current tree
-entry[1][1]: The second tree
+Given this definition, the following is useful to know::
 
-For an entry for a tree, we have (using tree 0 - current tree) to demonstrate:
-entry[1][0][0]: minikind
-entry[1][0][1]: fingerprint
-entry[1][0][2]: size
-entry[1][0][3]: executable
-entry[1][0][4]: packed_stat
-OR (for non tree-0)
-entry[1][1][4]: revision_id
+    entry (aka row) - all the data for a given key.
+    entry[0]: The key (dirname, basename, fileid)
+    entry[0][0]: dirname
+    entry[0][1]: basename
+    entry[0][2]: fileid
+    entry[1]: The tree(s) data for this path and id combination.
+    entry[1][0]: The current tree
+    entry[1][1]: The second tree
+
+For an entry for a tree, we have (using tree 0 - current tree) to demonstrate::
+
+    entry[1][0][0]: minikind
+    entry[1][0][1]: fingerprint
+    entry[1][0][2]: size
+    entry[1][0][3]: executable
+    entry[1][0][4]: packed_stat
+
+OR (for non tree-0)::
+
+    entry[1][1][4]: revision_id
 
 There may be multiple rows at the root, one per id present in the root, so the
-in memory root row is now:
-self._dirblocks[0] -> ('', [entry ...]),
-and the entries in there are
-entries[0][0]: ''
-entries[0][1]: ''
-entries[0][2]: file_id
-entries[1][0]: The tree data for the current tree for this fileid at /
-etc.
+in memory root row is now::
 
-Kinds:
-'r' is a relocated entry: This path is not present in this tree with this id,
-    but the id can be found at another location. The fingerprint is used to
-    point to the target location.
-'a' is an absent entry: In that tree the id is not present at this path.
-'d' is a directory entry: This path in this tree is a directory with the
-    current file id. There is no fingerprint for directories.
-'f' is a file entry: As for directory, but it's a file. The fingerprint is the
-    sha1 value of the file's canonical form, i.e. after any read filters have
-    been applied to the convenience form stored in the working tree.
-'l' is a symlink entry: As for directory, but a symlink. The fingerprint is the
-    link target.
-'t' is a reference to a nested subtree; the fingerprint is the referenced
-    revision.
+    self._dirblocks[0] -> ('', [entry ...]),
+
+and the entries in there are::
+
+    entries[0][0]: ''
+    entries[0][1]: ''
+    entries[0][2]: file_id
+    entries[1][0]: The tree data for the current tree for this fileid at /
+    etc.
+
+Kinds::
+
+    'r' is a relocated entry: This path is not present in this tree with this
+        id, but the id can be found at another location. The fingerprint is
+        used to point to the target location.
+    'a' is an absent entry: In that tree the id is not present at this path.
+    'd' is a directory entry: This path in this tree is a directory with the
+        current file id. There is no fingerprint for directories.
+    'f' is a file entry: As for directory, but it's a file. The fingerprint is
+        the sha1 value of the file's canonical form, i.e. after any read
+        filters have been applied to the convenience form stored in the working
+        tree.
+    'l' is a symlink entry: As for directory, but a symlink. The fingerprint is
+        the link target.
+    't' is a reference to a nested subtree; the fingerprint is the referenced
+        revision.
 
 Ordering:
 
-The entries on disk and in memory are ordered according to the following keys:
+The entries on disk and in memory are ordered according to the following keys::
 
     directory, as a list of components
     filename
     file-id
 
 --- Format 1 had the following different definition: ---
-rows = dirname, NULL, basename, NULL, MINIKIND, NULL, fileid_utf8, NULL,
-    WHOLE NUMBER (* size *), NULL, packed stat, NULL, sha1|symlink target,
-    {PARENT ROW}
-PARENT ROW = NULL, revision_utf8, NULL, MINIKIND, NULL, dirname, NULL,
-    basename, NULL, WHOLE NUMBER (* size *), NULL, "y" | "n", NULL,
-    SHA1
+
+::
+
+    rows = dirname, NULL, basename, NULL, MINIKIND, NULL, fileid_utf8, NULL,
+        WHOLE NUMBER (* size *), NULL, packed stat, NULL, sha1|symlink target,
+        {PARENT ROW}
+    PARENT ROW = NULL, revision_utf8, NULL, MINIKIND, NULL, dirname, NULL,
+        basename, NULL, WHOLE NUMBER (* size *), NULL, "y" | "n", NULL,
+        SHA1
 
 PARENT ROW's are emitted for every parent that is not in the ghosts details
 line. That is, if the parents are foo, bar, baz, and the ghosts are bar, then
@@ -135,19 +149,21 @@ format did not accommodate.
 ----
 
 Design priorities:
- 1) Fast end to end use for bzr's top 5 uses cases. (commmit/diff/status/merge/???)
- 2) fall back current object model as needed.
- 3) scale usably to the largest trees known today - say 50K entries. (mozilla
+ 1. Fast end to end use for bzr's top 5 uses cases. (commmit/diff/status/merge/???)
+ 2. fall back current object model as needed.
+ 3. scale usably to the largest trees known today - say 50K entries. (mozilla
     is an example of this)
 
 
 Locking:
+
  Eventually reuse dirstate objects across locks IFF the dirstate file has not
  been modified, but will require that we flush/ignore cached stat-hit data
  because we won't want to restat all files on disk just because a lock was
  acquired, yet we cannot trust the data after the previous lock was released.
 
-Memory representation:
+Memory representation::
+
  vector of all directories, and vector of the childen ?
    i.e.
      root_entrie = (direntry for root, [parent_direntries_for_root]),
@@ -167,6 +183,7 @@ Memory representation:
     - What's the risk of error here? Once we have the base format being processed
       we should have a net win regardless of optimality. So we are going to
       go with what seems reasonable.
+
 open questions:
 
 Maybe we should do a test profile of the core structure - 10K simulated
@@ -1205,9 +1222,10 @@ class DirState(object):
     def _fields_per_entry(self):
         """How many null separated fields should be in each entry row.
 
-        Each line now has an extra '\n' field which is not used
+        Each line now has an extra '\\n' field which is not used
         so we just skip over it
-        entry size:
+
+        entry size::
             3 fields for the key
             + number of fields per tree_data (5) * tree count
             + newline

@@ -250,7 +250,8 @@ class Graph(object):
         common ancestor of all border ancestors, because this shows that it
         cannot be a descendant of any border ancestor.
 
-        The scaling of this operation should be proportional to
+        The scaling of this operation should be proportional to:
+
         1. The number of uncommon ancestors
         2. The number of border ancestors
         3. The length of the shortest path between a border ancestor and an
@@ -388,8 +389,8 @@ class Graph(object):
 
         :param unique_revision: The revision_id whose ancestry we are
             interested in.
-            XXX: Would this API be better if we allowed multiple revisions on
-                 to be searched here?
+            (XXX: Would this API be better if we allowed multiple revisions on
+            to be searched here?)
         :param common_revisions: Revision_ids of ancestries to exclude.
         :return: A set of revisions in the ancestry of unique_revision
         """
@@ -1563,7 +1564,7 @@ class AbstractSearchResult(object):
 
         The recipe allows reconstruction of the same results at a later date.
 
-        :return: A tuple of (search_kind_str, *details).  The details vary by
+        :return: A tuple of `(search_kind_str, *details)`.  The details vary by
             kind of search result.
         """
         raise NotImplementedError(self.get_recipe)
