@@ -2469,6 +2469,13 @@ class TestUpdateBasisByDelta(tests.TestCase):
         dir_ids = {'': 'root-id'}
         inv = inventory.Inventory('root-id', rev_id)
         for path, file_id in shape:
+            if path == '':
+                # Replace the root entry
+                del inv._byid[inv.root.file_id]
+                inv.root.file_id = file_id
+                inv._byid[file_id] = inv.root
+                dir_ids[''] = file_id
+                continue
             inv.add(self.path_to_ie(path, file_id, rev_id, dir_ids))
         return revisiontree.InventoryRevisionTree(_Repo(), inv, rev_id)
 
@@ -2751,4 +2758,25 @@ class TestUpdateBasisByDelta(tests.TestCase):
             basis =[],
             delta=[(None, 'path/path2', 'file-id')])
 
-    # TODO: Test stuff like renaming a directory, and renaming contents therein
+    def test_change_root_id(self):
+        state = self.assertUpdate( # same as basis
+            active=[('', 'root-id'),
+                    ('file', 'file-id')],
+            basis= [('', 'root-id'),
+                    ('file', 'file-id')],
+            target=[('', 'target-root-id'),
+                    ('file', 'file-id')])
+        state = self.assertUpdate( # same as target
+            active=[('', 'target-root-id'),
+                    ('file', 'file-id')],
+            basis= [('', 'root-id'),
+                    ('file', 'file-id')],
+            target=[('', 'target-root-id'),
+                    ('file', 'root-id')])
+        state = self.assertUpdate( # all different
+            active=[('', 'active-root-id'),
+                    ('file', 'file-id')],
+            basis= [('', 'root-id'),
+                    ('file', 'file-id')],
+            target=[('', 'target-root-id'),
+                    ('file', 'root-id')])
