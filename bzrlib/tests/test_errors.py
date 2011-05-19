@@ -577,17 +577,12 @@ class TestErrors(TestCaseWithTransport):
         try:
             1/0
         except ZeroDivisionError:
-            err = errors.HookFailed('hook stage', 'hook name', sys.exc_info(),
-                warn=False)
-        # GZ 2010-11-08: Should not store exc_info in exception instances, but
-        #                HookFailed is deprecated anyway and could maybe go.
-        try:
-            self.assertStartsWith(
-                str(err), 'Hook \'hook name\' during hook stage failed:\n')
-            self.assertEndsWith(
-                str(err), 'integer division or modulo by zero')
-        finally:
-            del err
+            exc_info = sys.exc_info()
+        err = errors.HookFailed('hook stage', 'hook name', exc_info, warn=False)
+        self.assertStartsWith(
+            str(err), 'Hook \'hook name\' during hook stage failed:\n')
+        self.assertEndsWith(
+            str(err), 'integer division or modulo by zero')
 
     def test_tip_change_rejected(self):
         err = errors.TipChangeRejected(u'Unicode message\N{INTERROBANG}')
@@ -616,14 +611,11 @@ class TestErrors(TestCaseWithTransport):
         try:
             raise Exception("example error")
         except Exception:
-            err = errors.SmartMessageHandlerError(sys.exc_info())
-        # GZ 2010-11-08: Should not store exc_info in exception instances.
-        try:
-            self.assertStartsWith(
-                str(err), "The message handler raised an exception:\n")
-            self.assertEndsWith(str(err), "Exception: example error\n")
-        finally:
-            del err
+            exc_info = sys.exc_info()
+        err = errors.SmartMessageHandlerError(exc_info)
+        self.assertStartsWith(
+            str(err), "The message handler raised an exception:\n")
+        self.assertEndsWith(str(err), "Exception: example error\n")
 
     def test_must_have_working_tree(self):
         err = errors.MustHaveWorkingTree('foo', 'bar')
