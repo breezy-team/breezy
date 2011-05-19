@@ -479,7 +479,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 is recursively added.
             :param kind: Kind of new entry (file, directory, etc)
             :param action: callback(inv, parent_ie, path, kind); return ignored.
-            :return: A list of paths which have been added.
+            :return: Inventory entry for path and a list of paths which have been added.
             """
             # Nothing to do if path is already versioned.
             # This is safe from infinite recursion because the tree root is
@@ -667,8 +667,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # 20070306
                 trace.mutter("%r is a nested bzr tree", abspath)
             else:
-                this_ie = _add_one(inv, parent_ie, directory, kind, action, inv_path)
-                added.append(directory.raw_path)
+                this_ie, extra = _add_one_and_parent(inv, parent_ie, directory, kind, action, inv_path)
+                added.extend(extra)
 
             if kind == 'directory' and not sub_tree:
                 if this_ie.kind != 'directory':
