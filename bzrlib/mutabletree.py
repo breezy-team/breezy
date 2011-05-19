@@ -471,6 +471,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             :param action: callback(inv, parent_ie, path, kind); return ignored.
             :return: A list of paths which have been added.
             """
+            inv_path, _ = osutils.normalized_filename(path.raw_path)
             # Nothing to do if path is already versioned.
             # This is safe from infinite recursion because the tree root is
             # always versioned.
@@ -478,7 +479,6 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # we have a parent ie already
                 added = []
             else:
-                inv_path, _ = osutils.normalized_filename(path.raw_path)
                 # slower but does not need parent_ie
                 parent_id = inv.path2id(inv_path)
                 if parent_id is not None:
@@ -515,7 +515,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 inv.apply_delta(invdelta)
                 parent_ie = new_parent_ie
             file_id = file_id_callback(inv, parent_ie, path, kind)
-            entry = inv.make_entry(kind, path.base_path, parent_ie.file_id,
+            entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
                 file_id=file_id)
             inv.add(entry)
             return entry
