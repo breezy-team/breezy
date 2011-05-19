@@ -508,16 +508,16 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # doesn't contain symlinks.
                 new_parent_ie = _mod_inventory.make_entry('directory', parent_ie.name,
                     parent_ie.parent_id, parent_ie.file_id)
-                inv_delta_entry = (self.id2path(parent_ie.file_id), osutils.dirname(path.raw_path),
+                inv_delta_entry = (self.id2path(parent_ie.file_id), osutils.dirname(inv_path),
                     parent_ie.file_id, new_parent_ie)
-                #ret[inv_delta_entry[1]] = inv_delta_entry
+                ret[inv_delta_entry[1]] = inv_delta_entry
                 invdelta.append(inv_delta_entry)
                 parent_ie = new_parent_ie
             file_id = file_id_callback(inv, parent_ie, path, kind)
             entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
                 file_id=file_id)
             inv_delta_entry = (None, inv_path, entry.file_id, entry)
-            #ret[inv_path] = inv_delta_entry
+            ret[inv_path] = inv_delta_entry
             invdelta.append(inv_delta_entry)
             inv.apply_delta(invdelta)
             return (entry, added + [path.raw_path])
@@ -666,7 +666,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                     this_ie = _mod_inventory.make_entry('directory',
                         this_ie.name, this_ie.parent_id, this_ie.file_id)
                     inv_delta_entry = (inv_path, inv_path, this_ie.file_id, this_ie)
-                    #ret[inv_path] = inv_delta_entry
+                    ret[inv_path] = inv_delta_entry
                     inv.apply_delta([inv_delta_entry])
 
                 for subf in sorted(os.listdir(abspath)):
@@ -683,7 +683,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                         continue
                     sub_invp = osutils.pathjoin(inv_path, inv_f)
                     sub_fp = _FastPath(subp, subf)
-                    sub_ie = this_ie.children.get(inv_f)
+                    sub_ie = get_ie(sub_invp)
                     if sub_ie is not None:
                         # recurse into this already versioned subdir.
                         dirs_to_add.append((sub_fp, sub_invp, sub_ie, this_ie))
