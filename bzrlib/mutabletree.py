@@ -669,8 +669,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 else:
                     # without the parent ie, use the relatively slower inventory
                     # probing method
-                    this_id = inv.path2id(
-                        self._fix_case_of_inventory_path(directory.raw_path))
+                    inv_path = self._fix_case_of_inventory_path(directory.raw_path)
+                    this_id = inv.path2id(inv_path)
                     if this_id is None:
                         this_ie = None
                     else:
@@ -680,8 +680,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                         if this_ie.kind != 'directory':
                             this_ie = _mod_inventory.make_entry('directory',
                                 this_ie.name, this_ie.parent_id, this_id)
-                            del inv[this_id]
-                            inv.add(this_ie)
+                            invdelta = [(inv_path, inv_path, this_id, this_ie)]
+                            inv.apply_delta(invdelta)
 
                 for subf in sorted(os.listdir(abspath)):
                     # here we could use TreeDirectory rather than
