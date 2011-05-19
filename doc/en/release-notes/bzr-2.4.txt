@@ -43,6 +43,10 @@ Improvements
   more efficiently.  For a simple branch it reduces the number of
   round-trips by about 20%.  (Andrew Bennetts)
 
+* ``bzr log --line`` scales the width of the author field with the size of
+  the line.  This means that the full author name is shown when the
+  environment variable BZR_COLUMNS=0.  (Neil Martinsen-Burrell)
+
 * ``bzr pull`` now properly triggers the fast
   ``CHKInventory.iter_changes`` rather than the slow generic
   inter-Inventory changes. It used to use a ``DirStateRevisionTree`` as
