@@ -2595,7 +2595,6 @@ class TestUpdateBasisByDelta(tests.TestCase):
             )
 
     def test_rename_file_active_state_has_diff_source_file(self):
-        import pdb; pdb.set_trace()
         state = self.assertUpdate(
             active=[('file', 'file-id-2')],
             basis =[('file', 'file-id')],
@@ -2608,3 +2607,21 @@ class TestUpdateBasisByDelta(tests.TestCase):
             basis =[('file', 'file-id')],
             target=[('other-file', 'file-id')],
             )
+
+    def test_rename_file_active_has_swapped_files(self):
+        state = self.assertUpdate(
+            active=[('file', 'file-id'),
+                    ('other-file', 'file-id-2')],
+            basis= [('file', 'file-id'),
+                    ('other-file', 'file-id-2')],
+            target=[('file', 'file-id-2'),
+                    ('other-file', 'file-id')])
+
+    def test_rename_file_basis_has_swapped_files(self):
+        state = self.assertUpdate(
+            active=[('file', 'file-id'),
+                    ('other-file', 'file-id-2')],
+            basis= [('file', 'file-id-2'),
+                    ('other-file', 'file-id')],
+            target=[('file', 'file-id'),
+                    ('other-file', 'file-id-2')])

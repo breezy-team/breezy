@@ -1687,7 +1687,7 @@ class DirState(object):
                     raise NotImplementedError()
                 else:
                     self._changes_aborted = True
-                    raise InconsistentDelta(new_path, file_id,
+                    raise errors.InconsistentDelta(new_path, file_id,
                         "An entry was marked as a new add"
                         " but the basis target already existed")
             else:
@@ -1722,7 +1722,7 @@ class DirState(object):
                         # We found a record, which was not *this* record,
                         # which matches the file_id, but is not actually
                         # present. Something seems *really* wrong.
-                        raise InconsistentDelta(new_path, file_id,
+                        raise errors.InconsistentDelta(new_path, file_id,
                             "We found a tree0 entry that doesnt make sense")
                     # Now, we've found a tree0 entry which matches the file_id
                     # but is at a different location. So update them to be
@@ -1779,7 +1779,7 @@ class DirState(object):
         for old_path, new_path, file_id, _, real_delete in deletes:
             if real_delete != (new_path is None):
                 self._changes_aborted = True
-                raise AssertionError("bad delete delta")
+                raise errors.InconsistentDelta("bad delete delta")
             # the entry for this file_id must be in tree 1.
             dirname, basename = osutils.split(old_path)
             block_index, entry_index, dir_present, file_present = \
