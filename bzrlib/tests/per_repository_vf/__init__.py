@@ -37,8 +37,15 @@ def all_repository_vf_format_scenarios():
 
 def load_tests(basic_tests, module, loader):
     testmod_names = [
+        'test_add_inventory_by_delta',
+        'test_check',
         'test_check_reconcile',
+        'test_find_text_key_references',
+        'test__generate_text_key_index',
+        'test_fetch',
+        'test_reconcile',
         'test_repository',
+        'test_write_group',
         ]
     basic_tests.addTest(loader.loadTestsFromModuleNames(
             ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))

@@ -24,7 +24,6 @@ rather than in tests/per_workingtree/*.py.
 
 from bzrlib import (
     branchbuilder,
-    errors,
     tests,
     workingtree,
     )
@@ -49,6 +48,22 @@ def make_scenario(transport_server, transport_readonly_server,
         "bzrdir_format": workingtree_format._matchingbzrdir,
         "workingtree_format": workingtree_format,
         }
+
+
+def wt_scenarios():
+    """Returns the scenarios for all registered working trees.
+
+    This can used by plugins that want to define tests against these working
+    trees.
+    """
+    scenarios = make_scenarios(
+        tests.default_transport,
+        # None here will cause a readonly decorator to be created
+        # by the TestCaseWithTransport.get_readonly_transport method.
+        None,
+        workingtree.format_registry._get_all()
+        )
+    return scenarios
 
 
 class TestCaseWithWorkingTree(per_controldir.TestCaseWithControlDir):
@@ -115,15 +130,16 @@ def load_tests(standard_tests, module, loader):
         'bzrlib.tests.per_workingtree.test_' + name for
         name in test_names]
 
-    scenarios = make_scenarios(
-        tests.default_transport,
-        # None here will cause a readonly decorator to be created
-        # by the TestCaseWithTransport.get_readonly_transport method.
-        None,
-        workingtree.format_registry._get_all()
-        )
+    scenarios = wt_scenarios()
 
     # add the tests for the sub modules
     return tests.multiply_tests(
         loader.loadTestsFromModuleNames(test_workingtree_implementations),
         scenarios, standard_tests)
+
+
+class TestWtScenarios(tests.TestCase):
+
+    def test_protect_wt_scenarios(self):
+        # Just make sure we don't accidentally delete the helper again
+        scenarios = wt_scenarios()

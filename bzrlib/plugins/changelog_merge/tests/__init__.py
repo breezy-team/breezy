@@ -1,4 +1,4 @@
-# Copyright (C) 2007 Canonical Ltd
+# Copyright (C) 2011 by Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,17 +14,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+def load_tests(basic_tests, module, loader):
+    testmod_names = [
+        'test_changelog_merge',
+        ]
+    basic_tests.addTest(loader.loadTestsFromModuleNames(
+            ["%s.%s" % (__name__, tmn) for tmn in testmod_names]))
+    return basic_tests
 
-"""Tests for the _generate_text_key_index API."""
-
-
-from bzrlib.tests.per_repository import TestCaseWithRepository
-
-
-class TestGenerateTextKeyIndex(TestCaseWithRepository):
-
-    def test_empty(self):
-        repo = self.make_repository('.')
-        repo.lock_read()
-        self.addCleanup(repo.unlock)
-        self.assertEqual({}, repo._generate_text_key_index())

@@ -140,39 +140,12 @@ You can see the history of your branch by browsing its log::
     Initial import
 
 
-Publishing your branch with SFTP
-================================
+Publishing your branch on Launchpad
+===================================
 
-There are a couple of ways to publish your branch. If you already have
-an SFTP server or are comfortable setting one up, you can publish your
-branch to it.
-
-Otherwise, skip to the next section to publish with Launchpad_, a free
-hosting service for Bazaar.
-
-.. _Launchpad: https://launchpad.net/
-
-Let's assume you want to publish your branch at ``www.example.com/myproject``::
-
- $ bzr push --create-prefix sftp://your.name@example.com/~/public_html/myproject
- 2 revision(s) pushed.
-
-Bazaar will create a ``myproject`` directory on the remote server and
-push your branch to it.
-
-Now anyone can create their own copy of your branch by typing::
-
- $ bzr branch http://www.example.com/myproject
-
-**Note**: to use SFTP, you may need to install ``paramiko`` and
-``pyCrypto``. See http://wiki.bazaar.canonical.com/InstallationFaq for details.
-
-
-Publishing your branch with Launchpad
-=====================================
-
-Launchpad is a suite of development and hosting tools for free
-software projects. You can use it to publish your branch.
+Launchpad is a suite of development and hosting tools for
+software projects. You can use it to publish your branch.  (You can 
+also publish branches onto your own server or other hosting services.)
 
 If you don't have a Launchpad account, follow the `account signup guide`_
 and `register an SSH key`_ in your new Launchpad account.
@@ -195,6 +168,8 @@ Now, anyone can create their own copy of your branch by typing::
 
 You can also see information about your branch, including its revision
 history, at https://code.launchpad.net/people/+me/+junk/myproject
+
+
 
 
 Creating your own copy of another branch
@@ -277,3 +252,11 @@ To learn about Bazaar commands::
 To learn about the ''foo'' topic or command::
 
   $ bzr help foo
+
+Licence
+=============
+
+Copyright 2007-2011 Canonical Ltd. Bazaar is free software, and you
+may use, modify and redistribute both Bazaar and this document under
+the terms of the GNU General Public License version 2 or later. See
+<http://www.gnu.org/licenses/>.

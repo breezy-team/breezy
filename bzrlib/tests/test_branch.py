@@ -74,7 +74,7 @@ class TestBranchFormat5(tests.TestCaseWithTransport):
         url = self.get_url()
         bdir = bzrdir.BzrDirMetaFormat1().initialize(url)
         bdir.create_repository()
-        branch = bdir.create_branch()
+        branch = _mod_branch.BzrBranchFormat5().initialize(bdir)
         t = self.get_transport()
         self.log("branch instance is %r" % branch)
         self.assert_(isinstance(branch, _mod_branch.BzrBranch5))
@@ -177,7 +177,7 @@ class TestBzrBranchFormat(tests.TestCaseWithTransport):
             dir.create_repository()
             format.initialize(dir)
             found_format = _mod_branch.BranchFormat.find_format(dir)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(_mod_branch.BzrBranchFormat5(), "bar")
 
     def test_find_format_factory(self):
@@ -322,22 +322,22 @@ class TestBranch67(object):
 
     def test_layout(self):
         branch = self.make_branch('a', format=self.get_format_name())
-        self.failUnlessExists('a/.bzr/branch/last-revision')
-        self.failIfExists('a/.bzr/branch/revision-history')
-        self.failIfExists('a/.bzr/branch/references')
+        self.assertPathExists('a/.bzr/branch/last-revision')
+        self.assertPathDoesNotExist('a/.bzr/branch/revision-history')
+        self.assertPathDoesNotExist('a/.bzr/branch/references')
 
     def test_config(self):
         """Ensure that all configuration data is stored in the branch"""
         branch = self.make_branch('a', format=self.get_format_name())
         branch.set_parent('http://example.com')
-        self.failIfExists('a/.bzr/branch/parent')
+        self.assertPathDoesNotExist('a/.bzr/branch/parent')
         self.assertEqual('http://example.com', branch.get_parent())
         branch.set_push_location('sftp://example.com')
         config = branch.get_config()._get_branch_data_config()
         self.assertEqual('sftp://example.com',
                          config.get_user_option('push_location'))
         branch.set_bound_location('ftp://example.com')
-        self.failIfExists('a/.bzr/branch/bound')
+        self.assertPathDoesNotExist('a/.bzr/branch/bound')
         self.assertEqual('ftp://example.com', branch.get_bound_location())
 
     def test_set_revision_history(self):
@@ -349,10 +349,13 @@ class TestBranch67(object):
         branch = builder.get_branch()
         branch.lock_write()
         self.addCleanup(branch.unlock)
-        branch.set_revision_history(['foo', 'bar'])
-        branch.set_revision_history(['foo'])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+            branch.set_revision_history, ['foo', 'bar'])
+        self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
+                branch.set_revision_history, ['foo'])
         self.assertRaises(errors.NotLefthandHistory,
-                          branch.set_revision_history, ['bar'])
+            self.applyDeprecated, symbol_versioning.deprecated_in((2, 4, 0)),
+            branch.set_revision_history, ['bar'])
 
     def do_checkout_test(self, lightweight=False):
         tree = self.make_branch_and_tree('source',
@@ -371,10 +374,10 @@ class TestBranch67(object):
         subtree.commit('a subtree file')
         subsubtree.commit('a subsubtree file')
         tree.branch.create_checkout('target', lightweight=lightweight)
-        self.failUnlessExists('target')
-        self.failUnlessExists('target/subtree')
-        self.failUnlessExists('target/subtree/file')
-        self.failUnlessExists('target/subtree/subsubtree/file')
+        self.assertPathExists('target')
+        self.assertPathExists('target/subtree')
+        self.assertPathExists('target/subtree/file')
+        self.assertPathExists('target/subtree/subsubtree/file')
         subbranch = _mod_branch.Branch.open('target/subtree/subsubtree')
         if lightweight:
             self.assertEndsWith(subbranch.base, 'source/subtree/subsubtree/')

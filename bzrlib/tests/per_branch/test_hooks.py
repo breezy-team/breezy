@@ -23,6 +23,7 @@ from bzrlib import (
     revision,
     tests,
     )
+from bzrlib.symbol_versioning import deprecated_in
 from bzrlib.tests import test_server
 
 class ChangeBranchTipTestCase(tests.TestCaseWithMemoryTransport):
@@ -87,7 +88,8 @@ class TestSetRevisionHistoryHook(ChangeBranchTipTestCase):
         branch = self.make_branch('source')
         _mod_branch.Branch.hooks.install_named_hook(
             'set_rh', self.capture_set_rh_hook, None)
-        branch.set_revision_history([])
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch.set_revision_history, [])
         expected_params = ('set_rh', branch, [], True)
         self.assertHookCalls(expected_params, branch)
 
@@ -103,7 +105,8 @@ class TestSetRevisionHistoryHook(ChangeBranchTipTestCase):
             'set_rh', self.capture_set_rh_hook, None)
         # some branches require that their history be set to a revision in the
         # repository
-        branch.set_revision_history(['f\xc2\xb5'])
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch.set_revision_history, ['f\xc2\xb5'])
         expected_params =('set_rh', branch, ['f\xc2\xb5'], True)
         self.assertHookCalls(expected_params, branch)
 
@@ -111,7 +114,8 @@ class TestSetRevisionHistoryHook(ChangeBranchTipTestCase):
         branch = self.make_branch('source')
         _mod_branch.Branch.hooks.install_named_hook(
             'set_rh', self.capture_set_rh_hook, None)
-        branch.set_revision_history([])
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch.set_revision_history, [])
         expected_params = ('set_rh', branch, [], True)
         self.assertHookCalls(expected_params, branch)
 
@@ -121,7 +125,8 @@ class TestSetRevisionHistoryHook(ChangeBranchTipTestCase):
             'set_rh', self.capture_set_rh_hook, None)
         _mod_branch.Branch.hooks.install_named_hook(
             'set_rh', self.capture_set_rh_hook, None)
-        branch.set_revision_history([])
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch.set_revision_history, [])
         expected_calls = [('set_rh', branch, [], True),
             ('set_rh', branch, [], True),
             ]
@@ -386,7 +391,8 @@ class TestAllMethodsThatChangeTipWillRunHooks(ChangeBranchTipTestCase):
 
     def test_set_revision_history(self):
         branch = self.make_branch('')
-        branch.set_revision_history([])
+        self.applyDeprecated(deprecated_in((2, 4, 0)),
+            branch.set_revision_history, [])
         self.assertPreAndPostHooksWereInvoked(branch, True)
 
     def test_set_last_revision_info(self):

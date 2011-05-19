@@ -31,75 +31,75 @@ class TestRemoveTree(TestCaseWithTransport):
         self.build_tree(['branch1/foo'])
         self.tree.add('foo')
         self.tree.commit('1')
-        self.failUnlessExists('branch1/foo')
+        self.assertPathExists('branch1/foo')
 
     # Success modes
 
     def test_remove_tree_original_branch(self):
         os.chdir('branch1')
         self.run_bzr('remove-tree')
-        self.failIfExists('foo')
+        self.assertPathDoesNotExist('foo')
 
     def test_remove_tree_original_branch_explicit(self):
         self.run_bzr('remove-tree branch1')
-        self.failIfExists('branch1/foo')
+        self.assertPathDoesNotExist('branch1/foo')
 
     def test_remove_tree_multiple_branch_explicit(self):
         self.tree.bzrdir.sprout('branch2')
         self.run_bzr('remove-tree branch1 branch2')
-        self.failIfExists('branch1/foo')
-        self.failIfExists('branch2/foo')
+        self.assertPathDoesNotExist('branch1/foo')
+        self.assertPathDoesNotExist('branch2/foo')
 
     def test_remove_tree_sprouted_branch(self):
         self.tree.bzrdir.sprout('branch2')
-        self.failUnlessExists('branch2/foo')
+        self.assertPathExists('branch2/foo')
         os.chdir('branch2')
         self.run_bzr('remove-tree')
-        self.failIfExists('foo')
+        self.assertPathDoesNotExist('foo')
 
     def test_remove_tree_sprouted_branch_explicit(self):
         self.tree.bzrdir.sprout('branch2')
-        self.failUnlessExists('branch2/foo')
+        self.assertPathExists('branch2/foo')
         self.run_bzr('remove-tree branch2')
-        self.failIfExists('branch2/foo')
+        self.assertPathDoesNotExist('branch2/foo')
 
     def test_remove_tree_checkout(self):
         self.tree.branch.create_checkout('branch2', lightweight=False)
-        self.failUnlessExists('branch2/foo')
+        self.assertPathExists('branch2/foo')
         os.chdir('branch2')
         self.run_bzr('remove-tree')
-        self.failIfExists('foo')
+        self.assertPathDoesNotExist('foo')
         os.chdir('..')
-        self.failUnlessExists('branch1/foo')
+        self.assertPathExists('branch1/foo')
 
     def test_remove_tree_checkout_explicit(self):
         self.tree.branch.create_checkout('branch2', lightweight=False)
-        self.failUnlessExists('branch2/foo')
+        self.assertPathExists('branch2/foo')
         self.run_bzr('remove-tree branch2')
-        self.failIfExists('branch2/foo')
-        self.failUnlessExists('branch1/foo')
+        self.assertPathDoesNotExist('branch2/foo')
+        self.assertPathExists('branch1/foo')
 
     # Failure modes
 
     def test_remove_tree_lightweight_checkout(self):
         self.tree.branch.create_checkout('branch2', lightweight=True)
-        self.failUnlessExists('branch2/foo')
+        self.assertPathExists('branch2/foo')
         os.chdir('branch2')
         output = self.run_bzr_error(
             ["You cannot remove the working tree from a lightweight checkout"],
             'remove-tree', retcode=3)
-        self.failUnlessExists('foo')
+        self.assertPathExists('foo')
         os.chdir('..')
-        self.failUnlessExists('branch1/foo')
+        self.assertPathExists('branch1/foo')
 
     def test_remove_tree_lightweight_checkout_explicit(self):
         self.tree.branch.create_checkout('branch2', lightweight=True)
-        self.failUnlessExists('branch2/foo')
+        self.assertPathExists('branch2/foo')
         output = self.run_bzr_error(
             ["You cannot remove the working tree from a lightweight checkout"],
             'remove-tree branch2', retcode=3)
-        self.failUnlessExists('branch2/foo')
-        self.failUnlessExists('branch1/foo')
+        self.assertPathExists('branch2/foo')
+        self.assertPathExists('branch1/foo')
 
     def test_remove_tree_empty_dir(self):
         os.mkdir('branch2')
@@ -109,7 +109,7 @@ class TestRemoveTree(TestCaseWithTransport):
 
     def test_remove_tree_repeatedly(self):
         self.run_bzr('remove-tree branch1')
-        self.failIfExists('branch1/foo')
+        self.assertPathDoesNotExist('branch1/foo')
         output = self.run_bzr_error(["No working tree to remove"],
                                     'remove-tree branch1', retcode=3)
 
@@ -127,19 +127,19 @@ class TestRemoveTree(TestCaseWithTransport):
         self.build_tree(['branch1/bar'])
         self.tree.add('bar')
         self.run_bzr('remove-tree branch1 --force')
-        self.failIfExists('branch1/foo')
-        self.failUnlessExists('branch1/bar')
+        self.assertPathDoesNotExist('branch1/foo')
+        self.assertPathExists('branch1/bar')
 
     def test_remove_tree_pending_merges(self):
         self.run_bzr(['branch', 'branch1', 'branch2'])
         self.build_tree(['branch1/bar'])
         self.tree.add('bar')
         self.tree.commit('2')
-        self.failUnlessExists('branch1/bar')
+        self.assertPathExists('branch1/bar')
         self.run_bzr(['merge', '../branch1'], working_dir='branch2')
-        self.failUnlessExists('branch2/bar')
+        self.assertPathExists('branch2/bar')
         self.run_bzr(['revert', '.'], working_dir='branch2')
-        self.failIfExists('branch2/bar')
+        self.assertPathDoesNotExist('branch2/bar')
         output = self.run_bzr_error(["Working tree .* has uncommitted changes"],
                                     'remove-tree branch2', retcode=3)
 
@@ -148,14 +148,14 @@ class TestRemoveTree(TestCaseWithTransport):
         self.build_tree(['branch1/bar'])
         self.tree.add('bar')
         self.tree.commit('2')
-        self.failUnlessExists('branch1/bar')
+        self.assertPathExists('branch1/bar')
         self.run_bzr(['merge', '../branch1'], working_dir='branch2')
-        self.failUnlessExists('branch2/bar')
+        self.assertPathExists('branch2/bar')
         self.run_bzr(['revert', '.'], working_dir='branch2')
-        self.failIfExists('branch2/bar')
+        self.assertPathDoesNotExist('branch2/bar')
         self.run_bzr('remove-tree branch2 --force')
-        self.failIfExists('branch2/foo')
-        self.failIfExists('branch2/bar')
+        self.assertPathDoesNotExist('branch2/foo')
+        self.assertPathDoesNotExist('branch2/bar')
 
     def test_remove_tree_shelved_changes(self):
         # https://bugs.launchpad.net/bzr/+bug/586639

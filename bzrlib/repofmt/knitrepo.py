@@ -34,14 +34,16 @@ from bzrlib import (
 """)
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
-    CommitBuilder,
     InterRepository,
-    InterSameDataRepository,
     IsInWriteGroupError,
-    MetaDirRepository,
-    MetaDirRepositoryFormat,
     RepositoryFormat,
-    RootCommitBuilder,
+    )
+from bzrlib.vf_repository import (
+    InterSameDataRepository,
+    MetaDirVersionedFileRepository,
+    MetaDirVersionedFileRepositoryFormat,
+    VersionedFileCommitBuilder,
+    VersionedFileRootCommitBuilder,
     )
 from bzrlib import symbol_versioning
 
@@ -103,7 +105,7 @@ class _KnitsParentsProvider(object):
         return result
 
 
-class KnitRepository(MetaDirRepository):
+class KnitRepository(MetaDirVersionedFileRepository):
     """Knit format repository."""
 
     # These attributes are inherited from the Repository base class. Setting
@@ -115,7 +117,7 @@ class KnitRepository(MetaDirRepository):
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
-        MetaDirRepository.__init__(self, _format, a_bzrdir, control_files)
+        super(KnitRepository, self).__init__(_format, a_bzrdir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
@@ -232,44 +234,8 @@ class KnitRepository(MetaDirRepository):
     def _make_parents_provider(self):
         return _KnitsParentsProvider(self.revisions)
 
-    def _find_inconsistent_revision_parents(self, revisions_iterator=None):
-        """Find revisions with different parent lists in the revision object
-        and in the index graph.
 
-        :param revisions_iterator: None, or an iterator of (revid,
-            Revision-or-None). This iterator controls the revisions checked.
-        :returns: an iterator yielding tuples of (revison-id, parents-in-index,
-            parents-in-revision).
-        """
-        if not self.is_locked():
-            raise AssertionError()
-        vf = self.revisions
-        if revisions_iterator is None:
-            revisions_iterator = self._iter_revisions(None)
-        for revid, revision in revisions_iterator:
-            if revision is None:
-                pass
-            parent_map = vf.get_parent_map([(revid,)])
-            parents_according_to_index = tuple(parent[-1] for parent in
-                parent_map[(revid,)])
-            parents_according_to_revision = tuple(revision.parent_ids)
-            if parents_according_to_index != parents_according_to_revision:
-                yield (revid, parents_according_to_index,
-                    parents_according_to_revision)
-
-    def _check_for_inconsistent_revision_parents(self):
-        inconsistencies = list(self._find_inconsistent_revision_parents())
-        if inconsistencies:
-            raise errors.BzrCheckError(
-                "Revision knit has inconsistent parents.")
-
-    def revision_graph_can_have_wrong_parents(self):
-        # The revision.kndx could potentially claim a revision has a different
-        # parent to the revision text.
-        return True
-
-
-class RepositoryFormatKnit(MetaDirRepositoryFormat):
+class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
     """Bzr repository knit format (generalized).
 
     This repository format has:
@@ -305,7 +271,9 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     _fetch_uses_deltas = True
     fast_deltas = False
     supports_funky_characters = True
-    supports_full_versioned_files = True
+    # The revision.kndx could potentially claim a revision has a different
+    # parent to the revision text.
+    revision_graph_can_have_wrong_parents = True
 
     def _get_inventories(self, repo_transport, repo, name='inventory'):
         mapper = versionedfile.ConstantMapper(name)
@@ -414,7 +382,7 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = CommitBuilder
+    _commit_builder_class = VersionedFileCommitBuilder
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -448,7 +416,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = RootCommitBuilder
+    _commit_builder_class = VersionedFileRootCommitBuilder
     rich_root_data = True
     experimental = True
     supports_tree_reference = True
@@ -490,7 +458,7 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = RootCommitBuilder
+    _commit_builder_class = VersionedFileRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
     @property

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,20 +18,20 @@
 """Text UI, write output to the console.
 """
 
-import codecs
-import getpass
 import os
 import sys
 import time
-import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import codecs
+import getpass
+import warnings
+
 from bzrlib import (
     debug,
     progress,
     osutils,
-    symbol_versioning,
     trace,
     )
 

@@ -34,6 +34,7 @@ from bzrlib.inventory import (
     InventoryDirectory,
     InventoryEntry,
     TreeReference,
+    mutable_inventory_from_tree,
     )
 from bzrlib.tests import (
     TestCase,
@@ -654,15 +655,15 @@ class TestInventoryEntry(TestCase):
 
     def test_file_has_text(self):
         file = inventory.InventoryFile('123', 'hello.c', ROOT_ID)
-        self.failUnless(file.has_text())
+        self.assertTrue(file.has_text())
 
     def test_directory_has_text(self):
         dir = inventory.InventoryDirectory('123', 'hello.c', ROOT_ID)
-        self.failIf(dir.has_text())
+        self.assertFalse(dir.has_text())
 
     def test_link_has_text(self):
         link = inventory.InventoryLink('123', 'hello.c', ROOT_ID)
-        self.failIf(link.has_text())
+        self.assertFalse(link.has_text())
 
     def test_make_entry(self):
         self.assertIsInstance(inventory.make_entry("file", "name", ROOT_ID),
@@ -1223,6 +1224,88 @@ class TestCHKInventory(tests.TestCaseWithMemoryTransport):
         self.assertEqual(('tree\xce\xa9name', 'tree-root-id', 'tree-rev-id'),
                          inv._bytes_to_utf8name_key(bytes))
 
+    def make_basic_utf8_inventory(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        root_id = inv.root.file_id
+        inv.add(InventoryFile("fileid", u'f\xefle', root_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 0
+        inv.add(InventoryDirectory("dirid", u'dir-\N{EURO SIGN}', root_id))
+        inv.add(InventoryFile("childid", u'ch\xefld', "dirid"))
+        inv["childid"].revision = "filerev"
+        inv["childid"].text_sha1 = "ffff"
+        inv["childid"].text_size = 0
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        return CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+
+    def test__preload_handles_utf8(self):
+        new_inv = self.make_basic_utf8_inventory()
+        self.assertEqual({}, new_inv._fileid_to_entry_cache)
+        self.assertFalse(new_inv._fully_cached)
+        new_inv._preload_cache()
+        self.assertEqual(
+            sorted([new_inv.root_id, "fileid", "dirid", "childid"]),
+            sorted(new_inv._fileid_to_entry_cache.keys()))
+        ie_root = new_inv._fileid_to_entry_cache[new_inv.root_id]
+        self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
+                         sorted(ie_root._children.keys()))
+        ie_dir = new_inv._fileid_to_entry_cache['dirid']
+        self.assertEqual([u'ch\xefld'], sorted(ie_dir._children.keys()))
+
+    def test__preload_populates_cache(self):
+        inv = Inventory()
+        inv.revision_id = "revid"
+        inv.root.revision = "rootrev"
+        root_id = inv.root.file_id
+        inv.add(InventoryFile("fileid", "file", root_id))
+        inv["fileid"].revision = "filerev"
+        inv["fileid"].executable = True
+        inv["fileid"].text_sha1 = "ffff"
+        inv["fileid"].text_size = 1
+        inv.add(InventoryDirectory("dirid", "dir", root_id))
+        inv.add(InventoryFile("childid", "child", "dirid"))
+        inv["childid"].revision = "filerev"
+        inv["childid"].executable = False
+        inv["childid"].text_sha1 = "dddd"
+        inv["childid"].text_size = 1
+        chk_bytes = self.get_chk_bytes()
+        chk_inv = CHKInventory.from_inventory(chk_bytes, inv)
+        bytes = ''.join(chk_inv.to_lines())
+        new_inv = CHKInventory.deserialise(chk_bytes, bytes, ("revid",))
+        self.assertEqual({}, new_inv._fileid_to_entry_cache)
+        self.assertFalse(new_inv._fully_cached)
+        new_inv._preload_cache()
+        self.assertEqual(
+            sorted([root_id, "fileid", "dirid", "childid"]),
+            sorted(new_inv._fileid_to_entry_cache.keys()))
+        self.assertTrue(new_inv._fully_cached)
+        ie_root = new_inv._fileid_to_entry_cache[root_id]
+        self.assertEqual(['dir', 'file'], sorted(ie_root._children.keys()))
+        ie_dir = new_inv._fileid_to_entry_cache['dirid']
+        self.assertEqual(['child'], sorted(ie_dir._children.keys()))
+
+    def test__preload_handles_partially_evaluated_inventory(self):
+        new_inv = self.make_basic_utf8_inventory()
+        ie = new_inv[new_inv.root_id]
+        self.assertIs(None, ie._children)
+        self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
+                         sorted(ie.children.keys()))
+        # Accessing .children loads _children
+        self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
+                         sorted(ie._children.keys()))
+        new_inv._preload_cache()
+        # No change
+        self.assertEqual([u'dir-\N{EURO SIGN}', u'f\xefle'],
+                         sorted(ie._children.keys()))
+        ie_dir = new_inv["dirid"]
+        self.assertEqual([u'ch\xefld'],
+                         sorted(ie_dir._children.keys()))
+
 
 class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
 
@@ -1354,3 +1437,29 @@ class TestCHKInventoryExpand(tests.TestCaseWithMemoryTransport):
         inv = self.make_simple_inventory()
         self.assertExpand(['TREE_ROOT', 'dir1-id', 'sub-dir1-id', 'top-id',
                            'subsub-file1-id'], inv, ['top-id', 'subsub-file1-id'])
+
+
+class TestMutableInventoryFromTree(TestCaseWithTransport):
+
+    def test_empty(self):
+        repository = self.make_repository('.')
+        tree = repository.revision_tree(revision.NULL_REVISION)
+        inv = mutable_inventory_from_tree(tree)
+        self.assertEquals(revision.NULL_REVISION, inv.revision_id)
+        self.assertEquals(0, len(inv))
+
+    def test_some_files(self):
+        wt = self.make_branch_and_tree('.')
+        self.build_tree(['a'])
+        wt.add(['a'], ['thefileid'])
+        revid = wt.commit("commit")
+        tree = wt.branch.repository.revision_tree(revid)
+        inv = mutable_inventory_from_tree(tree)
+        self.assertEquals(revid, inv.revision_id)
+        self.assertEquals(2, len(inv))
+        self.assertEquals("a", inv['thefileid'].name)
+        # The inventory should be mutable and independent of
+        # the original tree
+        self.assertFalse(tree.inventory['thefileid'].executable)
+        inv['thefileid'].executable = True
+        self.assertFalse(tree.inventory['thefileid'].executable)

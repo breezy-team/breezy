@@ -25,7 +25,6 @@ and then upgraded to the new format."""
 from bzrlib import (
     branch,
     bzrdir,
-    repository,
     tests,
     upgrade,
     workingtree,
@@ -42,7 +41,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
 
     def test_convert_branch5_branch6(self):
         b = self.make_branch('branch', format='knit')
-        b.set_revision_history(['AB', 'CD'])
+        b._set_revision_history(['CD'])
         b.set_parent('file:///EF')
         b.set_bound_location('file:///GH')
         b.set_push_location('file:///IJ')
@@ -109,7 +108,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         self.assertEqual(rev_id, new_tree.last_revision())
         for path in ['basis-inventory-cache', 'inventory', 'last-revision',
             'pending-merges', 'stat-cache']:
-            self.failIfExists('tree/.bzr/checkout/' + path)
+            self.assertPathDoesNotExist('tree/.bzr/checkout/' + path)
 
     def test_convert_knit_merges_dirstate(self):
         tree = self.make_branch_and_tree('tree', format='knit')
@@ -127,7 +126,7 @@ class TestUpgrade(tests.TestCaseWithTransport):
         self.assertEqual([rev_id2, rev_id3], new_tree.get_parent_ids())
         for path in ['basis-inventory-cache', 'inventory', 'last-revision',
             'pending-merges', 'stat-cache']:
-            self.failIfExists('tree/.bzr/checkout/' + path)
+            self.assertPathDoesNotExist('tree/.bzr/checkout/' + path)
 
 
 class TestSmartUpgrade(tests.TestCaseWithTransport):
@@ -148,7 +147,7 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
         self.assertLength(1, worked)
         self.assertEqual(worked[0], control)
         self.assertLength(0, issues)
-        self.failUnlessExists('branch1/backup.bzr.~1~')
+        self.assertPathExists('branch1/backup.bzr.~1~')
         self.assertEqual(control.open_repository()._format,
                          self.to_format._repository_format)
 
@@ -161,9 +160,9 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
         self.assertLength(1, worked)
         self.assertEqual(worked[0], control)
         self.assertLength(0, issues)
-        self.failUnlessExists('branch1')
-        self.failUnlessExists('branch1/.bzr')
-        self.failIfExists('branch1/backup.bzr.~1~')
+        self.assertPathExists('branch1')
+        self.assertPathExists('branch1/.bzr')
+        self.assertPathDoesNotExist('branch1/backup.bzr.~1~')
         self.assertEqual(control.open_repository()._format,
                          self.to_format._repository_format)
 
@@ -187,9 +186,9 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
         self.assertLength(3, worked)
         self.assertEqual(worked[0], control)
         self.assertLength(0, issues)
-        self.failUnlessExists('repo/backup.bzr.~1~')
-        self.failUnlessExists('repo/branch1/backup.bzr.~1~')
-        self.failUnlessExists('repo/branch2/backup.bzr.~1~')
+        self.assertPathExists('repo/backup.bzr.~1~')
+        self.assertPathExists('repo/branch1/backup.bzr.~1~')
+        self.assertPathExists('repo/branch2/backup.bzr.~1~')
         self.assertEqual(control.open_repository()._format,
                          self.to_format._repository_format)
         b1 = branch.Branch.open('repo/branch1')
@@ -204,11 +203,11 @@ class TestSmartUpgrade(tests.TestCaseWithTransport):
         self.assertLength(3, worked)
         self.assertEqual(worked[0], control)
         self.assertLength(0, issues)
-        self.failUnlessExists('repo')
-        self.failUnlessExists('repo/.bzr')
-        self.failIfExists('repo/backup.bzr.~1~')
-        self.failIfExists('repo/branch1/backup.bzr.~1~')
-        self.failIfExists('repo/branch2/backup.bzr.~1~')
+        self.assertPathExists('repo')
+        self.assertPathExists('repo/.bzr')
+        self.assertPathDoesNotExist('repo/backup.bzr.~1~')
+        self.assertPathDoesNotExist('repo/branch1/backup.bzr.~1~')
+        self.assertPathDoesNotExist('repo/branch2/backup.bzr.~1~')
         self.assertEqual(control.open_repository()._format,
                          self.to_format._repository_format)
         b1 = branch.Branch.open('repo/branch1')

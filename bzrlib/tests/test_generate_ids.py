@@ -62,13 +62,13 @@ class TestFileIds(tests.TestCase):
         # Test both case squashing and length restriction
         fid = gen_file_id('A'*50 + '.txt')
         self.assertStartsWith(fid, 'a'*20 + '-')
-        self.failUnless(len(fid) < 60)
+        self.assertTrue(len(fid) < 60)
 
         # restricting length happens after the other actions, so
         # we preserve as much as possible
         fid = gen_file_id('\xe5\xb5..aBcd\tefGhijKLMnop\tqrstuvwxyz')
         self.assertStartsWith(fid, 'abcdefghijklmnopqrst-')
-        self.failUnless(len(fid) < 60)
+        self.assertTrue(len(fid) < 60)
 
     def test_file_ids_are_ascii(self):
         tail = r'-\d{14}-[a-z0-9]{16}-\d+'

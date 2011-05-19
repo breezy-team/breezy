@@ -23,26 +23,33 @@ try:
 except ImportError:
     pylzma = None
 
+from bzrlib.lazy_import import lazy_import
+lazy_import(globals(), """
 from bzrlib import (
     annotate,
+    config,
     debug,
     errors,
     graph as _mod_graph,
-    knit,
     osutils,
     pack,
     static_tuple,
     trace,
+    tsort,
     )
+
+from bzrlib.repofmt import pack_repo
+""")
+
 from bzrlib.btree_index import BTreeBuilder
 from bzrlib.lru_cache import LRUSizeCache
-from bzrlib.tsort import topo_sort
 from bzrlib.versionedfile import (
+    _KeyRefs,
     adapter_registry,
     AbsentContentFactory,
     ChunkedContentFactory,
     FulltextContentFactory,
-    VersionedFiles,
+    VersionedFilesWithFallbacks,
     )
 
 # Minimum number of uncompressed bytes to try fetch at once when retrieving
@@ -77,7 +84,7 @@ def sort_gc_optimal(parent_map):
 
     present_keys = []
     for prefix in sorted(per_prefix_map):
-        present_keys.extend(reversed(topo_sort(per_prefix_map[prefix])))
+        present_keys.extend(reversed(tsort.topo_sort(per_prefix_map[prefix])))
     return present_keys
 
 
@@ -484,11 +491,25 @@ class _LazyGroupContentManager(object):
     _full_enough_block_size = 3*1024*1024 # size at which we won't repack
     _full_enough_mixed_block_size = 2*768*1024 # 1.5MB
 
-    def __init__(self, block):
+    def __init__(self, block, get_compressor_settings=None):
         self._block = block
         # We need to preserve the ordering
         self._factories = []
         self._last_byte = 0
+        self._get_settings = get_compressor_settings
+        self._compressor_settings = None
+
+    def _get_compressor_settings(self):
+        if self._compressor_settings is not None:
+            return self._compressor_settings
+        settings = None
+        if self._get_settings is not None:
+            settings = self._get_settings()
+        if settings is None:
+            vf = GroupCompressVersionedFiles
+            settings = vf._DEFAULT_COMPRESSOR_SETTINGS
+        self._compressor_settings = settings
+        return self._compressor_settings
 
     def add_factory(self, key, parents, start, end):
         if not self._factories:
@@ -527,9 +548,12 @@ class _LazyGroupContentManager(object):
         new_block.set_content(self._block._content[:last_byte])
         self._block = new_block
 
+    def _make_group_compressor(self):
+        return GroupCompressor(self._get_compressor_settings())
+
     def _rebuild_block(self):
         """Create a new GroupCompressBlock with only the referenced texts."""
-        compressor = GroupCompressor()
+        compressor = self._make_group_compressor()
         tstart = time.time()
         old_length = self._block._content_length
         end_point = 0
@@ -547,6 +571,11 @@ class _LazyGroupContentManager(object):
         #       block? It seems hard to come up with a method that it would
         #       expand, since we do full compression again. Perhaps based on a
         #       request that ends up poorly ordered?
+        # TODO: If the content would have expanded, then we would want to
+        #       handle a case where we need to split the block.
+        #       Now that we have a user-tweakable option
+        #       (max_bytes_to_index), it is possible that one person set it
+        #       to a very low value, causing poor compression.
         delta = time.time() - tstart
         self._block = new_block
         trace.mutter('creating new compressed block on-the-fly in %.3fs'
@@ -775,7 +804,7 @@ def network_block_to_records(storage_kind, bytes, line_end):
 
 class _CommonGroupCompressor(object):
 
-    def __init__(self):
+    def __init__(self, settings=None):
         """Create a GroupCompressor."""
         self.chunks = []
         self._last = None
@@ -784,6 +813,10 @@ class _CommonGroupCompressor(object):
         self.labels_deltas = {}
         self._delta_index = None # Set by the children
         self._block = GroupCompressBlock()
+        if settings is None:
+            self._settings = {}
+        else:
+            self._settings = settings
 
     def compress(self, key, bytes, expected_sha, nostore_sha=None, soft=False):
         """Compress lines with label key.
@@ -904,12 +937,12 @@ class _CommonGroupCompressor(object):
 
 class PythonGroupCompressor(_CommonGroupCompressor):
 
-    def __init__(self):
+    def __init__(self, settings=None):
         """Create a GroupCompressor.
 
         Used only if the pyrex version is not available.
         """
-        super(PythonGroupCompressor, self).__init__()
+        super(PythonGroupCompressor, self).__init__(settings)
         self._delta_index = LinesDeltaIndex([])
         # The actual content is managed by LinesDeltaIndex
         self.chunks = self._delta_index.lines
@@ -963,9 +996,10 @@ class PyrexGroupCompressor(_CommonGroupCompressor):
        left side.
     """
 
-    def __init__(self):
-        super(PyrexGroupCompressor, self).__init__()
-        self._delta_index = DeltaIndex()
+    def __init__(self, settings=None):
+        super(PyrexGroupCompressor, self).__init__(settings)
+        max_bytes_to_index = self._settings.get('max_bytes_to_index', 0)
+        self._delta_index = DeltaIndex(max_bytes_to_index=max_bytes_to_index)
 
     def _compress(self, key, bytes, max_delta_size, soft=False):
         """see _CommonGroupCompressor._compress"""
@@ -1046,7 +1080,7 @@ def make_pack_factory(graph, delta, keylength, inconsistency_fatal=True):
         index = _GCGraphIndex(graph_index, lambda:True, parents=parents,
             add_callback=graph_index.add_nodes,
             inconsistency_fatal=inconsistency_fatal)
-        access = knit._DirectPackAccess({})
+        access = pack_repo._DirectPackAccess({})
         access.set_writer(writer, graph_index, (transport, 'newpack'))
         result = GroupCompressVersionedFiles(index, access, delta)
         result.stream = stream
@@ -1062,12 +1096,12 @@ def cleanup_pack_group(versioned_files):
 
 class _BatchingBlockFetcher(object):
     """Fetch group compress blocks in batches.
-    
+
     :ivar total_bytes: int of expected number of bytes needed to fetch the
         currently pending batch.
     """
 
-    def __init__(self, gcvf, locations):
+    def __init__(self, gcvf, locations, get_compressor_settings=None):
         self.gcvf = gcvf
         self.locations = locations
         self.keys = []
@@ -1076,10 +1110,11 @@ class _BatchingBlockFetcher(object):
         self.total_bytes = 0
         self.last_read_memo = None
         self.manager = None
+        self._get_compressor_settings = get_compressor_settings
 
     def add_key(self, key):
         """Add another to key to fetch.
-        
+
         :return: The estimated number of bytes needed to fetch the batch so
             far.
         """
@@ -1110,7 +1145,7 @@ class _BatchingBlockFetcher(object):
             # and then.
             self.batch_memos[read_memo] = cached_block
         return self.total_bytes
-        
+
     def _flush_manager(self):
         if self.manager is not None:
             for factory in self.manager.get_record_stream():
@@ -1121,7 +1156,7 @@ class _BatchingBlockFetcher(object):
     def yield_factories(self, full_flush=False):
         """Yield factories for keys added since the last yield.  They will be
         returned in the order they were added via add_key.
-        
+
         :param full_flush: by default, some results may not be returned in case
             they can be part of the next batch.  If full_flush is True, then
             all results are returned.
@@ -1155,7 +1190,8 @@ class _BatchingBlockFetcher(object):
                     memos_to_get_stack.pop()
                 else:
                     block = self.batch_memos[read_memo]
-                self.manager = _LazyGroupContentManager(block)
+                self.manager = _LazyGroupContentManager(block,
+                    get_compressor_settings=self._get_compressor_settings)
                 self.last_read_memo = read_memo
             start, end = index_memo[3:5]
             self.manager.add_factory(key, parents, start, end)
@@ -1168,16 +1204,30 @@ class _BatchingBlockFetcher(object):
         self.total_bytes = 0
 
 
-class GroupCompressVersionedFiles(VersionedFiles):
+class GroupCompressVersionedFiles(VersionedFilesWithFallbacks):
     """A group-compress based VersionedFiles implementation."""
 
-    def __init__(self, index, access, delta=True, _unadded_refs=None):
+    # This controls how the GroupCompress DeltaIndex works. Basically, we
+    # compute hash pointers into the source blocks (so hash(text) => text).
+    # However each of these references costs some memory in trade against a
+    # more accurate match result. For very large files, they either are
+    # pre-compressed and change in bulk whenever they change, or change in just
+    # local blocks. Either way, 'improved resolution' is not very helpful,
+    # versus running out of memory trying to track everything. The default max
+    # gives 100% sampling of a 1MB file.
+    _DEFAULT_MAX_BYTES_TO_INDEX = 1024 * 1024
+    _DEFAULT_COMPRESSOR_SETTINGS = {'max_bytes_to_index':
+                                     _DEFAULT_MAX_BYTES_TO_INDEX}
+
+    def __init__(self, index, access, delta=True, _unadded_refs=None,
+                 _group_cache=None):
         """Create a GroupCompressVersionedFiles object.
 
         :param index: The index object storing access and graph data.
         :param access: The access object storing raw data.
         :param delta: Whether to delta compress or just entropy compress.
         :param _unadded_refs: private parameter, don't use.
+        :param _group_cache: private parameter, don't use.
         """
         self._index = index
         self._access = access
@@ -1185,13 +1235,17 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if _unadded_refs is None:
             _unadded_refs = {}
         self._unadded_refs = _unadded_refs
-        self._group_cache = LRUSizeCache(max_size=50*1024*1024)
+        if _group_cache is None:
+            _group_cache = LRUSizeCache(max_size=50*1024*1024)
+        self._group_cache = _group_cache
         self._immediate_fallback_vfs = []
+        self._max_bytes_to_index = None
 
     def without_fallbacks(self):
         """Return a clone of this object without any fallbacks configured."""
         return GroupCompressVersionedFiles(self._index, self._access,
-            self._delta, _unadded_refs=dict(self._unadded_refs))
+            self._delta, _unadded_refs=dict(self._unadded_refs),
+            _group_cache=self._group_cache)
 
     def add_lines(self, key, parents, lines, parent_texts=None,
         left_matching_blocks=None, nostore_sha=None, random_id=False,
@@ -1305,22 +1359,6 @@ class GroupCompressVersionedFiles(VersionedFiles):
         if check_content:
             self._check_lines_not_unicode(lines)
             self._check_lines_are_lines(lines)
-
-    def get_known_graph_ancestry(self, keys):
-        """Get a KnownGraph instance with the ancestry of keys."""
-        # Note that this is identical to
-        # KnitVersionedFiles.get_known_graph_ancestry, but they don't share
-        # ancestry.
-        parent_map, missing_keys = self._index.find_ancestry(keys)
-        for fallback in self._transitive_fallbacks():
-            if not missing_keys:
-                break
-            (f_parent_map, f_missing_keys) = fallback._index.find_ancestry(
-                                                missing_keys)
-            parent_map.update(f_parent_map)
-            missing_keys = f_missing_keys
-        kg = _mod_graph.KnownGraph(parent_map)
-        return kg
 
     def get_parent_map(self, keys):
         """Get a map of the graph parents of keys.
@@ -1470,7 +1508,7 @@ class GroupCompressVersionedFiles(VersionedFiles):
             the defined order, regardless of source.
         """
         if ordering == 'topological':
-            present_keys = topo_sort(parent_map)
+            present_keys = tsort.topo_sort(parent_map)
         else:
             # ordering == 'groupcompress'
             # XXX: This only optimizes for the target ordering. We may need
@@ -1565,7 +1603,8 @@ class GroupCompressVersionedFiles(VersionedFiles):
         #  - we encounter an unadded ref, or
         #  - we run out of keys, or
         #  - the total bytes to retrieve for this batch > BATCH_SIZE
-        batcher = _BatchingBlockFetcher(self, locations)
+        batcher = _BatchingBlockFetcher(self, locations,
+            get_compressor_settings=self._get_compressor_settings)
         for source, keys in source_keys:
             if source is self:
                 for key in keys:
@@ -1617,6 +1656,30 @@ class GroupCompressVersionedFiles(VersionedFiles):
         for _ in self._insert_record_stream(stream, random_id=False):
             pass
 
+    def _get_compressor_settings(self):
+        if self._max_bytes_to_index is None:
+            # TODO: VersionedFiles don't know about their containing
+            #       repository, so they don't have much of an idea about their
+            #       location. So for now, this is only a global option.
+            c = config.GlobalConfig()
+            val = c.get_user_option('bzr.groupcompress.max_bytes_to_index')
+            if val is not None:
+                try:
+                    val = int(val)
+                except ValueError, e:
+                    trace.warning('Value for '
+                                  '"bzr.groupcompress.max_bytes_to_index"'
+                                  ' %r is not an integer'
+                                  % (val,))
+                    val = None
+            if val is None:
+                val = self._DEFAULT_MAX_BYTES_TO_INDEX
+            self._max_bytes_to_index = val
+        return {'max_bytes_to_index': self._max_bytes_to_index}
+
+    def _make_group_compressor(self):
+        return GroupCompressor(self._get_compressor_settings())
+
     def _insert_record_stream(self, stream, random_id=False, nostore_sha=None,
                               reuse_blocks=True):
         """Internal core to insert a record stream into this container.
@@ -1645,12 +1708,12 @@ class GroupCompressVersionedFiles(VersionedFiles):
                 return adapter
         # This will go up to fulltexts for gc to gc fetching, which isn't
         # ideal.
-        self._compressor = GroupCompressor()
+        self._compressor = self._make_group_compressor()
         self._unadded_refs = {}
         keys_to_add = []
         def flush():
             bytes_len, chunks = self._compressor.flush().to_chunks()
-            self._compressor = GroupCompressor()
+            self._compressor = self._make_group_compressor()
             # Note: At this point we still have 1 copy of the fulltext (in
             #       record and the var 'bytes'), and this generates 2 copies of
             #       the compressed text (one for bytes, one in chunks)
@@ -1921,7 +1984,7 @@ class _GCGraphIndex(object):
         # repeated over and over, this creates a surplus of ints
         self._int_cache = {}
         if track_external_parent_refs:
-            self._key_dependencies = knit._KeyRefs(
+            self._key_dependencies = _KeyRefs(
                 track_new_keys=track_new_keys)
         else:
             self._key_dependencies = None

@@ -31,13 +31,14 @@ lazy_import(globals(), """
 import errno
 import stat
 
-import bzrlib
 from bzrlib import (
     bzrdir,
     cache_utf8,
+    conflicts as _mod_conflicts,
     debug,
     dirstate,
     errors,
+    filters as _mod_filters,
     generate_ids,
     osutils,
     revision as _mod_revision,
@@ -46,14 +47,13 @@ from bzrlib import (
     transform,
     views,
     )
-import bzrlib.branch
-import bzrlib.ui
 """)
 
 from bzrlib.decorators import needs_read_lock, needs_write_lock
-from bzrlib.filters import filtered_input_file, internal_size_sha_file_byname
 from bzrlib.inventory import Inventory, ROOT_ID, entry_factory
 from bzrlib.lock import LogicalLockResult
+from bzrlib.lockable_files import LockableFiles
+from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
 from bzrlib.osutils import (
     file_kind,
@@ -62,14 +62,22 @@ from bzrlib.osutils import (
     realpath,
     safe_unicode,
     )
-from bzrlib.trace import mutter
 from bzrlib.transport.local import LocalTransport
-from bzrlib.tree import InterTree
-from bzrlib.tree import Tree
-from bzrlib.workingtree import WorkingTree, WorkingTree3, WorkingTreeFormat3
+from bzrlib.tree import (
+    InterTree,
+    InventoryTree,
+    )
+from bzrlib.workingtree import (
+    InventoryWorkingTree,
+    WorkingTree,
+    WorkingTreeFormat,
+    )
 
 
-class DirStateWorkingTree(WorkingTree3):
+class DirStateWorkingTree(InventoryWorkingTree):
+
+    _DEFAULT_WORTH_SAVING_LIMIT = 10
+
     def __init__(self, basedir,
                  branch,
                  _control_files=None,
@@ -85,7 +93,7 @@ class DirStateWorkingTree(WorkingTree3):
         self._format = _format
         self.bzrdir = _bzrdir
         basedir = safe_unicode(basedir)
-        mutter("opening working tree %r", basedir)
+        trace.mutter("opening working tree %r", basedir)
         self._branch = branch
         self.basedir = realpath(basedir)
         # if branch is at our basedir and is a format 6 or less
@@ -124,6 +132,10 @@ class DirStateWorkingTree(WorkingTree3):
             # always change this once tests are all passing.
             state.add(f, file_id, kind, None, '')
         self._make_dirty(reset_inventory=True)
+
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree."""
+        return [('trees', self.last_revision())]
 
     def _make_dirty(self, reset_inventory):
         """Make the tree state dirty.
@@ -182,7 +194,7 @@ class DirStateWorkingTree(WorkingTree3):
 
     def _comparison_data(self, entry, path):
         kind, executable, stat_value = \
-            WorkingTree3._comparison_data(self, entry, path)
+            WorkingTree._comparison_data(self, entry, path)
         # it looks like a plain directory, but it's really a reference -- see
         # also kind()
         if (self._repo_supports_tree_reference and kind == 'directory'
@@ -194,7 +206,7 @@ class DirStateWorkingTree(WorkingTree3):
     def commit(self, message=None, revprops=None, *args, **kwargs):
         # mark the tree as dirty post commit - commit
         # can change the current versioned list by doing deletes.
-        result = WorkingTree3.commit(self, message, revprops, *args, **kwargs)
+        result = WorkingTree.commit(self, message, revprops, *args, **kwargs)
         self._make_dirty(reset_inventory=True)
         return result
 
@@ -219,7 +231,7 @@ class DirStateWorkingTree(WorkingTree3):
         local_path = self.bzrdir.get_workingtree_transport(None
             ).local_abspath('dirstate')
         self._dirstate = dirstate.DirState.on_file(local_path,
-            self._sha1_provider())
+            self._sha1_provider(), self._worth_saving_limit())
         return self._dirstate
 
     def _sha1_provider(self):
@@ -233,6 +245,26 @@ class DirStateWorkingTree(WorkingTree3):
             return ContentFilterAwareSHA1Provider(self)
         else:
             return None
+
+    def _worth_saving_limit(self):
+        """How many hash changes are ok before we must save the dirstate.
+
+        :return: an integer. -1 means never save.
+        """
+        config = self.branch.get_config()
+        val = config.get_user_option('bzr.workingtree.worth_saving_limit')
+        if val is None:
+            val = self._DEFAULT_WORTH_SAVING_LIMIT
+        else:
+            try:
+                val = int(val)
+            except ValueError, e:
+                trace.warning('Invalid config value for'
+                              ' "bzr.workingtree.worth_saving_limit"'
+                              ' value %r is not an integer.'
+                              % (val,))
+                val = self._DEFAULT_WORTH_SAVING_LIMIT
+        return val
 
     def filter_unversioned_files(self, paths):
         """Filter out paths that are versioned.
@@ -369,7 +401,7 @@ class DirStateWorkingTree(WorkingTree3):
         state = self.current_dirstate()
         if stat_value is None:
             try:
-                stat_value = os.lstat(file_abspath)
+                stat_value = osutils.lstat(file_abspath)
             except OSError, e:
                 if e.errno == errno.ENOENT:
                     return None
@@ -478,7 +510,7 @@ class DirStateWorkingTree(WorkingTree3):
             self._must_be_locked()
             if not path:
                 path = self.id2path(file_id)
-            mode = os.lstat(self.abspath(path)).st_mode
+            mode = osutils.lstat(self.abspath(path)).st_mode
             return bool(stat.S_ISREG(mode) and stat.S_IEXEC & mode)
 
     def all_file_ids(self):
@@ -850,7 +882,7 @@ class DirStateWorkingTree(WorkingTree3):
                 rollback_rename()
                 raise
             result.append((from_rel, to_rel))
-            state._dirblock_state = dirstate.DirState.IN_MEMORY_MODIFIED
+            state._mark_modified()
             self._make_dirty(reset_inventory=False)
 
         return result
@@ -1254,7 +1286,7 @@ class DirStateWorkingTree(WorkingTree3):
     def rename_one(self, from_rel, to_rel, after=False):
         """See WorkingTree.rename_one"""
         self.flush()
-        WorkingTree.rename_one(self, from_rel, to_rel, after)
+        super(DirStateWorkingTree, self).rename_one(from_rel, to_rel, after)
 
     @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
@@ -1324,7 +1356,7 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
         """See dirstate.SHA1Provider.sha1()."""
         filters = self.tree._content_filter_stack(
             self.tree.relpath(osutils.safe_unicode(abspath)))
-        return internal_size_sha_file_byname(abspath, filters)[1]
+        return _mod_filters.internal_size_sha_file_byname(abspath, filters)[1]
 
     def stat_and_sha1(self, abspath):
         """See dirstate.SHA1Provider.stat_and_sha1()."""
@@ -1334,7 +1366,7 @@ class ContentFilterAwareSHA1Provider(dirstate.SHA1Provider):
         try:
             statvalue = os.fstat(file_obj.fileno())
             if filters:
-                file_obj = filtered_input_file(file_obj, filters)
+                file_obj = _mod_filters.filtered_input_file(file_obj, filters)
             sha1 = osutils.size_sha_file(file_obj)[1]
         finally:
             file_obj.close()
@@ -1370,7 +1402,7 @@ class ContentFilteringDirStateWorkingTree(DirStateWorkingTree):
 class WorkingTree4(DirStateWorkingTree):
     """This is the Format 4 working tree.
 
-    This differs from WorkingTree3 by:
+    This differs from WorkingTree by:
      - Having a consolidated internal dirstate, stored in a
        randomly-accessible sorted file on disk.
      - Not having a regular inventory attribute.  One can be synthesized
@@ -1404,9 +1436,17 @@ class WorkingTree6(ContentFilteringDirStateWorkingTree):
         return views.PathBasedViews(self)
 
 
-class DirStateWorkingTreeFormat(WorkingTreeFormat3):
+class DirStateWorkingTreeFormat(WorkingTreeFormat):
 
     missing_parent_conflicts = True
+
+    _lock_class = LockDir
+    _lock_file_name = 'lock'
+
+    def _open_control_files(self, a_bzrdir):
+        transport = a_bzrdir.get_workingtree_transport(None)
+        return LockableFiles(transport, self._lock_file_name,
+                             self._lock_class)
 
     def initialize(self, a_bzrdir, revision_id=None, from_branch=None,
                    accelerator_tree=None, hardlink=False):
@@ -1512,6 +1552,20 @@ class DirStateWorkingTreeFormat(WorkingTreeFormat3):
         :param wt: the WorkingTree object
         """
 
+    def open(self, a_bzrdir, _found=False):
+        """Return the WorkingTree object for a_bzrdir
+
+        _found is a private parameter, do not use it. It is used to indicate
+               if format probing has already been done.
+        """
+        if not _found:
+            # we are being called directly and must probe.
+            raise NotImplementedError
+        if not isinstance(a_bzrdir.transport, LocalTransport):
+            raise errors.NotLocalUrl(a_bzrdir.transport.base)
+        wt = self._open(a_bzrdir, self._open_control_files(a_bzrdir))
+        return wt
+
     def _open(self, a_bzrdir, control_files):
         """Open the tree itself.
 
@@ -1608,7 +1662,7 @@ class WorkingTreeFormat6(DirStateWorkingTreeFormat):
         return True
 
 
-class DirStateRevisionTree(Tree):
+class DirStateRevisionTree(InventoryTree):
     """A revision tree pulling the inventory from a dirstate.
     
     Note that this is one of the historical (ie revision) trees cached in the
@@ -1633,7 +1687,7 @@ class DirStateRevisionTree(Tree):
     def annotate_iter(self, file_id,
                       default_revision=_mod_revision.CURRENT_REVISION):
         """See Tree.annotate_iter"""
-        text_key = (file_id, self.inventory[file_id].revision)
+        text_key = (file_id, self.get_file_revision(file_id))
         annotations = self._repository.texts.annotate(text_key)
         return [(key[-1], line) for (key, line) in annotations]
 
@@ -1803,6 +1857,10 @@ class DirStateRevisionTree(Tree):
             return parent_details[1]
         return None
 
+    @needs_read_lock
+    def get_file_revision(self, file_id):
+        return self.inventory[file_id].revision
+
     def get_file(self, file_id, path=None):
         return StringIO(self.get_file_text(file_id))
 
@@ -1831,7 +1889,7 @@ class DirStateRevisionTree(Tree):
                                        identifier))
         return self._repository.iter_files_bytes(repo_desired_files)
 
-    def get_symlink_target(self, file_id):
+    def get_symlink_target(self, file_id, path=None):
         entry = self._get_entry(file_id=file_id)
         parent_index = self._get_parent_index()
         if entry[1][parent_index][0] != 'l':
@@ -2009,7 +2067,7 @@ class InterDirStateTree(InterTree):
     def make_source_parent_tree(source, target):
         """Change the source tree into a parent of the target."""
         revid = source.commit('record tree')
-        target.branch.repository.fetch(source.branch.repository, revid)
+        target.branch.fetch(source.branch, revid)
         target.set_parent_ids([revid])
         return target.basis_tree(), target
 

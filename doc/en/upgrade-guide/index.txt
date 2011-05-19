@@ -11,3 +11,5 @@ Bazaar Upgrade Guide
 .. include:: overview.txt
 .. include:: data_migration.txt
 .. include:: tips_and_tricks.txt
+.. include:: licence.txt
+

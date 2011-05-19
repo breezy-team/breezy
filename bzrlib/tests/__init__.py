@@ -1000,6 +1000,8 @@ class TestCase(testtools.TestCase):
         for key, (parent, name) in known_hooks.iter_parent_objects():
             current_hooks = getattr(parent, name)
             self._preserved_hooks[parent] = (name, current_hooks)
+        self._preserved_lazy_hooks = hooks._lazy_hooks
+        hooks._lazy_hooks = {}
         self.addCleanup(self._restoreHooks)
         for key, (parent, name) in known_hooks.iter_parent_objects():
             factory = known_hooks.get(key)
@@ -1265,11 +1267,15 @@ class TestCase(testtools.TestCase):
                          'st_mtime did not match')
         self.assertEqual(expected.st_ctime, actual.st_ctime,
                          'st_ctime did not match')
-        if sys.platform != 'win32':
+        if sys.platform == 'win32':
             # On Win32 both 'dev' and 'ino' cannot be trusted. In python2.4 it
             # is 'dev' that varies, in python 2.5 (6?) it is st_ino that is
-            # odd. Regardless we shouldn't actually try to assert anything
-            # about their values
+            # odd. We just force it to always be 0 to avoid any problems.
+            self.assertEqual(0, expected.st_dev)
+            self.assertEqual(0, actual.st_dev)
+            self.assertEqual(0, expected.st_ino)
+            self.assertEqual(0, actual.st_ino)
+        else:
             self.assertEqual(expected.st_dev, actual.st_dev,
                              'st_dev did not match')
             self.assertEqual(expected.st_ino, actual.st_ino,
@@ -1438,7 +1444,7 @@ class TestCase(testtools.TestCase):
 
     def assertFileEqual(self, content, path):
         """Fail if path does not contain 'content'."""
-        self.failUnlessExists(path)
+        self.assertPathExists(path)
         f = file(path, 'rb')
         try:
             s = f.read()
@@ -1454,21 +1460,31 @@ class TestCase(testtools.TestCase):
         else:
             self.assertEqual(expected_docstring, obj.__doc__)
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failUnlessExists(self, path):
+        return self.assertPathExists(path)
+
+    def assertPathExists(self, path):
         """Fail unless path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
             for p in path:
-                self.failUnlessExists(p)
+                self.assertPathExists(p)
         else:
-            self.failUnless(osutils.lexists(path),path+" does not exist")
+            self.assertTrue(osutils.lexists(path),
+                path + " does not exist")
 
+    @symbol_versioning.deprecated_method(symbol_versioning.deprecated_in((2, 4)))
     def failIfExists(self, path):
+        return self.assertPathDoesNotExist(path)
+
+    def assertPathDoesNotExist(self, path):
         """Fail if path or paths, which may be abs or relative, exist."""
         if not isinstance(path, basestring):
             for p in path:
-                self.failIfExists(p)
+                self.assertPathDoesNotExist(p)
         else:
-            self.failIf(osutils.lexists(path),path+" exists")
+            self.assertFalse(osutils.lexists(path),
+                path + " exists")
 
     def _capture_deprecation_warnings(self, a_callable, *args, **kwargs):
         """A helper for callDeprecated and applyDeprecated.
@@ -1657,6 +1673,7 @@ class TestCase(testtools.TestCase):
     def _restoreHooks(self):
         for klass, (name, hooks) in self._preserved_hooks.items():
             setattr(klass, name, hooks)
+        hooks._lazy_hooks = self._preserved_lazy_hooks
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
@@ -2108,18 +2125,20 @@ class TestCase(testtools.TestCase):
                       % (process_args, retcode, process.returncode))
         return [out, err]
 
-    def check_inventory_shape(self, inv, shape):
-        """Compare an inventory to a list of expected names.
+    def check_tree_shape(self, tree, shape):
+        """Compare a tree to a list of expected names.
 
         Fail if they are not precisely equal.
         """
         extras = []
         shape = list(shape)             # copy
-        for path, ie in inv.entries():
+        for path, ie in tree.iter_entries_by_dir():
             name = path.replace('\\', '/')
             if ie.kind == 'directory':
                 name = name + '/'
-            if name in shape:
+            if name == "/":
+                pass # ignore root entry
+            elif name in shape:
                 shape.remove(name)
             else:
                 extras.append(name)
@@ -3757,7 +3776,6 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_decorators',
         'bzrlib.tests.test_delta',
         'bzrlib.tests.test_debug',
-        'bzrlib.tests.test_deprecated_graph',
         'bzrlib.tests.test_diff',
         'bzrlib.tests.test_directory_service',
         'bzrlib.tests.test_dirstate',
@@ -3765,6 +3783,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_eol_filters',
         'bzrlib.tests.test_errors',
         'bzrlib.tests.test_export',
+        'bzrlib.tests.test_export_pot',
         'bzrlib.tests.test_extract',
         'bzrlib.tests.test_fetch',
         'bzrlib.tests.test_fixtures',
@@ -3881,6 +3900,7 @@ def _test_suite_testmod_names():
         'bzrlib.tests.test_upgrade',
         'bzrlib.tests.test_upgrade_stacked',
         'bzrlib.tests.test_urlutils',
+        'bzrlib.tests.test_utextwrap',
         'bzrlib.tests.test_version',
         'bzrlib.tests.test_version_info',
         'bzrlib.tests.test_versionedfile',

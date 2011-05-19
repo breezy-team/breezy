@@ -1205,6 +1205,8 @@ class cmd_branch(Command):
 
     To retrieve the branch as of a particular revision, supply the --revision
     parameter, as in "branch foo/bar -r 5".
+
+    The synonyms 'clone' and 'get' for this command are deprecated.
     """
 
     _see_also = ['checkout']
@@ -1240,6 +1242,12 @@ class cmd_branch(Command):
             files_from=None):
         from bzrlib import switch as _mod_switch
         from bzrlib.tag import _merge_tags_if_possible
+        if self.invoked_as in ['get', 'clone']:
+            ui.ui_factory.show_user_warning(
+                'deprecated_command',
+                deprecated_name=self.invoked_as,
+                recommended_name='branch',
+                deprecated_in_version='2.4')
         accelerator_tree, br_from = bzrdir.BzrDir.open_tree_or_branch(
             from_location)
         if not (hardlink or files_from):
@@ -2788,7 +2796,7 @@ class cmd_ignore(Command):
             bzr ignore "RE:(?!debian/).*"
         
         Ignore everything except the "local" toplevel directory,
-        but always ignore "*~" autosave files, even under local/::
+        but always ignore autosave files ending in ~, even under local/::
         
             bzr ignore "*"
             bzr ignore "!./local"
@@ -3106,32 +3114,7 @@ class cmd_commit(Command):
       to trigger updates to external systems like bug trackers. The --fixes
       option can be used to record the association between a revision and
       one or more bugs. See ``bzr help bugs`` for details.
-
-      A selective commit may fail in some cases where the committed
-      tree would be invalid. Consider::
-  
-        bzr init foo
-        mkdir foo/bar
-        bzr add foo/bar
-        bzr commit foo -m "committing foo"
-        bzr mv foo/bar foo/baz
-        mkdir foo/bar
-        bzr add foo/bar
-        bzr commit foo/bar -m "committing bar but not baz"
-  
-      In the example above, the last commit will fail by design. This gives
-      the user the opportunity to decide whether they want to commit the
-      rename at the same time, separately first, or not at all. (As a general
-      rule, when in doubt, Bazaar has a policy of Doing the Safe Thing.)
     """
-    # TODO: Run hooks on tree to-be-committed, and after commit.
-
-    # TODO: Strict commit that fails if there are deleted files.
-    #       (what does "deleted files" mean ??)
-
-    # TODO: Give better message for -s, --summary, used by tla people
-
-    # XXX: verbose currently does nothing
 
     _see_also = ['add', 'bugs', 'hooks', 'uncommit']
     takes_args = ['selected*']
@@ -3169,6 +3152,10 @@ class cmd_commit(Command):
              Option('show-diff', short_name='p',
                     help='When no message is supplied, show the diff along'
                     ' with the status summary in the message editor.'),
+             Option('lossy', 
+                    help='When committing to a foreign version control '
+                    'system do not push data that can not be natively '
+                    'represented.'),
              ]
     aliases = ['ci', 'checkin']
 
@@ -3193,7 +3180,8 @@ class cmd_commit(Command):
 
     def run(self, message=None, file=None, verbose=False, selected_list=None,
             unchanged=False, strict=False, local=False, fixes=None,
-            author=None, show_diff=False, exclude=None, commit_time=None):
+            author=None, show_diff=False, exclude=None, commit_time=None,
+            lossy=False):
         from bzrlib.errors import (
             PointlessCommit,
             ConflictsInTree,
@@ -3212,12 +3200,6 @@ class cmd_commit(Command):
             except ValueError, e:
                 raise errors.BzrCommandError(
                     "Could not parse --commit-time: " + str(e))
-
-        # TODO: Need a blackbox test for invoking the external editor; may be
-        # slightly problematic to run this cross-platform.
-
-        # TODO: do more checks that the commit will succeed before
-        # spending the user's valuable time typing a commit message.
 
         properties = {}
 
@@ -3301,10 +3283,12 @@ class cmd_commit(Command):
                         reporter=None, verbose=verbose, revprops=properties,
                         authors=author, timestamp=commit_stamp,
                         timezone=offset,
-                        exclude=tree.safe_relpath_files(exclude))
+                        exclude=tree.safe_relpath_files(exclude),
+                        lossy=lossy)
         except PointlessCommit:
             raise errors.BzrCommandError("No changes to commit."
-                              " Use --unchanged to commit anyhow.")
+                " Please 'bzr add' the files you want to commit, or use"
+                " --unchanged to force an empty commit.")
         except ConflictsInTree:
             raise errors.BzrCommandError('Conflicts detected in working '
                 'tree.  Use "bzr conflicts" to list, "bzr resolve FILE" to'
@@ -3873,10 +3857,10 @@ class cmd_merge(Command):
 
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
-    If there is no default branch set, the first merge will set it. After
-    that, you can omit the branch to use the default.  To change the
-    default, use --remember. The value will only be saved if the remote
-    location can be accessed.
+    If there is no default branch set, the first merge will set it (use
+    --no-remember to *not* set it). After that, you can omit the branch to use
+    the default.  To change the default, use --remember. The value will only be
+    saved if the remote location can be accessed.
 
     The results of the merge are placed into the destination working
     directory, where they can be reviewed (with bzr diff), tested, and then
@@ -3947,7 +3931,7 @@ class cmd_merge(Command):
     ]
 
     def run(self, location=None, revision=None, force=False,
-            merge_type=None, show_base=False, reprocess=None, remember=False,
+            merge_type=None, show_base=False, reprocess=None, remember=None,
             uncommitted=False, pull=False,
             directory=None,
             preview=False,
@@ -4015,7 +3999,7 @@ class cmd_merge(Command):
             merger.other_rev_id is not None):
             note('Nothing to do.')
             return 0
-        if pull:
+        if pull and not preview:
             if merger.interesting_files is not None:
                 raise errors.BzrCommandError('Cannot pull individual files')
             if (merger.base_rev_id == tree.last_revision()):
@@ -4130,9 +4114,15 @@ class cmd_merge(Command):
         if other_revision_id is None:
             other_revision_id = _mod_revision.ensure_null(
                 other_branch.last_revision())
-        # Remember where we merge from
-        if ((remember or tree.branch.get_submit_branch() is None) and
-             user_location is not None):
+        # Remember where we merge from. We need to remember if:
+        # - user specify a location (and we don't merge from the parent
+        #   branch)
+        # - user ask to remember or there is no previous location set to merge
+        #   from and user didn't ask to *not* remember
+        if (user_location is not None
+            and ((remember
+                  or (remember is None
+                      and tree.branch.get_submit_branch() is None)))):
             tree.branch.set_submit_branch(other_branch.base)
         # Merge tags (but don't set them in the master branch yet, the user
         # might revert this merge).  Commit will propagate them.
@@ -4649,8 +4639,9 @@ class cmd_plugins(Command):
     @display_command
     def run(self, verbose=False):
         from bzrlib import plugin
+        # Don't give writelines a generator as some codecs don't like that
         self.outf.writelines(
-            plugin.describe_plugins(show_paths=verbose))
+            list(plugin.describe_plugins(show_paths=verbose)))
 
 
 class cmd_testament(Command):
@@ -4709,7 +4700,9 @@ class cmd_annotate(Command):
     @display_command
     def run(self, filename, all=False, long=False, revision=None,
             show_ids=False, directory=None):
-        from bzrlib.annotate import annotate_file, annotate_file_tree
+        from bzrlib.annotate import (
+            annotate_file_tree,
+            )
         wt, branch, relpath = \
             _open_directory_or_containing_tree_or_branch(filename, directory)
         if wt is not None:
@@ -4730,9 +4723,8 @@ class cmd_annotate(Command):
             annotate_file_tree(wt, file_id, self.outf, long, all,
                 show_ids=show_ids)
         else:
-            file_version = tree.inventory[file_id].revision
-            annotate_file(branch, file_version, file_id, long, all, self.outf,
-                          show_ids=show_ids)
+            annotate_file_tree(tree, file_id, self.outf, long, all,
+                show_ids=show_ids, branch=branch)
 
 
 class cmd_re_sign(Command):
@@ -6167,6 +6159,16 @@ class cmd_reference(Command):
             ref_list.append((path, location))
         for path, location in sorted(ref_list):
             self.outf.write('%s %s\n' % (path, location))
+
+
+class cmd_export_pot(Command):
+    __doc__ = """Export command helps and error messages in po format."""
+
+    hidden = True
+
+    def run(self):
+        from bzrlib.export_pot import export_pot
+        export_pot(self.outf)
 
 
 def _register_lazy_builtins():
