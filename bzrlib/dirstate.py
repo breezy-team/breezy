@@ -1634,10 +1634,7 @@ class DirState(object):
                 if entry[0][2] != file_id:
                     # Different file_id, so not what we want.
                     continue
-                # NB: No changes made before this helper is called, so no need
-                # to set the _changes_aborted flag.
-                raise errors.InconsistentDelta(
-                    ("%s/%s" % key[0:2]).decode('utf8'), file_id,
+                self._raise_invalid(("%s/%s" % key[0:2]).decode('utf8'), file_id,
                     "This file_id is new in the delta but already present in "
                     "the target")
 

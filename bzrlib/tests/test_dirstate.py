@@ -2543,12 +2543,12 @@ class TestUpdateBasisByDelta(tests.TestCase):
             [('basis', basis_tree)], [])
         self.assertRaises(errors.InconsistentDelta,
             state.update_basis_by_delta, inv_delta, 'target')
-        # try:
-        #     state.update_basis_by_delta(inv_delta, 'target')
-        # except errors.InconsistentDelta, e:
-        #     pass
-        # else:
-        #     import pdb; pdb.set_trace()
+        ## try:
+        ##     state.update_basis_by_delta(inv_delta, 'target')
+        ## except errors.InconsistentDelta, e:
+        ##     import pdb; pdb.set_trace()
+        ## else:
+        ##     import pdb; pdb.set_trace()
         self.assertTrue(state._changes_aborted)
 
     def test_remove_file_matching_active_state(self):
@@ -2685,6 +2685,12 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state = self.assertBadDelta(
             active=[('file', 'file-id-2')],
             basis= [('file', 'file-id-2')],
+            delta=[(None, 'file', 'file-id')])
+
+    def test_invalid_repeated_id(self):
+        state = self.assertBadDelta(
+            active=[('file', 'file-id')],
+            basis= [('file', 'file-id')],
             delta=[(None, 'file', 'file-id')])
 
     # TODO: Test stuff like renaming a directory, and renaming contents therein
