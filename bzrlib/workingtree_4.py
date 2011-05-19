@@ -1145,7 +1145,29 @@ class DirStateWorkingTree(InventoryWorkingTree):
                         _mod_revision.NULL_REVISION)))
                 ghosts.append(rev_id)
             accepted_revisions.add(rev_id)
-        dirstate.set_parent_trees(real_trees, ghosts=ghosts)
+        updated = False
+        if (len(real_trees) == 1
+            and not ghosts
+            and self.branch.repository._format.fast_deltas
+            and isinstance(real_trees[0][1],
+                revisiontree.InventoryRevisionTree)
+            and self.get_parent_ids()):
+            rev_id, rev_tree = real_trees[0]
+            basis_id = self.get_parent_ids()[0]
+            # There are times when basis_tree won't be in
+            # self.branch.repository, (switch, for example)
+            try:
+                basis_tree = self.branch.repository.revision_tree(basis_id)
+            except errors.NoSuchRevision:
+                # Fall back to the set_parent_trees(), since we can't use
+                # _make_delta if we can't get the RevisionTree
+                pass
+            else:
+                delta = rev_tree.inventory._make_delta(basis_tree.inventory)
+                dirstate.update_basis_by_delta(delta, rev_id)
+                updated = True
+        if not updated:
+            dirstate.set_parent_trees(real_trees, ghosts=ghosts)
         self._make_dirty(reset_inventory=False)
 
     def _set_root_id(self, file_id):
