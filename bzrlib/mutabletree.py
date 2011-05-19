@@ -462,6 +462,9 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
         """
         ret = {}
         def get_ie(inv_path):
+            entry = ret.get(inv_path)
+            if entry is not None:
+                return entry[3]
             file_id = inv.path2id(inv_path)
             if file_id is not None:
                 return inv[file_id]
@@ -516,15 +519,17 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # doesn't contain symlinks.
                 new_parent_ie = _mod_inventory.make_entry('directory', parent_ie.name,
                     parent_ie.parent_id, parent_ie.file_id)
-                invdelta = [(self.id2path(parent_ie.file_id), osutils.dirname(path.raw_path),
-                    parent_ie.file_id, new_parent_ie)]
-                inv.apply_delta(invdelta)
+                inv_delta_entry = (self.id2path(parent_ie.file_id), osutils.dirname(path.raw_path),
+                    parent_ie.file_id, new_parent_ie)
+                #ret[inv_delta_entry[1]] = inv_delta_entry
+                inv.apply_delta([inv_delta_entry])
                 parent_ie = new_parent_ie
             file_id = file_id_callback(inv, parent_ie, path, kind)
             entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
                 file_id=file_id)
-            invdelta = [(None, inv_path, entry.file_id, entry)]
-            inv.apply_delta(invdelta)
+            inv_delta_entry = (None, inv_path, entry.file_id, entry)
+            #ret[inv_path] = inv_delta_entry
+            inv.apply_delta([inv_delta_entry])
             return entry
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
@@ -678,8 +683,9 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                     # think this is a directory, update the inventory
                     this_ie = _mod_inventory.make_entry('directory',
                         this_ie.name, this_ie.parent_id, this_ie.file_id)
-                    invdelta = [(inv_path, inv_path, this_ie.file_id, this_ie)]
-                    inv.apply_delta(invdelta)
+                    inv_delta_entry = (inv_path, inv_path, this_ie.file_id, this_ie)
+                    #ret[inv_path] = inv_delta_entry
+                    inv.apply_delta([inv_delta_entry])
 
                 for subf in sorted(os.listdir(abspath)):
                     # here we could use TreeDirectory rather than
