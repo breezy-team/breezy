@@ -2464,7 +2464,8 @@ class TestTransformRollback(tests.TestCaseWithTransport):
         self.assertPathExists('a/b')
 
 
-class TestCleanup(tests.TestCaseWithTransport):
+class TestFinalizeRobustness(tests.TestCaseWithTransport):
+    """Ensure treetransform creation errors can be safely cleaned up after"""
 
     def _override_globals_in_method(self, instance, method_name, globals):
         """Replace method on instance with one with updated globals"""
