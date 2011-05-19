@@ -1771,11 +1771,9 @@ class DirState(object):
         for old_path, new_path, file_id, new_details in changes:
             # the entry for this file_id must be in tree 0.
             entry = self._get_entry(1, file_id, new_path)
-            if entry[0] is None or entry[1][1][0] == 'a':
+            if entry[0] is None or entry[1][1][0] in 'ar':
                 self._raise_invalid(new_path, file_id,
                     'changed entry considered not present')
-            if entry[1][1][0] == 'r':
-                import pdb; pdb.set_trace()
             entry[1][1] = new_details
 
     def _update_basis_apply_deletes(self, deletes):
@@ -1851,7 +1849,6 @@ class DirState(object):
             for child_entry in dir_block:
                 child_basis_kind = child_entry[1][1][0]
                 if child_basis_kind not in 'ar':
-                    import pdb; pdb.set_trace()
                     self._raise_invalid(old_path, file_id,
                         "The file id was deleted but its children were "
                         "not deleted.")
@@ -3775,7 +3772,6 @@ class ProcessEntryPython(object):
             raise AssertionError("don't know how to compare "
                 "source_minikind=%r, target_minikind=%r"
                 % (source_minikind, target_minikind))
-            ## import pdb;pdb.set_trace()
         return None, None
 
     def __iter__(self):
