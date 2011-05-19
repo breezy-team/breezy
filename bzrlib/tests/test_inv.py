@@ -204,47 +204,6 @@ def apply_inventory_WT_basis(test, basis, delta, expect_fail=True):
     try:
         target_entries = _create_repo_revisions(tree.branch.repository, basis,
                                                 delta, expect_fail)
-        # For successful deltas, we try different permutations
-        # 1) active WT has no state
-        # 2) active WT has all entries in target, but all at a different
-        #    location
-        # 3) active WT is at target, basis tree is updated from basis to target
-        # 4) active WT is at basis, basis tree is updated to new target
-        # TODO: active WT has all paths as target, but different file_ids.
-        # For expect_fail = True, we only do the last one.
-        if not expect_fail:
-            tree1 = tree.bzrdir.sprout('tree1').open_workingtree()
-            tree1.branch.repository.fetch(tree.branch.repository)
-            tree1.set_parent_ids(['basis'])
-            tree1.lock_write()
-            try:
-                tree1.update_basis_by_delta('result', delta)
-                tree1._validate()
-            finally:
-                tree1.unlock()
-            tree2 = tree.bzrdir.sprout('tree2').open_workingtree()
-            tree2.branch.repository.fetch(tree.branch.repository)
-            tree2.lock_write()
-            try:
-                _populate_different_tree(tree2, basis, delta)
-                tree2.set_parent_ids(['basis'])
-                tree2.update_basis_by_delta('result', delta)
-                tree2._validate()
-            finally:
-                tree2.unlock()
-            test.assertEqual(target_entries, _get_basis_entries(tree1))
-            tree3 = tree.bzrdir.sprout('tree3').open_workingtree()
-            tree3.branch.repository.fetch(tree.branch.repository)
-            tree3.lock_write()
-            try:
-                tree3._write_inventory(basis)
-                tree3.set_parent_ids(['basis'])
-                tree3.apply_inventory_delta(delta)
-                tree3.update_basis_by_delta('result', delta)
-                tree3._validate()
-            finally:
-                tree3.unlock()
-            test.assertEqual(target_entries, _get_basis_entries(tree3))
         # Set the basis state as the trees current state
         tree._write_inventory(basis)
         # This reads basis from the repo and puts it into the tree's local
