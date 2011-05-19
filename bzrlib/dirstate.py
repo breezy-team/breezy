@@ -1545,15 +1545,11 @@ class DirState(object):
                 new_ids.add(file_id)
             elif new_path is None:
                 deletes.append((old_path_utf8, None, file_id, None, True))
-            elif (old_path, new_path) == root_only:
-                # changes to just the root should not require remove/insertion
-                # of everything.
+            elif old_path == new_path:
+                # change things in-place
                 changes.append((old_path_utf8, new_path_utf8, file_id,
                                 inv_to_entry(inv_entry)))
             else:
-                # TODO: if old_path == new_path, I think we can get away with
-                #       treating this entry as a simple 'changes' entry, rather
-                #       than a delete + add. JAM 2011-05-18
                 # Renames:
                 # Because renames must preserve their children we must have
                 # processed all relocations and removes before hand. The sort
@@ -1773,14 +1769,10 @@ class DirState(object):
         absent = 'ar'
         for old_path, new_path, file_id, new_details in changes:
             # the entry for this file_id must be in tree 0.
-            entry = self._get_entry(0, file_id, new_path)
-            if entry[0] is None or entry[0][2] != file_id:
+            entry = self._get_entry(1, file_id, new_path)
+            if entry[0] is None or entry[1][1][0] in 'ar':
                 self._raise_invalid(new_path, file_id,
-                    'working tree does not contain new entry')
-            if (entry[1][0][0] in absent or
-                entry[1][1][0] in absent):
-                self._raise_invalid(new_path, file_id,
-                    'changed considered absent')
+                    'changed entry considered not present')
             entry[1][1] = new_details
 
     def _update_basis_apply_deletes(self, deletes, rename_targets):

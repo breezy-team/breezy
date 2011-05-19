@@ -2750,12 +2750,12 @@ class TestUpdateBasisByDelta(tests.TestCase):
         #       path_to_ie handles entries with missing parents
         state = self.assertBadDelta(
             active=[('path/', 'path-id')],
-            basis =[],
+            basis= [],
             delta=[(None, 'path/path2', 'file-id')])
         state = self.assertBadDelta(
             active=[('path/', 'path-id'),
                     ('path/path2', 'file-id')],
-            basis =[],
+            basis= [],
             delta=[(None, 'path/path2', 'file-id')])
 
     def test_change_root_id(self):
@@ -2780,3 +2780,19 @@ class TestUpdateBasisByDelta(tests.TestCase):
                     ('file', 'file-id')],
             target=[('', 'target-root-id'),
                     ('file', 'root-id')])
+
+    def test_change_file_absent_in_active(self):
+        state = self.assertUpdate(
+            active=[],
+            basis= [('file', 'file-id')],
+            target=[('file', 'file-id')])
+
+    def test_invalid_changed_file(self):
+        state = self.assertBadDelta( # Not present in basis
+            active=[('file', 'file-id')],
+            basis= [],
+            delta=[('file', 'file', 'file-id')])
+        state = self.assertBadDelta( # present at another location in basis
+            active=[('file', 'file-id')],
+            basis= [('other-file', 'file-id')],
+            delta=[('file', 'file', 'file-id')])
