@@ -460,6 +460,63 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.
         """
+        def _add_one_and_parent(inv, parent_ie, path, kind, action):
+            """Add a new entry to the inventory and automatically add unversioned parents.
+
+            :param inv: Inventory which will receive the new entry.
+            :param parent_ie: Parent inventory entry if known, or None.  If
+                None, the parent is looked up by name and used if present, otherwise it
+                is recursively added.
+            :param kind: Kind of new entry (file, directory, etc)
+            :param action: callback(inv, parent_ie, path, kind); return ignored.
+            :return: A list of paths which have been added.
+            """
+            # Nothing to do if path is already versioned.
+            # This is safe from infinite recursion because the tree root is
+            # always versioned.
+            if parent_ie is not None:
+                # we have a parent ie already
+                added = []
+            else:
+                # slower but does not need parent_ie
+                if inv.has_filename(self._fix_case_of_inventory_path(path.raw_path)):
+                    return []
+                # its really not there : add the parent
+                # note that the dirname use leads to some extra str copying etc but as
+                # there are a limited number of dirs we can be nested under, it should
+                # generally find it very fast and not recurse after that.
+                added = _add_one_and_parent(inv, None,
+                    _FastPath(osutils.dirname(path.raw_path)), 'directory', action)
+                parent_id = inv.path2id(osutils.dirname(path.raw_path))
+                parent_ie = inv[parent_id]
+            _add_one(inv, parent_ie, path, kind, action)
+            return added + [path.raw_path]
+
+        def _add_one(inv, parent_ie, path, kind, file_id_callback):
+            """Add a new entry to the inventory.
+
+            :param inv: Inventory which will receive the new entry.
+            :param parent_ie: Parent inventory entry.
+            :param kind: Kind of new entry (file, directory, etc)
+            :param file_id_callback: callback(inv, parent_ie, path, kind); return a
+                file_id or None to generate a new file id
+            :returns: None
+            """
+            # if the parent exists, but isn't a directory, we have to do the
+            # kind change now -- really the inventory shouldn't pretend to know
+            # the kind of wt files, but it does.
+            if parent_ie.kind != 'directory':
+                # nb: this relies on someone else checking that the path we're using
+                # doesn't contain symlinks.
+                new_parent_ie = _mod_inventory.make_entry('directory', parent_ie.name,
+                    parent_ie.parent_id, parent_ie.file_id)
+                del inv[parent_ie.file_id]
+                inv.add(new_parent_ie)
+                parent_ie = new_parent_ie
+            file_id = file_id_callback(inv, parent_ie, path, kind)
+            entry = inv.make_entry(kind, path.base_path, parent_ie.file_id,
+                file_id=file_id)
+            inv.add(entry)
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
         from bzrlib.inventory import InventoryEntry
@@ -518,7 +575,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             versioned = inv.has_filename(rf.raw_path)
             if versioned:
                 continue
-            added.extend(_add_one_and_parent(self, inv, None, rf, kind, action))
+            added.extend(_add_one_and_parent(inv, None, rf, kind, action))
 
         if not recurse:
             # no need to walk any directories at all.
@@ -601,7 +658,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # 20070306
                 trace.mutter("%r is a nested bzr tree", abspath)
             else:
-                _add_one(self, inv, parent_ie, directory, kind, action)
+                _add_one(inv, parent_ie, directory, kind, action)
                 added.append(directory.raw_path)
 
             if kind == 'directory' and not sub_tree:
@@ -759,62 +816,3 @@ class _FastPath(object):
     def __hash__(self):
         return hash(self.raw_path)
 
-
-def _add_one_and_parent(tree, inv, parent_ie, path, kind, action):
-    """Add a new entry to the inventory and automatically add unversioned parents.
-
-    :param inv: Inventory which will receive the new entry.
-    :param parent_ie: Parent inventory entry if known, or None.  If
-        None, the parent is looked up by name and used if present, otherwise it
-        is recursively added.
-    :param kind: Kind of new entry (file, directory, etc)
-    :param action: callback(inv, parent_ie, path, kind); return ignored.
-    :return: A list of paths which have been added.
-    """
-    # Nothing to do if path is already versioned.
-    # This is safe from infinite recursion because the tree root is
-    # always versioned.
-    if parent_ie is not None:
-        # we have a parent ie already
-        added = []
-    else:
-        # slower but does not need parent_ie
-        if inv.has_filename(tree._fix_case_of_inventory_path(path.raw_path)):
-            return []
-        # its really not there : add the parent
-        # note that the dirname use leads to some extra str copying etc but as
-        # there are a limited number of dirs we can be nested under, it should
-        # generally find it very fast and not recurse after that.
-        added = _add_one_and_parent(tree, inv, None,
-            _FastPath(osutils.dirname(path.raw_path)), 'directory', action)
-        parent_id = inv.path2id(osutils.dirname(path.raw_path))
-        parent_ie = inv[parent_id]
-    _add_one(tree, inv, parent_ie, path, kind, action)
-    return added + [path.raw_path]
-
-
-def _add_one(tree, inv, parent_ie, path, kind, file_id_callback):
-    """Add a new entry to the inventory.
-
-    :param inv: Inventory which will receive the new entry.
-    :param parent_ie: Parent inventory entry.
-    :param kind: Kind of new entry (file, directory, etc)
-    :param file_id_callback: callback(inv, parent_ie, path, kind); return a
-        file_id or None to generate a new file id
-    :returns: None
-    """
-    # if the parent exists, but isn't a directory, we have to do the
-    # kind change now -- really the inventory shouldn't pretend to know
-    # the kind of wt files, but it does.
-    if parent_ie.kind != 'directory':
-        # nb: this relies on someone else checking that the path we're using
-        # doesn't contain symlinks.
-        new_parent_ie = _mod_inventory.make_entry('directory', parent_ie.name,
-            parent_ie.parent_id, parent_ie.file_id)
-        del inv[parent_ie.file_id]
-        inv.add(new_parent_ie)
-        parent_ie = new_parent_ie
-    file_id = file_id_callback(inv, parent_ie, path, kind)
-    entry = inv.make_entry(kind, path.base_path, parent_ie.file_id,
-        file_id=file_id)
-    inv.add(entry)
