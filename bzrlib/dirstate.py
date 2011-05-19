@@ -1495,10 +1495,6 @@ class DirState(object):
         adds = []
         changes = []
         deletes = []
-        # when we renaming something in basis, which is already at a
-        # different path from the active tree. This tracks what active path was
-        # associated with the given old basis path
-        rename_targets = {}
         # The paths this function accepts are unicode and must be encoded as we
         # go.
         encode = cache_utf8.encode
@@ -1562,7 +1558,7 @@ class DirState(object):
                 # the target of the 'r' is old_path here, and we add that to
                 # deletes, meaning that the add handler does not need to check
                 # for 'r' items on every pass.
-                self._update_basis_apply_deletes(deletes, rename_targets)
+                self._update_basis_apply_deletes(deletes)
                 deletes = []
                 # Split into an add/delete pair recursively.
                 adds.append((old_path_utf8, new_path_utf8, file_id,
@@ -1593,9 +1589,9 @@ class DirState(object):
         self._check_delta_ids_absent(new_ids, delta, 1)
         try:
             # Finish expunging deletes/first half of renames.
-            self._update_basis_apply_deletes(deletes, rename_targets)
+            self._update_basis_apply_deletes(deletes)
             # Reinstate second half of renames and new paths.
-            self._update_basis_apply_adds(adds, rename_targets)
+            self._update_basis_apply_adds(adds)
             # Apply in-situ changes.
             self._update_basis_apply_changes(changes)
             # Validate parents
@@ -1638,7 +1634,7 @@ class DirState(object):
         self._changes_aborted = True
         raise errors.InconsistentDelta(path, file_id, reason)
 
-    def _update_basis_apply_adds(self, adds, rename_targets):
+    def _update_basis_apply_adds(self, adds):
         """Apply a sequence of adds to tree 1 during update_basis_by_delta.
 
         They may be adds, or renames that have been split into add/delete
@@ -1718,8 +1714,6 @@ class DirState(object):
                 # The active record shows up as absent, this could be genuine,
                 # or it could be present at some other location. We need to
                 # verify.
-                # TODO: Check rename_targets first, in case we can find a
-                #       target without having to load the id_index
                 id_index = self._get_id_index()
                 # The id_index may not be perfectly accurate for tree1, because
                 # we haven't been keeping it updated. However, it should be
@@ -1775,7 +1769,7 @@ class DirState(object):
                     'changed entry considered not present')
             entry[1][1] = new_details
 
-    def _update_basis_apply_deletes(self, deletes, rename_targets):
+    def _update_basis_apply_deletes(self, deletes):
         """Apply a sequence of deletes to tree 1 during update_basis_by_delta.
 
         They may be deletes, or renames that have been split into add/delete
@@ -1786,11 +1780,6 @@ class DirState(object):
             real_delete is True when the desired outcome is an actual deletion
             rather than the rename handling logic temporarily deleting a path
             during the replacement of a parent.
-        :param rename_targets: When we mark an entry for deletion, if it was a
-            rename record, save the matching path.
-            eg, tree0 has dir/name file_id, tree1 has other/name file_id
-                and we are renaming other/name file_id to third/name file_id
-                record that the other/name record pointed at dir/name.
         """
         null = DirState.NULL_PARENT_DETAILS
         for old_path, new_path, file_id, _, real_delete in deletes:
@@ -1820,7 +1809,6 @@ class DirState(object):
                 # delete it
                 if active_kind == 'r':
                     active_path = entry[1][0][1]
-                    rename_targets[old_path] = active_path
                     active_entry = self._get_entry(0, file_id, active_path)
                     if active_entry[1][1][0] != 'r':
                         self._raise_invalid(old_path, file_id,
