@@ -461,7 +461,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.
         """
-        ret = {}
+        invdelta = {}
         def get_ie(inv_path):
             """Retrieve the most up to date inventory entry for a path.
 
@@ -469,7 +469,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             :return: Inventory entry (with possibly invalid .children for
                 directories)
             """
-            entry = ret.get(inv_path)
+            entry = invdelta.get(inv_path)
             if entry is not None:
                 return entry[3]
             file_id = self.path2id(inv_path)
@@ -514,13 +514,12 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                     parent_ie.parent_id, parent_ie.file_id)
                 inv_delta_entry = (self.id2path(parent_ie.file_id), osutils.dirname(inv_path),
                     parent_ie.file_id, new_parent_ie)
-                ret[inv_delta_entry[1]] = inv_delta_entry
+                invdelta[inv_delta_entry[1]] = inv_delta_entry
                 parent_ie = new_parent_ie
             file_id = file_id_callback(self, parent_ie, path, kind)
             entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
                 file_id=file_id)
-            inv_delta_entry = (None, inv_path, entry.file_id, entry)
-            ret[inv_path] = inv_delta_entry
+            invdelta[inv_path] = (None, inv_path, entry.file_id, entry)
             return (entry, added + [path.raw_path])
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
@@ -583,8 +582,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
 
         if not recurse:
             # no need to walk any directories at all.
-            if ret > 0 and save:
-                self.apply_inventory_delta(ret.values())
+            if invdelta and save:
+                self.apply_inventory_delta(invdelta.values())
             return added, ignored
 
         # only walk the minimal parents needed: we have user_dirs to override
@@ -665,8 +664,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                     # think this is a directory, update the inventory
                     this_ie = _mod_inventory.make_entry('directory',
                         this_ie.name, this_ie.parent_id, this_ie.file_id)
-                    inv_delta_entry = (inv_path, inv_path, this_ie.file_id, this_ie)
-                    ret[inv_path] = inv_delta_entry
+                    invdelta[inv_path] = (inv_path, inv_path, this_ie.file_id,
+                        this_ie)
 
                 for subf in sorted(os.listdir(abspath)):
                     inv_f, _ = osutils.normalized_filename(subf)
@@ -698,9 +697,9 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                             #mutter("queue to add sub-file %r", subp)
                             dirs_to_add.append((sub_fp, sub_invp, None, this_ie))
 
-        if ret:
+        if invdelta:
             if save:
-                self.apply_inventory_delta(ret.values())
+                self.apply_inventory_delta(invdelta.values())
         return added, ignored
 
     def update_basis_by_delta(self, new_revid, delta):
