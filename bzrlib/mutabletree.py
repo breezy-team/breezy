@@ -499,6 +499,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 parent_ie, added = _add_one_and_parent(inv, None,
                     _FastPath(osutils.dirname(path.raw_path)), 'directory', action,
                     osutils.dirname(inv_path))
+            invdelta = []
             # if the parent exists, but isn't a directory, we have to do the
             # kind change now -- really the inventory shouldn't pretend to know
             # the kind of wt files, but it does.
@@ -510,14 +511,15 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 inv_delta_entry = (self.id2path(parent_ie.file_id), osutils.dirname(path.raw_path),
                     parent_ie.file_id, new_parent_ie)
                 #ret[inv_delta_entry[1]] = inv_delta_entry
-                inv.apply_delta([inv_delta_entry])
+                invdelta.append(inv_delta_entry)
                 parent_ie = new_parent_ie
             file_id = file_id_callback(inv, parent_ie, path, kind)
             entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
                 file_id=file_id)
             inv_delta_entry = (None, inv_path, entry.file_id, entry)
             #ret[inv_path] = inv_delta_entry
-            inv.apply_delta([inv_delta_entry])
+            invdelta.append(inv_delta_entry)
+            inv.apply_delta(invdelta)
             return (entry, added + [path.raw_path])
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
