@@ -2425,7 +2425,7 @@ class TestSHA1Provider(tests.TestCaseInTempDir):
         self.assertEqual(expected_sha, sha1)
 
 
-class TestUpdateBasisByDelta(TestCaseWithDirState):
+class TestUpdateBasisByDelta(tests.TestCaseWithTransport):
 
     def create_rev_from_shape(self, builder, name, shape):
         builder_commands = []
@@ -2454,7 +2454,7 @@ class TestUpdateBasisByDelta(TestCaseWithDirState):
             ['active', 'basis', 'target'])
         return repo, active_tree, basis_tree, target_tree
 
-    def assertUpdate(self, active_shape, basis_shape, target_shape):
+    def assertUpdate(self, active, basis, target):
         """Assert that update_basis_by_delta works how we want.
 
         Set up a DirState object with active_shape for tree 0, basis_shape for
@@ -2463,22 +2463,29 @@ class TestUpdateBasisByDelta(TestCaseWithDirState):
         content matches the target_shape.
         """
         (repo, active_tree, basis_tree,
-         target_tree) = self.create_revs(active_shape, basis_shape, target_shape)
-        dirstate = self.create_empty_dirstate()
-        self.addCleanup(dirstate.unlock)
-        dirstate.set_state_from_scratch(active_tree.inventory,
+         target_tree) = self.create_revs(active, basis, target)
+        state = dirstate.DirState.initialize('dirstate')
+        self.addCleanup(state.unlock)
+        state.set_state_from_scratch(active_tree.inventory,
             [('basis', basis_tree)], [])
         delta = target_tree.inventory._make_delta(basis_tree.inventory)
-        dirstate.update_basis_by_delta(delta, 'target')
-        dirstate._validate()
-        dirstate_tree = workingtree_4.DirStateRevisionTree(dirstate,
+        state.update_basis_by_delta(delta, 'target')
+        state._validate()
+        dirstate_tree = workingtree_4.DirStateRevisionTree(state,
             'target', repo)
         self.assertEqual([], list(dirstate_tree.iter_changes(target_tree)))
-        return dirstate
+        return state
 
     def test_add_file_matching_active_state(self):
-        self.assertUpdate([('file', 'file-id')],
-                          [],
-                          [('file', 'file-id')],
-                          )
+        state = self.assertUpdate(
+            active=[('file', 'file-id')],
+            basis =[],
+            target=[('file', 'file-id')],
+            )
 
+    def test_remove_file_matching_active_state(self):
+        state = self.assertUpdate(
+            active=[],
+            basis =[('file', 'file-id')],
+            target=[],
+            )
