@@ -2758,6 +2758,57 @@ class TestUpdateBasisByDelta(tests.TestCase):
             basis= [],
             delta=[(None, 'path/path2', 'file-id')])
 
+    def test_renamed_dir_same_path(self):
+        # We replace the parent directory, with another parent dir. But the C
+        # file doesn't look like it has been moved.
+        state = self.assertUpdate(# Same as basis
+            active=[('A/', 'A-id'),
+                    ('A/B', 'B-id')],
+            basis= [('A/', 'A-id'),
+                    ('A/B', 'B-id')],
+            target=[('A/', 'C-id'),
+                    ('A/B', 'B-id')])
+
+    def test_parent_child_swap(self):
+        state = self.assertUpdate(# Same as basis
+            active=[('A/', 'A-id'),
+                    ('A/B/', 'B-id'),
+                    ('A/B/C', 'C-id')],
+            basis= [('A/', 'A-id'),
+                    ('A/B/', 'B-id'),
+                    ('A/B/C', 'C-id')],
+            target=[('A/', 'B-id'),
+                    ('A/B/', 'A-id'),
+                    ('A/B/C', 'C-id')])
+        state = self.assertUpdate(# Same as target
+            active=[('A/', 'B-id'),
+                    ('A/B/', 'A-id'),
+                    ('A/B/C', 'C-id')],
+            basis= [('A/', 'A-id'),
+                    ('A/B/', 'B-id'),
+                    ('A/B/C', 'C-id')],
+            target=[('A/', 'B-id'),
+                    ('A/B/', 'A-id'),
+                    ('A/B/C', 'C-id')])
+        state = self.assertUpdate(# empty active
+            active=[],
+            basis= [('A/', 'A-id'),
+                    ('A/B/', 'B-id'),
+                    ('A/B/C', 'C-id')],
+            target=[('A/', 'B-id'),
+                    ('A/B/', 'A-id'),
+                    ('A/B/C', 'C-id')])
+        state = self.assertUpdate(# different active
+            active=[('D/', 'A-id'),
+                    ('D/E/', 'B-id'),
+                    ('F', 'C-id')],
+            basis= [('A/', 'A-id'),
+                    ('A/B/', 'B-id'),
+                    ('A/B/C', 'C-id')],
+            target=[('A/', 'B-id'),
+                    ('A/B/', 'A-id'),
+                    ('A/B/C', 'C-id')])
+
     def test_change_root_id(self):
         state = self.assertUpdate( # same as basis
             active=[('', 'root-id'),

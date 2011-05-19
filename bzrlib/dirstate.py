@@ -1764,9 +1764,11 @@ class DirState(object):
         for old_path, new_path, file_id, new_details in changes:
             # the entry for this file_id must be in tree 0.
             entry = self._get_entry(1, file_id, new_path)
-            if entry[0] is None or entry[1][1][0] in 'ar':
+            if entry[0] is None or entry[1][1][0] == 'a':
                 self._raise_invalid(new_path, file_id,
                     'changed entry considered not present')
+            if entry[1][1][0] == 'r':
+                import pdb; pdb.set_trace()
             entry[1][1] = new_details
 
     def _update_basis_apply_deletes(self, deletes):
