@@ -480,18 +480,17 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             else:
                 inv_path, _ = osutils.normalized_filename(path.raw_path)
                 # slower but does not need parent_ie
-                if inv.has_filename(inv_path):
-                    return []
+                parent_id = inv.path2id(inv_path)
+                if parent_id is not None:
+                    return (inv[parent_id], [])
                 # its really not there : add the parent
                 # note that the dirname use leads to some extra str copying etc but as
                 # there are a limited number of dirs we can be nested under, it should
                 # generally find it very fast and not recurse after that.
-                added = _add_one_and_parent(inv, None,
+                parent_ie, added = _add_one_and_parent(inv, None,
                     _FastPath(osutils.dirname(path.raw_path)), 'directory', action)
-                parent_id = inv.path2id(osutils.dirname(inv_path))
-                parent_ie = inv[parent_id]
-            _add_one(inv, parent_ie, path, kind, action)
-            return added + [path.raw_path]
+            entry = _add_one(inv, parent_ie, path, kind, action)
+            return (entry, added + [path.raw_path])
 
         def _add_one(inv, parent_ie, path, kind, file_id_callback):
             """Add a new entry to the inventory.
@@ -519,6 +518,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             entry = inv.make_entry(kind, path.base_path, parent_ie.file_id,
                 file_id=file_id)
             inv.add(entry)
+            return entry
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
         from bzrlib.inventory import InventoryEntry
@@ -577,7 +577,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             versioned = inv.has_filename(rf.raw_path)
             if versioned:
                 continue
-            added.extend(_add_one_and_parent(inv, None, rf, kind, action))
+            added.extend(_add_one_and_parent(inv, None, rf, kind, action)[1])
 
         if not recurse:
             # no need to walk any directories at all.
