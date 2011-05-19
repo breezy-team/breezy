@@ -590,7 +590,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             this_ie = get_ie(inv_path)
             if this_ie is not None:
                 continue
-            added.extend(_add_one_and_parent(inv, None, rf, kind, action, inv_path)[1])
+            (this_ie, extra) = _add_one_and_parent(inv, None, rf, kind, action, inv_path)
+            added.extend(extra)
 
         if not recurse:
             # no need to walk any directories at all.
@@ -605,7 +606,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
         is_inside = osutils.is_inside_or_parent_of_any
         for path in sorted(user_dirs):
             if (prev_dir is None or not is_inside([prev_dir], path.raw_path)):
-                dirs_to_add.append((path, None))
+                inv_path, _ = osutils.normalized_filename(path.raw_path)
+                dirs_to_add.append((path, inv_path, get_ie(inv_path), None))
             prev_dir = path.raw_path
 
         illegalpath_re = re.compile(r'[\r\n]')
@@ -613,7 +615,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
         # directories we append files to it.
         # XXX: We should determine kind of files when we scan them rather than
         # adding to this list. RBC 20070703
-        for directory, parent_ie in dirs_to_add:
+        for directory, inv_path, this_ie, parent_ie in dirs_to_add:
             # directory is tree-relative
             abspath = self.abspath(directory.raw_path)
 
@@ -637,13 +639,6 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                     abspath)
                 continue
 
-            inv_path, _ = osutils.normalized_filename(directory.raw_path)
-            if parent_ie is not None:
-                this_ie = parent_ie.children.get(directory.base_path)
-            else:
-                # without the parent ie, use the relatively slower inventory
-                # probing method
-                this_ie = get_ie(inv_path)
             versioned = (this_ie is not None)
 
             if kind == 'directory':
@@ -688,6 +683,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                     inv.apply_delta([inv_delta_entry])
 
                 for subf in sorted(os.listdir(abspath)):
+                    inv_f, _ = osutils.normalized_filename(subf)
                     # here we could use TreeDirectory rather than
                     # string concatenation.
                     subp = osutils.pathjoin(directory.raw_path, subf)
@@ -697,9 +693,12 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                     # control file.
                     if self.is_control_filename(subp):
                         trace.mutter("skip control directory %r", subp)
-                    elif subf in this_ie.children:
+                        continue
+                    sub_invp = osutils.pathjoin(inv_path, inv_f)
+                    if inv_f in this_ie.children:
                         # recurse into this already versioned subdir.
-                        dirs_to_add.append((_FastPath(subp, subf), this_ie))
+                        dirs_to_add.append((_FastPath(subp, subf),
+                            sub_invp, this_ie.children[subf], this_ie))
                     else:
                         # user selection overrides ignoes
                         # ignore while selecting files - if we globbed in the
@@ -710,7 +709,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                             ignored.setdefault(ignore_glob, []).append(subp)
                         else:
                             #mutter("queue to add sub-file %r", subp)
-                            dirs_to_add.append((_FastPath(subp, subf), this_ie))
+                            dirs_to_add.append((_FastPath(subp, subf),
+                                sub_invp, None, this_ie))
 
         if len(added) > 0:
             if save:
