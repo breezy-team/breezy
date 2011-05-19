@@ -1149,7 +1149,8 @@ class DirStateWorkingTree(InventoryWorkingTree):
         if (len(real_trees) == 1
             and not ghosts
             and self.branch.repository._format.fast_deltas
-            and isinstance(real_trees[0][1], revisiontree.RevisionTree)
+            and isinstance(real_trees[0][1],
+                revisiontree.InventoryRevisionTree)
             and self.get_parent_ids()):
             rev_id, rev_tree = real_trees[0]
             basis_id = self.get_parent_ids()[0]
