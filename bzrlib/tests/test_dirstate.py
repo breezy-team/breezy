@@ -2762,12 +2762,32 @@ class TestUpdateBasisByDelta(tests.TestCase):
         # We replace the parent directory, with another parent dir. But the C
         # file doesn't look like it has been moved.
         state = self.assertUpdate(# Same as basis
-            active=[('A/', 'A-id'),
-                    ('A/B', 'B-id')],
-            basis= [('A/', 'A-id'),
-                    ('A/B', 'B-id')],
-            target=[('A/', 'C-id'),
-                    ('A/B', 'B-id')])
+            active=[('dir/', 'A-id'),
+                    ('dir/B', 'B-id')],
+            basis= [('dir/', 'A-id'),
+                    ('dir/B', 'B-id')],
+            target=[('dir/', 'C-id'),
+                    ('dir/B', 'B-id')])
+        state = self.assertUpdate(# Same as target
+            active=[('dir/', 'C-id'),
+                    ('dir/B', 'B-id')],
+            basis= [('dir/', 'A-id'),
+                    ('dir/B', 'B-id')],
+            target=[('dir/', 'C-id'),
+                    ('dir/B', 'B-id')])
+        state = self.assertUpdate(# empty active
+            active=[],
+            basis= [('dir/', 'A-id'),
+                    ('dir/B', 'B-id')],
+            target=[('dir/', 'C-id'),
+                    ('dir/B', 'B-id')])
+        state = self.assertUpdate(# different active
+            active=[('dir/', 'D-id'),
+                    ('dir/B', 'B-id')],
+            basis= [('dir/', 'A-id'),
+                    ('dir/B', 'B-id')],
+            target=[('dir/', 'C-id'),
+                    ('dir/B', 'B-id')])
 
     def test_parent_child_swap(self):
         state = self.assertUpdate(# Same as basis

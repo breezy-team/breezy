@@ -1541,7 +1541,7 @@ class DirState(object):
                 new_ids.add(file_id)
             elif new_path is None:
                 deletes.append((old_path_utf8, None, file_id, None, True))
-            elif old_path == new_path:
+            elif (old_path, new_path) == root_only:
                 # change things in-place
                 changes.append((old_path_utf8, new_path_utf8, file_id,
                                 inv_to_entry(inv_entry)))
@@ -1844,6 +1844,7 @@ class DirState(object):
             for child_entry in dir_block:
                 child_basis_kind = child_entry[1][1][0]
                 if child_basis_kind not in 'ar':
+                    import pdb; pdb.set_trace()
                     self._raise_invalid(old_path, file_id,
                         "The file id was deleted but its children were "
                         "not deleted.")
