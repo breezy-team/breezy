@@ -17,6 +17,7 @@
 """Tests of the dirstate functionality being built for WorkingTreeFormat4."""
 
 import os
+import tempfile
 
 from bzrlib import (
     bzrdir,
@@ -2428,6 +2429,7 @@ class TestSHA1Provider(tests.TestCaseInTempDir):
 
 
 class _Repo(object):
+    """A minimal api to get InventoryRevisionTree to work."""
 
     def __init__(self):
         default_format = bzrdir.format_registry.make_bzrdir('default')
@@ -2439,7 +2441,8 @@ class _Repo(object):
     def unlock(self):
         pass
 
-class TestUpdateBasisByDelta(tests.TestCaseWithTransport):
+
+class TestUpdateBasisByDelta(tests.TestCase):
 
     def create_tree_from_shape(self, rev_id, shape):
         dir_ids = {'': 'root-id'}
@@ -2468,6 +2471,14 @@ class TestUpdateBasisByDelta(tests.TestCaseWithTransport):
         rt_target = self.create_tree_from_shape('target', target_shape)
         return rt_active, rt_basis, rt_target
 
+    def create_empty_dirstate(self):
+        fd, path = tempfile.mkstemp(prefix='bzr-dirstate')
+        self.addCleanup(os.remove, path)
+        os.close(fd)
+        state = dirstate.DirState.initialize(path)
+        self.addCleanup(state.unlock)
+        return state
+
     def assertUpdate(self, active, basis, target):
         """Assert that update_basis_by_delta works how we want.
 
@@ -2478,8 +2489,7 @@ class TestUpdateBasisByDelta(tests.TestCaseWithTransport):
         """
         (active_tree, basis_tree,
          target_tree) = self.create_revs(active, basis, target)
-        state = dirstate.DirState.initialize('dirstate')
-        self.addCleanup(state.unlock)
+        state = self.create_empty_dirstate()
         state.set_state_from_scratch(active_tree.inventory,
             [('basis', basis_tree)], [])
         delta = target_tree.inventory._make_delta(basis_tree.inventory)
@@ -2487,7 +2497,15 @@ class TestUpdateBasisByDelta(tests.TestCaseWithTransport):
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(state,
             'target', _Repo())
+        # The target now that delta has been applied should match the
+        # RevisionTree
         self.assertEqual([], list(dirstate_tree.iter_changes(target_tree)))
+        # And the dirblock state should be identical to the state if we created
+        # it from scratch.
+        state2 = self.create_empty_dirstate()
+        state2.set_state_from_scratch(active_tree.inventory,
+            [('target', target_tree)], [])
+        self.assertEqual(state._dirblocks, state2._dirblocks)
         return state
 
     def test_add_file_matching_active_state(self):
@@ -2500,6 +2518,13 @@ class TestUpdateBasisByDelta(tests.TestCaseWithTransport):
     def test_remove_file_matching_active_state(self):
         state = self.assertUpdate(
             active=[],
+            basis =[('file', 'file-id')],
+            target=[],
+            )
+
+    def test_remove_file_present_in_active_state(self):
+        state = self.assertUpdate(
+            active=[('file', 'file-id')],
             basis =[('file', 'file-id')],
             target=[],
             )
