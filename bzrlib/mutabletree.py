@@ -510,8 +510,9 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # doesn't contain symlinks.
                 new_parent_ie = _mod_inventory.make_entry('directory', parent_ie.name,
                     parent_ie.parent_id, parent_ie.file_id)
-                del inv[parent_ie.file_id]
-                inv.add(new_parent_ie)
+                invdelta = [(self.id2path(parent_ie.file_id), osutils.dirname(path.raw_path),
+                    parent_ie.file_id, new_parent_ie)]
+                inv.apply_delta(invdelta)
                 parent_ie = new_parent_ie
             file_id = file_id_callback(inv, parent_ie, path, kind)
             entry = inv.make_entry(kind, path.base_path, parent_ie.file_id,
