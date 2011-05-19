@@ -1670,6 +1670,7 @@ class DirState(object):
         for old_path, new_path, file_id, new_details, real_add in adds:
             dirname, basename = osutils.split(new_path)
             entry_key = st(dirname, basename, file_id)
+            # TODO: consider if we need add_if_missing=True
             _, block = self._find_block(entry_key)
             entry_index, present = self._find_entry_index(entry_key, block)
             if real_add:
@@ -1683,7 +1684,7 @@ class DirState(object):
                 if basis_kind == 'a':
                     entry[1][1] = new_details
                 elif basis_kind == 'r':
-                    raise NotImplementedError
+                    raise NotImplementedError()
                 else:
                     self._changes_aborted = True
                     raise InconsistentDelta(new_path, file_id,
@@ -1693,6 +1694,46 @@ class DirState(object):
                 entry = (entry_key, [DirState.NULL_PARENT_DETAILS,
                                      new_details])
                 block.insert(entry_index, entry)
+            active_kind = entry[1][0][0]
+            if active_kind == 'a':
+                # The active record shows up as absent, this could be genuine,
+                # or it could be present at some other location. We need to
+                # verify.
+                # TODO: Check rename_targets first, in case we can find a
+                #       target without having to load the id_index
+                id_index = self._get_id_index()
+                # The id_index may not be perfectly accurate for tree1, because
+                # we haven't been keeping it updated. However, it should be
+                # fine for tree0, and that gives us enough info for what we
+                # need
+                keys = id_index.get(file_id, ())
+                for key in keys:
+                    block_i, entry_i, d_present, f_present = \
+                        self._get_block_entry_index(key[0], key[1], 0)
+                    if not f_present:
+                        continue
+                    active_entry = self._dirblocks[block_i][1][entry_i]
+                    if active_entry is entry:
+                        continue
+                    real_active_kind = active_entry[1][0][0]
+                    if real_active_kind in 'ar':
+                        # We found a record, which was not *this* record,
+                        # which matches the file_id, but is not actually
+                        # present. Something seems *really* wrong.
+                        raise InconsistentDelta(new_path, file_id,
+                            "We found a tree0 entry that doesnt make sense")
+                    # Now, we've found a tree0 entry which matches the file_id
+                    # but is at a different location. So update them to be
+                    # rename records.
+                    active_dir, active_name = active_entry[0][:2]
+                    if active_dir:
+                        active_path = active_dir + '/' + active_name
+                    else:
+                        active_path = active_name
+                    active_entry[1][1] = st('r', new_path, 0, False, '')
+                    entry[1][0] = st('r', active_path, 0, False, '')
+            elif active_kind == 'r':
+                raise NotImplementedError()
 
     def _update_basis_apply_changes(self, changes):
         """Apply a sequence of changes to tree 1 during update_basis_by_delta.
@@ -2271,7 +2312,7 @@ class DirState(object):
 
     def _get_id_index(self):
         """Get an id index of self._dirblocks.
-        
+
         This maps from file_id => [(directory, name, file_id)] entries where
         that file_id appears in one of the trees.
         """
@@ -2291,7 +2332,6 @@ class DirState(object):
         # such, we use a simple tuple, and do our own uniqueness checks. While
         # the 'in' check is O(N) since N is nicely bounded it shouldn't ever
         # cause quadratic failure.
-        # TODO: This should use StaticTuple
         file_id = entry_key[2]
         entry_key = static_tuple.StaticTuple.from_sequence(entry_key)
         if file_id not in id_index:
