@@ -460,7 +460,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.
         """
-        def _add_one_and_parent(inv, parent_ie, path, kind, action):
+        def _add_one_and_parent(inv, parent_ie, path, kind, action, inv_path):
             """Add a new entry to the inventory and automatically add unversioned parents.
 
             :param inv: Inventory which will receive the new entry.
@@ -471,7 +471,6 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             :param action: callback(inv, parent_ie, path, kind); return ignored.
             :return: A list of paths which have been added.
             """
-            inv_path, _ = osutils.normalized_filename(path.raw_path)
             # Nothing to do if path is already versioned.
             # This is safe from infinite recursion because the tree root is
             # always versioned.
@@ -488,11 +487,12 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # there are a limited number of dirs we can be nested under, it should
                 # generally find it very fast and not recurse after that.
                 parent_ie, added = _add_one_and_parent(inv, None,
-                    _FastPath(osutils.dirname(path.raw_path)), 'directory', action)
-            entry = _add_one(inv, parent_ie, path, kind, action)
+                    _FastPath(osutils.dirname(path.raw_path)), 'directory', action,
+                    osutils.dirname(inv_path))
+            entry = _add_one(inv, parent_ie, path, kind, action, inv_path)
             return (entry, added + [path.raw_path])
 
-        def _add_one(inv, parent_ie, path, kind, file_id_callback):
+        def _add_one(inv, parent_ie, path, kind, file_id_callback, inv_path):
             """Add a new entry to the inventory.
 
             :param inv: Inventory which will receive the new entry.
@@ -574,10 +574,11 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             # directory walk dont skip it.
             # we dont have a parent ie known yet.: use the relatively slower
             # inventory probing method
+            inv_path, _ = osutils.normalized_filename(rf.raw_path)
             versioned = inv.has_filename(rf.raw_path)
             if versioned:
                 continue
-            added.extend(_add_one_and_parent(inv, None, rf, kind, action)[1])
+            added.extend(_add_one_and_parent(inv, None, rf, kind, action, inv_path)[1])
 
         if not recurse:
             # no need to walk any directories at all.
@@ -624,13 +625,13 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                     abspath)
                 continue
 
+            inv_path, _ = osutils.normalized_filename(directory.raw_path)
             if parent_ie is not None:
                 versioned = directory.base_path in parent_ie.children
             else:
                 # without the parent ie, use the relatively slower inventory
                 # probing method
-                versioned = inv.has_filename(
-                        self._fix_case_of_inventory_path(directory.raw_path))
+                versioned = inv.has_filename(inv_path)
 
             if kind == 'directory':
                 try:
@@ -660,7 +661,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # 20070306
                 trace.mutter("%r is a nested bzr tree", abspath)
             else:
-                _add_one(inv, parent_ie, directory, kind, action)
+                _add_one(inv, parent_ie, directory, kind, action, inv_path)
                 added.append(directory.raw_path)
 
             if kind == 'directory' and not sub_tree:
