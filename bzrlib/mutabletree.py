@@ -671,7 +671,6 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 else:
                     # without the parent ie, use the relatively slower inventory
                     # probing method
-                    inv_path = self._fix_case_of_inventory_path(directory.raw_path)
                     this_id = inv.path2id(inv_path)
                     if this_id is None:
                         this_ie = None
