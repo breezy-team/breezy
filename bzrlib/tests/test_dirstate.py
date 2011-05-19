@@ -2447,14 +2447,14 @@ class TestUpdateBasisByDelta(tests.TestCase):
     def path_to_ie(self, path, file_id, rev_id, dir_ids):
         if path.endswith('/'):
             is_dir = True
-            path = path[:1]
+            path = path[:-1]
         else:
             is_dir = False
         dirname, basename = osutils.split(path)
         try:
             dir_id = dir_ids[dirname]
         except KeyError:
-            dir_id = 'missing_parent_id'
+            dir_id = osutils.basename(dirname) + '-id'
         if is_dir:
             ie = inventory.InventoryDirectory(file_id, basename, dir_id)
             dir_ids[path] = dir_id
@@ -2488,7 +2488,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
             if old_path is not None and old_path.endswith('/'):
                 # Don't have to actually do anything for this, because only
                 # new_path creates InventoryEntries
-                old_path = old_path[:1]
+                old_path = old_path[:-1]
             if new_path is None: # Delete
                 inv_delta.append((old_path, None, file_id, None))
                 continue
@@ -2701,4 +2701,16 @@ class TestUpdateBasisByDelta(tests.TestCase):
             active=[],
             basis= [],
             delta=[(None, 'path/path2', 'file-id')])
+        # Note: we force the active tree to have the directory, by knowing how
+        #       path_to_ie handles entries with missing parents
+        state = self.assertBadDelta(
+            active=[('path/', 'path-id')],
+            basis =[],
+            delta=[(None, 'path/path2', 'file-id')])
+        state = self.assertBadDelta(
+            active=[('path/', 'path-id'),
+                    ('path/path2', 'file-id')],
+            basis =[],
+            delta=[(None, 'path/path2', 'file-id')])
+
     # TODO: Test stuff like renaming a directory, and renaming contents therein
