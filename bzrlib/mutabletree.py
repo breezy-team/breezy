@@ -460,6 +460,12 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.
         """
+        ret = {}
+        def get_ie(inv_path):
+            file_id = inv.path2id(inv_path)
+            if file_id is not None:
+                return inv[file_id]
+            return None
         def _add_one_and_parent(inv, parent_ie, path, kind, action, inv_path):
             """Add a new entry to the inventory and automatically add unversioned parents.
 
@@ -479,9 +485,9 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 added = []
             else:
                 # slower but does not need parent_ie
-                parent_id = inv.path2id(inv_path)
-                if parent_id is not None:
-                    return (inv[parent_id], [])
+                this_ie = get_ie(inv_path)
+                if this_ie is not None:
+                    return (this_ie, [])
                 # its really not there : add the parent
                 # note that the dirname use leads to some extra str copying etc but as
                 # there are a limited number of dirs we can be nested under, it should
