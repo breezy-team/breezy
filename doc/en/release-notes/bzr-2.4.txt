@@ -89,6 +89,9 @@ Bug Fixes
   reporting subdirectories that were tree references (in formats that
   supported them). (John Arbash Meinel, #764677)
 
+* Merging into empty branches now gives an error as this is currently
+  not supported. (Jonathan Riddell, #242175)
+
 * Do not show exception to user on pointless commit error (Jonathan
   Riddell #317357)
 
