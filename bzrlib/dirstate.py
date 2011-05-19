@@ -1495,7 +1495,7 @@ class DirState(object):
         adds = []
         changes = []
         deletes = []
-        # when we renaming something in basis, which is already at a
+        # when we are renaming something in basis, which is already at a
         # different path from the active tree. This tracks what active path was
         # associated with the given old basis path
         rename_targets = {}
