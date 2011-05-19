@@ -62,6 +62,11 @@ example_conflicts = conflicts.ConflictList(
 ])
 
 
+def vary_by_conflicts():
+    for conflict in example_conflicts:
+        yield (conflict.__class__.__name__, {"conflict": conflict})
+
+
 class TestConflicts(tests.TestCaseWithTransport):
 
     def test_resolve_conflict_dir(self):
@@ -122,36 +127,44 @@ class TestConflicts(tests.TestCaseWithTransport):
 
 class TestConflictStanzas(tests.TestCase):
 
+    scenarios = scenarios.multiply_scenarios(vary_by_conflicts())
+
     def test_stanza_roundtrip(self):
-        # write and read our example stanza.
-        stanza_iter = example_conflicts.to_stanzas()
-        processed = conflicts.ConflictList.from_stanzas(stanza_iter)
-        for o, p in zip(processed, example_conflicts):
-            self.assertEqual(o, p)
+        p = self.conflict
+        o = conflicts.Conflict.factory(**p.as_stanza().as_dict())
+        self.assertEqual(o, p)
 
-            self.assertIsInstance(o.path, unicode)
+        self.assertIsInstance(o.path, unicode)
 
-            if o.file_id is not None:
-                self.assertIsInstance(o.file_id, str)
+        if o.file_id is not None:
+            self.assertIsInstance(o.file_id, str)
 
-            conflict_path = getattr(o, 'conflict_path', None)
-            if conflict_path is not None:
-                self.assertIsInstance(conflict_path, unicode)
+        conflict_path = getattr(o, 'conflict_path', None)
+        if conflict_path is not None:
+            self.assertIsInstance(conflict_path, unicode)
 
-            conflict_file_id = getattr(o, 'conflict_file_id', None)
-            if conflict_file_id is not None:
-                self.assertIsInstance(conflict_file_id, str)
+        conflict_file_id = getattr(o, 'conflict_file_id', None)
+        if conflict_file_id is not None:
+            self.assertIsInstance(conflict_file_id, str)
 
     def test_stanzification(self):
-        for stanza in example_conflicts.to_stanzas():
-            if 'file_id' in stanza:
-                # In Stanza form, the file_id has to be unicode.
-                self.assertStartsWith(stanza['file_id'], u'\xeed')
-            self.assertStartsWith(stanza['path'], u'p\xe5th')
-            if 'conflict_path' in stanza:
-                self.assertStartsWith(stanza['conflict_path'], u'p\xe5th')
-            if 'conflict_file_id' in stanza:
-                self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
+        stanza = self.conflict.as_stanza()
+        if 'file_id' in stanza:
+            # In Stanza form, the file_id has to be unicode.
+            self.assertStartsWith(stanza['file_id'], u'\xeed')
+        self.assertStartsWith(stanza['path'], u'p\xe5th')
+        if 'conflict_path' in stanza:
+            self.assertStartsWith(stanza['conflict_path'], u'p\xe5th')
+        if 'conflict_file_id' in stanza:
+            self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
+
+
+class TestConflictListStanzas(tests.TestCase):
+
+    def test_stanzas_roundtrip(self):
+        stanzas_iter = example_conflicts.to_stanzas()
+        processed = conflicts.ConflictList.from_stanzas(stanzas_iter)
+        self.assertEqual(example_conflicts, processed)
 
 
 # FIXME: The shell-like tests should be converted to real whitebox tests... or
