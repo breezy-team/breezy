@@ -1713,7 +1713,9 @@ class DirState(object):
                     if not f_present:
                         continue
                     active_entry = self._dirblocks[block_i][1][entry_i]
-                    if active_entry is entry:
+                    if (active_entry[0][2] != file_id):
+                        # Some other file is at this path, we don't need to
+                        # link it.
                         continue
                     real_active_kind = active_entry[1][0][0]
                     if real_active_kind in 'ar':

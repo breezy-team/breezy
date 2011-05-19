@@ -2505,7 +2505,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state2 = self.create_empty_dirstate()
         state2.set_state_from_scratch(active_tree.inventory,
             [('target', target_tree)], [])
-        self.assertEqual(state._dirblocks, state2._dirblocks)
+        self.assertEqual(state2._dirblocks, state._dirblocks)
         return state
 
     def test_remove_file_matching_active_state(self):
@@ -2563,4 +2563,48 @@ class TestUpdateBasisByDelta(tests.TestCase):
             active=[('other-file', 'file-id')],
             basis =[],
             target=[('file', 'file-id')],
+            )
+
+    def test_add_file_active_state_has_diff_file_and_file_elsewhere(self):
+        state = self.assertUpdate(
+            active=[('other-file', 'file-id'),
+                    ('file', 'file-id-2')],
+            basis =[],
+            target=[('file', 'file-id')],
+            )
+
+    def test_rename_file_matching_active_state(self):
+        state = self.assertUpdate(
+            active=[('other-file', 'file-id')],
+            basis =[('file', 'file-id')],
+            target=[('other-file', 'file-id')],
+            )
+
+    def test_rename_file_missing_in_active_state(self):
+        state = self.assertUpdate(
+            active=[],
+            basis =[('file', 'file-id')],
+            target=[('other-file', 'file-id')],
+            )
+
+    def test_rename_file_present_elsewhere_in_active_state(self):
+        state = self.assertUpdate(
+            active=[('third', 'file-id')],
+            basis =[('file', 'file-id')],
+            target=[('other-file', 'file-id')],
+            )
+
+    def test_rename_file_active_state_has_diff_source_file(self):
+        import pdb; pdb.set_trace()
+        state = self.assertUpdate(
+            active=[('file', 'file-id-2')],
+            basis =[('file', 'file-id')],
+            target=[('other-file', 'file-id')],
+            )
+
+    def test_rename_file_active_state_has_diff_target_file(self):
+        state = self.assertUpdate(
+            active=[('other-file', 'file-id-2')],
+            basis =[('file', 'file-id')],
+            target=[('other-file', 'file-id')],
             )
