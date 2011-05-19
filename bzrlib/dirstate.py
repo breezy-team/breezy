@@ -1360,7 +1360,7 @@ class DirState(object):
         delta = sorted(self._check_delta_is_valid(delta), reverse=True)
         for old_path, new_path, file_id, inv_entry in delta:
             if (file_id in insertions) or (file_id in removals):
-                raise errors.InconsistentDelta(old_path or new_path, file_id,
+                self._raise_invalid(old_path or new_path, file_id,
                     "repeated file_id")
             if old_path is not None:
                 old_path = old_path.encode('utf-8')
@@ -1369,7 +1369,7 @@ class DirState(object):
                 new_ids.add(file_id)
             if new_path is not None:
                 if inv_entry is None:
-                    raise errors.InconsistentDelta(new_path, file_id,
+                    self._raise_invalid(new_path, file_id,
                         "new_path with no entry")
                 new_path = new_path.encode('utf-8')
                 dirname_utf8, basename = osutils.split(new_path)
@@ -1428,16 +1428,13 @@ class DirState(object):
             try:
                 entry = self._dirblocks[block_i][1][entry_i]
             except IndexError:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(path, file_id,
+                self._raise_invalid(path, file_id,
                     "Wrong path for old path.")
             if not f_present or entry[1][0][0] in 'ar':
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(path, file_id,
+                self._raise_invalid(path, file_id,
                     "Wrong path for old path.")
             if file_id != entry[0][2]:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(path, file_id,
+                self._raise_invalid(path, file_id,
                     "Attempt to remove path has wrong id - found %r."
                     % entry[0][2])
             self._make_absent(entry)
@@ -1453,8 +1450,7 @@ class DirState(object):
                 # be due to it being in a parent tree, or a corrupt delta.
                 for child_entry in self._dirblocks[block_i][1]:
                     if child_entry[1][0][0] not in ('r', 'a'):
-                        self._changes_aborted = True
-                        raise errors.InconsistentDelta(path, entry[0][2],
+                        self._raise_invalid(path, entry[0][2],
                             "The file id was deleted but its children were "
                             "not deleted.")
 
@@ -1464,8 +1460,7 @@ class DirState(object):
                 self.update_minimal(key, minikind, executable, fingerprint,
                                     path_utf8=path_utf8)
         except errors.NotVersionedError:
-            self._changes_aborted = True
-            raise errors.InconsistentDelta(path_utf8.decode('utf8'), key[2],
+            self._raise_invalid(path_utf8.decode('utf8'), key[2],
                 "Missing parent")
 
     def update_basis_by_delta(self, delta, new_revid):
@@ -1527,13 +1522,13 @@ class DirState(object):
         new_ids = set()
         for old_path, new_path, file_id, inv_entry in delta:
             if inv_entry is not None and file_id != inv_entry.file_id:
-                raise errors.InconsistentDelta(new_path, file_id,
+                self._raise_invalid(new_path, file_id,
                     "mismatched entry file_id %r" % inv_entry)
             if new_path is None:
                 new_path_utf8 = None
             else:
                 if inv_entry is None:
-                    raise errors.InconsistentDelta(new_path, file_id,
+                    self._raise_invalid(new_path, file_id,
                         "new_path with no entry")
                 new_path_utf8 = encode(new_path)
                 # note the parent for validation
@@ -1646,6 +1641,10 @@ class DirState(object):
                     "This file_id is new in the delta but already present in "
                     "the target")
 
+    def _raise_invalid(self, path, file_id, reason):
+        self._changes_aborted = True
+        raise errors.InconsistentDelta(path, file_id, reason)
+
     def _update_basis_apply_adds(self, adds, rename_targets):
         """Apply a sequence of adds to tree 1 during update_basis_by_delta.
 
@@ -1675,7 +1674,7 @@ class DirState(object):
             entry_index, present = self._find_entry_index(entry_key, block)
             if real_add:
                 if old_path is not None:
-                    raise errors.InconsistentDelta(new_path, file_id,
+                    self._raise_invalid(new_path, file_id,
                         'considered a real add but still had old_path at %s'
                         % (old_path,))
             if present:
@@ -1686,8 +1685,7 @@ class DirState(object):
                 elif basis_kind == 'r':
                     raise NotImplementedError()
                 else:
-                    self._changes_aborted = True
-                    raise errors.InconsistentDelta(new_path, file_id,
+                    self._raise_invalid(new_path, file_id,
                         "An entry was marked as a new add"
                         " but the basis target already existed")
             else:
@@ -1722,7 +1720,7 @@ class DirState(object):
                         # We found a record, which was not *this* record,
                         # which matches the file_id, but is not actually
                         # present. Something seems *really* wrong.
-                        raise errors.InconsistentDelta(new_path, file_id,
+                        self._raise_invalid(new_path, file_id,
                             "We found a tree0 entry that doesnt make sense")
                     # Now, we've found a tree0 entry which matches the file_id
                     # but is at a different location. So update them to be
@@ -1748,13 +1746,11 @@ class DirState(object):
             # the entry for this file_id must be in tree 0.
             entry = self._get_entry(0, file_id, new_path)
             if entry[0] is None or entry[0][2] != file_id:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(new_path, file_id,
+                self._raise_invalid(new_path, file_id,
                     'working tree does not contain new entry')
             if (entry[1][0][0] in absent or
                 entry[1][1][0] in absent):
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(new_path, file_id,
+                self._raise_invalid(new_path, file_id,
                     'changed considered absent')
             entry[1][1] = new_details
 
@@ -1778,22 +1774,19 @@ class DirState(object):
         null = DirState.NULL_PARENT_DETAILS
         for old_path, new_path, file_id, _, real_delete in deletes:
             if real_delete != (new_path is None):
-                self._changes_aborted = True
-                raise errors.InconsistentDelta("bad delete delta")
+                self._raise_invalid(old_path, file_id, "bad delete delta")
             # the entry for this file_id must be in tree 1.
             dirname, basename = osutils.split(old_path)
             block_index, entry_index, dir_present, file_present = \
                 self._get_block_entry_index(dirname, basename, 1)
             if not file_present:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(old_path, file_id,
+                self._raise_invalid(old_path, file_id,
                     'basis tree does not contain removed entry')
             entry = self._dirblocks[block_index][1][entry_index]
             # The state of the entry in the 'active' WT
             active_kind = entry[1][0][0]
             if entry[0][2] != file_id:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(old_path, file_id,
+                self._raise_invalid(old_path, file_id,
                     'mismatched file_id in tree 1')
             if real_delete:
                 # This entry is being completely removed from the basis tree.
@@ -1811,10 +1804,10 @@ class DirState(object):
                     # tree0 has a rename record, tree1 should have the reverse
                     # rename record.
                     if active_entry[1][1][0] != 'r':
-                        raise errors.InconsistentDelta(old_path, file_id,
+                        self._raise_invalid(old_path, file_id,
                             "Dirstate did not have matching rename entries")
                     elif active_entry[1][0][0] in 'ar':
-                        raise errors.InconsistentDelta(old_path, file_id,
+                        self._raise_invalid(old_path, file_id,
                             "Dirstate had a rename pointing at an inactive"
                             " tree0")
                     active_entry[1][1] = null
@@ -1831,8 +1824,7 @@ class DirState(object):
                     # be due to it being in a parent tree, or a corrupt delta.
                     for child_entry in self._dirblocks[block_i][1]:
                         if child_entry[1][1][0] not in ('r', 'a'):
-                            self._changes_aborted = True
-                            raise errors.InconsistentDelta(old_path, entry[0][2],
+                            self._raise_invalid(old_path, entry[0][2],
                                 "The file id was deleted but its children were "
                                 "not deleted.")
             else:
@@ -1870,13 +1862,11 @@ class DirState(object):
             # has the right file id.
             entry = self._get_entry(index, file_id, dirname_utf8)
             if entry[1] is None:
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(dirname_utf8.decode('utf8'),
+                self._raise_invalid(dirname_utf8.decode('utf8'),
                     file_id, "This parent is not present.")
             # Parents of things must be directories
             if entry[1][index][0] != 'd':
-                self._changes_aborted = True
-                raise errors.InconsistentDelta(dirname_utf8.decode('utf8'),
+                self._raise_invalid(dirname_utf8.decode('utf8'),
                     file_id, "This parent is not a directory.")
 
     def _observed_sha1(self, entry, sha1, stat_value,
@@ -3014,7 +3004,7 @@ class DirState(object):
                             # This entry has the same path (but a different id) as
                             # the new entry we're adding, and is present in ths
                             # tree.
-                            raise errors.InconsistentDelta(
+                            self._raise_invalid(
                                 ("%s/%s" % key[0:2]).decode('utf8'), key[2],
                                 "Attempt to add item at path already occupied by "
                                 "id %r" % entry[0][2])

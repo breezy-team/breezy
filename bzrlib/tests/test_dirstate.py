@@ -2444,32 +2444,30 @@ class _Repo(object):
 
 class TestUpdateBasisByDelta(tests.TestCase):
 
+    def path_to_ie(self, path, file_id, rev_id, dir_ids):
+        if path.endswith('/'):
+            is_dir = True
+            path = path[:1]
+        else:
+            is_dir = False
+        dirname, basename = osutils.split(path)
+        dir_id = dir_ids[dirname]
+        if is_dir:
+            ie = inventory.InventoryDirectory(file_id, basename, dir_id)
+            dir_ids[path] = dir_id
+        else:
+            ie = inventory.InventoryFile(file_id, basename, dir_id)
+            ie.text_size = 0
+            ie.text_sha1 = ''
+        ie.revision = rev_id
+        return ie
+
     def create_tree_from_shape(self, rev_id, shape):
         dir_ids = {'': 'root-id'}
         inv = inventory.Inventory('root-id', rev_id)
         for path, file_id in shape:
-            if path.endswith('/'):
-                is_dir = True
-                path = path[:1]
-            else:
-                is_dir = False
-            dirname, basename = osutils.split(path)
-            dir_id = dir_ids[dirname]
-            if is_dir:
-                ie = inventory.InventoryDirectory(file_id, basename, dir_id)
-            else:
-                ie = inventory.InventoryFile(file_id, basename, dir_id)
-                ie.text_size = 0
-                ie.text_sha1 = ''
-            ie.revision = rev_id
-            inv.add(ie)
+            inv.add(self.path_to_ie(path, file_id, rev_id, dir_ids))
         return revisiontree.InventoryRevisionTree(_Repo(), inv, rev_id)
-
-    def create_revs(self, active_shape, basis_shape, target_shape):
-        rt_active = self.create_tree_from_shape('active', active_shape)
-        rt_basis = self.create_tree_from_shape('basis', basis_shape)
-        rt_target = self.create_tree_from_shape('target', target_shape)
-        return rt_active, rt_basis, rt_target
 
     def create_empty_dirstate(self):
         fd, path = tempfile.mkstemp(prefix='bzr-dirstate')
@@ -2479,6 +2477,22 @@ class TestUpdateBasisByDelta(tests.TestCase):
         self.addCleanup(state.unlock)
         return state
 
+    def create_inv_delta(self, delta, rev_id):
+        """Translate a 'delta shape' into an actual InventoryDelta"""
+        dir_ids = {'': 'root-id'}
+        inv_delta = []
+        for old_path, new_path, file_id in delta:
+            if old_path is not None and old_path.endswith('/'):
+                # Don't have to actually do anything for this, because only
+                # new_path creates InventoryEntries
+                old_path = old_path[:1]
+            if new_path is None: # Delete
+                inv_delta.append((old_path, None, file_id, None))
+                continue
+            ie = self.path_to_ie(new_path, file_id, rev_id, dir_ids)
+            inv_delta.append((old_path, new_path, file_id, ie))
+        return inv_delta
+
     def assertUpdate(self, active, basis, target):
         """Assert that update_basis_by_delta works how we want.
 
@@ -2487,8 +2501,9 @@ class TestUpdateBasisByDelta(tests.TestCase):
         and assert that the DirState is still valid, and that its stored
         content matches the target_shape.
         """
-        (active_tree, basis_tree,
-         target_tree) = self.create_revs(active, basis, target)
+        active_tree = self.create_tree_from_shape('active', active)
+        basis_tree = self.create_tree_from_shape('basis', basis)
+        target_tree = self.create_tree_from_shape('target', target)
         state = self.create_empty_dirstate()
         state.set_state_from_scratch(active_tree.inventory,
             [('basis', basis_tree)], [])
@@ -2507,6 +2522,28 @@ class TestUpdateBasisByDelta(tests.TestCase):
             [('target', target_tree)], [])
         self.assertEqual(state2._dirblocks, state._dirblocks)
         return state
+
+    def assertBadDelta(self, active, basis, delta):
+        """Test that we raise InconsistentDelta when appropriate.
+
+        :param active: The active tree shape
+        :param basis: The basis tree shape
+        :param delta: A description of the delta to apply. Similar to the form
+            for regular inventory deltas, but omitting the InventoryEntry.
+            So adding a file is: (None, 'path', 'file-id')
+            Adding a directory is: (None, 'path/', 'dir-id')
+            Renaming a dir is: ('old/', 'new/', 'dir-id')
+            etc.
+        """
+        active_tree = self.create_tree_from_shape('active', active)
+        basis_tree = self.create_tree_from_shape('basis', basis)
+        inv_delta = self.create_inv_delta(delta, 'target')
+        state = self.create_empty_dirstate()
+        state.set_state_from_scratch(active_tree.inventory,
+            [('basis', basis_tree)], [])
+        self.assertRaises(errors.InconsistentDelta,
+            state.update_basis_by_delta, delta, 'target')
+        self.assertTrue(state._changes_aborted)
 
     def test_remove_file_matching_active_state(self):
         state = self.assertUpdate(

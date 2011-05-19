@@ -622,6 +622,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         parent2.revision = 'result'
         inv.add(parent1)
         delta = [(None, u'dir1', 'p-2', parent2)]
+        self.apply_delta(self, inv, delta)
         self.assertRaises(errors.InconsistentDelta, self.apply_delta, self,
             inv, delta)
 
