@@ -470,7 +470,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             if file_id is not None:
                 return inv[file_id]
             return None
-        def _add_one_and_parent(inv, parent_ie, path, kind, action, inv_path):
+        def _add_one_and_parent(inv, parent_ie, path, kind, file_id_callback, inv_path):
             """Add a new entry to the inventory and automatically add unversioned parents.
 
             :param inv: Inventory which will receive the new entry.
@@ -478,7 +478,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 None, the parent is looked up by name and used if present, otherwise it
                 is recursively added.
             :param kind: Kind of new entry (file, directory, etc)
-            :param action: callback(inv, parent_ie, path, kind); return ignored.
+            :param action: callback(inv, parent_ie, path, kind); can return file_id
             :return: Inventory entry for path and a list of paths which have been added.
             """
             # Nothing to do if path is already versioned.
@@ -499,19 +499,6 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 parent_ie, added = _add_one_and_parent(inv, None,
                     _FastPath(osutils.dirname(path.raw_path)), 'directory', action,
                     osutils.dirname(inv_path))
-            entry = _add_one(inv, parent_ie, path, kind, action, inv_path)
-            return (entry, added + [path.raw_path])
-
-        def _add_one(inv, parent_ie, path, kind, file_id_callback, inv_path):
-            """Add a new entry to the inventory.
-
-            :param inv: Inventory which will receive the new entry.
-            :param parent_ie: Parent inventory entry.
-            :param kind: Kind of new entry (file, directory, etc)
-            :param file_id_callback: callback(inv, parent_ie, path, kind); return a
-                file_id or None to generate a new file id
-            :returns: None
-            """
             # if the parent exists, but isn't a directory, we have to do the
             # kind change now -- really the inventory shouldn't pretend to know
             # the kind of wt files, but it does.
@@ -531,7 +518,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             inv_delta_entry = (None, inv_path, entry.file_id, entry)
             #ret[inv_path] = inv_delta_entry
             inv.apply_delta([inv_delta_entry])
-            return entry
+            return (entry, added + [path.raw_path])
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
         from bzrlib.inventory import InventoryEntry
