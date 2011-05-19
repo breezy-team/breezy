@@ -137,6 +137,9 @@ Internals
 .. Major internal changes, unlikely to be visible to users or plugin 
    developers, but interesting for bzr developers.
 
+* ``MutableTree.smart_add`` now uses inventory deltas.
+  (Jelmer Vernooij, #146165)
+
 Testing
 *******
 

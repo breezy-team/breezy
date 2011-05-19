@@ -516,7 +516,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                     parent_ie.file_id, new_parent_ie)
                 invdelta[inv_delta_entry[1]] = inv_delta_entry
                 parent_ie = new_parent_ie
-            file_id = file_id_callback(self, parent_ie, path, kind)
+            file_id = file_id_callback(self.inventory, parent_ie, path, kind)
             entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
                 file_id=file_id)
             invdelta[inv_path] = (None, inv_path, entry.file_id, entry)
