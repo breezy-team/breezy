@@ -1543,6 +1543,13 @@ class DirState(object):
                 deletes.append((old_path_utf8, None, file_id, None, True))
             elif (old_path, new_path) == root_only:
                 # change things in-place
+                # Note: the case of a parent directory changing its file_id
+                #       tends to break optimizations here, because officially
+                #       the file has actually been moved, it just happens to
+                #       end up at the same path. If we can figure out how to
+                #       handle that case, we can avoid a lot of add+delete
+                #       pairs for objects that stay put.
+                # elif old_path == new_path:
                 changes.append((old_path_utf8, new_path_utf8, file_id,
                                 inv_to_entry(inv_entry)))
             else:
