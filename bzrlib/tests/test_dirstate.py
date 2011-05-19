@@ -2457,7 +2457,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
             dir_id = osutils.basename(dirname) + '-id'
         if is_dir:
             ie = inventory.InventoryDirectory(file_id, basename, dir_id)
-            dir_ids[path] = dir_id
+            dir_ids[path] = file_id
         else:
             ie = inventory.InventoryFile(file_id, basename, dir_id)
             ie.text_size = 0
@@ -2671,6 +2671,44 @@ class TestUpdateBasisByDelta(tests.TestCase):
                     ('other-file', 'file-id')],
             target=[('file', 'file-id'),
                     ('other-file', 'file-id-2')])
+
+    def test_rename_directory_with_contents(self):
+        state = self.assertUpdate( # active matches basis
+            active=[('dir1/', 'dir-id'),
+                    ('dir1/file', 'file-id')],
+            basis= [('dir1/', 'dir-id'),
+                    ('dir1/file', 'file-id')],
+            target=[('dir2/', 'dir-id'),
+                    ('dir2/file', 'file-id')])
+        state = self.assertUpdate( # active matches target
+            active=[('dir2/', 'dir-id'),
+                    ('dir2/file', 'file-id')],
+            basis= [('dir1/', 'dir-id'),
+                    ('dir1/file', 'file-id')],
+            target=[('dir2/', 'dir-id'),
+                    ('dir2/file', 'file-id')])
+        state = self.assertUpdate( # active empty
+            active=[],
+            basis= [('dir1/', 'dir-id'),
+                    ('dir1/file', 'file-id')],
+            target=[('dir2/', 'dir-id'),
+                    ('dir2/file', 'file-id')])
+        state = self.assertUpdate( # active present at other location
+            active=[('dir3/', 'dir-id'),
+                    ('dir3/file', 'file-id')],
+            basis= [('dir1/', 'dir-id'),
+                    ('dir1/file', 'file-id')],
+            target=[('dir2/', 'dir-id'),
+                    ('dir2/file', 'file-id')])
+        state = self.assertUpdate( # active has different ids
+            active=[('dir1/', 'dir1-id'),
+                    ('dir1/file', 'file1-id'),
+                    ('dir2/', 'dir2-id'),
+                    ('dir2/file', 'file2-id')],
+            basis= [('dir1/', 'dir-id'),
+                    ('dir1/file', 'file-id')],
+            target=[('dir2/', 'dir-id'),
+                    ('dir2/file', 'file-id')])
 
     def test_invalid_file_not_present(self):
         state = self.assertBadDelta(

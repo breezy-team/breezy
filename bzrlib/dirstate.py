@@ -1666,13 +1666,12 @@ class DirState(object):
         for old_path, new_path, file_id, new_details, real_add in adds:
             dirname, basename = osutils.split(new_path)
             entry_key = st(dirname, basename, file_id)
-            try:
-                # TODO: consider if we need add_if_missing=True
-                _, block = self._find_block(entry_key)
-            except errors.NotVersionedError, e:
+            block_index, present = self._find_block_index_from_key(entry_key)
+            if not present:
                 self._raise_invalid(new_path, file_id,
-                    "Got a not-versioned error trying to add path."
-                    " Is the parent missing? %s" % (e,))
+                    "Unable to find block for this record."
+                    " Was the parent added?")
+            block = self._dirblocks[block_index][1]
             entry_index, present = self._find_entry_index(entry_key, block)
             if real_add:
                 if old_path is not None:
@@ -1761,6 +1760,10 @@ class DirState(object):
             elif active_kind == 'r':
                 raise NotImplementedError()
 
+            new_kind = new_details[0]
+            if new_kind == 'd':
+                self._ensure_block(block_index, entry_index, new_path)
+
     def _update_basis_apply_changes(self, changes):
         """Apply a sequence of changes to tree 1 during update_basis_by_delta.
 
@@ -1821,6 +1824,18 @@ class DirState(object):
                     # state, and it is now deleted in the basis state,
                     # so just remove the record entirely
                     del self._dirblocks[block_index][1][entry_index]
+                    old_kind = entry[1][1][0]
+                    if old_kind == 'd':
+                        # This was a directory, and the active tree says it
+                        # doesn't exist, and now the basis tree says it doesn't
+                        # exist. Remove its dirblock if present
+                        (dir_block_index,
+                         present) = self._find_block_index_from_key(
+                            (old_path, '', ''))
+                        if present:
+                            assert not self._dirblocks[dir_block_index][1],\
+                                "dirblock queued for deletion is not empty"
+                            del self._dirblocks[dir_block_index]
                 elif active_kind == 'r':
                     # The active record is found at a different location
                     # we can consider it deleted *here*, but we have to update
@@ -1854,22 +1869,29 @@ class DirState(object):
                                 "The file id was deleted but its children were "
                                 "not deleted.")
             else:
-                if active_kind == 'a':
+                if active_kind in 'ar':
                     # The active tree doesn't have this file_id.
                     # The basis tree is changing this record. If this is a
                     # rename, then we don't want the record here at all
                     # anymore. If it is just an in-place change, we want the
                     # record here, but we'll add it if we need to. So we just
                     # delete it
+                    if active_kind == 'r':
+                        active_path = entry[1][0][1]
+                        rename_targets[old_path] = active_path
+                        active_entry = self._get_entry(0, file_id, active_path)
+                        active_entry[1][1] = null
                     del self._dirblocks[block_index][1][entry_index]
-                elif active_kind == 'r':
-                    # The active tree has this record at a different location.
-                    # implement the rename
-                    active_path_utf8 = entry[1][0][1]
-                    rename_targets[old_path] = active_path_utf8
-                    active_entry = self._get_entry(0, file_id, active_path_utf8)
-                    active_entry[1][1] = null
-                    del self._dirblocks[block_index][1][entry_index]
+                    old_kind = entry[1][1][0]
+                    if old_kind == 'd':
+                        # This was a directory, and the active tree says it
+                        # doesn't exist, and now the basis tree says it doesn't
+                        # exist. Remove its dirblock if present
+                        (dir_block_index,
+                         present) = self._find_block_index_from_key(
+                            (old_path, '', ''))
+                        if present and not self._dirblocks[dir_block_index][1]:
+                            del self._dirblocks[dir_block_index]
                 else:
                     # There is still an active record, so just mark this
                     # removed.
