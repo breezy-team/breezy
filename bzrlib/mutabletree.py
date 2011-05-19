@@ -582,8 +582,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             # we dont have a parent ie known yet.: use the relatively slower
             # inventory probing method
             inv_path, _ = osutils.normalized_filename(rf.raw_path)
-            versioned = inv.has_filename(rf.raw_path)
-            if versioned:
+            this_ie = get_ie(inv_path)
+            if this_ie is not None:
                 continue
             added.extend(_add_one_and_parent(inv, None, rf, kind, action, inv_path)[1])
 
