@@ -478,8 +478,9 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # we have a parent ie already
                 added = []
             else:
+                inv_path, _ = osutils.normalized_filename(path.raw_path)
                 # slower but does not need parent_ie
-                if inv.has_filename(self._fix_case_of_inventory_path(path.raw_path)):
+                if inv.has_filename(inv_path):
                     return []
                 # its really not there : add the parent
                 # note that the dirname use leads to some extra str copying etc but as
@@ -487,7 +488,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # generally find it very fast and not recurse after that.
                 added = _add_one_and_parent(inv, None,
                     _FastPath(osutils.dirname(path.raw_path)), 'directory', action)
-                parent_id = inv.path2id(osutils.dirname(path.raw_path))
+                parent_id = inv.path2id(osutils.dirname(inv_path))
                 parent_ie = inv[parent_id]
             _add_one(inv, parent_ie, path, kind, action)
             return added + [path.raw_path]
