@@ -2508,13 +2508,6 @@ class TestUpdateBasisByDelta(tests.TestCase):
         self.assertEqual(state._dirblocks, state2._dirblocks)
         return state
 
-    def test_add_file_matching_active_state(self):
-        state = self.assertUpdate(
-            active=[('file', 'file-id')],
-            basis =[],
-            target=[('file', 'file-id')],
-            )
-
     def test_remove_file_matching_active_state(self):
         state = self.assertUpdate(
             active=[],
@@ -2527,4 +2520,47 @@ class TestUpdateBasisByDelta(tests.TestCase):
             active=[('file', 'file-id')],
             basis =[('file', 'file-id')],
             target=[],
+            )
+
+    def test_remove_file_present_elsewhere_in_active_state(self):
+        state = self.assertUpdate(
+            active=[('other-file', 'file-id')],
+            basis =[('file', 'file-id')],
+            target=[],
+            )
+
+    def test_remove_file_active_state_has_diff_file(self):
+        state = self.assertUpdate(
+            active=[('file', 'file-id-2')],
+            basis =[('file', 'file-id')],
+            target=[],
+            )
+
+    def test_remove_file_active_state_has_diff_file_and_file_elsewhere(self):
+        state = self.assertUpdate(
+            active=[('file', 'file-id-2'),
+                    ('other-file', 'file-id')],
+            basis =[('file', 'file-id')],
+            target=[],
+            )
+
+    def test_add_file_matching_active_state(self):
+        state = self.assertUpdate(
+            active=[('file', 'file-id')],
+            basis =[],
+            target=[('file', 'file-id')],
+            )
+
+    def test_add_file_missing_in_active_state(self):
+        state = self.assertUpdate(
+            active=[],
+            basis =[],
+            target=[('file', 'file-id')],
+            )
+
+    def test_add_file_elsewhere_in_active_state(self):
+        state = self.assertUpdate(
+            active=[('other-file', 'file-id')],
+            basis =[],
+            target=[('file', 'file-id')],
             )
