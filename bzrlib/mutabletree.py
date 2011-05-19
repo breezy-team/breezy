@@ -22,6 +22,7 @@ See MutableTree for more details.
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import operator
 import os
 import re
 
@@ -547,7 +548,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
         added = []
         ignored = {}
         dirs_to_add = []
-        user_dirs = set()
+        user_dirs = {}
         conflicts_related = set()
         # Not all mutable trees can have conflicts
         if getattr(self, 'conflicts', None) is not None:
@@ -576,22 +577,20 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
 
             abspath = self.abspath(rf.raw_path)
             kind = osutils.file_kind(abspath)
-            if kind == 'directory':
-                # schedule the dir for scanning
-                user_dirs.add(rf)
-            else:
-                if not InventoryEntry.versionable_kind(kind):
-                    raise errors.BadFileKindError(filename=abspath, kind=kind)
+            if not InventoryEntry.versionable_kind(kind):
+                raise errors.BadFileKindError(filename=abspath, kind=kind)
             # ensure the named path is added, so that ignore rules in the later
             # directory walk dont skip it.
             # we dont have a parent ie known yet.: use the relatively slower
             # inventory probing method
             inv_path, _ = osutils.normalized_filename(rf.raw_path)
             this_ie = get_ie(inv_path)
-            if this_ie is not None:
-                continue
-            (this_ie, extra) = _add_one_and_parent(inv, None, rf, kind, action, inv_path)
-            added.extend(extra)
+            if this_ie is None:
+                (this_ie, extra) = _add_one_and_parent(inv, None, rf, kind, action, inv_path)
+                added.extend(extra)
+            if kind == 'directory':
+                # schedule the dir for scanning
+                user_dirs[rf] = (inv_path, this_ie)
 
         if not recurse:
             # no need to walk any directories at all.
@@ -604,10 +603,9 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
         prev_dir = None
 
         is_inside = osutils.is_inside_or_parent_of_any
-        for path in sorted(user_dirs):
+        for path, (inv_path, this_ie) in sorted(user_dirs.iteritems(), key=operator.itemgetter(0)):
             if (prev_dir is None or not is_inside([prev_dir], path.raw_path)):
-                inv_path, _ = osutils.normalized_filename(path.raw_path)
-                dirs_to_add.append((path, inv_path, get_ie(inv_path), None))
+                dirs_to_add.append((path, inv_path, this_ie, None))
             prev_dir = path.raw_path
 
         illegalpath_re = re.compile(r'[\r\n]')
