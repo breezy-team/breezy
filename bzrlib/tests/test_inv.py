@@ -85,7 +85,7 @@ def create_texts_for_inv(repo, inv):
         repo.texts.add_lines((ie.file_id, ie.revision), [], lines)
 
 
-def apply_inventory_Inventory(self, basis, delta, expect_fail=True):
+def apply_inventory_Inventory(self, basis, delta, invalid_delta=True):
     """Apply delta to basis and return the result.
 
     :param basis: An inventory to be used as the basis.
@@ -96,7 +96,7 @@ def apply_inventory_Inventory(self, basis, delta, expect_fail=True):
     return basis
 
 
-def apply_inventory_WT(self, basis, delta, expect_fail=True):
+def apply_inventory_WT(self, basis, delta, invalid_delta=True):
     """Apply delta to basis and return the result.
 
     This sets the tree state to be basis, and then calls apply_inventory_delta.
@@ -125,12 +125,12 @@ def apply_inventory_WT(self, basis, delta, expect_fail=True):
     tree = tree.bzrdir.open_workingtree()
     tree.lock_read()
     self.addCleanup(tree.unlock)
-    if not expect_fail:
+    if not invalid_delta:
         tree._validate()
     return tree.inventory
 
 
-def _create_repo_revisions(repo, basis, delta, expect_fail):
+def _create_repo_revisions(repo, basis, delta, invalid_delta):
     repo.start_write_group()
     try:
         rev = revision.Revision('basis', timestamp=0, timezone=None,
@@ -138,7 +138,7 @@ def _create_repo_revisions(repo, basis, delta, expect_fail):
         basis.revision_id = 'basis'
         create_texts_for_inv(repo, basis)
         repo.add_revision('basis', rev, basis)
-        if expect_fail:
+        if invalid_delta:
             # We don't want to apply the delta to the basis, because we expect
             # the delta is invalid.
             result_inv = basis
@@ -183,7 +183,7 @@ def _populate_different_tree(tree, basis, delta):
         tree.add(['unique-dir/' + file_id], [file_id], [ie.kind])
 
 
-def apply_inventory_WT_basis(test, basis, delta, expect_fail=True):
+def apply_inventory_WT_basis(test, basis, delta, invalid_delta=True):
     """Apply delta to basis and return the result.
 
     This sets the parent and then calls update_basis_by_delta.
@@ -203,7 +203,7 @@ def apply_inventory_WT_basis(test, basis, delta, expect_fail=True):
     tree.lock_write()
     try:
         target_entries = _create_repo_revisions(tree.branch.repository, basis,
-                                                delta, expect_fail)
+                                                delta, invalid_delta)
         # Set the basis state as the trees current state
         tree._write_inventory(basis)
         # This reads basis from the repo and puts it into the tree's local
@@ -215,7 +215,7 @@ def apply_inventory_WT_basis(test, basis, delta, expect_fail=True):
     tree.lock_write()
     try:
         tree.update_basis_by_delta('result', delta)
-        if not expect_fail:
+        if not invalid_delta:
             tree._validate()
     finally:
         tree.unlock()
@@ -232,7 +232,7 @@ def apply_inventory_WT_basis(test, basis, delta, expect_fail=True):
 
 
 def apply_inventory_Repository_add_inventory_by_delta(self, basis, delta,
-                                                      expect_fail=True):
+                                                      invalid_delta=True):
     """Apply delta to basis and return the result.
     
     This inserts basis as a whole inventory and then uses
@@ -607,7 +607,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file1.text_size = 0
         file1.text_sha1 = ''
         delta = [(None, u'path', 'file-id', file1)]
-        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
+        res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         self.assertEqual('file-id', res_inv['file-id'].file_id)
 
     def test_remove_file(self):
@@ -618,7 +618,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file1.text_sha1 = ''
         inv.add(file1)
         delta = [(u'path', None, 'file-id', None)]
-        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
+        res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         self.assertEqual(None, res_inv.path2id('path'))
         self.assertRaises(errors.NoSuchId, res_inv.id2path, 'file-id')
 
@@ -628,7 +628,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         inv.add(file1)
         file2 = self.make_file_ie(name='path2', parent_id=inv.root.file_id)
         delta = [(u'path', 'path2', 'file-id', file2)]
-        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
+        res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         self.assertEqual(None, res_inv.path2id('path'))
         self.assertEqual('file-id', res_inv.path2id('path2'))
 
@@ -639,7 +639,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2 = self.make_file_ie(file_id='id2', parent_id=inv.root.file_id)
         delta = [(u'name', None, 'id1', None),
                  (None, u'name', 'id2', file2)]
-        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
+        res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         self.assertEqual('id2', res_inv.path2id('name'))
 
     def test_rename_dir(self):
@@ -652,7 +652,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         dir2 = inventory.InventoryDirectory('dir-id', 'dir2', inv.root.file_id)
         dir2.revision = 'result'
         delta = [('dir1', 'dir2', 'dir-id', dir2)]
-        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
+        res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         # The file should be accessible under the new path
         self.assertEqual('file-id', res_inv.path2id('dir2/name'))
 
@@ -670,7 +670,7 @@ class TestDeltaApplication(TestCaseWithTransport):
         file2b = self.make_file_ie('file-id-2', 'name2', inv.root.file_id)
         delta = [('dir1', 'dir2', 'dir-id', dir2),
                  ('dir1/name2', 'name2', 'file-id-2', file2b)]
-        res_inv = self.apply_delta(self, inv, delta, expect_fail=False)
+        res_inv = self.apply_delta(self, inv, delta, invalid_delta=False)
         # The file should be accessible under the new path
         self.assertEqual('file-id-1', res_inv.path2id('dir2/name1'))
         self.assertEqual(None, res_inv.path2id('dir2/name2'))
