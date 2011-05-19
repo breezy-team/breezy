@@ -1159,6 +1159,7 @@ def _filter_revisions_touching_file_id(branch, file_id, view_revisions,
     This includes the revisions which directly change the file id,
     and the revisions which merge these changes. So if the
     revision graph is::
+
         A-.
         |\ \
         B C E
@@ -1339,27 +1340,28 @@ class LogFormatter(object):
     to indicate which LogRevision attributes it supports:
 
     - supports_delta must be True if this log formatter supports delta.
-        Otherwise the delta attribute may not be populated.  The 'delta_format'
-        attribute describes whether the 'short_status' format (1) or the long
-        one (2) should be used.
+      Otherwise the delta attribute may not be populated.  The 'delta_format'
+      attribute describes whether the 'short_status' format (1) or the long
+      one (2) should be used.
 
     - supports_merge_revisions must be True if this log formatter supports
-        merge revisions.  If not, then only mainline revisions will be passed
-        to the formatter.
+      merge revisions.  If not, then only mainline revisions will be passed
+      to the formatter.
 
     - preferred_levels is the number of levels this formatter defaults to.
-        The default value is zero meaning display all levels.
-        This value is only relevant if supports_merge_revisions is True.
+      The default value is zero meaning display all levels.
+      This value is only relevant if supports_merge_revisions is True.
 
     - supports_tags must be True if this log formatter supports tags.
-        Otherwise the tags attribute may not be populated.
+      Otherwise the tags attribute may not be populated.
 
     - supports_diff must be True if this log formatter supports diffs.
-        Otherwise the diff attribute may not be populated.
+      Otherwise the diff attribute may not be populated.
 
     Plugins can register functions to show custom revision properties using
     the properties_handler_registry. The registered function
-    must respect the following interface description:
+    must respect the following interface description::
+
         def my_show_properties(properties_dict):
             # code that returns a dict {'name':'value'} of the properties
             # to be shown
@@ -1728,13 +1730,14 @@ class LineLogFormatter(LogFormatter):
 
     def log_string(self, revno, rev, max_chars, tags=None, prefix=''):
         """Format log info into one string. Truncate tail of string
-        :param  revno:      revision number or None.
-                            Revision numbers counts from 1.
-        :param  rev:        revision object
-        :param  max_chars:  maximum length of resulting string
-        :param  tags:       list of tags or None
-        :param  prefix:     string to prefix each line
-        :return:            formatted truncated string
+
+        :param revno:      revision number or None.
+                           Revision numbers counts from 1.
+        :param rev:        revision object
+        :param max_chars:  maximum length of resulting string
+        :param tags:       list of tags or None
+        :param prefix:     string to prefix each line
+        :return:           formatted truncated string
         """
         out = []
         if revno:

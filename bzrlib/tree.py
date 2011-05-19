@@ -174,6 +174,7 @@ class Tree(object):
              g
 
         The yield order (ignoring root) would be::
+
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
 
         :param yield_parents: If True, yield the parents from the root leading
@@ -289,6 +290,7 @@ class Tree(object):
 
         :param file_id: The file_id of the file.
         :param path: The path of the file.
+
         If both file_id and path are supplied, an implementation may use
         either one.
         """
@@ -860,7 +862,7 @@ def find_ids_across_trees(filenames, trees, require_versioned=True):
         None)
     :param trees: The trees to find file_ids within
     :param require_versioned: if true, all specified filenames must occur in
-    at least one tree.
+        at least one tree.
     :return: a set of file ids for the specified filenames and their children.
     """
     if not filenames:
