@@ -1697,16 +1697,20 @@ class DirState(object):
                     if maybe_index < 0 or maybe_index >= len(block):
                         continue
                     maybe_entry = block[maybe_index]
-                    if maybe_entry[0][:2] == (dirname, basename):
-                        # There is another record with the same path
-                        if maybe_entry[0][2] == file_id:
-                            raise AssertionError('shouldnt happen')
-                        basis_kind = maybe_entry[1][1][0]
-                        if basis_kind not in 'ar':
-                            self._raise_invalid(new_path, file_id,
-                                "we have an add record for path, but the path"
-                                " is already present with another file_id %s"
-                                % (maybe_entry[0][2],))
+                    if maybe_entry[0][:2] != (dirname, basename):
+                        # Just a random neighbor
+                        continue
+                    if maybe_entry[0][2] == file_id:
+                        raise AssertionError(
+                            '_find_entry_index didnt find a key match'
+                            ' but walking the data did, for %s'
+                            % (entry_key,))
+                    basis_kind = maybe_entry[1][1][0]
+                    if basis_kind not in 'ar':
+                        self._raise_invalid(new_path, file_id,
+                            "we have an add record for path, but the path"
+                            " is already present with another file_id %s"
+                            % (maybe_entry[0][2],))
 
                 entry = (entry_key, [DirState.NULL_PARENT_DETAILS,
                                      new_details])
