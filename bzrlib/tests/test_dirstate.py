@@ -2542,7 +2542,7 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state.set_state_from_scratch(active_tree.inventory,
             [('basis', basis_tree)], [])
         self.assertRaises(errors.InconsistentDelta,
-            state.update_basis_by_delta, delta, 'target')
+            state.update_basis_by_delta, inv_delta, 'target')
         self.assertTrue(state._changes_aborted)
 
     def test_remove_file_matching_active_state(self):
@@ -2662,3 +2662,11 @@ class TestUpdateBasisByDelta(tests.TestCase):
                     ('other-file', 'file-id')],
             target=[('file', 'file-id'),
                     ('other-file', 'file-id-2')])
+
+    def test_invalid_file_not_present(self):
+        state = self.assertBadDelta(
+            active=[('file', 'file-id')],
+            basis= [('file', 'file-id')],
+            delta=[('other-file', 'file', 'file-id')])
+
+    # TODO: Test stuff like renaming a directory, and renaming contents therein
