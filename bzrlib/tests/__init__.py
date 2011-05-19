@@ -377,20 +377,12 @@ class ExtendedTestResult(testtools.TextTestResult):
         if isinstance(test, TestCase):
             test.addCleanup(self._check_leaked_threads, test)
 
-    def stopTest(self, test):
-        super(ExtendedTestResult, self).stopTest(test)
-        # Manually break cycles, means touching various private things but hey
-        getDetails = getattr(test, "getDetails", None)
-        if getDetails is not None:
-            getDetails().clear()
-        type_equality_funcs = getattr(test, "_type_equality_funcs", None)
-        if type_equality_funcs is not None:
-            type_equality_funcs.clear()
-        self._traceback_from_test = None
-
     def startTests(self):
         self.report_tests_starting()
         self._active_threads = threading.enumerate()
+
+    def stopTest(self, test):
+        self._traceback_from_test = None
 
     def _check_leaked_threads(self, test):
         """See if any threads have leaked since last call
@@ -491,10 +483,6 @@ class ExtendedTestResult(testtools.TextTestResult):
     def addNotApplicable(self, test, reason):
         self.not_applicable_count += 1
         self.report_not_applicable(test, reason)
-
-    def _count_stored_tests(self):
-        """Count of tests instances kept alive due to not succeeding"""
-        return self.error_count + self.failure_count + self.known_failure_count
 
     def _post_mortem(self, tb=None):
         """Start a PDB post mortem session."""
@@ -975,6 +963,10 @@ class TestCase(testtools.TestCase):
         super(TestCase, self).setUp()
         for feature in getattr(self, '_test_needs_features', []):
             self.requireFeature(feature)
+        self._log_contents = None
+        self.addDetail("log", content.Content(content.ContentType("text",
+            "plain", {"charset": "utf8"}),
+            lambda:[self._get_log(keep_log_file=True)]))
         self._cleanEnvironment()
         self._silenceUI()
         self._startLogFile()
@@ -1331,13 +1323,13 @@ class TestCase(testtools.TestCase):
         try:
             def capture():
                 orig_log_exception_quietly()
-                captured.append(sys.exc_info()[1])
+                captured.append(sys.exc_info())
             trace.log_exception_quietly = capture
             func(*args, **kwargs)
         finally:
             trace.log_exception_quietly = orig_log_exception_quietly
         self.assertLength(1, captured)
-        err = captured[0]
+        err = captured[0][1]
         self.assertIsInstance(err, exception_class)
         return err
 
@@ -1638,14 +1630,7 @@ class TestCase(testtools.TestCase):
 
         The file is removed as the test is torn down.
         """
-        pseudo_log_file = StringIO()
-        def _get_log_contents_for_weird_testtools_api():
-            return [pseudo_log_file.getvalue().decode(
-                "utf-8", "replace").encode("utf-8")]          
-        self.addDetail("log", content.Content(content.ContentType("text",
-            "plain", {"charset": "utf8"}),
-            _get_log_contents_for_weird_testtools_api))
-        self._log_file = pseudo_log_file
+        self._log_file = StringIO()
         self._log_memento = trace.push_log_file(self._log_file)
         self.addCleanup(self._finishLogFile)
 
@@ -1658,6 +1643,8 @@ class TestCase(testtools.TestCase):
             # flush the log file, to get all content
             trace._trace_file.flush()
         trace.pop_log_file(self._log_memento)
+        # Cache the log result and delete the file on disk
+        self._get_log(False)
 
     def thisFailsStrictLockCheck(self):
         """It is known that this test would fail with -Dstrict_locks.
@@ -1712,9 +1699,7 @@ class TestCase(testtools.TestCase):
     def _restoreHooks(self):
         for klass, (name, hooks) in self._preserved_hooks.items():
             setattr(klass, name, hooks)
-        self._preserved_hooks.clear()
-        bzrlib.hooks._lazy_hooks = self._preserved_lazy_hooks
-        self._preserved_lazy_hooks.clear()
+        hooks._lazy_hooks = self._preserved_lazy_hooks
 
     def knownFailure(self, reason):
         """This test has failed for some known reason."""
@@ -1811,6 +1796,41 @@ class TestCase(testtools.TestCase):
 
     def log(self, *args):
         trace.mutter(*args)
+
+    def _get_log(self, keep_log_file=False):
+        """Internal helper to get the log from bzrlib.trace for this test.
+
+        Please use self.getDetails, or self.get_log to access this in test case
+        code.
+
+        :param keep_log_file: When True, if the log is still a file on disk
+            leave it as a file on disk. When False, if the log is still a file
+            on disk, the log file is deleted and the log preserved as
+            self._log_contents.
+        :return: A string containing the log.
+        """
+        if self._log_contents is not None:
+            try:
+                self._log_contents.decode('utf8')
+            except UnicodeDecodeError:
+                unicodestr = self._log_contents.decode('utf8', 'replace')
+                self._log_contents = unicodestr.encode('utf8')
+            return self._log_contents
+        if self._log_file is not None:
+            log_contents = self._log_file.getvalue()
+            try:
+                log_contents.decode('utf8')
+            except UnicodeDecodeError:
+                unicodestr = log_contents.decode('utf8', 'replace')
+                log_contents = unicodestr.encode('utf8')
+            if not keep_log_file:
+                self._log_file = None
+                # Permit multiple calls to get_log until we clean it up in
+                # finishLogFile
+                self._log_contents = log_contents
+            return log_contents
+        else:
+            return "No log file content."
 
     def get_log(self):
         """Get a unicode string containing the log from bzrlib.trace.
@@ -3064,9 +3084,6 @@ def run_suite(suite, name='test', verbose=False, pattern=".*",
                             result_decorators=result_decorators,
                             )
     runner.stop_on_failure=stop_on_failure
-    if isinstance(suite, unittest.TestSuite):
-        # Empty out _tests list of passed suite and populate new TestSuite
-        suite._tests[:], suite = [], TestSuite(suite)
     # built in decorator factories:
     decorators = [
         random_order(random_seed, runner),
@@ -3170,17 +3187,34 @@ def identity_decorator(suite):
 
 class TestDecorator(TestUtil.TestSuite):
     """A decorator for TestCase/TestSuite objects.
-
-    Contains rather than flattening suite passed on construction
+    
+    Usually, subclasses should override __iter__(used when flattening test
+    suites), which we do to filter, reorder, parallelise and so on, run() and
+    debug().
     """
 
-    def __init__(self, suite=None):
-        super(TestDecorator, self).__init__()
-        if suite is not None:
-            self.addTest(suite)
+    def __init__(self, suite):
+        TestUtil.TestSuite.__init__(self)
+        self.addTest(suite)
 
-    # Don't need subclass run method with suite emptying
-    run = unittest.TestSuite.run
+    def countTestCases(self):
+        cases = 0
+        for test in self:
+            cases += test.countTestCases()
+        return cases
+
+    def debug(self):
+        for test in self:
+            test.debug()
+
+    def run(self, result):
+        # Use iteration on self, not self._tests, to allow subclasses to hook
+        # into __iter__.
+        for test in self:
+            if result.shouldStop:
+                break
+            test.run(result)
+        return result
 
 
 class CountingDecorator(TestDecorator):
@@ -3197,50 +3231,90 @@ class ExcludeDecorator(TestDecorator):
     """A decorator which excludes test matching an exclude pattern."""
 
     def __init__(self, suite, exclude_pattern):
-        super(ExcludeDecorator, self).__init__(
-            exclude_tests_by_re(suite, exclude_pattern))
+        TestDecorator.__init__(self, suite)
+        self.exclude_pattern = exclude_pattern
+        self.excluded = False
+
+    def __iter__(self):
+        if self.excluded:
+            return iter(self._tests)
+        self.excluded = True
+        suite = exclude_tests_by_re(self, self.exclude_pattern)
+        del self._tests[:]
+        self.addTests(suite)
+        return iter(self._tests)
 
 
 class FilterTestsDecorator(TestDecorator):
     """A decorator which filters tests to those matching a pattern."""
 
     def __init__(self, suite, pattern):
-        super(FilterTestsDecorator, self).__init__(
-            filter_suite_by_re(suite, pattern))
+        TestDecorator.__init__(self, suite)
+        self.pattern = pattern
+        self.filtered = False
+
+    def __iter__(self):
+        if self.filtered:
+            return iter(self._tests)
+        self.filtered = True
+        suite = filter_suite_by_re(self, self.pattern)
+        del self._tests[:]
+        self.addTests(suite)
+        return iter(self._tests)
 
 
 class RandomDecorator(TestDecorator):
     """A decorator which randomises the order of its tests."""
 
     def __init__(self, suite, random_seed, stream):
-        random_seed = self.actual_seed(random_seed)
-        stream.write("Randomizing test order using seed %s\n\n" %
-            (random_seed,))
-        # Initialise the random number generator.
-        random.seed(random_seed)
-        super(RandomDecorator, self).__init__(randomize_suite(suite))
+        TestDecorator.__init__(self, suite)
+        self.random_seed = random_seed
+        self.randomised = False
+        self.stream = stream
 
-    @staticmethod
-    def actual_seed(seed):
-        if seed == "now":
+    def __iter__(self):
+        if self.randomised:
+            return iter(self._tests)
+        self.randomised = True
+        self.stream.write("Randomizing test order using seed %s\n\n" %
+            (self.actual_seed()))
+        # Initialise the random number generator.
+        random.seed(self.actual_seed())
+        suite = randomize_suite(self)
+        del self._tests[:]
+        self.addTests(suite)
+        return iter(self._tests)
+
+    def actual_seed(self):
+        if self.random_seed == "now":
             # We convert the seed to a long to make it reuseable across
             # invocations (because the user can reenter it).
-            return long(time.time())
+            self.random_seed = long(time.time())
         else:
             # Convert the seed to a long if we can
             try:
-                return long(seed)
-            except (TypeError, ValueError):
+                self.random_seed = long(self.random_seed)
+            except:
                 pass
-        return seed
+        return self.random_seed
 
 
 class TestFirstDecorator(TestDecorator):
     """A decorator which moves named tests to the front."""
 
     def __init__(self, suite, pattern):
-        super(TestFirstDecorator, self).__init__()
-        self.addTests(split_suite_by_re(suite, pattern))
+        TestDecorator.__init__(self, suite)
+        self.pattern = pattern
+        self.filtered = False
+
+    def __iter__(self):
+        if self.filtered:
+            return iter(self._tests)
+        self.filtered = True
+        suites = split_suite_by_re(self, self.pattern)
+        del self._tests[:]
+        self.addTests(suites)
+        return iter(self._tests)
 
 
 def partition_tests(suite, count):
@@ -3293,10 +3367,9 @@ def fork_for_tests(suite):
                 os.waitpid(self.pid, 0)
 
     test_blocks = partition_tests(suite, concurrency)
-    suite._tests[:] = []
     for process_tests in test_blocks:
-        process_suite = TestUtil.TestSuite(process_tests)
-        process_tests[:] = []
+        process_suite = TestUtil.TestSuite()
+        process_suite.addTests(process_tests)
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
         if pid == 0:
@@ -3426,8 +3499,6 @@ class ProfileResult(testtools.ExtendedToOriginalDecorator):
 #                           with proper exclusion rules.
 #   -Ethreads               Will display thread ident at creation/join time to
 #                           help track thread leaks
-#   -Ecollection            Display the identity of any test cases that weren't
-#                           deallocated after being completed.
 selftest_debug_flags = set()
 
 
