@@ -2541,8 +2541,14 @@ class TestUpdateBasisByDelta(tests.TestCase):
         state = self.create_empty_dirstate()
         state.set_state_from_scratch(active_tree.inventory,
             [('basis', basis_tree)], [])
-        self.assertRaises(errors.InconsistentDelta,
-            state.update_basis_by_delta, inv_delta, 'target')
+        # self.assertRaises(errors.InconsistentDelta,
+        #     state.update_basis_by_delta, inv_delta, 'target')
+        try:
+            state.update_basis_by_delta(inv_delta, 'target')
+        except errors.InconsistentDelta, e:
+            pass
+        else:
+            import pdb; pdb.set_trace()
         self.assertTrue(state._changes_aborted)
 
     def test_remove_file_matching_active_state(self):
@@ -2668,5 +2674,11 @@ class TestUpdateBasisByDelta(tests.TestCase):
             active=[('file', 'file-id')],
             basis= [('file', 'file-id')],
             delta=[('other-file', 'file', 'file-id')])
+
+    def test_invalid_new_id_same_path(self):
+        state = self.assertBadDelta(
+            active=[('file', 'file-id')],
+            basis= [('file', 'file-id')],
+            delta=[(None, 'file', 'file-id-2')])
 
     # TODO: Test stuff like renaming a directory, and renaming contents therein
