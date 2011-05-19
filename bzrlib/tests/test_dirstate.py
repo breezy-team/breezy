@@ -19,12 +19,14 @@
 import os
 
 from bzrlib import (
+    bzrdir,
     dirstate,
     errors,
     inventory,
     memorytree,
     osutils,
     revision as _mod_revision,
+    revisiontree,
     tests,
     workingtree_4,
     )
@@ -2425,34 +2427,46 @@ class TestSHA1Provider(tests.TestCaseInTempDir):
         self.assertEqual(expected_sha, sha1)
 
 
+class _Repo(object):
+
+    def __init__(self):
+        default_format = bzrdir.format_registry.make_bzrdir('default')
+        self._format = default_format.repository_format
+
+    def lock_read(self):
+        pass
+
+    def unlock(self):
+        pass
+
 class TestUpdateBasisByDelta(tests.TestCaseWithTransport):
 
-    def create_rev_from_shape(self, builder, name, shape):
-        builder_commands = []
+    def create_tree_from_shape(self, rev_id, shape):
+        dir_ids = {'': 'root-id'}
+        inv = inventory.Inventory('root-id', rev_id)
         for path, file_id in shape:
             if path.endswith('/'):
-                builder_commands.append(('add',
-                    (path[:1], file_id, 'directory', None)))
+                is_dir = True
+                path = path[:1]
             else:
-                content = 'content\n%s\n%s\n' % (path, file_id)
-                builder_commands.append(('add',
-                    (path, file_id, 'file', content)))
-        builder.build_snapshot(name, ['root'], builder_commands)
+                is_dir = False
+            dirname, basename = osutils.split(path)
+            dir_id = dir_ids[dirname]
+            if is_dir:
+                ie = inventory.InventoryDirectory(file_id, basename, dir_id)
+            else:
+                ie = inventory.InventoryFile(file_id, basename, dir_id)
+                ie.text_size = 0
+                ie.text_sha1 = ''
+            ie.revision = rev_id
+            inv.add(ie)
+        return revisiontree.InventoryRevisionTree(_Repo(), inv, rev_id)
 
     def create_revs(self, active_shape, basis_shape, target_shape):
-        self.vfs_transport_factory = memory.MemoryServer
-        builder = self.make_branch_builder('builder')
-        builder.start_series()
-        self.addCleanup(builder.finish_series)
-        builder.build_snapshot('root', [], [
-            ('add', ('', 'root-id', 'directory', None))])
-        self.create_rev_from_shape(builder, 'active', active_shape)
-        self.create_rev_from_shape(builder, 'basis', basis_shape)
-        self.create_rev_from_shape(builder, 'target', target_shape)
-        repo = builder.get_branch().repository
-        active_tree, basis_tree, target_tree = repo.revision_trees(
-            ['active', 'basis', 'target'])
-        return repo, active_tree, basis_tree, target_tree
+        rt_active = self.create_tree_from_shape('active', active_shape)
+        rt_basis = self.create_tree_from_shape('basis', basis_shape)
+        rt_target = self.create_tree_from_shape('target', target_shape)
+        return rt_active, rt_basis, rt_target
 
     def assertUpdate(self, active, basis, target):
         """Assert that update_basis_by_delta works how we want.
@@ -2462,7 +2476,7 @@ class TestUpdateBasisByDelta(tests.TestCaseWithTransport):
         and assert that the DirState is still valid, and that its stored
         content matches the target_shape.
         """
-        (repo, active_tree, basis_tree,
+        (active_tree, basis_tree,
          target_tree) = self.create_revs(active, basis, target)
         state = dirstate.DirState.initialize('dirstate')
         self.addCleanup(state.unlock)
@@ -2472,7 +2486,7 @@ class TestUpdateBasisByDelta(tests.TestCaseWithTransport):
         state.update_basis_by_delta(delta, 'target')
         state._validate()
         dirstate_tree = workingtree_4.DirStateRevisionTree(state,
-            'target', repo)
+            'target', _Repo())
         self.assertEqual([], list(dirstate_tree.iter_changes(target_tree)))
         return state
 
