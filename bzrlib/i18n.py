@@ -125,3 +125,9 @@ def gettext(message):
 def ngettext(s, p, n):
     return gettext(s if n == 1 else p)
 
+
+def N_(msg):
+    """Pass thorough function for marking the message may be translated
+    after. Use `i18n.gettext()` to translate immediately.
+    """
+    return msg
