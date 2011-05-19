@@ -454,6 +454,7 @@ class Branch(controldir.ControlComponent):
             after. If None, the rest of history is included.
         :param stop_rule: if stop_revision_id is not None, the precise rule
             to use for termination:
+
             * 'exclude' - leave the stop revision out of the result (default)
             * 'include' - the stop revision is the last item in the result
             * 'with-merges' - include the stop revision and all of its
@@ -461,6 +462,7 @@ class Branch(controldir.ControlComponent):
             * 'with-merges-without-common-ancestry' - filter out revisions 
               that are in both ancestries
         :param direction: either 'reverse' or 'forward':
+
             * reverse means return the start_revision_id first, i.e.
               start at the most recent revision and go backwards in history
             * forward returns tuples in the opposite order to reverse.
@@ -1417,7 +1419,7 @@ class Branch(controldir.ControlComponent):
         :param to_location: The url to produce the checkout at
         :param revision_id: The revision to check out
         :param lightweight: If True, produce a lightweight checkout, otherwise,
-        produce a bound branch (heavyweight checkout)
+            produce a bound branch (heavyweight checkout)
         :param accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's

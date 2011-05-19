@@ -1425,8 +1425,8 @@ class VersionedFileRepository(Repository):
             the revision key from each parsed line will be looked up in the
             revision_keys filter.
         :return: a dictionary mapping altered file-ids to an iterable of
-        revision_ids. Each altered file-ids has the exact revision_ids that
-        altered it listed explicitly.
+            revision_ids. Each altered file-ids has the exact revision_ids that
+            altered it listed explicitly.
         """
         seen = set(self._serializer._find_text_key_references(
                 line_iterator).iterkeys())
@@ -1461,8 +1461,8 @@ class VersionedFileRepository(Repository):
         :param _inv_weave: The inventory weave from this repository or None.
             If None, the inventory weave will be opened automatically.
         :return: a dictionary mapping altered file-ids to an iterable of
-        revision_ids. Each altered file-ids has the exact revision_ids that
-        altered it listed explicitly.
+            revision_ids. Each altered file-ids has the exact revision_ids that
+            altered it listed explicitly.
         """
         selected_keys = set((revid,) for revid in revision_ids)
         w = _inv_weave or self.inventories
