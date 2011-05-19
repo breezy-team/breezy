@@ -3846,7 +3846,9 @@ class cmd_merge(Command):
     through OTHER, excluding BASE but including OTHER, will be merged.  If this
     causes some revisions to be skipped, i.e. if the destination branch does
     not already contain revision BASE, such a merge is commonly referred to as
-    a "cherrypick".
+    a "cherrypick". Unlike a normal merge, Bazaar does not currently track
+    cherrypicks. The changes look like a normal commit, and the history of the
+    changes from the other branch is not stored in the commit.
 
     Revision numbers are always relative to the source branch.
 
@@ -3857,10 +3859,10 @@ class cmd_merge(Command):
 
     Use bzr resolve when you have fixed a problem.  See also bzr conflicts.
 
-    If there is no default branch set, the first merge will set it. After
-    that, you can omit the branch to use the default.  To change the
-    default, use --remember. The value will only be saved if the remote
-    location can be accessed.
+    If there is no default branch set, the first merge will set it (use
+    --no-remember to *not* set it). After that, you can omit the branch to use
+    the default.  To change the default, use --remember. The value will only be
+    saved if the remote location can be accessed.
 
     The results of the merge are placed into the destination working
     directory, where they can be reviewed (with bzr diff), tested, and then
@@ -3931,7 +3933,7 @@ class cmd_merge(Command):
     ]
 
     def run(self, location=None, revision=None, force=False,
-            merge_type=None, show_base=False, reprocess=None, remember=False,
+            merge_type=None, show_base=False, reprocess=None, remember=None,
             uncommitted=False, pull=False,
             directory=None,
             preview=False,
@@ -4114,9 +4116,15 @@ class cmd_merge(Command):
         if other_revision_id is None:
             other_revision_id = _mod_revision.ensure_null(
                 other_branch.last_revision())
-        # Remember where we merge from
-        if ((remember or tree.branch.get_submit_branch() is None) and
-             user_location is not None):
+        # Remember where we merge from. We need to remember if:
+        # - user specify a location (and we don't merge from the parent
+        #   branch)
+        # - user ask to remember or there is no previous location set to merge
+        #   from and user didn't ask to *not* remember
+        if (user_location is not None
+            and ((remember
+                  or (remember is None
+                      and tree.branch.get_submit_branch() is None)))):
             tree.branch.set_submit_branch(other_branch.base)
         # Merge tags (but don't set them in the master branch yet, the user
         # might revert this merge).  Commit will propagate them.
@@ -4633,8 +4641,9 @@ class cmd_plugins(Command):
     @display_command
     def run(self, verbose=False):
         from bzrlib import plugin
+        # Don't give writelines a generator as some codecs don't like that
         self.outf.writelines(
-            plugin.describe_plugins(show_paths=verbose))
+            list(plugin.describe_plugins(show_paths=verbose)))
 
 
 class cmd_testament(Command):
@@ -6152,6 +6161,16 @@ class cmd_reference(Command):
             ref_list.append((path, location))
         for path, location in sorted(ref_list):
             self.outf.write('%s %s\n' % (path, location))
+
+
+class cmd_export_pot(Command):
+    __doc__ = """Export command helps and error messages in po format."""
+
+    hidden = True
+
+    def run(self):
+        from bzrlib.export_pot import export_pot
+        export_pot(self.outf)
 
 
 def _register_lazy_builtins():
