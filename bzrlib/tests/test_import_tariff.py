@@ -62,7 +62,7 @@ class TestImportTariffs(TestCaseWithTransport):
             self.preserved_env_vars[name] = os.environ.get(name)
         super(TestImportTariffs, self).setUp()
 
-    def start_bzr_subprocess_with_import_check(self, args):
+    def start_bzr_subprocess_with_import_check(self, args, stderr_file=None):
         """Run a bzr process and capture the imports.
 
         This is fairly expensive because we start a subprocess, so we aim to
@@ -187,8 +187,11 @@ class TestImportTariffs(TestCaseWithTransport):
     def test_simple_serve(self):
         # 'serve' in a default format working tree shouldn't need many modules
         tree = self.make_branch_and_tree('.')
+        # Capture the bzr serve process' stderr in a file to avoid deadlocks
+        # while the smart client interacts with it.
+        stderr_file = open('bzr-serve.stderr', 'w')
         process = self.start_bzr_subprocess_with_import_check(['serve',
-            '--inet', '-d', tree.basedir])
+            '--inet', '-d', tree.basedir], stderr_file=stderr_file)
         url = 'bzr://localhost/'
         self.permit_url(url)
         client_medium = medium.SmartSimplePipesClientMedium(
@@ -200,6 +203,9 @@ class TestImportTariffs(TestCaseWithTransport):
         process.stdin = None
         (out, err) = self.finish_bzr_subprocess(process,
             universal_newlines=False)
+        stderr_file.close()
+        with open('bzr-serve.stderr', 'r') as stderr_file:
+            err = stderr_file.read()
         self.check_forbidden_modules(err,
             ['bzrlib.annotate',
             'bzrlib.atomicfile',

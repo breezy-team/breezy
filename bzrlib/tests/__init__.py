@@ -2037,7 +2037,7 @@ class TestCase(testtools.TestCase):
     def start_bzr_subprocess(self, process_args, env_changes=None,
                              skip_if_plan_to_signal=False,
                              working_dir=None,
-                             allow_plugins=False):
+                             allow_plugins=False, stderr=subprocess.PIPE):
         """Start bzr in a subprocess for testing.
 
         This starts a new Python interpreter and runs bzr in there.
@@ -2095,7 +2095,7 @@ class TestCase(testtools.TestCase):
             command.extend(process_args)
             process = self._popen(command, stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE,
-                                  stderr=subprocess.PIPE)
+                                  stderr=stderr)
         finally:
             restore_environment()
             if cwd is not None:
