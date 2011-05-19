@@ -634,11 +634,12 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
 
             inv_path, _ = osutils.normalized_filename(directory.raw_path)
             if parent_ie is not None:
-                versioned = directory.base_path in parent_ie.children
+                this_ie = parent_ie.children.get(directory.base_path)
             else:
                 # without the parent ie, use the relatively slower inventory
                 # probing method
-                versioned = inv.has_filename(inv_path)
+                this_ie = get_ie(inv_path)
+            versioned = (this_ie is not None)
 
             if kind == 'directory':
                 try:
@@ -668,28 +669,17 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # 20070306
                 trace.mutter("%r is a nested bzr tree", abspath)
             else:
-                _add_one(inv, parent_ie, directory, kind, action, inv_path)
+                this_ie = _add_one(inv, parent_ie, directory, kind, action, inv_path)
                 added.append(directory.raw_path)
 
             if kind == 'directory' and not sub_tree:
-                if parent_ie is not None:
-                    # must be present:
-                    this_ie = parent_ie.children[directory.base_path]
-                else:
-                    # without the parent ie, use the relatively slower inventory
-                    # probing method
-                    this_id = inv.path2id(inv_path)
-                    if this_id is None:
-                        this_ie = None
-                    else:
-                        this_ie = inv[this_id]
-                        # Same as in _add_one below, if the inventory doesn't
-                        # think this is a directory, update the inventory
-                        if this_ie.kind != 'directory':
-                            this_ie = _mod_inventory.make_entry('directory',
-                                this_ie.name, this_ie.parent_id, this_id)
-                            invdelta = [(inv_path, inv_path, this_id, this_ie)]
-                            inv.apply_delta(invdelta)
+                if this_ie.kind != 'directory':
+                    # Same as in _add_one below, if the inventory doesn't
+                    # think this is a directory, update the inventory
+                    this_ie = _mod_inventory.make_entry('directory',
+                        this_ie.name, this_ie.parent_id, this_ie.file_id)
+                    invdelta = [(inv_path, inv_path, this_ie.file_id, this_ie)]
+                    inv.apply_delta(invdelta)
 
                 for subf in sorted(os.listdir(abspath)):
                     # here we could use TreeDirectory rather than
