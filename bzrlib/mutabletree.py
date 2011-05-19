@@ -517,7 +517,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             file_id = file_id_callback(inv, parent_ie, path, kind)
             entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
                 file_id=file_id)
-            inv.add(entry)
+            invdelta = [(None, inv_path, entry.file_id, entry)]
+            inv.apply_delta(invdelta)
             return entry
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
