@@ -560,6 +560,9 @@ class TestMerge(tests.TestCaseWithTransport):
 
     def test_no_remember_dont_set_submit(self):
         tree_a = self.make_branch_and_tree('a')
+        self.build_tree_contents([('a/file', "a\n")])
+        tree_a.add('file')
+        tree_a.commit('rev1')
         tree_b = tree_a.bzrdir.sprout('b').open_workingtree()
         self.assertIs(tree_b.branch.get_submit_branch(), None)
 
