@@ -17,7 +17,6 @@
 """Tests for the test framework."""
 
 from cStringIO import StringIO
-import gc
 import doctest
 import os
 import signal
@@ -37,7 +36,7 @@ from testtools.matchers import (
     DocTestMatches,
     Equals,
     )
-import testtools.testresult.doubles
+import testtools.tests.helpers
 
 import bzrlib
 from bzrlib import (
@@ -722,7 +721,7 @@ class TestProfileResult(tests.TestCase):
 
     def test_profiles_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        terminal = testtools.testresult.doubles.ExtendedTestResult()
+        terminal = testtools.tests.helpers.ExtendedTestResult()
         result = tests.ProfileResult(terminal)
         class Sample(tests.TestCase):
             def a(self):
@@ -745,7 +744,7 @@ class TestTestResult(tests.TestCase):
                 descriptions=0,
                 verbosity=1,
                 )
-        capture = testtools.testresult.doubles.ExtendedTestResult()
+        capture = testtools.tests.helpers.ExtendedTestResult()
         test_case.run(MultiTestResult(result, capture))
         run_case = capture._events[0][1]
         timed_string = result._testTimeString(run_case)
@@ -1046,7 +1045,7 @@ class TestRunner(tests.TestCase):
         test = unittest.TestSuite()
         test.addTest(Test("known_failure_test"))
         def failing_test():
-            raise AssertionError('foo')
+            self.fail('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -1060,7 +1059,7 @@ class TestRunner(tests.TestCase):
             '^----------------------------------------------------------------------\n'
             'Traceback \\(most recent call last\\):\n'
             '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc
-            '    raise AssertionError\\(\'foo\'\\)\n'
+            '    self.fail\\(\'foo\'\\)\n'
             '.*'
             '^----------------------------------------------------------------------\n'
             '.*'
@@ -1072,7 +1071,7 @@ class TestRunner(tests.TestCase):
         # the final output.
         class Test(tests.TestCase):
             def known_failure_test(self):
-                self.knownFailure("Never works...")
+                self.expectFailure('failed', self.assertTrue, False)
         test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -2038,17 +2037,17 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_lsprof_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        results = []
+        calls = []
         class Test(object):
             def __call__(test, result):
                 test.run(result)
             def run(test, result):
-                results.append(result)
+                self.assertIsInstance(result, ExtendedToOriginalDecorator)
+                calls.append("called")
             def countTestCases(self):
                 return 1
         self.run_selftest(test_suite_factory=Test, lsprof_tests=True)
-        self.assertLength(1, results)
-        self.assertIsInstance(results.pop(), ExtendedToOriginalDecorator)
+        self.assertLength(1, calls)
 
     def test_random(self):
         # test randomising by listing a number of tests.
@@ -3378,78 +3377,6 @@ class TestRunSuite(tests.TestCase):
                                                 self.verbosity)
         tests.run_suite(suite, runner_class=MyRunner, stream=StringIO())
         self.assertLength(1, calls)
-
-
-class TestUncollectedWarnings(tests.TestCase):
-    """Check a test case still alive after being run emits a warning"""
-
-    class Test(tests.TestCase):
-        def test_pass(self):
-            pass
-        def test_self_ref(self):
-            self.also_self = self.test_self_ref
-        def test_skip(self):
-            self.skip("Don't need")
-
-    def _get_suite(self):
-        return TestUtil.TestSuite([
-            self.Test("test_pass"),
-            self.Test("test_self_ref"),
-            self.Test("test_skip"),
-            ])
-
-    def _run_selftest_with_suite(self, **kwargs):
-        sio = StringIO()
-        gc_on = gc.isenabled()
-        if gc_on:
-            gc.disable()
-        try:
-            tests.selftest(test_suite_factory=self._get_suite, stream=sio,
-                **kwargs)
-        finally:
-            if gc_on:
-                gc.enable()
-        output = sio.getvalue()
-        self.assertNotContainsRe(output, "Uncollected test case.*test_pass")
-        self.assertContainsRe(output, "Uncollected test case.*test_self_ref")
-        return output
-
-    def test_testsuite(self):
-        self._run_selftest_with_suite()
-
-    def test_pattern(self):
-        out = self._run_selftest_with_suite(pattern="test_(?:pass|self_ref)$")
-        self.assertNotContainsRe(out, "test_skip")
-
-    def test_exclude_pattern(self):
-        out = self._run_selftest_with_suite(exclude_pattern="test_skip$")
-        self.assertNotContainsRe(out, "test_skip")
-
-    def test_random_seed(self):
-        self._run_selftest_with_suite(random_seed="now")
-
-    def test_matching_tests_first(self):
-        self._run_selftest_with_suite(matching_tests_first=True,
-            pattern="test_self_ref$")
-
-    def test_starting_with_and_exclude(self):
-        out = self._run_selftest_with_suite(starting_with=["bt."],
-            exclude_pattern="test_skip$")
-        self.assertNotContainsRe(out, "test_skip")
-
-    def test_additonal_decorator(self):
-        out = self._run_selftest_with_suite(
-            suite_decorators=[tests.TestDecorator])
-
-
-class TestUncollectedWarningsSubunit(TestUncollectedWarnings):
-    """Check warnings from tests staying alive are emitted with subunit"""
-
-    _test_needs_features = [features.subunit]
-
-    def _run_selftest_with_suite(self, **kwargs):
-        return TestUncollectedWarnings._run_selftest_with_suite(self,
-            runner_class=tests.SubUnitBzrRunner, **kwargs)
 
 
 class TestEnvironHandling(tests.TestCase):

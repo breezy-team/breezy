@@ -274,8 +274,7 @@ class TestCmdServeChrooting(TestBzrServeBase):
 
 class TestUserdirExpansion(TestCaseWithMemoryTransport):
 
-    @staticmethod
-    def fake_expanduser(path):
+    def fake_expanduser(self, path):
         """A simple, environment-independent, function for the duration of this
         test.
 

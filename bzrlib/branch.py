@@ -3191,10 +3191,7 @@ def _run_with_write_locked_target(target, callable, *args, **kwargs):
         try:
             target.unlock()
         finally:
-            try:
-                raise exc_info[0], exc_info[1], exc_info[2]
-            finally:
-                del exc_info
+            raise exc_info[0], exc_info[1], exc_info[2]
     else:
         target.unlock()
         return result

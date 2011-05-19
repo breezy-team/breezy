@@ -1108,7 +1108,7 @@ class TestMap(TestCaseWithStore):
         basis_get = basis._store.get_record_stream
         def get_record_stream(keys, order, fulltext):
             if ('sha1:1adf7c0d1b9140ab5f33bb64c6275fa78b1580b7',) in keys:
-                raise AssertionError("'aaa' pointer was followed %r" % keys)
+                self.fail("'aaa' pointer was followed %r" % keys)
             return basis_get(keys, order, fulltext)
         basis._store.get_record_stream = get_record_stream
         result = sorted(list(target.iter_changes(basis)))
