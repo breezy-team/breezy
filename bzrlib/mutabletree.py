@@ -682,10 +682,11 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                         trace.mutter("skip control directory %r", subp)
                         continue
                     sub_invp = osutils.pathjoin(inv_path, inv_f)
-                    if inv_f in this_ie.children:
+                    sub_fp = _FastPath(subp, subf)
+                    sub_ie = this_ie.children.get(inv_f)
+                    if sub_ie is not None:
                         # recurse into this already versioned subdir.
-                        dirs_to_add.append((_FastPath(subp, subf),
-                            sub_invp, this_ie.children[subf], this_ie))
+                        dirs_to_add.append((sub_fp, sub_invp, sub_ie, this_ie))
                     else:
                         # user selection overrides ignoes
                         # ignore while selecting files - if we globbed in the
@@ -696,8 +697,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                             ignored.setdefault(ignore_glob, []).append(subp)
                         else:
                             #mutter("queue to add sub-file %r", subp)
-                            dirs_to_add.append((_FastPath(subp, subf),
-                                sub_invp, None, this_ie))
+                            dirs_to_add.append((sub_fp, sub_invp, None, this_ie))
 
         if len(added) > 0:
             if save:
