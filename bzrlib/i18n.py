@@ -101,8 +101,12 @@ def _get_current_locale():
             return lang
     return None
 
-# special zzz translation for debugging i18n stuff
 class _ZzzTranslations(object):
+    """Special Zzz translation for debugging i18n stuff.
+
+    This class can be used to confirm the message is properly translated
+    while black box test.
+    """
 
     def zzz(self, s):
         return u'zz{{%s}}' % s
