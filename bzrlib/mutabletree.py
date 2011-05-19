@@ -463,22 +463,27 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
         """
         ret = {}
         def get_ie(inv_path):
+            """Retrieve the most up to date inventory entry for a path.
+
+            :param inv_path: Normalized inventory path
+            :return: Inventory entry (with possibly invalid .children for
+                directories)
+            """
             entry = ret.get(inv_path)
             if entry is not None:
                 return entry[3]
-            file_id = inv.path2id(inv_path)
+            file_id = self.path2id(inv_path)
             if file_id is not None:
-                return inv[file_id]
+                return self.inventory[file_id]
             return None
-        def _add_one_and_parent(inv, parent_ie, path, kind, file_id_callback, inv_path):
+        def _add_one_and_parent(parent_ie, path, kind, file_id_callback, inv_path):
             """Add a new entry to the inventory and automatically add unversioned parents.
 
-            :param inv: Inventory which will receive the new entry.
             :param parent_ie: Parent inventory entry if known, or None.  If
                 None, the parent is looked up by name and used if present, otherwise it
                 is recursively added.
             :param kind: Kind of new entry (file, directory, etc)
-            :param action: callback(inv, parent_ie, path, kind); can return file_id
+            :param action: callback(tree, parent_ie, path, kind); can return file_id
             :return: Inventory entry for path and a list of paths which have been added.
             """
             # Nothing to do if path is already versioned.
@@ -496,7 +501,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # note that the dirname use leads to some extra str copying etc but as
                 # there are a limited number of dirs we can be nested under, it should
                 # generally find it very fast and not recurse after that.
-                parent_ie, added = _add_one_and_parent(inv, None,
+                parent_ie, added = _add_one_and_parent(None,
                     _FastPath(osutils.dirname(path.raw_path)), 'directory', action,
                     osutils.dirname(inv_path))
             # if the parent exists, but isn't a directory, we have to do the
@@ -511,7 +516,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                     parent_ie.file_id, new_parent_ie)
                 ret[inv_delta_entry[1]] = inv_delta_entry
                 parent_ie = new_parent_ie
-            file_id = file_id_callback(inv, parent_ie, path, kind)
+            file_id = file_id_callback(self, parent_ie, path, kind)
             entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
                 file_id=file_id)
             inv_delta_entry = (None, inv_path, entry.file_id, entry)
@@ -529,7 +534,6 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             # -- vila 20100208
             file_list = [u'.']
         # mutter("smart add of %r")
-        inv = self.inventory
         added = []
         ignored = {}
         dirs_to_add = []
@@ -571,7 +575,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             inv_path, _ = osutils.normalized_filename(rf.raw_path)
             this_ie = get_ie(inv_path)
             if this_ie is None:
-                (this_ie, extra) = _add_one_and_parent(inv, None, rf, kind, action, inv_path)
+                (this_ie, extra) = _add_one_and_parent(None, rf, kind, action, inv_path)
                 added.extend(extra)
             if kind == 'directory':
                 # schedule the dir for scanning
@@ -579,7 +583,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
 
         if not recurse:
             # no need to walk any directories at all.
-            if len(added) > 0 and save:
+            if ret > 0 and save:
                 self.apply_inventory_delta(ret.values())
             return added, ignored
 
@@ -652,7 +656,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 # 20070306
                 trace.mutter("%r is a nested bzr tree", abspath)
             else:
-                this_ie, extra = _add_one_and_parent(inv, parent_ie, directory, kind, action, inv_path)
+                this_ie, extra = _add_one_and_parent(parent_ie, directory, kind, action, inv_path)
                 added.extend(extra)
 
             if kind == 'directory' and not sub_tree:
@@ -694,11 +698,9 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                             #mutter("queue to add sub-file %r", subp)
                             dirs_to_add.append((sub_fp, sub_invp, None, this_ie))
 
-        if len(added) > 0:
+        if ret:
             if save:
                 self.apply_inventory_delta(ret.values())
-            else:
-                self.read_working_inventory()
         return added, ignored
 
     def update_basis_by_delta(self, new_revid, delta):
