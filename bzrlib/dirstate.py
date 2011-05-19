@@ -1666,8 +1666,13 @@ class DirState(object):
         for old_path, new_path, file_id, new_details, real_add in adds:
             dirname, basename = osutils.split(new_path)
             entry_key = st(dirname, basename, file_id)
-            # TODO: consider if we need add_if_missing=True
-            _, block = self._find_block(entry_key)
+            try:
+                # TODO: consider if we need add_if_missing=True
+                _, block = self._find_block(entry_key)
+            except errors.NotVersionedError, e:
+                self._raise_invalid(new_path, file_id,
+                    "Got a not-versioned error trying to add path."
+                    " Is the parent missing? %s" % (e,))
             entry_index, present = self._find_entry_index(entry_key, block)
             if real_add:
                 if old_path is not None:

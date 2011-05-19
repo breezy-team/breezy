@@ -2451,7 +2451,10 @@ class TestUpdateBasisByDelta(tests.TestCase):
         else:
             is_dir = False
         dirname, basename = osutils.split(path)
-        dir_id = dir_ids[dirname]
+        try:
+            dir_id = dir_ids[dirname]
+        except KeyError:
+            dir_id = 'missing_parent_id'
         if is_dir:
             ie = inventory.InventoryDirectory(file_id, basename, dir_id)
             dir_ids[path] = dir_id
@@ -2684,13 +2687,18 @@ class TestUpdateBasisByDelta(tests.TestCase):
         # The bad entry comes first
         state = self.assertBadDelta(
             active=[('file', 'file-id-2')],
-            basis= [('file', 'file-id-2')],
+            basis=[('file', 'file-id-2')],
             delta=[(None, 'file', 'file-id')])
 
-    def test_invalid_repeated_id(self):
+    def test_invalid_existing_id(self):
         state = self.assertBadDelta(
             active=[('file', 'file-id')],
             basis= [('file', 'file-id')],
             delta=[(None, 'file', 'file-id')])
 
+    def test_invalid_parent_missing(self):
+        state = self.assertBadDelta(
+            active=[],
+            basis= [],
+            delta=[(None, 'path/path2', 'file-id')])
     # TODO: Test stuff like renaming a directory, and renaming contents therein
