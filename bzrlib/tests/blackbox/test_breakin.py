@@ -42,6 +42,10 @@ class TestBreakin(tests.TestCase):
     def setUp(self):
         super(TestBreakin, self).setUp()
         self.requireFeature(tests.BreakinFeature)
+        if sys.platform == 'win32':
+            self._send_signal = self._send_signal_win32
+        else:
+            self._send_signal = self._send_signal_via_kill
 
     def _send_signal_via_kill(self, pid, sig_type):
         if sig_type == 'break':
@@ -84,11 +88,6 @@ class TestBreakin(tests.TestCase):
             # something other than 0
             exit_code = breakin.determine_signal()
             ctypes.windll.kernel32.TerminateProcess(pid, exit_code)
-
-    if sys.platform == 'win32':
-        _send_signal = _send_signal_win32
-    else:
-        _send_signal = _send_signal_via_kill
 
     def _popen(self, *args, **kwargs):
         if sys.platform == 'win32':

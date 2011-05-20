@@ -36,7 +36,7 @@ from testtools.matchers import (
     DocTestMatches,
     Equals,
     )
-import testtools.testresult.doubles
+import testtools.tests.helpers
 
 import bzrlib
 from bzrlib import (
@@ -721,7 +721,7 @@ class TestProfileResult(tests.TestCase):
 
     def test_profiles_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        terminal = testtools.testresult.doubles.ExtendedTestResult()
+        terminal = testtools.tests.helpers.ExtendedTestResult()
         result = tests.ProfileResult(terminal)
         class Sample(tests.TestCase):
             def a(self):
@@ -744,7 +744,7 @@ class TestTestResult(tests.TestCase):
                 descriptions=0,
                 verbosity=1,
                 )
-        capture = testtools.testresult.doubles.ExtendedTestResult()
+        capture = testtools.tests.helpers.ExtendedTestResult()
         test_case.run(MultiTestResult(result, capture))
         run_case = capture._events[0][1]
         timed_string = result._testTimeString(run_case)
@@ -1045,7 +1045,7 @@ class TestRunner(tests.TestCase):
         test = unittest.TestSuite()
         test.addTest(Test("known_failure_test"))
         def failing_test():
-            raise AssertionError('foo')
+            self.fail('foo')
         test.addTest(unittest.FunctionTestCase(failing_test))
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -1059,7 +1059,7 @@ class TestRunner(tests.TestCase):
             '^----------------------------------------------------------------------\n'
             'Traceback \\(most recent call last\\):\n'
             '  .*' # File .*, line .*, in failing_test' - but maybe not from .pyc
-            '    raise AssertionError\\(\'foo\'\\)\n'
+            '    self.fail\\(\'foo\'\\)\n'
             '.*'
             '^----------------------------------------------------------------------\n'
             '.*'
@@ -1071,7 +1071,7 @@ class TestRunner(tests.TestCase):
         # the final output.
         class Test(tests.TestCase):
             def known_failure_test(self):
-                self.knownFailure("Never works...")
+                self.expectFailure('failed', self.assertTrue, False)
         test = Test("known_failure_test")
         stream = StringIO()
         runner = tests.TextTestRunner(stream=stream)
@@ -2037,17 +2037,17 @@ class TestSelftest(tests.TestCase, SelfTestHelper):
 
     def test_lsprof_tests(self):
         self.requireFeature(test_lsprof.LSProfFeature)
-        results = []
+        calls = []
         class Test(object):
             def __call__(test, result):
                 test.run(result)
             def run(test, result):
-                results.append(result)
+                self.assertIsInstance(result, ExtendedToOriginalDecorator)
+                calls.append("called")
             def countTestCases(self):
                 return 1
         self.run_selftest(test_suite_factory=Test, lsprof_tests=True)
-        self.assertLength(1, results)
-        self.assertIsInstance(results.pop(), ExtendedToOriginalDecorator)
+        self.assertLength(1, calls)
 
     def test_random(self):
         # test randomising by listing a number of tests.

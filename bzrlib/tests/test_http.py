@@ -2013,12 +2013,11 @@ class TestActivityMixin(object):
         tests.TestCase.setUp(self)
         self.server = self._activity_server(self._protocol_version)
         self.server.start_server()
-        _activities = {} # Don't close over self and create a cycle
+        self.activities = {}
         def report_activity(t, bytes, direction):
-            count = _activities.get(direction, 0)
+            count = self.activities.get(direction, 0)
             count += bytes
-            _activities[direction] = count
-        self.activities = _activities
+            self.activities[direction] = count
 
         # We override at class level because constructors may propagate the
         # bound method and render instance overriding ineffective (an

@@ -123,7 +123,7 @@ class TestDeprecationWarning(tests.TestCaseWithTransport):
             check = self.assertContainsRe
         else:
             check = self.assertNotContainsRe
-        check(self.get_log(), 'WARNING.*bzr upgrade')
+        check(self._get_log(keep_log_file=True), 'WARNING.*bzr upgrade')
 
     def test_repository_deprecation_warning(self):
         """Old formats give a warning"""

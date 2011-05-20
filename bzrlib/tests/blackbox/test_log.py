@@ -75,8 +75,6 @@ class TestLogWithLogCatcher(TestLog):
                 self.log_catcher = test_log.LogCatcher(*args, **kwargs)
                 # Always return our own log formatter
                 return self.log_catcher
-        # Break cycle with closure over self on cleanup by removing method
-        self.addCleanup(setattr, MyLogFormatter, "__new__", None)
 
         def getme(branch):
                 # Always return our own log formatter class hijacking the
