@@ -593,8 +593,8 @@ class _SmartAddHelper(object):
         """
         # Same as in _add_one below, if the inventory doesn't
         # think this is a directory, update the inventory
-        this_ie = _mod_inventory.make_entry('directory',
-            this_ie.name, this_ie.parent_id, this_ie.file_id)
+        this_ie = _mod_inventory.InventoryDirectory(
+            this_ie.file_id, this_ie.name, this_ie.parent_id)
         self._invdelta[inv_path] = (inv_path, inv_path, this_ie.file_id,
             this_ie)
         return this_ie
