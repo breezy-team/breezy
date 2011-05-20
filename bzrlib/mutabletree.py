@@ -591,6 +591,23 @@ class _SmartAddHelper(object):
             return self.tree.inventory[file_id]
         return None
 
+    def _ensure_directory(self, this_ie, inv_path):
+        """Convert an entry to a directory if it is not one already.
+
+        :param this_ie: Inventory entry
+        :param inv_path: Normalized path for the inventory entry
+        :return: The new inventory entry
+        """
+        if this_ie.kind == 'directory':
+            return this_ie
+        # Same as in _add_one below, if the inventory doesn't
+        # think this is a directory, update the inventory
+        this_ie = _mod_inventory.make_entry('directory',
+            this_ie.name, this_ie.parent_id, this_ie.file_id)
+        self._invdelta[inv_path] = (inv_path, inv_path, this_ie.file_id,
+            this_ie)
+        return this_ie
+
     def _add_one_and_parent(self, parent_ie, path, kind, inv_path):
         """Add a new entry to the inventory and automatically add unversioned parents.
 
@@ -625,12 +642,7 @@ class _SmartAddHelper(object):
         if parent_ie.kind != 'directory':
             # nb: this relies on someone else checking that the path we're using
             # doesn't contain symlinks.
-            new_parent_ie = _mod_inventory.make_entry('directory', parent_ie.name,
-                parent_ie.parent_id, parent_ie.file_id)
-            inv_delta_entry = (self.tree.id2path(parent_ie.file_id), osutils.dirname(inv_path),
-                parent_ie.file_id, new_parent_ie)
-            self._invdelta[inv_delta_entry[1]] = inv_delta_entry
-            parent_ie = new_parent_ie
+            parent_ie = self._ensure_directory(parent_ie, osutils.dirname(inv_path))
         file_id = self.action(self.tree.inventory, parent_ie, path, kind)
         entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
             file_id=file_id)
@@ -785,13 +797,7 @@ class _SmartAddHelper(object):
                 self.added.extend(extra)
 
             if kind == 'directory' and not sub_tree:
-                if this_ie.kind != 'directory':
-                    # Same as in _add_one below, if the inventory doesn't
-                    # think this is a directory, update the inventory
-                    this_ie = _mod_inventory.make_entry('directory',
-                        this_ie.name, this_ie.parent_id, this_ie.file_id)
-                    self._invdelta[inv_path] = (inv_path, inv_path, this_ie.file_id,
-                        this_ie)
+                this_ie = self._ensure_directory(this_ie, inv_path)
 
                 for subf in sorted(os.listdir(abspath)):
                     inv_f, _ = osutils.normalized_filename(subf)
