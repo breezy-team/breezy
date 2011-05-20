@@ -48,7 +48,7 @@ class AddAction(object):
         :param kind: The kind of the object being added.
         """
         if self.should_print:
-            self._to_file.write('adding %s\n' % _quote(path.raw_path))
+            self._to_file.write('adding %s\n' % _quote(path))
         return None
 
 
@@ -68,7 +68,7 @@ class AddFromBaseAction(AddAction):
         if file_id is not None:
             if self.should_print:
                 self._to_file.write('adding %s w/ file id from %s\n'
-                                    % (path.raw_path, base_path))
+                                    % (path, base_path))
         else:
             # we aren't doing anything special, so let the default
             # reporter happen
@@ -86,10 +86,11 @@ class AddFromBaseAction(AddAction):
 
         if (parent_ie.file_id in self.base_tree):
             base_parent_ie = self.base_tree.inventory[parent_ie.file_id]
-            base_child_ie = base_parent_ie.children.get(path.base_path)
+            base_child_ie = base_parent_ie.children.get(
+                bzrlib.osutils.basename(path))
             if base_child_ie is not None:
                 return (base_child_ie.file_id,
                         self.base_tree.id2path(base_child_ie.file_id))
-        full_base_path = bzrlib.osutils.pathjoin(self.base_path, path.raw_path)
+        full_base_path = bzrlib.osutils.pathjoin(self.base_path, path)
         # This may return None, but it is our last attempt
         return self.base_tree.path2id(full_base_path), full_base_path

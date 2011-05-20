@@ -563,26 +563,6 @@ class PostCommitHookParams(object):
         self.mutable_tree = mutable_tree
 
 
-class _FastPath(object):
-    """A path object with fast accessors for things like basename."""
-
-    __slots__ = ['raw_path', 'base_path']
-
-    def __init__(self, path, base_path=None):
-        """Construct a FastPath from path."""
-        if base_path is None:
-            self.base_path = osutils.basename(path)
-        else:
-            self.base_path = base_path
-        self.raw_path = path
-
-    def __cmp__(self, other):
-        return cmp(self.raw_path, other.raw_path)
-
-    def __hash__(self):
-        return hash(self.raw_path)
-
-
 class _SmartAddHelper(object):
     """Helper for MutableTree.smart_add."""
 
@@ -635,6 +615,7 @@ class _SmartAddHelper(object):
         # This is safe from infinite recursion because the tree root is
         # always versioned.
         inv_dirname, inv_basename = osutils.split(inv_path)
+        dirname, basename = osutils.split(path)
         if parent_ie is None:
             # slower but does not need parent_ie
             this_ie = self._get_ie(inv_path)
@@ -645,7 +626,7 @@ class _SmartAddHelper(object):
             # there are a limited number of dirs we can be nested under, it should
             # generally find it very fast and not recurse after that.
             parent_ie = self._add_one_and_parent(None,
-                _FastPath(osutils.dirname(path.raw_path)), 'directory', 
+                dirname, 'directory', 
                 inv_dirname)
         # if the parent exists, but isn't a directory, we have to do the
         # kind change now -- really the inventory shouldn't pretend to know
@@ -655,10 +636,10 @@ class _SmartAddHelper(object):
             # doesn't contain symlinks.
             parent_ie = self._ensure_directory(parent_ie, inv_dirname)
         file_id = self.action(self.tree.inventory, parent_ie, path, kind)
-        entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
+        entry = _mod_inventory.make_entry(kind, basename, parent_ie.file_id,
             file_id=file_id)
         self._invdelta[inv_path] = (None, inv_path, entry.file_id, entry)
-        self.added.append(path.raw_path)
+        self.added.append(inv_path)
         return entry
 
     def _gather_dirs_to_add(self, user_dirs):
@@ -667,10 +648,11 @@ class _SmartAddHelper(object):
         prev_dir = None
 
         is_inside = osutils.is_inside_or_parent_of_any
-        for path, (inv_path, this_ie) in sorted(user_dirs.iteritems(), key=operator.itemgetter(0)):
-            if (prev_dir is None or not is_inside([prev_dir], path.raw_path)):
+        for path, (inv_path, this_ie) in sorted(
+                user_dirs.iteritems(), key=operator.itemgetter(0)):
+            if (prev_dir is None or not is_inside([prev_dir], path)):
                 yield (path, inv_path, this_ie, None)
-            prev_dir = path.raw_path
+            prev_dir = path
 
     def __init__(self, tree, action, conflicts_related=None):
         self.tree = tree
@@ -709,13 +691,12 @@ class _SmartAddHelper(object):
         # than to convert an abspath to tree relative, and it's cheaper to
         # perform the canonicalization in bulk.
         for filepath in osutils.canonical_relpaths(self.tree.basedir, file_list):
-            rf = _FastPath(filepath)
             # validate user parameters. Our recursive code avoids adding new
             # files that need such validation
-            if self.tree.is_control_filename(rf.raw_path):
-                raise errors.ForbiddenControlFileError(filename=rf.raw_path)
+            if self.tree.is_control_filename(filepath):
+                raise errors.ForbiddenControlFileError(filename=filepath)
 
-            abspath = self.tree.abspath(rf.raw_path)
+            abspath = self.tree.abspath(filepath)
             kind = osutils.file_kind(abspath)
             if not InventoryEntry.versionable_kind(kind):
                 raise errors.BadFileKindError(filename=abspath, kind=kind)
@@ -723,13 +704,13 @@ class _SmartAddHelper(object):
             # directory walk dont skip it.
             # we dont have a parent ie known yet.: use the relatively slower
             # inventory probing method
-            inv_path, _ = osutils.normalized_filename(rf.raw_path)
+            inv_path, _ = osutils.normalized_filename(filepath)
             this_ie = self._get_ie(inv_path)
             if this_ie is None:
-                this_ie = self._add_one_and_parent(None, rf, kind, inv_path)
+                this_ie = self._add_one_and_parent(None, filepath, kind, inv_path)
             if kind == 'directory':
                 # schedule the dir for scanning
-                user_dirs[rf] = (inv_path, this_ie)
+                user_dirs[filepath] = (inv_path, this_ie)
 
         if not recurse:
             # no need to walk any directories at all.
@@ -740,7 +721,7 @@ class _SmartAddHelper(object):
         illegalpath_re = re.compile(r'[\r\n]')
         for directory, inv_path, this_ie, parent_ie in things_to_add:
             # directory is tree-relative
-            abspath = self.tree.abspath(directory.raw_path)
+            abspath = self.tree.abspath(directory)
 
             # get the contents of this directory.
 
@@ -754,10 +735,10 @@ class _SmartAddHelper(object):
                 trace.warning("skipping %s (can't add file of kind '%s')",
                               abspath, kind)
                 continue
-            if illegalpath_re.search(directory.raw_path):
+            if illegalpath_re.search(directory):
                 trace.warning("skipping %r (contains \\n or \\r)" % abspath)
                 continue
-            if directory.raw_path in self.conflicts_related:
+            if directory in self.conflicts_related:
                 # If the file looks like one generated for a conflict, don't
                 # add it.
                 trace.warning(
@@ -765,7 +746,7 @@ class _SmartAddHelper(object):
                     abspath)
                 continue
 
-            if kind == 'directory':
+            if kind == 'directory' and directory != '':
                 try:
                     transport = _mod_transport.get_transport(abspath)
                     controldir.ControlDirFormat.find_format(transport)
@@ -777,9 +758,7 @@ class _SmartAddHelper(object):
             else:
                 sub_tree = False
 
-            if directory.raw_path == '':
-                sub_tree = False
-            elif this_ie is not None:
+            if this_ie is not None:
                 pass
             elif sub_tree:
                 # XXX: This is wrong; people *might* reasonably be trying to
@@ -801,7 +780,7 @@ class _SmartAddHelper(object):
                     inv_f, _ = osutils.normalized_filename(subf)
                     # here we could use TreeDirectory rather than
                     # string concatenation.
-                    subp = osutils.pathjoin(directory.raw_path, subf)
+                    subp = osutils.pathjoin(directory, subf)
                     # TODO: is_control_filename is very slow. Make it faster.
                     # TreeDirectory.is_control_filename could also make this
                     # faster - its impossible for a non root dir to have a
@@ -810,19 +789,16 @@ class _SmartAddHelper(object):
                         trace.mutter("skip control directory %r", subp)
                         continue
                     sub_invp = osutils.pathjoin(inv_path, inv_f)
-                    sub_fp = _FastPath(subp, subf)
                     sub_ie = self._get_ie(sub_invp)
                     if sub_ie is not None:
                         # recurse into this already versioned subdir.
-                        things_to_add.append((sub_fp, sub_invp, sub_ie, this_ie))
+                        things_to_add.append((subp, sub_invp, sub_ie, this_ie))
                     else:
                         # user selection overrides ignoes
                         # ignore while selecting files - if we globbed in the
                         # outer loop we would ignore user files.
                         ignore_glob = self.tree.is_ignored(subp)
                         if ignore_glob is not None:
-                            # mutter("skip ignored sub-file %r", subp)
                             self.ignored.setdefault(ignore_glob, []).append(subp)
                         else:
-                            #mutter("queue to add sub-file %r", subp)
-                            things_to_add.append((sub_fp, sub_invp, None, this_ie))
+                            things_to_add.append((subp, sub_invp, None, this_ie))
