@@ -462,7 +462,18 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             of added files, and ignored_files is a dict mapping files that were
             ignored to the rule that caused them to be ignored.
         """
-        adder = _SmartAddHelper(self, file_list, recurse, action)
+        # Not all mutable trees can have conflicts
+        if getattr(self, 'conflicts', None) is not None:
+            # Collect all related files without checking whether they exist or
+            # are versioned. It's cheaper to do that once for all conflicts
+            # than trying to find the relevant conflict for each added file.
+            conflicts_related = set()
+            for c in self.conflicts():
+                conflicts_related.update(c.associated_filenames())
+        else:
+            conflicts_related = None
+        adder = _SmartAddHelper(self, file_list, recurse, action,
+            conflicts_related)
         if save:
             invdelta = adder.get_inventory_delta()
             self.apply_inventory_delta(invdelta)
@@ -572,6 +583,7 @@ class _FastPath(object):
 
 
 class _SmartAddHelper(object):
+    """Helper for MutableTree.smart_add."""
 
     def get_inventory_delta(self):
         return self._invdelta.values()
@@ -649,7 +661,19 @@ class _SmartAddHelper(object):
         self._invdelta[inv_path] = (None, inv_path, entry.file_id, entry)
         return (entry, added + [path.raw_path])
 
-    def __init__(self, tree, file_list, recurse, action):
+    def _gather_dirs_to_add(self, user_dirs):
+        # only walk the minimal parents needed: we have user_dirs to override
+        # ignores.
+        prev_dir = None
+
+        is_inside = osutils.is_inside_or_parent_of_any
+        for path, (inv_path, this_ie) in sorted(user_dirs.iteritems(), key=operator.itemgetter(0)):
+            if (prev_dir is None or not is_inside([prev_dir], path.raw_path)):
+                yield (path, inv_path, this_ie, None)
+            prev_dir = path.raw_path
+
+    def __init__(self, tree, file_list, recurse, action,
+            conflicts_related=None):
         self.tree = tree
         if action is None:
             self.action = add.AddAction()
@@ -658,6 +682,8 @@ class _SmartAddHelper(object):
         self._invdelta = {}
         self.added = []
         self.ignored = {}
+        if conflicts_related is None:
+            conflicts_related = frozenset()
 
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
@@ -669,16 +695,7 @@ class _SmartAddHelper(object):
             # -- vila 20100208
             file_list = [u'.']
         # mutter("smart add of %r")
-        dirs_to_add = []
         user_dirs = {}
-        conflicts_related = set()
-        # Not all mutable trees can have conflicts
-        if getattr(self.tree, 'conflicts', None) is not None:
-            # Collect all related files without checking whether they exist or
-            # are versioned. It's cheaper to do that once for all conflicts
-            # than trying to find the relevant conflict for each added file.
-            for c in self.tree.conflicts():
-                conflicts_related.update(c.associated_filenames())
 
         # expand any symlinks in the directory part, while leaving the
         # filename alone
@@ -718,17 +735,7 @@ class _SmartAddHelper(object):
             # no need to walk any directories at all.
             return
 
-        # only walk the minimal parents needed: we have user_dirs to override
-        # ignores.
-        prev_dir = None
-
-        is_inside = osutils.is_inside_or_parent_of_any
-        for path, (inv_path, this_ie) in sorted(user_dirs.iteritems(), key=operator.itemgetter(0)):
-            if (prev_dir is None or not is_inside([prev_dir], path.raw_path)):
-                dirs_to_add.append((path, inv_path, this_ie, None))
-            prev_dir = path.raw_path
-
-        del user_dirs
+        dirs_to_add = list(self._gather_dirs_to_add(user_dirs))
 
         illegalpath_re = re.compile(r'[\r\n]')
         # dirs_to_add is initialised to a list of directories, but as we scan
