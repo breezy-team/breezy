@@ -1193,10 +1193,10 @@ class DirStateWorkingTree(InventoryWorkingTree):
 
     def unlock(self):
         """Unlock in format 4 trees needs to write the entire dirstate."""
-        # do non-implementation specific cleanup
-        self._cleanup()
-
         if self._control_files._lock_count == 1:
+            # do non-implementation specific cleanup
+            self._cleanup()
+
             # eventually we should do signature checking during read locks for
             # dirstate updates.
             if self._control_files._lock_mode == 'w':

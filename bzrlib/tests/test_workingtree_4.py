@@ -57,6 +57,22 @@ class TestWorkingTreeFormat4(TestCaseWithTransport):
         finally:
             state.unlock()
 
+    def test_resets_ignores_on_last_unlock(self):
+        # Only the last unlock call will actually reset the
+        # ignores. (bug #785671)
+        tree = self.make_workingtree()
+        tree.lock_read()
+        try:
+            tree.lock_read()
+            try:
+                tree.is_ignored("foo")
+            finally:
+                tree.unlock()
+            self.assertIsNot(None, tree._ignoreglobster)
+        finally:
+            tree.unlock()
+        self.assertIs(None, tree._ignoreglobster)
+
     def test_uses_lockdir(self):
         """WorkingTreeFormat4 uses its own LockDir:
 
