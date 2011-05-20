@@ -472,7 +472,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             entry = invdelta.get(inv_path)
             if entry is not None:
                 return entry[3]
-            file_id = self.path2id(inv_path)
+            file_id = self.inventory.path2id(inv_path)
             if file_id is not None:
                 return self.inventory[file_id]
             return None
