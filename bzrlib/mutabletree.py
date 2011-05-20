@@ -612,7 +612,7 @@ class _SmartAddHelper(object):
         # Nothing to do if path is already versioned.
         # This is safe from infinite recursion because the tree root is
         # always versioned.
-        inv_dirname, inv_basename = osutils.split(inv_path)
+        inv_dirname = osutils.dirname(inv_path)
         dirname, basename = osutils.split(path)
         if parent_ie is None:
             # slower but does not need parent_ie
@@ -667,10 +667,7 @@ class _SmartAddHelper(object):
             self.conflicts_related = conflicts_related
 
     def add(self, file_list, recurse=True):
-        # not in an inner loop; and we want to remove direct use of this,
-        # so here as a reminder for now. RBC 20070703
         from bzrlib.inventory import InventoryEntry
-
         if not file_list:
             # no paths supplied: add the entire tree.
             # FIXME: this assumes we are running in a working tree subdir :-/
@@ -696,8 +693,6 @@ class _SmartAddHelper(object):
 
             abspath = self.tree.abspath(filepath)
             kind = osutils.file_kind(abspath)
-            if not InventoryEntry.versionable_kind(kind):
-                raise errors.BadFileKindError(filename=abspath, kind=kind)
             # ensure the named path is added, so that ignore rules in the later
             # directory walk dont skip it.
             # we dont have a parent ie known yet.: use the relatively slower
