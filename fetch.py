@@ -687,7 +687,7 @@ class InterLocalGitNonGitRepository(InterGitNonGitRepository):
             return False
         if isinstance(target, GitRepository):
             return False
-        if not target._format.supports_full_versioned_files:
+        if not getattr(target._format, "supports_full_versioned_files", True):
             return False
         return True
 
