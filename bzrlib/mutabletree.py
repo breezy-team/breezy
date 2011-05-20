@@ -472,8 +472,9 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 conflicts_related.update(c.associated_filenames())
         else:
             conflicts_related = None
-        adder = _SmartAddHelper(self, file_list, recurse, action,
+        adder = _SmartAddHelper(self, action,
             conflicts_related)
+        adder.add(file_list, recurse=recurse)
         if save:
             invdelta = adder.get_inventory_delta()
             self.apply_inventory_delta(invdelta)
@@ -640,12 +641,12 @@ class _SmartAddHelper(object):
             # slower but does not need parent_ie
             this_ie = self._get_ie(inv_path)
             if this_ie is not None:
-                return (this_ie, [])
+                return this_ie
             # its really not there : add the parent
             # note that the dirname use leads to some extra str copying etc but as
             # there are a limited number of dirs we can be nested under, it should
             # generally find it very fast and not recurse after that.
-            parent_ie, added = self._add_one_and_parent(None,
+            parent_ie = self._add_one_and_parent(None,
                 _FastPath(osutils.dirname(path.raw_path)), 'directory', 
                 osutils.dirname(inv_path))
         # if the parent exists, but isn't a directory, we have to do the
@@ -659,7 +660,8 @@ class _SmartAddHelper(object):
         entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
             file_id=file_id)
         self._invdelta[inv_path] = (None, inv_path, entry.file_id, entry)
-        return (entry, added + [path.raw_path])
+        self.added.append(path.raw_path)
+        return entry
 
     def _gather_dirs_to_add(self, user_dirs):
         # only walk the minimal parents needed: we have user_dirs to override
@@ -672,8 +674,7 @@ class _SmartAddHelper(object):
                 yield (path, inv_path, this_ie, None)
             prev_dir = path.raw_path
 
-    def __init__(self, tree, file_list, recurse, action,
-            conflicts_related=None):
+    def __init__(self, tree, action, conflicts_related=None):
         self.tree = tree
         if action is None:
             self.action = add.AddAction()
@@ -683,8 +684,11 @@ class _SmartAddHelper(object):
         self.added = []
         self.ignored = {}
         if conflicts_related is None:
-            conflicts_related = frozenset()
+            self.conflicts_related = frozenset()
+        else:
+            self.conflicts_related = conflicts_related
 
+    def add(self, file_list, recurse=True):
         # not in an inner loop; and we want to remove direct use of this,
         # so here as a reminder for now. RBC 20070703
         from bzrlib.inventory import InventoryEntry
@@ -694,8 +698,6 @@ class _SmartAddHelper(object):
             # FIXME: this assumes we are running in a working tree subdir :-/
             # -- vila 20100208
             file_list = [u'.']
-        # mutter("smart add of %r")
-        user_dirs = {}
 
         # expand any symlinks in the directory part, while leaving the
         # filename alone
@@ -703,6 +705,7 @@ class _SmartAddHelper(object):
         if osutils.has_symlinks():
             file_list = map(osutils.normalizepath, file_list)
 
+        user_dirs = {}
         # validate user file paths and convert all paths to tree
         # relative : it's cheaper to make a tree relative path an abspath
         # than to convert an abspath to tree relative, and it's cheaper to
@@ -725,8 +728,7 @@ class _SmartAddHelper(object):
             inv_path, _ = osutils.normalized_filename(rf.raw_path)
             this_ie = self._get_ie(inv_path)
             if this_ie is None:
-                (this_ie, extra) = self._add_one_and_parent(None, rf, kind, inv_path)
-                self.added.extend(extra)
+                this_ie = self._add_one_and_parent(None, rf, kind, inv_path)
             if kind == 'directory':
                 # schedule the dir for scanning
                 user_dirs[rf] = (inv_path, this_ie)
@@ -735,14 +737,10 @@ class _SmartAddHelper(object):
             # no need to walk any directories at all.
             return
 
-        dirs_to_add = list(self._gather_dirs_to_add(user_dirs))
+        things_to_add = list(self._gather_dirs_to_add(user_dirs))
 
         illegalpath_re = re.compile(r'[\r\n]')
-        # dirs_to_add is initialised to a list of directories, but as we scan
-        # directories we append files to it.
-        # XXX: We should determine kind of files when we scan them rather than
-        # adding to this list. RBC 20070703
-        for directory, inv_path, this_ie, parent_ie in dirs_to_add:
+        for directory, inv_path, this_ie, parent_ie in things_to_add:
             # directory is tree-relative
             abspath = self.tree.abspath(directory.raw_path)
 
@@ -761,15 +759,13 @@ class _SmartAddHelper(object):
             if illegalpath_re.search(directory.raw_path):
                 trace.warning("skipping %r (contains \\n or \\r)" % abspath)
                 continue
-            if directory.raw_path in conflicts_related:
+            if directory.raw_path in self.conflicts_related:
                 # If the file looks like one generated for a conflict, don't
                 # add it.
                 trace.warning(
                     'skipping %s (generated to help resolve conflicts)',
                     abspath)
                 continue
-
-            versioned = (this_ie is not None)
 
             if kind == 'directory':
                 try:
@@ -784,11 +780,9 @@ class _SmartAddHelper(object):
                 sub_tree = False
 
             if directory.raw_path == '':
-                # mutter("tree root doesn't need to be added")
                 sub_tree = False
-            elif versioned:
+            elif this_ie is not None:
                 pass
-                # mutter("%r is already versioned", abspath)
             elif sub_tree:
                 # XXX: This is wrong; people *might* reasonably be trying to
                 # add subtrees as subtrees.  This should probably only be done
@@ -800,8 +794,7 @@ class _SmartAddHelper(object):
                 # 20070306
                 trace.mutter("%r is a nested bzr tree", abspath)
             else:
-                this_ie, extra = self._add_one_and_parent(parent_ie, directory, kind, inv_path)
-                self.added.extend(extra)
+                this_ie = self._add_one_and_parent(parent_ie, directory, kind, inv_path)
 
             if kind == 'directory' and not sub_tree:
                 this_ie = self._ensure_directory(this_ie, inv_path)
@@ -823,7 +816,7 @@ class _SmartAddHelper(object):
                     sub_ie = self._get_ie(sub_invp)
                     if sub_ie is not None:
                         # recurse into this already versioned subdir.
-                        dirs_to_add.append((sub_fp, sub_invp, sub_ie, this_ie))
+                        things_to_add.append((sub_fp, sub_invp, sub_ie, this_ie))
                     else:
                         # user selection overrides ignoes
                         # ignore while selecting files - if we globbed in the
@@ -834,4 +827,4 @@ class _SmartAddHelper(object):
                             self.ignored.setdefault(ignore_glob, []).append(subp)
                         else:
                             #mutter("queue to add sub-file %r", subp)
-                            dirs_to_add.append((sub_fp, sub_invp, None, this_ie))
+                            things_to_add.append((sub_fp, sub_invp, None, this_ie))
