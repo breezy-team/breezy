@@ -611,7 +611,10 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
             # get the contents of this directory.
 
             # find the kind of the path being added.
-            kind = osutils.file_kind(abspath)
+            if this_ie is None:
+                kind = osutils.file_kind(abspath)
+            else:
+                kind = this_ie.kind
 
             if not InventoryEntry.versionable_kind(kind):
                 trace.warning("skipping %s (can't add file of kind '%s')",
