@@ -76,11 +76,6 @@ class build_mo(Command):
                 if mo:
                     self.lang.append(mo.group(1))
             if 'en' not in self.lang:
-                import shutil
-                shutil.copy(
-                        os.path.join(self.source_dir, self.prj_name+'.pot'),
-                        os.path.join(self.source_dir, 'en.po')
-                        )
                 self.lang.append('en')
         else:
             self.lang = [i.strip() for i in self.lang.split(',') if i.strip()]
@@ -95,6 +90,17 @@ class build_mo(Command):
             basename += '.mo'
 
         for lang in self.lang:
+            if lang == 'en':
+                # Make dummy 'en.po' file. This file is compiled to 'en.mo'
+                # with pass through mode (msgstr == msgid).
+                # The en.mo is required to support situations like `LANG=en:ja`.
+                shutil.copy(
+                        os.path.join(self.source_dir, self.prj_name+'.pot'),
+                        os.path.join(self.source_dir, 'en.po')
+                        )
+                passthrough = True
+            else:
+                passthrough = False
             po = os.path.join('po', lang + '.po')
             if not os.path.isfile(po):
                 po = os.path.join('po', lang + '.po')
@@ -103,8 +109,7 @@ class build_mo(Command):
             mo = os.path.join(dir_, basename)
             if self.force or newer(po, mo):
                 log.info('Compile: %s -> %s' % (po, mo))
-                # Use passthrough mode for en. (str = id)
-                msgfmt.make(po,  mo, lang=='en')
+                msgfmt.make(po,  mo, passthrough)
 
 
 build.sub_commands.insert(0, ('build_mo', None))
