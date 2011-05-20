@@ -49,11 +49,9 @@ class TestInterBranchFetch(TestCaseWithInterBranch):
         builder = self.make_branch_builder('b1',
             format=self.branch_format_from._matchingbzrdir)
         builder.start_series()
-        builder.build_snapshot('revision-1', None, [
-            ('add', ('', None, 'directory', None)),
-            ('add', ('foo', 'foo-id', 'file', 'hello'))])
-        builder.build_snapshot('revision-2', None, [])
-        builder.build_snapshot('revision-3', None, [])
+        builder.build_commit(rev_id='revision-1')
+        builder.build_commit(rev_id='revision-2')
+        builder.build_commit(rev_id='revision-3')
         builder.finish_series()
         b1 = builder.get_branch()
         b2 = self.make_to_branch('b2')

@@ -384,7 +384,7 @@ class FetchSpecFactory(object):
                 'Incomplete FetchSpecFactory: %r' % (self.__dict__,))
         if len(self._explicit_rev_ids) == 0 and self.source_branch is None:
             if self.limit is not None:
-                raise errors.UnsupportedOperation(
+                raise NotImplementedError(
                     "limit is only supported with a source branch set")
             # Caller hasn't specified any revisions or source branch
             if self.target_repo_kind == TargetRepoKinds.EMPTY:
