@@ -634,10 +634,8 @@ class _SmartAddHelper(object):
         # Nothing to do if path is already versioned.
         # This is safe from infinite recursion because the tree root is
         # always versioned.
-        if parent_ie is not None:
-            # we have a parent ie already
-            added = []
-        else:
+        inv_dirname, inv_basename = osutils.split(inv_path)
+        if parent_ie is None:
             # slower but does not need parent_ie
             this_ie = self._get_ie(inv_path)
             if this_ie is not None:
@@ -648,14 +646,14 @@ class _SmartAddHelper(object):
             # generally find it very fast and not recurse after that.
             parent_ie = self._add_one_and_parent(None,
                 _FastPath(osutils.dirname(path.raw_path)), 'directory', 
-                osutils.dirname(inv_path))
+                inv_dirname)
         # if the parent exists, but isn't a directory, we have to do the
         # kind change now -- really the inventory shouldn't pretend to know
         # the kind of wt files, but it does.
         if parent_ie.kind != 'directory':
             # nb: this relies on someone else checking that the path we're using
             # doesn't contain symlinks.
-            parent_ie = self._ensure_directory(parent_ie, osutils.dirname(inv_path))
+            parent_ie = self._ensure_directory(parent_ie, inv_dirname)
         file_id = self.action(self.tree.inventory, parent_ie, path, kind)
         entry = _mod_inventory.make_entry(kind, path.base_path, parent_ie.file_id,
             file_id=file_id)
