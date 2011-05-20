@@ -28,13 +28,14 @@ import re
 
 from bzrlib import (
     add,
-    bzrdir,
+    controldir,
     errors,
     hooks,
     inventory as _mod_inventory,
     osutils,
     revisiontree,
     trace,
+    transport as _mod_transport,
     tree,
     )
 """)
@@ -631,7 +632,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
 
             if kind == 'directory':
                 try:
-                    sub_branch = bzrdir.BzrDir.open(abspath)
+                    transport = _mod_transport.get_transport(abspath)
+                    controldir.ControlDirFormat.find_format(transport)
                     sub_tree = True
                 except errors.NotBranchError:
                     sub_tree = False
