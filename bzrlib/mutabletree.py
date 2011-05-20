@@ -596,6 +596,8 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 dirs_to_add.append((path, inv_path, this_ie, None))
             prev_dir = path.raw_path
 
+        del user_dirs
+
         illegalpath_re = re.compile(r'[\r\n]')
         # dirs_to_add is initialised to a list of directories, but as we scan
         # directories we append files to it.
