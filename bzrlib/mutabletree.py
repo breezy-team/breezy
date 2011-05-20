@@ -585,14 +585,12 @@ class _SmartAddHelper(object):
         return None
 
     def _ensure_directory(self, this_ie, inv_path):
-        """Convert an entry to a directory if it is not one already.
+        """Convert an entry to a directory.
 
         :param this_ie: Inventory entry
         :param inv_path: Normalized path for the inventory entry
         :return: The new inventory entry
         """
-        if this_ie.kind == 'directory':
-            return this_ie
         # Same as in _add_one below, if the inventory doesn't
         # think this is a directory, update the inventory
         this_ie = _mod_inventory.make_entry('directory',
@@ -774,7 +772,8 @@ class _SmartAddHelper(object):
                 this_ie = self._add_one_and_parent(parent_ie, directory, kind, inv_path)
 
             if kind == 'directory' and not sub_tree:
-                this_ie = self._ensure_directory(this_ie, inv_path)
+                if this_ie.kind != 'directory':
+                    this_ie = self._ensure_directory(this_ie, inv_path)
 
                 for subf in sorted(os.listdir(abspath)):
                     inv_f, _ = osutils.normalized_filename(subf)
