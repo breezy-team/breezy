@@ -472,8 +472,7 @@ class MutableInventoryTree(MutableTree,tree.InventoryTree):
                 conflicts_related.update(c.associated_filenames())
         else:
             conflicts_related = None
-        adder = _SmartAddHelper(self, action,
-            conflicts_related)
+        adder = _SmartAddHelper(self, action, conflicts_related)
         adder.add(file_list, recurse=recurse)
         if save:
             invdelta = adder.get_inventory_delta()
@@ -783,7 +782,11 @@ class _SmartAddHelper(object):
                         trace.mutter("skip control directory %r", subp)
                         continue
                     sub_invp = osutils.pathjoin(inv_path, inv_f)
-                    sub_ie = self._get_ie(sub_invp)
+                    entry = self._invdelta.get(sub_invp)
+                    if entry is not None:
+                        sub_ie = entry[3]
+                    else:
+                        sub_ie = this_ie.children.get(inv_f)
                     if sub_ie is not None:
                         # recurse into this already versioned subdir.
                         things_to_add.append((subp, sub_invp, sub_ie, this_ie))
