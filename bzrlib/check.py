@@ -39,6 +39,7 @@ objects (e.g. tree on repository) can list the objects they would be requesting
 so that when the dependent object is checked, matches can be pulled out and
 evaluated in-line rather than re-reading the same data many times.
 check_refs are tuples (kind, value). Currently defined kinds are:
+
 * 'trees', where value is a revid and the looked up objects are revision trees.
 * 'lefthand-distance', where value is a revid and the looked up objects are the
   distance along the lefthand path to NULL for that revid.

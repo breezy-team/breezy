@@ -181,7 +181,7 @@ class EmailMessage(object):
     def string_with_encoding(string_):
         """Return a str object together with an encoding.
 
-        :param string_: A str or unicode object.
+        :param string\\_: A str or unicode object.
         :return: A tuple (str, encoding), where encoding is one of 'ascii',
             'utf-8', or '8-bit', in that preferred order.
         """

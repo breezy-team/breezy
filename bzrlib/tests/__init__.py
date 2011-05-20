@@ -449,6 +449,19 @@ class ExtendedTestResult(testtools.TextTestResult):
         self.known_failure_count += 1
         self.report_known_failure(test, err)
 
+    def addUnexpectedSuccess(self, test, details=None):
+        """Tell result the test unexpectedly passed, counting as a failure
+
+        When the minimum version of testtools required becomes 0.9.8 this
+        can be updated to use the new handling there.
+        """
+        super(ExtendedTestResult, self).addFailure(test, details=details)
+        self.failure_count += 1
+        self.report_unexpected_success(test,
+            "".join(details["reason"].iter_text()))
+        if self.stop_early:
+            self.stop()
+
     def addNotSupported(self, test, feature):
         """The test will not be run because of a missing feature.
         """
@@ -613,6 +626,13 @@ class TextTestResult(ExtendedTestResult):
     def report_known_failure(self, test, err):
         pass
 
+    def report_unexpected_success(self, test, reason):
+        self.stream.write('FAIL: %s\n    %s: %s\n' % (
+            self._test_description(test),
+            "Unexpected success. Should have failed",
+            reason,
+            ))
+
     def report_skip(self, test, reason):
         pass
 
@@ -669,6 +689,12 @@ class VerboseTestResult(ExtendedTestResult):
         self.stream.write('XFAIL %s\n%s\n'
                 % (self._testTimeString(test),
                    self._error_summary(err)))
+
+    def report_unexpected_success(self, test, reason):
+        self.stream.write(' FAIL %s\n%s: %s\n'
+                % (self._testTimeString(test),
+                   "Unexpected success. Should have failed",
+                   reason))
 
     def report_success(self, test):
         self.stream.write('   OK %s\n' % self._testTimeString(test))
@@ -1290,7 +1316,7 @@ class TestCase(testtools.TestCase):
                 length, len(obj_with_len), obj_with_len))
 
     def assertLogsError(self, exception_class, func, *args, **kwargs):
-        """Assert that func(*args, **kwargs) quietly logs a specific exception.
+        """Assert that `func(*args, **kwargs)` quietly logs a specific error.
         """
         captured = []
         orig_log_exception_quietly = trace.log_exception_quietly

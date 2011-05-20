@@ -43,6 +43,10 @@ Improvements
   more efficiently.  For a simple branch it reduces the number of
   round-trips by about 20%.  (Andrew Bennetts)
 
+* ``bzr log --line`` scales the width of the author field with the size of
+  the line.  This means that the full author name is shown when the
+  environment variable BZR_COLUMNS=0.  (Neil Martinsen-Burrell)
+
 * ``bzr pull`` now properly triggers the fast
   ``CHKInventory.iter_changes`` rather than the slow generic
   inter-Inventory changes. It used to use a ``DirStateRevisionTree`` as
@@ -61,6 +65,10 @@ Improvements
   option "``bzr.workingtree.worth_saving_limit``".
   (Ian Clatworthy, John Arbash Meinel, #380202)
 
+* Speed up ``bzr uncommit``. Instead of resetting the dirstate from
+  scratch, use ``update_basis_by_delta``, computing the delta from the
+  repository. (John Arbash Meinel, #780544)
+
 Bug Fixes
 *********
 
@@ -73,6 +81,12 @@ Bug Fixes
 * ``bzr merge --no-remember location`` never sets ``submit_branch``.
   (Vincent Ladeuil, #782169)
 
+* ``bzr pull --no-remember location`` never sets
+  ``parent_location``.  ``bzr push --no-remember location`` never
+  sets ``push_location``.  ``bzr send --no-remember
+  submit_location public_location`` never sets ``submit_branch``
+  nor ``public_branch``.  (Vincent Ladeuil)
+
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
 
@@ -82,6 +96,12 @@ Bug Fixes
 * ``WT.inventory`` and ``WT.iter_entries_by_dir()`` was not correctly
   reporting subdirectories that were tree references (in formats that
   supported them). (John Arbash Meinel, #764677)
+
+* Merging into empty branches now gives an error as this is currently
+  not supported. (Jonathan Riddell, #242175)
+
+* Do not show exception to user on pointless commit error (Jonathan
+  Riddell #317357)
 
 * ``WT.update_basis_by_delta`` no longer requires that the deltas match
   the current WT state. This allows ``update_basis_by_delta`` to be used
@@ -146,6 +166,9 @@ Testing
 .. Fixes and changes that are only relevant to bzr's test framework and 
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
+
+* A test that was expected to fail but passes instead now counts as a failure
+  catching up with new testtools and subunit handling. (Martin [GZ], #654474)
 
 * Make it easier for plugins to reuse the per_workingtree scenarios by
   restoring the wt_scenarios helper that was accidentally deleted.

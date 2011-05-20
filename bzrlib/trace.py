@@ -332,7 +332,7 @@ def push_log_file(to_file, log_format=None, date_format=None):
     :param to_file: A file-like object to which messages will be sent.
 
     :returns: A memento that should be passed to _pop_log_file to restore the
-    previously active logging.
+        previously active logging.
     """
     global _trace_file
     # make a new handler

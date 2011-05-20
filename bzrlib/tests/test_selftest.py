@@ -1083,6 +1083,24 @@ class TestRunner(tests.TestCase):
             '\n'
             'OK \\(known_failures=1\\)\n')
 
+    def test_unexpected_success_bad(self):
+        class Test(tests.TestCase):
+            def test_truth(self):
+                self.expectFailure("No absolute truth", self.assertTrue, True)
+        runner = tests.TextTestRunner(stream=StringIO())
+        result = self.run_test_runner(runner, Test("test_truth"))
+        self.assertContainsRe(runner.stream.getvalue(),
+            "=+\n"
+            "FAIL: \\S+\.test_truth\n"
+            "-+\n"
+            "(?:.*\n)*"
+            "No absolute truth\n"
+            "(?:.*\n)*"
+            "-+\n"
+            "Ran 1 test in .*\n"
+            "\n"
+            "FAILED \\(failures=1\\)\n\\Z")
+
     def test_result_decorator(self):
         # decorate results
         calls = []
@@ -2177,9 +2195,13 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_unexpected_success')
         self.assertContainsRe(content, '(?m)^log$')
         self.assertContainsRe(content, 'test with unexpected success')
-        self.expectFailure('subunit treats "unexpectedSuccess"'
-                           ' as a plain success',
-            self.assertEqual, 1, len(result.unexpectedSuccesses))
+        # GZ 2011-05-18: Old versions of subunit treat unexpected success as a
+        #                success, if a min version check is added remove this
+        from subunit import TestProtocolClient as _Client
+        if _Client.addUnexpectedSuccess.im_func is _Client.addSuccess.im_func:
+            self.expectFailure('subunit treats "unexpectedSuccess"'
+                               ' as a plain success',
+                self.assertEqual, 1, len(result.unexpectedSuccesses))
         self.assertEqual(1, len(result.unexpectedSuccesses))
         test = result.unexpectedSuccesses[0]
         # RemotedTestCase doesn't preserve the "details"

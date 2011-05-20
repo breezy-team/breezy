@@ -443,7 +443,6 @@ class Commit(object):
         except Exception, e:
             mutter("aborting commit write group because of exception:")
             trace.log_exception_quietly()
-            note("aborting commit write group: %r" % (e,))
             self.builder.abort()
             raise
 
