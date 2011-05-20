@@ -669,15 +669,16 @@ class Branch(controldir.ControlComponent):
         raise errors.UnsupportedOperation(self.get_reference_info, self)
 
     @needs_write_lock
-    def fetch(self, from_branch, last_revision=None):
+    def fetch(self, from_branch, last_revision=None, limit=None):
         """Copy revisions from from_branch into this branch.
 
         :param from_branch: Where to copy from.
         :param last_revision: What revision to stop at (None for at the end
                               of the branch.
+        :param limit: Optional rough limit of revisions to fetch
         :return: None
         """
-        return InterBranch.get(from_branch, self).fetch(last_revision)
+        return InterBranch.get(from_branch, self).fetch(last_revision, limit=limit)
 
     def get_bound_location(self):
         """Return the URL of the branch we are bound to.
@@ -3251,10 +3252,11 @@ class InterBranch(InterObject):
         raise NotImplementedError(self.copy_content_into)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None):
+    def fetch(self, stop_revision=None, limit=None):
         """Fetch revisions.
 
         :param stop_revision: Last revision to fetch
+        :param limit: Optional rough limit of revisions to fetch
         """
         raise NotImplementedError(self.fetch)
 
@@ -3298,7 +3300,7 @@ class GenericInterBranch(InterBranch):
             self.source.tags.merge_to(self.target.tags)
 
     @needs_write_lock
-    def fetch(self, stop_revision=None):
+    def fetch(self, stop_revision=None, limit=None):
         if self.target.base == self.source.base:
             return (0, [])
         self.source.lock_read()
@@ -3309,6 +3311,7 @@ class GenericInterBranch(InterBranch):
             fetch_spec_factory.source_repo = self.source.repository
             fetch_spec_factory.target_repo = self.target.repository
             fetch_spec_factory.target_repo_kind = fetch.TargetRepoKinds.PREEXISTING
+            fetch_spec_factory.limit = limit
             fetch_spec = fetch_spec_factory.make_fetch_spec()
             return self.target.repository.fetch(self.source.repository,
                 fetch_spec=fetch_spec)
