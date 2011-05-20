@@ -41,7 +41,7 @@ import array
 __version__ = "1.1"
 
 MESSAGES = {}
-
+_PASSTHROUGH = False
 
 def usage(code, msg=''):
     print >> sys.stderr, __doc__
@@ -52,7 +52,8 @@ def usage(code, msg=''):
 
 def add(id, str, fuzzy):
     "Add a non-fuzzy translation to the dictionary."
-    global MESSAGES
+    if _PASSTHROUGH:
+        str = id
     if not fuzzy and str:
         MESSAGES[id] = str
 
@@ -99,10 +100,11 @@ def generate():
     return output
 
 
-def make(filename, outfile):
+def make(filename, outfile, passthrough=False):
     # Fix http://bugs.python.org/issue9741
-    global MESSAGES
+    global MESSAGES, _PASSTHROUGH
     MESSAGES.clear()
+    _PASSTHROUGH = passthrough
     ID = 1
     STR = 2
 

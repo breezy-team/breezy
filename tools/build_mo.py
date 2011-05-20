@@ -29,6 +29,7 @@ from distutils.dep_util import newer
 from distutils.spawn import find_executable
 import os
 import re
+import shutil
 
 import msgfmt
 
@@ -68,15 +69,19 @@ class build_mo(Command):
         if self.source_dir is None:
             self.source_dir = 'po'
         if self.lang is None:
-            if self.prj_name:
-                re_po = re.compile(r'^(?:%s-)?([a-zA-Z_]+)\.po$' % self.prj_name)
-            else:
-                re_po = re.compile(r'^([a-zA-Z_]+)\.po$')
+            re_po = re.compile(r'^([a-zA-Z_]+)\.po$')
             self.lang = []
             for i in os.listdir(self.source_dir):
                 mo = re_po.match(i)
                 if mo:
                     self.lang.append(mo.group(1))
+            if 'en' not in self.lang:
+                import shutil
+                shutil.copy(
+                        os.path.join(self.source_dir, self.prj_name+'.pot'),
+                        os.path.join(self.source_dir, 'en.po')
+                        )
+                self.lang.append('en')
         else:
             self.lang = [i.strip() for i in self.lang.split(',') if i.strip()]
 
@@ -89,19 +94,17 @@ class build_mo(Command):
         if not basename.endswith('.mo'):
             basename += '.mo'
 
-        po_prefix = ''
-        if self.prj_name:
-            po_prefix = self.prj_name + '-'
         for lang in self.lang:
             po = os.path.join('po', lang + '.po')
             if not os.path.isfile(po):
-                po = os.path.join('po', po_prefix + lang + '.po')
+                po = os.path.join('po', lang + '.po')
             dir_ = os.path.join(self.build_dir, lang, 'LC_MESSAGES')
             self.mkpath(dir_)
             mo = os.path.join(dir_, basename)
             if self.force or newer(po, mo):
                 log.info('Compile: %s -> %s' % (po, mo))
-                msgfmt.make(po,  mo)
+                # Use passthrough mode for en. (str = id)
+                msgfmt.make(po,  mo, lang=='en')
 
 
 build.sub_commands.insert(0, ('build_mo', None))
