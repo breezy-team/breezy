@@ -394,32 +394,8 @@ class MutableTree(tree.Tree):
         """
         raise NotImplementedError(self.smart_add)
 
-    def update_basis_by_delta(self, new_revid, delta):
-        """Update the parents of this tree after a commit.
 
-        This gives the tree one parent, with revision id new_revid. The
-        inventory delta is applied to the current basis tree to generate the
-        inventory for the parent new_revid, and all other parent trees are
-        discarded.
-
-        All the changes in the delta should be changes synchronising the basis
-        tree with some or all of the working tree, with a change to a directory
-        requiring that its contents have been recursively included. That is,
-        this is not a general purpose tree modification routine, but a helper
-        for commit which is not required to handle situations that do not arise
-        outside of commit.
-
-        See the inventory developers documentation for the theory behind
-        inventory deltas.
-
-        :param new_revid: The new revision id for the trees parent.
-        :param delta: An inventory delta (see apply_inventory_delta) describing
-            the changes from the current left most parent revision to new_revid.
-        """
-        raise NotImplementedError(self.update_basis_by_delta)
-
-
-class MutableInventoryTree(MutableTree,tree.InventoryTree):
+class MutableInventoryTree(MutableTree, tree.InventoryTree):
 
     @needs_tree_write_lock
     def apply_inventory_delta(self, changes):
@@ -578,12 +554,12 @@ class _SmartAddHelper(object):
         entry = self._invdelta.get(inv_path)
         if entry is not None:
             return entry[3]
-        file_id = self.tree.inventory.path2id(inv_path)
+        file_id = self.tree.path2id(inv_path)
         if file_id is not None:
-            return self.tree.inventory[file_id]
+            return self.tree.iter_entries_by_dir([file_id]).next()[1]
         return None
 
-    def _ensure_directory(self, this_ie, inv_path):
+    def _convert_to_directory(self, this_ie, inv_path):
         """Convert an entry to a directory.
 
         :param this_ie: Inventory entry
@@ -631,7 +607,7 @@ class _SmartAddHelper(object):
         if parent_ie.kind != 'directory':
             # nb: this relies on someone else checking that the path we're using
             # doesn't contain symlinks.
-            parent_ie = self._ensure_directory(parent_ie, inv_dirname)
+            parent_ie = self._convert_to_directory(parent_ie, inv_dirname)
         file_id = self.action(self.tree.inventory, parent_ie, path, kind)
         entry = _mod_inventory.make_entry(kind, basename, parent_ie.file_id,
             file_id=file_id)
@@ -767,7 +743,7 @@ class _SmartAddHelper(object):
 
             if kind == 'directory' and not sub_tree:
                 if this_ie.kind != 'directory':
-                    this_ie = self._ensure_directory(this_ie, inv_path)
+                    this_ie = self._convert_to_directory(this_ie, inv_path)
 
                 for subf in sorted(os.listdir(abspath)):
                     inv_f, _ = osutils.normalized_filename(subf)
