@@ -84,7 +84,6 @@ from bzrlib import (
     mail_client,
     mergetools,
     osutils,
-    registry,
     symbol_versioning,
     trace,
     transport,
@@ -94,6 +93,9 @@ from bzrlib import (
     )
 from bzrlib.util.configobj import configobj
 """)
+from bzrlib import (
+    registry,
+    )
 
 
 CHECK_IF_POSSIBLE=0
@@ -1477,7 +1479,7 @@ def _auto_user_id():
     try:
         w = pwd.getpwuid(uid)
     except KeyError:
-        mutter('no passwd entry for uid %d?' % uid)
+        trace.mutter('no passwd entry for uid %d?' % uid)
         return None, None
 
     # we try utf-8 first, because on many variants (like Linux),
@@ -1492,12 +1494,12 @@ def _auto_user_id():
             encoding = osutils.get_user_encoding()
             gecos = w.pw_gecos.decode(encoding)
         except UnicodeError, e:
-            mutter("cannot decode passwd entry %s" % w)
+            trace.mutter("cannot decode passwd entry %s" % w)
             return None, None
     try:
         username = w.pw_name.decode(encoding)
     except UnicodeError, e:
-        mutter("cannot decode passwd entry %s" % w)
+        trace.mutter("cannot decode passwd entry %s" % w)
         return None, None
 
     comma = gecos.find(',')
