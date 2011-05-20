@@ -4005,12 +4005,12 @@ class cmd_merge(Command):
             merger.other_rev_id is not None):
             # check if location is nonexistent file (and not a branch)
             if location is not None:
-                try:
-                    WorkingTree.open(location)
+                source_tree, rest_of_path = WorkingTree.open_containing(location)
+                if rest_of_path == "":
                     location_is_branch = True
-                except bzrlib.errors.NotBranchError:
+                else:
                     location_is_branch = False
-                if not location_is_branch and not tree.has_filename(location):
+                if not location_is_branch and not source_tree.has_filename(location):
                     raise errors.PathsDoNotExist([location])
             note('Nothing to do.')
             return 0
