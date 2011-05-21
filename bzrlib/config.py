@@ -2372,13 +2372,13 @@ class BranchStore(IniFileStore):
         # part of an object (roughly a Stack, directly or indirectly) that is
         # an attribute of the branch object itself. Since the BranchStore
         # cannot exist without a branch, it's safe to make it a weakref.
-        self.branch = weakref.ref(branch)
+        self.branch_ref = weakref.ref(branch)
 
     def lock_write(self, token=None):
-        return self.branch.lock_write(token)
+        return self.branch_ref().lock_write(token)
 
     def unlock(self):
-        return self.branch.unlock()
+        return self.branch_ref().unlock()
 
     @needs_write_lock
     def save(self):
@@ -2789,7 +2789,7 @@ class cmd_config(commands.Command):
 # object.
 test_store_builder_registry = registry.Registry()
 
-# Thre registered object should be a callable receiving a test instance
+# The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Stack
 # object.
 test_stack_builder_registry = registry.Registry()
