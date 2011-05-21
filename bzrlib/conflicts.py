@@ -148,7 +148,7 @@ class cmd_resolve(commands.Command):
                     trace.note('%d conflict(s) auto-resolved.', len(resolved))
                     trace.note('Remaining conflicts:')
                     for conflict in un_resolved:
-                        trace.note(conflict)
+                        trace.note(unicode(conflict))
                     return 1
                 else:
                     trace.note('All conflicts resolved.')
