@@ -27,6 +27,7 @@ Dm-Upload-Allowed: yes
 Package: bzr
 Architecture: all
 Depends: python-bzrlib (>= ${source:Version}),
+         python-bzrlib (<= ${source:Version}.1~),
          ${misc:Depends},
          ${python:Depends}
 Recommends: bzrtools
