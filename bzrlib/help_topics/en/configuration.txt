@@ -19,7 +19,9 @@ See also the ``email`` configuration value.
 BZR_PROGRESS_BAR
 ~~~~~~~~~~~~~~~~
 
-Override the progress display.  Possible values are "none", "dots", "tty"
+Override the progress display.  Possible values are "none" or "text".  If
+the value is "none" then no progress bar is displayed.  The value "text" draws
+the ordinary command line progress bar.
 
 BZR_SIGQUIT_PDB
 ~~~~~~~~~~~~~~~
