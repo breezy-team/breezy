@@ -390,7 +390,7 @@ class Conflict(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __str__(self):
+    def __unicode__(self):
         return self.format % self.__dict__
 
     def __repr__(self):
