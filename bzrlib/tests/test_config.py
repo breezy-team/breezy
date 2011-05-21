@@ -41,6 +41,7 @@ from bzrlib import (
     trace,
     transport,
     )
+from bzrlib.transport import remote
 from bzrlib.tests import (
     features,
     TestSkipped,
@@ -72,15 +73,59 @@ config.test_store_builder_registry.register(
 config.test_store_builder_registry.register(
     'location', lambda test: config.LocationStore())
 
+
+def build_backing_branch(test, relpath,
+                         transport_class=None, server_class=None):
+    """Test helper to create a backing branch only once.
+
+    Some tests needs multiple stores/stacks to check concurrent update
+    behaviours. As such, they need to build different branch *objects* even if
+    they share the branch on disk.
+
+    :param relpath: The relative path to the branch. (Note that the helper
+        should always specify the same relpath).
+
+    :param transport_class: The Transport class the test needs to use.
+
+    :param server_class: The server associated with the ``transport_class``
+        above.
+
+    Either both or none of ``transport_class`` and ``server_class`` should be
+    specified.
+    """
+    if transport_class is not None and server_class is not None:
+        test.transport_class = transport_class
+        test.transport_server = server_class
+    elif not (transport_class is None and server_class is None):
+        raise AssertionError('Specify both ``transport_class`` and '
+                             '``server_class`` or none of them')
+    if getattr(test, 'backing_branch', None) is None:
+        # First call, let's build the branch on disk
+        test.backing_branch = test.make_branch(relpath)
+
+
 def build_branch_store(test):
-    if getattr(test, 'branch', None) is None:
-        test.branch = test.make_branch('branch')
-    # Since we can be called to create different stores, we need to build them
-    # from different branch *objects*, even if they point to the same branch on
-    # disk, otherwise tests about conccurent updates won't be able to trigger
-    # LockContention
-    return config.BranchStore(branch.Branch.open('branch'))
+    build_backing_branch(test, 'branch')
+    b = branch.Branch.open('branch')
+    # We need to keep a reference to the branch as the Store uses a weak
+    # ref. Referring to it in a lambda should be enough.
+    test.addCleanup(lambda : b)
+    return config.BranchStore(b)
 config.test_store_builder_registry.register('branch', build_branch_store)
+
+
+def build_remote_branch_store(test):
+    # There is only one permutation (but we won't be able to handle more with
+    # this design anyway)
+    (transport_class, server_class) = remote.get_test_permutations()[0]
+    build_backing_branch(test, 'branch', transport_class, server_class)
+    b = branch.Branch.open(test.get_url('branch'))
+    # We need to keep a reference to the branch as the Store uses a weak
+    # ref. Referring to it in a lambda should be enough.
+    test.addCleanup(lambda : b)
+    return config.BranchStore(b)
+config.test_store_builder_registry.register('remote_branch',
+                                            build_remote_branch_store)
 
 
 config.test_stack_builder_registry.register(
@@ -88,15 +133,29 @@ config.test_stack_builder_registry.register(
 config.test_stack_builder_registry.register(
     'location', lambda test: config.LocationStack('.'))
 
+
 def build_branch_stack(test):
-    if getattr(test, 'branch', None) is None:
-        test.branch = test.make_branch('branch')
-    # Since we can be called to create different stacks, we need to build them
-    # from different branch *objects*, even if they point to the same branch on
-    # disk, otherwise tests about conccurent updates won't be able to trigger
-    # LockContention
-    return config.BranchStack(branch.Branch.open('branch'))
+    build_backing_branch(test, 'branch')
+    b = branch.Branch.open('branch')
+    # We need to keep a reference to the branch as the Store uses a weak
+    # ref. Referring to it in a lambda should be enough.
+    test.addCleanup(lambda : b)
+    return config.BranchStack(b)
 config.test_stack_builder_registry.register('branch', build_branch_stack)
+
+
+def build_remote_branch_stack(test):
+    # There is only one permutation (but we won't be able to handle more with
+    # this design anyway)
+    (transport_class, server_class) = remote.get_test_permutations()[0]
+    build_backing_branch(test, 'branch', transport_class, server_class)
+    b = branch.Branch.open(test.get_url('branch'))
+    # We need to keep a reference to the branch as the Store uses a weak
+    # ref. Referring to it in a lambda should be enough.
+    test.addCleanup(lambda : b)
+    return config.BranchStack(b)
+config.test_stack_builder_registry.register('remote_branch',
+                                            build_remote_branch_stack)
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -1940,7 +1999,6 @@ class TestReadonlyStore(TestStore):
 
     def setUp(self):
         super(TestReadonlyStore, self).setUp()
-        self.branch = self.make_branch('branch')
 
     def test_building_delays_load(self):
         store = self.get_store(self)
@@ -1988,7 +2046,7 @@ class TestMutableStore(TestStore):
         return self.transport.has(store_basename)
 
     def test_save_empty_creates_no_file(self):
-        if self.store_id == 'branch':
+        if self.store_id in ('branch', 'remote_branch'):
             raise tests.TestNotApplicable(
                 'branch.conf is *always* created when a branch is initialized')
         store = self.get_store(self)
@@ -2007,7 +2065,7 @@ class TestMutableStore(TestStore):
         self.assertLength(0, sections)
 
     def test_save_with_content_succeeds(self):
-        if self.store_id == 'branch':
+        if self.store_id in ('branch', 'remote_branch'):
             raise tests.TestNotApplicable(
                 'branch.conf is *always* created when a branch is initialized')
         store = self.get_store(self)

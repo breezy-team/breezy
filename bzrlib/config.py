@@ -2165,6 +2165,15 @@ class Store(object):
         """
         raise NotImplementedError(self._load_from_string)
 
+    def unload(self):
+        """Unloads the Store.
+
+        This should make is_loaded() return False. This is used when the caller
+        knows that the persistent storage has changed or may have change since
+        the last load.
+        """
+        raise NotImplementedError(self.unload)
+
     def save(self):
         """Saves the Store to persistent storage."""
         raise NotImplementedError(self.save)
@@ -2217,6 +2226,9 @@ class IniFileStore(Store):
 
     def is_loaded(self):
         return self._config_obj != None
+
+    def unload(self):
+        self._config_obj = None
 
     def load(self):
         """Load the store from the associated file."""
@@ -2565,7 +2577,7 @@ class Stack(object):
 class _CompatibleStack(Stack):
     """Place holder for compatibility with previous design.
 
-    This intended to ease the transition from the Config-based design to the
+    This is intended to ease the transition from the Config-based design to the
     Stack-based design and should not be used nor relied upon by plugins.
 
     One assumption made here is that the daughter classes will all use Stores
@@ -2573,8 +2585,8 @@ class _CompatibleStack(Stack):
     """
 
     def set(self, name, value):
-        # Force a reload (assuming we use a LockableIniFileStore)
-        self.store._config_obj = None
+        # Force a reload
+        self.store.unload()
         super(_CompatibleStack, self).set(name, value)
         # Force a write to persistent storage
         self.store.save()
@@ -2597,7 +2609,6 @@ class LocationStack(_CompatibleStack):
         super(LocationStack, self).__init__(
             [matcher.get_sections, gstore.get_sections], lstore)
 
-# FIXME: See BranchStore, same remarks -- vila 20110512
 class BranchStack(_CompatibleStack):
 
     def __init__(self, branch):
@@ -2608,6 +2619,7 @@ class BranchStack(_CompatibleStack):
         super(BranchStack, self).__init__(
             [matcher.get_sections, bstore.get_sections, gstore.get_sections],
             bstore)
+        self.branch = branch
 
 
 class cmd_config(commands.Command):
