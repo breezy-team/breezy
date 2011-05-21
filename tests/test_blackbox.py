@@ -22,6 +22,9 @@ from dulwich.repo import (
 
 import os
 
+from bzrlib import (
+    version_info as bzrlib_version,
+    )
 from bzrlib.bzrdir import (
     BzrDir,
     )
@@ -91,10 +94,13 @@ class TestGitBlackBox(ExternalBase):
         self.assertEqual(output, "a\n")
 
     def test_init(self):
-        self.run_bzr("init --git repo") 
+        self.run_bzr("init --git repo")
 
     def test_info_verbose(self):
         self.simple_commit()
+
+        if bzrlib_version < (2, 4):
+            raise KnownFailure("bzr info uses inventory on bzr < 2.4")
 
         output, error = self.run_bzr(['info', '-v'])
         self.assertEqual(error, '')
