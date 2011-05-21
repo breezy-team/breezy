@@ -65,11 +65,6 @@ from bzrlib.symbol_versioning import (
 from bzrlib.trace import mutter, mutter_callsite, note, is_quiet
 
 
-BZR_BRANCH_FORMAT_4 = "Bazaar-NG branch, format 0.0.4\n"
-BZR_BRANCH_FORMAT_5 = "Bazaar-NG branch, format 5\n"
-BZR_BRANCH_FORMAT_6 = "Bazaar Branch Format 6 (bzr 0.15)\n"
-
-
 class Branch(controldir.ControlComponent):
     """Branch holding a history of revisions.
 
@@ -3159,7 +3154,7 @@ class Converter6to7(object):
 
 
 class Converter7to8(object):
-    """Perform an in-place upgrade of format 6 to format 7"""
+    """Perform an in-place upgrade of format 7 to format 8"""
 
     def convert(self, branch):
         format = BzrBranchFormat8()
