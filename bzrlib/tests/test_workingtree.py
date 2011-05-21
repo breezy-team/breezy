@@ -22,6 +22,8 @@ from bzrlib import (
     symbol_versioning,
     transport,
     workingtree,
+    workingtree_3,
+    workingtree_4,
     )
 from bzrlib.lockdir import LockDir
 from bzrlib.mutabletree import needs_tree_write_lock
@@ -62,8 +64,8 @@ class TestDefaultFormat(TestCaseWithTransport):
 
     def test_get_set_default_format(self):
         old_format = workingtree.format_registry.get_default()
-        # default is 3
-        self.assertTrue(isinstance(old_format, workingtree.WorkingTreeFormat3))
+        # default is 6
+        self.assertTrue(isinstance(old_format, workingtree_4.WorkingTreeFormat6))
         workingtree.format_registry.set_default(SampleTreeFormat())
         try:
             # the default branch format is used by the meta dir format
@@ -75,6 +77,27 @@ class TestDefaultFormat(TestCaseWithTransport):
             self.assertEqual(result, 'A tree')
         finally:
             workingtree.format_registry.set_default(old_format)
+        self.assertEqual(old_format, workingtree.format_registry.get_default())
+
+    def test_get_set_default_format_by_key(self):
+        old_format = workingtree.format_registry.get_default()
+        # default is 6
+        format = SampleTreeFormat()
+        workingtree.format_registry.register(format)
+        self.addCleanup(workingtree.format_registry.remove, format)
+        self.assertTrue(isinstance(old_format, workingtree_4.WorkingTreeFormat6))
+        workingtree.format_registry.set_default_key(format.get_format_string())
+        try:
+            # the default branch format is used by the meta dir format
+            # which is not the default bzrdir format at this point
+            dir = bzrdir.BzrDirMetaFormat1().initialize('.')
+            dir.create_repository()
+            dir.create_branch()
+            result = dir.create_workingtree()
+            self.assertEqual(result, 'A tree')
+        finally:
+            workingtree.format_registry.set_default_key(
+                old_format.get_format_string())
         self.assertEqual(old_format, workingtree.format_registry.get_default())
 
     def test_open(self):
@@ -145,6 +168,19 @@ class SampleExtraTreeFormat(workingtree.WorkingTreeFormat):
 class TestWorkingTreeFormat(TestCaseWithTransport):
     """Tests for the WorkingTreeFormat facility."""
 
+    def test_find_format_string(self):
+        # is the right format object found for a working tree?
+        branch = self.make_branch('branch')
+        self.assertRaises(errors.NoWorkingTree,
+            workingtree.WorkingTreeFormat.find_format_string, branch.bzrdir)
+        transport = branch.bzrdir.get_workingtree_transport(None)
+        transport.mkdir('.')
+        transport.put_bytes("format", "some format name")
+        # The format does not have to be known by Bazaar,
+        # find_format_string just retrieves the name
+        self.assertEquals("some format name",
+            workingtree.WorkingTreeFormat.find_format_string(branch.bzrdir))
+
     def test_find_format(self):
         # is the right format object found for a working tree?
         # create a branch with a few known format objects.
@@ -157,7 +193,7 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
             t = transport.get_transport(url)
             found_format = workingtree.WorkingTreeFormat.find_format(dir)
             self.assertIsInstance(found_format, format.__class__)
-        check_format(workingtree.WorkingTreeFormat3(), "bar")
+        check_format(workingtree_3.WorkingTreeFormat3(), "bar")
 
     def test_find_format_no_tree(self):
         dir = bzrdir.BzrDirMetaFormat1().initialize('.')
@@ -198,6 +234,47 @@ class TestWorkingTreeFormat(TestCaseWithTransport):
         self.assertFalse(format in
             self.applyDeprecated(symbol_versioning.deprecated_in((2, 4, 0)),
                 workingtree.WorkingTreeFormat.get_formats))
+
+
+class TestWorkingTreeIterEntriesByDir_wSubtrees(TestCaseWithTransport):
+
+    def make_simple_tree(self):
+        tree = self.make_branch_and_tree('tree', format='development-subtree')
+        self.build_tree(['tree/a/', 'tree/a/b/', 'tree/a/b/c'])
+        tree.set_root_id('root-id')
+        tree.add(['a', 'a/b', 'a/b/c'], ['a-id', 'b-id', 'c-id'])
+        tree.commit('initial')
+        return tree
+
+    def test_just_directory(self):
+        tree = self.make_simple_tree()
+        self.assertEqual([('directory', 'root-id'),
+                          ('directory', 'a-id'),
+                          ('directory', 'b-id'),
+                          ('file', 'c-id')],
+                         [(ie.kind, ie.file_id)
+                          for path, ie in tree.iter_entries_by_dir()])
+        subtree = self.make_branch_and_tree('tree/a/b')
+        self.assertEqual([('tree-reference', 'b-id')],
+                         [(ie.kind, ie.file_id)
+                          for path, ie in tree.iter_entries_by_dir(['b-id'])])
+
+    def test_direct_subtree(self):
+        tree = self.make_simple_tree()
+        subtree = self.make_branch_and_tree('tree/a/b')
+        self.assertEqual([('directory', 'root-id'),
+                          ('directory', 'a-id'),
+                          ('tree-reference', 'b-id')],
+                         [(ie.kind, ie.file_id)
+                          for path, ie in tree.iter_entries_by_dir()])
+
+    def test_indirect_subtree(self):
+        tree = self.make_simple_tree()
+        subtree = self.make_branch_and_tree('tree/a')
+        self.assertEqual([('directory', 'root-id'),
+                          ('tree-reference', 'a-id')],
+                         [(ie.kind, ie.file_id)
+                          for path, ie in tree.iter_entries_by_dir()])
 
 
 class TestWorkingTreeFormatRegistry(TestCase):
@@ -241,7 +318,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         control.create_repository()
         control.create_branch()
-        tree = workingtree.WorkingTreeFormat3().initialize(control)
+        tree = workingtree_3.WorkingTreeFormat3().initialize(control)
         # we want:
         # format 'Bazaar-NG Working Tree format 3'
         # inventory = blank inventory
@@ -275,7 +352,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         repo = dir.create_repository()
         branch = dir.create_branch()
         try:
-            tree = workingtree.WorkingTreeFormat3().initialize(dir)
+            tree = workingtree_3.WorkingTreeFormat3().initialize(dir)
         except errors.NotLocalUrl:
             raise TestSkipped('Not a local URL')
         self.assertIsDirectory('.bzr', t)
@@ -292,7 +369,7 @@ class TestWorkingTreeFormat3(TestCaseWithTransport):
         control = bzrdir.BzrDirMetaFormat1().initialize(self.get_url())
         control.create_repository()
         control.create_branch()
-        tree = workingtree.WorkingTreeFormat3().initialize(control)
+        tree = workingtree_3.WorkingTreeFormat3().initialize(control)
         tree._transport.delete("pending-merges")
         self.assertEqual([], tree.get_parent_ids())
 

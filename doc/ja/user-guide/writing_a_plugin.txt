@@ -27,6 +27,16 @@ fooはコマンドの名前です。
 ``bzrlib.commands.register_command(cmd_foo)`` でコマンドを登録しなければなりません。
 さもなければbzrはコマンドを見つけることはありません。
 
+.. _installing-a-hook:
+
+フックをインストールする
+-------------------------
+
+`Using hooks`_ を参照してください。
+
+.. _Using hooks: hooks.txt
+
+
 .. _specifying-a-plugin-version-number:
 
 プラグインのバージョン番号を指定する
@@ -41,8 +51,13 @@ fooはコマンドの名前です。
 プラグインの検索ルール
 ------------------------
 
-デフォルトではbzrはプラグインを見つけるために ``bzrlib/plugins`` と ``~/.bazaar/plugins`` をスキャンします。
+デフォルトではbzrはプラグインを見つけるために ``~/.bazaar/plugins`` と
+``bzrlib/plugins`` をスキャンします。
 ``BZR_PLUGIN_PATH`` でこれを上書きできます。
+(詳細は、
+`ユーザーリファレンス <../user-reference/configuration-help.html#bzr-plugin-path>`_
+を参照してください。)
+
 プラグインはモジュールもしくはパッケージの形態をとることができます。
 プラグインが単独のファイルであれば、構造をモジュールにできます。
 プラグインが複数のファイルを持つ場合やbzrのブランチとして配布したい場合は、

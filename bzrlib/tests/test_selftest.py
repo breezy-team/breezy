@@ -52,6 +52,8 @@ from bzrlib import (
     tests,
     transport,
     workingtree,
+    workingtree_3,
+    workingtree_4,
     )
 from bzrlib.repofmt import (
     groupcompress_repo,
@@ -338,8 +340,8 @@ class TestWorkingTreeScenarios(tests.TestCase):
         from bzrlib.tests.per_workingtree import make_scenarios
         server1 = "a"
         server2 = "b"
-        formats = [workingtree.WorkingTreeFormat4(),
-                   workingtree.WorkingTreeFormat3(),]
+        formats = [workingtree_4.WorkingTreeFormat4(),
+                   workingtree_3.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual([
             ('WorkingTreeFormat4',
@@ -375,13 +377,13 @@ class TestTreeScenarios(tests.TestCase):
             )
         server1 = "a"
         server2 = "b"
-        formats = [workingtree.WorkingTreeFormat4(),
-                   workingtree.WorkingTreeFormat3(),]
+        formats = [workingtree_4.WorkingTreeFormat4(),
+                   workingtree_3.WorkingTreeFormat3(),]
         scenarios = make_scenarios(server1, server2, formats)
         self.assertEqual(7, len(scenarios))
         default_wt_format = workingtree.format_registry.get_default()
-        wt4_format = workingtree.WorkingTreeFormat4()
-        wt5_format = workingtree.WorkingTreeFormat5()
+        wt4_format = workingtree_4.WorkingTreeFormat4()
+        wt5_format = workingtree_4.WorkingTreeFormat5()
         expected_scenarios = [
             ('WorkingTreeFormat4',
              {'bzrdir_format': formats[0]._matchingbzrdir,
@@ -453,7 +455,8 @@ class TestInterTreeScenarios(tests.TestCase):
         from bzrlib.tests.per_intertree import (
             make_scenarios,
             )
-        from bzrlib.workingtree import WorkingTreeFormat3, WorkingTreeFormat4
+        from bzrlib.workingtree_3 import WorkingTreeFormat3
+        from bzrlib.workingtree_4 import WorkingTreeFormat4
         input_test = TestInterTreeScenarios(
             "test_scenarios")
         server1 = "a"
@@ -1079,6 +1082,24 @@ class TestRunner(tests.TestCase):
             'Ran 1 test in .*\n'
             '\n'
             'OK \\(known_failures=1\\)\n')
+
+    def test_unexpected_success_bad(self):
+        class Test(tests.TestCase):
+            def test_truth(self):
+                self.expectFailure("No absolute truth", self.assertTrue, True)
+        runner = tests.TextTestRunner(stream=StringIO())
+        result = self.run_test_runner(runner, Test("test_truth"))
+        self.assertContainsRe(runner.stream.getvalue(),
+            "=+\n"
+            "FAIL: \\S+\.test_truth\n"
+            "-+\n"
+            "(?:.*\n)*"
+            "No absolute truth\n"
+            "(?:.*\n)*"
+            "-+\n"
+            "Ran 1 test in .*\n"
+            "\n"
+            "FAILED \\(failures=1\\)\n\\Z")
 
     def test_result_decorator(self):
         # decorate results
@@ -2174,9 +2195,13 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_unexpected_success')
         self.assertContainsRe(content, '(?m)^log$')
         self.assertContainsRe(content, 'test with unexpected success')
-        self.expectFailure('subunit treats "unexpectedSuccess"'
-                           ' as a plain success',
-            self.assertEqual, 1, len(result.unexpectedSuccesses))
+        # GZ 2011-05-18: Old versions of subunit treat unexpected success as a
+        #                success, if a min version check is added remove this
+        from subunit import TestProtocolClient as _Client
+        if _Client.addUnexpectedSuccess.im_func is _Client.addSuccess.im_func:
+            self.expectFailure('subunit treats "unexpectedSuccess"'
+                               ' as a plain success',
+                self.assertEqual, 1, len(result.unexpectedSuccesses))
         self.assertEqual(1, len(result.unexpectedSuccesses))
         test = result.unexpectedSuccesses[0]
         # RemotedTestCase doesn't preserve the "details"
@@ -2810,16 +2835,16 @@ class TestSelftestFiltering(tests.TestCase):
         self.assertEqual(remaining_names, _test_ids(split_suite[1]))
 
 
-class TestCheckInventoryShape(tests.TestCaseWithTransport):
+class TestCheckTreeShape(tests.TestCaseWithTransport):
 
-    def test_check_inventory_shape(self):
+    def test_check_tree_shape(self):
         files = ['a', 'b/', 'b/c']
         tree = self.make_branch_and_tree('.')
         self.build_tree(files)
         tree.add(files)
         tree.lock_read()
         try:
-            self.check_inventory_shape(tree.inventory, files)
+            self.check_tree_shape(tree, files)
         finally:
             tree.unlock()
 

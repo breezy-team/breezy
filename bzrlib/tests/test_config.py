@@ -36,6 +36,7 @@ from bzrlib import (
     mergetools,
     ui,
     urlutils,
+    registry,
     tests,
     trace,
     transport,
@@ -61,6 +62,37 @@ def lockable_config_scenarios():
 
 
 load_tests = scenarios.load_tests_apply_scenarios
+
+# We need adapters that can build a config store in a test context. Test
+# classes, based on TestCaseWithTransport, can use the registry to parametrize
+# themselves. The builder will receive a test instance and should return a
+# ready-to-use store.  Plugins that defines new stores can also register
+# themselves here to be tested against the tests defined below.
+
+# FIXME: plugins should *not* need to import test_config to register their
+# helpers (or selftest -s xxx will be broken), the following registry should be
+# moved to bzrlib.config instead so that selftest -s bt.test_config also runs
+# the plugin specific tests (selftest -s bp.xxx won't, that would be against
+# the spirit of '-s') -- vila 20110503
+test_store_builder_registry = registry.Registry()
+test_store_builder_registry.register(
+    'configobj', lambda test: config.IniFileStore(test.get_transport(),
+                                                  'configobj.conf'))
+test_store_builder_registry.register(
+    'bazaar', lambda test: config.GlobalStore())
+test_store_builder_registry.register(
+    'location', lambda test: config.LocationStore())
+test_store_builder_registry.register(
+    'branch', lambda test: config.BranchStore(test.branch))
+
+# FIXME: Same remark as above for the following registry -- vila 20110503
+test_stack_builder_registry = registry.Registry()
+test_stack_builder_registry.register(
+    'bazaar', lambda test: config.GlobalStack())
+test_stack_builder_registry.register(
+    'location', lambda test: config.LocationStack('.'))
+test_stack_builder_registry.register(
+    'branch', lambda test: config.BranchStack(test.branch))
 
 
 sample_long_alias="log -r-15..-1 --line"
@@ -832,7 +864,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
         def c1_write_config_file():
             before_writing.set()
             c1_orig()
-            # The lock is held we wait for the main thread to decide when to
+            # The lock is held. We wait for the main thread to decide when to
             # continue
             after_writing.wait()
         c1._write_config_file = c1_write_config_file
@@ -865,7 +897,7 @@ class TestLockableConfig(tests.TestCaseInTempDir):
        c1_orig = c1._write_config_file
        def c1_write_config_file():
            ready_to_write.set()
-           # The lock is held we wait for the main thread to decide when to
+           # The lock is held. We wait for the main thread to decide when to
            # continue
            do_writing.wait()
            c1_orig()
@@ -1814,13 +1846,461 @@ class TestTransportConfig(tests.TestCaseWithTransport):
         self.assertIs(None, bzrdir_config.get_default_stack_on())
 
 
+class TestSection(tests.TestCase):
+
+    # FIXME: Parametrize so that all sections produced by Stores run these
+    # tests -- vila 2011-04-01
+
+    def test_get_a_value(self):
+        a_dict = dict(foo='bar')
+        section = config.Section('myID', a_dict)
+        self.assertEquals('bar', section.get('foo'))
+
+    def test_get_unknown_option(self):
+        a_dict = dict()
+        section = config.Section(None, a_dict)
+        self.assertEquals('out of thin air',
+                          section.get('foo', 'out of thin air'))
+
+    def test_options_is_shared(self):
+        a_dict = dict()
+        section = config.Section(None, a_dict)
+        self.assertIs(a_dict, section.options)
+
+
+class TestMutableSection(tests.TestCase):
+
+    # FIXME: Parametrize so that all sections (including os.environ and the
+    # ones produced by Stores) run these tests -- vila 2011-04-01
+
+    def test_set(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'new_value')
+        self.assertEquals('new_value', section.get('foo'))
+        # The change appears in the shared section
+        self.assertEquals('new_value', a_dict.get('foo'))
+        # We keep track of the change
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_set_preserve_original_once(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'first_value')
+        section.set('foo', 'second_value')
+        # We keep track of the original value
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_remove(self):
+        a_dict = dict(foo='bar')
+        section = config.MutableSection('myID', a_dict)
+        section.remove('foo')
+        # We get None for unknown options via the default value
+        self.assertEquals(None, section.get('foo'))
+        # Or we just get the default value
+        self.assertEquals('unknown', section.get('foo', 'unknown'))
+        self.assertFalse('foo' in section.options)
+        # We keep track of the deletion
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals('bar', section.orig.get('foo'))
+
+    def test_remove_new_option(self):
+        a_dict = dict()
+        section = config.MutableSection('myID', a_dict)
+        section.set('foo', 'bar')
+        section.remove('foo')
+        self.assertFalse('foo' in section.options)
+        # The option didn't exist initially so it we need to keep track of it
+        # with a special value
+        self.assertTrue('foo' in section.orig)
+        self.assertEquals(config._NewlyCreatedOption, section.orig['foo'])
+
+
+class TestStore(tests.TestCaseWithTransport):
+
+    def assertSectionContent(self, expected, section):
+        """Assert that some options have the proper values in a section."""
+        expected_name, expected_options = expected
+        self.assertEquals(expected_name, section.id)
+        self.assertEquals(
+            expected_options,
+            dict([(k, section.get(k)) for k in expected_options.keys()]))
+
+
+class TestReadonlyStore(TestStore):
+
+    scenarios = [(key, {'get_store': builder})
+                 for key, builder in test_store_builder_registry.iteritems()]
+
+    def setUp(self):
+        super(TestReadonlyStore, self).setUp()
+        self.branch = self.make_branch('branch')
+
+    def test_building_delays_load(self):
+        store = self.get_store(self)
+        self.assertEquals(False, store.is_loaded())
+        store._load_from_string('')
+        self.assertEquals(True, store.is_loaded())
+
+    def test_get_no_sections_for_empty(self):
+        store = self.get_store(self)
+        store._load_from_string('')
+        self.assertEquals([], list(store.get_sections()))
+
+    def test_get_default_section(self):
+        store = self.get_store(self)
+        store._load_from_string('foo=bar')
+        sections = list(store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
+
+    def test_get_named_section(self):
+        store = self.get_store(self)
+        store._load_from_string('[baz]\nfoo=bar')
+        sections = list(store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
+
+    def test_load_from_string_fails_for_non_empty_store(self):
+        store = self.get_store(self)
+        store._load_from_string('foo=bar')
+        self.assertRaises(AssertionError, store._load_from_string, 'bar=baz')
+
+
+class TestMutableStore(TestStore):
+
+    scenarios = [(key, {'store_id': key, 'get_store': builder})
+                 for key, builder in test_store_builder_registry.iteritems()]
+
+    def setUp(self):
+        super(TestMutableStore, self).setUp()
+        self.transport = self.get_transport()
+        self.branch = self.make_branch('branch')
+
+    def has_store(self, store):
+        store_basename = urlutils.relative_url(self.transport.external_url(),
+                                               store.external_url())
+        return self.transport.has(store_basename)
+
+    def test_save_empty_creates_no_file(self):
+        if self.store_id == 'branch':
+            raise tests.TestNotApplicable(
+                'branch.conf is *always* created when a branch is initialized')
+        store = self.get_store(self)
+        store.save()
+        self.assertEquals(False, self.has_store(store))
+
+    def test_save_emptied_succeeds(self):
+        store = self.get_store(self)
+        store._load_from_string('foo=bar\n')
+        section = store.get_mutable_section(None)
+        section.remove('foo')
+        store.save()
+        self.assertEquals(True, self.has_store(store))
+        modified_store = self.get_store(self)
+        sections = list(modified_store.get_sections())
+        self.assertLength(0, sections)
+
+    def test_save_with_content_succeeds(self):
+        if self.store_id == 'branch':
+            raise tests.TestNotApplicable(
+                'branch.conf is *always* created when a branch is initialized')
+        store = self.get_store(self)
+        store._load_from_string('foo=bar\n')
+        self.assertEquals(False, self.has_store(store))
+        store.save()
+        self.assertEquals(True, self.has_store(store))
+        modified_store = self.get_store(self)
+        sections = list(modified_store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
+
+    def test_set_option_in_empty_store(self):
+        store = self.get_store(self)
+        section = store.get_mutable_section(None)
+        section.set('foo', 'bar')
+        store.save()
+        modified_store = self.get_store(self)
+        sections = list(modified_store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
+
+    def test_set_option_in_default_section(self):
+        store = self.get_store(self)
+        store._load_from_string('')
+        section = store.get_mutable_section(None)
+        section.set('foo', 'bar')
+        store.save()
+        modified_store = self.get_store(self)
+        sections = list(modified_store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent((None, {'foo': 'bar'}), sections[0])
+
+    def test_set_option_in_named_section(self):
+        store = self.get_store(self)
+        store._load_from_string('')
+        section = store.get_mutable_section('baz')
+        section.set('foo', 'bar')
+        store.save()
+        modified_store = self.get_store(self)
+        sections = list(modified_store.get_sections())
+        self.assertLength(1, sections)
+        self.assertSectionContent(('baz', {'foo': 'bar'}), sections[0])
+
+
+class TestIniFileStore(TestStore):
+
+    def test_loading_unknown_file_fails(self):
+        store = config.IniFileStore(self.get_transport(), 'I-do-not-exist')
+        self.assertRaises(errors.NoSuchFile, store.load)
+
+    def test_invalid_content(self):
+        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
+        self.assertEquals(False, store.is_loaded())
+        exc = self.assertRaises(
+            errors.ParseConfigError, store._load_from_string,
+            'this is invalid !')
+        self.assertEndsWith(exc.filename, 'foo.conf')
+        # And the load failed
+        self.assertEquals(False, store.is_loaded())
+
+    def test_get_embedded_sections(self):
+        # A more complicated example (which also shows that section names and
+        # option names share the same name space...)
+        # FIXME: This should be fixed by forbidding dicts as values ?
+        # -- vila 2011-04-05
+        store = config.IniFileStore(self.get_transport(), 'foo.conf', )
+        store._load_from_string('''
+foo=bar
+l=1,2
+[DEFAULT]
+foo_in_DEFAULT=foo_DEFAULT
+[bar]
+foo_in_bar=barbar
+[baz]
+foo_in_baz=barbaz
+[[qux]]
+foo_in_qux=quux
+''')
+        sections = list(store.get_sections())
+        self.assertLength(4, sections)
+        # The default section has no name.
+        # List values are provided as lists
+        self.assertSectionContent((None, {'foo': 'bar', 'l': ['1', '2']}),
+                                  sections[0])
+        self.assertSectionContent(
+            ('DEFAULT', {'foo_in_DEFAULT': 'foo_DEFAULT'}), sections[1])
+        self.assertSectionContent(
+            ('bar', {'foo_in_bar': 'barbar'}), sections[2])
+        # sub sections are provided as embedded dicts.
+        self.assertSectionContent(
+            ('baz', {'foo_in_baz': 'barbaz', 'qux': {'foo_in_qux': 'quux'}}),
+            sections[3])
+
+
+class TestLockableIniFileStore(TestStore):
+
+    def test_create_store_in_created_dir(self):
+        t = self.get_transport('dir/subdir')
+        store = config.LockableIniFileStore(t, 'foo.conf')
+        store.get_mutable_section(None).set('foo', 'bar')
+        store.save()
+
+    # FIXME: We should adapt the tests in TestLockableConfig about concurrent
+    # writes. Since this requires a clearer rewrite, I'll just rely on using
+    # the same code in LockableIniFileStore (copied from LockableConfig, but
+    # trivial enough, the main difference is that we add @needs_write_lock on
+    # save() instead of set_user_option() and remove_user_option()). The intent
+    # is to ensure that we always get a valid content for the store even when
+    # concurrent accesses occur, read/write, write/write. It may be worth
+    # looking into removing the lock dir when it;s not needed anymore and look
+    # at possible fallouts for concurrent lockers -- vila 20110-04-06
+
+
+class TestSectionMatcher(TestStore):
+
+    scenarios = [('location', {'matcher': config.LocationMatcher})]
+
+    def get_store(self, file_name):
+        return config.IniFileStore(self.get_readonly_transport(), file_name)
+
+    def test_no_matches_for_empty_stores(self):
+        store = self.get_store('foo.conf')
+        store._load_from_string('')
+        matcher = self.matcher(store, '/bar')
+        self.assertEquals([], list(matcher.get_sections()))
+
+    def test_build_doesnt_load_store(self):
+        store = self.get_store('foo.conf')
+        matcher = self.matcher(store, '/bar')
+        self.assertFalse(store.is_loaded())
+
+
+class TestLocationSection(tests.TestCase):
+
+    def get_section(self, options, extra_path):
+        section = config.Section('foo', options)
+        # We don't care about the length so we use '0'
+        return config.LocationSection(section, 0, extra_path)
+
+    def test_simple_option(self):
+        section = self.get_section({'foo': 'bar'}, '')
+        self.assertEquals('bar', section.get('foo'))
+
+    def test_option_with_extra_path(self):
+        section = self.get_section({'foo': 'bar', 'foo:policy': 'appendpath'},
+                                   'baz')
+        self.assertEquals('bar/baz', section.get('foo'))
+
+    def test_invalid_policy(self):
+        section = self.get_section({'foo': 'bar', 'foo:policy': 'die'},
+                                   'baz')
+        # invalid policies are ignored
+        self.assertEquals('bar', section.get('foo'))
+
+
+class TestLocationMatcher(TestStore):
+
+    def get_store(self, file_name):
+        return config.IniFileStore(self.get_readonly_transport(), file_name)
+
+    def test_more_specific_sections_first(self):
+        store = self.get_store('foo.conf')
+        store._load_from_string('''
+[/foo]
+section=/foo
+[/foo/bar]
+section=/foo/bar
+''')
+        self.assertEquals(['/foo', '/foo/bar'],
+                          [section.id for section in store.get_sections()])
+        matcher = config.LocationMatcher(store, '/foo/bar/baz')
+        sections = list(matcher.get_sections())
+        self.assertEquals([3, 2],
+                          [section.length for section in sections])
+        self.assertEquals(['/foo/bar', '/foo'],
+                          [section.id for section in sections])
+        self.assertEquals(['baz', 'bar/baz'],
+                          [section.extra_path for section in sections])
+
+    def test_appendpath_in_no_name_section(self):
+        # It's a bit weird to allow appendpath in a no-name section, but
+        # someone may found a use for it
+        store = self.get_store('foo.conf')
+        store._load_from_string('''
+foo=bar
+foo:policy = appendpath
+''')
+        matcher = config.LocationMatcher(store, 'dir/subdir')
+        sections = list(matcher.get_sections())
+        self.assertLength(1, sections)
+        self.assertEquals('bar/dir/subdir', sections[0].get('foo'))
+
+    def test_file_urls_are_normalized(self):
+        store = self.get_store('foo.conf')
+        matcher = config.LocationMatcher(store, 'file:///dir/subdir')
+        self.assertEquals('/dir/subdir', matcher.location)
+
+
+class TestStackGet(tests.TestCase):
+
+    # FIXME: This should be parametrized for all known Stack or dedicated
+    # paramerized tests created to avoid bloating -- vila 2011-03-31
+
+    def test_single_config_get(self):
+        conf = dict(foo='bar')
+        conf_stack = config.Stack([conf])
+        self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_first_definition(self):
+        conf1 = dict(foo='bar')
+        conf2 = dict(foo='baz')
+        conf_stack = config.Stack([conf1, conf2])
+        self.assertEquals('bar', conf_stack.get('foo'))
+
+    def test_get_embedded_definition(self):
+        conf1 = dict(yy='12')
+        conf2 = config.Stack([dict(xx='42'), dict(foo='baz')])
+        conf_stack = config.Stack([conf1, conf2])
+        self.assertEquals('baz', conf_stack.get('foo'))
+
+    def test_get_for_empty_stack(self):
+        conf_stack = config.Stack([])
+        self.assertEquals(None, conf_stack.get('foo'))
+
+    def test_get_for_empty_section_callable(self):
+        conf_stack = config.Stack([lambda : []])
+        self.assertEquals(None, conf_stack.get('foo'))
+
+    def test_get_for_broken_callable(self):
+        # Trying to use and invalid callable raises an exception on first use
+        conf_stack = config.Stack([lambda : object()])
+        self.assertRaises(TypeError, conf_stack.get, 'foo')
+
+
+class TestStackWithTransport(tests.TestCaseWithTransport):
+
+    def setUp(self):
+        super(TestStackWithTransport, self).setUp()
+        # FIXME: A more elaborate builder for the stack would avoid building a
+        # branch even for tests that don't need it.
+        self.branch = self.make_branch('branch')
+
+
+class TestStackSet(TestStackWithTransport):
+
+    scenarios = [(key, {'get_stack': builder})
+                 for key, builder in test_stack_builder_registry.iteritems()]
+
+    def test_simple_set(self):
+        conf = self.get_stack(self)
+        conf.store._load_from_string('foo=bar')
+        self.assertEquals('bar', conf.get('foo'))
+        conf.set('foo', 'baz')
+        # Did we get it back ?
+        self.assertEquals('baz', conf.get('foo'))
+
+    def test_set_creates_a_new_section(self):
+        conf = self.get_stack(self)
+        conf.set('foo', 'baz')
+        self.assertEquals, 'baz', conf.get('foo')
+
+
+class TestStackRemove(TestStackWithTransport):
+
+    scenarios = [(key, {'get_stack': builder})
+                 for key, builder in test_stack_builder_registry.iteritems()]
+
+    def test_remove_existing(self):
+        conf = self.get_stack(self)
+        conf.store._load_from_string('foo=bar')
+        self.assertEquals('bar', conf.get('foo'))
+        conf.remove('foo')
+        # Did we get it back ?
+        self.assertEquals(None, conf.get('foo'))
+
+    def test_remove_unknown(self):
+        conf = self.get_stack(self)
+        self.assertRaises(KeyError, conf.remove, 'I_do_not_exist')
+
+
+class TestConcreteStacks(TestStackWithTransport):
+
+    scenarios = [(key, {'get_stack': builder})
+                 for key, builder in test_stack_builder_registry.iteritems()]
+
+    def test_build_stack(self):
+        stack = self.get_stack(self)
+
+
 class TestConfigGetOptions(tests.TestCaseWithTransport, TestOptionsMixin):
 
     def setUp(self):
         super(TestConfigGetOptions, self).setUp()
         create_configs(self)
 
-    # One variable in none of the above
     def test_no_variable(self):
         # Using branch should query branch, locations and bazaar
         self.assertOptions([], self.branch_config)
@@ -2483,8 +2963,8 @@ class TestAutoUserId(tests.TestCase):
             raise TestSkipped("User name inference not implemented on win32")
         realname, address = config._auto_user_id()
         if os.path.exists('/etc/mailname'):
-            self.assertTrue(realname)
-            self.assertTrue(address)
+            self.assertIsNot(None, realname)
+            self.assertIsNot(None, address)
         else:
             self.assertEquals((None, None), (realname, address))
 

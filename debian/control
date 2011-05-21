@@ -19,7 +19,7 @@ Build-Depends: cython | python-pyrex,
                python-subunit,
                python-testtools (>= 0.9.5~)
 Standards-Version: 3.9.1
-X-Python-Version: >= 2.4
+X-Python-Version: >= 2.6
 Vcs-Bzr: http://bzr.debian.org/pkg-bazaar/bzr/2.4
 Homepage: http://bazaar-vcs.org
 Dm-Upload-Allowed: yes

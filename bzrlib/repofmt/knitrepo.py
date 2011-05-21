@@ -16,6 +16,8 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import itertools
+
 from bzrlib import (
     bzrdir,
     errors,
@@ -34,14 +36,16 @@ from bzrlib import (
 """)
 from bzrlib.decorators import needs_read_lock, needs_write_lock
 from bzrlib.repository import (
-    CommitBuilder,
     InterRepository,
-    InterSameDataRepository,
     IsInWriteGroupError,
-    MetaDirRepository,
-    MetaDirRepositoryFormat,
     RepositoryFormat,
-    RootCommitBuilder,
+    )
+from bzrlib.vf_repository import (
+    InterSameDataRepository,
+    MetaDirVersionedFileRepository,
+    MetaDirVersionedFileRepositoryFormat,
+    VersionedFileCommitBuilder,
+    VersionedFileRootCommitBuilder,
     )
 from bzrlib import symbol_versioning
 
@@ -103,7 +107,7 @@ class _KnitsParentsProvider(object):
         return result
 
 
-class KnitRepository(MetaDirRepository):
+class KnitRepository(MetaDirVersionedFileRepository):
     """Knit format repository."""
 
     # These attributes are inherited from the Repository base class. Setting
@@ -115,7 +119,7 @@ class KnitRepository(MetaDirRepository):
 
     def __init__(self, _format, a_bzrdir, control_files, _commit_builder_class,
         _serializer):
-        MetaDirRepository.__init__(self, _format, a_bzrdir, control_files)
+        super(KnitRepository, self).__init__(_format, a_bzrdir, control_files)
         self._commit_builder_class = _commit_builder_class
         self._serializer = _serializer
         self._reconcile_fixes_text_parents = True
@@ -233,7 +237,7 @@ class KnitRepository(MetaDirRepository):
         return _KnitsParentsProvider(self.revisions)
 
 
-class RepositoryFormatKnit(MetaDirRepositoryFormat):
+class RepositoryFormatKnit(MetaDirVersionedFileRepositoryFormat):
     """Bzr repository knit format (generalized).
 
     This repository format has:
@@ -269,7 +273,6 @@ class RepositoryFormatKnit(MetaDirRepositoryFormat):
     _fetch_uses_deltas = True
     fast_deltas = False
     supports_funky_characters = True
-    supports_full_versioned_files = True
     # The revision.kndx could potentially claim a revision has a different
     # parent to the revision text.
     revision_graph_can_have_wrong_parents = True
@@ -381,7 +384,7 @@ class RepositoryFormatKnit1(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = CommitBuilder
+    _commit_builder_class = VersionedFileCommitBuilder
     @property
     def _serializer(self):
         return xml5.serializer_v5
@@ -415,7 +418,7 @@ class RepositoryFormatKnit3(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = RootCommitBuilder
+    _commit_builder_class = VersionedFileRootCommitBuilder
     rich_root_data = True
     experimental = True
     supports_tree_reference = True
@@ -457,7 +460,7 @@ class RepositoryFormatKnit4(RepositoryFormatKnit):
     """
 
     repository_class = KnitRepository
-    _commit_builder_class = RootCommitBuilder
+    _commit_builder_class = VersionedFileRootCommitBuilder
     rich_root_data = True
     supports_tree_reference = False
     @property
@@ -506,7 +509,8 @@ class InterKnitRepo(InterSameDataRepository):
     @needs_read_lock
     def search_missing_revision_ids(self,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None, if_present_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None,
+            limit=None):
         """See InterRepository.search_missing_revision_ids()."""
         if symbol_versioning.deprecated_passed(revision_id):
             symbol_versioning.warn(
@@ -541,6 +545,9 @@ class InterKnitRepo(InterSameDataRepository):
             # that against the revision records.
             result_set = set(
                 self.source._eliminate_revisions_not_present(required_revisions))
+        if limit is not None:
+            topo_ordered = self.source.get_graph().iter_topo_order(result_set)
+            result_set = set(itertools.islice(topo_ordered, limit))
         return self.source.revision_ids_to_search_result(result_set)
 
 

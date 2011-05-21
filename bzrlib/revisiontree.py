@@ -142,7 +142,7 @@ class InventoryRevisionTree(RevisionTree,tree.InventoryTree):
         for path, entry in entries:
             yield path, 'V', entry.kind, entry.file_id, entry
 
-    def get_symlink_target(self, file_id):
+    def get_symlink_target(self, file_id, path=None):
         ie = self._inventory[file_id]
         # Inventories store symlink targets in unicode
         return ie.symlink_target

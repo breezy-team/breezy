@@ -33,7 +33,7 @@ from bzrlib import (
     transform,
     )
 from bzrlib.symbol_versioning import deprecated_in
-from bzrlib.tests import features
+from bzrlib.tests import features, EncodingAdapter
 from bzrlib.tests.blackbox.test_diff import subst_dates
 
 
@@ -1419,6 +1419,52 @@ class TestDiffFromTool(tests.TestCaseWithTransport):
             self.assertTrue(os.path.samefile('tree/newname', new_path))
         # make sure we can create files with the same parent directories
         diff_obj._prepare_files('file2-id', 'oldname2', 'newname2')
+
+
+class TestDiffFromToolEncodedFilename(tests.TestCaseWithTransport):
+
+    def test_encodable_filename(self):
+        # Just checks file path for external diff tool.
+        # We cannot change CPython's internal encoding used by os.exec*.
+        import sys
+        diffobj = diff.DiffFromTool(['dummy', '@old_path', '@new_path'],
+                                    None, None, None)
+        for _, scenario in EncodingAdapter.encoding_scenarios:
+            encoding = scenario['encoding']
+            dirname  = scenario['info']['directory']
+            filename = scenario['info']['filename']
+
+            self.overrideAttr(diffobj, '_fenc', lambda: encoding)
+            relpath = dirname + u'/' + filename
+            fullpath = diffobj._safe_filename('safe', relpath)
+            self.assertEqual(
+                    fullpath,
+                    fullpath.encode(encoding).decode(encoding)
+                    )
+            self.assert_(fullpath.startswith(diffobj._root + '/safe'))
+
+    def test_unencodable_filename(self):
+        import sys
+        diffobj = diff.DiffFromTool(['dummy', '@old_path', '@new_path'],
+                                    None, None, None)
+        for _, scenario in EncodingAdapter.encoding_scenarios:
+            encoding = scenario['encoding']
+            dirname  = scenario['info']['directory']
+            filename = scenario['info']['filename']
+
+            if encoding == 'iso-8859-1':
+                encoding = 'iso-8859-2'
+            else:
+                encoding = 'iso-8859-1'
+
+            self.overrideAttr(diffobj, '_fenc', lambda: encoding)
+            relpath = dirname + u'/' + filename
+            fullpath = diffobj._safe_filename('safe', relpath)
+            self.assertEqual(
+                    fullpath,
+                    fullpath.encode(encoding).decode(encoding)
+                    )
+            self.assert_(fullpath.startswith(diffobj._root + '/safe'))
 
 
 class TestGetTreesAndBranchesToDiffLocked(tests.TestCaseWithTransport):

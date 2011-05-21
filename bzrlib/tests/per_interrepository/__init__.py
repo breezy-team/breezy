@@ -37,7 +37,6 @@ from bzrlib.errors import (
 
 from bzrlib.repository import (
     format_registry,
-    InterDifferingSerializer,
     InterRepository,
     )
 from bzrlib.tests import (
@@ -46,6 +45,9 @@ from bzrlib.tests import (
     multiply_tests,
     )
 from bzrlib.tests.per_controldir.test_controldir import TestCaseWithControlDir
+from bzrlib.vf_repository import (
+    InterDifferingSerializer,
+    )
 
 
 def make_scenarios(transport_server, transport_readonly_server, formats):

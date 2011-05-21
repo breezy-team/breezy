@@ -226,6 +226,7 @@ class ControlDir(ControlComponent):
         get at a repository.
 
         :param _unsupported: a private parameter, not part of the api.
+
         TODO: static convenience version of this?
         """
         raise NotImplementedError(self.open_repository)
@@ -314,8 +315,8 @@ class ControlDir(ControlComponent):
         whether one existed before or not; and a local branch is always
         created.
 
-        if revision_id is not None, then the clone operation may tune
-            itself to download less data.
+        :param revision_id: if revision_id is not None, then the clone
+            operation may tune itself to download less data.
         :param accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
