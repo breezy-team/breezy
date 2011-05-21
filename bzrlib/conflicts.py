@@ -72,7 +72,7 @@ class cmd_conflicts(commands.Command):
                     continue
                 self.outf.write(conflict.path + '\n')
             else:
-                self.outf.write(str(conflict) + '\n')
+                self.outf.write(unicode(conflict) + '\n')
 
 
 resolve_action_registry = registry.Registry()
@@ -148,7 +148,7 @@ class cmd_resolve(commands.Command):
                     trace.note('%d conflict(s) auto-resolved.', len(resolved))
                     trace.note('Remaining conflicts:')
                     for conflict in un_resolved:
-                        trace.note(conflict)
+                        trace.note(unicode(conflict))
                     return 1
                 else:
                     trace.note('All conflicts resolved.')
@@ -291,7 +291,7 @@ class ConflictList(object):
     def to_strings(self):
         """Generate strings for the provided conflicts"""
         for conflict in self:
-            yield str(conflict)
+            yield unicode(conflict)
 
     def remove_files(self, tree):
         """Remove the THIS, BASE and OTHER files for listed conflicts"""
@@ -390,7 +390,7 @@ class Conflict(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-    def __str__(self):
+    def __unicode__(self):
         return self.format % self.__dict__
 
     def __repr__(self):

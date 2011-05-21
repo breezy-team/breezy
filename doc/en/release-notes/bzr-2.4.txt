@@ -87,6 +87,9 @@ Bug Fixes
   submit_location public_location`` never sets ``submit_branch``
   nor ``public_branch``.  (Vincent Ladeuil)
 
+* Conflicts involving non-ascii filenames are now properly reported rather
+  than failing with a UnicodeEncodeError. (Martin [GZ], #686161)
+
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
 
