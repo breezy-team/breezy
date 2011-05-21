@@ -125,9 +125,16 @@ class TestConflicts(tests.TestCaseWithTransport):
         self.assertEqual(conflicts.ConflictList([]), tree.conflicts())
 
 
-class TestConflictStanzas(tests.TestCase):
+class TestPerConflict(tests.TestCase):
 
     scenarios = scenarios.multiply_scenarios(vary_by_conflicts())
+
+    def test_stringification(self):
+        text = unicode(self.conflict)
+        self.assertContainsString(text, self.conflict.path)
+        self.assertContainsString(text.lower(), "conflict")
+        self.assertContainsString(repr(self.conflict),
+            self.conflict.__class__.__name__)
 
     def test_stanza_roundtrip(self):
         p = self.conflict
@@ -159,12 +166,16 @@ class TestConflictStanzas(tests.TestCase):
             self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
 
 
-class TestConflictListStanzas(tests.TestCase):
+class TestConflictList(tests.TestCase):
 
     def test_stanzas_roundtrip(self):
         stanzas_iter = example_conflicts.to_stanzas()
         processed = conflicts.ConflictList.from_stanzas(stanzas_iter)
         self.assertEqual(example_conflicts, processed)
+
+    def test_stringification(self):
+        for text, o in zip(example_conflicts.to_strings(), example_conflicts):
+            self.assertEqual(text, unicode(o))
 
 
 # FIXME: The shell-like tests should be converted to real whitebox tests... or

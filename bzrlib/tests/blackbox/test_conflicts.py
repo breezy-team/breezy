@@ -1,4 +1,4 @@
-# Copyright (C) 2006, 2007, 2009, 2010 Canonical Ltd
+# Copyright (C) 2006, 2007, 2009, 2010, 2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ from bzrlib import (
     workingtree,
     )
 from bzrlib.tests import script
+
 
 def make_tree_with_conflicts(test, this_path='this', other_path='other',
         prefix='my'):
@@ -80,3 +81,45 @@ Text conflict in my_other_file
 Path conflict: mydir3 / mydir2
 Text conflict in myfile
 """)
+
+
+class TestUnicodePaths(tests.TestCaseWithTransport):
+    """Unicode characters in conflicts should be displayed properly"""
+
+    encoding = "UTF-8"
+
+    def _as_output(self, text):
+        return text
+
+    def test_messages(self):
+        """Conflict messages involving non-ascii paths are displayed okay"""
+        make_tree_with_conflicts(self, "branch", prefix=u"\xA7")
+        out, err = self.run_bzr(["conflicts", "-d", "branch"],
+            encoding=self.encoding)
+        self.assertEqual(out.decode(self.encoding),
+            u"Text conflict in \xA7_other_file\n"
+            u"Path conflict: \xA7dir3 / \xA7dir2\n"
+            u"Text conflict in \xA7file\n")
+        self.assertEqual(err, "")
+
+    def test_text_conflict_paths(self):
+        """Text conflicts on non-ascii paths are displayed okay"""
+        make_tree_with_conflicts(self, "branch", prefix=u"\xA7")
+        out, err = self.run_bzr(["conflicts", "-d", "branch", "--text"],
+            encoding=self.encoding)
+        self.assertEqual(out.decode(self.encoding),
+            u"\xA7_other_file\n"
+            u"\xA7file\n")
+        self.assertEqual(err, "")
+
+
+class TestUnicodePathsOnAsciiTerminal(TestUnicodePaths):
+    """Undisplayable unicode characters in conflicts should be escaped"""
+
+    encoding = "ascii"
+
+    def setUp(self):
+        self.skip("Need to decide if replacing is the desired behaviour")
+
+    def _as_output(self, text):
+        return text.encode(self.encoding, "replace")
