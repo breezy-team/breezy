@@ -822,25 +822,34 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
 
     def test_observed_sha1_cachable(self):
         state, entry = self.get_state_with_a()
+        state.save()
         atime = time.time() - 10
         self.build_tree(['a'])
-        statvalue = os.lstat('a')
-        statvalue = test_dirstate._FakeStat(statvalue.st_size, atime, atime,
-            statvalue.st_dev, statvalue.st_ino, statvalue.st_mode)
+        statvalue = test_dirstate._FakeStat.from_stat(os.lstat('a'))
+        statvalue.st_mtime = statvalue.st_ctime = atime
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
         state._observed_sha1(entry, "foo", statvalue)
         self.assertEqual('foo', entry[1][0][1])
         packed_stat = dirstate.pack_stat(statvalue)
         self.assertEqual(packed_stat, entry[1][0][4])
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
+                         state._dirblock_state)
 
     def test_observed_sha1_not_cachable(self):
         state, entry = self.get_state_with_a()
+        state.save()
         oldval = entry[1][0][1]
         oldstat = entry[1][0][4]
         self.build_tree(['a'])
         statvalue = os.lstat('a')
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
         state._observed_sha1(entry, "foo", statvalue)
         self.assertEqual(oldval, entry[1][0][1])
         self.assertEqual(oldstat, entry[1][0][4])
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
 
     def test_update_entry(self):
         state, _ = self.get_state_with_a()
@@ -959,35 +968,38 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
         # Dirblock is not updated (the link is too new)
         self.assertEqual([('l', '', 6, False, dirstate.DirState.NULLSTAT)],
                          entry[1])
-        self.assertEqual(dirstate.DirState.IN_MEMORY_MODIFIED,
+        # The file entry turned into a symlink, that is considered
+        # HASH modified worthy.
+        self.assertEqual(dirstate.DirState.IN_MEMORY_HASH_MODIFIED,
                          state._dirblock_state)
 
         # Because the stat_value looks new, we should re-read the target
+        del state._log[:]
         link_or_sha1 = self.update_entry(state, entry, abspath='a',
                                           stat_value=stat_value)
         self.assertEqual('target', link_or_sha1)
-        self.assertEqual([('read_link', 'a', ''),
-                          ('read_link', 'a', ''),
-                         ], state._log)
+        self.assertEqual([('read_link', 'a', '')], state._log)
         self.assertEqual([('l', '', 6, False, dirstate.DirState.NULLSTAT)],
                          entry[1])
+        state.save()
         state.adjust_time(+20) # Skip into the future, all files look old
+        del state._log[:]
         link_or_sha1 = self.update_entry(state, entry, abspath='a',
                                           stat_value=stat_value)
+        # The symlink stayed a symlink. So while it is new enough to cache, we
+        # don't bother setting the flag, because it is not really worth saving
+        # (when we stat the symlink, we'll have paged in the target.)
+        self.assertEqual(dirstate.DirState.IN_MEMORY_UNMODIFIED,
+                         state._dirblock_state)
         self.assertEqual('target', link_or_sha1)
         # We need to re-read the link because only now can we cache it
-        self.assertEqual([('read_link', 'a', ''),
-                          ('read_link', 'a', ''),
-                          ('read_link', 'a', ''),
-                         ], state._log)
+        self.assertEqual([('read_link', 'a', '')], state._log)
         self.assertEqual([('l', 'target', 6, False, packed_stat)],
                          entry[1])
 
+        del state._log[:]
         # Another call won't re-read the link
-        self.assertEqual([('read_link', 'a', ''),
-                          ('read_link', 'a', ''),
-                          ('read_link', 'a', ''),
-                         ], state._log)
+        self.assertEqual([], state._log)
         link_or_sha1 = self.update_entry(state, entry, abspath='a',
                                           stat_value=stat_value)
         self.assertEqual('target', link_or_sha1)
@@ -1020,7 +1032,11 @@ class TestUpdateEntry(test_dirstate.TestCaseWithDirState):
                          state._dirblock_state)
         # Change the last-modified time for the directory
         t = time.time() - 100.0
-        os.utime('a', (t, t))
+        try:
+            os.utime('a', (t, t))
+        except OSError:
+            # It looks like Win32 + FAT doesn't allow to change times on a dir.
+            raise tests.TestSkipped("can't update mtime of a dir on FAT")
         saved_packed_stat = entry[1][0][-1]
         self.assertIs(None, self.do_update_entry(state, entry, 'a'))
         # We *do* go ahead and update the information in the dirblocks, but we

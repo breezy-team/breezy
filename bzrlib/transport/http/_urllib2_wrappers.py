@@ -110,19 +110,10 @@ class _ReportingFileSocket(object):
         self.report_activity(len(s), 'read')
         return s
 
-    # httplib in python 2.4 and 2.5 defines a SSLFile wrapper whose readline
-    # method lacks the size parameter. python2.6 provides a proper ssl socket
-    # and added it. python2.7 uses it, forcing us to provide it.
-    if sys.version_info < (2, 6):
-        def readline(self):
-            s = self.filesock.readline()
-            self.report_activity(len(s), 'read')
-            return s
-    else:
-        def readline(self, size=-1):
-            s = self.filesock.readline(size)
-            self.report_activity(len(s), 'read')
-            return s
+    def readline(self, size=-1):
+        s = self.filesock.readline(size)
+        self.report_activity(len(s), 'read')
+        return s
 
     def __getattr__(self, name):
         return getattr(self.filesock, name)
@@ -1402,7 +1393,7 @@ def get_digest_algorithm_impls(algorithm):
     if algorithm == 'MD5':
         H = lambda x: osutils.md5(x).hexdigest()
     elif algorithm == 'SHA':
-        H = lambda x: osutils.sha(x).hexdigest()
+        H = osutils.sha_string
     if H is not None:
         KD = lambda secret, data: H("%s:%s" % (secret, data))
     return H, KD
@@ -1411,7 +1402,7 @@ def get_digest_algorithm_impls(algorithm):
 def get_new_cnonce(nonce, nonce_count):
     raw = '%s:%d:%s:%s' % (nonce, nonce_count, time.ctime(),
                            urllib2.randombytes(8))
-    return osutils.sha(raw).hexdigest()[:16]
+    return osutils.sha_string(raw)[:16]
 
 
 class DigestAuthHandler(AbstractAuthHandler):

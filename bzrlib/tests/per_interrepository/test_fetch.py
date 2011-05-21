@@ -76,7 +76,7 @@ class TestInterRepository(TestCaseWithInterRepository):
             tree.lock_read()
             self.addCleanup(tree.unlock)
             tree.get_file_text('file1')
-            for file_id in tree:
+            for file_id in tree.all_file_ids():
                 if tree.inventory[file_id].kind == "file":
                     tree.get_file(file_id).read()
 

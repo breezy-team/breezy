@@ -179,6 +179,23 @@ class CachingParentsProvider(object):
             self.missing_keys.add(key)
 
 
+class CallableToParentsProviderAdapter(object):
+    """A parents provider that adapts any callable to the parents provider API.
+
+    i.e. it accepts calls to self.get_parent_map and relays them to the
+    callable it was constructed with.
+    """
+
+    def __init__(self, a_callable):
+        self.callable = a_callable
+
+    def __repr__(self):
+        return "%s(%r)" % (self.__class__.__name__, self.callable)
+
+    def get_parent_map(self, keys):
+        return self.callable(keys)
+
+
 class Graph(object):
     """Provide incremental access to revision graphs.
 
@@ -233,7 +250,8 @@ class Graph(object):
         common ancestor of all border ancestors, because this shows that it
         cannot be a descendant of any border ancestor.
 
-        The scaling of this operation should be proportional to
+        The scaling of this operation should be proportional to:
+
         1. The number of uncommon ancestors
         2. The number of border ancestors
         3. The length of the shortest path between a border ancestor and an
@@ -371,8 +389,8 @@ class Graph(object):
 
         :param unique_revision: The revision_id whose ancestry we are
             interested in.
-            XXX: Would this API be better if we allowed multiple revisions on
-                 to be searched here?
+            (XXX: Would this API be better if we allowed multiple revisions on
+            to be searched here?)
         :param common_revisions: Revision_ids of ancestries to exclude.
         :return: A set of revisions in the ancestry of unique_revision
         """
@@ -1546,7 +1564,7 @@ class AbstractSearchResult(object):
 
         The recipe allows reconstruction of the same results at a later date.
 
-        :return: A tuple of (search_kind_str, *details).  The details vary by
+        :return: A tuple of `(search_kind_str, *details)`.  The details vary by
             kind of search result.
         """
         raise NotImplementedError(self.get_recipe)
@@ -1831,7 +1849,7 @@ class NotInOtherForRevs(AbstractSearch):
     """Find all revisions missing in one repo for a some specific heads."""
 
     def __init__(self, to_repo, from_repo, required_ids, if_present_ids=None,
-            find_ghosts=False):
+            find_ghosts=False, limit=None):
         """Constructor.
 
         :param required_ids: revision IDs of heads that must be found, or else
@@ -1841,12 +1859,14 @@ class NotInOtherForRevs(AbstractSearch):
         :param if_present_ids: revision IDs of heads that may be absent in the
             source repository.  If present, then their ancestry not already
             found in other will be included in the search result.
+        :param limit: maximum number of revisions to fetch
         """
         self.to_repo = to_repo
         self.from_repo = from_repo
         self.find_ghosts = find_ghosts
         self.required_ids = required_ids
         self.if_present_ids = if_present_ids
+        self.limit = limit
 
     def __repr__(self):
         if len(self.required_ids) > 5:
@@ -1858,14 +1878,17 @@ class NotInOtherForRevs(AbstractSearch):
         else:
             ifp_revs_repr = repr(self.if_present_ids)
 
-        return "<%s from:%r to:%r find_ghosts:%r req'd:%r if-present:%r>" % (
-            self.__class__.__name__, self.from_repo, self.to_repo,
-            self.find_ghosts, reqd_revs_repr, ifp_revs_repr)
+        return ("<%s from:%r to:%r find_ghosts:%r req'd:%r if-present:%r"
+                "limit:%r>") % (
+                self.__class__.__name__, self.from_repo, self.to_repo,
+                self.find_ghosts, reqd_revs_repr, ifp_revs_repr,
+                self.limit)
 
     def execute(self):
         return self.to_repo.search_missing_revision_ids(
             self.from_repo, revision_ids=self.required_ids,
-            if_present_ids=self.if_present_ids, find_ghosts=self.find_ghosts)
+            if_present_ids=self.if_present_ids, find_ghosts=self.find_ghosts,
+            limit=self.limit)
 
 
 def collapse_linear_regions(parent_map):

@@ -162,7 +162,7 @@ class BTreeBuilder(index.GraphIndexBuilder):
         :param references: An iterable of iterables of keys. Each is a
             reference to another key.
         :param value: The value to associate with the key. It may be any
-            bytes as long as it does not contain \0 or \n.
+            bytes as long as it does not contain \\0 or \\n.
         """
         # Ensure that 'key' is a StaticTuple
         key = static_tuple.StaticTuple.from_sequence(key).intern()

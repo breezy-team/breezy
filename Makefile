@@ -75,9 +75,7 @@ realclean: clean
 docfiles = bzr bzrlib
 api-docs:
 	mkdir -p api/html
-	PYTHONPATH=$(PWD) $(PYTHON) tools/bzr_epydoc --html -o api/html --docformat 'restructuredtext en' $(docfiles)
-check-api-docs:
-	PYTHONPATH=$(PWD) $(PYTHON) tools/bzr_epydoc --check --docformat 'restructuredtext en' $(docfiles)
+	pydoctor --make-html --docformat='restructuredtext' --html-output=api/html $(docfiles)
 
 # build tags for emacs and vim
 TAGS:
@@ -418,6 +416,26 @@ clean-win32: clean-docs
 	$(PYTHON) tools/win32/ostools.py remove bzr-setup*.exe
 	$(PYTHON) tools/win32/ostools.py remove bzr-*win32.exe
 	$(PYTHON) tools/win32/ostools.py remove dist
+
+
+# i18n targets
+
+.PHONY: update-pot po/bzr.pot
+update-pot: po/bzr.pot
+
+TRANSLATABLE_PYFILES:=$(shell find bzrlib -name '*.py' \
+    		| grep -v 'bzrlib/tests/' \
+    		| grep -v 'bzrlib/doc' \
+		)
+
+po/bzr.pot: $(PYFILES) $(DOCFILES)
+	$(PYTHON) ./bzr export-pot > po/bzr.pot
+	echo $(TRANSLATABLE_PYFILES) | xargs \
+	  xgettext --package-name "bzr" \
+	  --msgid-bugs-address "<bazaar@canonical.com>" \
+	  --copyright-holder "Canonical" \
+	  --from-code ISO-8859-1 --join --sort-by-file --add-comments=i18n: \
+	  -d bzr -p po -o bzr.pot
 
 
 ### Packaging Targets ###

@@ -31,8 +31,6 @@ Interesting module attributes:
 # of a SmartServerRequest subclass.
 
 
-import tempfile
-import thread
 import threading
 
 from bzrlib import (
@@ -48,6 +46,9 @@ from bzrlib import (
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib.bundle import serializer
+
+import tempfile
+import thread
 """)
 
 
@@ -134,7 +135,7 @@ class SmartServerRequest(object):
         It will return a SmartServerResponse if the command does not expect a
         body.
 
-        :param *args: the arguments of the request.
+        :param args: the arguments of the request.
         """
         self._check_enabled()
         return self.do(*args)

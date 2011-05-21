@@ -18,6 +18,9 @@
 """Inter-object utility class."""
 
 
+from bzrlib.errors import NoCompatibleInter
+
+
 class InterObject(object):
     """This class represents operations taking place between two objects.
 
@@ -75,13 +78,14 @@ class InterObject(object):
                        the InterObject instance.
         :param target: the object to be the 'target' member of
                        the InterObject instance.
+
         If an optimised worker exists it will be used otherwise
         a default Inter worker instance will be created.
         """
         for provider in reversed(klass._optimisers):
             if provider.is_compatible(source, target):
                 return provider(source, target)
-        return klass(source, target)
+        raise NoCompatibleInter(source, target)
 
     def lock_read(self):
         """Take out a logical read lock.

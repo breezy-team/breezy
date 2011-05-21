@@ -30,8 +30,10 @@ from bzrlib.tests import TestCaseWithTransport
 from bzrlib.tests import (
     fixtures,
     HardlinkFeature,
+    script,
     test_server,
     )
+from bzrlib.tests.blackbox import test_switch
 from bzrlib.tests.test_sftp_transport import TestCaseWithSFTPServer
 from bzrlib.tests.script import run_script
 from bzrlib.urlutils import local_path_to_url, strip_trailing_slash
@@ -478,6 +480,25 @@ class TestSmartServerBranching(TestCaseWithTransport):
         # upwards without agreement from bzr's network support maintainers.
         self.assertLength(9, self.hpss_calls)
 
+    def test_branch_to_stacked_from_trivial_branch_streaming_acceptance(self):
+        self.setup_smart_server_with_call_log()
+        t = self.make_branch_and_tree('from')
+        for count in range(9):
+            t.commit(message='commit %d' % count)
+        self.reset_smart_call_log()
+        out, err = self.run_bzr(['branch', '--stacked', self.get_url('from'),
+            'local-target'])
+        # XXX: the number of hpss calls for this case isn't deterministic yet,
+        # so we can't easily assert about the number of calls.
+        #self.assertLength(XXX, self.hpss_calls)
+        # We can assert that none of the calls were readv requests for rix
+        # files, though (demonstrating that at least get_parent_map calls are
+        # not using VFS RPCs).
+        readvs_of_rix_files = [
+            c for c in self.hpss_calls
+            if c.call.method == 'readv' and c.call.args[-1].endswith('.rix')]
+        self.assertLength(0, readvs_of_rix_files)
+
 
 class TestRemoteBranch(TestCaseWithSFTPServer):
 
@@ -516,3 +537,32 @@ class TestDeprecatedAliases(TestCaseWithTransport):
             2>The command 'bzr %(command)s' has been deprecated in bzr 2.4. Please use 'bzr branch' instead.
             2>bzr: ERROR: Not a branch...
             """ % locals())
+
+
+class TestBranchParentLocation(test_switch.TestSwitchParentLocationBase):
+
+    def _checkout_and_branch(self, option=''):
+        self.script_runner.run_script(self, '''
+                $ bzr checkout %(option)s repo/trunk checkout
+                $ cd checkout
+                $ bzr branch --switch ../repo/trunk ../repo/branched
+                2>Branched 0 revision(s).
+                2>Tree is up to date at revision 0.
+                2>Switched to branch:...branched...
+                $ cd ..
+                ''' % locals())
+        bound_branch = branch.Branch.open_containing('checkout')[0]
+        master_branch = branch.Branch.open_containing('repo/branched')[0]
+        return (bound_branch, master_branch)
+
+    def test_branch_switch_parent_lightweight(self):
+        """Lightweight checkout using bzr branch --switch."""
+        bb, mb = self._checkout_and_branch(option='--lightweight')
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)
+
+    def test_branch_switch_parent_heavyweight(self):
+        """Heavyweight checkout using bzr branch --switch."""
+        bb, mb = self._checkout_and_branch()
+        self.assertParent('repo/trunk', bb)
+        self.assertParent('repo/trunk', mb)

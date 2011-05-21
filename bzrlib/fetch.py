@@ -28,7 +28,7 @@ import operator
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from bzrlib import (
-    graph,
+    graph as _mod_graph,
     tsort,
     versionedfile,
     )
@@ -160,13 +160,13 @@ class RepoFetcher(object):
         elif self._last_revision == NULL_REVISION:
             # fetch_spec is None + last_revision is null => empty fetch.
             # explicit limit of no revisions needed
-            return graph.EmptySearchResult()
+            return _mod_graph.EmptySearchResult()
         elif self._last_revision is not None:
-            return graph.NotInOtherForRevs(self.to_repository,
+            return _mod_graph.NotInOtherForRevs(self.to_repository,
                 self.from_repository, [self._last_revision],
                 find_ghosts=self.find_ghosts).execute()
         else: # self._last_revision is None:
-            return graph.EverythingNotInOther(self.to_repository,
+            return _mod_graph.EverythingNotInOther(self.to_repository,
                 self.from_repository,
                 find_ghosts=self.find_ghosts).execute()
 
@@ -371,24 +371,28 @@ class FetchSpecFactory(object):
         self.source_repo = None
         self.target_repo = None
         self.target_repo_kind = None
+        self.limit = None
 
     def add_revision_ids(self, revision_ids):
         """Add revision_ids to the set of revision_ids to be fetched."""
         self._explicit_rev_ids.update(revision_ids)
-        
+
     def make_fetch_spec(self):
         """Build a SearchResult or PendingAncestryResult or etc."""
         if self.target_repo_kind is None or self.source_repo is None:
             raise AssertionError(
                 'Incomplete FetchSpecFactory: %r' % (self.__dict__,))
         if len(self._explicit_rev_ids) == 0 and self.source_branch is None:
+            if self.limit is not None:
+                raise NotImplementedError(
+                    "limit is only supported with a source branch set")
             # Caller hasn't specified any revisions or source branch
             if self.target_repo_kind == TargetRepoKinds.EMPTY:
-                return graph.EverythingResult(self.source_repo)
+                return _mod_graph.EverythingResult(self.source_repo)
             else:
                 # We want everything not already in the target (or target's
                 # fallbacks).
-                return graph.EverythingNotInOther(
+                return _mod_graph.EverythingNotInOther(
                     self.target_repo, self.source_repo).execute()
         heads_to_fetch = set(self._explicit_rev_ids)
         if self.source_branch is not None:
@@ -411,9 +415,14 @@ class FetchSpecFactory(object):
             # heads_to_fetch will almost certainly be present so this doesn't
             # matter much.
             all_heads = heads_to_fetch.union(if_present_fetch)
-            return graph.PendingAncestryResult(all_heads, self.source_repo)
-        return graph.NotInOtherForRevs(self.target_repo, self.source_repo,
-            required_ids=heads_to_fetch, if_present_ids=if_present_fetch
-            ).execute()
-
-
+            ret = _mod_graph.PendingAncestryResult(all_heads, self.source_repo)
+            if self.limit is not None:
+                graph = self.source_repo.get_graph()
+                topo_order = list(graph.iter_topo_order(ret.get_keys()))
+                result_set = topo_order[:self.limit]
+                ret = self.source_repo.revision_ids_to_search_result(result_set)
+            return ret
+        else:
+            return _mod_graph.NotInOtherForRevs(self.target_repo, self.source_repo,
+                required_ids=heads_to_fetch, if_present_ids=if_present_fetch,
+                limit=self.limit).execute()
