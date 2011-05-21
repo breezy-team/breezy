@@ -65,6 +65,7 @@ up=pull
 import os
 import string
 import sys
+import weakref
 
 from bzrlib import commands
 from bzrlib.decorators import needs_write_lock
@@ -2191,6 +2192,15 @@ class Store(object):
         """
         raise NotImplementedError(self._load_from_string)
 
+    def unload(self):
+        """Unloads the Store.
+
+        This should make is_loaded() return False. This is used when the caller
+        knows that the persistent storage has changed or may have change since
+        the last load.
+        """
+        raise NotImplementedError(self.unload)
+
     def save(self):
         """Saves the Store to persistent storage."""
         raise NotImplementedError(self.save)
@@ -2243,6 +2253,9 @@ class IniFileStore(Store):
 
     def is_loaded(self):
         return self._config_obj != None
+
+    def unload(self):
+        self._config_obj = None
 
     def load(self):
         """Load the store from the associated file."""
@@ -2389,14 +2402,31 @@ class LocationStore(LockableIniFileStore):
         super(LocationStore, self).__init__(t, 'locations.conf')
 
 
-# FIXME: We should rely on the branch itself to be locked (possibly checking
-# that even) but we shouldn't lock ourselves. This may make `bzr config` is
-# abit trickier though but I punt for now -- vila 20110512
-class BranchStore(LockableIniFileStore):
+class BranchStore(IniFileStore):
 
     def __init__(self, branch):
         super(BranchStore, self).__init__(branch.control_transport,
                                           'branch.conf')
+        # We don't want to create a cycle here when the BranchStore becomes
+        # part of an object (roughly a Stack, directly or indirectly) that is
+        # an attribute of the branch object itself. Since the BranchStore
+        # cannot exist without a branch, it's safe to make it a weakref.
+        self.branch_ref = weakref.ref(branch)
+
+    def lock_write(self, token=None):
+        return self.branch_ref().lock_write(token)
+
+    def unlock(self):
+        return self.branch_ref().unlock()
+
+    @needs_write_lock
+    def save(self):
+        # We need to be able to override the undecorated implementation
+        self._save()
+
+    def _save(self):
+        super(BranchStore, self).save()
+
 
 class SectionMatcher(object):
     """Select sections into a given Store.
@@ -2584,7 +2614,7 @@ class Stack(object):
 class _CompatibleStack(Stack):
     """Place holder for compatibility with previous design.
 
-    This intended to ease the transition from the Config-based design to the
+    This is intended to ease the transition from the Config-based design to the
     Stack-based design and should not be used nor relied upon by plugins.
 
     One assumption made here is that the daughter classes will all use Stores
@@ -2592,8 +2622,8 @@ class _CompatibleStack(Stack):
     """
 
     def set(self, name, value):
-        # Force a reload (assuming we use a LockableIniFileStore)
-        self.store._config_obj = None
+        # Force a reload
+        self.store.unload()
         super(_CompatibleStack, self).set(name, value)
         # Force a write to persistent storage
         self.store.save()
@@ -2616,7 +2646,6 @@ class LocationStack(_CompatibleStack):
         super(LocationStack, self).__init__(
             [matcher.get_sections, gstore.get_sections], lstore)
 
-# FIXME: See BranchStore, same remarks -- vila 20110512
 class BranchStack(_CompatibleStack):
 
     def __init__(self, branch):
@@ -2627,6 +2656,7 @@ class BranchStack(_CompatibleStack):
         super(BranchStack, self).__init__(
             [matcher.get_sections, bstore.get_sections, gstore.get_sections],
             bstore)
+        self.branch = branch
 
 
 class cmd_config(commands.Command):
@@ -2808,7 +2838,7 @@ class cmd_config(commands.Command):
 # object.
 test_store_builder_registry = registry.Registry()
 
-# Thre registered object should be a callable receiving a test instance
+# The registered object should be a callable receiving a test instance
 # parameter (inheriting from tests.TestCaseWithTransport) and returning a Stack
 # object.
 test_stack_builder_registry = registry.Registry()
