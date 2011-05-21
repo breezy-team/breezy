@@ -303,7 +303,7 @@ class LocalGitRepository(GitRepository):
             mapping = self.get_mapping()
         if foreign_revid == ZERO_SHA:
             return revision.NULL_REVISION
-        commit = self._git[foreign_revid]
+        commit = self._git.object_store[foreign_revid]
         while isinstance(commit, Tag):
             commit = self._git[commit.object[1]]
         rev, roundtrip_revid, verifiers = mapping.import_commit(commit,
