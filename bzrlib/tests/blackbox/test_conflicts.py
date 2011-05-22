@@ -19,7 +19,7 @@ from bzrlib import (
     tests,
     workingtree,
     )
-from bzrlib.tests import script
+from bzrlib.tests import script, UnicodeFilenameFeature
 
 
 def make_tree_with_conflicts(test, this_path='this', other_path='other',
@@ -86,6 +86,7 @@ Text conflict in myfile
 class TestUnicodePaths(tests.TestCaseWithTransport):
     """Unicode characters in conflicts should be displayed properly"""
 
+    _test_needs_features = [UnicodeFilenameFeature]
     encoding = "UTF-8"
 
     def _as_output(self, text):
