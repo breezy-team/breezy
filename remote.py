@@ -64,7 +64,7 @@ from bzrlib.plugins.git.refs import (
     branch_name_to_ref,
     )
 
-import dulwich as git
+import dulwich.client
 from dulwich.errors import (
     GitProtocolError,
     )
@@ -72,6 +72,7 @@ from dulwich.pack import (
     Pack,
     ThinPackData,
     )
+from dulwich.protocol import Protocol
 import os
 import tempfile
 import urllib
@@ -169,8 +170,50 @@ class TCPGitSmartTransport(GitSmartTransport):
             ret = self._client
             self._client = None
             return ret
-        return git.client.TCPGitClient(self._host, self._port,
+        return dulwich.client.TCPGitClient(self._host, self._port,
             thin_packs=thin_packs, report_activity=self._report_activity)
+
+
+class BzrGitSSHGitClient(dulwich.client.SSHGitClient):
+
+    def __init__(self, *args, **kwargs):
+        super(BzrGitSSHGitClient, self).__init__(*args, **kwargs)
+        self._read_buffer = ""
+
+    def _can_read(self):
+        if self._read_buffer != "":
+            return True
+        self._read_buffer = self._read(1)
+        return (self._read_buffer != "")
+
+    def _read(self, count):
+        ret = self._read_buffer[:count]
+        self._read_buffer = self._read_buffer[len(ret):]
+        while len(ret) < count:
+            if self._io_kind == "socket":
+                ret += self._io_object.recv(count - len(ret))
+            else:
+                ret += self._io_object[0].read(count - len(ret))
+        return ret
+
+    def _write(self, data):
+        if self._io_kind == "socket":
+            self._io_object.send(data)
+        else:
+            self._io_object[1].write(data)
+
+    def _connect(self, cmd, path):
+        from bzrlib.transport import ssh as _mod_ssh
+        vendor = _mod_ssh._get_ssh_vendor()
+        self._ssh_connection = vendor.connect_ssh(self.username, None,
+            self.host, self.port, command=[self._get_cmd_path(cmd), path])
+        self._io_kind, self._io_object = self._ssh_connection.get_sock_or_pipes()
+        if self._io_kind not in ("socket", "pipes"):
+            raise AssertionError(
+                "Unexpected io_kind %r from %r"
+                % (self._io_kind, self._ssh_connection))
+        return (Protocol(self._read, self._write,
+            report_activity=self._report_activity), self._can_read)
 
 
 class SSHGitSmartTransport(GitSmartTransport):
@@ -188,7 +231,7 @@ class SSHGitSmartTransport(GitSmartTransport):
             self._client = None
             return ret
         location_config = config.LocationConfig(self.base)
-        client = git.client.SSHGitClient(self._host, self._port, self._username,
+        client = BzrGitSSHGitClient(self._host, self._port, self._username,
             thin_packs=thin_packs, report_activity=self._report_activity)
         # Set up alternate pack program paths
         upload_pack = location_config.get_user_option('git_upload_pack')
