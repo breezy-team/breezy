@@ -18,7 +18,9 @@
 
 import sys
 
-import bzrlib.osutils
+from bzrlib import (
+    osutils,
+    )
 
 
 class AddAction(object):
@@ -38,7 +40,7 @@ class AddAction(object):
         if should_print is not None:
             self.should_print = should_print
 
-    def __call__(self, inv, parent_ie, path, kind, _quote=bzrlib.osutils.quotefn):
+    def __call__(self, inv, parent_ie, path, kind, _quote=osutils.quotefn):
         """Add path to inventory.
 
         The default action does nothing.
@@ -87,10 +89,10 @@ class AddFromBaseAction(AddAction):
         if (parent_ie.file_id in self.base_tree):
             base_parent_ie = self.base_tree.inventory[parent_ie.file_id]
             base_child_ie = base_parent_ie.children.get(
-                bzrlib.osutils.basename(path))
+                osutils.basename(path))
             if base_child_ie is not None:
                 return (base_child_ie.file_id,
                         self.base_tree.id2path(base_child_ie.file_id))
-        full_base_path = bzrlib.osutils.pathjoin(self.base_path, path)
+        full_base_path = osutils.pathjoin(self.base_path, path)
         # This may return None, but it is our last attempt
         return self.base_tree.path2id(full_base_path), full_base_path
