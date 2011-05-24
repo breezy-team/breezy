@@ -254,9 +254,13 @@ class SmartServerHooks(Hooks):
             "Called by the bzr server when it stops serving a directory. "
             "server_stopped is called with the same parameters as the "
             "server_started hook: (backing_urls, public_url).", (0, 16))
+        self.add_hook('server_exception',
+            "Called by the bzr server when an exception occurs. "
+            "server_exception is called with the sys.exc_info() tuple "
+            "return true for the hook if the exception has been handled, "
+            "in which case the server will exit normally.", (2, 4))
 
 SmartTCPServer.hooks = SmartServerHooks()
-
 
 def _local_path_for_transport(transport):
     """Return a local path for transport, if reasonably possible.
@@ -373,6 +377,7 @@ class BzrServerFactory(object):
         for cleanup in reversed(self.cleanups):
             cleanup()
 
+import exceptions
 
 def serve_bzr(transport, host=None, port=None, inet=False):
     """This is the default implementation of 'bzr serve'.
@@ -384,7 +389,17 @@ def serve_bzr(transport, host=None, port=None, inet=False):
     bzr_server = BzrServerFactory()
     try:
         bzr_server.set_up(transport, host, port, inet)
+        trace.note("starting server")
         bzr_server.smart_server.serve()
+    except:
+        #if hook, call it here with exception, if not handled then raise it again
+        trace.note(str(sys.exc_info()))
+        trace.note("oops an exception occurred")
+        hook_caught_exception = False
+        for hook in SmartTCPServer.hooks['server_exception']:
+            hook_caught_exception = hook(sys.exc_info())
+        if not hook_caught_exception:
+            raise
     finally:
         bzr_server.tear_down()
 
