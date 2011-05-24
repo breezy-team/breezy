@@ -16,6 +16,8 @@
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
+import itertools
+
 from bzrlib import (
     bzrdir,
     errors,
@@ -507,7 +509,8 @@ class InterKnitRepo(InterSameDataRepository):
     @needs_read_lock
     def search_missing_revision_ids(self,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None, if_present_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None,
+            limit=None):
         """See InterRepository.search_missing_revision_ids()."""
         if symbol_versioning.deprecated_passed(revision_id):
             symbol_versioning.warn(
@@ -542,6 +545,9 @@ class InterKnitRepo(InterSameDataRepository):
             # that against the revision records.
             result_set = set(
                 self.source._eliminate_revisions_not_present(required_revisions))
+        if limit is not None:
+            topo_ordered = self.source.get_graph().iter_topo_order(result_set)
+            result_set = set(itertools.islice(topo_ordered, limit))
         return self.source.revision_ids_to_search_result(result_set)
 
 

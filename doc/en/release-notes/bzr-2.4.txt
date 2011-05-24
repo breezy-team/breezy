@@ -87,6 +87,9 @@ Bug Fixes
   submit_location public_location`` never sets ``submit_branch``
   nor ``public_branch``.  (Vincent Ladeuil)
 
+* Conflicts involving non-ascii filenames are now properly reported rather
+  than failing with a UnicodeEncodeError. (Martin [GZ], #686161)
+
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
 
@@ -127,6 +130,9 @@ API Changes
 
 * ``annotate_file`` has been deprecated in favor of
   ``annotate_file_revision_tree``. (Jelmer Vernooij, #775598)
+
+* ``Branch.fetch`` now takes an optional ``limit`` argument.
+  (Andrew Bennetts, Jelmer Vernooij, #750175)
 
 * ``Inter.get`` now raises ``NoCompatibleInter`` if there are no
   compatible optimisers rather than an instance of the class it is called
