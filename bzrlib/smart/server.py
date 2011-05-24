@@ -377,8 +377,6 @@ class BzrServerFactory(object):
         for cleanup in reversed(self.cleanups):
             cleanup()
 
-import exceptions
-
 def serve_bzr(transport, host=None, port=None, inet=False):
     """This is the default implementation of 'bzr serve'.
     
