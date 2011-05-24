@@ -1,4 +1,4 @@
-# Copyright (C) 2006-2010 Canonical Ltd
+# Copyright (C) 2006-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -389,12 +389,8 @@ def serve_bzr(transport, host=None, port=None, inet=False):
     bzr_server = BzrServerFactory()
     try:
         bzr_server.set_up(transport, host, port, inet)
-        trace.note("starting server")
         bzr_server.smart_server.serve()
     except:
-        #if hook, call it here with exception, if not handled then raise it again
-        trace.note(str(sys.exc_info()))
-        trace.note("oops an exception occurred")
         hook_caught_exception = False
         for hook in SmartTCPServer.hooks['server_exception']:
             hook_caught_exception = hook(sys.exc_info())
@@ -402,4 +398,3 @@ def serve_bzr(transport, host=None, port=None, inet=False):
             raise
     finally:
         bzr_server.tear_down()
-
