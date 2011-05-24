@@ -2727,7 +2727,8 @@ class InventoryWorkingTree(WorkingTree,
 
     class _RenameEntry(object):
         def __init__(self, from_rel, from_id, from_tail, from_parent_id,
-                     to_rel, to_tail, to_parent_id, only_change_inv=False):
+                     to_rel, to_tail, to_parent_id, only_change_inv=False,
+                     change_id=False):
             self.from_rel = from_rel
             self.from_id = from_id
             self.from_tail = from_tail
@@ -2735,6 +2736,7 @@ class InventoryWorkingTree(WorkingTree,
             self.to_rel = to_rel
             self.to_tail = to_tail
             self.to_parent_id = to_parent_id
+            self.change_id = change_id
             self.only_change_inv = only_change_inv
 
     def _determine_mv_mode(self, rename_entries, after=False):
@@ -2752,14 +2754,26 @@ class InventoryWorkingTree(WorkingTree,
             to_rel = rename_entry.to_rel
             to_id = inv.path2id(to_rel)
             only_change_inv = False
+            change_id = False
 
             # check the inventory for source and destination
             if from_id is None:
                 raise errors.BzrMoveFailedError(from_rel,to_rel,
                     errors.NotVersionedError(path=from_rel))
             if to_id is not None:
-                raise errors.BzrMoveFailedError(from_rel,to_rel,
-                    errors.AlreadyVersionedError(path=to_rel))
+                allowed = False
+                # allow it with after but only if dest is newly added
+                if after:
+                    basis = self.basis_tree()
+                    basis.lock_read()
+                    added = not basis.inventory.has_id(to_id)
+                    basis.unlock()
+                    if added:
+                        change_id = True
+                        allowed = True
+                if not allowed:
+                    raise errors.BzrMoveFailedError(from_rel,to_rel,
+                        errors.AlreadyVersionedError(path=to_rel))
 
             # try to determine the mode for rename (only change inv or change
             # inv and file system)
@@ -2787,6 +2801,7 @@ class InventoryWorkingTree(WorkingTree,
                 else:
                     raise errors.RenameFailedFilesExist(from_rel, to_rel)
             rename_entry.only_change_inv = only_change_inv
+            rename_entry.change_id = change_id
         return rename_entries
 
     def _move(self, rename_entries):
@@ -2836,6 +2851,9 @@ class InventoryWorkingTree(WorkingTree,
             except OSError, e:
                 raise errors.BzrMoveFailedError(entry.from_rel,
                     entry.to_rel, e[1])
+        if entry.change_id:
+            to_id = inv.path2id(entry.to_rel)
+            inv.remove_recursive_id(to_id)
         inv.rename(entry.from_id, entry.to_parent_id, entry.to_tail)
 
     @needs_tree_write_lock
