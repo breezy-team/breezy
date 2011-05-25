@@ -121,21 +121,26 @@ def install_zzz():
     global _translation
     _translation = _ZzzTranslations()
 
-def gettext(message):
-    """Translate message. 
-    Returns translated message as unicode."""
+def gettext_per_paragraph(message):
+    """Translate message per paragraph.
+
+    Returns concatenated translated message as unicode."""
     paragraphs = message.split(u'\n\n')
     ugettext = _translation.ugettext
     # Be careful not to translate the empty string -- it holds the
     # meta data of the .po file.
     return u'\n\n'.join(ugettext(p) if p else u'' for p in paragraphs)
 
-def ngettext(s, p, n):
-    return gettext(s if n == 1 else p)
+def gettext(message):
+    """Translate message. 
+    Returns translated message as unicode."""
+    return _translation.ugettext(message)
 
+def ngettext(s, p, n):
+    """Translate message based on `n`.
+    Returns translated message as unicode."""
+    return _translation.ungettext(s, p, n)
 
 def N_(msg):
-    """Pass thorough function for marking the message may be translated
-    after. Use `i18n.gettext()` to translate immediately.
-    """
+    """Mark message for translation but don't translate it right away."""
     return msg
