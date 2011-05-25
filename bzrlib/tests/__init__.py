@@ -1324,7 +1324,7 @@ class TestCase(testtools.TestCase):
                 length, len(obj_with_len), obj_with_len))
 
     def assertLogsError(self, exception_class, func, *args, **kwargs):
-        """Assert that func(*args, **kwargs) quietly logs a specific exception.
+        """Assert that `func(*args, **kwargs)` quietly logs a specific error.
         """
         captured = []
         orig_log_exception_quietly = trace.log_exception_quietly

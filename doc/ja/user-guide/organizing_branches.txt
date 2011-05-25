@@ -15,7 +15,7 @@
 
   bzr init-repo PROJECT
   cd PROJECT
-  bzr branch sftp://centralhost/srv/bzr/PROJECT/trunk
+  bzr branch bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
 
 タスクのブランチ
 -----------------

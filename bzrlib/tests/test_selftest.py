@@ -2196,9 +2196,13 @@ class TestSubunitLogDetails(tests.TestCase, SelfTestHelper):
         content, result = self.run_subunit_stream('test_unexpected_success')
         self.assertContainsRe(content, '(?m)^log$')
         self.assertContainsRe(content, 'test with unexpected success')
-        self.expectFailure('subunit treats "unexpectedSuccess"'
-                           ' as a plain success',
-            self.assertEqual, 1, len(result.unexpectedSuccesses))
+        # GZ 2011-05-18: Old versions of subunit treat unexpected success as a
+        #                success, if a min version check is added remove this
+        from subunit import TestProtocolClient as _Client
+        if _Client.addUnexpectedSuccess.im_func is _Client.addSuccess.im_func:
+            self.expectFailure('subunit treats "unexpectedSuccess"'
+                               ' as a plain success',
+                self.assertEqual, 1, len(result.unexpectedSuccesses))
         self.assertEqual(1, len(result.unexpectedSuccesses))
         test = result.unexpectedSuccesses[0]
         # RemotedTestCase doesn't preserve the "details"
