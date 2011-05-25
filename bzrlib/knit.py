@@ -408,7 +408,7 @@ def knit_network_to_record(storage_kind, bytes, line_end):
 class KnitContent(object):
     """Content of a knit version to which deltas can be applied.
 
-    This is always stored in memory as a list of lines with \n at the end,
+    This is always stored in memory as a list of lines with \\n at the end,
     plus a flag saying if the final ending is really there or not, because that
     corresponds to the on-disk knit representation.
     """
@@ -1155,14 +1155,15 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
 
         A dict of key to (record_details, index_memo, next, parents) is
         returned.
-        method is the way referenced data should be applied.
-        index_memo is the handle to pass to the data access to actually get the
-            data
-        next is the build-parent of the version, or None for fulltexts.
-        parents is the version_ids of the parents of this version
 
-        :param allow_missing: If True do not raise an error on a missing component,
-            just ignore it.
+        * method is the way referenced data should be applied.
+        * index_memo is the handle to pass to the data access to actually get
+          the data
+        * next is the build-parent of the version, or None for fulltexts.
+        * parents is the version_ids of the parents of this version
+
+        :param allow_missing: If True do not raise an error on a missing
+            component, just ignore it.
         """
         component_data = {}
         pending_components = keys
@@ -1230,15 +1231,13 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         """Produce a dictionary of knit records.
 
         :return: {key:(record, record_details, digest, next)}
-            record
-                data returned from read_records (a KnitContentobject)
-            record_details
-                opaque information to pass to parse_record
-            digest
-                SHA1 digest of the full text after all steps are done
-            next
-                build-parent of the version, i.e. the leftmost ancestor.
+
+            * record: data returned from read_records (a KnitContentobject)
+            * record_details: opaque information to pass to parse_record
+            * digest: SHA1 digest of the full text after all steps are done
+            * next: build-parent of the version, i.e. the leftmost ancestor.
                 Will be None if the record is not a delta.
+
         :param keys: The keys to build a map for
         :param allow_missing: If some records are missing, rather than
             error, just return the data that could be generated.
@@ -1911,6 +1910,7 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         The result will be returned in whatever is the fastest to read.
         Not by the order requested. Also, multiple requests for the same
         record will only yield 1 response.
+
         :param records: A list of (key, access_memo) entries
         :return: Yields (key, contents, digest) in the order
                  read, not the order requested
@@ -1974,11 +1974,11 @@ class KnitVersionedFiles(VersionedFilesWithFallbacks):
         :param key: The key of the record. Currently keys are always serialised
             using just the trailing component.
         :param dense_lines: The bytes of lines but in a denser form. For
-            instance, if lines is a list of 1000 bytestrings each ending in \n,
-            dense_lines may be a list with one line in it, containing all the
-            1000's lines and their \n's. Using dense_lines if it is already
-            known is a win because the string join to create bytes in this
-            function spends less time resizing the final string.
+            instance, if lines is a list of 1000 bytestrings each ending in
+            \\n, dense_lines may be a list with one line in it, containing all
+            the 1000's lines and their \\n's. Using dense_lines if it is
+            already known is a win because the string join to create bytes in
+            this function spends less time resizing the final string.
         :return: (len, a StringIO instance with the raw data ready to read.)
         """
         chunks = ["version %s %d %s\n" % (key[-1], len(lines), digest)]

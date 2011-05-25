@@ -3948,7 +3948,11 @@ class cmd_merge(Command):
         merger = None
         allow_pending = True
         verified = 'inapplicable'
+
         tree = WorkingTree.open_containing(directory)[0]
+        if tree.branch.revno() == 0:
+            raise errors.BzrCommandError('Merging into empty branches not currently supported, '
+                                         'https://bugs.launchpad.net/bzr/+bug/308562')
 
         try:
             basis_tree = tree.revision_tree(tree.last_revision())
