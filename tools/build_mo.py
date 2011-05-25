@@ -29,9 +29,7 @@ from distutils.dep_util import newer
 from distutils.spawn import find_executable
 import os
 import re
-import shutil
 
-import msgfmt
 
 class build_mo(Command):
     """Subcommand of build command: build_mo"""
@@ -75,8 +73,6 @@ class build_mo(Command):
                 mo = re_po.match(i)
                 if mo:
                     self.lang.append(mo.group(1))
-            if 'en' not in self.lang:
-                self.lang.append('en')
         else:
             self.lang = [i.strip() for i in self.lang.split(',') if i.strip()]
 
@@ -85,22 +81,31 @@ class build_mo(Command):
         if not self.lang:
             return
 
+        if find_executable('msgfmt') is None:
+            log.warn("GNU gettext msgfmt utility not found!")
+            log.warn("Skip compiling po files.")
+            return
+
+        if 'en' in self.lang:
+            if find_executable('msginit') is None:
+                log.warn("GNU gettext msginit utility not found!")
+                log.warn("Skip creating English PO file.")
+            else:
+                log.info('Creating English PO file...')
+                pot = (self.prj_name or 'messages') + '.pot'
+                en_po = 'en.po'
+                self.spawn(['msginit',
+                    '--no-translator',
+                    '-l', 'en',
+                    '-i', os.path.join(self.source_dir, pot),
+                    '-o', os.path.join(self.source_dir, en_po),
+                    ])
+
         basename = self.output_base
         if not basename.endswith('.mo'):
             basename += '.mo'
 
         for lang in self.lang:
-            if lang == 'en':
-                # Make dummy 'en.po' file. This file is compiled to 'en.mo'
-                # with pass through mode (msgstr == msgid).
-                # The en.mo is required to support situations like `LANG=en:ja`.
-                shutil.copy(
-                        os.path.join(self.source_dir, self.prj_name+'.pot'),
-                        os.path.join(self.source_dir, 'en.po')
-                        )
-                passthrough = True
-            else:
-                passthrough = False
             po = os.path.join('po', lang + '.po')
             if not os.path.isfile(po):
                 po = os.path.join('po', lang + '.po')
@@ -109,7 +114,7 @@ class build_mo(Command):
             mo = os.path.join(dir_, basename)
             if self.force or newer(po, mo):
                 log.info('Compile: %s -> %s' % (po, mo))
-                msgfmt.make(po,  mo, passthrough)
+                self.spawn(['msgfmt', '-o', mo, po])
 
 
 build.sub_commands.insert(0, ('build_mo', None))
