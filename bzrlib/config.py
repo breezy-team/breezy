@@ -65,6 +65,7 @@ up=pull
 import os
 import string
 import sys
+import base64
 
 from bzrlib import commands
 from bzrlib.decorators import needs_write_lock
@@ -1980,6 +1981,15 @@ credential_store_registry.register('plain', PlainTextCredentialStore,
                                    help=PlainTextCredentialStore.__doc__)
 credential_store_registry.default_key = 'plain'
 
+class Base64CredentialStore(CredentialStore):
+    __doc__ = """Base64 credential store for the authentication.conf file"""
+    
+    def decode_password(self, credentials):
+        """See CredentialStore.decode_password."""
+        return base64.decodestring(credentials['password'])
+
+credential_store_registry.register('base64', Base64CredentialStore,
+                                   help=Base64CredentialStore.__doc__)
 
 class BzrDirConfig(object):
 
