@@ -239,6 +239,7 @@ class BzrDir(controldir.ControlDir):
         This is intended primarily as a building block for more sophisticated
         functionality, like finding trees under a directory, or finding
         branches that use a given repository.
+
         :param evaluate: An optional callable that yields recurse, value,
             where recurse controls whether this bzrdir is recursed into
             and value is the value to yield.  By default, all bzrdirs
@@ -431,6 +432,7 @@ class BzrDir(controldir.ControlDir):
 
         if revision_id is not None, then the clone operation may tune
             itself to download less data.
+
         :param accelerator_tree: A tree which can be used for retrieving file
             contents more quickly than the revision tree, i.e. a workingtree.
             The revision tree will be used for cases where accelerator_tree's
@@ -865,6 +867,7 @@ class BzrDir(controldir.ControlDir):
         """Open an existing branch which contains url.
 
         :param url: url to search from.
+
         See open_containing_from_transport for more detail.
         """
         transport = _mod_transport.get_transport(url, possible_transports)
@@ -1095,7 +1098,7 @@ BzrDir.hooks = BzrDirHooks()
 
 
 class RepoInitHookParams(object):
-    """Object holding parameters passed to *_repo_init hooks.
+    """Object holding parameters passed to `*_repo_init` hooks.
 
     There are 4 fields that hooks may wish to access:
 
@@ -1612,10 +1615,12 @@ class BzrDirMetaFormat1(BzrDirFormat):
 
     This is the first format with split out working tree, branch and repository
     disk storage.
+
     It has:
-     - Format 3 working trees [optional]
-     - Format 5 branches [optional]
-     - Format 7 repositories [optional]
+
+    - Format 3 working trees [optional]
+    - Format 5 branches [optional]
+    - Format 7 repositories [optional]
     """
 
     _lock_class = lockdir.LockDir
@@ -1989,6 +1994,7 @@ class RepositoryAcquisitionPolicy(object):
 
         Implementations may create a new repository or use a pre-exising
         repository.
+
         :param make_working_trees: If creating a repository, set
             make_working_trees to this value (if non-None)
         :param shared: If creating a repository, make it shared if True
@@ -2003,8 +2009,8 @@ class CreateRepository(RepositoryAcquisitionPolicy):
 
     def __init__(self, bzrdir, stack_on=None, stack_on_pwd=None,
                  require_stacking=False):
-        """
-        Constructor.
+        """Constructor.
+
         :param bzrdir: The bzrdir to create the repository on.
         :param stack_on: A location to stack on
         :param stack_on_pwd: If stack_on is relative, the location it is

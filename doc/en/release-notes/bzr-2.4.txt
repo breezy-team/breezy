@@ -43,6 +43,10 @@ Improvements
   more efficiently.  For a simple branch it reduces the number of
   round-trips by about 20%.  (Andrew Bennetts)
 
+* ``bzr log --line`` scales the width of the author field with the size of
+  the line.  This means that the full author name is shown when the
+  environment variable BZR_COLUMNS=0.  (Neil Martinsen-Burrell)
+
 * ``bzr pull`` now properly triggers the fast
   ``CHKInventory.iter_changes`` rather than the slow generic
   inter-Inventory changes. It used to use a ``DirStateRevisionTree`` as
@@ -60,6 +64,10 @@ Improvements
   changed. The default is 10, and can be overridden by setting the branch
   option "``bzr.workingtree.worth_saving_limit``".
   (Ian Clatworthy, John Arbash Meinel, #380202)
+
+* Speed up ``bzr uncommit``. Instead of resetting the dirstate from
+  scratch, use ``update_basis_by_delta``, computing the delta from the
+  repository. (John Arbash Meinel, #780544)
 
 Bug Fixes
 *********
@@ -79,6 +87,9 @@ Bug Fixes
   submit_location public_location`` never sets ``submit_branch``
   nor ``public_branch``.  (Vincent Ladeuil)
 
+* Conflicts involving non-ascii filenames are now properly reported rather
+  than failing with a UnicodeEncodeError. (Martin [GZ], #686161)
+
 * Correct parent is now set when using 'switch -b' with bound branches.
   (A. S. Budden, #513709)
 
@@ -88,6 +99,12 @@ Bug Fixes
 * ``WT.inventory`` and ``WT.iter_entries_by_dir()`` was not correctly
   reporting subdirectories that were tree references (in formats that
   supported them). (John Arbash Meinel, #764677)
+
+* Merging into empty branches now gives an error as this is currently
+  not supported. (Jonathan Riddell, #242175)
+
+* Do not show exception to user on pointless commit error (Jonathan
+  Riddell #317357)
 
 * ``WT.update_basis_by_delta`` no longer requires that the deltas match
   the current WT state. This allows ``update_basis_by_delta`` to be used
@@ -113,6 +130,9 @@ API Changes
 
 * ``annotate_file`` has been deprecated in favor of
   ``annotate_file_revision_tree``. (Jelmer Vernooij, #775598)
+
+* ``Branch.fetch`` now takes an optional ``limit`` argument.
+  (Andrew Bennetts, Jelmer Vernooij, #750175)
 
 * ``Inter.get`` now raises ``NoCompatibleInter`` if there are no
   compatible optimisers rather than an instance of the class it is called
