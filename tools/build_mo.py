@@ -23,7 +23,6 @@
 """build_mo command for setup.py"""
 
 from distutils import log
-from distutils.command.build import build
 from distutils.core import Command
 from distutils.dep_util import newer
 from distutils.spawn import find_executable
@@ -117,4 +116,3 @@ class build_mo(Command):
                 self.spawn(['msgfmt', '-o', mo, po])
 
 
-build.sub_commands.insert(0, ('build_mo', None))
