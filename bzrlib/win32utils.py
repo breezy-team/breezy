@@ -468,7 +468,7 @@ def glob_expand(file_list):
 
 
 def get_app_path(appname):
-    """Look up in Windows registry for full path to application executable.
+    r"""Look up in Windows registry for full path to application executable.
     Typically, applications create subkey with their basename
     in HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\
 
