@@ -60,7 +60,7 @@ bind+update レシピの代わりは ``switch`` コマンドを使うことで�
 
   bzr init-repo --no-trees PROJECT
   cd PROJECT
-  bzr branch sftp://centralhost/srv/bzr/PROJECT/trunk
+  bzr branch bzr+ssh://centralhost/srv/bzr/PROJECT/trunk
   bzr checkout --lightweight trunk my-sandbox
   cd my-sandbox
   (hack away)
@@ -71,7 +71,7 @@ bind+update レシピの代わりは ``switch`` コマンドを使うことで�
 応じてそれらの間で切り替えることができます。例です::
 
   (my-sandboxの中にいることを前提とする)
-  bzr branch sftp://centralhost/srv/bzr/PROJECT/PROJECT-1.0 ../PROJECT-1.0
+  bzr branch bzr+ssh://centralhost/srv/bzr/PROJECT/PROJECT-1.0 ../PROJECT-1.0
   bzr switch ../PROJECT-1.0
   (fix bug in 1.0)
   bzr commit -m "blah, blah blah"

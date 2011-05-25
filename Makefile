@@ -75,9 +75,7 @@ realclean: clean
 docfiles = bzr bzrlib
 api-docs:
 	mkdir -p api/html
-	PYTHONPATH=$(PWD) $(PYTHON) tools/bzr_epydoc --html -o api/html --docformat 'restructuredtext en' $(docfiles)
-check-api-docs:
-	PYTHONPATH=$(PWD) $(PYTHON) tools/bzr_epydoc --check --docformat 'restructuredtext en' $(docfiles)
+	pydoctor --make-html --docformat='restructuredtext' --html-output=api/html $(docfiles)
 
 # build tags for emacs and vim
 TAGS:
