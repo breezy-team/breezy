@@ -177,6 +177,10 @@ Testing
   restoring the wt_scenarios helper that was accidentally deleted.
   (Vincent Ladeuil, #783472)
 
+* Windows locations are different and should be tested accordingly.
+  (Vincent Ladeuil, #788131)
+
+
 bzr 2.4b2
 #########
 
