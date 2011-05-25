@@ -3191,7 +3191,8 @@ class cmd_commit(Command):
         from bzrlib.msgeditor import (
             edit_commit_message_encoded,
             generate_commit_message_template,
-            make_commit_message_template_encoded
+            make_commit_message_template_encoded,
+            set_commit_message
         )
 
         commit_stamp = offset = None
@@ -3263,9 +3264,11 @@ class cmd_commit(Command):
                 # make_commit_message_template_encoded returns user encoding.
                 # We probably want to be using edit_commit_message instead to
                 # avoid this.
-                start_message = generate_commit_message_template(commit_obj)
-                my_message = edit_commit_message_encoded(text,
-                    start_message=start_message)
+                my_message = set_commit_message(commit_obj)
+                if my_message is None:
+                    start_message = generate_commit_message_template(commit_obj)
+                    my_message = edit_commit_message_encoded(text,
+                        start_message=start_message)
                 if my_message is None:
                     raise errors.BzrCommandError("please specify a commit"
                         " message with either --message or --file")
