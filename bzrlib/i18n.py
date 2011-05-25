@@ -30,6 +30,31 @@ _translation = _null_translation = _gettext.NullTranslations()
 _installed_language = None
 
 
+def gettext(message):
+    """Translate message. 
+    Returns translated message as unicode."""
+    return _translation.ugettext(message)
+
+def ngettext(s, p, n):
+    """Translate message based on `n`.
+    Returns translated message as unicode."""
+    return _translation.ungettext(s, p, n)
+
+def N_(msg):
+    """Mark message for translation but don't translate it right away."""
+    return msg
+
+def gettext_per_paragraph(message):
+    """Translate message per paragraph.
+
+    Returns concatenated translated message as unicode."""
+    paragraphs = message.split(u'\n\n')
+    ugettext = _translation.ugettext
+    # Be careful not to translate the empty string -- it holds the
+    # meta data of the .po file.
+    return u'\n\n'.join(ugettext(p) if p else u'' for p in paragraphs)
+
+
 def install(lang=None):
     global _translation, _installed_language
     if lang is None:
@@ -39,6 +64,10 @@ def install(lang=None):
             localedir=_get_locale_dir(),
             languages=lang.split(':'),
             fallback=True)
+
+def install_zzz():
+    global _translation
+    _translation = _ZzzTranslations()
 
 def uninstall():
     global _translation
@@ -117,30 +146,3 @@ class _ZzzTranslations(object):
     def ungettext(self, s, p, n):
         return self.zzz(_null_translation.ungettext(s, p, n))
 
-def install_zzz():
-    global _translation
-    _translation = _ZzzTranslations()
-
-def gettext_per_paragraph(message):
-    """Translate message per paragraph.
-
-    Returns concatenated translated message as unicode."""
-    paragraphs = message.split(u'\n\n')
-    ugettext = _translation.ugettext
-    # Be careful not to translate the empty string -- it holds the
-    # meta data of the .po file.
-    return u'\n\n'.join(ugettext(p) if p else u'' for p in paragraphs)
-
-def gettext(message):
-    """Translate message. 
-    Returns translated message as unicode."""
-    return _translation.ugettext(message)
-
-def ngettext(s, p, n):
-    """Translate message based on `n`.
-    Returns translated message as unicode."""
-    return _translation.ungettext(s, p, n)
-
-def N_(msg):
-    """Mark message for translation but don't translate it right away."""
-    return msg
