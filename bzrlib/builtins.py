@@ -4003,14 +4003,11 @@ class cmd_merge(Command):
         self.sanity_check_merger(merger)
         if (merger.base_rev_id == merger.other_rev_id and
             merger.other_rev_id is not None):
-            # check if location is nonexistent file (and not a branch)
-            if location is not None:
-                source_tree, rest_of_path = WorkingTree.open_containing(location)
-                if rest_of_path == "":
-                    location_is_branch = True
-                else:
-                    location_is_branch = False
-                if not location_is_branch and not source_tree.has_filename(location):
+            # check if location is a nonexistent file (and not a branch) to
+            # disambiguate the 'Nothing to do'
+            if merger.interesting_files:
+                if not merger.other_tree.has_filename(
+                    merger.interesting_files[0]):
                     raise errors.PathsDoNotExist([location])
             note('Nothing to do.')
             return 0

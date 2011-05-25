@@ -356,7 +356,7 @@ class TestMerge(tests.TestCaseWithTransport):
         """It should not be possible to merge changes from a file which
         does not exist."""
         tree_a = self.make_branch_and_tree('tree_a')
-        self.run_bzr_error(('Nonexistent file specified',),
+        self.run_bzr_error(('Path\(s\) do not exist: non/existing',),
                            ['merge', 'non/existing'])
 
     def pullable_branch(self):
