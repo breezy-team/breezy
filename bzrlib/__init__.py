@@ -189,4 +189,3 @@ def initialize(setup_ui=True, stdin=None, stdout=None, stderr=None):
 def test_suite():
     import tests
     return tests.test_suite()
-
