@@ -104,9 +104,12 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         root_mtime = tree.get_file_mtime(tree.get_root_id())
     else:
         root_mtime = None
+
+    is_stdout = False
     if dest == '-':
         basename = None
         stream = sys.stdout
+        is_stdout = True
     else:
         stream = open(dest, 'wb')
         # gzip file is used with an explicit fileobj so that
@@ -114,14 +117,17 @@ def tgz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):
         # dest. (bug 102234)
         basename = os.path.basename(dest)
     try:
-        stream = gzip.GzipFile(basename, 'w', fileobj=stream, mtime=root_mtime)
+        zipstream = gzip.GzipFile(basename, 'w', fileobj=stream, mtime=root_mtime)
     except TypeError:
         # Python < 2.7 doesn't support the mtime argument
-        stream = gzip.GzipFile(basename, 'w', fileobj=stream)
-    ball = tarfile.open(None, 'w|', fileobj=stream)
+        zipstream = gzip.GzipFile(basename, 'w', fileobj=stream)
+    ball = tarfile.open(None, 'w|', fileobj=zipstream)
     export_tarball(tree, ball, root, subdir, filtered=filtered,
                    force_mtime=force_mtime)
     ball.close()
+    zipstream.close()
+    if not is_stdout:
+        stream.close()
 
 
 def tbz_exporter(tree, dest, root, subdir, filtered=False, force_mtime=None):

@@ -194,7 +194,7 @@ def show_tree_status(wt, show_unchanged=None,
                     prefix = 'C  '
                 else:
                     prefix = ' '
-                to_file.write("%s %s\n" % (prefix, conflict))
+                to_file.write("%s %s\n" % (prefix, unicode(conflict)))
             # Show files that were requested but don't exist (and are
             # not versioned).  We don't involve delta in this; these
             # paths are really the province of just the status

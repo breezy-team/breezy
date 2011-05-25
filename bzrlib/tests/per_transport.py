@@ -1626,7 +1626,7 @@ class TransportTests(TestTransportImplementation):
     def test_readv(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            file('a', 'w').write('0123456789')
+            with file('a', 'w') as f: f.write('0123456789')
         else:
             transport.put_bytes('a', '0123456789')
 
@@ -1642,7 +1642,7 @@ class TransportTests(TestTransportImplementation):
     def test_readv_out_of_order(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            file('a', 'w').write('0123456789')
+            with file('a', 'w') as f: f.write('0123456789')
         else:
             transport.put_bytes('a', '01234567890')
 
@@ -1720,7 +1720,7 @@ class TransportTests(TestTransportImplementation):
         transport = self.get_transport()
         # test from observed failure case.
         if transport.is_readonly():
-            file('a', 'w').write('a'*1024*1024)
+            with file('a', 'w') as f: f.write('a'*1024*1024)
         else:
             transport.put_bytes('a', 'a'*1024*1024)
         broken_vector = [(465219, 800), (225221, 800), (445548, 800),
@@ -1760,7 +1760,7 @@ class TransportTests(TestTransportImplementation):
     def test_readv_short_read(self):
         transport = self.get_transport()
         if transport.is_readonly():
-            file('a', 'w').write('0123456789')
+            with file('a', 'w') as f: f.write('0123456789')
         else:
             transport.put_bytes('a', '01234567890')
 

@@ -70,20 +70,20 @@ def _missing_keys_from_parent_map(self, keys):
 class GraphIndexBuilder(object):
     """A builder that can build a GraphIndex.
 
-    The resulting graph has the structure:
+    The resulting graph has the structure::
 
-    _SIGNATURE OPTIONS NODES NEWLINE
-    _SIGNATURE     := 'Bazaar Graph Index 1' NEWLINE
-    OPTIONS        := 'node_ref_lists=' DIGITS NEWLINE
-    NODES          := NODE*
-    NODE           := KEY NULL ABSENT? NULL REFERENCES NULL VALUE NEWLINE
-    KEY            := Not-whitespace-utf8
-    ABSENT         := 'a'
-    REFERENCES     := REFERENCE_LIST (TAB REFERENCE_LIST){node_ref_lists - 1}
-    REFERENCE_LIST := (REFERENCE (CR REFERENCE)*)?
-    REFERENCE      := DIGITS  ; digits is the byte offset in the index of the
-                              ; referenced key.
-    VALUE          := no-newline-no-null-bytes
+      _SIGNATURE OPTIONS NODES NEWLINE
+      _SIGNATURE     := 'Bazaar Graph Index 1' NEWLINE
+      OPTIONS        := 'node_ref_lists=' DIGITS NEWLINE
+      NODES          := NODE*
+      NODE           := KEY NULL ABSENT? NULL REFERENCES NULL VALUE NEWLINE
+      KEY            := Not-whitespace-utf8
+      ABSENT         := 'a'
+      REFERENCES     := REFERENCE_LIST (TAB REFERENCE_LIST){node_ref_lists - 1}
+      REFERENCE_LIST := (REFERENCE (CR REFERENCE)*)?
+      REFERENCE      := DIGITS  ; digits is the byte offset in the index of the
+                                ; referenced key.
+      VALUE          := no-newline-no-null-bytes
     """
 
     def __init__(self, reference_lists=0, key_elements=1):
@@ -185,11 +185,12 @@ class GraphIndexBuilder(object):
         :param value: The value associate with this key. Must not contain
             newlines or null characters.
         :return: (node_refs, absent_references)
-            node_refs   basically a packed form of 'references' where all
-                        iterables are tuples
-            absent_references   reference keys that are not in self._nodes.
-                                This may contain duplicates if the same key is
-                                referenced in multiple lists.
+        
+            * node_refs: basically a packed form of 'references' where all
+              iterables are tuples
+            * absent_references: reference keys that are not in self._nodes.
+              This may contain duplicates if the same key is referenced in
+              multiple lists.
         """
         as_st = StaticTuple.from_sequence
         self._check_key(key)
@@ -220,7 +221,7 @@ class GraphIndexBuilder(object):
         :param references: An iterable of iterables of keys. Each is a
             reference to another key.
         :param value: The value to associate with the key. It may be any
-            bytes as long as it does not contain \0 or \n.
+            bytes as long as it does not contain \\0 or \\n.
         """
         (node_refs,
          absent_references) = self._check_key_ref_value(key, references, value)
