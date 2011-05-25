@@ -57,7 +57,6 @@ class TestCommit(TestCaseWithTransport):
             err,
             DocTestMatches("""\
 Committing to: ...
-aborting commit write group: PointlessCommit(No changes to commit)
 bzr: ERROR: No changes to commit.\
  Please 'bzr add' the files you want to commit,\
  or use --unchanged to force an empty commit.
