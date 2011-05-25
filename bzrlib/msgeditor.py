@@ -323,17 +323,15 @@ class MessageEditorHooks(Hooks):
 
 hooks = MessageEditorHooks()
 
-from bzrlib.trace import note
 
 def set_commit_message(commit):
     """Sets the commit message.
     :param commit: Commit object for the active commit.
-    :return: The commit message or None to continue using the message editor, properties.
+    :return: The commit message or None to continue using the message editor
     """
     message = None
     for hook in hooks['set_commit_message']:
         message = hook(commit)
-    note("set_commit_message: " + str(message))
     return message
 
 def generate_commit_message_template(commit, start_message=None):
@@ -343,7 +341,6 @@ def generate_commit_message_template(commit, start_message=None):
     :param start_message: Message to start with.
     :return: A start commit message or None for an empty start commit message.
     """
-    note("generate_commit_message_template " + str(commit))
     start_message = None
     for hook in hooks['commit_message_template']:
         start_message = hook(commit, start_message)
