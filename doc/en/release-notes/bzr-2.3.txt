@@ -5,10 +5,11 @@ Bazaar Release Notes
 .. toctree::
    :maxdepth: 1
 
-bzr 2.3.2
+bzr 2.3.4
 #########
 
-:2.3.2: NOT RELEASED YET
+:Codename: One and counting
+:2.3.4: NOT RELEASED YET
 
 External Compatibility Breaks
 *****************************
@@ -26,32 +27,20 @@ Improvements
 .. Improvements to existing commands, especially improved performance 
    or memory usage, or better results.
 
-* Getting all entries from ``CHKInventory.iter_entries_by_dir()`` has been
-  sped up dramatically for large trees. Iterating by dir is not the best
-  way to load data from a CHK inventory, so it preloads all the items in
-  the correct order. (With the gcc-tree, this changes it (re)reading 8GB
-  of CHK data, down to just 150MB.) This has noticeable affects for things
-  like building checkouts, etc.  (John Arbash Meinel, #737234)
-
 Bug Fixes
 *********
 
 .. Fixes for situations where bzr would previously crash or give incorrect
    or undesirable results.
 
-* ``bzr push`` into a repository (that doesn't have a branch), will no
-  longer copy all revisions in the repository. Only the ones in the
-  ancestry of the source branch, like it does in all other cases.
-  (John Arbash Meinel, #465517)
-
-* Fix "Unable to obtain lock" error when pushing to a bound branch if tags
-  had changed.  Bazaar was attempting to open and lock the master branch
-  twice in this case.  (Andrew Bennetts, #733350)
-
 Documentation
 *************
 
 .. Improved or updated documentation.
+
+* Updated the "Using stacked branches" section of the user guide to
+  describe committing to stacked branches and expanded its discussion of
+  pushing a stcked branch.  (Andrew Bennetts)
 
 API Changes
 ***********
@@ -72,13 +61,107 @@ Testing
    suite.  This can include new facilities for writing tests, fixes to 
    spurious test failures and changes to the way things should be tested.
 
+
+bzr 2.3.3
+#########
+
+:2.3.3: 2011-05-13
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.3 releases.
+
+This fixed a bug in the test suite triggered by python-2.7 deprecating some
+tests helpers.
+
+Testing
+*******
+
+* Stop using `failIf`, `failUnless`, `failIfEqual`, etc, that give
+  `PendingDeprecationWarnings` on Python2.7. 
+  (Martin Pool, #760435)
+
+
+bzr 2.3.2
+#########
+
+:2.3.2: 2011-05-12
+
+This is a bugfix release. Upgrading is recommended for all users of earlier
+2.3 releases.
+
+This was never released due to bug #760435 interrupting the release process by
+breaking the test suite under python-2.7 on natty.
+
+External Compatibility Breaks
+*****************************
+
+None
+
+New Features
+************
+
+None
+
+Improvements
+************
+
+* Getting all entries from ``CHKInventory.iter_entries_by_dir()`` has been
+  sped up dramatically for large trees. Iterating by dir is not the best
+  way to load data from a CHK inventory, so it preloads all the items in
+  the correct order. (With the gcc-tree, this changes it (re)reading 8GB
+  of CHK data, down to just 150MB.) This has noticeable affects for things
+  like building checkouts, etc.  (John Arbash Meinel, #737234)
+
+Bug Fixes
+*********
+
+* Bazaar now infers the default user email address on Unix from the local
+  account name plus the contents of ``/etc/mailname`` if that file exists.
+  In particular, this means that committing as root through etckeeper will
+  normally not require running ``bzr whoami`` first.
+  (Martin Pool, #616878)
+
+* ``bzr merge --preview --pull`` should respect the ``--preview`` option
+  first, and not actually change the branch tip revision.
+  (John Arbash Meinel, Dennis Duchier, #760152)
+
+* ``bzr push`` into a repository (that doesn't have a branch), will no
+  longer copy all revisions in the repository. Only the ones in the
+  ancestry of the source branch, like it does in all other cases.
+  (John Arbash Meinel, #465517)
+
+* Fix ``UnboundLocalError: local variable 'lock_url' in wait_lock`` error,
+  especially while trying to save configuration from QBzr.
+  (Martin Pool, #733136)
+
+* Fix "Unable to obtain lock" error when pushing to a bound branch if tags
+  had changed.  Bazaar was attempting to open and lock the master branch
+  twice in this case.  (Andrew Bennetts, #733350)
+
+* Standalone bzr.exe installation on Windows: user can put additional python 
+  libraries into ``site-packages`` subdirectory of the installation directory,
+  this might be required for "installing" extra dependencies for some plugins.
+  (Alexander Belchenko, #743256)
+
+* When reporting a crash without apport, don't print the full list of
+  plugins because it's often too long.
+  (Martin Pool, #716389)
+
+
+API Changes
+***********
+
+None.
+
+Testing
+*******
+
 * FreeBSD8 has switched to python-2.7 which revealed a re-occurrence of a test
   failure in the launchpad plugin. ``xmlrpclib.py`` on natty carries a patch
   that is not in python-2.7 upstream and masked the issue. An additional fix
   has been added in the interim
   (<http://psf.upfronthosting.co.za/roundup/tracker/issue8194> should be fixed
   in python > 2.7.1).  (Vincent Ladeuil, #654733)
-
 
 bzr 2.3.1
 #########

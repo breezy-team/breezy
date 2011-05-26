@@ -93,17 +93,17 @@ class TestRevert(TestCaseWithTransport):
         """Test that revert DIRECTORY does what's expected"""
         self._prepare_rename_mod_tree()
         self.run_bzr('revert a')
-        self.failUnlessExists('a/b')
-        self.failUnlessExists('a/d')
-        self.failIfExists('a/g')
+        self.assertPathExists('a/b')
+        self.assertPathExists('a/d')
+        self.assertPathDoesNotExist('a/g')
         self.expectFailure(
             "j is in the delta revert applies because j was renamed too",
-            self.failUnlessExists, 'j')
-        self.failUnlessExists('h')
+            self.assertPathExists, 'j')
+        self.assertPathExists('h')
         self.run_bzr('revert f')
-        self.failIfExists('j')
-        self.failIfExists('h')
-        self.failUnlessExists('a/d/e')
+        self.assertPathDoesNotExist('j')
+        self.assertPathDoesNotExist('h')
+        self.assertPathExists('a/d/e')
 
     def test_revert_chatter(self):
         self._prepare_rename_mod_tree()
@@ -120,16 +120,16 @@ class TestRevert(TestCaseWithTransport):
     def test_revert(self):
         self.run_bzr('init')
 
-        file('hello', 'wt').write('foo')
+        with file('hello', 'wt') as f: f.write('foo')
         self.run_bzr('add hello')
         self.run_bzr('commit -m setup hello')
 
-        file('goodbye', 'wt').write('baz')
+        with file('goodbye', 'wt') as f: f.write('baz')
         self.run_bzr('add goodbye')
         self.run_bzr('commit -m setup goodbye')
 
-        file('hello', 'wt').write('bar')
-        file('goodbye', 'wt').write('qux')
+        with file('hello', 'wt') as f: f.write('bar')
+        with file('goodbye', 'wt') as f: f.write('qux')
         self.run_bzr('revert hello')
         self.check_file_contents('hello', 'foo')
         self.check_file_contents('goodbye', 'qux')
@@ -148,7 +148,7 @@ class TestRevert(TestCaseWithTransport):
             self.run_bzr('commit -m f')
             os.unlink('symlink')
             self.run_bzr('revert')
-            self.failUnlessExists('symlink')
+            self.assertPathExists('symlink')
             os.unlink('symlink')
             os.symlink('a-different-path', 'symlink')
             self.run_bzr('revert')
@@ -157,7 +157,7 @@ class TestRevert(TestCaseWithTransport):
         else:
             self.log("skipping revert symlink tests")
 
-        file('hello', 'wt').write('xyz')
+        with file('hello', 'wt') as f: f.write('xyz')
         self.run_bzr('commit -m xyz hello')
         self.run_bzr('revert -r 1 hello')
         self.check_file_contents('hello', 'foo')

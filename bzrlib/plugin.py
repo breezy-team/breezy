@@ -36,7 +36,6 @@ import sys
 from bzrlib import osutils
 
 from bzrlib.lazy_import import lazy_import
-
 lazy_import(globals(), """
 import imp
 import re
@@ -51,11 +50,6 @@ from bzrlib import (
     )
 from bzrlib import plugins as _mod_plugins
 """)
-
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    )
 
 
 DEFAULT_PLUGIN_PATH = None
@@ -278,9 +272,9 @@ def load_plugins(path=None):
     """Load bzrlib plugins.
 
     The environment variable BZR_PLUGIN_PATH is considered a delimited
-    set of paths to look through. Each entry is searched for *.py
+    set of paths to look through. Each entry is searched for `*.py`
     files (and whatever other extensions are used in the platform,
-    such as *.pyd).
+    such as `*.pyd`).
 
     load_from_path() provides the underlying mechanism and is called with
     the default directory list to provide the normal behaviour.
@@ -449,6 +443,17 @@ def plugins():
         if isinstance(plugin, types.ModuleType):
             result[name] = PlugIn(name, plugin)
     return result
+
+
+def format_concise_plugin_list():
+    """Return a string holding a concise list of plugins and their version.
+    """
+    items = []
+    for name, a_plugin in sorted(plugins().items()):
+        items.append("%s[%s]" %
+            (name, a_plugin.__version__))
+    return ', '.join(items)
+
 
 
 class PluginsHelpIndex(object):

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,13 +59,13 @@ import logging
 import os
 import sys
 import time
-import tempfile
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
 from cStringIO import StringIO
 import errno
 import locale
+import tempfile
 import traceback
 """)
 
@@ -81,8 +81,6 @@ from bzrlib import (
     debug,
     errors,
     osutils,
-    plugin,
-    symbol_versioning,
     ui,
     )
 """)
@@ -334,7 +332,7 @@ def push_log_file(to_file, log_format=None, date_format=None):
     :param to_file: A file-like object to which messages will be sent.
 
     :returns: A memento that should be passed to _pop_log_file to restore the
-    previously active logging.
+        previously active logging.
     """
     global _trace_file
     # make a new handler

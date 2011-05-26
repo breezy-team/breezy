@@ -19,6 +19,7 @@
 import os
 
 from bzrlib import (
+    config,
     errors,
     graph,
     inventory,
@@ -116,6 +117,20 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
                 builder.abort()
         finally:
             tree.unlock()
+
+    def test_commit_lossy(self):
+        tree = self.make_branch_and_tree(".")
+        tree.lock_write()
+        try:
+            builder = tree.branch.get_commit_builder([], lossy=True)
+            list(builder.record_iter_changes(tree, tree.last_revision(),
+                tree.iter_changes(tree.basis_tree())))
+            builder.finish_inventory()
+            rev_id = builder.commit('foo bar blah')
+        finally:
+            tree.unlock()
+        rev = tree.branch.repository.get_revision(rev_id)
+        self.assertEqual('foo bar blah', rev.message)
 
     def test_commit_message(self):
         tree = self.make_branch_and_tree(".")
@@ -226,11 +241,11 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         try:
             self.build_tree(['foo'])
             tree.add('foo', 'foo-id')
-            entry = tree.inventory['foo-id']
             builder = tree.branch.get_commit_builder([])
             if not builder.supports_record_entry_contents:
                 raise tests.TestNotApplicable("CommitBuilder doesn't support "
                     "record_entry_contents")
+            entry = tree.inventory['foo-id']
             self.assertRaises(errors.RootMissing,
                 builder.record_entry_contents, entry, [], 'foo', tree,
                     tree.path_content_summary('foo'))
@@ -289,14 +304,15 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             # pointless commit.
             self.assertFalse(builder.any_changes())
             builder.finish_inventory()
-            new_root = tree.branch.repository.get_inventory(
-                builder._new_revision_id).root
+            builder_tree = builder.revision_tree()
+            new_root_id = builder_tree.get_root_id()
+            new_root_revision = builder_tree.get_file_revision(new_root_id)
             if tree.branch.repository.supports_rich_root():
                 # We should not have seen a new root revision
-                self.assertEqual(old_revision_id, new_root.revision)
+                self.assertEqual(old_revision_id, new_root_revision)
             else:
                 # We should see a new root revision
-                self.assertNotEqual(old_revision_id, new_root.revision)
+                self.assertNotEqual(old_revision_id, new_root_revision)
         finally:
             builder.abort()
             tree.unlock()
@@ -520,7 +536,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         basis_tree = tree.basis_tree()
         basis_tree.lock_read()
         self.addCleanup(basis_tree.unlock)
-        self.assertEqual(rev_id, basis_tree.inventory.root.revision)
+        self.assertEqual(rev_id,
+            basis_tree.get_file_revision(basis_tree.get_root_id()))
 
     def _get_revtrees(self, tree, revision_ids):
         tree.lock_read()
@@ -540,11 +557,13 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev1 = tree.commit('')
         rev2 = tree.commit('')
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.inventory.root.revision)
+        self.assertEqual(rev1, tree1.get_file_revision(tree1.get_root_id()))
         if tree.branch.repository.supports_rich_root():
-            self.assertEqual(rev1, tree2.inventory.root.revision)
+            self.assertEqual(rev1,
+                tree2.get_file_revision(tree2.get_root_id()))
         else:
-            self.assertEqual(rev2, tree2.inventory.root.revision)
+            self.assertEqual(rev2,
+                tree2.get_file_revision(tree2.get_root_id()))
 
     def _add_commit_check_unchanged(self, tree, name, mini_commit=None):
         tree.add([name], [name + 'id'])
@@ -557,8 +576,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             mini_commit = self.mini_commit
         rev2 = mini_commit(tree, name, name, False, False)
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.inventory[file_id].revision)
-        self.assertEqual(rev1, tree2.inventory[file_id].revision)
+        self.assertEqual(rev1, tree1.get_file_revision(file_id))
+        self.assertEqual(rev1, tree2.get_file_revision(file_id))
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
         self.assertFileGraph(expected_graph, tree, (file_id, rev1))
@@ -587,8 +606,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         tree.add(['dir/content'], ['contentid'])
         rev2 = tree.commit('')
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.inventory['dirid'].revision)
-        self.assertEqual(rev1, tree2.inventory['dirid'].revision)
+        self.assertEqual(rev1, tree1.get_file_revision('dirid'))
+        self.assertEqual(rev1, tree2.get_file_revision('dirid'))
         file_id = 'dirid'
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
@@ -797,8 +816,8 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev2 = mini_commit(tree, name, tree.id2path(file_id),
             expect_fs_hash=expect_fs_hash)
         tree1, tree2 = self._get_revtrees(tree, [rev1, rev2])
-        self.assertEqual(rev1, tree1.inventory[file_id].revision)
-        self.assertEqual(rev2, tree2.inventory[file_id].revision)
+        self.assertEqual(rev1, tree1.get_file_revision(file_id))
+        self.assertEqual(rev2, tree2.get_file_revision(file_id))
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
         expected_graph[(file_id, rev2)] = ((file_id, rev1),)
@@ -919,10 +938,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             parent_tree = tree.basis_tree()
             parent_tree.lock_read()
             self.addCleanup(parent_tree.unlock)
-            parent_invs = [parent_tree.inventory]
+            parent_trees = [parent_tree]
             for parent_id in parent_ids[1:]:
-                parent_invs.append(tree.branch.repository.revision_tree(
-                    parent_id).inventory)
+                parent_trees.append(tree.branch.repository.revision_tree(
+                    parent_id))
             changes = list(tree.iter_changes(parent_tree))
             result = list(builder.record_iter_changes(tree, parent_ids[0],
                 changes))
@@ -977,7 +996,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # (closest to a public per-file graph API we have today)
         tree.lock_read()
         self.addCleanup(tree.unlock)
-        g = dict(graph.Graph(tree.branch.repository.texts).iter_ancestry([tip]))
+        g = dict(tree.branch.repository.get_file_graph().iter_ancestry([tip]))
         self.assertEqual(expected_graph, g)
 
     def test_last_modified_revision_after_content_file_changes(self):
@@ -1058,7 +1077,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev4 = mini_commit(tree1, 'new_' + name, 'new_' + name,
             expect_fs_hash=expect_fs_hash)
         tree3, = self._get_revtrees(tree1, [rev4])
-        self.assertEqual(rev4, tree3.inventory[name + 'id'].revision)
+        self.assertEqual(rev4, tree3.get_file_revision(name + 'id'))
         file_id = name + 'id'
         expected_graph = {}
         expected_graph[(file_id, rev1)] = ()
@@ -1124,7 +1143,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
             rev3 = mini_commit(in_tree, name, 'new_' + name, False,
                 delta_against_basis=changed_in_tree)
             tree3, = self._get_revtrees(in_tree, [rev2])
-            self.assertEqual(rev2, tree3.inventory[name + 'id'].revision)
+            self.assertEqual(rev2, tree3.get_file_revision(name + 'id'))
             file_id = name + 'id'
             expected_graph = {}
             expected_graph[(file_id, rev1)] = ()
@@ -1156,7 +1175,7 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         rev3 = mini_commit(tree1, None, 'name', False)
         tree3, = self._get_revtrees(tree1, [rev2])
         # in rev2, name should be only changed in rev2
-        self.assertEqual(rev2, tree3.inventory[file_id].revision)
+        self.assertEqual(rev2, tree3.get_file_revision(file_id))
         expected_graph = {}
         expected_graph[(file_id, rev2)] = ()
         self.assertFileGraph(expected_graph, tree1, (file_id, rev2))
@@ -1361,6 +1380,10 @@ class TestCommitBuilder(per_repository.TestCaseWithRepository):
         # Ensure that when no username is available but a committer is
         # supplied, commit works.
         self.overrideEnv('EMAIL', None)
+        self.overrideEnv('BZR_EMAIL', None)
+        # Also, make sure that it's not inferred from mailname.
+        self.overrideAttr(config, '_auto_user_id',
+            lambda: (None, None))
         tree = self.make_branch_and_tree(".")
         tree.lock_write()
         try:

@@ -1,4 +1,4 @@
-# Copyright (C) 2005-2010 Canonical Ltd
+# Copyright (C) 2005-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,26 +42,16 @@ bzrlib.ui.text.TextUIFactory
 """
 
 
-import os
-import sys
 import warnings
 
 from bzrlib.lazy_import import lazy_import
 lazy_import(globals(), """
-import getpass
-
 from bzrlib import (
-    errors,
     osutils,
     progress,
     trace,
     )
 """)
-from bzrlib.symbol_versioning import (
-    deprecated_function,
-    deprecated_in,
-    deprecated_method,
-    )
 
 
 _valid_boolean_strings = dict(yes=True, no=False,
@@ -155,6 +145,10 @@ class UIFactory(object):
             "This may take some time. Upgrade the repositories to the "
             "same format for better performance."
             ),
+        deprecated_command=(
+            "The command 'bzr %(deprecated_name)s' "
+            "has been deprecated in bzr %(deprecated_in_version)s. "
+            "Please use 'bzr %(recommended_name)s' instead."),
         recommend_upgrade=("%(current_format_name)s is deprecated "
             "and a better format is available.\n"
             "It is recommended that you upgrade by "
@@ -327,7 +321,7 @@ class UIFactory(object):
         """Get a boolean question answered from the user.
 
         :param prompt: a message to prompt the user with. Should be a single
-        line without terminating \n.
+            line without terminating \\n.
         :return: True or False for y/yes or n/no.
         """
         raise NotImplementedError(self.get_boolean)
@@ -336,7 +330,7 @@ class UIFactory(object):
         """Get an integer from the user.
 
         :param prompt: a message to prompt the user with. Could be a multi-line
-            prompt but without a terminating \n.
+            prompt but without a terminating \\n.
 
         :return: A signed integer.
         """

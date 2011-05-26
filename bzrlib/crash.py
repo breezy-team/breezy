@@ -1,4 +1,4 @@
-# Copyright (C) 2009, 2010, 2011 Canonical Ltd
+# Copyright (C) 2009-2011 Canonical Ltd
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -84,19 +84,27 @@ def report_bug_legacy(exc_info, err_file):
     """Report a bug by just printing a message to the user."""
     trace.print_exception(exc_info, err_file)
     err_file.write('\n')
-    err_file.write('bzr %s on python %s (%s)\n' % \
-                       (bzrlib.__version__,
-                        bzrlib._format_version_tuple(sys.version_info),
-                        platform.platform(aliased=1)))
-    err_file.write('arguments: %r\n' % sys.argv)
-    err_file.write(
+    import textwrap
+    def print_wrapped(l):
+        err_file.write(textwrap.fill(l,
+            width=78, subsequent_indent='    ') + '\n')
+    print_wrapped('bzr %s on python %s (%s)\n' % \
+        (bzrlib.__version__,
+        bzrlib._format_version_tuple(sys.version_info),
+        platform.platform(aliased=1)))
+    print_wrapped('arguments: %r\n' % sys.argv)
+    print_wrapped(textwrap.fill(
+        'plugins: ' + plugin.format_concise_plugin_list(),
+        width=78,
+        subsequent_indent='    ',
+        ) + '\n')
+    print_wrapped(
         'encoding: %r, fsenc: %r, lang: %r\n' % (
             osutils.get_user_encoding(), sys.getfilesystemencoding(),
             os.environ.get('LANG')))
-    err_file.write("plugins:\n")
-    err_file.write(_format_plugin_list())
+    # We used to show all the plugins here, but it's too verbose.
     err_file.write(
-        "\n\n"
+        "\n"
         "*** Bazaar has encountered an internal error.  This probably indicates a\n"
         "    bug in Bazaar.  You can help us fix it by filing a bug report at\n"
         "        https://bugs.launchpad.net/bzr/+filebug\n"

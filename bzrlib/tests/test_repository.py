@@ -52,11 +52,13 @@ from bzrlib import (
     revision as _mod_revision,
     upgrade,
     versionedfile,
+    vf_repository,
     workingtree,
     )
 from bzrlib.repofmt import (
     groupcompress_repo,
     knitrepo,
+    knitpack_repo,
     pack_repo,
     )
 
@@ -136,7 +138,7 @@ class TestRepositoryFormat(TestCaseWithTransport):
             format.initialize(dir)
             t = transport.get_transport(url)
             found_format = repository.RepositoryFormat.find_format(dir)
-            self.failUnless(isinstance(found_format, format.__class__))
+            self.assertIsInstance(found_format, format.__class__)
         check_format(repository.format_registry.get_default(), "bar")
 
     def test_find_format_no_repository(self):
@@ -377,7 +379,11 @@ class TestInterRepository(TestCaseWithTransport):
         # classes do not barf inappropriately when a surprising repository type
         # is handed to them.
         dummy_a = DummyRepository()
+        dummy_a._format = RepositoryFormat()
+        dummy_a._format.supports_full_versioned_files = True
         dummy_b = DummyRepository()
+        dummy_b._format = RepositoryFormat()
+        dummy_b._format.supports_full_versioned_files = True
         self.assertGetsDefaultInterRepository(dummy_a, dummy_b)
 
     def assertGetsDefaultInterRepository(self, repo_a, repo_b):
@@ -387,7 +393,7 @@ class TestInterRepository(TestCaseWithTransport):
         no actual sane default in the presence of incompatible data models.
         """
         inter_repo = repository.InterRepository.get(repo_a, repo_b)
-        self.assertEqual(repository.InterSameDataRepository,
+        self.assertEqual(vf_repository.InterSameDataRepository,
                          inter_repo.__class__)
         self.assertEqual(repo_a, inter_repo.source)
         self.assertEqual(repo_b, inter_repo.target)
@@ -407,9 +413,11 @@ class TestInterRepository(TestCaseWithTransport):
         dummy_a._serializer = repo._serializer
         dummy_a._format.supports_tree_reference = repo._format.supports_tree_reference
         dummy_a._format.rich_root_data = repo._format.rich_root_data
+        dummy_a._format.supports_full_versioned_files = repo._format.supports_full_versioned_files
         dummy_b._serializer = repo._serializer
         dummy_b._format.supports_tree_reference = repo._format.supports_tree_reference
         dummy_b._format.rich_root_data = repo._format.rich_root_data
+        dummy_b._format.supports_full_versioned_files = repo._format.supports_full_versioned_files
         repository.InterRepository.register_optimiser(InterDummy)
         try:
             # we should get the default for something InterDummy returns False
@@ -665,7 +673,7 @@ class Test2a(tests.TestCaseWithMemoryTransport):
         target = self.make_repository('target', format='rich-root-pack')
         stream = source._get_source(target._format)
         # We don't want the child GroupCHKStreamSource
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
     def test_get_stream_for_missing_keys_includes_all_chk_refs(self):
         source_builder = self.make_branch_builder('source',
@@ -747,25 +755,25 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         source = self.make_repository('source', format='pack-0.92')
         target = self.make_repository('target', format='pack-0.92')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_rich_root_pack(self):
         source = self.make_repository('source', format='rich-root-pack')
         target = self.make_repository('target', format='rich-root-pack')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_19(self):
         source = self.make_repository('source', format='1.9')
         target = self.make_repository('target', format='1.9')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_exact_pack_19_rich_root(self):
         source = self.make_repository('source', format='1.9-rich-root')
         target = self.make_repository('target', format='1.9-rich-root')
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_source_to_remote_exact_pack_19(self):
         trans = self.make_smart_server('target')
@@ -774,19 +782,19 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         target = self.make_repository('target', format='1.9')
         target = repository.Repository.open(trans.base)
         stream_source = source._get_source(target._format)
-        self.assertIsInstance(stream_source, pack_repo.KnitPackStreamSource)
+        self.assertIsInstance(stream_source, knitpack_repo.KnitPackStreamSource)
 
     def test_stream_source_to_non_exact(self):
         source = self.make_repository('source', format='pack-0.92')
         target = self.make_repository('target', format='1.9')
         stream = source._get_source(target._format)
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
     def test_stream_source_to_non_exact_rich_root(self):
         source = self.make_repository('source', format='1.9')
         target = self.make_repository('target', format='1.9-rich-root')
         stream = source._get_source(target._format)
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
     def test_source_to_remote_non_exact_pack_19(self):
         trans = self.make_smart_server('target')
@@ -795,13 +803,13 @@ class TestKnitPackStreamSource(tests.TestCaseWithMemoryTransport):
         target = self.make_repository('target', format='1.6')
         target = repository.Repository.open(trans.base)
         stream_source = source._get_source(target._format)
-        self.assertIs(type(stream_source), repository.StreamSource)
+        self.assertIs(type(stream_source), vf_repository.StreamSource)
 
     def test_stream_source_to_knit(self):
         source = self.make_repository('source', format='pack-0.92')
         target = self.make_repository('target', format='dirstate')
         stream = source._get_source(target._format)
-        self.assertIs(type(stream), repository.StreamSource)
+        self.assertIs(type(stream), vf_repository.StreamSource)
 
 
 class TestDevelopment6FindParentIdsOfRevisions(TestCaseWithTransport):
@@ -1443,7 +1451,7 @@ class TestPacker(TestCaseWithTransport):
         # Because of how they were built, they correspond to
         # ['D', 'C', 'B', 'A']
         packs = b.repository._pack_collection.packs
-        packer = pack_repo.Packer(b.repository._pack_collection,
+        packer = knitpack_repo.KnitPacker(b.repository._pack_collection,
                                   packs, 'testing',
                                   revision_ids=['B', 'C'])
         # Now, when we are copying the B & C revisions, their pack files should
@@ -1463,7 +1471,7 @@ class TestOptimisingPacker(TestCaseWithTransport):
         return repo._pack_collection
 
     def test_open_pack_will_optimise(self):
-        packer = pack_repo.OptimisingPacker(self.get_pack_collection(),
+        packer = knitpack_repo.OptimisingKnitPacker(self.get_pack_collection(),
                                             [], '.test')
         new_pack = packer.open_pack()
         self.addCleanup(new_pack.abort) # ensure cleanup
@@ -1594,7 +1602,7 @@ class TestCrossFormatPacks(TestCaseWithTransport):
         self.addCleanup(target.unlock)
         source = source_tree.branch.repository._get_source(target._format)
         self.orig_pack = target.pack
-        target.pack = self.log_pack
+        self.overrideAttr(target, "pack", self.log_pack)
         search = target.search_missing_revision_ids(
             source_tree.branch.repository, revision_ids=[tip])
         stream = source.get_stream(search)
@@ -1618,7 +1626,7 @@ class TestCrossFormatPacks(TestCaseWithTransport):
         self.addCleanup(target.unlock)
         source = source_tree.branch.repository
         self.orig_pack = target.pack
-        target.pack = self.log_pack
+        self.overrideAttr(target, "pack", self.log_pack)
         target.fetch(source)
         if expect_pack_called:
             self.assertLength(1, self.calls)

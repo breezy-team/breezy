@@ -53,18 +53,10 @@ from bzrlib.symbol_versioning import (
     deprecated_in,
     )
 
-# sha and md5 modules are deprecated in python2.6 but hashlib is available as
-# of 2.5
-if sys.version_info < (2, 5):
-    import md5 as _mod_md5
-    md5 = _mod_md5.new
-    import sha as _mod_sha
-    sha = _mod_sha.new
-else:
-    from hashlib import (
-        md5,
-        sha1 as sha,
-        )
+from hashlib import (
+    md5,
+    sha1 as sha,
+    )
 
 
 import bzrlib
@@ -96,8 +88,8 @@ def get_unicode_argv():
         user_encoding = get_user_encoding()
         return [a.decode(user_encoding) for a in sys.argv[1:]]
     except UnicodeDecodeError:
-        raise errors.BzrError(("Parameter '%r' is unsupported by the current "
-                                                            "encoding." % a))
+        raise errors.BzrError("Parameter %r encoding is unsupported by %s "
+            "application locale." % (a, user_encoding))
 
 
 def make_readonly(filename):
@@ -269,7 +261,10 @@ def fancy_rename(old, new, rename_func, unlink_func):
             else:
                 rename_func(tmp_name, new)
     if failure_exc is not None:
-        raise failure_exc[0], failure_exc[1], failure_exc[2]
+        try:
+            raise failure_exc[0], failure_exc[1], failure_exc[2]
+        finally:
+            del failure_exc
 
 
 # In Python 2.4.2 and older, os.path.abspath and os.path.realpath
@@ -392,6 +387,12 @@ splitext = os.path.splitext
 # These were already lazily imported into local scope
 # mkdtemp = tempfile.mkdtemp
 # rmtree = shutil.rmtree
+lstat = os.lstat
+fstat = os.fstat
+
+def wrap_stat(st):
+    return st
+
 
 MIN_ABS_PATHLENGTH = 1
 
@@ -407,6 +408,14 @@ if sys.platform == 'win32':
     getcwd = _win32_getcwd
     mkdtemp = _win32_mkdtemp
     rename = _win32_rename
+    try:
+        from bzrlib import _walkdirs_win32
+    except ImportError:
+        pass
+    else:
+        lstat = _walkdirs_win32.lstat
+        fstat = _walkdirs_win32.fstat
+        wrap_stat = _walkdirs_win32.wrap_stat
 
     MIN_ABS_PATHLENGTH = 3
 

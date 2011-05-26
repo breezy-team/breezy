@@ -90,8 +90,8 @@ class TestMerge(TestCaseWithTransport):
         os.chdir('branch2')
         self.run_bzr('merge ../branch1/baz', retcode=3)
         self.run_bzr('merge ../branch1/foo')
-        self.failUnlessExists('foo')
-        self.failIfExists('bar')
+        self.assertPathExists('foo')
+        self.assertPathDoesNotExist('bar')
         wt2 = WorkingTree.open('.') # opens branch2
         self.assertEqual([tip], wt2.get_parent_ids())
 
@@ -157,12 +157,12 @@ class TestMerge(TestCaseWithTransport):
         log = StringIO()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=True)
-        self.failUnless('All changes applied successfully.\n' not in
+        self.assertTrue('All changes applied successfully.\n' not in
             self.get_log())
         tree_b.revert()
         merge_inner(tree_b.branch, tree_a, tree_b.basis_tree(),
                     this_tree=tree_b, ignore_zero=False)
-        self.failUnless('All changes applied successfully.\n' in self.get_log())
+        self.assertTrue('All changes applied successfully.\n' in self.get_log())
 
     def test_merge_inner_conflicts(self):
         tree_a = self.make_branch_and_tree('a')
@@ -2863,14 +2863,14 @@ class TestConfigurableFileMerger(tests.TestCaseWithTransport):
 
     def get_merger_factory(self):
         # Allows  the inner methods to access the test attributes
-        test = self
+        calls = self.calls
 
         class FooMerger(_mod_merge.ConfigurableFileMerger):
             name_prefix = "foo"
             default_files = ['bar']
 
             def merge_text(self, params):
-                test.calls.append('merge_text')
+                calls.append('merge_text')
                 return ('not_applicable', None)
 
         def factory(merger):

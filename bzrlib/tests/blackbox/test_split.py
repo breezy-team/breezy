@@ -15,11 +15,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 
-import os
-
-from bzrlib import bzrdir, tests, workingtree
+from bzrlib import tests, workingtree
 from bzrlib.repofmt.knitrepo import RepositoryFormatKnit4
-from bzrlib.repofmt.pack_repo import RepositoryFormatKnitPack4
+from bzrlib.repofmt.knitpack_repo import RepositoryFormatKnitPack4
 
 
 

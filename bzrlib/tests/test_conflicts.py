@@ -62,6 +62,11 @@ example_conflicts = conflicts.ConflictList(
 ])
 
 
+def vary_by_conflicts():
+    for conflict in example_conflicts:
+        yield (conflict.__class__.__name__, {"conflict": conflict})
+
+
 class TestConflicts(tests.TestCaseWithTransport):
 
     def test_resolve_conflict_dir(self):
@@ -120,38 +125,57 @@ class TestConflicts(tests.TestCaseWithTransport):
         self.assertEqual(conflicts.ConflictList([]), tree.conflicts())
 
 
-class TestConflictStanzas(tests.TestCase):
+class TestPerConflict(tests.TestCase):
+
+    scenarios = scenarios.multiply_scenarios(vary_by_conflicts())
+
+    def test_stringification(self):
+        text = unicode(self.conflict)
+        self.assertContainsString(text, self.conflict.path)
+        self.assertContainsString(text.lower(), "conflict")
+        self.assertContainsString(repr(self.conflict),
+            self.conflict.__class__.__name__)
 
     def test_stanza_roundtrip(self):
-        # write and read our example stanza.
-        stanza_iter = example_conflicts.to_stanzas()
-        processed = conflicts.ConflictList.from_stanzas(stanza_iter)
-        for o, p in zip(processed, example_conflicts):
-            self.assertEqual(o, p)
+        p = self.conflict
+        o = conflicts.Conflict.factory(**p.as_stanza().as_dict())
+        self.assertEqual(o, p)
 
-            self.assertIsInstance(o.path, unicode)
+        self.assertIsInstance(o.path, unicode)
 
-            if o.file_id is not None:
-                self.assertIsInstance(o.file_id, str)
+        if o.file_id is not None:
+            self.assertIsInstance(o.file_id, str)
 
-            conflict_path = getattr(o, 'conflict_path', None)
-            if conflict_path is not None:
-                self.assertIsInstance(conflict_path, unicode)
+        conflict_path = getattr(o, 'conflict_path', None)
+        if conflict_path is not None:
+            self.assertIsInstance(conflict_path, unicode)
 
-            conflict_file_id = getattr(o, 'conflict_file_id', None)
-            if conflict_file_id is not None:
-                self.assertIsInstance(conflict_file_id, str)
+        conflict_file_id = getattr(o, 'conflict_file_id', None)
+        if conflict_file_id is not None:
+            self.assertIsInstance(conflict_file_id, str)
 
     def test_stanzification(self):
-        for stanza in example_conflicts.to_stanzas():
-            if 'file_id' in stanza:
-                # In Stanza form, the file_id has to be unicode.
-                self.assertStartsWith(stanza['file_id'], u'\xeed')
-            self.assertStartsWith(stanza['path'], u'p\xe5th')
-            if 'conflict_path' in stanza:
-                self.assertStartsWith(stanza['conflict_path'], u'p\xe5th')
-            if 'conflict_file_id' in stanza:
-                self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
+        stanza = self.conflict.as_stanza()
+        if 'file_id' in stanza:
+            # In Stanza form, the file_id has to be unicode.
+            self.assertStartsWith(stanza['file_id'], u'\xeed')
+        self.assertStartsWith(stanza['path'], u'p\xe5th')
+        if 'conflict_path' in stanza:
+            self.assertStartsWith(stanza['conflict_path'], u'p\xe5th')
+        if 'conflict_file_id' in stanza:
+            self.assertStartsWith(stanza['conflict_file_id'], u'\xeed')
+
+
+class TestConflictList(tests.TestCase):
+
+    def test_stanzas_roundtrip(self):
+        stanzas_iter = example_conflicts.to_stanzas()
+        processed = conflicts.ConflictList.from_stanzas(stanzas_iter)
+        self.assertEqual(example_conflicts, processed)
+
+    def test_stringification(self):
+        for text, o in zip(example_conflicts.to_strings(), example_conflicts):
+            self.assertEqual(text, unicode(o))
 
 
 # FIXME: The shell-like tests should be converted to real whitebox tests... or
@@ -446,7 +470,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         return [('unversion', 'file-id')]
 
     def check_file_doesnt_exist(self):
-        self.failIfExists('branch/file')
+        self.assertPathDoesNotExist('branch/file')
 
     def do_create_file_in_dir(self):
         return [('add', ('dir', 'dir-id', 'directory', '')),
@@ -459,7 +483,7 @@ class TestResolveContentsConflict(TestParametrizedResolveConflicts):
         self.assertFileEqual('trunk content\nmore content\n', 'branch/dir/file')
 
     def check_file_in_dir_doesnt_exist(self):
-        self.failIfExists('branch/dir/file')
+        self.assertPathDoesNotExist('branch/dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         return self._path
@@ -540,41 +564,41 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
         return [('rename', ('file', 'new-file'))]
 
     def check_file_renamed(self):
-        self.failIfExists('branch/file')
-        self.failUnlessExists('branch/new-file')
+        self.assertPathDoesNotExist('branch/file')
+        self.assertPathExists('branch/new-file')
 
     def do_rename_file2(self):
         return [('rename', ('file', 'new-file2'))]
 
     def check_file_renamed2(self):
-        self.failIfExists('branch/file')
-        self.failUnlessExists('branch/new-file2')
+        self.assertPathDoesNotExist('branch/file')
+        self.assertPathExists('branch/new-file2')
 
     def do_rename_dir(self):
         return [('rename', ('dir', 'new-dir'))]
 
     def check_dir_renamed(self):
-        self.failIfExists('branch/dir')
-        self.failUnlessExists('branch/new-dir')
+        self.assertPathDoesNotExist('branch/dir')
+        self.assertPathExists('branch/new-dir')
 
     def do_rename_dir2(self):
         return [('rename', ('dir', 'new-dir2'))]
 
     def check_dir_renamed2(self):
-        self.failIfExists('branch/dir')
-        self.failUnlessExists('branch/new-dir2')
+        self.assertPathDoesNotExist('branch/dir')
+        self.assertPathExists('branch/new-dir2')
 
     def do_delete_file(self):
         return [('unversion', 'file-id')]
 
     def check_file_doesnt_exist(self):
-        self.failIfExists('branch/file')
+        self.assertPathDoesNotExist('branch/file')
 
     def do_delete_dir(self):
         return [('unversion', 'dir-id')]
 
     def check_dir_doesnt_exist(self):
-        self.failIfExists('branch/dir')
+        self.assertPathDoesNotExist('branch/dir')
 
     def do_create_file_in_dir(self):
         return [('add', ('dir', 'dir-id', 'directory', '')),
@@ -584,11 +608,11 @@ class TestResolvePathConflict(TestParametrizedResolveConflicts):
         return [('rename', ('dir/file', 'dir/new-file'))]
 
     def check_file_in_dir_renamed(self):
-        self.failIfExists('branch/dir/file')
-        self.failUnlessExists('branch/dir/new-file')
+        self.assertPathDoesNotExist('branch/dir/file')
+        self.assertPathExists('branch/dir/new-file')
 
     def check_file_in_dir_doesnt_exist(self):
-        self.failIfExists('branch/dir/file')
+        self.assertPathDoesNotExist('branch/dir/file')
 
     def _get_resolve_path_arg(self, wt, action):
         tpath = self._this['path']
@@ -885,15 +909,15 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         return [('rename', ('dir1', 'dir2/dir1'))]
 
     def check_dir1_moved(self):
-        self.failIfExists('branch/dir1')
-        self.failUnlessExists('branch/dir2/dir1')
+        self.assertPathDoesNotExist('branch/dir1')
+        self.assertPathExists('branch/dir2/dir1')
 
     def do_move_dir2_into_dir1(self):
         return [('rename', ('dir2', 'dir1/dir2'))]
 
     def check_dir2_moved(self):
-        self.failIfExists('branch/dir2')
-        self.failUnlessExists('branch/dir1/dir2')
+        self.assertPathDoesNotExist('branch/dir2')
+        self.assertPathExists('branch/dir1/dir2')
 
     def do_create_dir1_4(self):
         return [('add', ('dir1', 'dir1-id', 'directory', '')),
@@ -905,17 +929,17 @@ class TestResolveParentLoop(TestParametrizedResolveConflicts):
         return [('rename', ('dir1', 'dir3/dir4/dir1'))]
 
     def check_dir1_2_moved(self):
-        self.failIfExists('branch/dir1')
-        self.failUnlessExists('branch/dir3/dir4/dir1')
-        self.failUnlessExists('branch/dir3/dir4/dir1/dir2')
+        self.assertPathDoesNotExist('branch/dir1')
+        self.assertPathExists('branch/dir3/dir4/dir1')
+        self.assertPathExists('branch/dir3/dir4/dir1/dir2')
 
     def do_move_dir3_into_dir2(self):
         return [('rename', ('dir3', 'dir1/dir2/dir3'))]
 
     def check_dir3_4_moved(self):
-        self.failIfExists('branch/dir3')
-        self.failUnlessExists('branch/dir1/dir2/dir3')
-        self.failUnlessExists('branch/dir1/dir2/dir3/dir4')
+        self.assertPathDoesNotExist('branch/dir3')
+        self.assertPathExists('branch/dir1/dir2/dir3')
+        self.assertPathExists('branch/dir1/dir2/dir3/dir4')
 
     def _get_resolve_path_arg(self, wt, action):
         # ParentLoop says: moving <conflict_path> into <path>. Cancelled move.

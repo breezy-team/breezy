@@ -129,7 +129,9 @@ def _show_push_branch(br_from, revision_id, location, to_file, verbose=False,
         push_result.target_branch = br_to
         push_result.old_revid = _mod_revision.NULL_REVISION
         push_result.old_revno = 0
-        if br_from.get_push_location() is None or remember:
+        # Remembers if asked explicitly or no previous location is set
+        if (remember
+            or (remember is None and br_from.get_push_location() is None)):
             br_from.set_push_location(br_to.base)
     else:
         if stacked_on is not None:

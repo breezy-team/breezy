@@ -25,20 +25,22 @@ from bzrlib import (
     osutils,
     timestamp,
     )
-import bzrlib.errors
 from bzrlib.bundle import apply_bundle
-from bzrlib.errors import (TestamentMismatch, BzrError,
-                           MalformedHeader, MalformedPatches, NotABundle)
-from bzrlib.inventory import (Inventory, InventoryEntry,
-                              InventoryDirectory, InventoryFile,
-                              InventoryLink)
-from bzrlib.osutils import sha_file, sha_string, pathjoin
+from bzrlib.errors import (
+    TestamentMismatch,
+    BzrError,
+    )
+from bzrlib.inventory import (
+    Inventory,
+    InventoryDirectory,
+    InventoryFile,
+    InventoryLink,
+    )
+from bzrlib.osutils import sha_string, pathjoin
 from bzrlib.revision import Revision, NULL_REVISION
 from bzrlib.testament import StrictTestament
 from bzrlib.trace import mutter, warning
-import bzrlib.transport
 from bzrlib.tree import Tree
-import bzrlib.urlutils
 from bzrlib.xml5 import serializer_v5
 
 
@@ -206,7 +208,7 @@ class BundleInfo(object):
 
         inv = bundle_tree.inventory
         self._validate_inventory(inv, revision_id)
-        self._validate_revision(inv, revision_id)
+        self._validate_revision(bundle_tree, revision_id)
 
         return bundle_tree
 
@@ -286,7 +288,7 @@ class BundleInfo(object):
             warning('Inventory sha hash mismatch for revision %s. %s'
                     ' != %s' % (revision_id, sha1, rev.inventory_sha1))
 
-    def _validate_revision(self, inventory, revision_id):
+    def _validate_revision(self, tree, revision_id):
         """Make sure all revision entries match their checksum."""
 
         # This is a mapping from each revision id to its sha hash
@@ -298,7 +300,7 @@ class BundleInfo(object):
             raise AssertionError()
         if not (rev.revision_id == revision_id):
             raise AssertionError()
-        sha1 = self._testament_sha1(rev, inventory)
+        sha1 = self._testament_sha1(rev, tree)
         if sha1 != rev_info.sha1:
             raise TestamentMismatch(rev.revision_id, rev_info.sha1, sha1)
         if rev.revision_id in rev_to_sha1:
@@ -462,6 +464,7 @@ class BundleInfo(object):
 
 
 class BundleTree(Tree):
+
     def __init__(self, base_tree, revision_id):
         self.base_tree = base_tree
         self._renamed = {} # Mapping from old_path => new_path
@@ -638,10 +641,11 @@ class BundleTree(Tree):
                 'Malformed patch for %s, %r' % (file_id, file_patch))
         return patched_file(file_patch, patch_original)
 
-    def get_symlink_target(self, file_id):
-        new_path = self.id2path(file_id)
+    def get_symlink_target(self, file_id, path=None):
+        if path is None:
+            path = self.id2path(file_id)
         try:
-            return self._targets[new_path]
+            return self._targets[path]
         except KeyError:
             return self.base_tree.get_symlink_target(file_id)
 
@@ -661,7 +665,7 @@ class BundleTree(Tree):
         path = self.id2path(file_id)
         if path in self._last_changed:
             return self._last_changed[path]
-        return self.base_tree.inventory[file_id].revision
+        return self.base_tree.get_file_revision(file_id)
 
     def get_size_and_sha1(self, file_id):
         """Return the size and sha1 hash of the given file id.
@@ -712,7 +716,7 @@ class BundleTree(Tree):
                 ie.executable = self.is_executable(file_id)
             elif kind == 'symlink':
                 ie = InventoryLink(file_id, name, parent_id)
-                ie.symlink_target = self.get_symlink_target(file_id)
+                ie.symlink_target = self.get_symlink_target(file_id, path)
             ie.revision = revision_id
 
             if kind == 'file':
@@ -739,11 +743,28 @@ class BundleTree(Tree):
         for path, entry in self.inventory.iter_entries():
             yield entry.file_id
 
+    def list_files(self, include_root=False, from_dir=None, recursive=True):
+        # The only files returned by this are those from the version
+        inv = self.inventory
+        if from_dir is None:
+            from_dir_id = None
+        else:
+            from_dir_id = inv.path2id(from_dir)
+            if from_dir_id is None:
+                # Directory not versioned
+                return
+        entries = inv.iter_entries(from_dir=from_dir_id, recursive=recursive)
+        if inv.root is not None and not include_root and from_dir is None:
+            # skip the root for compatability with the current apis.
+            entries.next()
+        for path, entry in entries:
+            yield path, 'V', entry.kind, entry.file_id, entry
+
     def sorted_path_id(self):
         paths = []
         for result in self._new_id.iteritems():
             paths.append(result)
-        for id in self.base_tree:
+        for id in self.base_tree.all_file_ids():
             path = self.id2path(id)
             if path is None:
                 continue

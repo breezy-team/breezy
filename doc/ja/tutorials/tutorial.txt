@@ -25,6 +25,8 @@ Bazaar チュートリアル
 それ以外の場合、コーヒーか紅茶(訳注:日本茶でもいいですよ)を用意して、\
 リラックスして読み始めてください。
 
+.. purpose-of-version-control
+
 バージョン管理の目的
 ====================
 
@@ -38,8 +40,8 @@ Bazaar チュートリアル
 
 Bazaarをはじめとするバージョン管理システムは、ディレクトリに起こった変更を\
 **ブランチ (branch)** というディレクトリよりも複雑なものの中に入れて\
-追跡します。
-ブランチはディレクトリの中に何が入っているかだけでなく、過去のいろいろな\
+管理します。
+ブランチは今ディレクトリの中に何が入っているかだけでなく、過去のいろいろな\
 時点でのディレクトリの中身を格納しています。
 なので、望まぬ変更をしてしまったときには過去の時点の状態に戻すことができます。
 
@@ -53,9 +55,9 @@ uses as well.)
 たとえば、オプションのログメッセージをつけることで、変更が何を意味して\
 いるのかというコメントを残すことができます。
 実際に利用されるログメッセージは、 "Webテンプレートをテーブルを閉じるように\
-修正" とか "sftpに対応した。 #595 を修正。" といったものです。
+修正" とか "SFTPに対応した。 #595 を修正。" といったものです。
 
-こういったログが保存されているおかげで、たとえば後になって sftp に問題が発生\
+こういったログが保存されているおかげで、たとえば後になって SFTP に問題が発生\
 したときに、問題が発生するようになったのがどの時点なのか目星をつけることが\
 できます。
 
@@ -236,9 +238,10 @@ Bazaarはコンピュータのユーザー名とホスト名から自動でメ�
 分離するといいでしょう。
 
 自分のコンピュータのファイルシステム上にあるブランチを参照するときは\
-ブランチを格納しているディレクトリ名で指定できます。 bzr は http や ftp\
-経由でブランチにアクセスすることもできます。例::
+ブランチを格納しているディレクトリ名で指定できます。 bzr は SSH, HTTP
+SFTP などを経由してブランチにアクセスすることもできます。例::
 
+    % bzr log bzr+ssh://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/
     % bzr log http://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/
     % bzr log sftp://bazaar.launchpad.net/~bzr-pqm/bzr/bzr.dev/
 
@@ -395,6 +398,39 @@ bzr commit
 コミットメッセージに diff を含めたい場合は、水平線より上にコピーペースト\
 してください。
 
+
+.. Marking bugs as fixed
+
+解決したバグの記録をつける
+----------------------------
+
+プロジェクトにおいて多くの変更はバグの修正のために行われます。
+Bazaar は、コミットするときに解決したバグについてメタデータに記録することが
+できます。
+これを行うには、 ``--fixes`` オプションを使います。
+このオプションは次のような形の引数を取ります。
+
+    % bzr commit --fixes <tracker>:<id>
+
+``<tracker>`` の部分にはバグ管理システムを指定するIDを書き、
+``<id>`` の部分にはそのバグ管理システム上で管理されているバグの
+IDを書きます。 ``<id>`` はたいてい数値になるでしょう。
+Bazaar は最初からいくつかの有名なバグ管理システムを知っています。
+bugs.launchpad.net, bugs.debian.org bugzilla.gnome.org です。
+これらは、それぞれ独自のIDとして lp, deb, gnome を持っています。
+例えば、 bugs.launchpad.net 上のバグ #1234 を解決する場合は、
+その解決をコミットするときに次のようなコマンドを利用できます。 ::
+
+    % bzr commit -m "fixed my first bug" --fixes lp:1234
+
+For more information on this topic or for information on how to configure
+other bug trackers please read `Bug Tracker Settings`_.
+
+このトピックに着いてのさらなる情報や、他のバグ管理システムを設定する方法
+については、 `Bug Tracker Settings`_ を参照してください。
+
+.. _Bug Tracker Settings: ../user-reference/index.html#bug-tracker-settings
+
 .. Selective commit
 
 選択コミット
@@ -517,6 +553,27 @@ glob がスラッシュを含む場合、ツリーのトップからのパス全
 
     % bzr add .bzrignore
     % bzr commit -m "Add ignore patterns"
+
+
+bzr ignore
+----------
+
+``.bzrignore`` ファイルを直接編集する代わりに、 ``bzr ignore`` コマンドを
+利用することができます。 ``bzr ignore`` コマンドはファイル名かパターンを
+引数に受け取って、それを ``.bzrignore`` ファイルに追加します。
+``.bzrignore`` ファイルが存在しない場合、 ``bzr ignore`` コマンドは
+自動的にそのファイルを作成してバージョン管理に追加します。 ::
+
+    % bzr ignore tags
+    % bzr status
+    added:
+      .bzrignore
+
+
+``.bzrignore`` ファイルを自分で修正したときと同じく、コマンドを実行したあとに
+``.bzrignore`` ファイルをコミットしなければなりません。 ::
+
+    % bzr commit -m "Added tags to ignore file"
 
 
 .. Global ignores
@@ -780,7 +837,7 @@ bzrのブランチを公開するには特別なサーバーは必要ありま�
 
   ::
 
-    % bzr push sftp://servername.com/path/to/directory
+    % bzr push bzr+ssh://servername.com/path/to/directory
 
 ..   (The destination directory must already exist unless the
 ..   ``--create-prefix`` option is used.)
@@ -799,8 +856,10 @@ bzrのブランチを公開するには特別なサーバーは必要ありま�
 ..   rsync, or other related file transfer methods.  This is usually less safe
 ..   than using ``push``, but may be faster or easier in some situations.
 
-* 手動で、 tarball を送ったり rsync を使ったりほかの転送方法を利用してファイルを\
-  送ることで
+* tarball を送ったり rsync を使ったりほかの転送方法を利用して、手動でファイルを\
+  コピーすることもできます。
+  これはたいてい ``push`` ほど安全ではありませんが、場合によって高速だったり、\
+  簡単だったりするかもしれません。
 
 
 .. Moving changes between trees
@@ -814,7 +873,7 @@ bzrのブランチを公開するには特別なサーバーは必要ありま�
 .. expected, so you start a new branch for it.
 
 どんな人にでもありえることですが、適切ではないツリー上で変更してしまうことがあります。
-単純に作業するディレクトリを間違えたり、変更がよそうよりも大きくなってしまったりして、
+単純に作業するディレクトリを間違えたり、変更が予想よりも大きくなってしまったりして、
 その変更のために新しいブランチを作りなおすことがあります。
 
 .. To move your changes from one tree to another, use

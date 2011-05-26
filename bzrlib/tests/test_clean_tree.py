@@ -46,12 +46,12 @@ class TestCleanTree(TestCaseInTempDir):
         BzrDir.create_standalone_workingtree('branch')
         os.symlink(os.path.realpath('no-die-please'), 'branch/die-please')
         os.mkdir('no-die-please')
-        self.failUnlessExists('branch/die-please')
+        self.assertPathExists('branch/die-please')
         os.mkdir('no-die-please/child')
 
         clean_tree('branch', unknown=True, no_prompt=True)
-        self.failUnlessExists('no-die-please')
-        self.failUnlessExists('no-die-please/child')
+        self.assertPathExists('no-die-please')
+        self.assertPathExists('no-die-please/child')
 
     def test_iter_deletable(self):
         """Files are selected for deletion appropriately"""
@@ -98,7 +98,6 @@ class TestCleanTree(TestCaseInTempDir):
         def _dummy_rmtree(path, ignore_errors=False, onerror=None):
             """Call user supplied error handler onerror.
             """
-            self.assertTrue(isinstance(onerror, types.FunctionType))
             # Indicate failure in removing 'path' if path is subdir0
             # We later check to ensure that this is indicated
             # to the user as a warning. We raise OSError to construct

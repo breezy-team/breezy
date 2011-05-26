@@ -28,11 +28,11 @@ resolution.
 
 Whatever the conflict is, resolving it is roughly done in two steps:
 
-- modify the working tree content so that the conflicted item is now in the
-  state you want to keep,
+1. Modify the working tree content so that the conflicted item is now in the
+   state you want to keep, then
 
-- inform Bazaar that the conflict is now solved and ask to cleanup any
-  remaining generated information (``bzr resolve <item>``).
+2. Inform Bazaar that the conflict is now solved and ask to cleanup any
+   remaining generated information (``bzr resolve <item>``).
 
 For most conflict types, there are some obvious ways to modify the working
 tree and put it into the desired state. For some types of conflicts, Bazaar

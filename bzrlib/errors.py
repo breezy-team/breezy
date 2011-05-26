@@ -54,12 +54,12 @@ class BzrError(StandardError):
     Base class for errors raised by bzrlib.
 
     :cvar internal_error: if True this was probably caused by a bzr bug and
-    should be displayed with a traceback; if False (or absent) this was
-    probably a user or environment error and they don't need the gory details.
-    (That can be overridden by -Derror on the command line.)
+        should be displayed with a traceback; if False (or absent) this was
+        probably a user or environment error and they don't need the gory
+        details.  (That can be overridden by -Derror on the command line.)
 
     :cvar _fmt: Format string to display the error; this is expanded
-    by the instance's dict.
+        by the instance's dict.
     """
 
     internal_error = False
@@ -304,7 +304,7 @@ class ReservedId(BzrError):
 class RootMissing(InternalBzrError):
 
     _fmt = ("The root entry of a tree must be the first entry supplied to "
-        "record_entry_contents.")
+        "the commit builder.")
 
 
 class NoPublicBranch(BzrError):
@@ -864,9 +864,9 @@ class AlreadyVersionedError(BzrError):
         """Construct a new AlreadyVersionedError.
 
         :param path: This is the path which is versioned,
-        which should be in a user friendly form.
+            which should be in a user friendly form.
         :param context_info: If given, this is information about the context,
-        which could explain why this is expected to not be versioned.
+            which could explain why this is expected to not be versioned.
         """
         BzrError.__init__(self)
         self.path = path
@@ -885,9 +885,9 @@ class NotVersionedError(BzrError):
         """Construct a new NotVersionedError.
 
         :param path: This is the path which is not versioned,
-        which should be in a user friendly form.
+            which should be in a user friendly form.
         :param context_info: If given, this is information about the context,
-        which could explain why this is expected to be versioned.
+            which could explain why this is expected to be versioned.
         """
         BzrError.__init__(self)
         self.path = path
@@ -1715,10 +1715,16 @@ class InvalidRange(TransportError):
 
 class InvalidHttpResponse(TransportError):
 
-    _fmt = "Invalid http response for %(path)s: %(msg)s"
+    _fmt = "Invalid http response for %(path)s: %(msg)s%(orig_error)s"
 
     def __init__(self, path, msg, orig_error=None):
         self.path = path
+        if orig_error is None:
+            orig_error = ''
+        else:
+            # This is reached for obscure and unusual errors so we want to
+            # preserve as much info as possible to ease debug.
+            orig_error = ': %r' % (orig_error,)
         TransportError.__init__(self, msg, orig_error=orig_error)
 
 
@@ -1766,12 +1772,12 @@ class ConflictsInTree(BzrError):
 
 class ParseConfigError(BzrError):
 
+    _fmt = "Error(s) parsing config file %(filename)s:\n%(errors)s"
+
     def __init__(self, errors, filename):
-        if filename is None:
-            filename = ""
-        message = "Error(s) parsing config file %s:\n%s" % \
-            (filename, ('\n'.join(e.msg for e in errors)))
-        BzrError.__init__(self, message)
+        BzrError.__init__(self)
+        self.filename = filename
+        self.errors = '\n'.join(e.msg for e in errors)
 
 
 class NoEmailInUsername(BzrError):
@@ -2665,11 +2671,12 @@ class UnknownErrorFromSmartServer(BzrError):
 
     This is distinct from ErrorFromSmartServer so that it is possible to
     distinguish between the following two cases:
-      - ErrorFromSmartServer was uncaught.  This is logic error in the client
-        and so should provoke a traceback to the user.
-      - ErrorFromSmartServer was caught but its error_tuple could not be
-        translated.  This is probably because the server sent us garbage, and
-        should not provoke a traceback.
+
+    - ErrorFromSmartServer was uncaught.  This is logic error in the client
+      and so should provoke a traceback to the user.
+    - ErrorFromSmartServer was caught but its error_tuple could not be
+      translated.  This is probably because the server sent us garbage, and
+      should not provoke a traceback.
     """
 
     _fmt = "Server sent an unexpected error: %(error_tuple)r"
@@ -3249,3 +3256,13 @@ class ExpandingUnknownOption(BzrError):
     def __init__(self, name, string):
         self.name = name
         self.string = string
+
+
+class NoCompatibleInter(BzrError):
+
+    _fmt = ('No compatible object available for operations from %(source)r '
+            'to %(target)r.')
+
+    def __init__(self, source, target):
+        self.source = source
+        self.target = target
