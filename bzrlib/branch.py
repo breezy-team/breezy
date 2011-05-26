@@ -24,6 +24,7 @@ from itertools import chain
 from bzrlib import (
         bzrdir,
         cache_utf8,
+        cleanup,
         config as _mod_config,
         debug,
         errors,
@@ -931,8 +932,9 @@ class Branch(controldir.ControlComponent):
 
         :seealso: Branch._get_tags_bytes.
         """
-        return _run_with_write_locked_target(self, self._set_tags_bytes_locked,
-                bytes)
+        op = cleanup.OperationWithCleanups(self._set_tags_bytes_locked)
+        op.add_cleanup(self.lock_write().unlock)
+        return op.run_simple(bytes)
 
     def _set_tags_bytes_locked(self, bytes):
         self._tags_bytes = bytes
@@ -3168,42 +3170,6 @@ class Converter7to8(object):
         branch._transport.put_bytes('format', format.get_format_string())
 
 
-def _run_with_write_locked_target(target, callable, *args, **kwargs):
-    """Run ``callable(*args, **kwargs)``, write-locking target for the
-    duration.
-
-    _run_with_write_locked_target will attempt to release the lock it acquires.
-
-    If an exception is raised by callable, then that exception *will* be
-    propagated, even if the unlock attempt raises its own error.  Thus
-    _run_with_write_locked_target should be preferred to simply doing::
-
-        target.lock_write()
-        try:
-            return callable(*args, **kwargs)
-        finally:
-            target.unlock()
-
-    """
-    # This is very similar to bzrlib.decorators.needs_write_lock.  Perhaps they
-    # should share code?
-    target.lock_write()
-    try:
-        result = callable(*args, **kwargs)
-    except:
-        exc_info = sys.exc_info()
-        try:
-            target.unlock()
-        finally:
-            try:
-                raise exc_info[0], exc_info[1], exc_info[2]
-            finally:
-                del exc_info
-    else:
-        target.unlock()
-        return result
-
-
 class InterBranch(InterObject):
     """This class represents operations taking place between two branches.
 
@@ -3408,14 +3374,12 @@ class GenericInterBranch(InterBranch):
             raise errors.LossyPushToSameVCS(self.source, self.target)
         # TODO: Public option to disable running hooks - should be trivial but
         # needs tests.
-        self.source.lock_read()
-        try:
-            return _run_with_write_locked_target(
-                self.target, self._push_with_bound_branches, overwrite,
-                stop_revision, 
-                _override_hook_source_branch=_override_hook_source_branch)
-        finally:
-            self.source.unlock()
+
+        op = cleanup.OperationWithCleanups(self._push_with_bound_branches)
+        op.add_cleanup(self.source.lock_read().unlock)
+        op.add_cleanup(self.target.lock_write().unlock)
+        return op.run(overwrite, stop_revision,
+            _override_hook_source_branch=_override_hook_source_branch)
 
     def _basic_push(self, overwrite, stop_revision):
         """Basic implementation of push without bound branches or hooks.
@@ -3439,7 +3403,7 @@ class GenericInterBranch(InterBranch):
         result.new_revno, result.new_revid = self.target.last_revision_info()
         return result
 
-    def _push_with_bound_branches(self, overwrite, stop_revision,
+    def _push_with_bound_branches(self, operation, overwrite, stop_revision,
             _override_hook_source_branch=None):
         """Push from source into target, and into target's master if any.
         """
@@ -3457,21 +3421,18 @@ class GenericInterBranch(InterBranch):
             # be bound to itself? -- mbp 20070507
             master_branch = self.target.get_master_branch()
             master_branch.lock_write()
-            try:
-                # push into the master from the source branch.
-                master_inter = InterBranch.get(self.source, master_branch)
-                master_inter._basic_push(overwrite, stop_revision)
-                # and push into the target branch from the source. Note that
-                # we push from the source branch again, because it's considered
-                # the highest bandwidth repository.
-                result = self._basic_push(overwrite, stop_revision)
-                result.master_branch = master_branch
-                result.local_branch = self.target
-                _run_hooks()
-                return result
-            finally:
-                master_branch.unlock()
+            operation.add_cleanup(master_branch.unlock)
+            # push into the master from the source branch.
+            master_inter = InterBranch.get(self.source, master_branch)
+            master_inter._basic_push(overwrite, stop_revision)
+            # and push into the target branch from the source. Note that
+            # we push from the source branch again, because it's considered
+            # the highest bandwidth repository.
+            result = self._basic_push(overwrite, stop_revision)
+            result.master_branch = master_branch
+            result.local_branch = self.target
         else:
+            master_branch = None
             # no master branch
             result = self._basic_push(overwrite, stop_revision)
             # TODO: Why set master_branch and local_branch if there's no
@@ -3479,8 +3440,8 @@ class GenericInterBranch(InterBranch):
             # 20070504
             result.master_branch = self.target
             result.local_branch = None
-            _run_hooks()
-            return result
+        _run_hooks()
+        return result
 
     def _pull(self, overwrite=False, stop_revision=None,
              possible_transports=None, _hook_master=None, run_hooks=True,
