@@ -90,7 +90,7 @@ class TestSuite(unittest.TestSuite):
             stream = result.decorated._stream
         stored_count = 0
         from bzrlib.tests import selftest_debug_flags
-        notify = "collection" in selftest_debug_flags
+        notify = "uncollected_cases" in selftest_debug_flags
         while tests:
             if result.shouldStop:
                 self._tests = reversed(tests)
