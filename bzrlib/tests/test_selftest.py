@@ -3402,8 +3402,12 @@ class TestUncollectedWarnings(tests.TestCase):
             self.Test("test_skip"),
             ])
 
+    def _inject_stream_into_subunit(self, stream):
+        """To be overridden by subclasses that run tests out of process"""
+
     def _run_selftest_with_suite(self, **kwargs):
         sio = StringIO()
+        self._inject_stream_into_subunit(sio)
         old_flags = tests.selftest_debug_flags
         tests.selftest_debug_flags = old_flags.union(["uncollected_cases"])
         gc_on = gc.isenabled()
@@ -3463,6 +3467,19 @@ class TestUncollectedWarningsForking(TestUncollectedWarnings):
     """Check warnings from tests staying alive are emitted when forking"""
 
     _test_needs_features = [features.subunit]
+
+    def _inject_stream_into_subunit(self, stream):
+        """Monkey-patch subunit so the extra output goes to stream not stdout
+
+        Some APIs need rewriting so this kind of bogus hackery can be replaced
+        by passing the stream param from run_tests down into ProtocolTestCase.
+        """
+        from subunit import ProtocolTestCase
+        _original_init = ProtocolTestCase.__init__
+        def _init_with_passthrough(self, *args, **kwargs):
+            _original_init(self, *args, **kwargs)
+            self._passthrough = stream
+        self.overrideAttr(ProtocolTestCase, "__init__", _init_with_passthrough)
 
     def _run_selftest_with_suite(self, **kwargs):
         # GZ 2011-05-26: Add a PosixSystem feature so this check can go away
