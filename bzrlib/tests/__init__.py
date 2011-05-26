@@ -4534,6 +4534,14 @@ try:
     from subunit.test_results import AutoTimingTestResultDecorator
     class SubUnitBzrProtocolClient(TestProtocolClient):
 
+        # GZ 2011-05-26: This duplicates logic in ExtendedTestResult.stopTest
+        def stopTest(self, test):
+            super(SubUnitBzrProtocolClient, self).stopTest(test)
+            # Break bound method cycles added in Python 2.7 unittest rewrite
+            type_equality_funcs = getattr(test, "_type_equality_funcs", None)
+            if type_equality_funcs is not None:
+                type_equality_funcs.clear()
+
         def addSuccess(self, test, details=None):
             # The subunit client always includes the details in the subunit
             # stream, but we don't want to include it in ours.
