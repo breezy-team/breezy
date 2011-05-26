@@ -32,6 +32,7 @@ from bzrlib import (
     static_tuple,
     symbol_versioning,
     urlutils,
+    versionedfile,
     vf_repository,
     )
 from bzrlib.branch import BranchReferenceFormat, BranchWriteLockResult
@@ -1080,9 +1081,6 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def find_text_key_references(self):
         """Find the text key references within the repository.
 
-        :return: a dictionary mapping (file_id, revision_id) tuples to altered file-ids to an iterable of
-        revision_ids. Each altered file-ids has the exact revision_ids that
-        altered it listed explicitly.
         :return: A dictionary mapping text keys ((fileid, revision_id) tuples)
             to whether they were referred to by the inventory of the
             revision_id that they contain. The inventory texts from all present
@@ -1134,6 +1132,10 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     def _get_source(self, to_format):
         """Return a source for streaming from this repository."""
         return RemoteStreamSource(self, to_format)
+
+    @needs_read_lock
+    def get_file_graph(self):
+        return graph.Graph(self.texts)
 
     @needs_read_lock
     def has_revision(self, revision_id):
@@ -1604,7 +1606,8 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
     @needs_read_lock
     def search_missing_revision_ids(self, other,
             revision_id=symbol_versioning.DEPRECATED_PARAMETER,
-            find_ghosts=True, revision_ids=None, if_present_ids=None):
+            find_ghosts=True, revision_ids=None, if_present_ids=None,
+            limit=None):
         """Return the revision ids that other has that this does not.
 
         These are returned in topological order.
@@ -1624,7 +1627,7 @@ class RemoteRepository(_RpcHelper, lock._RelockDebugMixin,
         inter_repo = _mod_repository.InterRepository.get(other, self)
         return inter_repo.search_missing_revision_ids(
             find_ghosts=find_ghosts, revision_ids=revision_ids,
-            if_present_ids=if_present_ids)
+            if_present_ids=if_present_ids, limit=limit)
 
     def fetch(self, source, revision_id=None, find_ghosts=False,
             fetch_spec=None):
@@ -2990,10 +2993,10 @@ class RemoteBranch(branch.Branch, _RpcHelper, lock._RelockDebugMixin):
             _override_hook_target=self, **kwargs)
 
     @needs_read_lock
-    def push(self, target, overwrite=False, stop_revision=None):
+    def push(self, target, overwrite=False, stop_revision=None, lossy=False):
         self._ensure_real()
         return self._real_branch.push(
-            target, overwrite=overwrite, stop_revision=stop_revision,
+            target, overwrite=overwrite, stop_revision=stop_revision, lossy=lossy,
             _override_hook_source_branch=self)
 
     def is_locked(self):

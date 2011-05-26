@@ -39,6 +39,7 @@ objects (e.g. tree on repository) can list the objects they would be requesting
 so that when the dependent object is checked, matches can be pulled out and
 evaluated in-line rather than re-reading the same data many times.
 check_refs are tuples (kind, value). Currently defined kinds are:
+
 * 'trees', where value is a revid and the looked up objects are revision trees.
 * 'lefthand-distance', where value is a revid and the looked up objects are the
   distance along the lefthand path to NULL for that revid.
@@ -53,12 +54,22 @@ from bzrlib import (
 from bzrlib.branch import Branch
 from bzrlib.bzrdir import BzrDir
 from bzrlib.revision import NULL_REVISION
-from bzrlib.symbol_versioning import deprecated_function, deprecated_in
 from bzrlib.trace import note
 from bzrlib.workingtree import WorkingTree
 
+
 class Check(object):
     """Check a repository"""
+
+    def __init__(self, repository, check_repo=True):
+        self.repository = repository
+
+    def report_results(self, verbose):
+        raise NotImplementedError(self.report_results)
+
+
+class VersionedFileCheck(Check):
+    """Check a versioned file repository"""
 
     # The Check object interacts with InventoryEntry.check, etc.
 

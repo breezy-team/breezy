@@ -83,7 +83,7 @@ class MutableTree(tree.Tree):
         """True if filename is the name of a control file in this tree.
 
         :param filename: A filename within the tree. This is a relative path
-        from the root of this tree.
+            from the root of this tree.
 
         This is true IF and ONLY IF the filename is part of the meta data
         that bzr controls in this tree. I.E. a random .bzr directory placed

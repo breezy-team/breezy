@@ -72,9 +72,9 @@ class WorkingTree3(InventoryWorkingTree):
         return [('trees', self.last_revision())]
 
     def unlock(self):
-        # do non-implementation specific cleanup
-        self._cleanup()
         if self._control_files._lock_count == 1:
+           # do non-implementation specific cleanup
+            self._cleanup()
             # _inventory_is_modified is always False during a read lock.
             if self._inventory_is_modified:
                 self.flush()

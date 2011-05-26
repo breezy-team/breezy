@@ -174,6 +174,7 @@ class Tree(object):
              g
 
         The yield order (ignoring root) would be::
+
           a, f, a/b, a/d, a/b/c, a/d/e, f/g
 
         :param yield_parents: If True, yield the parents from the root leading
@@ -289,17 +290,19 @@ class Tree(object):
 
         :param file_id: The file_id of the file.
         :param path: The path of the file.
+
         If both file_id and path are supplied, an implementation may use
         either one.
         """
         return osutils.split_lines(self.get_file_text(file_id, path))
 
-    def get_file_sha1(self, file_id, path=None):
+    def get_file_sha1(self, file_id, path=None, stat_value=None):
         """Return the SHA1 file for a file.
 
         :param file_id: The handle for this file.
         :param path: The path that this file can be found at.
             These must point to the same object.
+        :param stat_value: Optional stat value for the object
         """
         raise NotImplementedError(self.get_file_sha1)
 
@@ -359,16 +362,18 @@ class Tree(object):
             cur_file = (self.get_file_text(file_id),)
             yield identifier, cur_file
 
-    def get_symlink_target(self, file_id):
+    def get_symlink_target(self, file_id, path=None):
         """Get the target for a given file_id.
 
         It is assumed that the caller already knows that file_id is referencing
         a symlink.
         :param file_id: Handle for the symlink entry.
+        :param path: The path of the file.
+        If both file_id and path are supplied, an implementation may use
+        either one.
         :return: The path the symlink points to.
         """
         raise NotImplementedError(self.get_symlink_target)
-
 
     def get_root_id(self):
         """Return the file_id for the root of this tree."""
@@ -858,7 +863,7 @@ def find_ids_across_trees(filenames, trees, require_versioned=True):
         None)
     :param trees: The trees to find file_ids within
     :param require_versioned: if true, all specified filenames must occur in
-    at least one tree.
+        at least one tree.
     :return: a set of file ids for the specified filenames and their children.
     """
     if not filenames:

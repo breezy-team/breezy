@@ -20,8 +20,8 @@
 """Branch implementation tests for bzr.
 
 These test the conformance of all the branch variations to the expected API.
-Specific tests for individual formats are in the tests/test_branch file
-rather than in tests/per_branch/*.py.
+Specific tests for individual formats are in the `tests/test_branch` file
+rather than in `tests/per_branch/*.py`.
 """
 
 from bzrlib import (

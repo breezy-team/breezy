@@ -654,7 +654,7 @@ class SmartClientRequestProtocolOne(SmartProtocolBase, Requester,
         """Make a remote call with a readv array.
 
         The body is encoded with one line per readv offset pair. The numbers in
-        each pair are separated by a comma, and no trailing \n is emitted.
+        each pair are separated by a comma, and no trailing \\n is emitted.
         """
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/readv: %s', repr(args)[1:-1])
@@ -1332,7 +1332,7 @@ class ProtocolThreeRequester(_ProtocolThreeEncoder, Requester):
         """Make a remote call with a readv array.
 
         The body is encoded with one line per readv offset pair. The numbers in
-        each pair are separated by a comma, and no trailing \n is emitted.
+        each pair are separated by a comma, and no trailing \\n is emitted.
         """
         if 'hpss' in debug.debug_flags:
             mutter('hpss call w/readv: %s', repr(args)[1:-1])

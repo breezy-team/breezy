@@ -230,7 +230,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """True if filename is the name of a control file in this tree.
 
         :param filename: A filename within the tree. This is a relative path
-        from the root of this tree.
+            from the root of this tree.
 
         This is true IF and ONLY IF the filename is part of the meta data
         that bzr controls in this tree. I.E. a random .bzr directory placed
@@ -267,16 +267,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         self._control_files.break_lock()
         self.branch.break_lock()
-
-    def _get_check_refs(self):
-        """Return the references needed to perform a check of this tree.
-        
-        The default implementation returns no refs, and is only suitable for
-        trees that have no local caching and can commit on ghosts at any time.
-
-        :seealso: bzrlib.check for details about check_refs.
-        """
-        return []
 
     def requires_rich_root(self):
         return self._format.requires_rich_root
@@ -636,8 +626,8 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         and setting the list to its value plus revision_id.
 
         :param revision_id: The revision id to add to the parent list. It may
-        be a ghost revision as long as its not the first parent to be added,
-        or the allow_leftmost_as_ghost parameter is set True.
+            be a ghost revision as long as its not the first parent to be
+            added, or the allow_leftmost_as_ghost parameter is set True.
         :param allow_leftmost_as_ghost: Allow the first parent to be a ghost.
         """
         parents = self.get_parent_ids() + [revision_id]
@@ -873,8 +863,11 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self.add(path, file_id, 'directory')
         return file_id
 
-    def get_symlink_target(self, file_id):
-        abspath = self.id2abspath(file_id)
+    def get_symlink_target(self, file_id, path=None):
+        if path is not None:
+            abspath = self.abspath(path)
+        else:
+            abspath = self.id2abspath(file_id)
         target = osutils.readlink(abspath)
         return target
 
@@ -1485,6 +1478,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         - Restore the wt.basis->wt.state changes.
 
         There isn't a single operation at the moment to do that, so we:
+
         - Merge current state -> basis tree of the master w.r.t. the old tree
           basis.
         - Do a 'normal' merge of the old branch basis if it is relevant.
@@ -1745,11 +1739,12 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
     def _walkdirs(self, prefix=""):
         """Walk the directories of this tree.
 
-           :prefix: is used as the directrory to start with.
-           returns a generator which yields items in the form:
-                ((curren_directory_path, fileid),
-                 [(file1_path, file1_name, file1_kind, None, file1_id,
-                   file1_kind), ... ])
+        :param prefix: is used as the directrory to start with.
+        :returns: a generator which yields items in the form::
+
+            ((curren_directory_path, fileid),
+             [(file1_path, file1_name, file1_kind, None, file1_id,
+               file1_kind), ... ])
         """
         raise NotImplementedError(self._walkdirs)
 
@@ -1761,6 +1756,7 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         are considered 'resolved', because bzr always puts conflict markers
         into files that have text conflicts.  The corresponding .THIS .BASE and
         .OTHER files are deleted, as per 'resolve'.
+
         :return: a tuple of ConflictLists: (un_resolved, resolved).
         """
         un_resolved = _mod_conflicts.ConflictList()
@@ -1785,25 +1781,6 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         self.set_conflicts(un_resolved)
         return un_resolved, resolved
 
-    @needs_read_lock
-    def _check(self, references):
-        """Check the tree for consistency.
-
-        :param references: A dict with keys matching the items returned by
-            self._get_check_refs(), and values from looking those keys up in
-            the repository.
-        """
-        tree_basis = self.basis_tree()
-        tree_basis.lock_read()
-        try:
-            repo_basis = references[('trees', self.last_revision())]
-            if len(list(repo_basis.iter_changes(tree_basis))) > 0:
-                raise errors.BzrCheckError(
-                    "Mismatched basis inventory content.")
-            self._validate()
-        finally:
-            tree_basis.unlock()
-
     def _validate(self):
         """Validate internal structures.
 
@@ -1815,16 +1792,9 @@ class WorkingTree(bzrlib.mutabletree.MutableTree,
         """
         return
 
-    @needs_read_lock
     def check_state(self):
         """Check that the working state is/isn't valid."""
-        check_refs = self._get_check_refs()
-        refs = {}
-        for ref in check_refs:
-            kind, value = ref
-            if kind == 'trees':
-                refs[ref] = self.branch.repository.revision_tree(value)
-        self._check(refs)
+        raise NotImplementedError(self.check_state)
 
     def reset_state(self, revision_ids=None):
         """Reset the state of the working tree.
@@ -2138,6 +2108,46 @@ class InventoryWorkingTree(WorkingTree,
         """Change the last revision in the working tree."""
         if self._change_last_revision(new_revision):
             self._cache_basis_inventory(new_revision)
+
+    def _get_check_refs(self):
+        """Return the references needed to perform a check of this tree.
+        
+        The default implementation returns no refs, and is only suitable for
+        trees that have no local caching and can commit on ghosts at any time.
+
+        :seealso: bzrlib.check for details about check_refs.
+        """
+        return []
+
+    @needs_read_lock
+    def _check(self, references):
+        """Check the tree for consistency.
+
+        :param references: A dict with keys matching the items returned by
+            self._get_check_refs(), and values from looking those keys up in
+            the repository.
+        """
+        tree_basis = self.basis_tree()
+        tree_basis.lock_read()
+        try:
+            repo_basis = references[('trees', self.last_revision())]
+            if len(list(repo_basis.iter_changes(tree_basis))) > 0:
+                raise errors.BzrCheckError(
+                    "Mismatched basis inventory content.")
+            self._validate()
+        finally:
+            tree_basis.unlock()
+
+    @needs_read_lock
+    def check_state(self):
+        """Check that the working state is/isn't valid."""
+        check_refs = self._get_check_refs()
+        refs = {}
+        for ref in check_refs:
+            kind, value = ref
+            if kind == 'trees':
+                refs[ref] = self.branch.repository.revision_tree(value)
+        self._check(refs)
 
     @needs_tree_write_lock
     def reset_state(self, revision_ids=None):
@@ -2904,11 +2914,12 @@ class InventoryWorkingTree(WorkingTree,
     def _walkdirs(self, prefix=""):
         """Walk the directories of this tree.
 
-           :prefix: is used as the directrory to start with.
-           returns a generator which yields items in the form:
-                ((curren_directory_path, fileid),
-                 [(file1_path, file1_name, file1_kind, None, file1_id,
-                   file1_kind), ... ])
+        :param prefix: is used as the directrory to start with.
+        :returns: a generator which yields items in the form::
+
+            ((curren_directory_path, fileid),
+             [(file1_path, file1_name, file1_kind, None, file1_id,
+               file1_kind), ... ])
         """
         _directory = 'directory'
         # get the root in the inventory

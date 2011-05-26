@@ -712,12 +712,11 @@ class Transport(object):
                     try:
                         cur_offset_and_size = offset_stack.next()
                     except StopIteration:
+                        fp.close()
                         cur_offset_and_size = None
                     yield this_offset, this_data
-        except:
+        finally:
             fp.close()
-            raise
-        fp.close()
 
     def _sort_expand_and_combine(self, offsets, upper_limit):
         """Helper for readv.

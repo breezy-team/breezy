@@ -2340,7 +2340,7 @@ class _PreviewTree(tree.InventoryTree):
                                    self.get_file(file_id).readlines(),
                                    default_revision)
 
-    def get_symlink_target(self, file_id):
+    def get_symlink_target(self, file_id, path=None):
         """See Tree.get_symlink_target"""
         if not self._content_change(file_id):
             return self._transform._tree.get_symlink_target(file_id)
@@ -2578,7 +2578,7 @@ def _build_tree(tree, wt, accelerator_tree, hardlink, delta_from_tree):
             precomputed_delta = None
         conflicts = cook_conflicts(raw_conflicts, tt)
         for conflict in conflicts:
-            trace.warning(conflict)
+            trace.warning(unicode(conflict))
         try:
             wt.add_conflicts(conflicts)
         except errors.UnsupportedOperation:
@@ -2820,7 +2820,7 @@ def revert(working_tree, target_tree, filenames, backups=False,
                 unversioned_filter=working_tree.is_ignored)
             delta.report_changes(tt.iter_changes(), change_reporter)
         for conflict in conflicts:
-            trace.warning(conflict)
+            trace.warning(unicode(conflict))
         pp.next_phase()
         tt.apply()
         working_tree.set_merge_modified(merge_modified)
