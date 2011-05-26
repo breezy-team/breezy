@@ -89,6 +89,7 @@ class TestSuite(unittest.TestSuite):
         if stream is None:
             stream = result.decorated._stream
         stored_count = 0
+        count_stored_tests = getattr(result, "_count_stored_tests", int)
         from bzrlib.tests import selftest_debug_flags
         notify = "uncollected_cases" in selftest_debug_flags
         while tests:
@@ -96,7 +97,7 @@ class TestSuite(unittest.TestSuite):
                 self._tests = reversed(tests)
                 break
             case = _run_and_collect_case(tests.pop(), result)()
-            new_stored_count = getattr(result, "_count_stored_tests", int)()
+            new_stored_count = count_stored_tests()
             if case is not None and isinstance(case, unittest.TestCase):
                 if stored_count == new_stored_count and notify:
                     # Testcase didn't fail, but somehow is still alive

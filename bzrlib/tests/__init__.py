@@ -3293,9 +3293,11 @@ def fork_for_tests(suite):
                 os.waitpid(self.pid, 0)
 
     test_blocks = partition_tests(suite, concurrency)
+    # Clear the tests from the original suite so it doesn't keep them alive
     suite._tests[:] = []
     for process_tests in test_blocks:
         process_suite = TestUtil.TestSuite(process_tests)
+        # Also clear each split list so new suite has only reference
         process_tests[:] = []
         c2pread, c2pwrite = os.pipe()
         pid = os.fork()
